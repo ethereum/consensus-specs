@@ -376,9 +376,9 @@ Let `time_since_finality = block.slot_number - last_finalized_slot`, and let `B`
 * `reward_quotient = BASE_REWARD_QUOTIENT * int(sqrt(total_deposits_in_ETH))` (1/this is the per-slot max interest rate)
 * `quadratic_penalty_quotient = int(sqrt(SQRT_E_DROP_TIME / SLOT_DURATION))` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
 
-For each slot in the range `last_state_recalc - CYCLE_LENGTH ... last_state_recalc - 1`:
+For each slot `S` in the range `last_state_recalc - CYCLE_LENGTH ... last_state_recalc - 1`:
 
-* Let `total_participated_deposits` be the total balance of validators that voted for the correct hash in that slot (ie. the hash that actually is the hash of the block at that slot in the current chain). If `time_since_finality <= 2 * CYCLE_LENGTH`, then adjust participating and non-participating validators' balances as follows:
+* Let `total_participated_deposits` be the total balance of validators that voted for the correct hash in slot `S` (ie. the hash that actually is the hash of the block at that slot in the current chain); note that in the normal case, every validator will be in one of the `EPOCH_LENGTH` slots following the slot and so can vote for a hash in slot `S`. If `time_since_finality <= 2 * CYCLE_LENGTH`, then adjust participating and non-participating validators' balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_participated_deposits - total_deposits) // total_deposits` (note: this may be negative)
     * Nonparticipating validators lose `B // reward_quotient`
 * Otherwise, adjust as follows:
@@ -389,11 +389,11 @@ For each slot in the range `last_state_recalc - CYCLE_LENGTH ... last_state_reca
 
 For each shard S for which a crosslink committee exists in this epoch, let V be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each S, V do the following:
 
-* Let `total_v_deposits` be the total balance of V, and `total_participated_deposits` be the total balance of the subset of V that participated.
+* Let `total_v_deposits` be the total balance of V, and `total_participated_v_deposits` be the total balance of the subset of V that participated (note: it's always true that `total_participated_v_deposits <= total_v_deposits`)
 * Let `time_since_last_confirmation` be `block.slot_number - crosslink_records[S].slot`
 * Adjust balances as follows:
     * If `crosslink_records[S].dynasty == current_dynasty`, no reward adjustments
-    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_deposits // total_v_deposits - 1)`, and non-participating validators' balances are decreased by `B // reward_quotient + B // reward_quotient // 2 + time_since_finality // quadratic_penalty_quotient`
+    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits // total_v_deposits - 1)`, and non-participating validators' balances are decreased by `B // reward_quotient + B // reward_quotient // 2 + time_since_finality // quadratic_penalty_quotient`
 
 Finally:
 
