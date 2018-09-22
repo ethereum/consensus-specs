@@ -440,3 +440,6 @@ Slashing conditions may include:
     Proof of custody wrong custody bit
     Proof of custody no secret reveal
     RANDAO leak
+
+## Copyright
+Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
