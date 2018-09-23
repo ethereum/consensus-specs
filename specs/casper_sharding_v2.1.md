@@ -378,7 +378,7 @@ Let `time_since_finality = block.slot_number - last_finalized_slot`, and let `B`
 
 For each slot `S` in the range `last_state_recalc - CYCLE_LENGTH ... last_state_recalc - 1`:
 
-* Let `total_participated_deposits` be the total balance of validators that voted for the correct hash in slot `S` (ie. the hash that actually is the hash of the block at that slot in the current chain); note that in the normal case, every validator will be in one of the `EPOCH_LENGTH` slots following the slot and so can vote for a hash in slot `S`. If `time_since_finality <= 2 * CYCLE_LENGTH`, then adjust participating and non-participating validators' balances as follows:
+* Let `total_participated_deposits` be the total balance of validators that voted for the correct hash in slot `S` (ie. the hash that actually is the hash of the block at that slot in the current chain); note that in the normal case, every validator will be in one of the `CYCLE_LENGTH` slots following the slot and so can vote for a hash in slot `S`. If `time_since_finality <= 2 * CYCLE_LENGTH`, then adjust participating and non-participating validators' balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_participated_deposits - total_deposits) // total_deposits` (note: this may be negative)
     * Nonparticipating validators lose `B // reward_quotient`
 * Otherwise, adjust as follows:
