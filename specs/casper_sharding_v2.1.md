@@ -374,7 +374,7 @@ Let `time_since_finality = block.slot_number - last_finalized_slot`, and let `B`
 
 * `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, current_dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
 * `reward_quotient = BASE_REWARD_QUOTIENT * int(sqrt(total_deposits_in_ETH))` (1/this is the per-slot max interest rate)
-* `quadratic_penalty_quotient = int(sqrt(SQRT_E_DROP_TIME / SLOT_DURATION))` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
+* `quadratic_penalty_quotient = (SQRT_E_DROP_TIME / SLOT_DURATION)**2` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
 
 For each slot `S` in the range `last_state_recalc - CYCLE_LENGTH ... last_state_recalc - 1`:
 
