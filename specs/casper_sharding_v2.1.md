@@ -393,7 +393,7 @@ For each shard S for which a crosslink committee exists in the cycle prior to th
 * Let `time_since_last_confirmation` be `block.slot_number - crosslink_records[S].slot`
 * Adjust balances as follows:
     * If `crosslink_records[S].dynasty == current_dynasty`, no reward adjustments
-    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits // total_v_deposits - 1)`, and non-participating validators' balances are decreased by `B // reward_quotient + B // reward_quotient // 2 + time_since_finality // quadratic_penalty_quotient`
+    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits // total_v_deposits - 1)`, and non-participating validators' balances are decreased by `B // reward_quotient + time_since_finality // quadratic_penalty_quotient`
 
 Finally:
 
