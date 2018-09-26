@@ -1,5 +1,7 @@
 # Casper+Sharding chain v2.1
 
+###### tags: `spec`, `eth2.0`, `casper`, `sharding`
+
 ## WORK IN PROGRESS!!!!!!!
 
 This is the work-in-progress document describing the specification for the Casper+Sharding (shasper) chain, version 2.1.
@@ -256,7 +258,7 @@ Now, our combined helper method:
 def get_new_shuffling(seed, validators, dynasty, crosslinking_start_shard):
     avs = get_active_validator_indices(validators, dynasty)
     if len(avs) >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE:
-        committees_per_slot = len(avs) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1 
+        committees_per_slot = min(len(avs) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1, SHARD_COUNT // CYCLE_LENGTH)
         slots_per_committee = 1
     else:
         committees_per_slot = 1
