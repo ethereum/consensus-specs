@@ -445,9 +445,9 @@ Slashing conditions may include:
 ## Appendix A - Hash function
 The general hash function `hash(x)` in this specification is defined as: 
 
-`hash(x) := BLAKE2b(x)[0:32]`, where `BLAKE2b` algorithm is deifned in [RFC7693](https://tools.ietf.org/html/rfc7693) and input `x` is bytes type.
+`hash(x) := BLAKE2b-512(x)[0:32]`, where `BLAKE2b-512` (`blake2b512`) algorithm is defined in [RFC 7693](https://tools.ietf.org/html/rfc7693) and input `x` is bytes type.
 
-* The output of *default* `BLAKE2b` algorithm is a 64-byte type. To get a 32-byte result, the general hash function output is defined as the leftmost 32 bytes of `BLAKE2b` hash output.
+* `BLAKE2b-512` is the *default* `BLAKE2b` algorithm with 64-byte digest size. To get a 32-byte result, the general hash function output is defined as the leftmost `32` bytes of `BLAKE2b-512` hash output.
 * The design rationale is keeping using the default algorithm and avoiding too much dependency on external hash function libraries.
 
 ## Copyright
