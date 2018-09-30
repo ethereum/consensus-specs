@@ -302,6 +302,7 @@ Finally, we define `integer_sqrt` for use in reward/penalty calculations:
 
 ```python
 def integer_sqrt(n):
+    # Utilizes "Newton's Method"
     x = n
     y = (x + 1) // 2
     while y < x:
