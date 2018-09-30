@@ -298,14 +298,17 @@ def get_block_hash(active_state, curblock, slot):
 
 `get_block_hash(*, *, h)` should always return the block in the chain at slot `h`, and `get_shards_and_committees_for_slot(*, h)` should not change unless the dynasty changes.
 
-Finally, we abstractly define `integer_sqrt` for use in reward/penalty calculations:
+Finally, we abstractly define `integer_sqrt(x)` for use in reward/penalty calculations as the largest integer `n` such that `n**2 <= x`. Here is one possible implementation, though clients are free to use their own including standard libraries if available. 
+
 ```python
 def integer_sqrt(n):
-    return max(n in Z: n**2 <= x)
+    x = n
+    y = (x + 1) // 2
+    while y < x:
+        x = y
+        y = (x + n // x) // 2
+    return x
 ```
-
-We leave `integer_sqrt` implementation details to each particular language/framework.
-
 
 ### On startup
 
