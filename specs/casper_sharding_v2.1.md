@@ -282,7 +282,7 @@ Here's a diagram of what's going on:
 
 ![](http://vitalik.ca/files/ShuffleAndAssign.png?1)
 
-We also define:
+We also define two functions retrieving data from the state:
 
 ```python
 def get_shards_and_committees_for_slot(crystallized_state, slot):
@@ -297,6 +297,18 @@ def get_block_hash(active_state, curblock, slot):
 ```
 
 `get_block_hash(*, *, h)` should always return the block in the chain at slot `h`, and `get_shards_and_committees_for_slot(*, h)` should not change unless the dynasty changes.
+
+Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries if available and meet the specification.
+
+```python
+def int_sqrt(n):
+    k = n
+    while True:
+        newk = (k + (n // k)) // 2
+        if newk in (k, k+1):
+            return k
+        k = newk
+```
 
 ### On startup
 
@@ -375,7 +387,7 @@ For all (`shard_id`, `shard_block_hash`) tuples, compute the total deposit size 
 Let `time_since_finality = block.slot_number - last_finalized_slot`, and let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. Let:
 
 * `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, current_dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
-* `reward_quotient = BASE_REWARD_QUOTIENT * int(sqrt(total_deposits_in_ETH))` (1/this is the per-slot max interest rate)
+* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (1/this is the per-slot max interest rate)
 * `quadratic_penalty_quotient = (SQRT_E_DROP_TIME / SLOT_DURATION)**2` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
 
 For each slot `S` in the range `last_state_recalc - CYCLE_LENGTH ... last_state_recalc - 1`:
