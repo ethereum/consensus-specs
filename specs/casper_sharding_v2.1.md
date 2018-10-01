@@ -47,6 +47,7 @@ Note: the python code at https://github.com/ethereum/beacon_chain and [an ethres
 * **MIN_COMMITTEE_SIZE** - 128 (rationale: see recommended minimum 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf)
 * **SQRT_E_DROP_TIME** - a constant set to reflect the amount of time it will take for the quadratic leak to cut nonparticipating validators' deposits by ~39.4%. Currently set to 2**20 seconds (~12 days).
 * **BASE_REWARD_QUOTIENT** - 1/this is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. Currently set to `2**15 = 32768`, corresponding to ~3.88% annual interest assuming 10 million participating ETH.
+* **WITHDRAWAL_PERIOD** - number of slots between a validator exit and the validator slot being withdrawable. Currently set to `2**19 = 524288` slots, or `2**23` seconds ~= 97 days.
 * **MAX_VALIDATOR_CHANGE_QUOTIENT** - a maximum of 1/x validators can change during each dynasty. Currently set to 32.
 
 ### PoW main chain changes
