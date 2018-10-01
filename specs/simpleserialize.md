@@ -15,13 +15,13 @@ deserializing objects and data types.
 * [Constants](#constants)
 * [Overview](#overview)
  + [Serialize/Encode](#serializeencode)
-   - [int/uint: 8/16/24/32/64/256](#intuint-816243264256)
+   - [uint: 8/16/24/32/64/256](#uint-816243264256)
    - [Address](#address)
    - [Hash32](#hash32)
    - [Bytes](#bytes)
    - [List](#list)
  + [Deserialize/Decode](#deserializedecode)
-   - [int/uint: 8/16/24/32/64/256](#intuint-816243264256-1)
+   - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
    - [Address](#address-1)
    - [Hash32](#hash32-1)
    - [Bytes](#bytes-1)
@@ -59,7 +59,7 @@ overhead.
 
 ### Serialize/Encode
 
-#### int/uint: 8/16/24/32/64/256
+#### uint: 8/16/24/32/64/256
 
 Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
 
@@ -150,7 +150,7 @@ At each step, the following checks should be made:
 |:-------------------------|:----------------------------------------------------------|
 | Ensure sufficient length | ``length(rawbytes) > current_index + deserialize_length`` |
 
-#### int/uint: 8/16/24/32/64/256
+#### uint: 8/16/24/32/64/256
 
 Convert directly from bytes into integer utilising the number of bytes the same
 size as the integer length. (e.g. ``uint16 == 2 bytes``)
@@ -193,9 +193,9 @@ return rawbytes[current_index+4:current_index+4+bytes_length], new_index
 
 #### List
 
-Deserailize each object in the list.
+Deserialize each object in the list.
 1. Get the length of the serialized list.
-2. Loop through deseralizing each item in the list until you reach the
+2. Loop through deserializing each item in the list until you reach the
 entire length of the list.
 
 
@@ -218,8 +218,9 @@ return deserialized_list, new_index
 
 ## Implementations
 
-| Language | Implementation                                                                                                                       | Description                                                     |
-|:--------:|--------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
-|  Python  | [ https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py ](https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py) | Beacon chain reference implementation written in Python.        |
-|   Rust   | [ https://github.com/sigp/lighthouse/tree/master/ssz ](https://github.com/sigp/lighthouse/tree/master/ssz)                           | Lighthouse (Rust Ethereum 2.0 Node) maintained SimpleSerialize. |
-
+| Language | Implementation                                                                                                                                                     | Description                                                     |
+|:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+|  Python  | [ https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py ](https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py)                               | Beacon chain reference implementation written in Python.        |
+|   Rust   | [ https://github.com/sigp/lighthouse/tree/master/ssz ](https://github.com/sigp/lighthouse/tree/master/ssz)                                                         | Lighthouse (Rust Ethereum 2.0 Node) maintained SimpleSerialize. |
+|    Nim   | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implemetnation maintained SimpleSerialize.                  |
+|   Rust   | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz)                                         | Shasper implementation of SSZ maintained by ParityTech.         |
