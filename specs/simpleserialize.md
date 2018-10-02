@@ -30,7 +30,7 @@ deserializing objects and data types.
 
 ## About
 
-`SimpleSerialize` was first proposed by Vitalik Buterin as the serializaiton
+`SimpleSerialize` was first proposed by Vitalik Buterin as the serialization
 protocol for use in the Ethereum 2.0 Beacon Chain.
 
 The core feature of `ssz` is the simplicity of the serialization with low
@@ -115,7 +115,7 @@ For general `byte` type:
 | Length of bytes can fit into 4 bytes | ``len(value) < 2**32`` |
 
 ```python
-byte_length = (len(value)).to_bytes(4, 'big')
+byte_length = (len(value)).to_bytes(LENGTH_BYTES, 'big')
 return byte_length + value
 ```
 
@@ -134,7 +134,7 @@ serialized_list_string = ''
 for item in value:
    serialized_list_string += serialize(item)
 
-serialized_len = len(serialized_list_string)
+serialized_len = (len(serialized_list_string).to_bytes(LENGTH_BYTES, 'big'))
 
 return serialized_len + serialized_list_string
 ```
@@ -190,9 +190,9 @@ return rawbytes[current_index:current_index+32], new_index
 Get the length of the bytes, return the bytes.
 
 ```python
-bytes_length = int.from_bytes(rawbytes[current_index:current_index+4], 'big')
-new_index = current_index + 4 + bytes_lenth
-return rawbytes[current_index+4:current_index+4+bytes_length], new_index
+bytes_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
+new_index = current_index + LENGTH_BYTES + bytes_lenth
+return rawbytes[current_index + LENGTH_BYTES:current_index+ LENGTH_BYTES +bytes_length], new_index
 ```
 
 #### List
@@ -208,9 +208,9 @@ entire length of the list.
 | rawbytes has enough left for length | ``len(rawbytes) > current_index + 4`` |
 
 ```python
-total_length = int.from_bytes(rawbytes[current_index:current_index+4], 'big')
-new_index = current_index + 4 + total_length
-item_index = current_index + 4
+total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
+new_index = current_index + LENGTH_BYTES + total_length
+item_index = current_index + LENGTH_BYTES
 deserialized_list = []
 
 while item_index < new_index:
