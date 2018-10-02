@@ -68,8 +68,8 @@ Beacon chain block structure:
 
 ```python
 fields = {
-    # Hash of the parent block
-    'parent_hash': 'hash32',
+    # Hash of ancestor blocks (32 items, i'th is 2**i'th ancestor or zero bytes)
+    'ancestor_hashes': ['hash32'],
     # Slot number (for the PoS mechanism)
     'slot': 'int64',
     # Randao commitment reveal
@@ -225,7 +225,7 @@ Processing the beacon chain is fundamentally similar to processing a PoW chain i
 
 For a block on the beacon chain to be processed by a node, four conditions have to be met:
 
-* The parent pointed to by the `parent_hash` has already been processed and accepted
+* The parent pointed to by the `ancestor_hashes[0]` has already been processed and accepted
 * An attestation from the _proposer_ of the block (see later for definition) is included along with the block in the network message object
 * The PoW chain block pointed to by the `pow_chain_ref` has already been processed and accepted
 * The node's local clock time is greater than or equal to the minimum timestamp as computed by `GENESIS_TIME + block.slot * SLOT_DURATION`
@@ -418,7 +418,7 @@ def add_validator(validators, pubkey, proof_of_possession, withdrawal_shard,
 
 This procedure should be carried out every block.
 
-First, set `recent_block_hashes` to the output of the following:
+First, set `recent_block_hashes` to the output of the following, where `parent_hash` is the hash of the immediate previous block (ie. must be equal to `ancestor_hashes[0]`):
 
 ```python
 def get_new_recent_block_hashes(old_block_hashes, parent_slot,
@@ -427,7 +427,16 @@ def get_new_recent_block_hashes(old_block_hashes, parent_slot,
     return old_block_hashes[d:] + [parent_hash] * min(d, len(old_block_hashes))
 ```
 
-The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`, and will now throw for `current_slot - CYCLE_LENGTH * 2 - 1`
+The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`, and will now throw for `current_slot - CYCLE_LENGTH * 2 - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
+
+```python
+def update_ancestor_hashes(parent_ancestor_hashes, parent_slot_number, parent_hash):
+    new_ancestor_hashes = copy.copy(parent_ancestor_hashes)
+    for i in range(32):
+        if parent_slot_number % 2**i == 0:
+            new_ancestor_hashes[i] = parent_hash
+    return new_ancestor_hashes
+```
 
 A block can have 0 or more `AttestationRecord` objects
 
@@ -563,7 +572,7 @@ Finally:
 * Set `last_dynasty_start = crystallized_state.last_state_recalculation`
 * Set `crystallized_state.current_dynasty += 1`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard_id + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(block.parent_hash, validators, next_start_shard)`
+* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(block.ancestor_hashes[0], validators, next_start_shard)`
 
 -------
 
