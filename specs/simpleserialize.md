@@ -50,15 +50,15 @@ overhead.
 | `byte_order` | Specifies [endianness:](https://en.wikipedia.org/wiki/Endianness) Big Endian or Little Endian. |
 | `len`        | Length/Number of Bytes.                                                                        |
 | `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byte_order``.                          |
-| `from_bytes` | Convert form bytes to object. Should take ``bytes`` and ``byte_order``.                        |
+| `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byte_order``.                        |
 | `value`      | The value to serialize.                                                                        |
 | `rawbytes`   | Raw serialized bytes.                                                                          |
 
 ## Constants
 
-| Constant       | Value | Definition                                                              |
-|:---------------|:-----:|:------------------------------------------------------------------------|
-| `LENGTH_BYTES` |   4   | Number of bytes used for the length added before the serialized object. |
+| Constant       | Value | Definition                                                                            |
+|:---------------|:-----:|:--------------------------------------------------------------------------------------|
+| `LENGTH_BYTES` |   4   | Number of bytes used for the length added before a variable-length serialized object. |
 
 
 ## Overview
@@ -71,12 +71,12 @@ Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
 
 All integers are serialized as **big endian**.
 
-| Check to perform                 | Code                    |
-|:---------------------------------|:------------------------|
-| Size is a byte integer           | ``int_size % 8 == 0``   |
-| Value is less than max           | ``2**int_size > value`` |
+| Check to perform       | Code                  |
+|:-----------------------|:----------------------|
+| Size is a byte integer | ``int_size % 8 == 0`` |
 
 ```python
+assert(int_size % 8 == 0)
 buffer_size = int_size / 8
 return value.to_bytes(buffer_size, 'big')
 ```
@@ -156,7 +156,7 @@ return value
 #### Bytes
 
 For general `byte` type:
-1. Get the length/number of bytes; Encode into a 4 byte integer.
+1. Get the length/number of bytes; Encode into a `4-byte` integer.
 2. Append the value to the length and return: ``[ length_bytes ] + [
    value_bytes ]``
 
@@ -165,25 +165,34 @@ For general `byte` type:
 | Length of bytes can fit into 4 bytes | ``len(value) < 2**32`` |
 
 ```python
+assert(len(value) < 2**32)
 byte_length = (len(value)).to_bytes(LENGTH_BYTES, 'big')
 return byte_length + value
 ```
 
 #### List/Vectors
 
-1. Get the number of raw bytes to serialize: it is `len(list) * sizeof(element)`.
+| Check to perform                            | Code                        |
+|:--------------------------------------------|:----------------------------|
+| Length of serialized list fits into 4 bytes | ``len(serialized) < 2**32`` |
+
+
+1. Get the number of raw bytes to serialize: it is ``len(list) * sizeof(element)``.
    * Encode that as a `4-byte` **big endian** `uint32`.
-2. Append your elements in a packed manner.
+2. Append the elements in a packed manner.
 
 * *Note on efficiency*: consider using a container that does not need to iterate over all elements to get its length. For example Python lists, C++ vectors or Rust Vec.
 
 **Example in Python**
 
 ```python
-serialized_list_string = ''
+
+serialized_list_string = b''
 
 for item in value:
    serialized_list_string += serialize(item)
+
+assert(len(serialized_list_string) < 2**32)
 
 serialized_len = (len(serialized_list_string).to_bytes(LENGTH_BYTES, 'big'))
 
@@ -194,16 +203,16 @@ return serialized_len + serialized_list_string
 
 The decoding requires knowledge of the type of the item to be decoded. When
 performing decoding on an entire serialized string, it also requires knowledge
-of what order the objects have been serialized in.
+of the order in which the objects have been serialized.
 
 Note: Each return will provide ``deserialized_object, new_index`` keeping track
 of the new index.
 
 At each step, the following checks should be made:
 
-| Check Type               | Check                                                     |
-|:-------------------------|:----------------------------------------------------------|
-| Ensure sufficient length | ``length(rawbytes) > current_index + deserialize_length`` |
+| Check to perform         | Check                                                      |
+|:-------------------------|:-----------------------------------------------------------|
+| Ensure sufficient length | ``length(rawbytes) >= current_index + deserialize_length`` |
 
 #### uint: 8/16/24/32/64/256
 
@@ -213,6 +222,7 @@ size as the integer length. (e.g. ``uint16 == 2 bytes``)
 All integers are interpreted as **big endian**.
 
 ```python
+assert(len(rawbytes) >= current_index + int_size)
 byte_length = int_size / 8
 new_index = current_index + int_size
 return int.from_bytes(rawbytes[current_index:current_index+int_size], 'big'), new_index
@@ -223,6 +233,7 @@ return int.from_bytes(rawbytes[current_index:current_index+int_size], 'big'), ne
 Return the 20 bytes.
 
 ```python
+assert(len(rawbytes) >= current_index + 20)
 new_index = current_index + 20
 return rawbytes[current_index:current_index+20], new_index
 ```
@@ -234,6 +245,7 @@ return rawbytes[current_index:current_index+20], new_index
 Return the 32 bytes.
 
 ```python
+assert(len(rawbytes) >= current_index + 32)
 new_index = current_index + 32
 return rawbytes[current_index:current_index+32], new_index
 ```
@@ -243,6 +255,7 @@ return rawbytes[current_index:current_index+32], new_index
 Return the 96 bytes.
 
 ```python
+assert(len(rawbytes) >= current_index + 96)
 new_index = current_index + 96
 return rawbytes[current_index:current_index+96], new_index
 ```
@@ -252,6 +265,7 @@ return rawbytes[current_index:current_index+96], new_index
 Return the 97 bytes.
 
 ```python
+assert(len(rawbytes) >= current_index + 97)
 new_index = current_index + 97
 return rawbytes[current_index:current_index+97], new_index
 ```
@@ -261,10 +275,22 @@ return rawbytes[current_index:current_index+97], new_index
 
 Get the length of the bytes, return the bytes.
 
+| Check to perform                                  | code                                             |
+|:--------------------------------------------------|:-------------------------------------------------|
+| rawbytes has enough left for length               | ``len(rawbytes) > current_index + LENGTH_BYTES`` |
+| bytes to return not greater than serialized bytes | ``len(rawbytes) > bytes_end ``                   |
+
 ```python
+assert(len(rawbytes) > current_index + LENGTH_BYTES)
 bytes_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
-new_index = current_index + LENGTH_BYTES + bytes_lenth
-return rawbytes[current_index + LENGTH_BYTES:current_index+ LENGTH_BYTES +bytes_length], new_index
+
+bytes_start = current_index + LENGTH_BYTES
+bytes_end = bytes_start + bytes_length
+new_index = bytes_end
+
+assert(len(rawbytes) >= bytes_end)
+
+return rawbytes[bytes_start:bytes_end], new_index
 ```
 
 #### List/Vectors
@@ -275,13 +301,16 @@ Deserialize each object in the list.
 entire length of the list.
 
 
-| Check type                          | code                                  |
-|:------------------------------------|:--------------------------------------|
-| rawbytes has enough left for length | ``len(rawbytes) > current_index + 4`` |
+| Check to perform                          | code                                                            |
+|:------------------------------------------|:----------------------------------------------------------------|
+| rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
+| list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
 
 ```python
+assert(len(rawbytes) > current_index + LENGTH_BYTES)
 total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
 new_index = current_index + LENGTH_BYTES + total_length
+assert(len(rawbytes) >= new_index)
 item_index = current_index + LENGTH_BYTES
 deserialized_list = []
 
