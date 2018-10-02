@@ -55,6 +55,8 @@ Note: the python code at https://github.com/ethereum/beacon_chain and [an ethres
 * **PENDING\_WITHDRAW** = 3 (status code)
 * **PENALIZED** = 128 (status code)
 * **WITHDRAWN** = 4 (status code)
+* **ENTRY** = 1 (flag)
+* **EXIT** = 2 (flag)
 
 ### PoW chain changes
 
@@ -163,7 +165,9 @@ fields = {
     # Start of the current dynasty
     'dynasty_start': 'int64',
     # Total deposits penalized in the given withdrawal period
-    'deposits_penalized_in_period': ['int32']
+    'deposits_penalized_in_period': ['int32'],
+    # Hash chain of validator set changes, allows light clients to track deltas more easily
+    'validator_set_delta_hash_chain': 'hash32'
 }
 ```
 
@@ -345,6 +349,15 @@ def get_block_hash(active_state, curblock, slot):
 
 `get_block_hash(_, _, h)` should always return the block in the chain at slot `h`, and `get_shards_and_committees_for_slot(_, h)` should not change unless the dynasty changes.
 
+We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
+
+```python
+def add_validator_set_change_record(crystallized_state, index, pubkey, flag):
+    crystallized_state.validator_set_delta_hash_chain = \
+        hash(crystallized_state.validator_set_delta_hash_chain +
+             bytes1(flag) + bytes3(index) + bytes32(pubkey))
+```
+
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
 
 ```python
@@ -504,7 +517,12 @@ Let `committees` be the set of committees processed and `time_since_last_confirm
 For each `SpecialObject` `obj` in `active_state.pending_specials`:
 
 * **[coverts logouts]**: If `obj.type == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
-* **[covers NO\_DBL\_VOTE, NO\_SURROUND, NO\_DBL\_PROPOSE slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty + 1, and if its `status` does not equal `PENALIZED`, then (i) set its `exit_slot` to equal the current `slot`, (ii) set its `status` to `PENALIZED`, and (iii) set `crystallized_state.deposits_penalized_in_period[slot // WITHDRAWAL_PERIOD] += validators[v].balance`, extending the array if needed.
+* **[covers NO\_DBL\_VOTE, NO\_SURROUND, NO\_DBL\_PROPOSE slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty + 1, and if its `status` does not equal `PENALIZED`, then:
+
+1. Set its `exit_slot` to equal the current `slot`
+2. Set its `status` to `PENALIZED`
+3. Set `crystallized_state.deposits_penalized_in_period[slot // WITHDRAWAL_PERIOD] += validators[v].balance`, extending the array if needed
+4. Run `add_validator_set_change_record(crystallized_state, v, validators[v].pubkey, EXIT)`
 
 #### Finally...
 
@@ -540,10 +558,12 @@ def change_validators(validators):
         if validators[i].status == PENDING_LOG_IN:
             validators[i].status = LOGGED_IN
             total_changed += DEPOSIT_SIZE
+            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
             validators[i].exit_slot = current_slot
             total_changed += validators[i].balance
+            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, EXIT)
         if total_changed >= max_allowable_change:
             break
 
