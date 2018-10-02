@@ -110,6 +110,10 @@ For general `byte` type:
 2. Append the value to the length and return: ``[ length_bytes ] + [
    value_bytes ]``
 
+| Check to perform                     | Code                   |
+|:-------------------------------------|:-----------------------|
+| Length of bytes can fit into 4 bytes | ``len(value) < 2**32`` |
+
 ```python
 byte_length = (len(value)).to_bytes(4, 'big')
 return byte_length + value
@@ -218,9 +222,9 @@ return deserialized_list, new_index
 
 ## Implementations
 
-| Language | Implementation                                                                                                                                                     | Description                                                     |
-|:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
-|  Python  | [ https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py ](https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py)                               | Beacon chain reference implementation written in Python.        |
-|   Rust   | [ https://github.com/sigp/lighthouse/tree/master/ssz ](https://github.com/sigp/lighthouse/tree/master/ssz)                                                         | Lighthouse (Rust Ethereum 2.0 Node) maintained SimpleSerialize. |
-|    Nim   | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implemetnation maintained SimpleSerialize.                  |
-|   Rust   | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz)                                         | Shasper implementation of SSZ maintained by ParityTech.         |
+| Language | Implementation                                                                                                                                                     | Description                                              |
+|:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
+|  Python  | [ https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py ](https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py)                               | Beacon chain reference implementation written in Python. |
+|   Rust   | [ https://github.com/sigp/lighthouse/tree/master/ssz ](https://github.com/sigp/lighthouse/tree/master/ssz)                                                         | Lighthouse (Rust Ethereum 2.0 Node) maintained SSZ.      |
+|    Nim   | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implementation maintained SSZ.                       |
+|   Rust   | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz)                                         | Shasper implementation of SSZ maintained by ParityTech.  |
