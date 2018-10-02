@@ -22,7 +22,7 @@ deserializing objects and data types.
          * [Hash96](#hash96)
          * [Hash97](#hash97)
       - [Bytes](#bytes)
-      - [List](#list)
+      - [List/Vectors](#listvectors)
    + [Deserialize/Decode](#deserializedecode)
       - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
       - [Address](#address-1)
@@ -31,7 +31,7 @@ deserializing objects and data types.
          * [Hash96](#hash96-1)
          * [Hash97](#hash97-1)
       - [Bytes](#bytes-1)
-      - [List](#list-1)
+      - [List/Vectors](#listvectors-1)
 * [Implementations](#implementations)
 
 ## About
@@ -169,14 +169,15 @@ byte_length = (len(value)).to_bytes(LENGTH_BYTES, 'big')
 return byte_length + value
 ```
 
-#### List
+#### List/Vectors
 
-For lists of values, get the length of the list and then serialize the value
-of each item in the list:
-1. For each item in list:
-   1. serialize.
-   2. append to string.
-2. Get size of serialized string. Encode into a 4 byte integer.
+1. Get the number of raw bytes to serialize: it is `len(list) * sizeof(element)`.
+   * Encode that as a `4-byte` **big endian** `uint32`.
+2. Append your elements in a packed manner.
+
+* *Note on efficiency*: consider using a container that does not need to iterate over all elements to get its length. For example Python lists, C++ vectors or Rust Vec.
+
+**Example in Python**
 
 ```python
 serialized_list_string = ''
@@ -266,7 +267,7 @@ new_index = current_index + LENGTH_BYTES + bytes_lenth
 return rawbytes[current_index + LENGTH_BYTES:current_index+ LENGTH_BYTES +bytes_length], new_index
 ```
 
-#### List
+#### List/Vectors
 
 Deserialize each object in the list.
 1. Get the length of the serialized list.
