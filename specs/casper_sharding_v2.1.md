@@ -417,7 +417,7 @@ For each one of these attestations [TODO]:
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1
 * Verify that `aggregate_sig` verifies using the group pubkey generated and `hash(slot.to_bytes(8, 'big') + parent_hashes + shard_id + shard_block_hash + justified_slot.to_bytes(8, 'big'))` as the message.
 
-Extend the list of `AttestationRecord` objects in the `active_state`, ordering the new additions in the same order as they came in the block.
+Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialObject` objects in the `active_state` with those included in the block.
 
 Verify that the `parent.slot_number % len(get_shards_and_committees_for_slot(crystallized_state, parent.slot_number)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, parent.slot_number)[0]`is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a block is produced, it is broadcasted at the network layer along with the attestation  from its proposer.
 
@@ -509,10 +509,11 @@ def change_validators(validators):
         if total_changed >= max_allowable_change:
             break
 
+    cp = current_slot // WITHDRAWAL_PERIOD
     total_penalties = (
-        crystallized_state.penalized_in_wp[current_slot // WITHDRAWAL_PERIOD] +
-        crystallized_state.penalized_in_wp[current_slot // WITHDRAWAL_PERIOD - 1] +
-        crystallized_state.penalized_in_wp[current_slot // WITHDRAWAL_PERIOD - 2]
+        (crystallized_state.penalized_in_wp[cp]) +
+        (crystallized_state.penalized_in_wp[cp - 1] if cp >= 1 else 0) +
+        (crystallized_state.penalized_in_wp[cp - 2] if cp >= 2 else 0)
     )
     for i in range(len(validators)):
         if validators[i].status in (3, 128) and current_slot >= validators[i].exit_slot + WITHDRAWAL_PERIOD:
