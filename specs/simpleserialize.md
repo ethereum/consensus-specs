@@ -14,18 +14,24 @@ deserializing objects and data types.
 * [Terminology](#terminology)
 * [Constants](#constants)
 * [Overview](#overview)
- + [Serialize/Encode](#serializeencode)
-   - [uint: 8/16/24/32/64/256](#uint-816243264256)
-   - [Address](#address)
-   - [Hash32](#hash32)
-   - [Bytes](#bytes)
-   - [List](#list)
- + [Deserialize/Decode](#deserializedecode)
-   - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
-   - [Address](#address-1)
-   - [Hash32](#hash32-1)
-   - [Bytes](#bytes-1)
-   - [List](#list-1)
+   + [Serialize/Encode](#serializeencode)
+      - [uint: 8/16/24/32/64/256](#uint-816243264256)
+      - [Address](#address)
+      - [Hash](#hash)
+         * [Hash32](#hash32)
+         * [Hash96](#hash96)
+         * [Hash97](#hash97)
+      - [Bytes](#bytes)
+      - [List](#list)
+   + [Deserialize/Decode](#deserializedecode)
+      - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
+      - [Address](#address-1)
+      - [Hash](#hash-1)
+         * [Hash32](#hash32-1)
+         * [Hash96](#hash96-1)
+         * [Hash97](#hash97-1)
+      - [Bytes](#bytes-1)
+      - [List](#list-1)
 * [Implementations](#implementations)
 
 ## About
@@ -89,17 +95,61 @@ assert( len(value) == 20 )
 return value
 ```
 
-#### Hash32
+#### Hash
 
-The hash32 should already be a 32 byte length serialized data format. The safety
-check ensures the 32 byte length is satisfied.
+| Hash Type | Usage                                           |
+|:---------:|:------------------------------------------------|
+|  `hash32` | Hash size of ``keccak`` or `blake2b[0.. < 32]`. |
+|  `hash96` | BLS Public Key Size.                            |
+|  `hash97` | BLS Public Key Size with recovery bit.          |
 
-| Check to perform       | Code                 |
-|:-----------------------|:---------------------|
-| Length is correct (32) | ``len(value) == 32`` |
+
+| Checks to perform                   | Code                 |
+|:-----------------------------------|:---------------------|
+| Length is correct (32) if `hash32` | ``len(value) == 32`` |
+| Length is correct (96) if `hash96` | ``len(value) == 96`` |
+| Length is correct (97) if `hash97` | ``len(value) == 97`` |
+
+
+**Example all together**
 
 ```python
-assert( len(value) == 32 )
+if (type(value) == 'hash32'):
+   assert(len(value) == 32)
+elif (type(value) == 'hash96'):
+   assert(len(value) == 96)
+elif (type(value) == 'hash97'):
+   assert(len(value) == 97)
+else:
+   raise TypeError('Invalid hash type supplied')
+
+return value
+```
+
+##### Hash32
+
+Ensure 32 byte length and return the bytes.
+
+```python
+assert(len(value) == 32)
+return value
+```
+
+##### Hash96
+
+Ensure 96 byte length and return the bytes.
+
+```python
+assert(len(value) == 96)
+return value
+```
+
+##### Hash97
+
+Ensure 97 byte length and return the bytes.
+
+```python
+assert(len(value) == 97)
 return value
 ```
 
@@ -176,7 +226,9 @@ new_index = current_index + 20
 return rawbytes[current_index:current_index+20], new_index
 ```
 
-#### Hash32
+#### Hash
+
+##### Hash32
 
 Return the 32 bytes.
 
@@ -184,6 +236,25 @@ Return the 32 bytes.
 new_index = current_index + 32
 return rawbytes[current_index:current_index+32], new_index
 ```
+
+##### Hash96
+
+Return the 96 bytes.
+
+```python
+new_index = current_index + 96
+return rawbytes[current_index:current_index+96], new_index
+```
+
+##### Hash97
+
+Return the 97 bytes.
+
+```python
+new_index = current_index + 97
+return rawbytes[current_index:current_index+97], new_index
+```
+
 
 #### Bytes
 
