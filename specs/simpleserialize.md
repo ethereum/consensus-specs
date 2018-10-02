@@ -1,4 +1,4 @@
-# SimpleSerialize (SSZ) Spec
+# [WIP] SimpleSerialize (SSZ) Spec
 
 ***Work In Progress***
 
