@@ -590,7 +590,7 @@ Note: This spec is ~60% complete.
 * [ ] Specify the rules for forced deregistrations
 * [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
 * [ ] Specify the various assumptions (global clock, validator honesty, validator liveness, etc.)
-* [ ] Specify in Solidity the registration contract on the PoW chain
+* [ ] Specify in Vyper the registration contract on the PoW chain
 * [ ] Specify the RANDAO logic, including the hardening against orphaned reveals
 * [ ] Add per-validator proofs of custody, including slashing conditions
 * [ ] Use a separate hash function for the proof of possession
