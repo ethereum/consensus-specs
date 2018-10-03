@@ -585,39 +585,40 @@ Finally:
 
 Note: This spec is ~60% complete.
 
-* [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed
+**Missing**
+
+* [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed, including Merklelisation logic for light clients
+* [ ] Specify the rules around acceptable values for `pow_chain_ref`
 * [ ] Specify the shard chain blocks, blobs, proposers, etc.
 * [ ] Specify the rules for forced deregistrations
-* [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
-* [ ] Specify the various assumptions (global clock, validator honesty, validator liveness, etc.)
-* [ ] Specify in Vyper the registration contract on the PoW chain
-* [ ] Specify the RANDAO logic, including the hardening against orphaned reveals
-* [ ] Add per-validator proofs of custody, including slashing conditions
-* [ ] Use a separate hash function for the proof of possession
-* [ ] Add an appendix for BLS12-381
+* [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
+* [ ] Specify (in a separate Vyper file) the registration contract on the PoW chain
+* [ ] Specify the bootstrapping logic for the beacon chain genesis (e.g. specify a minimum number validators before the genesis block)
+* [ ] Specify the logic for proofs of custody, including slashing conditions
+* [ ] Add an appendix about the BLS12-381 curve
 * [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
-* [ ] Comprehensively and clearly define all the terms in the glossary
-* [ ] Clearly document the various edge cases, e.g. with committee sizing
-* [ ] Rework the document for readability
+* [ ] Add a glossary (in a separate `glossary.md`) to comprehensively and precisely define all the terms
 * [ ] Undergo peer review, security audits and formal verification
 
-**Possible changes and additions**
+**Possible rework/additions**
 
-* [ ] Deprecate Wei and use 64-bit balances, consistent with a 64-bit EVM2.0
-* [ ] Allow for deposits larger than 32 ETH, as well as deposit top ups
-* [ ] Add penalties for a deposit below 32 ETH (or some other threshold)
-* [ ] Add a `SpecialObject` to change the `withdrawal_shard_id`, `withdrawal_address` or `randao_commitment`
-* [ ] Replace Blake with a STARK-friendly hash function
 * [ ] Replace the IMD fork choice rule with LMD
-* [ ] Merge `crystallized_state_root` and `active_state_root` into a single root
-* [ ] Add Merklelisation of the state root(s) for light clients
-* [ ] Add logic for versioning and upgrades
+* [ ] Merklelise `crystallized_state_root` and `active_state_root` into a single root
+* [ ] Replace Blake with a STARK-friendly hash function
 * [ ] Get rid of dynasties
-* [ ] Add a RANDAO slashing condition for early leakage
-* [ ] Rework the `ShardAndCommittee` data structures
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
-* [ ] Consider separate networking-optimised serialisation formats
+* [ ] Use a separate networking-optimised serialisation format for networking
+* [ ] Harden RANDAO against orphaned reveals
+* [ ] Introduce a RANDAO slashing condition for early leakage
+* [ ] Use a separate hash function for the proof of possession
+* [ ] Rework the `ShardAndCommittee` data structures
+* [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
+* [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
+* [ ] Add penalties for a deposit below 32 ETH (or some other threshold)
+* [ ] Add a `SpecialObject` to (re)register
+* [ ] Rework the document for readability
+* [ ] Clearly document the various edge cases, e.g. with committee sizing
 
 # Appendix
 ## Appendix A - Hash function
