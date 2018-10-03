@@ -19,21 +19,20 @@ Note that one can also consider a simpler "minimal sharding algorithm" where cro
 
 Note: the python code at https://github.com/ethereum/beacon_chain and [an ethresear.ch post](https://ethresear.ch/t/convenience-link-to-full-casper-chain-v2-spec/2332) do not reflect all of the latest changes. If there is a discrepancy, this document is likely to reflect the more recent changes.
 
-### Terminology
+### Glossary
 
-* **Validator** - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
-* **Active validator set** - those validators who are currently participating, and which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
-* **Committee** - a (pseudo-) randomly sampled subset of the active validator set. When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
-* **Proposer** - the validator that creates a block
-* **Attester** - a validator that is part of a committee that needs to sign off on a block.
-* **Beacon chain** - the central PoS chain that is the base of the sharding system.
-* **Shard chain** - one of the chains on which user transactions take place and account data is stored.
-* **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
-* **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a block and some attesters have the ability to make attestations
-* **Dynasty transition** - a change of the validator set
-* **Dynasty** - the number of dynasty transitions that have happened in a given chain since genesis
-* **Cycle** - a span of blocks during which all validators get exactly one chance to make an attestation (unless a dynasty transition happens inside of one)
-* **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
+* **Validator**—a participant in the Ethereum 2.0 consensus system with the right to produce blocks, attestations, and other consensus objects.
+* **Committee**—a statistically representative validator subset, sampled pseudo-randomly.
+* **Proposer**—a validator with the right to create a block at a given slot.
+* **Attester**—a validator in an attestation committee with the right to attest to a block.
+* **Beacon chain**—the central proof-of-state chain of Ethereum 2.0.
+* **Shard**—one of the chains on which user transactions take place and contract state is stored.
+* **Crosslink**—sufficient signatures from an attestation committee attesting to a given block.
+* **Slot**—a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a block and some attesters have the ability to make attestations
+* **Dynasty transition**—a beacon chain state transaction where the validator set may change.
+* **Dynasty height**—the number of dynasty transitions that have happened in a given chain since genesis.
+* **Cycle**—a span of slots during which all validators get exactly one chance to make an attestation.
+* **Finalized**, **justified**—see the [Casper FFG paper](https://arxiv.org/abs/1710.09437). [TODO: flesh out definitions]
 
 ### Constants
 
