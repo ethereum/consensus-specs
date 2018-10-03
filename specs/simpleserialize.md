@@ -1,8 +1,6 @@
 # [WIP] SimpleSerialize (SSZ) Spec
 
-***Work In Progress***
-
-This is the work in progress document to describe `simpleserialize`, the
+This is the **work in progress** document to describe `simpleserialize`, the
 current selected serialization method for Ethereum 2.0 using the Beacon Chain.
 
 This document specifies the general information for serializing and
@@ -23,6 +21,7 @@ deserializing objects and data types.
          * [Hash97](#hash97)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
+      - [Container (TODO)](#container)
    + [Deserialize/Decode](#deserializedecode)
       - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
       - [Address](#address-1)
@@ -32,6 +31,7 @@ deserializing objects and data types.
          * [Hash97](#hash97-1)
       - [Bytes](#bytes-1)
       - [List/Vectors](#listvectors-1)
+      - [Container (TODO)](#container-1)
 * [Implementations](#implementations)
 
 ## About
@@ -199,6 +199,15 @@ serialized_len = (len(serialized_list_string).to_bytes(LENGTH_BYTES, 'big'))
 return serialized_len + serialized_list_string
 ```
 
+#### Container
+
+```
+########################################
+                 TODO
+########################################
+```
+
+
 ### Deserialize/Decode
 
 The decoding requires knowledge of the type of the item to be decoded. When
@@ -319,6 +328,14 @@ while item_index < new_index:
    deserialized_list.append(object)
 
 return deserialized_list, new_index
+```
+
+#### Container
+
+```
+########################################
+                 TODO
+########################################
 ```
 
 ## Implementations
