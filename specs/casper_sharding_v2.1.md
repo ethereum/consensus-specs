@@ -51,7 +51,7 @@ Note: the python code at https://github.com/ethereum/beacon_chain and [an ethres
 | `MIN_DYNASTY_LENGTH` | 2**8 (= 256) | slots | ~1.1 hours |
 | `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
-| `BASE_REWARD_QUOTIENT` | 2**15 (= 32,76) | — |
+| `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
 
 **Notes**
