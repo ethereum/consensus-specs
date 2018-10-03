@@ -34,27 +34,43 @@ Note: the python code at https://github.com/ethereum/beacon_chain and [an ethres
 * **Dynasty** - the number of dynasty transitions that have happened in a given chain since genesis
 * **Cycle** - a span of blocks during which all validators get exactly one chance to make an attestation (unless a dynasty transition happens inside of one)
 * **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
+* **Withdrawal period** - number of slots between a validator exit and the validator slot being withdrawable
+* **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
 
 ### Constants
 
-* **SHARD_COUNT** - a constant referring to the number of shards. Currently set to 1024.
-* **DEPOSIT_SIZE** - 32 ETH, or 32 * 10\*\*18 wei
-* **MAX_VALIDATOR_COUNT** - 2<sup>22</sup> = 4194304 # Note: this means that up to ~134 million ETH can stake at the same time
-* **GENESIS_TIME** - time of beacon chain startup (slot 0) in seconds since the Unix epoch
-* **SLOT_DURATION** - 16 seconds
-* **CYCLE_LENGTH** - 64 slots
-* **MIN_DYNASTY_LENGTH** - 256 slots
-* **MIN_COMMITTEE_SIZE** - 128 (rationale: see recommended minimum 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf)
-* **SQRT\_E\_DROP\_TIME** - a constant set to reflect the amount of time it will take for the quadratic leak to cut nonparticipating validators' deposits by ~39.4%. Currently set to 2**20 seconds (~12 days).
-* **BASE\_REWARD\_QUOTIENT** - 1/this is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. Currently set to `2**15 = 32768`, corresponding to ~3.88% annual interest assuming 10 million participating ETH.
-* **WITHDRAWAL_PERIOD** - number of slots between a validator exit and the validator slot being withdrawable. Currently set to `2**19 = 524288` slots, or `2**23` seconds ~= 97 days.
-* **MAX\_VALIDATOR\_CHANGE\_QUOTIENT** - a maximum of 1/x validators can change during each dynasty. Currently set to 32.
-* **PENDING\_LOG\_IN** = 0 (status code)
-* **LOGGED\_IN** = 1 (status code)
-* **PENDING\_EXIT** = 2 (status code)
-* **PENDING\_WITHDRAW** = 3 (status code)
-* **PENALIZED** = 128 (status code)
-* **WITHDRAWN** = 4 (status code)
+| Constant | Value | Unit | Approximation |
+| --- | --- | :---: | - |
+| `SHARD_COUNT` | 2**10 (= 1,024)| shards |
+| `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
+| `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
+| `MAX_VALIDATOR_COUNT` | 2**22 ( = 4,194,304) | validators |
+| `GENESIS_TIME` | **TBD** | seconds |
+| `SLOT_DURATION` | 2**4 (= 16) | seconds |
+| `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
+| `MIN_DYNASTY_LENGTH` | 2**8 (= 256) | slots | ~1.1 hours |
+| `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
+| `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
+| `BASE_REWARD_QUOTIENT` | 2**15 (= 32,76) | — |
+| `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+
+**Notes**
+
+* At most `MAX_VALIDATOR_COUNT * DEPOSIT_SIZE` (~134 million ETH) can be staked.
+* The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
+* The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
+* At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each dynasty.
+
+**Status codes**
+
+| Status code | Value |
+| - | :-: |
+| `PENDING_LOG_IN` | `0` |
+| `LOGGED_IN` | `1` |
+| `PENDING_EXIT` | `2` |
+| `PENDING_WITHDRAW` | `3` |
+| `WITHDRAWN` | `4` |
+| `PENALIZED` | `128` |
 
 ### PoW chain changes
 
@@ -474,7 +490,7 @@ Let `time_since_finality = block.slot - last_finalized_slot`, and let `B` be the
 
 * `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, current_dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
 * `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (1/this is the per-slot max interest rate)
-* `quadratic_penalty_quotient = (SQRT_E_DROP_TIME / SLOT_DURATION)**2` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
+* `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
 
 For each slot `S` in the range `last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`:
 
@@ -532,7 +548,7 @@ def change_validators(validators):
     # The maximum total wei that can deposit+withdraw
     max_allowable_change = max(
         DEPOSIT_SIZE * 2,
-        total_deposits // MAX_VALIDATOR_CHANGE_QUOTIENT
+        total_deposits // MAX_VALIDATOR_CHURN_QUOTIENT
     )
     # Go through the list start to end depositing+withdrawing as many as possible
     total_changed = 0
