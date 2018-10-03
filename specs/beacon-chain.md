@@ -174,7 +174,7 @@ fields = {
     'last_finalized_slot': 'int64',
     # The current dynasty
     'current_dynasty': 'int64',
-    # Records about the most recent crosslink `for each shard
+    # Records about the most recent crosslink for each shard
     'crosslink_records': [CrosslinkRecord],
     # Used to select the committees for each shard
     'dynasty_seed': 'hash32',
@@ -502,8 +502,8 @@ For all (`shard_id`, `shard_block_hash`) tuples, compute the total deposit size 
 Let `time_since_finality = block.slot - last_finalized_slot`, and let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. Let:
 
 * `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, current_dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
-* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (1/this is the per-slot max interest rate)
-* `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
+* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (`1/reward_quotient` is the per-slot max interest rate)
+* `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after `D` slots about `D*D/2/quadratic_penalty_quotient` is the portion lost by offline validators)
 
 For each slot `S` in the range `last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`:
 
@@ -518,13 +518,14 @@ Validators with `status == PENALIZED` also lose `B // reward_quotient + B * time
 
 #### Balance recalculations related to crosslink rewards
 
-For each shard S for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`), let V be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each S, V do the following:
+For each shard `S` for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `S`, `V`:
 
-* Let `total_v_deposits` be the total balance of V, and `total_participated_v_deposits` be the total balance of the subset of V that participated (note: it's always true that `total_participated_v_deposits <= total_v_deposits`)
+* Let `total_v_deposits` be the total balance of `V`
+* Let `total_participated_v_deposits` be the total balance of the subset of `V` that participated (note that `total_participated_v_deposits <= total_v_deposits`)
 * Let `time_since_last_confirmation` be `block.slot - crosslink_records[S].slot`
 * Adjust balances as follows:
     * If `crosslink_records[S].dynasty == current_dynasty`, no reward adjustments
-    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits - total_v_deposits) // total_v_deposits`, and non-participating validators' balances are decreased by `B // reward_quotient + B * time_since_last_confirmation // quadratic_penalty_quotient`
+    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits - total_v_deposits) // total_v_deposits`, and the balances of non-participating validators are decreased by `B // reward_quotient + B * time_since_last_confirmation // quadratic_penalty_quotient`
 
 Let `committees` be the set of committees processed and `time_since_last_confirmation(c)` be the value of `time_since_last_confirmation` in that committee. Validators with `status == PENALIZED` lose `B // reward_quotient + B * sum([time_since_last_confirmation(c) for c in committees]) // len(committees) // quadratic_penalty_quotient`.
 
@@ -532,8 +533,8 @@ Let `committees` be the set of committees processed and `time_since_last_confirm
 
 For each `SpecialObject` `obj` in `active_state.pending_specials`:
 
-* **[coverts logouts]**: If `obj.type == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
-* **[covers NO\_DBL\_VOTE, NO\_SURROUND, NO\_DBL\_PROPOSE slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty + 1, and if its `status` does not equal `PENALIZED`, then:
+* **[covers logouts]**: If `obj.type == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
 
 1. Set its `exit_slot` to equal the current `slot`
 2. Set its `status` to `PENALIZED`
