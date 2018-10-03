@@ -290,29 +290,25 @@ We start off by defining some helper algorithms. First, the function that select
 
 ```python
 def get_active_validator_indices(validators):
-    o = []
-    for i in range(len(validators)):
-        if validators[i].status == LOGGED_IN:
-            o.append(i)
-    return o
+    return [i for i, v in enumerate(validators) if v.status == LOGGED_IN]
 ```
 
 Now, a function that shuffles this list:
 
 ```python
 def shuffle(lst, seed):
-    assert len(lst) <= 16777216
+    assert len(lst) <= MAX_VALIDATOR_COUNT
     o = [x for x in lst]
     source = seed
     i = 0
     while i < len(lst):
-        source = blake(source)
+        source = hash(source)
         for pos in range(0, 30, 3):
             m = int.from_bytes(source[pos:pos+3], 'big')
             remaining = len(lst) - i
             if remaining == 0:
                 break
-            rand_max = 16777216 - 16777216 % remaining
+            rand_max = MAX_VALIDATOR_COUNT - MAX_VALIDATOR_COUNT % remaining
             if m < rand_max:
                 replacement_pos = (m % remaining) + i
                 o[i], o[replacement_pos] = o[replacement_pos], o[i]
