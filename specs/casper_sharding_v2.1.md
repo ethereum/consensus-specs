@@ -55,9 +55,17 @@ Note: the python code at https://github.com/ethereum/beacon_chain and [an ethres
 * **PENALIZED** = 128 (status code)
 * **WITHDRAWN** = 4 (status code)
 
-### PoW chain changes
+### PoW chain registration contract
 
-This PoS/sharding proposal can be implemented separately from the existing PoW chain. On the PoW chain a contract is added; this contract allows you to deposit `DEPOSIT_SIZE` ETH; the `deposit` function also takes as arguments (i) `pubkey` (bytes), (ii) `withdrawal_shard_id` (int), (iii)  `withdrawal_address` (address), (iv) `randao_commitment` (bytes32), (v) `bls_proof_of_possession`. The proof of possession is **not** verified on the PoW chain.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes the following arguments:
+
+1) `pubkey` (bytes)
+2) `withdrawal_shard_id` (int)
+3) `withdrawal_address` (address)
+4) `randao_commitment` (bytes32)
+5) `bls_proof_of_possession` (bytes)
+
+The registration contract does minimal validation, pushing most of the registration logic to the beacon chain. In particular, the BLS proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
 
 ## Data Structures
 
