@@ -587,17 +587,24 @@ Note: This spec is ~60% complete.
 
 * [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed
 * [ ] Specify the shard chain blocks, blobs, proposers, etc.
+* [ ] Add a double-batched Merkle accumulator for beacon chain blocks
+* [ ] Specify the various assumptions (global clock, validator honesty, validator liveness, etc.)
 * [ ] Fully specify the registration contract on the PoW chain
 * [ ] Flesh out RANDAO, including the hardening against orphaned reveals
 * [ ] Add per-validator proofs of custody, including slashing conditions
+* [ ] Use a separate hash function for the proof of possession
 * [ ] Add an appendix for BLS12-381
 * [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
-* [ ] Clearly define all the terms in the glossary
+* [ ] Comprehensively and clearly define all the terms in the glossary
 * [ ] Rework the document for readability
 * [ ] Undergo peer review, security audits and formal verification
 
 **Possible changes and additions**
 
+* [ ] Deprecate Wei and use 64-bit balances, consistent with a 64-bit EVM2.0
+* [ ] Allow for deposits larger than 32 ETH, as well as deposit top ups
+* [ ] Having penalties for having a deposit below 32 ETH
+* [ ] Add a `SpecialObject` to change the `withdrawal_shard_id`, `withdrawal_address` or `randao_commitment`
 * [ ] Replace Blake with a STARK-friendly hash function
 * [ ] Replace the IMD fork choice rule with LMD
 * [ ] Merge `crystallized_state_root` and `active_state_root` into a single root
@@ -605,7 +612,7 @@ Note: This spec is ~60% complete.
 * [ ] Add logic for versioning and upgrades
 * [ ] Get rid of dynasties
 * [ ] Add a RANDAO slashing condition for early leakage
-* [ ] Reworke the `ShardAndCommittee` data structures
+* [ ] Rework the `ShardAndCommittee` data structures
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
 * [ ] Consider separate networking-optimised serialisation formats
