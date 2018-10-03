@@ -1,59 +1,70 @@
-# Casper+Sharding chain v2.1
+# Ethereum 2.0 spec—Casper and sharding
 
 ###### tags: `spec`, `eth2.0`, `casper`, `sharding`
+###### spec version: 2.2 (October 2018)
 
-## WORK IN PROGRESS!!!!!!!
+**NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
-This is the work-in-progress document describing the specification for the Casper+Sharding (shasper) chain, version 2.1.
+### Introduction
 
-In this protocol, there is a central PoS "beacon chain" which stores and manages the current set of active PoS validators. The only mechanism available to become a validator initially is to send a transaction on the existing PoW chain containing 32 ETH. When you do so, as soon as the beacon chain processes that block, you will be queued, and eventually inducted as an active validator until you either voluntarily deregister or you are forcibly deregistered as a penalty for misbehavior.
+At the center of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a registration contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after registration transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
 
-The primary source of load on the beacon chain is **attestations**. An attestation has a double role:
+The primary source of load on the beacon chain are "attestations". Attestations simultaneously attest to a shard block and a corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
-1. It attests to some parent block in the beacon chain
-2. It attests to a block hash in a shard (a sufficient number of such attestations create a "crosslink", confirming that shard block into the beacon chain).
+### Terminology
 
-Every shard (e.g. there might be 1024 shards in total) is itself a PoS chain, and the shard chains are where the transactions and accounts will be stored. The crosslinks serve to "confirm" segments of the shard chains into the beacon chain, and are also the primary way through which the different shards will be able to talk to each other.
-
-Note that one can also consider a simpler "minimal sharding algorithm" where crosslinks are simply hashes of proposed blocks of data that are not themselves chained to each other in any way.
-
-Note: the python code at https://github.com/ethereum/beacon_chain and [an ethresear.ch post](https://ethresear.ch/t/convenience-link-to-full-casper-chain-v2-spec/2332) do not reflect all of the latest changes. If there is a discrepancy, this document is likely to reflect the more recent changes.
-
-### Glossary
-
-* **Validator**—a participant in the Ethereum 2.0 consensus system with the right to produce blocks, attestations, and other consensus objects.
-* **Committee**—a statistically representative validator subset, sampled pseudo-randomly.
-* **Proposer**—a validator with the right to create a block at a given slot.
-* **Attester**—a validator in an attestation committee with the right to attest to a block.
-* **Beacon chain**—the central proof-of-state chain of Ethereum 2.0.
-* **Shard**—one of the chains on which user transactions take place and contract state is stored.
-* **Crosslink**—sufficient signatures from an attestation committee attesting to a given block.
-* **Slot**—a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a block and some attesters have the ability to make attestations
-* **Dynasty transition**—a beacon chain state transaction where the validator set may change.
-* **Dynasty height**—the number of dynasty transitions that have happened in a given chain since genesis.
-* **Cycle**—a span of slots during which all validators get exactly one chance to make an attestation.
-* **Finalized**, **justified**—see the [Casper FFG paper](https://arxiv.org/abs/1710.09437). [TODO: flesh out definitions]
+* **Validator** - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
+* **Active validator set** - those validators who are currently participating, and which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
+* **Committee** - a (pseudo-) randomly sampled subset of the active validator set. When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
+* **Proposer** - the validator that creates a block
+* **Attester** - a validator that is part of a committee that needs to sign off on a block.
+* **Beacon chain** - the central PoS chain that is the base of the sharding system.
+* **Shard chain** - one of the chains on which user transactions take place and account data is stored.
+* **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
+* **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a block and some attesters have the ability to make attestations
+* **Dynasty transition** - a change of the validator set
+* **Dynasty** - the number of dynasty transitions that have happened in a given chain since genesis
+* **Cycle** - a span of blocks during which all validators get exactly one chance to make an attestation (unless a dynasty transition happens inside of one)
+* **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
+* **Withdrawal period** - number of slots between a validator exit and the validator balance being withdrawable
+* **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
 
 ### Constants
 
-* **SHARD_COUNT** - a constant referring to the number of shards. Currently set to 1024.
-* **DEPOSIT_SIZE** - 32 ETH, or 32 * 10\*\*18 wei
-* **MAX_VALIDATOR_COUNT** - 2<sup>22</sup> = 4194304 # Note: this means that up to ~134 million ETH can stake at the same time
-* **GENESIS_TIME** - time of beacon chain startup (slot 0) in seconds since the Unix epoch
-* **SLOT_DURATION** - 16 seconds
-* **CYCLE_LENGTH** - 64 slots
-* **MIN_DYNASTY_LENGTH** - 256 slots
-* **MIN_COMMITTEE_SIZE** - 128 (rationale: see recommended minimum 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf)
-* **SQRT\_E\_DROP\_TIME** - a constant set to reflect the amount of time it will take for the quadratic leak to cut nonparticipating validators' deposits by ~39.4%. Currently set to 2**20 seconds (~12 days).
-* **BASE\_REWARD\_QUOTIENT** - 1/this is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. Currently set to `2**15 = 32768`, corresponding to ~3.88% annual interest assuming 10 million participating ETH.
-* **WITHDRAWAL_PERIOD** - number of slots between a validator exit and the validator slot being withdrawable. Currently set to `2**19 = 524288` slots, or `2**23` seconds ~= 97 days.
-* **MAX\_VALIDATOR\_CHANGE\_QUOTIENT** - a maximum of 1/x validators can change during each dynasty. Currently set to 32.
-* **PENDING\_LOG\_IN** = 0 (status code)
-* **LOGGED\_IN** = 1 (status code)
-* **PENDING\_EXIT** = 2 (status code)
-* **PENDING\_WITHDRAW** = 3 (status code)
-* **PENALIZED** = 128 (status code)
-* **WITHDRAWN** = 4 (status code)
+| Constant | Value | Unit | Approximation |
+| --- | --- | :---: | - |
+| `SHARD_COUNT` | 2**10 (= 1,024)| shards |
+| `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
+| `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
+| `MAX_VALIDATOR_COUNT` | 2**22 ( = 4,194,304) | validators |
+| `GENESIS_TIME` | **TBD** | seconds |
+| `SLOT_DURATION` | 2**4 (= 16) | seconds |
+| `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
+| `MIN_DYNASTY_LENGTH` | 2**8 (= 256) | slots | ~1.1 hours |
+| `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
+| `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
+| `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
+| `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+
+**Notes**
+
+* At most `MAX_VALIDATOR_COUNT * DEPOSIT_SIZE` (~134 million ETH) can be staked.
+* The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
+* The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
+* At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each dynasty.
+
+**Status codes**
+
+| Status code | Value |
+| - | :-: |
+| `PENDING_LOG_IN` | `0` |
+| `LOGGED_IN` | `1` |
+| `PENDING_EXIT` | `2` |
+| `PENDING_WITHDRAW` | `3` |
+| `WITHDRAWN` | `4` |
+| `PENALIZED` | `128` |
+| `ENTRY` | `1` |
+| `EXIT` | `2` |
 
 ### PoW chain registration contract
 
@@ -165,14 +176,16 @@ fields = {
     'last_finalized_slot': 'int64',
     # The current dynasty
     'current_dynasty': 'int64',
-    # Records about the most recent crosslink `for each shard
+    # Records about the most recent crosslink for each shard
     'crosslink_records': [CrosslinkRecord],
     # Used to select the committees for each shard
     'dynasty_seed': 'hash32',
     # Start of the current dynasty
     'dynasty_start': 'int64',
     # Total deposits penalized in the given withdrawal period
-    'deposits_penalized_in_period': ['int32']
+    'deposits_penalized_in_period': ['int32'],
+    # Hash chain of validator set changes, allows light clients to track deltas more easily
+    'validator_set_delta_hash_chain': 'hash32'
 }
 ```
 
@@ -271,29 +284,29 @@ We start off by defining some helper algorithms. First, the function that select
 
 ```python
 def get_active_validator_indices(validators):
-    o = []
-    for i in range(len(validators)):
-        if validators[i].status == LOGGED_IN:
-            o.append(i)
-    return o
+    return [i for i, v in enumerate(validators) if v.status == LOGGED_IN]
 ```
 
 Now, a function that shuffles this list:
 
 ```python
 def shuffle(lst, seed):
-    assert len(lst) <= 16777216
+    # entropy is consumed in 3 byte chunks
+    # rand_max is defined to remove the modulo bias from this entropy source
+    rand_max = 2**24
+    assert len(lst) <= rand_max
+
     o = [x for x in lst]
     source = seed
     i = 0
     while i < len(lst):
-        source = blake(source)
+        source = hash(source)
         for pos in range(0, 30, 3):
             m = int.from_bytes(source[pos:pos+3], 'big')
             remaining = len(lst) - i
             if remaining == 0:
                 break
-            rand_max = 16777216 - 16777216 % remaining
+            rand_max = rand_max - rand_max % remaining
             if m < rand_max:
                 replacement_pos = (m % remaining) + i
                 o[i], o[replacement_pos] = o[replacement_pos], o[i]
@@ -353,6 +366,15 @@ def get_block_hash(active_state, curblock, slot):
 ```
 
 `get_block_hash(_, _, h)` should always return the block in the chain at slot `h`, and `get_shards_and_committees_for_slot(_, h)` should not change unless the dynasty changes.
+
+We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
+
+```python
+def add_validator_set_change_record(crystallized_state, index, pubkey, flag):
+    crystallized_state.validator_set_delta_hash_chain = \
+        hash(crystallized_state.validator_set_delta_hash_chain +
+             bytes1(flag) + bytes3(index) + bytes32(pubkey))
+```
 
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
 
@@ -484,8 +506,8 @@ For all (`shard_id`, `shard_block_hash`) tuples, compute the total deposit size 
 Let `time_since_finality = block.slot - last_finalized_slot`, and let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. Let:
 
 * `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, current_dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
-* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (1/this is the per-slot max interest rate)
-* `quadratic_penalty_quotient = (SQRT_E_DROP_TIME / SLOT_DURATION)**2` (after D slots, ~D<sup>2</sup>/2 divided by this is the portion lost by offline validators)
+* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (`1/reward_quotient` is the per-slot max interest rate)
+* `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after `D` slots about `D*D/2/quadratic_penalty_quotient` is the portion lost by offline validators)
 
 For each slot `S` in the range `last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`:
 
@@ -500,13 +522,14 @@ Validators with `status == PENALIZED` also lose `B // reward_quotient + B * time
 
 #### Balance recalculations related to crosslink rewards
 
-For each shard S for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`), let V be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each S, V do the following:
+For each shard `S` for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `S`, `V`:
 
-* Let `total_v_deposits` be the total balance of V, and `total_participated_v_deposits` be the total balance of the subset of V that participated (note: it's always true that `total_participated_v_deposits <= total_v_deposits`)
+* Let `total_v_deposits` be the total balance of `V`
+* Let `total_participated_v_deposits` be the total balance of the subset of `V` that participated (note that `total_participated_v_deposits <= total_v_deposits`)
 * Let `time_since_last_confirmation` be `block.slot - crosslink_records[S].slot`
 * Adjust balances as follows:
     * If `crosslink_records[S].dynasty == current_dynasty`, no reward adjustments
-    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits - total_v_deposits) // total_v_deposits`, and non-participating validators' balances are decreased by `B // reward_quotient + B * time_since_last_confirmation // quadratic_penalty_quotient`
+    * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits - total_v_deposits) // total_v_deposits`, and the balances of non-participating validators are decreased by `B // reward_quotient + B * time_since_last_confirmation // quadratic_penalty_quotient`
 
 Let `committees` be the set of committees processed and `time_since_last_confirmation(c)` be the value of `time_since_last_confirmation` in that committee. Validators with `status == PENALIZED` lose `B // reward_quotient + B * sum([time_since_last_confirmation(c) for c in committees]) // len(committees) // quadratic_penalty_quotient`.
 
@@ -514,8 +537,13 @@ Let `committees` be the set of committees processed and `time_since_last_confirm
 
 For each `SpecialObject` `obj` in `active_state.pending_specials`:
 
-* **[coverts logouts]**: If `obj.type == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
-* **[covers NO\_DBL\_VOTE, NO\_SURROUND, NO\_DBL\_PROPOSE slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty + 1, and if its `status` does not equal `PENALIZED`, then (i) set its `exit_slot` to equal the current `slot`, (ii) set its `status` to `PENALIZED`, and (iii) set `crystallized_state.deposits_penalized_in_period[slot // WITHDRAWAL_PERIOD] += validators[v].balance`, extending the array if needed.
+* **[covers logouts]**: If `obj.type == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
+
+1. Set its `exit_slot` to equal the current `slot`
+2. Set its `status` to `PENALIZED`
+3. Set `crystallized_state.deposits_penalized_in_period[slot // WITHDRAWAL_PERIOD] += validators[v].balance`, extending the array if needed
+4. Run `add_validator_set_change_record(crystallized_state, v, validators[v].pubkey, EXIT)`
 
 #### Finally...
 
@@ -543,7 +571,7 @@ def change_validators(validators):
     # The maximum total wei that can deposit+withdraw
     max_allowable_change = max(
         DEPOSIT_SIZE * 2,
-        total_deposits // MAX_VALIDATOR_CHANGE_QUOTIENT
+        total_deposits // MAX_VALIDATOR_CHURN_QUOTIENT
     )
     # Go through the list start to end depositing+withdrawing as many as possible
     total_changed = 0
@@ -551,10 +579,12 @@ def change_validators(validators):
         if validators[i].status == PENDING_LOG_IN:
             validators[i].status = LOGGED_IN
             total_changed += DEPOSIT_SIZE
+            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
             validators[i].exit_slot = current_slot
             total_changed += validators[i].balance
+            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, EXIT)
         if total_changed >= max_allowable_change:
             break
 
@@ -609,12 +639,8 @@ Slashing conditions may include:
 
 # Appendix
 ## Appendix A - Hash function
-The general hash function `hash(x)` in this specification is defined as: 
 
-`hash(x) := BLAKE2b-512(x)[0:32]`, where `BLAKE2b-512` (`blake2b512`) algorithm is defined in [RFC 7693](https://tools.ietf.org/html/rfc7693) and input `x` is bytes type.
-
-* `BLAKE2b-512` is the *default* `BLAKE2b` algorithm with 64-byte digest size. To get a 32-byte result, the general hash function output is defined as the leftmost `32` bytes of `BLAKE2b-512` hash output.
-* The design rationale is keeping using the default algorithm and avoiding too much dependency on external hash function libraries.
+We aim to have a STARK-friendly hash function `hash(x)` for the production launch of the beacon chain. While the standardisation process for a STARK-friendly hash function takes place—led by STARKware, who will produce a detailed report with recommendations—we use `BLAKE2b-512` as a placeholder. Specifically, we set `hash(x) := BLAKE2b-512(x)[0:32]` where the `BLAKE2b-512` algorithm is defined in [RFC 7693](https://tools.ietf.org/html/rfc7693) and the input `x` is of type `bytes`.
 
 ## Copyright
 Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
