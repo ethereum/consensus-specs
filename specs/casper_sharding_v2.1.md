@@ -586,28 +586,29 @@ Finally:
 Note: This spec is ~60% complete.
 
 * [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed
-* [ ] Specify the shard chain blocks, proposers, etc.
+* [ ] Specify the shard chain blocks, blobs, proposers, etc.
 * [ ] Fully specify the registration contract on the PoW chain
 * [ ] Flesh out RANDAO, including the hardening against orphaned reveals
 * [ ] Add per-validator proofs of custody, including slashing conditions
-* [ ] Clearly define all the terms in the glossary
 * [ ] Add an appendix for BLS12-381
-* [ ] Add an appendix for the offchain signature aggregation logic
+* [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
+* [ ] Clearly define all the terms in the glossary
 * [ ] Rework the document for readability
 * [ ] Undergo peer review, security audits and formal verification
 
 **Possible changes and additions**
 
 * [ ] Replace Blake with a STARK-friendly hash function
-* [ ] Replacing the IMD fork choice rule with LMD
+* [ ] Replace the IMD fork choice rule with LMD
 * [ ] Merge `crystallized_state_root` and `active_state_root` into a single root
 * [ ] Add Merklelisation of the state root(s) for light clients
 * [ ] Add logic for versioning and upgrades
 * [ ] Get rid of dynasties
 * [ ] Add a RANDAO slashing condition for early leakage
-* [ ] Reworking the `ShardAndCommittee` data structures
+* [ ] Reworke the `ShardAndCommittee` data structures
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
+* [ ] Consider separate networking-optimised serialisation formats
 
 # Appendix
 ## Appendix A - Hash function
