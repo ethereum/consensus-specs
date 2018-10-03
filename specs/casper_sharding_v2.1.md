@@ -170,7 +170,12 @@ fields = {
     # Start of the current dynasty
     'dynasty_start': 'int64',
     # Total deposits penalized in the given withdrawal period
-    'deposits_penalized_in_period': ['int32']
+    'deposits_penalized_in_period': ['int32'],
+    # Parameters relevant to hard forks / versioning.
+    # Should be updated only by hard forks.
+    'pre_fork_version': 'int32',
+    'post_fork_version': 'int32',
+    'fork_slot_number': 'int64',
 }
 ```
 
@@ -455,7 +460,7 @@ For each one of these attestations:
 * Let `attestation_indices` be `get_shards_and_committees_for_slot(crystallized_state, slot)[x]`, choosing `x` so that `attestation_indices.shard_id` equals the `shard_id` value provided to find the set of validators that is creating this attestation record.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1
-* Verify that `aggregate_sig` verifies using the group pubkey generated and `hash(slot.to_bytes(8, 'big') + parent_hashes + shard_id + shard_block_hash + justified_slot.to_bytes(8, 'big'))` as the message.
+* Let `version = pre_fork_version if slot < fork_slot_number else post_fork_version`. Verify that `aggregate_sig` verifies using the group pubkey generated and `hash(slot.to_bytes(8, 'big') + parent_hashes + shard_id + shard_block_hash + justified_slot.to_bytes(8, 'big'))` as the message.
 
 Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialObject` objects in the `active_state` with those included in the block.
 
