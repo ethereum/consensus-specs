@@ -587,15 +587,17 @@ Note: This spec is ~60% complete.
 
 * [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed
 * [ ] Specify the shard chain blocks, blobs, proposers, etc.
-* [ ] Add a double-batched Merkle accumulator for beacon chain blocks
+* [ ] Specify the rules for forced deregistrations
+* [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
 * [ ] Specify the various assumptions (global clock, validator honesty, validator liveness, etc.)
-* [ ] Fully specify the registration contract on the PoW chain
-* [ ] Flesh out RANDAO, including the hardening against orphaned reveals
+* [ ] Specify in Solidity the registration contract on the PoW chain
+* [ ] Specify the RANDAO logic, including the hardening against orphaned reveals
 * [ ] Add per-validator proofs of custody, including slashing conditions
 * [ ] Use a separate hash function for the proof of possession
 * [ ] Add an appendix for BLS12-381
 * [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
 * [ ] Comprehensively and clearly define all the terms in the glossary
+* [ ] Clearly document the various edge cases, e.g. with committee sizing
 * [ ] Rework the document for readability
 * [ ] Undergo peer review, security audits and formal verification
 
@@ -603,7 +605,7 @@ Note: This spec is ~60% complete.
 
 * [ ] Deprecate Wei and use 64-bit balances, consistent with a 64-bit EVM2.0
 * [ ] Allow for deposits larger than 32 ETH, as well as deposit top ups
-* [ ] Having penalties for having a deposit below 32 ETH
+* [ ] Add penalties for a deposit below 32 ETH (or some other threshold)
 * [ ] Add a `SpecialObject` to change the `withdrawal_shard_id`, `withdrawal_address` or `randao_commitment`
 * [ ] Replace Blake with a STARK-friendly hash function
 * [ ] Replace the IMD fork choice rule with LMD
