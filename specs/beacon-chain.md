@@ -289,7 +289,11 @@ Now, a function that shuffles this list:
 
 ```python
 def shuffle(lst, seed):
-    assert len(lst) <= MAX_VALIDATOR_COUNT
+    # entropy is consumed in 3 byte chunks
+    # rand_max is defined to remove the modulo bias from this entropy source
+    rand_max = 2**24
+    assert len(lst) <= rand_max
+
     o = [x for x in lst]
     source = seed
     i = 0
@@ -300,7 +304,7 @@ def shuffle(lst, seed):
             remaining = len(lst) - i
             if remaining == 0:
                 break
-            rand_max = MAX_VALIDATOR_COUNT - MAX_VALIDATOR_COUNT % remaining
+            rand_max = rand_max - rand_max % remaining
             if m < rand_max:
                 replacement_pos = (m % remaining) + i
                 o[i], o[replacement_pos] = o[replacement_pos], o[i]
