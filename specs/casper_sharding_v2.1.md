@@ -34,7 +34,7 @@ Note: the python code at https://github.com/ethereum/beacon_chain and [an ethres
 * **Dynasty** - the number of dynasty transitions that have happened in a given chain since genesis
 * **Cycle** - a span of blocks during which all validators get exactly one chance to make an attestation (unless a dynasty transition happens inside of one)
 * **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
-* **Withdrawal period** - number of slots between a validator exit and the validator slot being withdrawable
+* **Withdrawal period** - number of slots between a validator exit and the validator balance being withdrawable
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
 
 ### Constants
@@ -71,10 +71,20 @@ Note: the python code at https://github.com/ethereum/beacon_chain and [an ethres
 | `PENDING_WITHDRAW` | `3` |
 | `WITHDRAWN` | `4` |
 | `PENALIZED` | `128` |
+| `ENTRY` | `1` |
+| `EXIT` | `2` |
 
-### PoW chain changes
+### PoW chain registration contract
 
-This PoS/sharding proposal can be implemented separately from the existing PoW chain. On the PoW chain a contract is added; this contract allows you to deposit `DEPOSIT_SIZE` ETH; the `deposit` function also takes as arguments (i) `pubkey` (bytes), (ii) `withdrawal_shard_id` (int), (iii)  `withdrawal_address` (address), (iv) `randao_commitment` (bytes32), (v) `bls_proof_of_possession`. The proof of possession is **not** verified on the PoW chain.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes the following arguments:
+
+1) `pubkey` (bytes)
+2) `withdrawal_shard_id` (int)
+3) `withdrawal_address` (address)
+4) `randao_commitment` (bytes32)
+5) `bls_proof_of_possession` (bytes)
+
+The registration contract does minimal validation, pushing most of the registration logic to the beacon chain. In particular, the BLS proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
 
 ## Data Structures
 
@@ -179,7 +189,9 @@ fields = {
     # Start of the current dynasty
     'dynasty_start': 'int64',
     # Total deposits penalized in the given withdrawal period
-    'deposits_penalized_in_period': ['int32']
+    'deposits_penalized_in_period': ['int32'],
+    # Hash chain of validator set changes, allows light clients to track deltas more easily
+    'validator_set_delta_hash_chain': 'hash32'
 }
 ```
 
@@ -361,6 +373,15 @@ def get_block_hash(active_state, curblock, slot):
 
 `get_block_hash(_, _, h)` should always return the block in the chain at slot `h`, and `get_shards_and_committees_for_slot(_, h)` should not change unless the dynasty changes.
 
+We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
+
+```python
+def add_validator_set_change_record(crystallized_state, index, pubkey, flag):
+    crystallized_state.validator_set_delta_hash_chain = \
+        hash(crystallized_state.validator_set_delta_hash_chain +
+             bytes1(flag) + bytes3(index) + bytes32(pubkey))
+```
+
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
 
 ```python
@@ -520,7 +541,12 @@ Let `committees` be the set of committees processed and `time_since_last_confirm
 For each `SpecialObject` `obj` in `active_state.pending_specials`:
 
 * **[coverts logouts]**: If `obj.type == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
-* **[covers NO\_DBL\_VOTE, NO\_SURROUND, NO\_DBL\_PROPOSE slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty + 1, and if its `status` does not equal `PENALIZED`, then (i) set its `exit_slot` to equal the current `slot`, (ii) set its `status` to `PENALIZED`, and (iii) set `crystallized_state.deposits_penalized_in_period[slot // WITHDRAWAL_PERIOD] += validators[v].balance`, extending the array if needed.
+* **[covers NO\_DBL\_VOTE, NO\_SURROUND, NO\_DBL\_PROPOSE slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty + 1, and if its `status` does not equal `PENALIZED`, then:
+
+1. Set its `exit_slot` to equal the current `slot`
+2. Set its `status` to `PENALIZED`
+3. Set `crystallized_state.deposits_penalized_in_period[slot // WITHDRAWAL_PERIOD] += validators[v].balance`, extending the array if needed
+4. Run `add_validator_set_change_record(crystallized_state, v, validators[v].pubkey, EXIT)`
 
 #### Finally...
 
@@ -556,10 +582,12 @@ def change_validators(validators):
         if validators[i].status == PENDING_LOG_IN:
             validators[i].status = LOGGED_IN
             total_changed += DEPOSIT_SIZE
+            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
             validators[i].exit_slot = current_slot
             total_changed += validators[i].balance
+            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, EXIT)
         if total_changed >= max_allowable_change:
             break
 
