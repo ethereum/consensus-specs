@@ -199,17 +199,6 @@ A `ValidatorRecord` has the following fields:
 }
 ```
 
-A `ShardAndCommittee` object has the following fields:
-
-```python
-{
-    # Shard number
-    'shard': 'int16',
-    # Validator indices
-    'committee': ['int24']
-}
-```
-
 A `CrosslinkRecord` has the following fields:
 
 ```python
@@ -220,6 +209,17 @@ A `CrosslinkRecord` has the following fields:
     'slot': 'int64',
     # Beacon chain block hash
     'hash': 'hash32'
+}
+```
+
+A `ShardAndCommittee` object has the following fields:
+
+```python
+{
+    # Shard number
+    'shard': 'int16',
+    # Validator indices
+    'committee': ['int24']
 }
 ```
 
