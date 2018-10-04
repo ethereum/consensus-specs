@@ -603,27 +603,44 @@ Finally:
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard_id + 1) % SHARD_COUNT`
 * Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(block.ancestor_hashes[0], validators, next_start_shard)`
 
--------
+### TODO
 
-Note: this is ~80% complete. The main sections that are missing are:
+Note: This spec is ~60% complete.
 
-* Logic for the formats of shard chains, who proposes shard blocks, etc. (in an initial release, if desired we could make crosslinks just be Merkle roots of blobs of data; in any case, one can philosophically view the whole point of the shard chains as being a coordination device for choosing what blobs of data to propose as crosslinks)
-* Logic for inducting queued validators from the PoW chain
-* Penalties for signing or attesting to non-canonical-chain blocks (update: may not be necessary, see https://ethresear.ch/t/attestation-committee-based-full-pos-chains/2259)
-* Per-validator proofs of custody, and associated slashing conditions
-* Versioning and upgrades
+**Missing**
 
-Slashing conditions may include:
+* [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed, including Merklelisation logic for light clients
+* [ ] Specify the rules around acceptable values for `pow_chain_ref`
+* [ ] Specify the shard chain blocks, blobs, proposers, etc.
+* [ ] Specify the rules for forced deregistrations
+* [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
+* [ ] Specify (in a separate Vyper file) the registration contract on the PoW chain
+* [ ] Specify the bootstrapping logic for the beacon chain genesis (e.g. specify a minimum number validators before the genesis block)
+* [ ] Specify the logic for proofs of custody, including slashing conditions
+* [ ] Add an appendix about the BLS12-381 curve
+* [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
+* [ ] Add a glossary (in a separate `glossary.md`) to comprehensively and precisely define all the terms
+* [ ] Undergo peer review, security audits and formal verification
 
+**Possible rework/additions**
 
-    Casper FFG slot equivocation [done]
-    Casper FFG surround [done]
-    Beacon chain proposal equivocation [done]
-    Shard chain proposal equivocation
-    Proof of custody secret leak
-    Proof of custody wrong custody bit
-    Proof of custody no secret reveal
-    RANDAO leak
+* [ ] Replace the IMD fork choice rule with LMD
+* [ ] Merklelise `crystallized_state_root` and `active_state_root` into a single root
+* [ ] Replace Blake with a STARK-friendly hash function
+* [ ] Get rid of dynasties
+* [ ] Reduce the slot duration to 8 seconds
+* [ ] Allow for the delayed inclusion of aggregated signatures
+* [ ] Use a separate networking-optimised serialisation format for networking
+* [ ] Harden RANDAO against orphaned reveals
+* [ ] Introduce a RANDAO slashing condition for early leakage
+* [ ] Use a separate hash function for the proof of possession
+* [ ] Rework the `ShardAndCommittee` data structures
+* [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
+* [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
+* [ ] Add penalties for a deposit below 32 ETH (or some other threshold)
+* [ ] Add a `SpecialObject` to (re)register
+* [ ] Rework the document for readability
+* [ ] Clearly document the various edge cases, e.g. with committee sizing
 
 # Appendix
 ## Appendix A - Hash function
