@@ -36,7 +36,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
 | `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
-| `MAX_VALIDATOR_COUNT` | 2**22 ( = 4,194,304) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
@@ -48,7 +47,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 **Notes**
 
-* At most `MAX_VALIDATOR_COUNT * DEPOSIT_SIZE` (~134 million ETH) can be staked.
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each dynasty.
@@ -68,15 +66,9 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 ### PoW chain registration contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes the following arguments:
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_shard`, `withdrawal_address`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
-1) `pubkey` (bytes)
-2) `withdrawal_shard_id` (int)
-3) `withdrawal_address` (address)
-4) `randao_commitment` (bytes32)
-5) `bls_proof_of_possession` (bytes)
-
-The registration contract does minimal validation, pushing most of the registration logic to the beacon chain. In particular, the BLS proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
+The registration contract emits a log with the various arguments for consumption by the beacon chain. It does not do validation, pushing the registration logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
 
 ## Data Structures
 
@@ -86,11 +78,11 @@ Beacon chain block structure:
 
 ```python
 fields = {
-    # Hash of ancestor blocks (32 items, i'th is 2**i'th ancestor or zero bytes)
+    # Skip list of ancestor block hashes. The i'th item is 2**i'th ancestor (or zero bytes) for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
-    # Slot number (for the PoS mechanism)
+    # Slot number
     'slot': 'int64',
-    # Randao commitment reveal
+    # RANDAO commitment reveal
     'randao_reveal': 'hash32',
     # Attestations
     'attestations': [AttestationRecord],
@@ -363,7 +355,7 @@ def get_block_hash(active_state, curblock, slot):
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, _, h)` should always return the block in the chain at slot `h`, and `get_shards_and_committees_for_slot(_, h)` should not change unless the dynasty changes.
+`get_block_hash(_, _, s)` should always return the block in the chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the dynasty changes.
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
