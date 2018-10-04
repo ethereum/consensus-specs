@@ -73,7 +73,7 @@ The registration contract emits a log with the various arguments for consumption
 ## Data structures
 ### Beacon chain blocks
 
-A `BeaconChainBlock` has the following fields:
+A `BeaconBlock` has the following fields:
 
 ```python
 {
@@ -122,7 +122,7 @@ An `AttestationRecord` has the following fields:
 A `SpecialRecord` has the following fields:
 
 ```python
-fields = {
+{
     # Type
     'type': 'int8',
     # Data
