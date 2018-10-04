@@ -447,7 +447,7 @@ First, set `recent_block_hashes` to the output of the following, where `parent_h
 def append_to_recent_block_hashes(old_block_hashes, parent_slot,
                                   current_slot, parent_hash):
     d = current_slot - parent_slot
-    return old_block_hashes + [parent_hash] * min(d, len(old_block_hashes))
+    return old_block_hashes + [parent_hash] * d
 ```
 
 The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
