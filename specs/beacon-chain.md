@@ -144,6 +144,10 @@ The `ActiveState` has the following fields:
     'pending_attestations': [AttestationRecord],
     # Specials not yet been processed
     'pending_specials': [SpecialRecord]
+    # Most recent 2 * CYCLE_LENGTH block hashes, older to newer
+    'recent_block_hashes': ['hash32'],
+    # RANDAO state
+    'randao_mix': 'hash32'
 }
 ```
 
@@ -471,7 +475,9 @@ For each one of these attestations:
 
 Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
 
-Verify that the `parent.slot % len(get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0]` is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
+Let `proposer_index` be the validator index of the `parent.slot % len(get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0]`. Verify that an attestation from this validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
+
+Additionally, verify that `hash(block.randao_reveal) == crystallized_state.validators[proposer_index].randao_commitment`, and set `active_state.randao_mix = xor(active_state.randao_mix, block.randao_reveal)` and `crystallized_state.validators[proposer_index].randao_commitment = block.randao_reveal`.
 
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
@@ -599,7 +605,7 @@ Finally:
 * Set `last_dynasty_start_slot = crystallized_state.last_state_recalculation_slot`
 * Set `crystallized_state.dynasty += 1`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(block.ancestor_hashes[0], validators, next_start_shard)`
+* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
 
 ### TODO
 
