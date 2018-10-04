@@ -445,7 +445,7 @@ First, set `recent_block_hashes` to the output of the following, where `parent_h
 
 ```python
 def append_to_recent_block_hashes(old_block_hashes, parent_slot,
-                                   current_slot, parent_hash):
+                                  current_slot, parent_hash):
     d = current_slot - parent_slot
     return old_block_hashes + [parent_hash] * min(d, len(old_block_hashes))
 ```
