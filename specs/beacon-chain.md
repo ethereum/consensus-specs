@@ -36,7 +36,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
 | `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
-| `MAX_VALIDATOR_COUNT` | 2**22 ( = 4,194,304) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
@@ -48,7 +47,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 **Notes**
 
-* At most `MAX_VALIDATOR_COUNT * DEPOSIT_SIZE` (~134 million ETH) can be staked.
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each dynasty.
@@ -68,15 +66,9 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 ### PoW chain registration contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes the following arguments:
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_shard`, `withdrawal_address`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
-1) `pubkey` (bytes)
-2) `withdrawal_shard_id` (int)
-3) `withdrawal_address` (address)
-4) `randao_commitment` (bytes32)
-5) `bls_proof_of_possession` (bytes)
-
-The registration contract does minimal validation, pushing most of the registration logic to the beacon chain. In particular, the BLS proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
+The registration contract emits a log with the various arguments for consumption by the beacon chain. It does not do validation, pushing the registration logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
 
 ## Data Structures
 
@@ -86,11 +78,11 @@ Beacon chain block structure:
 
 ```python
 fields = {
-    # Hash of ancestor blocks (32 items, i'th is 2**i'th ancestor or zero bytes)
+    # Skip list of ancestor block hashes. The i'th item is 2**i'th ancestor (or zero bytes) for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
-    # Slot number (for the PoS mechanism)
+    # Slot number
     'slot': 'int64',
-    # Randao commitment reveal
+    # RANDAO commitment reveal
     'randao_reveal': 'hash32',
     # Attestations
     'attestations': [AttestationRecord],
@@ -365,7 +357,7 @@ def get_block_hash(active_state, curblock, slot):
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, _, h)` should always return the block in the chain at slot `h`, and `get_shards_and_committees_for_slot(_, h)` should not change unless the dynasty changes.
+`get_block_hash(_, _, s)` should always return the block in the chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the dynasty changes.
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
@@ -615,27 +607,44 @@ Finally:
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard_id + 1) % SHARD_COUNT`
 * Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
 
--------
+### TODO
 
-Note: this is ~80% complete. The main sections that are missing are:
+Note: This spec is ~60% complete.
 
-* Logic for the formats of shard chains, who proposes shard blocks, etc. (in an initial release, if desired we could make crosslinks just be Merkle roots of blobs of data; in any case, one can philosophically view the whole point of the shard chains as being a coordination device for choosing what blobs of data to propose as crosslinks)
-* Logic for inducting queued validators from the PoW chain
-* Penalties for signing or attesting to non-canonical-chain blocks (update: may not be necessary, see https://ethresear.ch/t/attestation-committee-based-full-pos-chains/2259)
-* Per-validator proofs of custody, and associated slashing conditions
-* Versioning and upgrades
+**Missing**
 
-Slashing conditions may include:
+* [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed, including Merklelisation logic for light clients
+* [ ] Specify the rules around acceptable values for `pow_chain_ref`
+* [ ] Specify the shard chain blocks, blobs, proposers, etc.
+* [ ] Specify the rules for forced deregistrations
+* [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
+* [ ] Specify (in a separate Vyper file) the registration contract on the PoW chain
+* [ ] Specify the bootstrapping logic for the beacon chain genesis (e.g. specify a minimum number validators before the genesis block)
+* [ ] Specify the logic for proofs of custody, including slashing conditions
+* [ ] Add an appendix about the BLS12-381 curve
+* [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
+* [ ] Add a glossary (in a separate `glossary.md`) to comprehensively and precisely define all the terms
+* [ ] Undergo peer review, security audits and formal verification
 
+**Possible rework/additions**
 
-    Casper FFG slot equivocation [done]
-    Casper FFG surround [done]
-    Beacon chain proposal equivocation [done]
-    Shard chain proposal equivocation
-    Proof of custody secret leak
-    Proof of custody wrong custody bit
-    Proof of custody no secret reveal
-    RANDAO leak
+* [ ] Replace the IMD fork choice rule with LMD
+* [ ] Merklelise `crystallized_state_root` and `active_state_root` into a single root
+* [ ] Replace Blake with a STARK-friendly hash function
+* [ ] Get rid of dynasties
+* [ ] Reduce the slot duration to 8 seconds
+* [ ] Allow for the delayed inclusion of aggregated signatures
+* [ ] Use a separate networking-optimised serialisation format for networking
+* [ ] Harden RANDAO against orphaned reveals
+* [ ] Introduce a RANDAO slashing condition for early leakage
+* [ ] Use a separate hash function for the proof of possession
+* [ ] Rework the `ShardAndCommittee` data structures
+* [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
+* [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
+* [ ] Add penalties for a deposit below 32 ETH (or some other threshold)
+* [ ] Add a `SpecialObject` to (re)register
+* [ ] Rework the document for readability
+* [ ] Clearly document the various edge cases, e.g. with committee sizing
 
 # Appendix
 ## Appendix A - Hash function
