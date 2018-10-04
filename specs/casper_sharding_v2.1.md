@@ -126,6 +126,20 @@ fields = {
 }
 ```
 
+Here's the data signed (`AttestationSignedData`):
+
+```python
+fields = {
+    # Version of the chain
+    'version': 'int64',
+    'slot': 'int64',
+    'parent_hashes': ['hash32'],
+    'shard_id': 'int16',
+    'shard_block_hash': 'hash32',
+    'justified_slot': 'int64'
+}
+```
+
 #### Beacon chain state
 
 The beacon chain state is split into two parts, _active state_ and _crystallized state_.
@@ -460,7 +474,8 @@ For each one of these attestations:
 * Let `attestation_indices` be `get_shards_and_committees_for_slot(crystallized_state, slot)[x]`, choosing `x` so that `attestation_indices.shard_id` equals the `shard_id` value provided to find the set of validators that is creating this attestation record.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1
-* Let `version = pre_fork_version if slot < fork_slot_number else post_fork_version`. Verify that `aggregate_sig` verifies using the group pubkey generated and `hash(bytes4(version) + bytes8(slot) + parent_hashes + bytes2(shard_id) + shard_block_hash + bytes8(justified_slot))` as the message.
+* Let `version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
+* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(version, slot, parent_hashes, shard_id, shard_block_hash, crystallized_state.last_justified_slot)` as the message.
 
 Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialObject` objects in the `active_state` with those included in the block.
 
