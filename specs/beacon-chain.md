@@ -141,7 +141,7 @@ fields = {
     'pending_attestations': [AttestationRecord],
     # Special objects that have not yet been processed
     'pending_specials': [SpecialObject],
-    # Most recent 2 * CYCLE_LENGTH block hashes, older to newer
+    # recent block hashes needed to process attestations, older to newer
     'recent_block_hashes': ['hash32'],
     # RANDAO state
     'randao_mix': 'hash32'
@@ -352,8 +352,8 @@ def get_shards_and_committees_for_slot(crystallized_state, slot):
     return crystallized_state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
 
 def get_block_hash(active_state, curblock, slot):
-    earliest_slot_in_array = curblock.slot - CYCLE_LENGTH * 2
-    assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
+    earliest_slot_in_array = curblock.slot - len(active_state.recent_block_hashes)
+    assert earliest_slot_in_array <= slot < curblock.slot
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
 
@@ -444,13 +444,13 @@ This procedure should be carried out every block.
 First, set `recent_block_hashes` to the output of the following, where `parent_hash` is the hash of the immediate previous block (ie. must be equal to `ancestor_hashes[0]`):
 
 ```python
-def get_new_recent_block_hashes(old_block_hashes, parent_slot,
-                                current_slot, parent_hash):
+def append_to_recent_block_hashes(old_block_hashes, parent_slot,
+                                   current_slot, parent_hash):
     d = current_slot - parent_slot
-    return old_block_hashes[d:] + [parent_hash] * min(d, len(old_block_hashes))
+    return old_block_hashes + [parent_hash] * min(d, len(old_block_hashes))
 ```
 
-The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`, and will now throw for `current_slot - CYCLE_LENGTH * 2 - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
+The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
 
 ```python
 def update_ancestor_hashes(parent_ancestor_hashes, parent_slot_number, parent_hash):
@@ -542,6 +542,7 @@ For each `SpecialObject` `obj` in `active_state.pending_specials`:
 * Set `crystallized_state.last_state_recalculation += CYCLE_LENGTH`
 * Remove all attestation records older than slot `crystallized_state.last_state_recalculation`
 * Empty the `active_state.pending_specials` list
+* Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 
 ### Dynasty transition
