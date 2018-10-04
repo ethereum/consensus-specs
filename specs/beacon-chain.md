@@ -208,7 +208,7 @@ A `CrosslinkRecord` has the following fields:
     # Slot number
     'slot': 'int64',
     # Beacon chain block hash
-    'hash': 'hash32'
+    'shard_block_hash': 'hash32'
 }
 ```
 
