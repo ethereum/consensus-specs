@@ -93,7 +93,7 @@ fields = {
     # Hash of the crystallized state
     'crystallized_state_root': 'hash32',
     # Logouts, penalties, etc etc
-    'specials': [SpecialObject],
+    'specials': [SpecialObject]
 }
 ```
 
