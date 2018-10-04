@@ -1,7 +1,6 @@
 # Ethereum 2.0 spec—Casper and sharding
 
 ###### tags: `spec`, `eth2.0`, `casper`, `sharding`
-###### spec version: 2.2 (October 2018)
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
@@ -44,6 +43,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 
 **Notes**
 
@@ -51,20 +51,30 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each dynasty.
 
-**Codes, flags, types**
+**Validator status codes**
 
-| Name | Value | Category |
-| - | :-: | :-: |
-| `PENDING_LOG_IN` | `0` | code |
-| `LOGGED_IN` | `1` | code |
-| `PENDING_EXIT` | `2` | code |
-| `PENDING_WITHDRAW` | `3` | code |
-| `WITHDRAWN` | `4` | code |
-| `PENALIZED` | `127` | code |
-| `ENTRY` | `0` | flag |
-| `EXIT` | `1` | flag |
-| `LOGOUT` | `0` | type | 
-| `CASPER_SLASHING` | `1` | type |
+| Name | Value |
+| - | :-: |
+| `PENDING_LOG_IN` | `0` |
+| `LOGGED_IN` | `1` |
+| `PENDING_EXIT` | `2` |
+| `PENDING_WITHDRAW` | `3` |
+| `WITHDRAWN` | `4` |
+| `PENALIZED` | `127` |
+
+**Special record types**
+
+| Name | Value |
+| - | :-: |
+| `LOGOUT` | `0` |
+| `CASPER_SLASHING` | `1` |
+
+**Validator set delta flags**
+
+| Name | Value |
+| - | :-: |
+| `ENTRY` | `0` |
+| `EXIT` | `1` |
 
 ### PoW chain registration contract
 
@@ -527,8 +537,8 @@ Let `committees` be the set of committees processed and `time_since_last_confirm
 
 For each `SpecialObject` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.type == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
-* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.type == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
+* **[covers logouts]**: If `obj.type == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.type == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
 
 1. Set its `exit_slot` to equal the current `slot`
 2. Set its `status` to `PENALIZED`
