@@ -522,8 +522,8 @@ For all (`shard`, `shard_block_hash`) tuples, compute the total deposit size of 
 
 Let `time_since_finality = block.slot - last_finalized_slot`, and let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. Let:
 
-* `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
-* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (`1/reward_quotient` is the per-slot max interest rate)
+* `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, dynasty)])` and `total_deposits_in_gwei = total_deposits // 10**9`
+* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_gwei)` (`1/reward_quotient` is the per-slot max interest rate)
 * `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after `D` slots about `D*D/2/quadratic_penalty_quotient` is the portion lost by offline validators)
 
 For each slot `S` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
