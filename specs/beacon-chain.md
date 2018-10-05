@@ -157,8 +157,6 @@ The `ActiveState` has the following fields:
 
 ```python
 {
-    # Most recent 2 * CYCLE_LENGTH block hashes, oldest to newest
-    'recent_block_hashes': ['hash32'],
     # Attestations not yet processed
     'pending_attestations': [AttestationRecord],
     # Specials not yet been processed
