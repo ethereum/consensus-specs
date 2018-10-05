@@ -55,8 +55,8 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 | Status code | Value |
 | - | :-: |
-| `PENDING_LOG_IN` | `0` |
-| `LOGGED_IN` | `1` |
+| `PENDING_ACTIVATION` | `0` |
+| `ACTIVE` | `1` |
 | `PENDING_EXIT` | `2` |
 | `PENDING_WITHDRAW` | `3` |
 | `WITHDRAWN` | `4` |
@@ -300,7 +300,7 @@ We start off by defining some helper algorithms. First, the function that select
 
 ```python
 def get_active_validator_indices(validators):
-    return [i for i, v in enumerate(validators) if v.status == LOGGED_IN]
+    return [i for i, v in enumerate(validators) if v.status == ACTIVE]
 ```
 
 Now, a function that shuffles this list:
@@ -449,7 +449,7 @@ def add_validator(validators, pubkey, proof_of_possession, withdrawal_shard,
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
         balance=DEPOSIT_SIZE,  # in WEI
-        status=PENDING_LOG_IN,
+        status=PENDING_ACTIVATION,
         exit_slot=0
     )
     index = min_empty_validator(validators)
@@ -554,7 +554,7 @@ Let `committees` be the set of committees processed and `time_since_last_confirm
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
+* **[covers logouts]**: If `obj.kind == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == ACTIVE`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
 
 1. Set its `exit_slot` to equal the current `slot`
@@ -593,8 +593,8 @@ def change_validators(validators):
     # Go through the list start to end depositing+withdrawing as many as possible
     total_changed = 0
     for i in range(len(validators)):
-        if validators[i].status == PENDING_LOG_IN:
-            validators[i].status = LOGGED_IN
+        if validators[i].status == PENDING_ACTIVATION:
+            validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE
             add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
         if validators[i].status == PENDING_EXIT:
