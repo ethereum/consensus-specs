@@ -133,7 +133,7 @@ An `AttestationSignedData` has the following fields:
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
-    # Slot of last justified block
+    # Slot of last justified block referenced in the attestation
     'justified_slot': 'int64'
 }
 ```
