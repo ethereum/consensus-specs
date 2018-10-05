@@ -510,32 +510,34 @@ Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
 
 #### Adjust justified slots and crosslink status
 
-For all slots `s` in `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
+For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
-* Determine the total set of validators that attested to that block at least once
-* Determine the total balance of these validators. If this value times three equals or exceeds the total balance of all active validators times two, set `last_justified_slot = max(last_justified_slot, s)` and `justified_streak += 1`. Otherwise, set `justified_streak = 0`
-* If `justified_streak >= CYCLE_LENGTH + 1`, set `last_finalized_slot = max(last_finalized_slot, s - CYCLE_LENGTH - 1)`
+* Determine the total balance of validators that attested to the beacon chain block at slot `s`.
+* If the above total balance times three equals or exceeds the total balance of all active validators times two, set `last_justified_slot = max(last_justified_slot, s)` and `justified_streak += 1`. Otherwise, set `justified_streak = 0`.
+* If `justified_streak >= CYCLE_LENGTH + 1` set `last_finalized_slot = max(last_finalized_slot, s - CYCLE_LENGTH - 1)`.
 
-For all (`shard`, `shard_block_hash`) tuples, compute the total deposit size of validators that attested to that block hash for that shard. If this value times three equals or exceeds the total balance of all validators in the committee times two, and the current dynasty exceeds `crosslinks[shard].dynasty`, set `crosslinks[shard] = CrosslinkRecord(dynasty=dynasty, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
+For all `(shard, shard_block_hash)` tuples compute the total balance of validators that attested to the shard block with hash `shard_block_hash`. If this value times three equals or exceeds the total balance of all validators in the committee times two, and the current dynasty exceeds `crosslinks[shard].dynasty`, set `crosslinks[shard] = CrosslinkRecord(dynasty=dynasty, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
 
 #### Balance recalculations related to FFG rewards
 
-Let `time_since_finality = block.slot - last_finalized_slot`, and let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. Let:
+* Let `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, dynasty)])`.
+* Let `total_deposits_in_eth = total_deposits // 10**9`.
+* Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_eth)`. (The per-slot maximum interest rate is `1/reward_quotient`.)
+* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` slots is about `D*D/2/quadratic_penalty_quotient`.)
+* Let `time_since_finality = block.slot - last_finalized_slot`.
 
-* `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
-* `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (`1/reward_quotient` is the per-slot max interest rate)
-* `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after `D` slots about `D*D/2/quadratic_penalty_quotient` is the portion lost by offline validators)
+For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
-For each slot `S` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
+* Let `total_participated_deposits` be the total balance of validators that voted for the canonical beacon chain block at slot `s`. In the normal case every validator will be in one of the `CYCLE_LENGTH` slots following slot `s` and so can vote for a block at slot `s`.
+* Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation.
+* If `time_since_finality <= 3 * CYCLE_LENGTH` adjust the balance of participating and non-participating validators as follows:
+    * Participating validators gain `B // reward_quotient * (2 * total_participated_deposits - total_deposits) // total_deposits`. (Note that this value may be negative.)
+    * Non-participating validators lose `B // reward_quotient`.
+* Otherwise:
+    * Participating validators gain nothing.
+    * Non-participating validators lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`.
 
-* Let `total_participated_deposits` be the total balance of validators that voted for the correct hash in slot `S` (ie. the hash that actually is the hash of the block at that slot in the current chain); note that in the normal case, every validator will be in one of the `CYCLE_LENGTH` slots following the slot and so can vote for a hash in slot `S`. If `time_since_finality <= 3 * CYCLE_LENGTH`, then adjust participating and non-participating validators' balances as follows:
-    * Participating validators gain `B // reward_quotient * (2 * total_participated_deposits - total_deposits) // total_deposits` (note: this may be negative)
-    * Nonparticipating validators lose `B // reward_quotient`
-* Otherwise, adjust as follows:
-    * Participating validators' balances are unchanged
-    * Nonparticipating validators lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`
-
-Validators with `status == PENALIZED` also lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`.
+In addition, validators with `status == PENALIZED` lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`.
 
 #### Balance recalculations related to crosslink rewards
 
