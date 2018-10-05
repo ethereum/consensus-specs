@@ -219,7 +219,7 @@ A `ValidatorRecord` has the following fields:
     # RANDAO commitment
     'randao_commitment': 'hash32',
     # Balance
-    'balance': 'int128',
+    'balance': 'int64',
     # Status code
     'status': 'int8',
     # Slot when validator exited (or 0)
@@ -448,7 +448,7 @@ def add_validator(validators, pubkey, proof_of_possession, withdrawal_shard,
         withdrawal_shard=withdrawal_shard,
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
-        balance=DEPOSIT_SIZE,  # in WEI
+        balance=DEPOSIT_SIZE * 10**9, # in Gwei
         status=PENDING_LOG_IN,
         exit_slot=0
     )
@@ -585,9 +585,9 @@ def change_validators(validators):
     active_validators = get_active_validator_indices(validators, dynasty)
     # The total size of active deposits
     total_deposits = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
-    # The maximum total wei that can deposit+withdraw
+    # The maximum total Gwei that can be deposited and withdrawn
     max_allowable_change = max(
-        DEPOSIT_SIZE * 2,
+        2 * DEPOSIT_SIZE * 10**9,
         total_deposits // MAX_VALIDATOR_CHURN_QUOTIENT
     )
     # Go through the list start to end depositing+withdrawing as many as possible
