@@ -326,8 +326,8 @@ def shuffle(values: List[Any],
 
     # entropy is consumed in 3 byte chunks
     # rand_max is defined to remove the modulo bias from this entropy source
-    SAMPLE_RANGE = 2 ** 24
-    assert values_count <= SAMPLE_RANGE:
+    rand_max = 2 ** 24
+    assert values_count <= rand_max:
 
     output = [x for x in values]
     source = seed
@@ -344,7 +344,7 @@ def shuffle(values: List[Any],
                 break
 
             # Set a random maximum bound of sample_from_source
-            rand_max = SAMPLE_RANGE - SAMPLE_RANGE % remaining
+            rand_max = rand_max - rand_max % remaining
 
             # Select `replacement_position` with the given `sample_from_source` and `remaining`
             if sample_from_source < rand_max:
