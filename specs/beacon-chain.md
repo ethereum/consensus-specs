@@ -321,7 +321,6 @@ def shuffle(values: List[Any],
             seed: Hash32) -> List[Any]:
     """
     Returns the shuffled ``values`` with seed as entropy.
-    Mainly for shuffling active validators in-protocol.
     """
     values_count = len(values)
 
@@ -437,7 +436,7 @@ def get_shards_and_committees_for_slot(crystallized_state: CrystallizedState,
 
 def get_block_hash(active_state:ActiveState,
                    current_block: BeaconBlock,
-                   slot: int):
+                   slot: int) -> Hash32:
     earliest_slot_in_array = current_block.slot - CYCLE_LENGTH * 2
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
