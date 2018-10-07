@@ -334,13 +334,13 @@ def shuffle(values: List[Any],
     index = 0
     while index < values_count:
         # Re-hash the source
-        source = blake(source)
+        source = hash(source)
         for position in range(0, 30, 3):  # gets indices 3 bytes at a time
             # Select a 3-byte sampled int
             sample_from_source = int.from_bytes(source[position:position + 3], 'big')
             # `remaining` is the size of remaining indices of this round
             remaining = values_count - index
-            if remaining == 0:
+            if remaining == 1:
                 break
 
             # Set a random maximum bound of sample_from_source
@@ -351,10 +351,7 @@ def shuffle(values: List[Any],
                 # Use random number to get `replacement_position`, where it's not `index`
                 replacement_position = (sample_from_source % remaining) + index
                 # Swap the index-th and replacement_position-th elements
-                (output[index], output[replacement_position]) = (
-                    output[replacement_position],
-                    output[index]
-                )
+                output[index], output[replacement_position] = output[replacement_position], output[index]
                 index += 1
             else:
                 pass
@@ -362,7 +359,7 @@ def shuffle(values: List[Any],
     return output
 ```
 
-Here's a function that splits a list into `N` pieces:
+Here's a function that splits a list into `pieces` pieces:
 
 ```python
 def split(seq: List[Any], pieces: int) -> List[Any]:
@@ -394,6 +391,7 @@ def get_new_shuffling(seed: Hash32,
         while active_validators_size * slots_per_committee < CYCLE_LENGTH * MIN_COMMITTEE_SIZE \
                 and slots_per_committee < CYCLE_LENGTH:
             slots_per_committee *= 2
+
     output = []
 
     # Shuffle with seed
@@ -411,8 +409,8 @@ def get_new_shuffling(seed: Hash32,
         )
         shards_and_committees_for_shard_indices = [
             ShardAndCommittee(
-                shard_id = (shard_id_start + j) % SHARD_COUNT,
-                committee = indices
+                shard_id=(shard_id_start + j) % SHARD_COUNT,
+                committee=indices
             )
             for slot, indices in enumerate(shard_indices)
         ]
@@ -459,7 +457,7 @@ def add_validator_set_change_record(crystallized_state: CrystallizedState,
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
 
 ```python
-def int_sqrt(n: int):
+def int_sqrt(n: int) -> int:
     x = n
     y = (x + 1) // 2
     while y < x:
@@ -479,23 +477,33 @@ def on_startup(initial_validator_entries: List[Any]) -> None:
     validators = []
     for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
             randao_commitment in initial_validator_entries:
-        add_validator(validators,
-                      pubkey,
-                      proof_of_possession,
-                      withdrawal_shard,
-                      withdrawal_address,
-                      randao_commitment
+        add_validator(
+            validators=validators,
+            pubkey=pubkey,
+            proof_of_possession=proof_of_possession,
+            withdrawal_shard=withdrawal_shard,
+            withdrawal_address=withdrawal_address,
+            randao_commitment=randao_commitment
         )
     # Setup crystallized state
     cs = CrystallizedState()
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
     cs.shard_and_committee_for_slots = x + x
     cs.dynasty = 1
-    cs.crosslinks = [CrosslinkRecord(dynasty=0, slot=0, hash=bytes([0] * 32))
-                            for i in range(SHARD_COUNT)]
+    cs.crosslinks = [
+        CrosslinkRecord(
+            dynasty=0,
+            slot=0,
+            hash=bytes([0] * 32)
+        )
+        for i in range(SHARD_COUNT)
+    ]
     # Setup active state
     as = ActiveState()
-    as.recent_block_hashes = [bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)]
+    as.recent_block_hashes = [
+        bytes([0] * 32)
+        for _ in range(CYCLE_LENGTH * 2)
+    ]
 ```
 
 The `CrystallizedState()` and `ActiveState()` constructors should initialize all values to zero bytes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
@@ -680,12 +688,22 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE * GWEI_PER_ETH
-            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
+            add_validator_set_change_record(
+                crystallized_state=crystallized_state,
+                index=i,
+                pubkey=validators[i].pubkey,
+                flag=ENTRY
+            )
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
             validators[i].exit_slot = current_slot
             total_changed += validators[i].balance
-            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, EXIT)
+            add_validator_set_change_record(
+                crystallized_state=crystallized_state,
+                index=i,
+                pubkey=validators[i].pubkey,
+                flag=EXIT
+            )
         if total_changed >= max_allowable_change:
             break
 
