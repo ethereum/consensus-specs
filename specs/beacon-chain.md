@@ -1,7 +1,6 @@
 # Ethereum 2.0 spec—Casper and sharding
 
 ###### tags: `spec`, `eth2.0`, `casper`, `sharding`
-###### spec version: 2.2 (October 2018)
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
@@ -45,6 +44,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 
 **Notes**
 
@@ -52,18 +52,30 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each dynasty.
 
-**Status codes**
+**Validator status codes**
 
-| Status code | Value |
+| Name | Value |
 | - | :-: |
-| `PENDING_LOG_IN` | `0` |
-| `LOGGED_IN` | `1` |
+| `PENDING_ACTIVATION` | `0` |
+| `ACTIVE` | `1` |
 | `PENDING_EXIT` | `2` |
 | `PENDING_WITHDRAW` | `3` |
 | `WITHDRAWN` | `4` |
-| `PENALIZED` | `128` |
-| `ENTRY` | `1` |
-| `EXIT` | `2` |
+| `PENALIZED` | `127` |
+
+**Special record types**
+
+| Name | Value |
+| - | :-: |
+| `LOGOUT` | `0` |
+| `CASPER_SLASHING` | `1` |
+
+**Validator set delta flags**
+
+| Name | Value |
+| - | :-: |
+| `ENTRY` | `0` |
+| `EXIT` | `1` |
 
 ### PoW chain registration contract
 
@@ -134,7 +146,7 @@ An `AttestationSignedData` has the following fields:
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
-    # Slot of last justified block
+    # Slot of last justified block referenced in the attestation
     'justified_slot': 'int64'
 }
 ```
@@ -158,8 +170,6 @@ The `ActiveState` has the following fields:
 
 ```python
 {
-    # Most recent 2 * CYCLE_LENGTH block hashes, oldest to newest
-    'recent_block_hashes': ['hash32'],
     # Attestations not yet processed
     'pending_attestations': [AttestationRecord],
     # Specials not yet been processed
@@ -301,7 +311,7 @@ We start off by defining some helper algorithms. First, the function that select
 
 ```python
 def get_active_validator_indices(validators):
-    return [i for i, v in enumerate(validators) if v.status == LOGGED_IN]
+    return [i for i, v in enumerate(validators) if v.status == ACTIVE]
 ```
 
 Now, a function that shuffles this list:
@@ -450,7 +460,7 @@ def add_validator(validators, pubkey, proof_of_possession, withdrawal_shard,
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH, # in Gwei
-        status=PENDING_LOG_IN,
+        status=PENDING_ACTIVATION,
         exit_slot=0
     )
     index = min_empty_validator(validators)
@@ -497,7 +507,7 @@ For each one of these attestations:
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1
 * Let `version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
-* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(version, slot, parent_hashes, shard, shard_block_hash, justified_slot)` as the message.
+* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
 
 Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
 
@@ -555,8 +565,8 @@ Let `committees` be the set of committees processed and `time_since_last_confirm
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
-* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
+* **[covers logouts]**: If `obj.type == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE), sig=data[1])`, and `validators[i].status == ACTIVE`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.type == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
 
 1. Set its `exit_slot` to equal the current `slot`
 2. Set its `status` to `PENALIZED`
@@ -594,8 +604,8 @@ def change_validators(validators):
     # Go through the list start to end depositing+withdrawing as many as possible
     total_changed = 0
     for i in range(len(validators)):
-        if validators[i].status == PENDING_LOG_IN:
-            validators[i].status = LOGGED_IN
+        if validators[i].status == PENDING_ACTIVATION:
+            validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE
             add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
         if validators[i].status == PENDING_EXIT:
