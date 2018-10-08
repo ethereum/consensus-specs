@@ -34,6 +34,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | --- | --- | :---: | - |
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
+| `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
@@ -229,7 +230,7 @@ A `ValidatorRecord` has the following fields:
     # RANDAO commitment
     'randao_commitment': 'hash32',
     # Balance
-    'balance': 'int128',
+    'balance': 'int64',
     # Status code
     'status': 'int8',
     # Slot when validator exited (or 0)
@@ -458,7 +459,7 @@ def add_validator(validators, pubkey, proof_of_possession, withdrawal_shard,
         withdrawal_shard=withdrawal_shard,
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
-        balance=DEPOSIT_SIZE,  # in WEI
+        balance=DEPOSIT_SIZE * GWEI_PER_ETH, # in Gwei
         status=PENDING_ACTIVATION,
         exit_slot=0
     )
@@ -532,7 +533,7 @@ For all (`shard`, `shard_block_hash`) tuples, compute the total deposit size of 
 
 Let `time_since_finality = block.slot - last_finalized_slot`, and let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. Let:
 
-* `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
+* `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, dynasty)])` and `total_deposits_in_ETH = total_deposits // GWEI_PER_ETH`
 * `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (`1/reward_quotient` is the per-slot max interest rate)
 * `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after `D` slots about `D*D/2/quadratic_penalty_quotient` is the portion lost by offline validators)
 
@@ -595,9 +596,9 @@ def change_validators(validators):
     active_validators = get_active_validator_indices(validators, dynasty)
     # The total size of active deposits
     total_deposits = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
-    # The maximum total wei that can deposit+withdraw
+    # The maximum total Gwei that can be deposited and withdrawn
     max_allowable_change = max(
-        DEPOSIT_SIZE * 2,
+        2 * DEPOSIT_SIZE * GWEI_PER_ETH,
         total_deposits // MAX_VALIDATOR_CHURN_QUOTIENT
     )
     # Go through the list start to end depositing+withdrawing as many as possible
