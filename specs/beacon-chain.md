@@ -1,7 +1,6 @@
 # Ethereum 2.0 spec—Casper and sharding
 
 ###### tags: `spec`, `eth2.0`, `casper`, `sharding`
-###### spec version: 2.2 (October 2018)
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
@@ -44,6 +43,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 
 **Notes**
 
@@ -51,18 +51,30 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each dynasty.
 
-**Status codes**
+**Validator status codes**
 
-| Status code | Value |
+| Name | Value |
 | - | :-: |
-| `PENDING_LOG_IN` | `0` |
-| `LOGGED_IN` | `1` |
+| `PENDING_ACTIVATION` | `0` |
+| `ACTIVE` | `1` |
 | `PENDING_EXIT` | `2` |
 | `PENDING_WITHDRAW` | `3` |
 | `WITHDRAWN` | `4` |
-| `PENALIZED` | `128` |
-| `ENTRY` | `1` |
-| `EXIT` | `2` |
+| `PENALIZED` | `127` |
+
+**Special record types**
+
+| Name | Value |
+| - | :-: |
+| `LOGOUT` | `0` |
+| `CASPER_SLASHING` | `1` |
+
+**Validator set delta flags**
+
+| Name | Value |
+| - | :-: |
+| `ENTRY` | `0` |
+| `EXIT` | `1` |
 
 ### PoW chain registration contract
 
@@ -70,77 +82,97 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 The registration contract emits a log with the various arguments for consumption by the beacon chain. It does not do validation, pushing the registration logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
 
-## Data Structures
+## Data structures
+### Beacon chain blocks
 
-#### Beacon chain blocks
-
-Beacon chain block structure:
+A `BeaconBlock` has the following fields:
 
 ```python
-fields = {
-    # Skip list of ancestor block hashes. The i'th item is 2**i'th ancestor (or zero bytes) for i = 0, ..., 31
-    'ancestor_hashes': ['hash32'],
+{
     # Slot number
     'slot': 'int64',
-    # RANDAO commitment reveal
+    # Proposer RANDAO reveal
     'randao_reveal': 'hash32',
+    # Recent PoW chain reference (block hash)
+    'pow_chain_reference': 'hash32',
+    # Skip list of ancestor block hashes (i'th item is 2**i'th ancestor (or zero) for i = 0, ..., 31)
+    'ancestor_hashes': ['hash32'],
+    # Active state root
+    'active_state_root': 'hash32',
+    # Crystallized state root
+    'crystallized_state_root': 'hash32',
     # Attestations
     'attestations': [AttestationRecord],
-    # Reference to PoW chain block
-    'pow_chain_ref': 'hash32',
-    # Hash of the active state
-    'active_state_root': 'hash32',
-    # Hash of the crystallized state
-    'crystallized_state_root': 'hash32',
-    # Logouts, penalties, etc etc
-    'specials': [SpecialObject]
+    # Specials (e.g. logouts, penalties)
+    'specials': [SpecialRecord]
 }
 ```
 
-A `SpecialObject` looks as follows:
+An `AttestationRecord` has the following fields:
 
 ```python
-fields = {
-    'type': 'int8',
-    'data': ['bytes']
-}
-```
-
-An `AttestationRecord` looks as follows:
-
-```python
-fields = {
+{
     # Slot number
     'slot': 'int64',
-    # Shard ID
-    'shard_id': 'int16',
-    # List of block hashes that this signature is signing over that
-    # are NOT part of the current chain, in order of oldest to newest
+    # Shard number
+    'shard': 'int16',
+    # Block hashes not part of the current chain, oldest to newest
     'oblique_parent_hashes': ['hash32'],
-    # Block hash in the shard that we are attesting to
+    # Shard block hash being attested to
     'shard_block_hash': 'hash32',
-    # Who is participating
+    # Attester participation bitfield (1 bit per attester)
     'attester_bitfield': 'bytes',
-    # Last justified block
+    # Slot of last justified block
     'justified_slot': 'int64',
+    # Hash of last justified block
     'justified_block_hash': 'hash32',
-    # The actual signature
+    # BLS aggregate signature
     'aggregate_sig': ['int256']
 }
 ```
 
-#### Beacon chain state
-
-The beacon chain state is split into two parts, _active state_ and _crystallized state_.
-
-Here's the `ActiveState`:
+An `AttestationSignedData` has the following fields:
 
 ```python
-fields = {
-    # Attestations that have not yet been processed
+{
+    # Chain version
+    'version': 'int64',
+    # Slot number
+    'slot': 'int64',
+    # Shard number
+    'shard': 'int16',
+    # 31 parent hashes
+    'parent_hashes': ['hash32'],
+    # Shard block hash
+    'shard_block_hash': 'hash32',
+    # Slot of last justified block referenced in the attestation
+    'justified_slot': 'int64'
+}
+```
+
+A `SpecialRecord` has the following fields:
+
+```python
+{
+    # Kind
+    'kind': 'int8',
+    # Data
+    'data': ['bytes']
+}
+```
+
+### Beacon chain state
+
+For convenience we define the beacon chain state in two parts: "active state" and "crystallized state".
+
+The `ActiveState` has the following fields:
+
+```python
+{
+    # Attestations not yet processed
     'pending_attestations': [AttestationRecord],
-    # Special objects that have not yet been processed
-    'pending_specials': [SpecialObject],
+    # Specials not yet been processed
+    'pending_specials': [SpecialRecord]
     # recent block hashes needed to process attestations, older to newer
     'recent_block_hashes': ['hash32'],
     # RANDAO state
@@ -148,86 +180,88 @@ fields = {
 }
 ```
 
-Here's the `CrystallizedState`:
+The `CrystallizedState` has the following fields:
 
 ```python
-fields = {
+{
+    # Dynasty number
+    'dynasty': 'int64',
+    # Dynasty seed (from randomness beacon)
+    'dynasty_seed': 'hash32',
+    # Dynasty start
+    'dynasty_start_slot': 'int64',
     # List of validators
     'validators': [ValidatorRecord],
-    # Last CrystallizedState recalculation
-    'last_state_recalculation': 'int64',
-    # What active validators are part of the attester set
-    # at what slot, and in what shard. Starts at slot
-    # last_state_recalculation - CYCLE_LENGTH
-    'shard_and_committee_for_slots': [[ShardAndCommittee]],
-    # The last justified slot
-    'last_justified_slot': 'int64',
-    # Number of consecutive justified slots ending at this one
-    'justified_streak': 'int64',
-    # The last finalized slot
+    # Most recent crosslink for each shard
+    'crosslinks': [CrosslinkRecord],
+    # Last crystallized state recalculation
+    'last_state_recalculation_slot': 'int64',
+    # Last finalized slot
     'last_finalized_slot': 'int64',
-    # The current dynasty
-    'current_dynasty': 'int64',
-    # Records about the most recent crosslink for each shard
-    'crosslink_records': [CrosslinkRecord],
-    # Used to select the committees for each shard
-    'dynasty_seed': 'hash32',
-    # Start of the current dynasty
-    'dynasty_start': 'int64',
+    # Last justified slot
+    'last_justified_slot': 'int64',
+    # Number of consecutive justified slots
+    'justified_streak': 'int64',
+    # Committee members and their assigned shard, per slot
+    'shard_and_committee_for_slots': [[ShardAndCommittee]],
     # Total deposits penalized in the given withdrawal period
     'deposits_penalized_in_period': ['int32'],
-    # Hash chain of validator set changes, allows light clients to track deltas more easily
+    # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
+    # Parameters relevant to hard forks / versioning.
+    # Should be updated only by hard forks.
+    'pre_fork_version': 'int32',
+    'post_fork_version': 'int32',
+    'fork_slot_number': 'int64',
 }
 ```
 
-Each `ValidatorRecord` is an object containing information about a validator:
+A `ValidatorRecord` has the following fields:
 
 ```python
-fields = {
-    # The validator's public key
+{
+    # BLS public key
     'pubkey': 'int256',
-    # What shard the validator's balance will be sent to 
-    # after withdrawal
+    # Withdrawal shard number
     'withdrawal_shard': 'int16',
-    # And what address
+    # Withdrawal address
     'withdrawal_address': 'address',
-    # The validator's current RANDAO beacon commitment
+    # RANDAO commitment
     'randao_commitment': 'hash32',
-    # Current balance
+    # Balance
     'balance': 'int128',
-    # Status (see status codes in constants above)
+    # Status code
     'status': 'int8',
-    # Slot where this validator leaves
+    # Slot when validator exited (or 0)
     'exit_slot': 'int64'
 }
 ```
 
-A `ShardAndCommittee` object is of the form:
+A `CrosslinkRecord` has the following fields:
 
 ```python
-fields = {
-    # The shard ID
-    'shard_id': 'int16',
+{
+    # Dynasty number
+    'dynasty': 'int64',
+    # Slot number
+    'slot': 'int64',
+    # Beacon chain block hash
+    'shard_block_hash': 'hash32'
+}
+```
+
+A `ShardAndCommittee` object has the following fields:
+
+```python
+{
+    # Shard number
+    'shard': 'int16',
     # Validator indices
     'committee': ['int24']
 }
 ```
 
-And a `CrosslinkRecord` contains information about the last fully formed crosslink to be submitted into the chain:
-
-```python
-fields = {
-    # What dynasty the crosslink was submitted in
-    'dynasty': 'int64',
-    # What slot
-    'slot': 'int64',
-    # The block hash
-    'hash': 'hash32'
-}
-```
-
-### Beacon chain processing
+## Beacon chain processing
 
 The beacon chain is the "main chain" of the PoS system. The beacon chain's main responsibilities are:
 
@@ -241,7 +275,7 @@ For a block on the beacon chain to be processed by a node, four conditions have 
 
 * The parent pointed to by the `ancestor_hashes[0]` has already been processed and accepted
 * An attestation from the _proposer_ of the block (see later for definition) is included along with the block in the network message object
-* The PoW chain block pointed to by the `pow_chain_ref` has already been processed and accepted
+* The PoW chain block pointed to by the `pow_chain_reference` has already been processed and accepted
 * The node's local clock time is greater than or equal to the minimum timestamp as computed by `GENESIS_TIME + block.slot * SLOT_DURATION`
 
 If these conditions are not met, the client should delay processing the block until the conditions are all satisfied.
@@ -265,7 +299,7 @@ Here's an example of its working (green is finalized blocks, yellow is justified
 We now define the state transition function. At the high level, the state transition is made up of two parts:
 
 1. The per-block processing, which happens every block, and affects the `ActiveState` only
-2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`
+2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`
 
 
 The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
@@ -276,7 +310,7 @@ We start off by defining some helper algorithms. First, the function that select
 
 ```python
 def get_active_validator_indices(validators):
-    return [i for i, v in enumerate(validators) if v.status == LOGGED_IN]
+    return [i for i, v in enumerate(validators) if v.status == ACTIVE]
 ```
 
 Now, a function that shuffles this list:
@@ -330,10 +364,10 @@ def get_new_shuffling(seed, validators, crosslinking_start_shard):
     o = []
     for i, slot_indices in enumerate(split(shuffle(active_validators, seed), CYCLE_LENGTH)):
         shard_indices = split(slot_indices, committees_per_slot)
-        shard_id_start = crosslinking_start_shard + \
+        shard_start = crosslinking_start_shard + \
             i * committees_per_slot // slots_per_committee
         o.append([ShardAndCommittee(
-            shard_id = (shard_id_start + j) % SHARD_COUNT,
+            shard = (shard_start + j) % SHARD_COUNT,
             committee = indices
         ) for j, indices in enumerate(shard_indices)])
     return o
@@ -347,7 +381,7 @@ We also define two functions for retrieving data from the state:
 
 ```python
 def get_shards_and_committees_for_slot(crystallized_state, slot):
-    earliest_slot_in_array = crystallized_state.last_state_recalculation - CYCLE_LENGTH
+    earliest_slot_in_array = crystallized_state.last_state_recalculation_slot - CYCLE_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
     return crystallized_state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
 
@@ -397,15 +431,15 @@ def on_startup(initial_validator_entries):
     cs = CrystallizedState()
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
     cs.shard_and_committee_for_slots = x + x
-    cs.current_dynasty = 1
-    cs.crosslink_records = [CrosslinkRecord(dynasty=0, slot=0, hash=bytes([0] * 32))
+    cs.dynasty = 1
+    cs.crosslinks = [CrosslinkRecord(dynasty=0, slot=0, hash=bytes([0] * 32))
                             for i in range(SHARD_COUNT)]
     # Setup active state
     as = ActiveState()
     as.recent_block_hashes = [bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)]
 ```
 
-The `CrystallizedState()` and `ActiveState()` constructors should initialize all values to zero byes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
+The `CrystallizedState()` and `ActiveState()` constructors should initialize all values to zero bytes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
 
 ### Routine for adding a validator
 
@@ -425,7 +459,7 @@ def add_validator(validators, pubkey, proof_of_possession, withdrawal_shard,
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
         balance=DEPOSIT_SIZE,  # in WEI
-        status=PENDING_LOG_IN,
+        status=PENDING_ACTIVATION,
         exit_slot=0
     )
     index = min_empty_validator(validators)
@@ -468,12 +502,13 @@ For each one of these attestations:
 * Verify that `slot <= parent.slot` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`
 * Verify that the `justified_slot` and `justified_block_hash` given are in the chain and are equal to or earlier than the `last_justified_slot` in the crystallized state.
 * Compute `parent_hashes` = `[get_block_hash(active_state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `active_state`, so you would need to add it explicitly.
-* Let `attestation_indices` be `get_shards_and_committees_for_slot(crystallized_state, slot)[x]`, choosing `x` so that `attestation_indices.shard_id` equals the `shard_id` value provided to find the set of validators that is creating this attestation record.
+* Let `attestation_indices` be `get_shards_and_committees_for_slot(crystallized_state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1
-* Verify that `aggregate_sig` verifies using the group pubkey generated and `hash(slot.to_bytes(8, 'big') + parent_hashes + shard_id + shard_block_hash + justified_slot.to_bytes(8, 'big'))` as the message.
+* Let `version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
+* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
 
-Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialObject` objects in the `active_state` with those included in the block.
+Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
 
 Let `proposer_index` be the validator index of the `parent.slot % len(get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0]`. Verify that an attestation from this validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
 
@@ -481,27 +516,27 @@ Additionally, verify that `hash(block.randao_reveal) == crystallized_state.valid
 
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
-Repeat while `slot - last_state_recalculation >= CYCLE_LENGTH`:
+Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
 
 #### Adjust justified slots and crosslink status
 
-For all slots `s` in `last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`:
+For all slots `s` in `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
 * Determine the total set of validators that attested to that block at least once
 * Determine the total balance of these validators. If this value times three equals or exceeds the total balance of all active validators times two, set `last_justified_slot = max(last_justified_slot, s)` and `justified_streak += 1`. Otherwise, set `justified_streak = 0`
 * If `justified_streak >= CYCLE_LENGTH + 1`, set `last_finalized_slot = max(last_finalized_slot, s - CYCLE_LENGTH - 1)`
 
-For all (`shard_id`, `shard_block_hash`) tuples, compute the total deposit size of validators that attested to that block hash for that shard. If this value times three equals or exceeds the total balance of all validators in the committee times two, and the current dynasty exceeds `crosslink_records[shard_id].dynasty`, set `crosslink_records[shard_id] = CrosslinkRecord(dynasty=current_dynasty, slot=block.last_state_recalculation + CYCLE_LENGTH, hash=shard_block_hash)`.
+For all (`shard`, `shard_block_hash`) tuples, compute the total deposit size of validators that attested to that block hash for that shard. If this value times three equals or exceeds the total balance of all validators in the committee times two, and the current dynasty exceeds `crosslinks[shard].dynasty`, set `crosslinks[shard] = CrosslinkRecord(dynasty=dynasty, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
 
 #### Balance recalculations related to FFG rewards
 
 Let `time_since_finality = block.slot - last_finalized_slot`, and let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. Let:
 
-* `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, current_dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
+* `total_deposits = sum([v.balance for i, v in enumerate(validators) if i in get_active_validator_indices(validators, dynasty)])` and `total_deposits_in_ETH = total_deposits // 10**18`
 * `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_deposits_in_ETH)` (`1/reward_quotient` is the per-slot max interest rate)
 * `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2` (after `D` slots about `D*D/2/quadratic_penalty_quotient` is the portion lost by offline validators)
 
-For each slot `S` in the range `last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`:
+For each slot `S` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
 * Let `total_participated_deposits` be the total balance of validators that voted for the correct hash in slot `S` (ie. the hash that actually is the hash of the block at that slot in the current chain); note that in the normal case, every validator will be in one of the `CYCLE_LENGTH` slots following the slot and so can vote for a hash in slot `S`. If `time_since_finality <= 3 * CYCLE_LENGTH`, then adjust participating and non-participating validators' balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_participated_deposits - total_deposits) // total_deposits` (note: this may be negative)
@@ -514,23 +549,23 @@ Validators with `status == PENALIZED` also lose `B // reward_quotient + B * time
 
 #### Balance recalculations related to crosslink rewards
 
-For each shard `S` for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation - CYCLE_LENGTH ... last_state_recalculation - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `S`, `V`:
+For each shard `S` for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `S`, `V`:
 
 * Let `total_v_deposits` be the total balance of `V`
 * Let `total_participated_v_deposits` be the total balance of the subset of `V` that participated (note that `total_participated_v_deposits <= total_v_deposits`)
-* Let `time_since_last_confirmation` be `block.slot - crosslink_records[S].slot`
+* Let `time_since_last_confirmation` be `block.slot - crosslinks[S].slot`
 * Adjust balances as follows:
-    * If `crosslink_records[S].dynasty == current_dynasty`, no reward adjustments
+    * If `crosslinks[S].dynasty == dynasty`, no reward adjustments
     * Otherwise, participating validators' balances are increased by `B // reward_quotient * (2 * total_participated_v_deposits - total_v_deposits) // total_v_deposits`, and the balances of non-participating validators are decreased by `B // reward_quotient + B * time_since_last_confirmation // quadratic_penalty_quotient`
 
 Let `committees` be the set of committees processed and `time_since_last_confirmation(c)` be the value of `time_since_last_confirmation` in that committee. Validators with `status == PENALIZED` lose `B // reward_quotient + B * sum([time_since_last_confirmation(c) for c in committees]) // len(committees) // quadratic_penalty_quotient`.
 
 #### Process penalties, logouts and other special objects
 
-For each `SpecialObject` `obj` in `active_state.pending_specials`:
+For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.type == 0`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash("bye bye"), sig=data[1])`, and `validators[i].status == LOGGED_IN`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
-* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.type == 1`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `inds` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `inds`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
+* **[covers logouts]**: If `obj.type == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE), sig=data[1])`, and `validators[i].status == ACTIVE`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.type == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, set their end dynasty to equal the current dynasty plus 1, and if its `status` does not equal `PENALIZED`, then:
 
 1. Set its `exit_slot` to equal the current `slot`
 2. Set its `status` to `PENALIZED`
@@ -539,8 +574,8 @@ For each `SpecialObject` `obj` in `active_state.pending_specials`:
 
 #### Finally...
 
-* Set `crystallized_state.last_state_recalculation += CYCLE_LENGTH`
-* Remove all attestation records older than slot `crystallized_state.last_state_recalculation`
+* Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
+* Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
 * Empty the `active_state.pending_specials` list
 * Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
@@ -549,16 +584,16 @@ For each `SpecialObject` `obj` in `active_state.pending_specials`:
 
 A dynasty transition can happen after a state recalculation if all of the following criteria are satisfied:
 
-* `block.slot - crystallized_state.dynasty_start >= MIN_DYNASTY_LENGTH`
-* `last_finalized_slot > dynasty_start`
-* For every shard `S` in `shard_and_committee_for_slots`, `crosslink_records[S].slot > dynasty_start`
+* `block.slot - crystallized_state.dynasty_start_slot >= MIN_DYNASTY_LENGTH`
+* `last_finalized_slot > dynasty_start_slot`
+* For every shard `S` in `shard_and_committee_for_slots`, `crosslinks[S].slot > dynasty_start_slot`
 
 Then, run the following algorithm to update the validator set:
 
 ```python
 def change_validators(validators):
     # The active validator set
-    active_validators = get_active_validator_indices(validators, current_dynasty)
+    active_validators = get_active_validator_indices(validators, dynasty)
     # The total size of active deposits
     total_deposits = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
     # The maximum total wei that can deposit+withdraw
@@ -569,8 +604,8 @@ def change_validators(validators):
     # Go through the list start to end depositing+withdrawing as many as possible
     total_changed = 0
     for i in range(len(validators)):
-        if validators[i].status == PENDING_LOG_IN:
-            validators[i].status = LOGGED_IN
+        if validators[i].status == PENDING_ACTIVATION:
+            validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE
             add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
         if validators[i].status == PENDING_EXIT:
@@ -603,9 +638,9 @@ def change_validators(validators):
 
 Finally:
 
-* Set `last_dynasty_start = crystallized_state.last_state_recalculation`
-* Set `crystallized_state.current_dynasty += 1`
-* Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard_id + 1) % SHARD_COUNT`
+* Set `last_dynasty_start_slot = crystallized_state.last_state_recalculation_slot`
+* Set `crystallized_state.dynasty += 1`
+* Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
 * Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
 
 ### TODO
@@ -615,7 +650,7 @@ Note: This spec is ~60% complete.
 **Missing**
 
 * [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed, including Merklelisation logic for light clients
-* [ ] Specify the rules around acceptable values for `pow_chain_ref`
+* [ ] Specify the rules around acceptable values for `pow_chain_reference`
 * [ ] Specify the shard chain blocks, blobs, proposers, etc.
 * [ ] Specify the rules for forced deregistrations
 * [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
@@ -643,7 +678,7 @@ Note: This spec is ~60% complete.
 * [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
 * [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
 * [ ] Add penalties for a deposit below 32 ETH (or some other threshold)
-* [ ] Add a `SpecialObject` to (re)register
+* [ ] Add a `SpecialRecord` to (re)register
 * [ ] Rework the document for readability
 * [ ] Clearly document the various edge cases, e.g. with committee sizing
 
