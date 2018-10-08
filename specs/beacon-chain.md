@@ -216,7 +216,7 @@ fields = {
     # The shard ID
     'shard_id': 'int64',
     # Validator indices
-    'committee': ['int64']
+    'committee': ['int24']
 }
 ```
 
