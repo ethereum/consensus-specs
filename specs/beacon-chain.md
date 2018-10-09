@@ -348,25 +348,25 @@ def split(lst, N):
     return [lst[len(lst)*i//N: len(lst)*(i+1)//N] for i in range(N)]
 ```
 
+A helper method for readability:
+
+```python
+def clamp(minval, x, maxval):
+    return minval if x < minval else maxval if x > maxval else x
+```
+
 Now, our combined helper method:
 
 ```python
 def get_new_shuffling(seed, validators, crosslinking_start_shard):
     active_validators = get_active_validator_indices(validators)
-    if len(active_validators) >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE:
-        committees_per_slot = min(len(active_validators) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1, SHARD_COUNT // CYCLE_LENGTH)
-        slots_per_committee = 1
-    else:
-        committees_per_slot = 1
-        slots_per_committee = 1
-        while len(active_validators) * slots_per_committee < CYCLE_LENGTH * MIN_COMMITTEE_SIZE \
-                and slots_per_committee < CYCLE_LENGTH:
-            slots_per_committee *= 2
+    committees_per_slot = clamp(1,
+                                len(active_validators) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1,
+                                SHARD_COUNT // CYCLE_LENGTH)
     o = []
     for i, slot_indices in enumerate(split(shuffle(active_validators, seed), CYCLE_LENGTH)):
         shard_indices = split(slot_indices, committees_per_slot)
-        shard_start = crosslinking_start_shard + \
-            i * committees_per_slot // slots_per_committee
+        shard_start = crosslinking_start_shard + i * committees_per_slot
         o.append([ShardAndCommittee(
             shard = (shard_start + j) % SHARD_COUNT,
             committee = indices
