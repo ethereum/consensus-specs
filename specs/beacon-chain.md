@@ -359,17 +359,17 @@ def shuffle(values: List[Any],
     return output
 ```
 
-Here's a function that splits a list into `pieces` pieces:
+Here's a function that splits a list into `split_count` pieces:
 
 ```python
-def split(seq: List[Any], pieces: int) -> List[Any]:
+def split(seq: List[Any], split_count: int) -> List[Any]:
     """
-    Returns the split ``seq`` in ``pieces`` pieces in protocol.
+    Returns the split ``seq`` in ``split_count`` pieces in protocol.
     """
     list_length = len(seq)
     return [
-        seq[(list_length * i // pieces): (list_length * (i + 1) // pieces)]
-        for i in range(pieces)
+        seq[(list_length * i // split_count): (list_length * (i + 1) // split_count)]
+        for i in range(split_count)
     ]
 ```
 
@@ -404,8 +404,9 @@ def get_new_shuffling(seed: Hash32,
         # Split the shuffled list into committees_per_slot pieces
         shard_indices = split(slot_indices, committees_per_slot)
 
-        shard_id_start = crosslinking_start_shard + (
-            slot * committees_per_slot // slots_per_committee
+        shard_id_start = (
+            crosslinking_start_shard +
+            (slot * committees_per_slot // slots_per_committee)
         )
         shards_and_committees_for_shard_indices = [
             ShardAndCommittee(
@@ -432,7 +433,7 @@ def get_shards_and_committees_for_slot(crystallized_state: CrystallizedState,
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
     return crystallized_state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
 
-def get_block_hash(active_state:ActiveState,
+def get_block_hash(active_state: ActiveState,
                    current_block: BeaconBlock,
                    slot: int) -> Hash32:
     earliest_slot_in_array = current_block.slot - CYCLE_LENGTH * 2
@@ -472,7 +473,7 @@ def int_sqrt(n: int) -> int:
 Run the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any]) -> None:
+def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState, ActiveState]:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
@@ -486,11 +487,8 @@ def on_startup(initial_validator_entries: List[Any]) -> None:
             randao_commitment=randao_commitment
         )
     # Setup crystallized state
-    cs = CrystallizedState()
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
-    cs.shard_and_committee_for_slots = x + x
-    cs.dynasty = 1
-    cs.crosslinks = [
+    crosslinks = [
         CrosslinkRecord(
             dynasty=0,
             slot=0,
@@ -498,12 +496,37 @@ def on_startup(initial_validator_entries: List[Any]) -> None:
         )
         for i in range(SHARD_COUNT)
     ]
+    crystallized_state = CrystallizedState(
+        dynasty=1,
+        dynasty_seed=bytes([0] * 32),  # stub
+        dynasty_start_slot=0,
+        validators=validators,
+        crosslinks=crosslinks,
+        last_state_recalculation_slot=0,
+        last_finalized_slot=0,
+        last_justified_slot=0,
+        justified_streak=0,
+        shard_and_committee_for_slots=x + x,
+        deposits_penalized_in_period=[],
+        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        pre_fork_version=0,
+        post_fork_version=0,
+        fork_slot_number=0
+    )
+
     # Setup active state
-    as = ActiveState()
-    as.recent_block_hashes = [
+    recent_block_hashes = [
         bytes([0] * 32)
         for _ in range(CYCLE_LENGTH * 2)
     ]
+    active_state = ActiveState(
+        pending_attestations=[],
+        pending_specials=[],
+        recent_block_hashes=recent_block_hashes,
+        randao_mix=bytes([0] * 32)  # stub
+    )
+
+    return crystallized_state, active_state
 ```
 
 The `CrystallizedState()` and `ActiveState()` constructors should initialize all values to zero bytes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
@@ -611,7 +634,7 @@ For every `(shard, shard_block_hash)` tuple:
 #### Balance recalculations related to FFG rewards
 
 * Let `total_balance` be the total balance of active validators.
-* Let `total_balance_in_eth = total_balance // GWEI_PER_ETH.
+* Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
 * Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `1/reward_quotient`.)
 * Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` slots is about `D*D/2/quadratic_penalty_quotient`.)
 * Let `time_since_finality = block.slot - last_finalized_slot`.
