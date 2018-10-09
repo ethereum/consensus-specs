@@ -531,8 +531,8 @@ For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ..
 For every `(shard, shard_block_hash)` tuple:
 
 * Let `total_balance_attesting_to_h` be the total balance of validators that attested to the shard block with hash `shard_block_hash`.
-* Let `total_balance_attestable_to_h` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_block_hash`.
-* If `3 * total_balance_attesting_to_h >= 2 * total_balance_attestable_to_h` and `dynasty > crosslinks[shard].dynasty`, set `crosslinks[shard] = CrosslinkRecord(dynasty=dynasty, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
+* Let `total_committee_balance` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_block_hash`.
+* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance` and `dynasty > crosslinks[shard].dynasty`, set `crosslinks[shard] = CrosslinkRecord(dynasty=dynasty, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
 
 #### Balance recalculations related to FFG rewards
 
