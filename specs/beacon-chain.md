@@ -605,7 +605,7 @@ def change_validators(validators):
     total_balance = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
     # The maximum total wei that can deposit+withdraw
     max_allowable_change = max(
-        2 * DEPOSIT_SIZE GWEI_PER_ETH,
+        2 * DEPOSIT_SIZE * GWEI_PER_ETH,
         total_balance // MAX_VALIDATOR_CHURN_QUOTIENT
     )
     # Go through the list start to end depositing+withdrawing as many as possible
@@ -613,7 +613,7 @@ def change_validators(validators):
     for i in range(len(validators)):
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
-            total_changed += DEPOSIT_SIZE
+            total_changed += DEPOSIT_SIZE * GWEI_PER_ETH
             add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
