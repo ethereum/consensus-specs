@@ -37,7 +37,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
-| `MIN_DYNASTY_LENGTH` | 2**8 (= 256) | slots | ~1.1 hours |
+| `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~1.1 hours |
 | `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
@@ -584,7 +584,7 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
 A validator set change can happen after a state recalculation if all of the following criteria are satisfied:
 
-* `block.slot - crystallized_state.validator_set_change_slot >= MIN_DYNASTY_LENGTH`
+* `block.slot - crystallized_state.validator_set_change_slot >= MIN_VALIDATOR_SET_CHANGE_INTERVAL`
 * `last_finalized_slot > crystallized_state.validator_set_change_slot`
 * For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > crystallized_state.validator_set_change_slot`
 
