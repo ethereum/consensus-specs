@@ -317,61 +317,107 @@ def get_active_validator_indices(validators):
 Now, a function that shuffles this list:
 
 ```python
-def shuffle(lst, seed):
-    # entropy is consumed in 3 byte chunks
-    # rand_max is defined to remove the modulo bias from this entropy source
-    rand_max = 2**24
-    assert len(lst) <= rand_max
+def shuffle(values: List[Any],
+            seed: Hash32) -> List[Any]:
+    """
+    Returns the shuffled ``values`` with seed as entropy.
+    """
+    values_count = len(values)
 
-    o = [x for x in lst]
+    # entropy is consumed in 3 byte chunks
+    # sample_max is defined to remove the modulo bias from this entropy source
+    sample_max = 2 ** 24
+    assert values_count <= sample_max
+
+    output = [x for x in values]
     source = seed
-    i = 0
-    while i < len(lst):
+    index = 0
+    while index < values_count:
+        # Re-hash the source
         source = hash(source)
-        for pos in range(0, 30, 3):
-            m = int.from_bytes(source[pos:pos+3], 'big')
-            remaining = len(lst) - i
-            if remaining == 0:
+        for position in range(0, 30, 3):  # gets indices 3 bytes at a time
+            # Select a 3-byte sampled int
+            sample_from_source = int.from_bytes(source[position:position + 3], 'big')
+            # `remaining` is the size of remaining indices of this round
+            remaining = values_count - index
+            if remaining == 1:
                 break
-            rand_max = rand_max - rand_max % remaining
-            if m < rand_max:
-                replacement_pos = (m % remaining) + i
-                o[i], o[replacement_pos] = o[replacement_pos], o[i]
-                i += 1
-    return o
+
+            # Set a random maximum bound of sample_from_source
+            sample_max = sample_max - sample_max % remaining
+
+            # Select `replacement_position` with the given `sample_from_source` and `remaining`
+            if sample_from_source < sample_max:
+                # Use random number to get `replacement_position`, where it's not `index`
+                replacement_position = (sample_from_source % remaining) + index
+                # Swap the index-th and replacement_position-th elements
+                output[index], output[replacement_position] = output[replacement_position], output[index]
+                index += 1
+            else:
+                pass
+
+    return output
 ```
 
-Here's a function that splits a list into `N` pieces:
+Here's a function that splits a list into `split_count` pieces:
 
 ```python
-def split(lst, N):
-    return [lst[len(lst)*i//N: len(lst)*(i+1)//N] for i in range(N)]
+def split(seq: List[Any], split_count: int) -> List[Any]:
+    """
+    Returns the split ``seq`` in ``split_count`` pieces in protocol.
+    """
+    list_length = len(seq)
+    return [
+        seq[(list_length * i // split_count): (list_length * (i + 1) // split_count)]
+        for i in range(split_count)
+    ]
 ```
 
 Now, our combined helper method:
 
 ```python
-def get_new_shuffling(seed, validators, crosslinking_start_shard):
+def get_new_shuffling(seed: Hash32,
+                      validators: List[ValidatorRecord],
+                      crosslinking_start_shard: int) -> List[List[ShardAndCommittee]]:
     active_validators = get_active_validator_indices(validators)
-    if len(active_validators) >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE:
-        committees_per_slot = min(len(active_validators) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1, SHARD_COUNT // CYCLE_LENGTH)
+    active_validators_size = len(active_validators)
+
+    if active_validators_size >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE:
+        committees_per_slot = min(active_validators_size // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1, SHARD_COUNT // CYCLE_LENGTH)
         slots_per_committee = 1
     else:
         committees_per_slot = 1
         slots_per_committee = 1
-        while len(active_validators) * slots_per_committee < CYCLE_LENGTH * MIN_COMMITTEE_SIZE \
+        while active_validators_size * slots_per_committee < CYCLE_LENGTH * MIN_COMMITTEE_SIZE \
                 and slots_per_committee < CYCLE_LENGTH:
             slots_per_committee *= 2
-    o = []
-    for i, slot_indices in enumerate(split(shuffle(active_validators, seed), CYCLE_LENGTH)):
+
+    output = []
+
+    # Shuffle with seed
+    shuffled_active_validator_indices = shuffle(active_validators, seed)
+
+    # Split the shuffled list into cycle_length pieces
+    validators_per_slot = split(shuffled_active_validator_indices, CYCLE_LENGTH)
+
+    for slot, slot_indices in enumerate(validators_per_slot):
+        # Split the shuffled list into committees_per_slot pieces
         shard_indices = split(slot_indices, committees_per_slot)
-        shard_start = crosslinking_start_shard + \
-            i * committees_per_slot // slots_per_committee
-        o.append([ShardAndCommittee(
-            shard = (shard_start + j) % SHARD_COUNT,
-            committee = indices
-        ) for j, indices in enumerate(shard_indices)])
-    return o
+
+        shard_id_start = (
+            crosslinking_start_shard +
+            (slot * committees_per_slot // slots_per_committee)
+        )
+        shards_and_committees_for_shard_indices = [
+            ShardAndCommittee(
+                shard_id=(shard_id_start + j) % SHARD_COUNT,
+                committee=indices
+            )
+            for slot, indices in enumerate(shard_indices)
+        ]
+        output.append(shards_and_committees_for_shard_indices)
+
+    return output
 ```
 
 Here's a diagram of what's going on:
@@ -381,13 +427,16 @@ Here's a diagram of what's going on:
 We also define two functions for retrieving data from the state:
 
 ```python
-def get_shards_and_committees_for_slot(crystallized_state, slot):
-    earliest_slot_in_array = crystallized_state.last_state_recalculation_slot - CYCLE_LENGTH
+def get_shards_and_committees_for_slot(crystallized_state: CrystallizedState,
+                                       slot: int) -> List[ShardAndCommittee]:
+    earliest_slot_in_array = crystallized_state.last_state_recalculation - CYCLE_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
     return crystallized_state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
 
-def get_block_hash(active_state, curblock, slot):
-    earliest_slot_in_array = curblock.slot - CYCLE_LENGTH * 2
+def get_block_hash(active_state: ActiveState,
+                   current_block: BeaconBlock,
+                   slot: int) -> Hash32:
+    earliest_slot_in_array = current_block.slot - CYCLE_LENGTH * 2
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
@@ -397,7 +446,10 @@ def get_block_hash(active_state, curblock, slot):
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
 ```python
-def add_validator_set_change_record(crystallized_state, index, pubkey, flag):
+def add_validator_set_change_record(crystallized_state: CrystallizedState,
+                                    index: int,
+                                    pubkey: int,
+                                    flag: int) -> None:
     crystallized_state.validator_set_delta_hash_chain = \
         hash(crystallized_state.validator_set_delta_hash_chain +
              bytes1(flag) + bytes3(index) + bytes32(pubkey))
@@ -406,7 +458,7 @@ def add_validator_set_change_record(crystallized_state, index, pubkey, flag):
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
 
 ```python
-def int_sqrt(n):
+def int_sqrt(n: int) -> int:
     x = n
     y = (x + 1) // 2
     while y < x:
@@ -421,23 +473,60 @@ def int_sqrt(n):
 Run the following code:
 
 ```python
-def on_startup(initial_validator_entries):
+def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState, ActiveState]:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
             randao_commitment in initial_validator_entries:
-        add_validator(validators, pubkey, proof_of_possession,
-                      withdrawal_shard, withdrawal_address, randao_commitment)
+        add_validator(
+            validators=validators,
+            pubkey=pubkey,
+            proof_of_possession=proof_of_possession,
+            withdrawal_shard=withdrawal_shard,
+            withdrawal_address=withdrawal_address,
+            randao_commitment=randao_commitment
+        )
     # Setup crystallized state
-    cs = CrystallizedState()
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
-    cs.shard_and_committee_for_slots = x + x
-    cs.dynasty = 1
-    cs.crosslinks = [CrosslinkRecord(dynasty=0, slot=0, hash=bytes([0] * 32))
-                            for i in range(SHARD_COUNT)]
+    crosslinks = [
+        CrosslinkRecord(
+            dynasty=0,
+            slot=0,
+            hash=bytes([0] * 32)
+        )
+        for i in range(SHARD_COUNT)
+    ]
+    crystallized_state = CrystallizedState(
+        dynasty=1,
+        dynasty_seed=bytes([0] * 32),  # stub
+        dynasty_start_slot=0,
+        validators=validators,
+        crosslinks=crosslinks,
+        last_state_recalculation_slot=0,
+        last_finalized_slot=0,
+        last_justified_slot=0,
+        justified_streak=0,
+        shard_and_committee_for_slots=x + x,
+        deposits_penalized_in_period=[],
+        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        pre_fork_version=0,
+        post_fork_version=0,
+        fork_slot_number=0
+    )
+
     # Setup active state
-    as = ActiveState()
-    as.recent_block_hashes = [bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)]
+    recent_block_hashes = [
+        bytes([0] * 32)
+        for _ in range(CYCLE_LENGTH * 2)
+    ]
+    active_state = ActiveState(
+        pending_attestations=[],
+        pending_specials=[],
+        recent_block_hashes=recent_block_hashes,
+        randao_mix=bytes([0] * 32)  # stub
+    )
+
+    return crystallized_state, active_state
 ```
 
 The `CrystallizedState()` and `ActiveState()` constructors should initialize all values to zero bytes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
@@ -447,8 +536,12 @@ The `CrystallizedState()` and `ActiveState()` constructors should initialize all
 This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. These logs should be processed in the order in which they are emitted by the PoW chain. Define `min_empty_validator(validators)` as a function that returns the lowest validator index `i` such that `validators[i].status == WITHDRAWN`, otherwise `None`.
 
 ```python
-def add_validator(validators, pubkey, proof_of_possession, withdrawal_shard,
-                  withdrawal_address, randao_commitment):
+def add_validator(validators: List[ValidatorRecord],
+                  pubkey: int,
+                  proof_of_possession: bytes,
+                  withdrawal_shard: int,
+                  withdrawal_address: Address,
+                  randao_commitment: Hash32) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
     assert BLSVerify(pub=pubkey,
@@ -479,8 +572,10 @@ This procedure should be carried out every block.
 First, set `recent_block_hashes` to the output of the following, where `parent_hash` is the hash of the immediate previous block (ie. must be equal to `ancestor_hashes[0]`):
 
 ```python
-def get_new_recent_block_hashes(old_block_hashes, parent_slot,
-                                current_slot, parent_hash):
+def get_new_recent_block_hashes(old_block_hashes: List[Hash32],
+                                parent_slot: int,
+                                current_slot: int,
+                                parent_hash: Hash32) -> List[Hash32]:
     d = current_slot - parent_slot
     return old_block_hashes[d:] + [parent_hash] * min(d, len(old_block_hashes))
 ```
@@ -488,7 +583,9 @@ def get_new_recent_block_hashes(old_block_hashes, parent_slot,
 The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`, and will now throw for `current_slot - CYCLE_LENGTH * 2 - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
 
 ```python
-def update_ancestor_hashes(parent_ancestor_hashes, parent_slot_number, parent_hash):
+def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
+                           parent_slot_number: int,
+                           parent_hash: Hash32) -> List[Hash32]:
     new_ancestor_hashes = copy.copy(parent_ancestor_hashes)
     for i in range(32):
         if parent_slot_number % 2**i == 0:
@@ -537,7 +634,7 @@ For every `(shard, shard_block_hash)` tuple:
 #### Balance recalculations related to FFG rewards
 
 * Let `total_balance` be the total balance of active validators.
-* Let `total_balance_in_eth = total_balance // GWEI_PER_ETH.
+* Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
 * Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `1/reward_quotient`.)
 * Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` slots is about `D*D/2/quadratic_penalty_quotient`.)
 * Let `time_since_finality = block.slot - last_finalized_slot`.
@@ -598,9 +695,9 @@ A dynasty transition can happen after a state recalculation if all of the follow
 Then, run the following algorithm to update the validator set:
 
 ```python
-def change_validators(validators):
+def change_validators(validators: List[ValidatorRecord]) -> None:
     # The active validator set
-    active_validators = get_active_validator_indices(validators, dynasty)
+    active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
     total_balance = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
     # The maximum total wei that can deposit+withdraw
@@ -614,12 +711,22 @@ def change_validators(validators):
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE * GWEI_PER_ETH
-            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, ENTRY)
+            add_validator_set_change_record(
+                crystallized_state=crystallized_state,
+                index=i,
+                pubkey=validators[i].pubkey,
+                flag=ENTRY
+            )
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
             validators[i].exit_slot = current_slot
             total_changed += validators[i].balance
-            add_validator_set_change_record(crystallized_state, i, validators[i].pubkey, EXIT)
+            add_validator_set_change_record(
+                crystallized_state=crystallized_state,
+                index=i,
+                pubkey=validators[i].pubkey,
+                flag=EXIT
+            )
         if total_changed >= max_allowable_change:
             break
 
