@@ -42,6 +42,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `RANDAO_SLOTS_PER_LAYER` | 2**12 (=4096) | slots | ~18 hours |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 
 **Notes**
@@ -224,6 +225,8 @@ A `ValidatorRecord` has the following fields:
     'withdrawal_address': 'address',
     # RANDAO commitment
     'randao_commitment': 'hash32',
+    # Slot the RANDAO was last changed
+    'randao_last_change': 'int64',
     # Balance
     'balance': 'int64',
     # Status code
@@ -479,7 +482,8 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
             proof_of_possession=proof_of_possession,
             withdrawal_shard=withdrawal_shard,
             withdrawal_address=withdrawal_address,
-            randao_commitment=randao_commitment
+            randao_commitment=randao_commitment,
+            current_slot=0
         )
     # Setup crystallized state
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
@@ -536,7 +540,8 @@ def add_validator(validators: List[ValidatorRecord],
                   proof_of_possession: bytes,
                   withdrawal_shard: int,
                   withdrawal_address: Address,
-                  randao_commitment: Hash32) -> int:
+                  randao_commitment: Hash32,
+                  current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
     assert BLSVerify(pub=pubkey,
@@ -547,6 +552,7 @@ def add_validator(validators: List[ValidatorRecord],
         withdrawal_shard=withdrawal_shard,
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
+        randao_last_change=current_slot,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH, # in Gwei
         status=PENDING_ACTIVATION,
         exit_slot=0
@@ -605,7 +611,11 @@ Extend the list of `AttestationRecord` objects in the `active_state` with those 
 
 Let `proposer_index` be the validator index of the `parent.slot % len(get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, parent.slot)[0]`. Verify that an attestation from this validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
 
-Additionally, verify that `hash(block.randao_reveal) == crystallized_state.validators[proposer_index].randao_commitment`, and set `active_state.randao_mix = xor(active_state.randao_mix, block.randao_reveal)` and append to `ActiveState.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(proposer_index), block.randao_reveal])`.
+Additionally, we need to verify and update the RANDAO reveal. This is done as follows:
+
+* Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
+* Let `V = crystallized_state.validators[proposer_index]`.
+* Verify that `repeat_hash(block.randao_reveal, (current_slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `active_state.randao_mix = xor(active_state.randao_mix, block.randao_reveal)` and append to `ActiveState.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(proposer_index), block.randao_reveal])`.
 
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
