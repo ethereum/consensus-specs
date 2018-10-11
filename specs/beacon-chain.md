@@ -324,36 +324,39 @@ def shuffle(values: List[Any],
     """
     values_count = len(values)
 
-    # entropy is consumed in 3 byte chunks
-    # sample_max is defined to remove the modulo bias from this entropy source
-    sample_max = 2 ** 24
-    assert values_count <= sample_max
+    # Entropy is consumed from the seed in 3-byte (24 bit) chunks.
+    rand_max = 2 ** 24 - 1
+    assert values_count < rand_max
 
     output = [x for x in values]
     source = seed
     index = 0
-    while index < values_count:
+    while index < values_count - 1:
         # Re-hash the source
         source = hash(source)
-        for position in range(0, 30, 3):  # gets indices 3 bytes at a time
-            # Select a 3-byte sampled int
-            sample_from_source = int.from_bytes(source[position:position + 3], 'big')
-            # `remaining` is the size of remaining indices of this round
+        for position in range(0, 30, 3):  # Reads indices 3 bytes at a time
+            # Determine the number of indices remaining and exit once the last
+            # index is reached.
             remaining = values_count - index
             if remaining == 1:
                 break
 
-            # Set a random maximum bound of sample_from_source
-            sample_max = sample_max - sample_max % remaining
+            # Read 3-bytes of the seed as a 24-bit big-endian integer.
+            sample_from_source = int.from_bytes(source[position:position + 3], 'big')
 
-            # Select `replacement_position` with the given `sample_from_source` and `remaining`
+            # Sample values greater than or equal to `sample_max` will cause
+            # modulo bias when mapped into the `remaining` range.
+            sample_max = rand_max - rand_max % remaining
+
+            # Perform a swap if the consumed entropy will not cause modulo bias.
             if sample_from_source < sample_max:
-                # Use random number to get `replacement_position`, where it's not `index`
+                # Select a replacement index for the present index.
                 replacement_position = (sample_from_source % remaining) + index
-                # Swap the index-th and replacement_position-th elements
+                # Swap the present index with the replacement index.
                 output[index], output[replacement_position] = output[replacement_position], output[index]
                 index += 1
             else:
+                # The sample causes modulo bias. A new sample should be read.
                 pass
 
     return output
