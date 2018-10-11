@@ -237,7 +237,7 @@ A `CrosslinkRecord` has the following fields:
 ```python
 {
     # Since last validator set change?
-    'recently_changed': 'int8',
+    'recently_changed': 'bool',
     # Slot number
     'slot': 'int64',
     # Beacon chain block hash
@@ -426,7 +426,7 @@ def on_startup(initial_validator_entries):
     cs = CrystallizedState()
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
     cs.shard_and_committee_for_slots = x + x
-    cs.crosslinks = [CrosslinkRecord(recently_changed=0, slot=0, hash=bytes([0] * 32))
+    cs.crosslinks = [CrosslinkRecord(recently_changed=False, slot=0, hash=bytes([0] * 32))
                             for i in range(SHARD_COUNT)]
     # Setup active state
     as = ActiveState()
@@ -525,7 +525,7 @@ For every `(shard, shard_block_hash)` tuple:
 
 * Let `total_balance_attesting_to_h` be the total balance of validators that attested to the shard block with hash `shard_block_hash`.
 * Let `total_committee_balance` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_block_hash`.
-* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance` and `recently_changed == 0`, set `crosslinks[shard] = CrosslinkRecord(recently_changed=1, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
+* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance` and `recently_changed is False`, set `crosslinks[shard] = CrosslinkRecord(recently_changed=True, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
 
 #### Balance recalculations related to FFG rewards
 
@@ -555,7 +555,7 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 * Let `total_balance_of_v` be the total balance of `V`.
 * Let `total_balance_of_v_participating` be the total balance of the subset of `V` that participated.
 * Let `time_since_last_confirmation = block.slot - crosslinks[shard].slot`.
-* If `recently_changed == 0`, adjust balances as follows:
+* If `recently_changed is False`, adjust balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
     * Non-participating validators lose `B // reward_quotient + B * time_since_last_confirmation // quadratic_penalty_quotient`.
 
@@ -639,7 +639,7 @@ def change_validators(validators):
 Finally:
 
 * Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
-* For all `c` in `crystallized_state.crosslinks`, set `c.recently_changed = 0`
+* For all `c` in `crystallized_state.crosslinks`, set `c.recently_changed = False`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
 * Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
 
