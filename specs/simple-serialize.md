@@ -81,6 +81,20 @@ buffer_size = int_size / 8
 return value.to_bytes(buffer_size, 'big')
 ```
 
+#### bool
+
+Convert directly to a single 0x00 or 0x01 byte.
+
+| Check to perform  | Code                       |
+|:------------------|:---------------------------|
+| Value is boolean  | ``value in (True, False)`` |
+
+```python
+assert(value in (True, False))
+return b'\x01' if value is True else b'\x00'
+```
+
+
 #### Address
 
 The address should already come as a hash/byte format. Ensure that length is
@@ -235,6 +249,15 @@ assert(len(rawbytes) >= current_index + int_size)
 byte_length = int_size / 8
 new_index = current_index + int_size
 return int.from_bytes(rawbytes[current_index:current_index+int_size], 'big'), new_index
+```
+
+#### Bool
+
+Return True if 0x01, False if 0x00.
+
+```python
+assert rawbytes in (b'\x00', b'\x01')
+return True if rawbytes == b'\x01' else False
 ```
 
 #### Address
