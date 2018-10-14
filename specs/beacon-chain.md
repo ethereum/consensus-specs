@@ -378,8 +378,6 @@ def clamp(minval: int, maxval: int, x: int) -> int:
         return maxval
     else:
         return x
-def clamp(minval, maxval, x):
-    return minval if x < minval else maxval if x > maxval else x
 ```
 
 Now, our combined helper method:
