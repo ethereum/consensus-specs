@@ -368,6 +368,18 @@ def split(seq: List[Any], split_count: int) -> List[Any]:
     ]
 ```
 
+A helper method for readability:
+
+```python
+def clamp(minval: int, maxval: int, x: int) -> int:
+    if x <= minval:
+        return minval
+    elif x >= maxval:
+        return maxval
+    else:
+        return x
+```
+
 Now, our combined helper method:
 
 ```python
@@ -377,15 +389,11 @@ def get_new_shuffling(seed: Hash32,
     active_validators = get_active_validator_indices(validators)
     active_validators_size = len(active_validators)
 
-    if active_validators_size >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE:
-        committees_per_slot = min(active_validators_size // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1, SHARD_COUNT // CYCLE_LENGTH)
-        slots_per_committee = 1
-    else:
-        committees_per_slot = 1
-        slots_per_committee = 1
-        while active_validators_size * slots_per_committee < CYCLE_LENGTH * MIN_COMMITTEE_SIZE \
-                and slots_per_committee < CYCLE_LENGTH:
-            slots_per_committee *= 2
+    committees_per_slot = clamp(
+        1,
+        SHARD_COUNT // CYCLE_LENGTH,
+        len(active_validators) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1,
+    )
 
     output = []
 
@@ -399,18 +407,16 @@ def get_new_shuffling(seed: Hash32,
         # Split the shuffled list into committees_per_slot pieces
         shard_indices = split(slot_indices, committees_per_slot)
 
-        shard_id_start = (
-            crosslinking_start_shard +
-            (slot * committees_per_slot // slots_per_committee)
-        )
-        shards_and_committees_for_shard_indices = [
+        shard_id_start = crosslinking_start_shard + slot * committees_per_slot
+
+        shards_and_committees_for_slot = [
             ShardAndCommittee(
-                shard_id=(shard_id_start + j) % SHARD_COUNT,
+                shard=(shard_id_start + shard_position) % SHARD_COUNT,
                 committee=indices
             )
-            for slot, indices in enumerate(shard_indices)
+            for shard_position, indices in enumerate(shard_indices)
         ]
-        output.append(shards_and_committees_for_shard_indices)
+        output.append(shards_and_committees_for_slot)
 
     return output
 ```
