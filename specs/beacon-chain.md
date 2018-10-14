@@ -492,6 +492,7 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         for i in range(SHARD_COUNT)
     ]
     crystallized_state = CrystallizedState(
+        validator_set_change_slot=0,
         validators=validators,
         crosslinks=crosslinks,
         last_state_recalculation_slot=0,
