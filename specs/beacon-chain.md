@@ -587,7 +587,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
                            parent_hash: Hash32) -> List[Hash32]:
     new_ancestor_hashes = copy.copy(parent_ancestor_hashes)
     for i in range(32):
-        if parent_slot_number % 2**i == 0:
+        if parent_slot_number == 2**i:
             new_ancestor_hashes[i] = parent_hash
     return new_ancestor_hashes
 ```
