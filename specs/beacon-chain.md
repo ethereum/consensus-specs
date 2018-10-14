@@ -225,7 +225,7 @@ A `ValidatorRecord` has the following fields:
     'withdrawal_address': 'address',
     # RANDAO commitment
     'randao_commitment': 'hash32',
-    # Slot the RANDAO was last changed
+    # Slot the RANDAO commitment was last changed
     'randao_last_change': 'int64',
     # Balance
     'balance': 'int64',
