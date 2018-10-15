@@ -1,6 +1,6 @@
-# Ethereum 2.0 spec—Casper and sharding
+# Ethereum 2.0 spec—Casper and sharding (shasper)
 
-###### tags: `spec`, `eth2.0`, `casper`, `sharding`
+###### tags: `spec`, `eth2.0`, `casper`, `sharding`, `shasper`
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
