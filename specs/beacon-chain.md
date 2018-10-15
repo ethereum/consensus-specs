@@ -47,6 +47,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 **Notes**
 
+* See a recommended `MIN_COMMITTEE_SIZE`  of 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf).
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each validator set change.
@@ -369,6 +370,18 @@ def split(seq: List[Any], split_count: int) -> List[Any]:
     ]
 ```
 
+A helper method for readability:
+
+```python
+def clamp(minval: int, maxval: int, x: int) -> int:
+    if x <= minval:
+        return minval
+    elif x >= maxval:
+        return maxval
+    else:
+        return x
+```
+
 Now, our combined helper method:
 
 ```python
@@ -378,15 +391,11 @@ def get_new_shuffling(seed: Hash32,
     active_validators = get_active_validator_indices(validators)
     active_validators_size = len(active_validators)
 
-    if active_validators_size >= CYCLE_LENGTH * MIN_COMMITTEE_SIZE:
-        committees_per_slot = min(active_validators_size // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1, SHARD_COUNT // CYCLE_LENGTH)
-        slots_per_committee = 1
-    else:
-        committees_per_slot = 1
-        slots_per_committee = 1
-        while active_validators_size * slots_per_committee < CYCLE_LENGTH * MIN_COMMITTEE_SIZE \
-                and slots_per_committee < CYCLE_LENGTH:
-            slots_per_committee *= 2
+    committees_per_slot = clamp(
+        1,
+        SHARD_COUNT // CYCLE_LENGTH,
+        len(active_validators) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1,
+    )
 
     output = []
 
@@ -400,18 +409,16 @@ def get_new_shuffling(seed: Hash32,
         # Split the shuffled list into committees_per_slot pieces
         shard_indices = split(slot_indices, committees_per_slot)
 
-        shard_id_start = (
-            crosslinking_start_shard +
-            (slot * committees_per_slot // slots_per_committee)
-        )
-        shards_and_committees_for_shard_indices = [
+        shard_id_start = crosslinking_start_shard + slot * committees_per_slot
+
+        shards_and_committees_for_slot = [
             ShardAndCommittee(
-                shard_id=(shard_id_start + j) % SHARD_COUNT,
+                shard=(shard_id_start + shard_position) % SHARD_COUNT,
                 committee=indices
             )
-            for slot, indices in enumerate(shard_indices)
+            for shard_position, indices in enumerate(shard_indices)
         ]
-        output.append(shards_and_committees_for_shard_indices)
+        output.append(shards_and_committees_for_slot)
 
     return output
 ```
@@ -493,9 +500,7 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         for i in range(SHARD_COUNT)
     ]
     crystallized_state = CrystallizedState(
-        dynasty=1,
-        dynasty_seed=bytes([0] * 32),  # stub
-        dynasty_start_slot=0,
+        validator_set_change_slot=0,
         validators=validators,
         crosslinks=crosslinks,
         last_state_recalculation_slot=0,
@@ -679,9 +684,8 @@ In addition, validators with `status == PENALIZED` lose `B // reward_quotient + 
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE), sig=data[1])`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
+* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(version)), sig=data[1])`, where `version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
-
 * **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
 
 #### Finally...
