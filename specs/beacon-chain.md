@@ -43,6 +43,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
+| `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 
 **Notes**
 
@@ -565,6 +566,20 @@ def add_validator(validators: List[ValidatorRecord],
         return index
 ```
 
+## Routine for removing a validator
+
+```python
+def exit_validator(index, crystallized_state, penalize, current_slot):
+    validator = crystallized_state.validators[index]
+    validator.exit_slot = current_slot
+    if penalize:
+        validator.status = PENALIZED
+        crystallized_state.deposits_penalized_in_period[current_slot // WITHDRAWAL_PERIOD] += validator.balance
+    else:
+        validator.status = PENDING_EXIT
+    add_validator_set_change_record(crystallized_state, index, validator.pubkey, EXIT)
+```
+
 ### Per-block processing
 
 This procedure should be carried out every block.
@@ -669,19 +684,13 @@ In addition, validators with `status == PENALIZED` lose `B // reward_quotient + 
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(version)), sig=data[1])`, where `version = pre_fork_version if slot < fork_slot_number else post_fork_version`, returns True, and `validators[i].status == ACTIVE`, set `validators[i].status = PENDING_EXIT` and `validators[i].exit_slot = current_slot`.
-
-* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then:
-
-1. Set its `exit_slot` to equal the current `slot`
-2. Set its `status` to `PENALIZED`
-3. Set `crystallized_state.deposits_penalized_in_period[slot // WITHDRAWAL_PERIOD] += validators[v].balance`, extending the array if needed
-4. Run `add_validator_set_change_record(crystallized_state, v, validators[v].pubkey, EXIT)`
-
+* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(version)), sig=data[1])`, where `version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
 * **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
 
 #### Finally...
 
+* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
 * Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
 * Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
 * Empty the `active_state.pending_specials` list
