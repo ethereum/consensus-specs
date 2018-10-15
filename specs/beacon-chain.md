@@ -686,7 +686,7 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
 #### Finally...
 
-* For any validator with index `v` with balance is less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
+* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
 * Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
 * Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
 * Empty the `active_state.pending_specials` list
