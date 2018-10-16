@@ -44,7 +44,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
 | `RANDAO_SLOTS_PER_LAYER` | 2**12 (=4096) | slots | ~18 hours |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
-| `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
+| `MIN_BALANCE` | 2**4 (= 16) | ETH |
 
 **Notes**
 
@@ -99,7 +99,7 @@ A `BeaconBlock` has the following fields:
     # Recent PoW chain reference (block hash)
     'pow_chain_reference': 'hash32',
     # Skip list of previous block hashes 
-    # i'th item is the most recent ancestor who's slot is a multiple of 2**i for i = 0, ..., 31
+    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
     # Active state root
     'active_state_root': 'hash32',
@@ -230,7 +230,7 @@ A `ValidatorRecord` has the following fields:
     'randao_commitment': 'hash32',
     # Slot the RANDAO commitment was last changed
     'randao_last_change': 'int64',
-    # Balance
+    # Balance in Gwei
     'balance': 'int64',
     # Status code
     'status': 'int8',
@@ -243,7 +243,7 @@ A `CrosslinkRecord` has the following fields:
 
 ```python
 {
-    # Since last validator set change?
+    # Flag indicating a recent validator set change
     'recently_changed': 'bool',
     # Slot number
     'slot': 'int64',
@@ -300,22 +300,16 @@ Here's an example of its working (green is finalized blocks, yellow is justified
 
 We now define the state transition function. At the high level, the state transition is made up of two parts:
 
-1. The per-block processing, which happens every block, and affects the `ActiveState` only
-2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`
-
+1. The per-block processing, which happens every block, and affects the `ActiveState` only.
+2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`.
 
 The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
 
 ### Helper functions
 
-We start off by defining some helper algorithms. First, the function that selects the active validators:
+Below are various helper functions.
 
-```python
-def get_active_validator_indices(validators):
-    return [i for i, v in enumerate(validators) if v.status == ACTIVE]
-```
-
-Now, a function that shuffles this list:
+First a function that shuffles the validator list:
 
 ```python
 def shuffle(values: List[Any],
@@ -403,7 +397,7 @@ Now, our combined helper method:
 def get_new_shuffling(seed: Hash32,
                       validators: List[ValidatorRecord],
                       crosslinking_start_shard: int) -> List[List[ShardAndCommittee]]:
-    active_validators = get_active_validator_indices(validators)
+    active_validators = [i for i, v in enumerate(validators) if v.status == ACTIVE]
     active_validators_size = len(active_validators)
 
     committees_per_slot = clamp(
@@ -484,7 +478,6 @@ def int_sqrt(n: int) -> int:
         y = (x + n // x) // 2
     return x
 ```
-
 
 ### On startup
 
@@ -571,7 +564,7 @@ def add_validator(validators: List[ValidatorRecord],
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
         randao_last_change=current_slot,
-        balance=DEPOSIT_SIZE * GWEI_PER_ETH, # in Gwei
+        balance=DEPOSIT_SIZE * GWEI_PER_ETH,
         status=PENDING_ACTIVATION,
         exit_slot=0
     )
@@ -712,7 +705,7 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
 #### Finally...
 
-* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
+* For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
 * Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
 * Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
 * Empty the `active_state.pending_specials` list
@@ -731,7 +724,7 @@ Then, run the following algorithm to update the validator set:
 ```python
 def change_validators(validators: List[ValidatorRecord]) -> None:
     # The active validator set
-    active_validators = get_active_validator_indices(validators)
+    active_validators = [i for i, v in enumerate(validators) if v.status == ACTIVE]
     # The total balance of active validators
     total_balance = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
     # The maximum total wei that can deposit+withdraw
@@ -793,41 +786,41 @@ Finally:
 
 ### TODO
 
-Note: This spec is ~60% complete.
+Note: This spec is ~65% complete.
 
 **Missing**
 
-* [ ] Specify how `crystallized_state_root` and `active_state_root` are constructed, including Merklelisation logic for light clients
-* [ ] Specify the rules around acceptable values for `pow_chain_reference`
+* [ ] Specify the Merklelisation rules for beacon state and blocks and merge `crystallized_state_root` and `active_state_root` ([issue 54](https://github.com/ethereum/eth2.0-specs/issues/54))
+* [ ] Specify the rules around acceptable values for `pow_chain_reference` ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
 * [ ] Specify the shard chain blocks, blobs, proposers, etc.
-* [ ] Specify the rules for forced deregistrations
-* [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
-* [ ] Specify (in a separate Vyper file) the registration contract on the PoW chain
-* [ ] Specify the bootstrapping logic for the beacon chain genesis (e.g. specify a minimum number validators before the genesis block)
+* [ ] Specify the deposit contract on the PoW chain in Vyper
+* [ ] Specify the beacon chain genesis rules ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
 * [ ] Specify the logic for proofs of custody, including slashing conditions
-* [ ] Add an appendix about the BLS12-381 curve
-* [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
-* [ ] Add a glossary (in a separate `glossary.md`) to comprehensively and precisely define all the terms
+* [ ] Specify BLSVerify and rework the spec for BLS12-381 throughout
+* [ ] Specify the constraints for `SpecialRecord`s ([issue 43](https://github.com/ethereum/eth2.0-specs/issues/43))
 * [ ] Undergo peer review, security audits and formal verification
 
-**Possible rework/additions**
+**Documentation**
+
+* [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
+* [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
+* [ ] Add a glossary (in a separate `glossary.md`) to comprehensively and precisely define all the terms
+* [ ] Clearly document the various edge cases, e.g. with committee sizing
+* [ ] Rework the document for readability
+
+**Possible modifications and additions**
 
 * [ ] Replace the IMD fork choice rule with LMD
-* [ ] Merklelise `crystallized_state_root` and `active_state_root` into a single root
-* [ ] Replace Blake with a STARK-friendly hash function
+* [ ] Homogenise types to `uint64` ([PR 36](https://github.com/ethereum/eth2.0-specs/pull/36))
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
-* [ ] Use a separate networking-optimised serialisation format for networking
-* [ ] Harden RANDAO against orphaned reveals
-* [ ] Introduce a RANDAO slashing condition for early leakage
+* [ ] Introduce a RANDAO slashing condition for early reveals
 * [ ] Use a separate hash function for the proof of possession
 * [ ] Rework the `ShardAndCommittee` data structures
 * [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
 * [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
-* [ ] Add penalties for a deposit below 32 ETH (or some other threshold)
+* [ ] Add penalties for deposits below 32 ETH (or some other threshold)
 * [ ] Add a `SpecialRecord` to (re)register
-* [ ] Rework the document for readability
-* [ ] Clearly document the various edge cases, e.g. with committee sizing
 
 # Appendix
 ## Appendix A - Hash function
