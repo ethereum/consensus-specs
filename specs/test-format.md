@@ -1,6 +1,6 @@
-# General test format
+# General test format [WIP]
 
-This document defines the general YAML format to which all tests should conform.
+This document defines the general YAML format to which all tests should conform. Testing specifications in Eth2.0 are still a work in progress. _Expect breaking changes_
 
 ## ToC
 
