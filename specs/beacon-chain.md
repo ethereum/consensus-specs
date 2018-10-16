@@ -94,7 +94,7 @@ A `BeaconBlock` has the following fields:
 ```python
 {
     # Slot number
-    'slot': 'int64',
+    'slot': 'uint64',
     # Proposer RANDAO reveal
     'randao_reveal': 'hash32',
     # Recent PoW chain reference (block hash)
@@ -118,9 +118,9 @@ An `AttestationRecord` has the following fields:
 ```python
 {
     # Slot number
-    'slot': 'int64',
+    'slot': 'uint64',
     # Shard number
-    'shard': 'int16',
+    'shard': 'uint16',
     # Block hashes not part of the current chain, oldest to newest
     'oblique_parent_hashes': ['hash32'],
     # Shard block hash being attested to
@@ -128,11 +128,11 @@ An `AttestationRecord` has the following fields:
     # Attester participation bitfield (1 bit per attester)
     'attester_bitfield': 'bytes',
     # Slot of last justified block
-    'justified_slot': 'int64',
+    'justified_slot': 'uint64',
     # Hash of last justified block
     'justified_block_hash': 'hash32',
     # BLS aggregate signature
-    'aggregate_sig': ['int256']
+    'aggregate_sig': ['uint256']
 }
 ```
 
@@ -141,17 +141,17 @@ An `AttestationSignedData` has the following fields:
 ```python
 {
     # Fork version
-    'fork_version': 'int64',
+    'fork_version': 'uint64',
     # Slot number
-    'slot': 'int64',
+    'slot': 'uint64',
     # Shard number
-    'shard': 'int16',
+    'shard': 'uint16',
     # 31 parent hashes
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
     # Slot of last justified block referenced in the attestation
-    'justified_slot': 'int64'
+    'justified_slot': 'uint64'
 }
 ```
 
@@ -160,7 +160,7 @@ A `SpecialRecord` has the following fields:
 ```python
 {
     # Kind
-    'kind': 'int8',
+    'kind': 'uint8',
     # Data
     'data': ['bytes']
 }
@@ -178,7 +178,7 @@ The `ActiveState` has the following fields:
     'pending_attestations': [AttestationRecord],
     # Specials not yet been processed
     'pending_specials': [SpecialRecord]
-    # Most recent 2 * CYCLE_LENGTH block hashes, older to newer
+    # recent block hashes needed to process attestations, older to newer
     'recent_block_hashes': ['hash32'],
     # RANDAO state
     'randao_mix': 'hash32'
@@ -190,30 +190,30 @@ The `CrystallizedState` has the following fields:
 ```python
 {
     # Slot of last validator set change
-    'validator_set_change_slot': 'int64',
+    'validator_set_change_slot': 'uint64',
     # List of validators
     'validators': [ValidatorRecord],
     # Most recent crosslink for each shard
     'crosslinks': [CrosslinkRecord],
     # Last crystallized state recalculation
-    'last_state_recalculation_slot': 'int64',
+    'last_state_recalculation_slot': 'uint64',
     # Last finalized slot
-    'last_finalized_slot': 'int64',
+    'last_finalized_slot': 'uint64',
     # Last justified slot
-    'last_justified_slot': 'int64',
+    'last_justified_slot': 'uint64',
     # Number of consecutive justified slots
-    'justified_streak': 'int64',
+    'justified_streak': 'uint64',
     # Committee members and their assigned shard, per slot
     'shard_and_committee_for_slots': [[ShardAndCommittee]],
     # Total deposits penalized in the given withdrawal period
-    'deposits_penalized_in_period': ['int32'],
+    'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
-    'pre_fork_version': 'int32',
-    'post_fork_version': 'int32',
-    'fork_slot_number': 'int64',
+    'pre_fork_version': 'uint32',
+    'post_fork_version': 'uint32',
+    'fork_slot_number': 'uint64',
 }
 ```
 
@@ -222,21 +222,21 @@ A `ValidatorRecord` has the following fields:
 ```python
 {
     # BLS public key
-    'pubkey': 'int256',
+    'pubkey': 'uint256',
     # Withdrawal shard number
-    'withdrawal_shard': 'int16',
+    'withdrawal_shard': 'uint16',
     # Withdrawal address
     'withdrawal_address': 'address',
     # RANDAO commitment
     'randao_commitment': 'hash32',
     # Slot the RANDAO commitment was last changed
-    'randao_last_change': 'int64',
+    'randao_last_change': 'uint64',
     # Balance
-    'balance': 'int64',
+    'balance': 'uint64',
     # Status code
-    'status': 'int8',
+    'status': 'uint8',
     # Slot when validator exited (or 0)
-    'exit_slot': 'int64'
+    'exit_slot': 'uint64'
 }
 ```
 
@@ -247,7 +247,7 @@ A `CrosslinkRecord` has the following fields:
     # Since last validator set change?
     'recently_changed': 'bool',
     # Slot number
-    'slot': 'int64',
+    'slot': 'uint64',
     # Beacon chain block hash
     'shard_block_hash': 'hash32'
 }
@@ -258,9 +258,9 @@ A `ShardAndCommittee` object has the following fields:
 ```python
 {
     # Shard number
-    'shard': 'int16',
+    'shard': 'uint16',
     # Validator indices
-    'committee': ['int24']
+    'committee': ['uint24']
 }
 ```
 
@@ -455,8 +455,8 @@ def get_shards_and_committees_for_slot(crystallized_state: CrystallizedState,
 def get_block_hash(active_state: ActiveState,
                    current_block: BeaconBlock,
                    slot: int) -> Hash32:
-    earliest_slot_in_array = current_block.slot - CYCLE_LENGTH * 2
-    assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
+    earliest_slot_in_array = current_block.slot - len(active_state.recent_block_hashes)
+    assert earliest_slot_in_array <= slot < current_block.slot
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
 
@@ -606,15 +606,15 @@ This procedure should be carried out every block.
 First, set `recent_block_hashes` to the output of the following, where `parent_hash` is the hash of the immediate previous block (ie. must be equal to `ancestor_hashes[0]`):
 
 ```python
-def get_new_recent_block_hashes(old_block_hashes: List[Hash32],
-                                parent_slot: int,
-                                current_slot: int,
-                                parent_hash: Hash32) -> List[Hash32]:
+def append_to_recent_block_hashes(old_block_hashes: List[Hash32],
+                                  parent_slot: int,
+                                  current_slot: int,
+                                  parent_hash: Hash32) -> List[Hash32]:
     d = current_slot - parent_slot
-    return old_block_hashes[d:] + [parent_hash] * min(d, len(old_block_hashes))
+    return old_block_hashes + [parent_hash] * d
 ```
 
-The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`, and will now throw for `current_slot - CYCLE_LENGTH * 2 - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
+The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
 
 ```python
 def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
@@ -671,6 +671,8 @@ For every `(shard, shard_block_hash)` tuple:
 
 #### Balance recalculations related to FFG rewards
 
+Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
+
 * Let `total_balance` be the total balance of active validators.
 * Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
 * Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `1/reward_quotient`.)
@@ -707,8 +709,8 @@ In addition, validators with `status == PENALIZED` lose `B // reward_quotient + 
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `int32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
-* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `int32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
+* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
 * **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
 
 #### Finally...
@@ -717,6 +719,7 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 * Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
 * Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
 * Empty the `active_state.pending_specials` list
+* Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 
 ### Validator set change
