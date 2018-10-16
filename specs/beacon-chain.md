@@ -243,7 +243,7 @@ A `CrosslinkRecord` has the following fields:
 
 ```python
 {
-    # Flag indicating a recent validator set change
+    # Flag indicating if crosslink was updated since most recent validator change
     'recently_changed': 'bool',
     # Slot number
     'slot': 'int64',
