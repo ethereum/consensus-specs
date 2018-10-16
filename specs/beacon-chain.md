@@ -99,7 +99,7 @@ A `BeaconBlock` has the following fields:
     # Recent PoW chain reference (block hash)
     'pow_chain_reference': 'hash32',
     # Skip list of previous block hashes 
-    # i'th item is the most recent ancestor that is a multiple of 2**i for i = 0, ..., 31
+    # i'th item is the most recent ancestor who's slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
     # Active state root
     'active_state_root': 'hash32',
