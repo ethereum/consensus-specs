@@ -15,13 +15,13 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * **Validator** - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
 * **Active validator set** - those validators who are currently participating, and which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
 * **Committee** - a (pseudo-) randomly sampled subset of the active validator set. When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
-* **Proposer** - the validator that creates a block
-* **Attester** - a validator that is part of a committee that needs to sign off on a block.
+* **Proposer** - the validator that creates a beacon chain block
+* **Attester** - a validator that is part of a committee that needs to sign off on a beacon chain block.
 * **Beacon chain** - the central PoS chain that is the base of the sharding system.
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
-* **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a block and some attesters have the ability to make attestations
-* **Cycle** - a span of blocks during which all validators get exactly one chance to make an attestation (unless a validator set change happens inside of one)
+* **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
+* **Cycle** - a span of slots during which all validators get exactly one chance to make an attestation
 * **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
 * **Withdrawal period** - number of slots between a validator exit and the validator balance being withdrawable
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
@@ -99,7 +99,7 @@ A `BeaconBlock` has the following fields:
     'randao_reveal': 'hash32',
     # Recent PoW chain reference (block hash)
     'pow_chain_reference': 'hash32',
-    # Skip list of previous block hashes 
+    # Skip list of previous beacon block hashes
     # i'th item is the most recent ancestor who's slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
     # Active state root
@@ -121,15 +121,15 @@ An `AttestationRecord` has the following fields:
     'slot': 'uint64',
     # Shard number
     'shard': 'uint16',
-    # Block hashes not part of the current chain, oldest to newest
+    # Beacon block hashes not part of the current chain, oldest to newest
     'oblique_parent_hashes': ['hash32'],
     # Shard block hash being attested to
     'shard_block_hash': 'hash32',
     # Attester participation bitfield (1 bit per attester)
     'attester_bitfield': 'bytes',
-    # Slot of last justified block
+    # Slot of last justified beacon block
     'justified_slot': 'uint64',
-    # Hash of last justified block
+    # Hash of last justified beacon block
     'justified_block_hash': 'hash32',
     # BLS aggregate signature
     'aggregate_sig': ['uint256']
@@ -150,7 +150,7 @@ An `AttestationSignedData` has the following fields:
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
-    # Slot of last justified block referenced in the attestation
+    # Slot of last justified beacon block referenced in the attestation
     'justified_slot': 'uint64'
 }
 ```
@@ -178,7 +178,7 @@ The `ActiveState` has the following fields:
     'pending_attestations': [AttestationRecord],
     # Specials not yet been processed
     'pending_specials': [SpecialRecord]
-    # recent block hashes needed to process attestations, older to newer
+    # recent beacon block hashes needed to process attestations, older to newer
     'recent_block_hashes': ['hash32'],
     # RANDAO state
     'randao_mix': 'hash32'
@@ -248,7 +248,7 @@ A `CrosslinkRecord` has the following fields:
     'recently_changed': 'bool',
     # Slot number
     'slot': 'uint64',
-    # Beacon chain block hash
+    # Shard chain block hash
     'shard_block_hash': 'hash32'
 }
 ```
@@ -281,9 +281,9 @@ For a block on the beacon chain to be processed by a node, four conditions have 
 * The PoW chain block pointed to by the `pow_chain_reference` has already been processed and accepted
 * The node's local clock time is greater than or equal to the minimum timestamp as computed by `GENESIS_TIME + block.slot * SLOT_DURATION`
 
-If these conditions are not met, the client should delay processing the block until the conditions are all satisfied.
+If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
-Block production is significantly different because of the proof of stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block, and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (ie. within `SLOT_DURATION` seconds) synchronized with the other nodes.
+Beacon block production is significantly different because of the proof of stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block, and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (ie. within `SLOT_DURATION` seconds) synchronized with the other nodes.
 
 ### Beacon chain fork choice rule
 
@@ -304,8 +304,7 @@ We now define the state transition function. At the high level, the state transi
 1. The per-block processing, which happens every block, and affects the `ActiveState` only
 2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`
 
-
-The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
+The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
 
 ### Helper functions
 
@@ -460,7 +459,7 @@ def get_block_hash(active_state: ActiveState,
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, _, s)` should always return the block in the chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
+`get_block_hash(_, _, s)` should always return the block in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
@@ -601,7 +600,7 @@ def exit_validator(index, crystallized_state, penalize, current_slot):
 
 ### Per-block processing
 
-This procedure should be carried out every block.
+This procedure should be carried out every beacon block.
 
 First, set `recent_block_hashes` to the output of the following, where `parent_hash` is the hash of the immediate previous block (ie. must be equal to `ancestor_hashes[0]`):
 
@@ -627,7 +626,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
     return new_ancestor_hashes
 ```
 
-A block can have 0 or more `AttestationRecord` objects
+A beacon block can have 0 or more `AttestationRecord` objects
 
 For each one of these attestations:
 
@@ -642,7 +641,7 @@ For each one of these attestations:
 
 Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
 
-Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(crystallized_state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
+Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(crystallized_state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a beacon block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
 
 Additionally, verify and update the RANDAO reveal. This is done as follows:
 
@@ -659,7 +658,7 @@ Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
 For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
 * Let `total_balance` be the total balance of active validators.
-* Let `total_balance_attesting_at_s` be the total balance of validators that attested to the beacon chain block at slot `s`.
+* Let `total_balance_attesting_at_s` be the total balance of validators that attested to the beacon block at slot `s`.
 * If `3 * total_balance_attesting_at_s >= 2 * total_balance` set `last_justified_slot = max(last_justified_slot, s)` and `justified_streak += 1`. Otherwise set `justified_streak = 0`.
 * If `justified_streak >= CYCLE_LENGTH + 1` set `last_finalized_slot = max(last_finalized_slot, s - CYCLE_LENGTH - 1)`.
 
@@ -681,7 +680,7 @@ Note: When applying penalties in the following balance recalculations implemente
 
 For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
-* Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon chain block at slot `s`. In the normal case every validator will be in one of the `CYCLE_LENGTH` slots following slot `s` and so can vote for a block at slot `s`.
+* Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon block at slot `s`. In the normal case every validator will be in one of the `CYCLE_LENGTH` slots following slot `s` and so can vote for a block at slot `s`.
 * Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation.
 * If `time_since_finality <= 3 * CYCLE_LENGTH` adjust the balance of participating and non-participating validators as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_participating - total_balance) // total_balance`. (Note that this value may be negative.)
