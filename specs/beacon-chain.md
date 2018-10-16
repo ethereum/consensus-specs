@@ -436,7 +436,7 @@ def get_shards_and_committees_for_slot(crystallized_state: CrystallizedState,
 def get_block_hash(active_state: ActiveState,
                    current_block: BeaconBlock,
                    slot: int) -> Hash32:
-    earliest_slot_in_array = curblock.slot - len(active_state.recent_block_hashes)
+    earliest_slot_in_array = current_block.slot - len(active_state.recent_block_hashes)
     assert earliest_slot_in_array <= slot < current_block.slot
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
