@@ -98,7 +98,8 @@ A `BeaconBlock` has the following fields:
     'randao_reveal': 'hash32',
     # Recent PoW chain reference (block hash)
     'pow_chain_reference': 'hash32',
-    # Skip list of ancestor block hashes (i'th item is 2**i'th ancestor (or zero) for i = 0, ..., 31)
+    # Skip list of previous block hashes 
+    # i'th item is the most recent ancestor that is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
     # Active state root
     'active_state_root': 'hash32',
