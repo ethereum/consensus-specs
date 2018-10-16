@@ -803,7 +803,6 @@ Note: This spec is ~60% complete.
 * [ ] Replace the IMD fork choice rule with LMD
 * [ ] Merklelise `crystallized_state_root` and `active_state_root` into a single root
 * [ ] Replace Blake with a STARK-friendly hash function
-* [ ] Get rid of dynasties
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
 * [ ] Use a separate networking-optimised serialisation format for networking
