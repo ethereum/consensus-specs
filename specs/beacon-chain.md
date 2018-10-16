@@ -32,19 +32,20 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | --- | --- | :---: | - |
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
+| `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~1.1 hours |
+| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~18 hours |
 | `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
-| `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
-| `RANDAO_SLOTS_PER_LAYER` | 2**12 (=4096) | slots | ~18 hours |
-| `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
-| `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
+| `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
+| `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
+| `INITIAL_FORK_VERSION` | 0 | — |
 
 **Notes**
 
@@ -526,8 +527,8 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         shard_and_committee_for_slots=x + x,
         deposits_penalized_in_period=[],
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
-        pre_fork_version=0,
-        post_fork_version=0,
+        pre_fork_version=INITIAL_FORK_VERSION,
+        post_fork_version=INITIAL_FORK_VERSION,
         fork_slot_number=0
     )
 
