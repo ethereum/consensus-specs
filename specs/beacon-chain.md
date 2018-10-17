@@ -15,13 +15,13 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * **Validator** - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
 * **Active validator set** - those validators who are currently participating, and which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
 * **Committee** - a (pseudo-) randomly sampled subset of the active validator set. When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
-* **Proposer** - the validator that creates a block
-* **Attester** - a validator that is part of a committee that needs to sign off on a block.
+* **Proposer** - the validator that creates a beacon chain block
+* **Attester** - a validator that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
 * **Beacon chain** - the central PoS chain that is the base of the sharding system.
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
-* **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a block and some attesters have the ability to make attestations
-* **Cycle** - a span of blocks during which all validators get exactly one chance to make an attestation (unless a validator set change happens inside of one)
+* **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
+* **Cycle** - a span of slots during which all validators get exactly one chance to make an attestation
 * **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
 * **Withdrawal period** - number of slots between a validator exit and the validator balance being withdrawable
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
@@ -32,19 +32,21 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | --- | --- | :---: | - |
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
+| `MIN_BALANCE` | 2**4 (= 16) | ETH |
+| `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~1.1 hours |
+| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~18 hours |
 | `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
-| `RANDAO_SLOTS_PER_LAYER` | 2**12 (=4096) | slots | ~18 hours |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
-| `MIN_BALANCE` | 2**4 (= 16) | ETH |
+| `INITIAL_FORK_VERSION` | 0 | — |
 
 **Notes**
 
@@ -98,8 +100,13 @@ A `BeaconBlock` has the following fields:
     'randao_reveal': 'hash32',
     # Recent PoW chain reference (block hash)
     'pow_chain_reference': 'hash32',
+<<<<<<< HEAD
     # Skip list of previous block hashes 
     # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
+=======
+    # Skip list of previous beacon block hashes
+    # i'th item is the most recent ancestor who's slot is a multiple of 2**i for i = 0, ..., 31
+>>>>>>> master
     'ancestor_hashes': ['hash32'],
     # Active state root
     'active_state_root': 'hash32',
@@ -120,15 +127,15 @@ An `AttestationRecord` has the following fields:
     'slot': 'uint64',
     # Shard number
     'shard': 'uint16',
-    # Block hashes not part of the current chain, oldest to newest
+    # Beacon block hashes not part of the current chain, oldest to newest
     'oblique_parent_hashes': ['hash32'],
     # Shard block hash being attested to
     'shard_block_hash': 'hash32',
     # Attester participation bitfield (1 bit per attester)
     'attester_bitfield': 'bytes',
-    # Slot of last justified block
+    # Slot of last justified beacon block
     'justified_slot': 'uint64',
-    # Hash of last justified block
+    # Hash of last justified beacon block
     'justified_block_hash': 'hash32',
     # BLS aggregate signature
     'aggregate_sig': ['uint256']
@@ -139,8 +146,8 @@ An `AttestationSignedData` has the following fields:
 
 ```python
 {
-    # Chain version
-    'version': 'uint64',
+    # Fork version
+    'fork_version': 'uint64',
     # Slot number
     'slot': 'uint64',
     # Shard number
@@ -149,7 +156,7 @@ An `AttestationSignedData` has the following fields:
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
-    # Slot of last justified block referenced in the attestation
+    # Slot of last justified beacon block referenced in the attestation
     'justified_slot': 'uint64'
 }
 ```
@@ -177,7 +184,7 @@ The `ActiveState` has the following fields:
     'pending_attestations': [AttestationRecord],
     # Specials not yet been processed
     'pending_specials': [SpecialRecord]
-    # recent block hashes needed to process attestations, older to newer
+    # recent beacon block hashes needed to process attestations, older to newer
     'recent_block_hashes': ['hash32'],
     # RANDAO state
     'randao_mix': 'hash32'
@@ -247,7 +254,7 @@ A `CrosslinkRecord` has the following fields:
     'recently_changed': 'bool',
     # Slot number
     'slot': 'uint64',
-    # Beacon chain block hash
+    # Shard chain block hash
     'shard_block_hash': 'hash32'
 }
 ```
@@ -280,9 +287,9 @@ For a block on the beacon chain to be processed by a node, four conditions have 
 * The PoW chain block pointed to by the `pow_chain_reference` has already been processed and accepted
 * The node's local clock time is greater than or equal to the minimum timestamp as computed by `GENESIS_TIME + block.slot * SLOT_DURATION`
 
-If these conditions are not met, the client should delay processing the block until the conditions are all satisfied.
+If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
-Block production is significantly different because of the proof of stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block, and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (ie. within `SLOT_DURATION` seconds) synchronized with the other nodes.
+Beacon block production is significantly different because of the proof of stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block, and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (ie. within `SLOT_DURATION` seconds) synchronized with the other nodes.
 
 ### Beacon chain fork choice rule
 
@@ -300,10 +307,17 @@ Here's an example of its working (green is finalized blocks, yellow is justified
 
 We now define the state transition function. At the high level, the state transition is made up of two parts:
 
+<<<<<<< HEAD
 1. The per-block processing, which happens every block, and affects the `ActiveState` only.
 2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`.
 
 The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
+=======
+1. The per-block processing, which happens every block, and affects the `ActiveState` only
+2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`
+
+The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
+>>>>>>> master
 
 ### Helper functions
 
@@ -453,7 +467,7 @@ def get_block_hash(active_state: ActiveState,
     return active_state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, _, s)` should always return the block in the chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
+`get_block_hash(_, _, s)` should always return the block in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
@@ -519,8 +533,8 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         shard_and_committee_for_slots=x + x,
         deposits_penalized_in_period=[],
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
-        pre_fork_version=0,
-        post_fork_version=0,
+        pre_fork_version=INITIAL_FORK_VERSION,
+        post_fork_version=INITIAL_FORK_VERSION,
         fork_slot_number=0
     )
 
@@ -593,9 +607,12 @@ def exit_validator(index, crystallized_state, penalize, current_slot):
 
 ### Per-block processing
 
-This procedure should be carried out every block.
+This procedure should be carried out every beacon block.
 
-First, set `recent_block_hashes` to the output of the following, where `parent_hash` is the hash of the immediate previous block (ie. must be equal to `ancestor_hashes[0]`):
+* Let `parent_hash` be the hash of the immediate previous beacon block (ie. equal to `ancestor_hashes[0]`).
+* Let `parent` be the beacon block with the hash `parent_hash`
+
+First, set `recent_block_hashes` to the output of the following:
 
 ```python
 def append_to_recent_block_hashes(old_block_hashes: List[Hash32],
@@ -619,22 +636,23 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
     return new_ancestor_hashes
 ```
 
-A block can have 0 or more `AttestationRecord` objects
+A beacon block can have 0 or more `AttestationRecord` objects
 
 For each one of these attestations:
 
-* Verify that `slot <= parent.slot` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`
-* Verify that the `justified_slot` and `justified_block_hash` given are in the chain and are equal to or earlier than the `last_justified_slot` in the crystallized state.
+* Verify that `slot <= parent.slot` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
+* Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
+* Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
 * Compute `parent_hashes` = `[get_block_hash(active_state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `active_state`, so you would need to add it explicitly.
 * Let `attestation_indices` be `get_shards_and_committees_for_slot(crystallized_state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
-* Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero
-* Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1
-* Let `version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
-* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
+* Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
+* Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1.
+* Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
+* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
 
 Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
 
-Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(crystallized_state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
+Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(crystallized_state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a beacon block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
 
 Additionally, verify and update the RANDAO reveal. This is done as follows:
 
@@ -651,7 +669,7 @@ Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
 For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
 * Let `total_balance` be the total balance of active validators.
-* Let `total_balance_attesting_at_s` be the total balance of validators that attested to the beacon chain block at slot `s`.
+* Let `total_balance_attesting_at_s` be the total balance of validators that attested to the beacon block at slot `s`.
 * If `3 * total_balance_attesting_at_s >= 2 * total_balance` set `last_justified_slot = max(last_justified_slot, s)` and `justified_streak += 1`. Otherwise set `justified_streak = 0`.
 * If `justified_streak >= CYCLE_LENGTH + 1` set `last_finalized_slot = max(last_finalized_slot, s - CYCLE_LENGTH - 1)`.
 
@@ -673,7 +691,7 @@ Note: When applying penalties in the following balance recalculations implemente
 
 For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
 
-* Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon chain block at slot `s`. In the normal case every validator will be in one of the `CYCLE_LENGTH` slots following slot `s` and so can vote for a block at slot `s`.
+* Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon block at slot `s`. In the normal case every validator will be in one of the `CYCLE_LENGTH` slots following slot `s` and so can vote for a block at slot `s`.
 * Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation.
 * If `time_since_finality <= 3 * CYCLE_LENGTH` adjust the balance of participating and non-participating validators as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_participating - total_balance) // total_balance`. (Note that this value may be negative.)
@@ -701,7 +719,7 @@ In addition, validators with `status == PENALIZED` lose `B // reward_quotient + 
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(version)), sig=data[1])`, where `version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
+* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
 * **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
 
