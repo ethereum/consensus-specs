@@ -603,7 +603,10 @@ def exit_validator(index, crystallized_state, penalize, current_slot):
 
 This procedure should be carried out every block.
 
-First, set `recent_block_hashes` to the output of the following, where `parent_hash` is the hash of the immediate previous block (ie. must be equal to `ancestor_hashes[0]`):
+* Let `parent_hash` be the hash of the immediate previous beacon block (ie. equal to `ancestor_hashes[0]`).
+* Let `parent` be the beacon block with the hash `parent_hash`
+
+First, set `recent_block_hashes` to the output of the following:
 
 ```python
 def append_to_recent_block_hashes(old_block_hashes: List[Hash32],
