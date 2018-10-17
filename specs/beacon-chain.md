@@ -16,7 +16,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * **Active validator set** - those validators who are currently participating, and which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
 * **Committee** - a (pseudo-) randomly sampled subset of the active validator set. When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
 * **Proposer** - the validator that creates a beacon chain block
-* **Attester** - a validator that is part of a committee that needs to sign off on a beacon chain block.
+* **Attester** - a validator that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
 * **Beacon chain** - the central PoS chain that is the base of the sharding system.
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
