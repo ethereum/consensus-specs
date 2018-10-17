@@ -100,13 +100,8 @@ A `BeaconBlock` has the following fields:
     'randao_reveal': 'hash32',
     # Recent PoW chain reference (block hash)
     'pow_chain_reference': 'hash32',
-<<<<<<< HEAD
-    # Skip list of previous block hashes 
-    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
-=======
     # Skip list of previous beacon block hashes
-    # i'th item is the most recent ancestor who's slot is a multiple of 2**i for i = 0, ..., 31
->>>>>>> master
+    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
     # Active state root
     'active_state_root': 'hash32',
@@ -307,17 +302,10 @@ Here's an example of its working (green is finalized blocks, yellow is justified
 
 We now define the state transition function. At the high level, the state transition is made up of two parts:
 
-<<<<<<< HEAD
 1. The per-block processing, which happens every block, and affects the `ActiveState` only.
 2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`.
 
-The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
-=======
-1. The per-block processing, which happens every block, and affects the `ActiveState` only
-2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`
-
 The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
->>>>>>> master
 
 ### Helper functions
 
