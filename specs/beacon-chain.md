@@ -449,7 +449,7 @@ Here's a diagram of what's going on:
 We also make a function for generating persistent committees:
 
 ```python
-def get_persistent_shuffling(validators: List[ValidatorRecord], seed: Hash32):
+def get_persistent_shuffling(validators: List[ValidatorRecord], seed: Hash32) -> List[List[int]]:
     active_validators = get_active_validator_indices(validators)
     shuffled_active_validator_indices = shuffle(active_validators, seed)
     return split(shuffled_active_validator_indices, SHARD_COUNT)
