@@ -550,7 +550,19 @@ The `CrystallizedState()` and `ActiveState()` constructors should initialize all
 
 ### Routine for adding a validator
 
-This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. These logs should be processed in the order in which they are emitted by the PoW chain. Define `min_empty_validator(validators)` as a function that returns the lowest validator index `i` such that `validators[i].status == WITHDRAWN`, otherwise `None`.
+This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. These logs should be processed in the order in which they are emitted by the PoW chain.
+
+First, a helper function:
+
+```python
+def min_empty_validator(validators: List[ValidatorRecord]):
+    for i, v in enumerate(validators):
+        if v.status == WITHDRAWN:
+            return i
+    return None
+```
+
+Now, to add a validator:
 
 ```python
 def add_validator(validators: List[ValidatorRecord],
