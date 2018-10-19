@@ -795,21 +795,18 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
             # STUB: withdraw to shard chain
 ```
 
-Then:
+#### Finally...
 
 * Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
 * For all `c` in `crystallized_state.crosslinks`, set `c.recently_changed = False`
-* Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
-
-#### Finally...
-
 * For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
 * Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
 * Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
 * Empty the `active_state.pending_specials` list
 * Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
+* Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
+* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
 
 For any validator that was added or removed from the active validator list during this state recalculation:
 
