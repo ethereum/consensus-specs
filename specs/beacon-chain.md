@@ -814,12 +814,12 @@ Then:
 For any validator that was added or removed from the active validator list during this state recalculation:
 
 * If the validator was removed, remove their index from the `current_persistent_committees` and `next_persistent_committees` objects.
-* If the validator was added with index `validator_index`, let `assigned_shard = hash(crystallized_state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`. Add `validator_index` to the end of `next_persistent_committees[assigned_shard]`.
+* If the validator was added with index `validator_index`, let `assigned_shard = hash(active_state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`. Add `validator_index` to the end of `next_persistent_committees[assigned_shard]`.
 
 If `block.slot % SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD == 0`, then:
 
 * Set `current_persistent_committees = next_persistent_committees`
-* Set `next_persistent_committees = get_persistent_shuffling(validators, crystallized_state.randao_mix)`
+* Set `next_persistent_committees = get_persistent_shuffling(validators, active_state.randao_mix)`
 
 ### TODO
 
