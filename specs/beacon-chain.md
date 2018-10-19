@@ -818,6 +818,23 @@ If `block.slot % SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD == 0`, then:
 * Set `current_persistent_committees = next_persistent_committees`
 * Set `next_persistent_committees = get_persistent_shuffling(validators, active_state.randao_mix)`
 
+```
+### Possible alternative (run every state recalculation):
+
+active_validator_indices = get_active_validator_indices(validators)
+for i in range(len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD):
+    vid = active_validator_indices[hash(active_state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
+    new_shard = hash(active_state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
+    crystallized_state.persistent_shard_reassignments.append(ShardReassignmentRecord(validator_id=vid, shard=new_shard, slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD))
+    
+while len(crystallized_state.persistent_shard_reassignments) > 0 and crystallized_state.persistent_shard_reassignments[0].slot <= block.slot:
+    rec = crystallized_state.persistent_shard_reassignments[0]
+    for c in crystallized_state.current_persistent_committees:
+        if rec.validator_id in c:
+            c.pop(c.index(rec.validator_id))
+    crystallized_state.current_persistent_committees[rec.shard].append(vid)
+```
+
 ### TODO
 
 Note: This spec is ~60% complete.
