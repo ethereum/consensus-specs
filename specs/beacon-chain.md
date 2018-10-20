@@ -735,7 +735,6 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 * Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
 * Empty the `active_state.pending_specials` list
 * Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
-* Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 
 ### Validator set change
 
@@ -808,7 +807,7 @@ Finally:
 * Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
 * For all `c` in `crystallized_state.crosslinks`, set `c.recently_changed = False`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
+* Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]` and `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
 
 ### TODO
 
