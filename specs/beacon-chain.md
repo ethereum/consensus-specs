@@ -837,7 +837,6 @@ Note: This spec is ~60% complete.
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
 * [ ] Use a separate networking-optimised serialisation format for networking
-* [ ] Harden RANDAO against orphaned reveals
 * [ ] Introduce a RANDAO slashing condition for early leakage
 * [ ] Use a separate hash function for the proof of possession
 * [ ] Rework the `ShardAndCommittee` data structures
