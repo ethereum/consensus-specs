@@ -503,7 +503,8 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
             withdrawal_shard=withdrawal_shard,
             withdrawal_address=withdrawal_address,
             randao_commitment=randao_commitment,
-            current_slot=0
+            current_slot=0,
+            status=ACTIVE,
         )
     # Setup crystallized state
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
@@ -550,7 +551,7 @@ The `CrystallizedState()` and `ActiveState()` constructors should initialize all
 
 ### Routine for adding a validator
 
-This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. These logs should be processed in the order in which they are emitted by the PoW chain.
+This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators will be PENDING_ACTIVE. These logs should be processed in the order in which they are emitted by the PoW chain.
 
 First, a helper function:
 
@@ -571,6 +572,7 @@ def add_validator(validators: List[ValidatorRecord],
                   withdrawal_shard: int,
                   withdrawal_address: Address,
                   randao_commitment: Hash32,
+                  status: int,
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
@@ -584,7 +586,7 @@ def add_validator(validators: List[ValidatorRecord],
         randao_commitment=randao_commitment,
         randao_last_change=current_slot,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH, # in Gwei
-        status=PENDING_ACTIVATION,
+        status=status,
         exit_slot=0
     )
     index = min_empty_validator(validators)
