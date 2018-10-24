@@ -572,7 +572,7 @@ def add_validator(validators: List[ValidatorRecord],
                   withdrawal_shard: int,
                   withdrawal_address: Address,
                   randao_commitment: Hash32,
-                  status: uint8,
+                  status: int,
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
