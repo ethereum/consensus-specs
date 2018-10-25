@@ -551,7 +551,7 @@ The `CrystallizedState()` and `ActiveState()` constructors should initialize all
 
 ### Routine for adding a validator
 
-This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators will be PENDING_ACTIVE. These logs should be processed in the order in which they are emitted by the PoW chain.
+This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
 
 First, a helper function:
 
