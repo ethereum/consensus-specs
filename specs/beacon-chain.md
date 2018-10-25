@@ -146,7 +146,7 @@ An `AttestationSignedData` has the following fields:
     'slot': 'uint64',
     # Shard number
     'shard': 'uint16',
-    # 31 parent hashes
+    # CYCLE_LENGTH parent hashes
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
