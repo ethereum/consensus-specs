@@ -21,7 +21,7 @@ deserializing objects and data types.
          * [Hash97](#hash97)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
-      - [Container (TODO)](#container)
+      - [Container](#container)
    + [Deserialize/Decode](#deserializedecode)
       - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
       - [Address](#address-1)
@@ -31,7 +31,7 @@ deserializing objects and data types.
          * [Hash97](#hash97-1)
       - [Bytes](#bytes-1)
       - [List/Vectors](#listvectors-1)
-      - [Container (TODO)](#container-1)
+      - [Container](#container-1)
 * [Implementations](#implementations)
 
 ## About
@@ -217,12 +217,51 @@ return serialized_len + serialized_list_string
 
 #### Container
 
-```
-########################################
-                 TODO
-########################################
-```
+A container represents a heterogenous, associative collection of key-value pairs. Each pair is referred to as a `field`. To get the value for a given field, you supply the key which is a symbol unique to the container referred to as the field's `name`. The container data type is analogous to the `struct` type found in many languages like C or Go.
 
+To serialize a container, obtain the set of its field's names and sort them lexicographically. For each field name in this sorted list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the sorted field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **big endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
+
+
+| Check to perform                            | Code                        |
+|:--------------------------------------------|:----------------------------|
+| Length of serialized fields fits into 4 bytes | ``len(serialized) < 2**32`` |
+
+* To serialize:
+
+1. Get the names of the container's fields and sort them.
+
+2. For each name in the sorted list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
+
+3. Get the number of raw bytes in the serialized buffer. Encode that number as a `4-byte` **big endian** `uint32`.
+
+4. Prepend the length to the serialized buffer.
+
+**Example in Python**
+
+```python
+def get_field_names(typ):
+    return typ.fields.keys()
+
+def get_value_for_field_name(value, field_name):
+    return getattr(value, field_name)
+
+def get_type_for_field_name(typ, field_name):
+    return typ.fields[field_name]
+
+serialized_buffer = b''
+
+typ = type(value)
+for field_name in sorted(get_field_names(typ)):
+    field_value = get_value_for_field_name(value, field_name)
+    field_type = get_type_for_field_name(typ, field_name)
+    serialized_buffer += serialize(field_value, field_type)
+
+assert(len(serialized_buffer) < 2**32)
+
+serialized_len = (len(serialized_buffer).to_bytes(LENGTH_BYTES, 'big'))
+
+return serialized_len + serialized_buffer
+```
 
 ### Deserialize/Decode
 
@@ -357,10 +396,57 @@ return deserialized_list, new_index
 
 #### Container
 
-```
-########################################
-                 TODO
-########################################
+Refer to the section on container encoding for some definitions.
+
+To deserialize a container, loop over each field in the container and use the type of that field to know what kind of deserialization to perform. Consume successive elements of the data stream for each successful deserialization.
+
+Instantiate a container with the full set of deserialized data, matching each member with the corresponding field.
+
+| Check to perform                          | code                                                            |
+|:------------------------------------------|:----------------------------------------------------------------|
+| rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
+| list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
+
+* To deserialize:
+
+1. Get the names of the container's fields and sort them.
+
+2. For each name in the sorted list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
+
+3. Construct a container instance after successfully consuming the entire subset of the stream for the serialized container.
+
+**Example in Python**
+
+```python
+def get_field_names(typ):
+    return typ.fields.keys()
+
+def get_value_for_field_name(value, field_name):
+    return getattr(value, field_name)
+
+def get_type_for_field_name(typ, field_name):
+    return typ.fields[field_name]
+
+class Container:
+    # this is the container; here we will define an empty class for demonstration
+    pass
+
+# get a reference to the type in some way...
+container = Container()
+typ = type(container)
+
+assert(len(rawbytes) > current_index + LENGTH_BYTES)
+total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
+new_index = current_index + LENGTH_BYTES + total_length
+assert(len(rawbytes) >= new_index)
+item_index = current_index + LENGTH_BYTES
+
+values = {}
+for field_name in sorted(get_field_names(typ)):
+    field_name_type = get_type_for_field_name(typ, field_name)
+    values[field_name], item_index = deserialize_at(data, field_name_type, item_index)
+assert item_index == start + LENGTH_BYTES + length
+return typ(**values), item_index
 ```
 
 ## Implementations
