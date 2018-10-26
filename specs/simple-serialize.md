@@ -226,7 +226,7 @@ To serialize a container, obtain the set of its field's names and sort them lexi
 |:--------------------------------------------|:----------------------------|
 | Length of serialized fields fits into 4 bytes | ``len(serialized) < 2**32`` |
 
-* To serialize:
+To serialize:
 
 1. Get the names of the container's fields and sort them.
 
@@ -407,7 +407,7 @@ Instantiate a container with the full set of deserialized data, matching each me
 | rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
 | list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
 
-* To deserialize:
+To deserialize:
 
 1. Get the names of the container's fields and sort them.
 
