@@ -186,6 +186,8 @@ return byte_length + value
 
 #### List/Vectors
 
+Lists are a collection of elements of the same homogeneous type.
+
 | Check to perform                            | Code                        |
 |:--------------------------------------------|:----------------------------|
 | Length of serialized list fits into 4 bytes | ``len(serialized) < 2**32`` |
@@ -327,7 +329,7 @@ return rawbytes[bytes_start:bytes_end], new_index
 
 #### List/Vectors
 
-Deserialize each object in the list.
+Deserialize each element in the list.
 1. Get the length of the serialized list.
 2. Loop through deserializing each item in the list until you reach the
 entire length of the list.
