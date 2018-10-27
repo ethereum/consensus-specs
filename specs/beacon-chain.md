@@ -461,6 +461,26 @@ def get_block_hash(active_state: ActiveState,
 
 `get_block_hash(_, _, s)` should always return the block in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
 
+A function used throughout the spec is given by `bytesN` where `N` is a natural number. For a particular `N`, define `bytesN` as follows:
+
+```python
+def make_bytesN(n):
+    def as_n_bytes(x):
+        return x.to_bytes(n, byteorder='big')
+    return as_n_bytes
+```
+
+This functionality follows the [Python semantics here](https://docs.python.org/3.7/library/stdtypes.html#int.to_bytes).
+
+An example:
+
+```python
+index: int # for some index into the validator table...
+bytes3 = make_bytesN(3)
+validator_index = bytes3(index)
+# `validator_index` is the integer `index` serialized as a binary number with width three bytes, in big-endian byte order.
+```
+
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
 ```python
