@@ -207,8 +207,8 @@ The `CrystallizedState` has the following fields:
     # Committee members and their assigned shard, per slot
     'shard_and_committee_for_slots': [[ShardAndCommittee]],
     # Persistent shard committees
-    'current_persistent_committees': [['uint24']],
-    'next_persistent_committees': [['uint24']],
+    'persistent_committees': [['uint24']],
+    'shard_reassignment_records': [ShardReassignmentRecord],
     # Total deposits penalized in the given withdrawal period
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
@@ -265,6 +265,19 @@ A `ShardAndCommittee` object has the following fields:
     'shard': 'uint16',
     # Validator indices
     'committee': ['uint24']
+}
+```
+
+A `ShardReassignmentRecord` object has the following fields:
+
+```python
+{
+    # Which validator to reassign
+    'validator_id': 'uint64',
+    # To which shard
+    'shard': 'uint16',
+    # When
+    'slot': 'uint64'
 }
 ```
 
@@ -446,15 +459,6 @@ Here's a diagram of what's going on:
 
 ![](http://vitalik.ca/files/ShuffleAndAssign.png?1)
 
-We also make a function for generating persistent committees:
-
-```python
-def get_persistent_shuffling(validators: List[ValidatorRecord], seed: Hash32) -> List[List[int]]:
-    active_validators = get_active_validator_indices(validators)
-    shuffled_active_validator_indices = shuffle(active_validators, seed)
-    return split(shuffled_active_validator_indices, SHARD_COUNT)
-```
-
 We also define two functions for retrieving data from the state:
 
 ```python
@@ -485,6 +489,8 @@ def add_validator_set_change_record(crystallized_state: CrystallizedState,
         hash(crystallized_state.validator_set_delta_hash_chain +
              bytes1(flag) + bytes3(index) + bytes32(pubkey))
 ```
+
+We define another set of helpers: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
 
@@ -537,6 +543,8 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         last_justified_slot=0,
         justified_streak=0,
         shard_and_committee_for_slots=x + x,
+        persistent_shuffling=split(shuffle(validators, b'x\00'*32), SHARD_COUNT),
+        shard_reassignment_records=[],
         deposits_penalized_in_period=[],
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         pre_fork_version=INITIAL_FORK_VERSION,
@@ -810,17 +818,12 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
 
 For any validator that was added or removed from the active validator list during this state recalculation:
 
-* If the validator was removed, remove their index from the `current_persistent_committees` and `next_persistent_committees` objects.
+* If the validator was removed, remove their index from the `persistent_committees` and `next_persistent_committees` objects.
 * If the validator was added with index `validator_index`, let `assigned_shard = hash(active_state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`. Add `validator_index` to the end of `next_persistent_committees[assigned_shard]`.
 
-If `block.slot % SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD == 0`, then:
+Now run the following code to reshuffle a few proposers:
 
-* Set `current_persistent_committees = next_persistent_committees`
-* Set `next_persistent_committees = get_persistent_shuffling(validators, active_state.randao_mix)`
-
-```
-### Possible alternative (run every state recalculation):
-
+```python
 active_validator_indices = get_active_validator_indices(validators)
 for i in range(len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD):
     vid = active_validator_indices[hash(active_state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
@@ -829,10 +832,10 @@ for i in range(len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANG
     
 while len(crystallized_state.persistent_shard_reassignments) > 0 and crystallized_state.persistent_shard_reassignments[0].slot <= block.slot:
     rec = crystallized_state.persistent_shard_reassignments[0]
-    for c in crystallized_state.current_persistent_committees:
+    for c in crystallized_state.persistent_committees:
         if rec.validator_id in c:
             c.pop(c.index(rec.validator_id))
-    crystallized_state.current_persistent_committees[rec.shard].append(vid)
+    crystallized_state.persistent_committees[rec.shard].append(vid)
 ```
 
 ### TODO
