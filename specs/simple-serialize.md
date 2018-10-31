@@ -1,7 +1,7 @@
 # [WIP] SimpleSerialize (SSZ) Spec
 
 This is the **work in progress** document to describe `simpleserialize`, the
-current selected serialization method for Ethereum 2.0 using the Beacon Chain.
+current selected serialization method for Ethereum Serenity using the Beacon Chain.
 
 This document specifies the general information for serializing and
 deserializing objects and data types.

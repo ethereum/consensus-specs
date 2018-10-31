@@ -1,6 +1,6 @@
 # General test format [WIP]
 
-This document defines the general YAML format to which all tests should conform. Testing specifications in Eth2.0 are still a work in progress. _Expect breaking changes_
+This document defines the general YAML format to which all tests should conform. Testing specifications in Ethereum Serenity are still a work in progress. _Expect breaking changes_
 
 ## ToC
 
@@ -9,7 +9,7 @@ This document defines the general YAML format to which all tests should conform.
 * [Example test suite](#example-test-suite)
 
 ## About
-Ethereum 2.0 uses YAML as the format for all cross client tests. This document describes at a high level the general format to which all test files should conform.
+Ethereum Serenity uses YAML as the format for all cross client tests. This document describes at a high level the general format to which all test files should conform.
 
 The particular formats of specific types of tests (test suites) are defined in separate documents.
 
