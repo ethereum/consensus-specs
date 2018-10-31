@@ -464,8 +464,8 @@ def get_block_hash(active_state: ActiveState,
 A function used throughout the spec is given by `bytesN` where `N` is a natural number. For a particular `N`, define `bytesN` as follows:
 
 ```python
-def make_bytesN(n):
-    def as_n_bytes(x):
+def make_bytesN(n: int) -> Callable[[int], bytes]:
+    def as_n_bytes(x: int) -> bytes:
         return x.to_bytes(n, byteorder='big')
     return as_n_bytes
 ```
