@@ -35,7 +35,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
-| `GENESIS_TIME` | **TBD** | seconds |
+| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~1.1 hours |
@@ -44,6 +44,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
+| `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -98,7 +99,7 @@ A `BeaconBlock` has the following fields:
     # Proposer RANDAO reveal
     'randao_reveal': 'hash32',
     # Recent PoW chain reference (block hash)
-    'pow_chain_reference': 'hash32',
+    'candidate_pow_hash_chain_tip': 'hash32',
     # Skip list of previous beacon block hashes
     # i'th item is the most recent ancestor who's slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
@@ -209,6 +210,13 @@ The `CrystallizedState` has the following fields:
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
+    # Genesis time
+    'genesis_time': 'hash32',
+    # PoW chain reference
+    'known_pow_hash_chain_tip': 'hash32',
+    'processed_pow_hash_chain_tip': 'hash32',
+    'candidate_pow_hash_chain_tip': 'hash32',
+    'candidate_pow_hash_chain_tip_votes': 'uint64',
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
     'pre_fork_version': 'uint32',
@@ -485,13 +493,51 @@ def int_sqrt(n: int) -> int:
     return x
 ```
 
+### PoW chain contract
+
+The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
+
+```python
+HashChainValue: event({prev_tip: bytes32, data: bytes[2048], value: wei_value, total_deposit_count: int128})
+ChainStart: event({hash_chain_tip: bytes32, time: timestamp})
+
+hash_chain_tip: public(bytes32)
+total_deposit_count: int128
+
+@payable
+@public
+def deposit(data: bytes[2048]):
+    log.HashChainValue(self.hash_chain_tip, data, msg.value, self.total_deposit_count)
+    self.total_deposit_count += 1
+    self.hash_chain_tip = sha3(concat(self.hash_chain_tip, data, as_bytes32(msg.value), as_bytes32(self.total_deposit_count)))
+    if self.total_deposit_count == 16384:
+        log.ChainStart(self.hash_chain_tip, block.timestamp)
+```
+
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to move their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `data` a SimpleSerialize'd object of the form:
+
+```python
+{
+    'pubkey': 'int256',
+    'proof_of_possession': ['int256'],
+    'withdrawal_shard': 'int64',
+    'withdrawal_address`: 'bytes20',
+    'randao_commitment`: 'hash32',
+}
+```
+
+If they wish to deposit more than 32 ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
+
+* `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
+* `genesis_time` equal to the `time` value published in the log
+* `pow_hash_chain_tip` equal to the `hash_chain_tip` value published in the log
 
 ### On startup
 
 Run the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState, ActiveState]:
+def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_hash_chain_tip: Hash32) -> Tuple[CrystallizedState, ActiveState]:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
@@ -527,6 +573,11 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         shard_and_committee_for_slots=x + x,
         deposits_penalized_in_period=[],
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        genesis_time=genesis_time,
+        known_pow_hash_chain_tip=pow_hash_chain_tip,
+        processed_pow_hash_chain_tip=pow_hash_chain_tip,
+        candidate_pow_hash_chain_tip=bytes([0] * 32),
+        candidate_pow_hash_chain_tip_votes=0,
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
         fork_slot_number=0
@@ -738,6 +789,16 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 * Empty the `active_state.pending_specials` list
 * Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
+
+### PoW chain related rules
+
+If `block.slot % POW_HASH_VOTING_PERIOD == 0`, then:
+
+* If `crystallized_state.candidate_hash_chain_tip_votes * 3 >= POW_HASH_VOTING_PERIOD * 2`, set `crystallized_state.hash_chain_tip = crystallized_state.candidate_hash_chain_tip`
+* Set `crystallized_state.candidate_hash_chain_tip = block.candidate_pow_hash_chain_tip`
+* Set `crystallized_state.candidate_hash_chain_tip_votes = 0`
+
+Otherwise, if `block.candidate_pow_hash_chain_tip = crystallized_state.candidate_pow_hash_chain_tip`, set `crystallized_state.candidate_hash_chain_tip_votes += 1`.
 
 ### Validator set change
 
