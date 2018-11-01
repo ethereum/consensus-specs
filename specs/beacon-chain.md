@@ -543,7 +543,7 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         last_justified_slot=0,
         justified_streak=0,
         shard_and_committee_for_slots=x + x,
-        persistent_shuffling=split(shuffle(validators, b'x\00'*32), SHARD_COUNT),
+        persistent_shuffling=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
         shard_reassignment_records=[],
         deposits_penalized_in_period=[],
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
