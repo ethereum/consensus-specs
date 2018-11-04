@@ -583,7 +583,7 @@ def add_validator(validators: List[ValidatorRecord],
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
         randao_last_change=current_slot,
-        balance=DEPOSIT_SIZE * GWEI_PER_ETH, # in Gwei
+        balance=DEPOSIT_SIZE * GWEI_PER_ETH,
         status=status,
         exit_slot=0
     )
