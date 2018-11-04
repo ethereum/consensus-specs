@@ -404,7 +404,6 @@ def get_new_shuffling(seed: Hash32,
                       validators: List[ValidatorRecord],
                       crosslinking_start_shard: int) -> List[List[ShardAndCommittee]]:
     active_validators = get_active_validator_indices(validators)
-    active_validators_size = len(active_validators)
 
     committees_per_slot = clamp(
         1,
