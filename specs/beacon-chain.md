@@ -147,7 +147,7 @@ An `AttestationSignedData` has the following fields:
     'slot': 'uint64',
     # Shard number
     'shard': 'uint16',
-    # 31 parent hashes
+    # CYCLE_LENGTH parent hashes
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
@@ -498,7 +498,8 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
             withdrawal_shard=withdrawal_shard,
             withdrawal_address=withdrawal_address,
             randao_commitment=randao_commitment,
-            current_slot=0
+            current_slot=0,
+            status=ACTIVE,
         )
     # Setup crystallized state
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
@@ -545,7 +546,19 @@ The `CrystallizedState()` and `ActiveState()` constructors should initialize all
 
 ### Routine for adding a validator
 
-This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. These logs should be processed in the order in which they are emitted by the PoW chain. Define `min_empty_validator(validators)` as a function that returns the lowest validator index `i` such that `validators[i].status == WITHDRAWN`, otherwise `None`.
+This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
+
+First, a helper function:
+
+```python
+def min_empty_validator(validators: List[ValidatorRecord]):
+    for i, v in enumerate(validators):
+        if v.status == WITHDRAWN:
+            return i
+    return None
+```
+
+Now, to add a validator:
 
 ```python
 def add_validator(validators: List[ValidatorRecord],
@@ -554,6 +567,7 @@ def add_validator(validators: List[ValidatorRecord],
                   withdrawal_shard: int,
                   withdrawal_address: Address,
                   randao_commitment: Hash32,
+                  status: int,
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
@@ -566,8 +580,8 @@ def add_validator(validators: List[ValidatorRecord],
         withdrawal_address=withdrawal_address,
         randao_commitment=randao_commitment,
         randao_last_change=current_slot,
-        balance=DEPOSIT_SIZE * GWEI_PER_ETH,
-        status=PENDING_ACTIVATION,
+        balance=DEPOSIT_SIZE * GWEI_PER_ETH, # in Gwei
+        status=status,
         exit_slot=0
     )
     index = min_empty_validator(validators)
@@ -665,7 +679,7 @@ For every `(shard, shard_block_hash)` tuple:
 
 * Let `total_balance_attesting_to_h` be the total balance of validators that attested to the shard block with hash `shard_block_hash`.
 * Let `total_committee_balance` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_block_hash`.
-* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance` and `recently_changed is False`, set `crosslinks[shard] = CrosslinkRecord(recently_changed=True, slot=block.last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
+* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance` and `recently_changed is False`, set `crosslinks[shard] = CrosslinkRecord(recently_changed=True, slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
 
 #### Balance recalculations related to FFG rewards
 
