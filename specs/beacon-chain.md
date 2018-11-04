@@ -311,7 +311,10 @@ The crystallized state recalculation generally focuses on changes to the validat
 
 Below are various helper functions.
 
-First a function that shuffles the validator list:
+def get_active_validator_indices(validators)
+    return [i for i, v in enumerate(validators) if v.status == ACTIVE]
+
+The following is a function that shuffles the validator list:
 
 ```python
 def shuffle(values: List[Any],
@@ -399,7 +402,7 @@ Now, our combined helper method:
 def get_new_shuffling(seed: Hash32,
                       validators: List[ValidatorRecord],
                       crosslinking_start_shard: int) -> List[List[ShardAndCommittee]]:
-    active_validators = [i for i, v in enumerate(validators) if v.status == ACTIVE]
+    active_validators = get_active_validator_indices(validators)
     active_validators_size = len(active_validators)
 
     committees_per_slot = clamp(
@@ -747,7 +750,7 @@ Then, run the following algorithm to update the validator set:
 ```python
 def change_validators(validators: List[ValidatorRecord]) -> None:
     # The active validator set
-    active_validators = [i for i, v in enumerate(validators) if v.status == ACTIVE]
+    active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
     total_balance = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
     # The maximum total wei that can deposit+withdraw
