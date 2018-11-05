@@ -208,7 +208,7 @@ The `CrystallizedState` has the following fields:
     'shard_and_committee_for_slots': [[ShardAndCommittee]],
     # Persistent shard committees
     'persistent_committees': [['uint24']],
-    'persistent_shard_reassignments': [ShardReassignmentRecord],
+    'persistent_committee_reassignments': [ShardReassignmentRecord],
     # Total deposits penalized in the given withdrawal period
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
@@ -820,11 +820,11 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
 
 For any validator that was added or removed from the active validator list during this state recalculation:
 
-* If the validator was removed, remove their index from the `persistent_committees` and remove any `ShardReassignmentRecord`s containing their index from `persistent_shard_reassignments`.
+* If the validator was removed, remove their index from the `persistent_committees` and remove any `ShardReassignmentRecord`s containing their index from `persistent_committee_reassignments`.
 * If the validator was added with index `validator_index`:
   * let `assigned_shard = hash(active_state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`
   * let `reassignment_record = ShardReassignmentRecord(validator_index=validator_index, shard=assigned_shard, slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD)`
-  * Append `reassignment_record` to the end of `persistent_shard_reassignments`
+  * Append `reassignment_record` to the end of `persistent_committee_reassignments`
 
 Now run the following code to reshuffle a few proposers:
 
@@ -839,10 +839,10 @@ for i in range(num_validators_to_reshuffle):
         shard=new_shard,
         slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
     )
-    crystallized_state.persistent_shard_reassignments.append(shard_reassignment_record)
+    crystallized_state.persistent_committee_reassignments.append(shard_reassignment_record)
 
-while len(crystallized_state.persistent_shard_reassignments) > 0 and crystallized_state.persistent_shard_reassignments[0].slot <= block.slot:
-    rec = crystallized_state.persistent_shard_reassignments.pop(0)
+while len(crystallized_state.persistent_committee_reassignments) > 0 and crystallized_state.persistent_committee_reassignments[0].slot <= block.slot:
+    rec = crystallized_state.persistent_committee_reassignments.pop(0)
     for committee in crystallized_state.persistent_committees:
         if rec.validator_index in committee:
             committee.pop(
