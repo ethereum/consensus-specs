@@ -444,7 +444,7 @@ item_index = current_index + LENGTH_BYTES
 values = {}
 for field_name in sorted(get_field_names(typ)):
     field_name_type = get_type_for_field_name(typ, field_name)
-    values[field_name], item_index = deserialize_at(data, field_name_type, item_index)
+    values[field_name], item_index = deserialize(data, item_index, field_name_type)
 assert item_index == start + LENGTH_BYTES + length
 return typ(**values), item_index
 ```
