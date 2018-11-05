@@ -208,7 +208,7 @@ The `CrystallizedState` has the following fields:
     'shard_and_committee_for_slots': [[ShardAndCommittee]],
     # Persistent shard committees
     'persistent_committees': [['uint24']],
-    'shard_reassignment_records': [ShardReassignmentRecord],
+    'persistent_shard_reassignments': [ShardReassignmentRecord],
     # Total deposits penalized in the given withdrawal period
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
@@ -273,7 +273,7 @@ A `ShardReassignmentRecord` object has the following fields:
 ```python
 {
     # Which validator to reassign
-    'validator_id': 'uint64',
+    'validator_index': 'uint64',
     # To which shard
     'shard': 'uint16',
     # When
@@ -478,6 +478,8 @@ def get_block_hash(active_state: ActiveState,
 
 `get_block_hash(_, _, s)` should always return the block in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
 
+We define another set of helpers to be used throughout: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
+
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
 ```python
@@ -489,8 +491,6 @@ def add_validator_set_change_record(crystallized_state: CrystallizedState,
         hash(crystallized_state.validator_set_delta_hash_chain +
              bytes1(flag) + bytes3(index) + bytes32(pubkey))
 ```
-
-We define another set of helpers: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
 
@@ -803,38 +803,51 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
             # STUB: withdraw to shard chain
 ```
 
-#### Finally...
-
-* Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
 * For all `c` in `crystallized_state.crosslinks`, set `c.recently_changed = False`
-* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
-* Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
-* Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
-* Empty the `active_state.pending_specials` list
-* Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
 * Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
 
+#### Finally...
+
+* Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
+* Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
+* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
+* Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
+* Empty the `active_state.pending_specials` list
+* Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
+* If a validator set change did _not_ occur during this state recalculation, set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
+
 For any validator that was added or removed from the active validator list during this state recalculation:
 
-* If the validator was removed, remove their index from the `persistent_committees` and `next_persistent_committees` objects.
-* If the validator was added with index `validator_index`, let `assigned_shard = hash(active_state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`. Add `validator_index` to the end of `next_persistent_committees[assigned_shard]`.
+* If the validator was removed, remove their index from the `persistent_committees` and remove any `ShardReassignmentRecord`s containing their index from `persistent_shard_reassignments`.
+* If the validator was added with index `validator_index`:
+  * let `assigned_shard = hash(active_state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`
+  * let `reassignment_record = ShardReassignmentRecord(validator_index=validator_index, shard=assigned_shard, slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD)`
+  * Append `reassignment_record` to the end of `persistent_shard_reassignments`
 
 Now run the following code to reshuffle a few proposers:
 
 ```python
 active_validator_indices = get_active_validator_indices(validators)
-for i in range(len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD):
+num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
+for i in range(num_validators_to_reshuffle):
     vid = active_validator_indices[hash(active_state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
     new_shard = hash(active_state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
-    crystallized_state.persistent_shard_reassignments.append(ShardReassignmentRecord(validator_id=vid, shard=new_shard, slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD))
-    
+    shard_reassignment_record = ShardReassignmentRecord(
+        validator_index=vid,
+        shard=new_shard,
+        slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
+    )
+    crystallized_state.persistent_shard_reassignments.append(shard_reassignment_record)
+
 while len(crystallized_state.persistent_shard_reassignments) > 0 and crystallized_state.persistent_shard_reassignments[0].slot <= block.slot:
-    rec = crystallized_state.persistent_shard_reassignments[0]
-    for c in crystallized_state.persistent_committees:
-        if rec.validator_id in c:
-            c.pop(c.index(rec.validator_id))
+    rec = crystallized_state.persistent_shard_reassignments.pop(0)
+    for committee in crystallized_state.persistent_committees:
+        if rec.validator_index in committee:
+            committee.pop(
+                committee.index(rec.validator_index)
+            )
     crystallized_state.persistent_committees[rec.shard].append(vid)
 ```
 
