@@ -210,6 +210,8 @@ The `CrystallizedState` has the following fields:
     # Persistent shard committees
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
+    # Randao seed used for next shuffling
+    'next_shuffling_seed': 'hash32',
     # Total deposits penalized in the given withdrawal period
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
@@ -541,6 +543,7 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         persistent_shuffling=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
         shard_reassignment_records=[],
         deposits_penalized_in_period=[],
+        next_shuffling_seed=b'\x00'*32,
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
@@ -814,14 +817,15 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
 * Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
+* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, next_start_shard)`
+* Set `crystallized_state.next_shuffling_seed = active_state.randao_mix`
 
 ### If a validator set change does NOT happen
 
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `time_since_finality = block.slot - crystallized_state.validator_set_change_slot`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
+* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, next_start_shard)` and set `crystallized_state.next_shuffling_seed = active_state.randao_mix`. Do NOT update `next_start_shard`.
 
 #### Finally...
 
