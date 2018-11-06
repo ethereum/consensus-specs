@@ -110,7 +110,7 @@ return value
 |  `hash32` | Hash size of ``keccak`` or `blake2b[0.. < 32]`. |
 |  `hash96` | BLS Public Key Size.                            |
 |  `hash97` | BLS Public Key Size with recovery bit.          |
-|  `hashN`  | Hash of arbitrary length N                      |
+|  `hashN`  | Hash of arbitrary byte length, N                |
 
 
 | Checks to perform                      | Code                 |
