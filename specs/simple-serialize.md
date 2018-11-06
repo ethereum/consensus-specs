@@ -298,6 +298,17 @@ return rawbytes[current_index:current_index+20], new_index
 
 #### Hash
 
+
+##### HashN
+
+Return the N bytes.
+
+```python
+assert(len(rawbytes) >= current_index + N)
+new_index = current_index + N
+return rawbytes[current_index:current_index+N], new_index
+```
+
 ##### Hash32
 
 Return the 32 bytes.
