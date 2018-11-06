@@ -117,7 +117,7 @@ return value
 |:---------------------------------------|:---------------------|
 | Length in bytes is correct for `hashN` | ``len(value) == N``  |
 
-##### Example for arbitrary hashN
+##### HashN
 
 ```python
 assert(len(value) == N)
@@ -297,7 +297,6 @@ return rawbytes[current_index:current_index+20], new_index
 ```
 
 #### Hash
-
 
 ##### HashN
 
