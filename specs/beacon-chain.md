@@ -274,7 +274,7 @@ A `ShardReassignmentRecord` object has the following fields:
 ```python
 {
     # Which validator to reassign
-    'validator_index': 'uint64',
+    'validator_index': 'uint24',
     # To which shard
     'shard': 'uint16',
     # When
@@ -541,8 +541,8 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         last_justified_slot=0,
         justified_streak=0,
         shard_and_committee_for_slots=x + x,
-        persistent_shuffling=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
-        shard_reassignment_records=[],
+        persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
+        persistent_committee_reassignments=[],
         deposits_penalized_in_period=[],
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         pre_fork_version=INITIAL_FORK_VERSION,
