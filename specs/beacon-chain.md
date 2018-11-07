@@ -824,8 +824,8 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
 
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `time_since_finality = block.slot - crystallized_state.validator_set_change_slot`
-* Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, next_start_shard)` and set `crystallized_state.next_shuffling_seed = active_state.randao_mix`. Do NOT update `next_start_shard`.
+* Let `start_shard = shard_and_committee_for_slots[0][0].shard`
+* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, start_shard)` and set `crystallized_state.next_shuffling_seed = active_state.randao_mix`. Note that `start_shard` is not changed from last cycle.
 
 #### Finally...
 
