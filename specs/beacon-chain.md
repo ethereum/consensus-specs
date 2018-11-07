@@ -210,6 +210,8 @@ The `CrystallizedState` has the following fields:
     # Persistent shard committees
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
+    # Randao seed used for next shuffling
+    'next_shuffling_seed': 'hash32',
     # Total deposits penalized in the given withdrawal period
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
@@ -249,8 +251,6 @@ A `CrosslinkRecord` has the following fields:
 
 ```python
 {
-    # Flag indicating if crosslink was updated since most recent validator change
-    'recently_changed': 'bool',
     # Slot number
     'slot': 'uint64',
     # Shard chain block hash
@@ -526,7 +526,6 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
     crosslinks = [
         CrosslinkRecord(
-            recently_changed=False,
             slot=0,
             hash=bytes([0] * 32)
         )
@@ -544,6 +543,7 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
         persistent_committee_reassignments=[],
         deposits_penalized_in_period=[],
+        next_shuffling_seed=b'\x00'*32,
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
@@ -702,7 +702,7 @@ For every `(shard, shard_block_hash)` tuple:
 
 * Let `total_balance_attesting_to_h` be the total balance of validators that attested to the shard block with hash `shard_block_hash`.
 * Let `total_committee_balance` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_block_hash`.
-* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance` and `recently_changed is False`, set `crosslinks[shard] = CrosslinkRecord(recently_changed=True, slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
+* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance`, set `crosslinks[shard] = CrosslinkRecord(slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
 
 #### Balance recalculations related to FFG rewards
 
@@ -732,13 +732,13 @@ In addition, validators with `status == PENALIZED` lose `B // reward_quotient + 
 For every shard number `shard` for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `shard`, `V`:
 
 * Let `total_balance_of_v` be the total balance of `V`.
+* Let `winning_shard_hash` be the hash that the largest total deposits signed for the `shard` during the cycle.
+* Define a "participating validator" as a member of `V` that signed a crosslink of `winning_shard_hash`.
 * Let `total_balance_of_v_participating` be the total balance of the subset of `V` that participated.
 * Let `time_since_last_confirmation = block.slot - crosslinks[shard].slot`.
-* If `recently_changed is False`, adjust balances as follows:
+* Adjust balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
-    * Non-participating validators lose `B // reward_quotient + B * time_since_last_confirmation // quadratic_penalty_quotient`.
-
-In addition, validators with `status == PENALIZED` lose `B // reward_quotient + B * sum([time_since_last_confirmation(c) for c in committees]) // len(committees) // quadratic_penalty_quotient`, where `committees` is the set of committees processed and `time_since_last_confirmation(c)` is the value of `time_since_last_confirmation` in committee `c`.
+    * Non-participating validators lose `B // reward_quotient`.
 
 #### Process penalties, logouts and other special objects
 
@@ -815,10 +815,17 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
 ```
 
 * Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
-* For all `c` in `crystallized_state.crosslinks`, set `c.recently_changed = False`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(active_state.randao_mix, validators, next_start_shard)`
+* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, next_start_shard)`
+* Set `crystallized_state.next_shuffling_seed = active_state.randao_mix`
+
+### If a validator set change does NOT happen
+
+* Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
+* Let `time_since_finality = block.slot - crystallized_state.validator_set_change_slot`
+* Let `start_shard = shard_and_committee_for_slots[0][0].shard`
+* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, start_shard)` and set `crystallized_state.next_shuffling_seed = active_state.randao_mix`. Note that `start_shard` is not changed from last cycle.
 
 #### Finally...
 
@@ -826,7 +833,6 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
 * Empty the `active_state.pending_specials` list
 * For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
 * Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
-* If a validator set change did _not_ occur during this state recalculation, set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
 
 For any validator that was added or removed from the active validator list during this state recalculation:
