@@ -18,7 +18,6 @@ deserializing objects and data types.
       - [Hash](#hash)
          * [Hash32](#hash32)
          * [Hash96](#hash96)
-         * [Hash97](#hash97)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
       - [Container](#container)
@@ -28,7 +27,6 @@ deserializing objects and data types.
       - [Hash](#hash-1)
          * [Hash32](#hash32-1)
          * [Hash96](#hash96-1)
-         * [Hash97](#hash97-1)
       - [Bytes](#bytes-1)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
@@ -115,14 +113,12 @@ return value
 |:---------:|:------------------------------------------------|
 |  `hash32` | Hash size of ``keccak`` or `blake2b[0.. < 32]`. |
 |  `hash96` | BLS Public Key Size.                            |
-|  `hash97` | BLS Public Key Size with recovery bit.          |
 
 
 | Checks to perform                   | Code                 |
 |:-----------------------------------|:---------------------|
 | Length is correct (32) if `hash32` | ``len(value) == 32`` |
 | Length is correct (96) if `hash96` | ``len(value) == 96`` |
-| Length is correct (97) if `hash97` | ``len(value) == 97`` |
 
 
 **Example all together**
@@ -132,8 +128,6 @@ if (type(value) == 'hash32'):
    assert(len(value) == 32)
 elif (type(value) == 'hash96'):
    assert(len(value) == 96)
-elif (type(value) == 'hash97'):
-   assert(len(value) == 97)
 else:
    raise TypeError('Invalid hash type supplied')
 
@@ -155,15 +149,6 @@ Ensure 96 byte length and return the bytes.
 
 ```python
 assert(len(value) == 96)
-return value
-```
-
-##### Hash97
-
-Ensure 97 byte length and return the bytes.
-
-```python
-assert(len(value) == 97)
 return value
 ```
 
@@ -332,17 +317,6 @@ assert(len(rawbytes) >= current_index + 96)
 new_index = current_index + 96
 return rawbytes[current_index:current_index+96], new_index
 ```
-
-##### Hash97
-
-Return the 97 bytes.
-
-```python
-assert(len(rawbytes) >= current_index + 97)
-new_index = current_index + 97
-return rawbytes[current_index:current_index+97], new_index
-```
-
 
 #### Bytes
 
