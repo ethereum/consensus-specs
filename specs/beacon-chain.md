@@ -104,10 +104,8 @@ A `BeaconBlock` has the following fields:
     # Skip list of previous beacon block hashes
     # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
-    # Active state root
-    'active_state_root': 'hash32',
-    # Crystallized state root
-    'crystallized_state_root': 'hash32',
+    # State root
+    'state_root': 'hash32',
     # Attestations
     'attestations': [AttestationRecord],
     # Specials (e.g. logouts, penalties)
@@ -170,24 +168,7 @@ A `SpecialRecord` has the following fields:
 
 ### Beacon chain state
 
-For convenience we define the beacon chain state in two parts: "active state" and "crystallized state".
-
-The `ActiveState` has the following fields:
-
-```python
-{
-    # Attestations not yet processed
-    'pending_attestations': [AttestationRecord],
-    # Specials not yet been processed
-    'pending_specials': [SpecialRecord]
-    # recent beacon block hashes needed to process attestations, older to newer
-    'recent_block_hashes': ['hash32'],
-    # RANDAO state
-    'randao_mix': 'hash32'
-}
-```
-
-The `CrystallizedState` has the following fields:
+The `state` has the following fields:
 
 ```python
 {
@@ -221,6 +202,14 @@ The `CrystallizedState` has the following fields:
     'pre_fork_version': 'uint32',
     'post_fork_version': 'uint32',
     'fork_slot_number': 'uint64',
+    # Attestations not yet processed
+    'pending_attestations': [AttestationRecord],
+    # Specials not yet been processed
+    'pending_specials': [SpecialRecord]
+    # recent beacon block hashes needed to process attestations, older to newer
+    'recent_block_hashes': ['hash32'],
+    # RANDAO state
+    'randao_mix': 'hash32'
 }
 ```
 
@@ -319,10 +308,10 @@ Here's an example of its working (green is finalized blocks, yellow is justified
 
 We now define the state transition function. At the high level, the state transition is made up of two parts:
 
-1. The per-block processing, which happens every block, and affects the `ActiveState` only.
-2. The crystallized state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the `CrystallizedState` and `ActiveState`.
+1. The per-block processing, which happens every block, and only affects a few parts of the `state`.
+2. The inter-cycle state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the entire `state`.
 
-The crystallized state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `ActiveState`.
+The inter-cycle state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `State`.
 
 ### Helper functions
 
@@ -460,18 +449,18 @@ Here's a diagram of what's going on:
 We also define two functions for retrieving data from the state:
 
 ```python
-def get_shards_and_committees_for_slot(crystallized_state: CrystallizedState,
+def get_shards_and_committees_for_slot(state: State,
                                        slot: int) -> List[ShardAndCommittee]:
-    earliest_slot_in_array = crystallized_state.last_state_recalculation - CYCLE_LENGTH
+    earliest_slot_in_array = state.last_state_recalculation - CYCLE_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
-    return crystallized_state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
+    return state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
 
-def get_block_hash(active_state: ActiveState,
+def get_block_hash(state: State,
                    current_block: BeaconBlock,
                    slot: int) -> Hash32:
-    earliest_slot_in_array = current_block.slot - len(active_state.recent_block_hashes)
+    earliest_slot_in_array = current_block.slot - len(state.recent_block_hashes)
     assert earliest_slot_in_array <= slot < current_block.slot
-    return active_state.recent_block_hashes[slot - earliest_slot_in_array]
+    return state.recent_block_hashes[slot - earliest_slot_in_array]
 ```
 
 `get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
@@ -481,12 +470,12 @@ We define another set of helpers to be used throughout: `bytes1(x): return x.to_
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
 ```python
-def add_validator_set_change_record(crystallized_state: CrystallizedState,
+def add_validator_set_change_record(state: State,
                                     index: int,
                                     pubkey: int,
                                     flag: int) -> None:
-    crystallized_state.validator_set_delta_hash_chain = \
-        hash(crystallized_state.validator_set_delta_hash_chain +
+    state.validator_set_delta_hash_chain = \
+        hash(state.validator_set_delta_hash_chain +
              bytes1(flag) + bytes3(index) + bytes32(pubkey))
 ```
 
@@ -507,7 +496,7 @@ def int_sqrt(n: int) -> int:
 Run the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState, ActiveState]:
+def on_startup(initial_validator_entries: List[Any]) -> State:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
@@ -522,7 +511,7 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
             current_slot=0,
             status=ACTIVE,
         )
-    # Setup crystallized state
+    # Setup state
     x = get_new_shuffling(bytes([0] * 32), validators, 0)
     crosslinks = [
         CrosslinkRecord(
@@ -531,7 +520,7 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         )
         for i in range(SHARD_COUNT)
     ]
-    crystallized_state = CrystallizedState(
+    state = State(
         validator_set_change_slot=0,
         validators=validators,
         crosslinks=crosslinks,
@@ -547,25 +536,17 @@ def on_startup(initial_validator_entries: List[Any]) -> Tuple[CrystallizedState,
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
-        fork_slot_number=0
-    )
-
-    # Setup active state
-    recent_block_hashes = [
-        bytes([0] * 32)
-        for _ in range(CYCLE_LENGTH * 2)
-    ]
-    active_state = ActiveState(
+        fork_slot_number=0,
         pending_attestations=[],
         pending_specials=[],
-        recent_block_hashes=recent_block_hashes,
+        recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
         randao_mix=bytes([0] * 32)  # stub
     )
 
-    return crystallized_state, active_state
+    return state
 ```
 
-The `CrystallizedState()` and `ActiveState()` constructors should initialize all values to zero bytes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
+The `State()` constructor should initialize all values to zero bytes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
 
 ### Routine for adding a validator
 
@@ -619,15 +600,15 @@ def add_validator(validators: List[ValidatorRecord],
 ## Routine for removing a validator
 
 ```python
-def exit_validator(index, crystallized_state, penalize, current_slot):
-    validator = crystallized_state.validators[index]
+def exit_validator(index, state, penalize, current_slot):
+    validator = state.validators[index]
     validator.exit_slot = current_slot
     if penalize:
         validator.status = PENALIZED
-        crystallized_state.deposits_penalized_in_period[current_slot // WITHDRAWAL_PERIOD] += validator.balance
+        state.deposits_penalized_in_period[current_slot // WITHDRAWAL_PERIOD] += validator.balance
     else:
         validator.status = PENDING_EXIT
-    add_validator_set_change_record(crystallized_state, index, validator.pubkey, EXIT)
+    add_validator_set_change_record(state, index, validator.pubkey, EXIT)
 ```
 
 ### Per-block processing
@@ -668,22 +649,22 @@ For each one of these attestations:
 * Verify that `slot <= parent.slot` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
-* Compute `parent_hashes` = `[get_block_hash(active_state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `active_state`, so you would need to add it explicitly.
-* Let `attestation_indices` be `get_shards_and_committees_for_slot(crystallized_state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
+* Compute `parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
+* Let `attestation_indices` be `get_shards_and_committees_for_slot(state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1.
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
 * Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
 
-Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
+Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `state` with those included in the block.
 
-Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(crystallized_state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a beacon block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
+Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a beacon block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
 
 Additionally, verify and update the RANDAO reveal. This is done as follows:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `V = crystallized_state.validators[curblock_proposer_index]`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `active_state.randao_mix = xor(active_state.randao_mix, block.randao_reveal)` and append to `ActiveState.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal])`.
+* Let `V = state.validators[curblock_proposer_index]`.
+* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and append to `State.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal])`.
 
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
@@ -742,19 +723,19 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 #### Process penalties, logouts and other special objects
 
-For each `SpecialRecord` `obj` in `active_state.pending_specials`:
+For each `SpecialRecord` `obj` in `state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
-* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
+* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], state, penalize=False, current_slot=block.slot)`
+* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
 * **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
 
 ### Validator set change
 
 A validator set change can happen after a state recalculation if all of the following criteria are satisfied:
 
-* `block.slot - crystallized_state.validator_set_change_slot >= MIN_VALIDATOR_SET_CHANGE_INTERVAL`
-* `last_finalized_slot > crystallized_state.validator_set_change_slot`
-* For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > crystallized_state.validator_set_change_slot`
+* `block.slot - state.validator_set_change_slot >= MIN_VALIDATOR_SET_CHANGE_INTERVAL`
+* `last_finalized_slot > state.validator_set_change_slot`
+* For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_set_change_slot`
 
 Then, run the following algorithm to update the validator set:
 
@@ -776,7 +757,7 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
             validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE * GWEI_PER_ETH
             add_validator_set_change_record(
-                crystallized_state=crystallized_state,
+                state=state,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=ENTRY
@@ -786,7 +767,7 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
             validators[i].exit_slot = current_slot
             total_changed += validators[i].balance
             add_validator_set_change_record(
-                crystallized_state=crystallized_state,
+                state=state,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=EXIT
@@ -797,9 +778,9 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // WITHDRAWAL_PERIOD
     total_penalties = (
-        (crystallized_state.deposits_penalized_in_period[period_index]) +
-        (crystallized_state.deposits_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
-        (crystallized_state.deposits_penalized_in_period[period_index - 2] if period_index >= 2 else 0)
+        (state.deposits_penalized_in_period[period_index]) +
+        (state.deposits_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
+        (state.deposits_penalized_in_period[period_index - 2] if period_index >= 2 else 0)
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
@@ -814,32 +795,32 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
             # STUB: withdraw to shard chain
 ```
 
-* Set `crystallized_state.validator_set_change_slot = crystallized_state.last_state_recalculation_slot`
+* Set `state.validator_set_change_slot = state.last_state_recalculation_slot`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, next_start_shard)`
-* Set `crystallized_state.next_shuffling_seed = active_state.randao_mix`
+* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, next_start_shard)`
+* Set `state.next_shuffling_seed = state.randao_mix`
 
 ### If a validator set change does NOT happen
 
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
-* Let `time_since_finality = block.slot - crystallized_state.validator_set_change_slot`
+* Let `time_since_finality = block.slot - state.validator_set_change_slot`
 * Let `start_shard = shard_and_committee_for_slots[0][0].shard`
-* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(crystallized_state.next_shuffling_seed, validators, start_shard)` and set `crystallized_state.next_shuffling_seed = active_state.randao_mix`. Note that `start_shard` is not changed from last cycle.
+* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, start_shard)` and set `state.next_shuffling_seed = state.randao_mix`. Note that `start_shard` is not changed from last cycle.
 
 #### Finally...
 
-* Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
-* Empty the `active_state.pending_specials` list
-* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
-* Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
-* Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
+* Remove all attestation records older than slot `state.last_state_recalculation_slot`
+* Empty the `state.pending_specials` list
+* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, state, penalize=False, current_slot=block.slot)`
+* Set `state.recent_block_hashes = state.recent_block_hashes[CYCLE_LENGTH:]`
+* Set `state.last_state_recalculation_slot += CYCLE_LENGTH`
 
 For any validator that was added or removed from the active validator list during this state recalculation:
 
 * If the validator was removed, remove their index from the `persistent_committees` and remove any `ShardReassignmentRecord`s containing their index from `persistent_committee_reassignments`.
 * If the validator was added with index `validator_index`:
-  * let `assigned_shard = hash(active_state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`
+  * let `assigned_shard = hash(state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`
   * let `reassignment_record = ShardReassignmentRecord(validator_index=validator_index, shard=assigned_shard, slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD)`
   * Append `reassignment_record` to the end of `persistent_committee_reassignments`
 
@@ -849,23 +830,23 @@ Now run the following code to reshuffle a few proposers:
 active_validator_indices = get_active_validator_indices(validators)
 num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
 for i in range(num_validators_to_reshuffle):
-    vid = active_validator_indices[hash(active_state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
-    new_shard = hash(active_state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
+    vid = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
+    new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
     shard_reassignment_record = ShardReassignmentRecord(
         validator_index=vid,
         shard=new_shard,
         slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
     )
-    crystallized_state.persistent_committee_reassignments.append(shard_reassignment_record)
+    state.persistent_committee_reassignments.append(shard_reassignment_record)
 
-while len(crystallized_state.persistent_committee_reassignments) > 0 and crystallized_state.persistent_committee_reassignments[0].slot <= block.slot:
-    rec = crystallized_state.persistent_committee_reassignments.pop(0)
-    for committee in crystallized_state.persistent_committees:
+while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= block.slot:
+    rec = state.persistent_committee_reassignments.pop(0)
+    for committee in state.persistent_committees:
         if rec.validator_index in committee:
             committee.pop(
                 committee.index(rec.validator_index)
             )
-    crystallized_state.persistent_committees[rec.shard].append(vid)
+    state.persistent_committees[rec.shard].append(vid)
 ```
 
 ### TODO
