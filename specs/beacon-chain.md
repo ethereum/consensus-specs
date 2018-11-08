@@ -849,6 +849,8 @@ Now run the following code to reshuffle a few proposers:
 active_validator_indices = get_active_validator_indices(validators)
 num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
 for i in range(num_validators_to_reshuffle):
+    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
+    # and none of the hashes used for entropy in this loop will be the same
     vid = active_validator_indices[hash(active_state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
     new_shard = hash(active_state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
     shard_reassignment_record = ShardReassignmentRecord(
