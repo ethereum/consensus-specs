@@ -91,7 +91,7 @@ return b'\x01' if value is True else b'\x00'
 
 #### Address
 
-The address should already come as a hash/byte format. Ensure that length is
+The `address` should already come as a hash/byte format. Ensure that length is
 **20**.
 
 | Check to perform       | Code                 |
@@ -107,17 +107,14 @@ return value
 
 | Hash Type | Usage                                           |
 |:---------:|:------------------------------------------------|
-|  `hash32` | Hash size of ``keccak`` or `blake2b[0.. < 32]`. |
-|  `hash96` | BLS Public Key Size.                            |
-|  `hash97` | BLS Public Key Size with recovery bit.          |
-|  `hashN`  | Hash of arbitrary byte length, N                |
+|  `hashN`  | Hash of arbitrary byte length `N`.              |
 
 
 | Checks to perform                      | Code                 |
 |:---------------------------------------|:---------------------|
 | Length in bytes is correct for `hashN` | ``len(value) == N``  |
 
-##### HashN
+##### hashN
 
 ```python
 assert(len(value) == N)
@@ -125,36 +122,9 @@ assert(len(value) == N)
 return value
 ```
 
-##### Hash32
-
-Ensure 32 byte length and return the bytes.
-
-```python
-assert(len(value) == 32)
-return value
-```
-
-##### Hash96
-
-Ensure 96 byte length and return the bytes.
-
-```python
-assert(len(value) == 96)
-return value
-```
-
-##### Hash97
-
-Ensure 97 byte length and return the bytes.
-
-```python
-assert(len(value) == 97)
-return value
-```
-
 #### Bytes
 
-For general `byte` type:
+For general `bytes` type:
 1. Get the length/number of bytes; Encode into a `4-byte` integer.
 2. Append the value to the length and return: ``[ length_bytes ] + [
    value_bytes ]``
@@ -298,46 +268,15 @@ return rawbytes[current_index:current_index+20], new_index
 
 #### Hash
 
-##### HashN
+##### hashN
 
-Return the N bytes.
+Return the `N` bytes.
 
 ```python
 assert(len(rawbytes) >= current_index + N)
 new_index = current_index + N
 return rawbytes[current_index:current_index+N], new_index
 ```
-
-##### Hash32
-
-Return the 32 bytes.
-
-```python
-assert(len(rawbytes) >= current_index + 32)
-new_index = current_index + 32
-return rawbytes[current_index:current_index+32], new_index
-```
-
-##### Hash96
-
-Return the 96 bytes.
-
-```python
-assert(len(rawbytes) >= current_index + 96)
-new_index = current_index + 96
-return rawbytes[current_index:current_index+96], new_index
-```
-
-##### Hash97
-
-Return the 97 bytes.
-
-```python
-assert(len(rawbytes) >= current_index + 97)
-new_index = current_index + 97
-return rawbytes[current_index:current_index+97], new_index
-```
-
 
 #### Bytes
 
