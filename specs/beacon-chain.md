@@ -42,6 +42,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~18 hours |
 | `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
+| `DELETION_PERIOD` | 2**21 (= 2,097,152) | slots | ~1.06 years |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
@@ -98,8 +99,8 @@ A `BeaconBlock` has the following fields:
     'slot': 'uint64',
     # Proposer RANDAO reveal
     'randao_reveal': 'hash32',
-    # Recent PoW chain reference (block hash)
-    'candidate_pow_hash_chain_tip': 'hash32',
+    # Recent PoW chain reference (receipt root)
+    'candidate_pow_receipt_root': 'hash32',
     # Skip list of previous beacon block hashes
     # i'th item is the most recent ancestor who's slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
@@ -213,10 +214,9 @@ The `CrystallizedState` has the following fields:
     # Genesis time
     'genesis_time': 'hash32',
     # PoW chain reference
-    'known_pow_hash_chain_tip': 'hash32',
-    'processed_pow_hash_chain_tip': 'hash32',
-    'candidate_pow_hash_chain_tip': 'hash32',
-    'candidate_pow_hash_chain_tip_votes': 'uint64',
+    'known_pow_receipt_root': 'hash32',
+    'candidate_pow_receipt_root': 'hash32',
+    'candidate_pow_receipt_root_votes': 'uint64',
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
     'pre_fork_version': 'uint32',
@@ -498,23 +498,32 @@ def int_sqrt(n: int) -> int:
 The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
 
 ```python
-HashChainValue: event({prev_tip: bytes32, data: bytes[2048], value: wei_value, total_deposit_count: int128})
+HashChainValue: event({prev_tip: bytes32, data: bytes[2048], value: wei_value, time: timestamp, total_deposit_count: int128})
 ChainStart: event({hash_chain_tip: bytes32, time: timestamp})
 
-hash_chain_tip: public(bytes32)
+receipt_tree: bytes32[int128]
 total_deposit_count: int128
 
 @payable
 @public
 def deposit(data: bytes[2048]):
-    log.HashChainValue(self.hash_chain_tip, data, msg.value, self.total_deposit_count)
+    log.HashChainValue(self.receipt_tree[1], data, msg.value, block.timestamp, self.total_deposit_count)
+    index:int128 = self.total_deposit_count + 2**32
+    self.receipt_tree[index] = sha3(concat(data, as_bytes32(msg.value), as_bytes32(block.timestamp))
+    for i in range(32):
+        index //= 2
+        self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
     self.total_deposit_count += 1
-    self.hash_chain_tip = sha3(concat(self.hash_chain_tip, data, as_bytes32(msg.value), as_bytes32(self.total_deposit_count)))
     if self.total_deposit_count == 16384:
-        log.ChainStart(self.hash_chain_tip, block.timestamp)
+        log.ChainStart(self.receipt_tree[1], block.timestamp)
+
+@public
+@constant
+def get_receipt_root() -> bytes32:
+    return self.receipt_tree[1]
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to move their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `data` a SimpleSerialize'd object of the form:
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to move their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `data` a SimpleSerialize'd `DepositParams` object of the form:
 
 ```python
 {
@@ -627,8 +636,9 @@ def add_validator(validators: List[ValidatorRecord],
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
+    signed_message = as_bytes32(pubkey) + as_bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
     assert BLSVerify(pub=pubkey,
-                     msg=hash(pubkey),
+                     msg=hash(signed_message),
                      sig=proof_of_possession)
     rec = ValidatorRecord(
         pubkey=pubkey,
@@ -780,6 +790,7 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 * **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
 * **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
+* **[covers deposits]**: If `obj.kind == DEPOSIT_PROOF`, interpret `data[0]` as being a Merkle branch from a deposit object to the `known_pow_receipt_root` (hashes in order lower to higher, concatenated), `data[1]` as being the index in the tree, and `data[2]` as being the deposit object itself, having the format `concat(data, as_bytes32(msg.value), as_bytes32(block.timestamp)` where `data` itself is a `DepositParams` object. Run `add_validator(validators, data.pubkey, data.proof_of_possession, data.withdrawal_shard, data.withdrawal_address, data.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 #### Finally...
 
@@ -811,7 +822,7 @@ A validator set change can happen after a state recalculation if all of the foll
 Then, run the following algorithm to update the validator set:
 
 ```python
-def change_validators(validators: List[ValidatorRecord]) -> None:
+def change_validators(validators: List[ValidatorRecord], current_slot) -> None:
     # The active validator set
     active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
@@ -855,15 +866,22 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
-    for i in range(len(validators)):
+    i = 0
+    while i < len(validators):
         if validators[i].status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= validators[i].exit_slot + WITHDRAWAL_PERIOD:
             if validators[i].status == PENALIZED:
                 validators[i].balance -= validators[i].balance * min(total_penalties * 3, total_balance) // total_balance
             validators[i].status = WITHDRAWN
+            validators[i].exit_slot = current_slot
 
             withdraw_amount = validators[i].balance
             ...
             # STUB: withdraw to shard chain
+        if validators[i].status == WITHDRAWN and current_slot >= validators[i].exit_slot + DELETION_PERIOD:
+            validators.pop(i)
+        else:
+            i += 1
+    
 ```
 
 Finally:
