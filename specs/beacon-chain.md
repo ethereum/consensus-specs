@@ -35,7 +35,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_BALANCE` | 2**4 (= 16) | ETH |
 | `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
-| `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
+| `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
@@ -46,12 +46,14 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `CHUNK_SIZE` | 2**8 (= 256) | bytes |
+| `MAX_SHARD_BLOCK_SIZE` | 2**15 (= 32768) | bytes |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 | `INITIAL_FORK_VERSION` | 0 | — |
 
 **Notes**
 
-* See a recommended `MIN_COMMITTEE_SIZE`  of 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf).
+* See a recommended min committee size of 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each validator set change.
@@ -127,6 +129,10 @@ An `AttestationRecord` has the following fields:
     'oblique_parent_hashes': ['hash32'],
     # Shard block hash being attested to
     'shard_block_hash': 'hash32',
+    # Last crosslink hash
+    'last_crosslink_hash': 'hash32',
+    # Root of data between last hash and this one
+    'shard_block_combined_data_root': 'hash32',
     # Attester participation bitfield (1 bit per attester)
     'attester_bitfield': 'bytes',
     # Slot of last justified beacon block
@@ -152,6 +158,10 @@ An `AttestationSignedData` has the following fields:
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
+    # Last crosslink hash
+    'last_crosslink_hash': 'hash32',
+    # Root of data between last hash and this one
+    'shard_block_combined_data_root': 'hash32',
     # Slot of last justified beacon block referenced in the attestation
     'justified_slot': 'uint64'
 }
@@ -279,6 +289,30 @@ A `ShardReassignmentRecord` object has the following fields:
     'shard': 'uint16',
     # When
     'slot': 'uint64'
+}
+```
+
+### Shard chain blocks
+
+A `ShardBlock` object has the following fields:
+
+```python
+{
+    # Slot number
+    'slot': 'uint64',
+    # Parent block hash
+    'parent_hash': 'hash32',
+    # Beacon chain block
+    'beacon_chain_ref': 'hash32',
+    # Depth of the Merkle tree
+    'data_tree_depth': 'uint8',
+    # Merkle root of data
+    'data_root': 'hash32'
+    # State root (placeholder for now)
+    'state_root': 'hash32',
+    # Attestation (including block signature)
+    'attester_bitfield': 'bytes',
+    'aggregate_sig': ['uint256'],
 }
 ```
 
@@ -424,7 +458,7 @@ def get_new_shuffling(seed: Hash32,
     committees_per_slot = clamp(
         1,
         SHARD_COUNT // CYCLE_LENGTH,
-        len(active_validators) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1,
+        len(active_validators) // CYCLE_LENGTH // TARGET_COMMITTEE_SIZE,
     )
 
     output = []
@@ -668,12 +702,13 @@ For each one of these attestations:
 * Verify that `slot <= parent.slot` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
+* Verify that `last_crosslink_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * Compute `parent_hashes` = `[get_block_hash(active_state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `active_state`, so you would need to add it explicitly.
 * Let `attestation_indices` be `get_shards_and_committees_for_slot(crystallized_state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1.
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
-* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
+* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)` as the message.
 
 Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
 
@@ -869,6 +904,81 @@ while len(crystallized_state.persistent_committee_reassignments) > 0 and crystal
             )
     crystallized_state.persistent_committees[rec.shard].append(rec.validator_index)
 ```
+
+## Shard block processing
+
+A block on a shard can be processed only if its `parent` has been accepted. To validate a block header on shard `shard_id`, compute as follows:
+
+* Verify that `beacon_chain_ref` is the hash of the `slot`'th block in the beacon chain.
+* Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
+* Assert `len(attester_bitfield) == ceil_div8(len(validators))`
+* Let `curblock_proposer_index = hash(state.randao_mix + bytes8(shard_id)) % len(validators)`. Let `parent_proposer_index` be the same value calculated for the parent block.
+* Make sure that the `parent_proposer_index`'th bit in the `attester_bitfield` is set to 1.
+* Generate the group public key by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify the `aggregate_sig` using this as the pubkey and the `parent_hash` as the message.
+
+Note that at network layer we expect blocks to be broadcasted along with the signature from the `curblock_proposer_index`'th validator in the validator set for that block.
+
+### Verifying shard block data
+
+At network layer, we expect a shard block header to be broadcasted along with its `block_body`. First, we define a helper function that takes as input beacon chain state and outputs the max block size in bytes:
+
+```python
+def calc_block_maxbytes(state):
+    max_grains = MAX_SHARD_BLOCK_SIZE // CHUNK_SIZE
+    validators_at_max_committees = SHARD_COUNT * TARGET_COMMITTEE_SIZE
+    grains = min(len(get_active_validator_indices(state.validators)) * max_grains // validators_at_max_committees,
+                 max_grains)
+    return CHUNK_SIZE * grains
+```
+
+* Verify that `len(block_body) == calc_block_maxbytes(state)`
+* Define `filler_bytes = next_power_of_2(len(block_body)) - len(block_body)`. Compute a simple binary Merkle tree of `block_body + bytes([0] * filler_bytes)` and verify that the root equals the `data_root` in the header.
+
+### Verifying a crosslink
+
+A node should sign a crosslink only if the following conditions hold. **If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink for which these conditions do NOT hold has been included, or a sufficient number of signatures have been included that during the next state recalculation, a crosslink will be registered.**
+
+First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_hash` for the same shard (unless `last_crosslink_hash` equals zero, in which case we are at the genesis).
+
+Second, we verify the `shard_block_combined_data_root`. Let `B[0]` be the first block _after_ the last crosslink and `B[n-1]` be the block directly referenced by the `shard_block_hash`. Let `bodies[0] .... bodies[n-1]` be their bodies and `roots[0] ... roots[n-1]` the data roots. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. Let `state[0] ... state[n-1]` be the beacon chain states at those times, and `depths[0] ... depths[n-1]` be equal to `log2(next_power_of_2(calc_block_maxbytes(state[i]) // CHUNK_SIZE))` (ie. the expected depth of the i'th data tree).
+
+```python
+def get_zeroroot_at_depth(n):
+    o = b'\x00' * CHUNK_SIZE
+    for i in range(n):
+        o = hash(o + o)
+    return o
+
+def mk_combined_data_root(depths, roots):
+    default_value = get_zeroroot_at_depth(max(depths))
+    data = [default_value for _ in range(next_power_of_2(len(roots)))]
+    for i, (depth, root) in enumerate(zip(depths, roots)):
+        value = root
+        for j in range(depth, max(depths)):
+            value = hash(value, get_zeroroot_at_depth(depth + j))
+        data[i] = value
+    return compute_merkle_root(data)
+```
+
+Essentially, this outputs the root of a tree of the data roots, with the data roots all adjusted to have the same height if needed. The tree can also be viewed as a tree of all of the underlying data concatenated together, appropriately padded. Here is an equivalent definition that uses bodies instead of roots [TODO: check equivalence]:
+
+```python
+def mk_combined_data_root(depths, bodies):
+    default_value = get_zeroroot_at_depth(max(depths))
+    padded_body_length = max([CHUNK_SIZE * 2**d for d in depths])
+    data = b''
+    for body in bodies:
+        padded_body = body + bytes([0] * (padded_body_length - len(body)))
+        data += padded_body
+    data += bytes([0] * (next_power_of_2(len(data)) - len(data))
+    return compute_merkle_root([data[pos:pos+CHUNK_SIZE] for pos in range(0, len(data), CHUNK_SIZE)])
+```
+
+Verify that the `shard_block_combined_data_root` is the output of these functions.
+
+### Shard block fork choice rule
+
+The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_hash`).
 
 ### TODO
 
