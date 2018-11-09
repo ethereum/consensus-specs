@@ -867,7 +867,7 @@ while len(crystallized_state.persistent_committee_reassignments) > 0 and crystal
             committee.pop(
                 committee.index(rec.validator_index)
             )
-    crystallized_state.persistent_committees[rec.shard].append(vid)
+    crystallized_state.persistent_committees[rec.shard].append(rec.validator_index)
 ```
 
 ### TODO
