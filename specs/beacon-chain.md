@@ -616,9 +616,9 @@ This routine should be run for every validator that is inducted as part of a log
 First, a helper function:
 
 ```python
-def min_empty_validator(validators: List[ValidatorRecord]):
+def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
     for i, v in enumerate(validators):
-        if v.status == WITHDRAWN:
+        if v.status == WITHDRAWN and v.exit_slot <= current_slot - DELETION_PERIOD:
             return i
     return None
 ```
@@ -866,8 +866,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot) -> None:
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
-    i = 0
-    while i < len(validators):
+    for i in range(len(validators)):
         if validators[i].status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= validators[i].exit_slot + WITHDRAWAL_PERIOD:
             if validators[i].status == PENALIZED:
                 validators[i].balance -= validators[i].balance * min(total_penalties * 3, total_balance) // total_balance
@@ -877,10 +876,6 @@ def change_validators(validators: List[ValidatorRecord], current_slot) -> None:
             withdraw_amount = validators[i].balance
             ...
             # STUB: withdraw to shard chain
-        if validators[i].status == WITHDRAWN and current_slot >= validators[i].exit_slot + DELETION_PERIOD:
-            validators.pop(i)
-        else:
-            i += 1
     
 ```
 
