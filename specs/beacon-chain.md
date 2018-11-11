@@ -683,7 +683,7 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `V = crystallized_state.validators[curblock_proposer_index]`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `active_state.randao_mix = xor(active_state.randao_mix, block.randao_reveal)` and append to `ActiveState.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal])`.
+* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `active_state.randao_mix = xor(active_state.randao_mix, block.randao_reveal)` and append to `ActiveState.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal, bytes8(block.slot)])`.
 
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
@@ -744,9 +744,9 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
+* **[covers `LOGOUT`]**: If `obj.kind == LOGOUT`, interpret `data[0:3]` as a `uint24` and `data[3:35]` as a `hash32`, where `validator_index = data[0:3]` and `signature = data[3:35]`. If `BLSVerify(pubkey=validators[validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=signature)`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[validator_index].status == ACTIVE`, run `exit_validator(validator_index, crystallized_state, penalize=False, current_slot=block.slot)`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
-* **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
+* **[covers `RANDAO_CHANGE`]**: If `obj.kind == RANDAO_CHANGE`, interpret `data[0:3]` as a `uint24`, `data[3:35]` as a `hash32`, and `data[35:43]` as a `uint64`,  where `block_proposer_index = data[0:3]`, `randao_commitment = data[3:35]`, and `randao_last_change = data[35:43]`. Set `validators[block_proposer_index].randao_commitment = randao_commitment`, and set `validators[block_proposer_index].randao_last_change = randao_last_change`.
 
 ### Validator set change
 
