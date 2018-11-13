@@ -64,18 +64,24 @@ To validate a block header on shard `shard_id`, compute as follows:
 
 ### Verifying shard block data
 
-At network layer, we expect a shard block header to be broadcasted along with its `block_body`. First, we define a helper function that takes as input beacon chain state and outputs the max block size in bytes:
+At network layer, we expect a shard block header to be broadcast along with its `block_body`. First, we define a helper function that takes as input beacon chain state and outputs the max block size in bytes:
 
 ```python
-def calc_block_maxbytes(state):
+def shard_block_maxbytes(state):
     max_grains = MAX_SHARD_BLOCK_SIZE // CHUNK_SIZE
-    validators_at_max_committees = SHARD_COUNT * TARGET_COMMITTEE_SIZE
-    grains = min(len(get_active_validator_indices(state.validators)) * max_grains // validators_at_max_committees,
-                 max_grains)
+    validators_at_target_committee_size = SHARD_COUNT * TARGET_COMMITTEE_SIZE
+
+    # number of grains per block is proportional to the number of validators
+    # up until `validators_at_target_committee_size`
+    grains = min(
+        len(get_active_validator_indices(state.validators)) * max_grains // validators_at_target_committee_size,
+        max_grains
+    )
+
     return CHUNK_SIZE * grains
 ```
 
-* Verify that `len(block_body) == calc_block_maxbytes(state)`
+* Verify that `len(block_body) == shard_block_maxbytes(state)`
 * Define `filler_bytes = next_power_of_2(len(block_body)) - len(block_body)`. Compute a simple binary Merkle tree of `block_body + bytes([0] * filler_bytes)` and verify that the root equals the `data_root` in the header.
 
 ### Verifying a crosslink
@@ -84,7 +90,7 @@ A node should sign a crosslink only if the following conditions hold. **If a nod
 
 First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_hash` for the same shard (unless `last_crosslink_hash` equals zero, in which case we are at the genesis).
 
-Second, we verify the `shard_block_combined_data_root`. Let `B[0]` be the first block _after_ the last crosslink and `B[n-1]` be the block directly referenced by the `shard_block_hash`. Let `bodies[0] .... bodies[n-1]` be their bodies and `roots[0] ... roots[n-1]` the data roots. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. Let `state[0] ... state[n-1]` be the beacon chain states at those times, and `depths[0] ... depths[n-1]` be equal to `log2(next_power_of_2(calc_block_maxbytes(state[i]) // CHUNK_SIZE))` (ie. the expected depth of the i'th data tree).
+Second, we verify the `shard_block_combined_data_root`. Let `B[0]` be the first block _after_ the last crosslink and `B[n-1]` be the block directly referenced by the `shard_block_hash`. Let `bodies[0] .... bodies[n-1]` be their bodies and `roots[0] ... roots[n-1]` the data roots. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. Let `state[0] ... state[n-1]` be the beacon chain states at those times, and `depths[0] ... depths[n-1]` be equal to `log2(next_power_of_2(shard_block_maxbytes(state[i]) // CHUNK_SIZE))` (ie. the expected depth of the i'th data tree).
 
 ```python
 def get_zeroroot_at_depth(n):
