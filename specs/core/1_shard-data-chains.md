@@ -48,7 +48,12 @@ A `ShardBlock` object has the following fields:
 
 ## Shard block processing
 
-A block on a shard can be processed only if its `parent` has been accepted. To validate a block header on shard `shard_id`, compute as follows:
+For a block on a shard to be processed by a node, the following conditions must be met:
+
+* The `ShardBlock` pointed to by `parent_hash` has already been processed and accepted
+* The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
+
+To validate a block header on shard `shard_id`, compute as follows:
 
 * Verify that `beacon_chain_ref` is the hash of the `slot`'th block in the beacon chain.
 * Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
@@ -56,8 +61,6 @@ A block on a shard can be processed only if its `parent` has been accepted. To v
 * Let `curblock_proposer_index = hash(state.randao_mix + bytes8(shard_id)) % len(validators)`. Let `parent_proposer_index` be the same value calculated for the parent block.
 * Make sure that the `parent_proposer_index`'th bit in the `attester_bitfield` is set to 1.
 * Generate the group public key by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify the `aggregate_sig` using this as the pubkey and the `parent_hash` as the message.
-
-Note that at network layer we expect blocks to be broadcasted along with the signature from the `curblock_proposer_index`'th validator in the validator set for that block.
 
 ### Verifying shard block data
 
