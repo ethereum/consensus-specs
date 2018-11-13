@@ -6,7 +6,7 @@
 
 ### Introduction
 
-This document represents the specification for Phase 1 of Ethereum 2.0 -- Shard Data Chains. Phase 1 depends on the implementation of [Phase 0 -- The Beacon Chain](specs/core/0_beacon-chain.md).
+This document represents the specification for Phase 1 of Ethereum 2.0 -- Shard Data Chains. Phase 1 depends on the implementation of [Phase 0 -- The Beacon Chain](0_beacon-chain.md).
 
 Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard chains. Phase 1 is primarily concerned with the construction, validity, and consensus on the _data_ of these shard chains. Phase 1 does not specify shard chain state execution or account balances. This is left for future phases.
 
@@ -14,7 +14,7 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 ### Constants
 
-Phase 1 depends upon all of the constants defined in [Phase 0](specs/core/0_beacon-chain.md#constants) in addition to the following:
+Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
 | Constant | Value | Unit | Approximation |
 | `CHUNK_SIZE` | 2**8 (= 256) | bytes |
