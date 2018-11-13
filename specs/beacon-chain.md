@@ -328,8 +328,11 @@ The crystallized state recalculation generally focuses on changes to the validat
 
 Below are various helper functions.
 
+The following is a function that gets active validator indices from the validator list:
+```python
 def get_active_validator_indices(validators)
     return [i for i, v in enumerate(validators) if v.status == ACTIVE]
+```
 
 The following is a function that shuffles the validator list:
 
