@@ -327,6 +327,7 @@ The crystallized state recalculation generally focuses on changes to the validat
 ### Helper functions
 
 Below are various helper functions.
+
 The following is a function that gets active validator indices from the validator list:
 ```python
 def get_active_validator_indices(validators)
