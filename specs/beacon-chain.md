@@ -216,7 +216,7 @@ The `CrystallizedState` has the following fields:
     # PoW chain reference
     'known_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_root_votes': 'uint64',
+    'candidate_pow_receipt_root_votes': 'uint32',
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
     'pre_fork_version': 'uint32',
@@ -523,7 +523,7 @@ def get_receipt_root() -> bytes32:
     return self.receipt_tree[1]
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to move their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `data` a SimpleSerialize'd `DepositParams` object of the form:
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `data` a SimpleSerialize'd `DepositParams` object of the form:
 
 ```python
 {
@@ -531,11 +531,11 @@ The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to mov
     'proof_of_possession': ['int256'],
     'withdrawal_shard': 'int64',
     'withdrawal_address`: 'bytes20',
-    'randao_commitment`: 'hash32',
+    'randao_commitment`: 'hash32'
 }
 ```
 
-If they wish to deposit more than 32 ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
+If the user wishes to deposit more than 32 ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
 
 * `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
 * `genesis_time` equal to the `time` value published in the log
@@ -640,6 +640,8 @@ def add_validator(validators: List[ValidatorRecord],
     assert BLSVerify(pub=pubkey,
                      msg=hash(signed_message),
                      sig=proof_of_possession)
+    # Pubkey uniqueness
+    assert pubkey not in [v.pubkey for v in validators]
     rec = ValidatorRecord(
         pubkey=pubkey,
         withdrawal_shard=withdrawal_shard,
@@ -728,6 +730,8 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 * Let `V = crystallized_state.validators[curblock_proposer_index]`.
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `active_state.randao_mix = xor(active_state.randao_mix, block.randao_reveal)` and append to `ActiveState.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal])`.
 
+Finally, if `block.candidate_pow_hash_chain_tip = crystallized_state.candidate_pow_hash_chain_tip`, set `crystallized_state.candidate_hash_chain_tip_votes += 1`.
+
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
 Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
@@ -790,7 +794,7 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 * **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], crystallized_state, penalize=False, current_slot=block.slot)`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, crystallized_state, penalize=True, current_slot=block.slot)`
 * **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
-* **[covers deposits]**: If `obj.kind == DEPOSIT_PROOF`, interpret `data[0]` as being a Merkle branch from a deposit object to the `known_pow_receipt_root` (hashes in order lower to higher, concatenated), `data[1]` as being the index in the tree, and `data[2]` as being the deposit object itself, having the format `concat(data, as_bytes32(msg.value), as_bytes32(block.timestamp)` where `data` itself is a `DepositParams` object. Run `add_validator(validators, data.pubkey, data.proof_of_possession, data.withdrawal_shard, data.withdrawal_address, data.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+* **[covers deposits]**: If `obj.kind == DEPOSIT_PROOF`, interpret `data[0]` as being a Merkle branch from a deposit object to the `known_pow_receipt_root` (hashes in order lower to higher, concatenated), `data[1]` as being the index in the tree, and `data[2]` as being the deposit object itself, having the format `concat(data, as_bytes32(msg.value), as_bytes32(timestamp)` where `data` itself is a `DepositParams`. Verify that `msg.value == DEPOSIT_SIZE` and `block.slot - (timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`. Run `add_validator(validators, data.pubkey, data.proof_of_possession, data.withdrawal_shard, data.withdrawal_address, data.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 #### Finally...
 
@@ -801,15 +805,13 @@ For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 * Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 
-### PoW chain related rules
+#### PoW chain related rules
 
-If `block.slot % POW_HASH_VOTING_PERIOD == 0`, then:
+If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
 
 * If `crystallized_state.candidate_hash_chain_tip_votes * 3 >= POW_HASH_VOTING_PERIOD * 2`, set `crystallized_state.hash_chain_tip = crystallized_state.candidate_hash_chain_tip`
 * Set `crystallized_state.candidate_hash_chain_tip = block.candidate_pow_hash_chain_tip`
 * Set `crystallized_state.candidate_hash_chain_tip_votes = 0`
-
-Otherwise, if `block.candidate_pow_hash_chain_tip = crystallized_state.candidate_pow_hash_chain_tip`, set `crystallized_state.candidate_hash_chain_tip_votes += 1`.
 
 ### Validator set change
 
@@ -822,7 +824,7 @@ A validator set change can happen after a state recalculation if all of the foll
 Then, run the following algorithm to update the validator set:
 
 ```python
-def change_validators(validators: List[ValidatorRecord], current_slot) -> None:
+def change_validators(validators: List[ValidatorRecord], current_slot: int) -> None:
     # The active validator set
     active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
