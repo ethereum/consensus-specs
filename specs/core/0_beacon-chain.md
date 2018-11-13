@@ -1,12 +1,14 @@
-# Ethereum 2.0 spec—Casper and sharding
+# Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-###### tags: `spec`, `eth2.0`, `casper`, `sharding`
+###### tags: `spec`, `eth2.0`, `casper`, `sharding`, `beacon`
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
 ### Introduction
 
-At the center of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a registration contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after registration transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
+This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
+
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a registration contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after registration transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain are "attestations". Attestations simultaneously attest to a shard block and a corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
@@ -46,8 +48,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
-| `CHUNK_SIZE` | 2**8 (= 256) | bytes |
-| `MAX_SHARD_BLOCK_SIZE` | 2**15 (= 32768) | bytes |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -289,30 +289,6 @@ A `ShardReassignmentRecord` object has the following fields:
     'shard': 'uint16',
     # When
     'slot': 'uint64'
-}
-```
-
-### Shard chain blocks
-
-A `ShardBlock` object has the following fields:
-
-```python
-{
-    # Slot number
-    'slot': 'uint64',
-    # Parent block hash
-    'parent_hash': 'hash32',
-    # Beacon chain block
-    'beacon_chain_ref': 'hash32',
-    # Depth of the Merkle tree
-    'data_tree_depth': 'uint8',
-    # Merkle root of data
-    'data_root': 'hash32'
-    # State root (placeholder for now)
-    'state_root': 'hash32',
-    # Attestation (including block signature)
-    'attester_bitfield': 'bytes',
-    'aggregate_sig': ['uint256'],
 }
 ```
 
@@ -904,81 +880,6 @@ while len(crystallized_state.persistent_committee_reassignments) > 0 and crystal
             )
     crystallized_state.persistent_committees[rec.shard].append(rec.validator_index)
 ```
-
-## Shard block processing
-
-A block on a shard can be processed only if its `parent` has been accepted. To validate a block header on shard `shard_id`, compute as follows:
-
-* Verify that `beacon_chain_ref` is the hash of the `slot`'th block in the beacon chain.
-* Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
-* Assert `len(attester_bitfield) == ceil_div8(len(validators))`
-* Let `curblock_proposer_index = hash(state.randao_mix + bytes8(shard_id)) % len(validators)`. Let `parent_proposer_index` be the same value calculated for the parent block.
-* Make sure that the `parent_proposer_index`'th bit in the `attester_bitfield` is set to 1.
-* Generate the group public key by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify the `aggregate_sig` using this as the pubkey and the `parent_hash` as the message.
-
-Note that at network layer we expect blocks to be broadcasted along with the signature from the `curblock_proposer_index`'th validator in the validator set for that block.
-
-### Verifying shard block data
-
-At network layer, we expect a shard block header to be broadcasted along with its `block_body`. First, we define a helper function that takes as input beacon chain state and outputs the max block size in bytes:
-
-```python
-def calc_block_maxbytes(state):
-    max_grains = MAX_SHARD_BLOCK_SIZE // CHUNK_SIZE
-    validators_at_max_committees = SHARD_COUNT * TARGET_COMMITTEE_SIZE
-    grains = min(len(get_active_validator_indices(state.validators)) * max_grains // validators_at_max_committees,
-                 max_grains)
-    return CHUNK_SIZE * grains
-```
-
-* Verify that `len(block_body) == calc_block_maxbytes(state)`
-* Define `filler_bytes = next_power_of_2(len(block_body)) - len(block_body)`. Compute a simple binary Merkle tree of `block_body + bytes([0] * filler_bytes)` and verify that the root equals the `data_root` in the header.
-
-### Verifying a crosslink
-
-A node should sign a crosslink only if the following conditions hold. **If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink for which these conditions do NOT hold has been included, or a sufficient number of signatures have been included that during the next state recalculation, a crosslink will be registered.**
-
-First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_hash` for the same shard (unless `last_crosslink_hash` equals zero, in which case we are at the genesis).
-
-Second, we verify the `shard_block_combined_data_root`. Let `B[0]` be the first block _after_ the last crosslink and `B[n-1]` be the block directly referenced by the `shard_block_hash`. Let `bodies[0] .... bodies[n-1]` be their bodies and `roots[0] ... roots[n-1]` the data roots. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. Let `state[0] ... state[n-1]` be the beacon chain states at those times, and `depths[0] ... depths[n-1]` be equal to `log2(next_power_of_2(calc_block_maxbytes(state[i]) // CHUNK_SIZE))` (ie. the expected depth of the i'th data tree).
-
-```python
-def get_zeroroot_at_depth(n):
-    o = b'\x00' * CHUNK_SIZE
-    for i in range(n):
-        o = hash(o + o)
-    return o
-
-def mk_combined_data_root(depths, roots):
-    default_value = get_zeroroot_at_depth(max(depths))
-    data = [default_value for _ in range(next_power_of_2(len(roots)))]
-    for i, (depth, root) in enumerate(zip(depths, roots)):
-        value = root
-        for j in range(depth, max(depths)):
-            value = hash(value, get_zeroroot_at_depth(depth + j))
-        data[i] = value
-    return compute_merkle_root(data)
-```
-
-Essentially, this outputs the root of a tree of the data roots, with the data roots all adjusted to have the same height if needed. The tree can also be viewed as a tree of all of the underlying data concatenated together, appropriately padded. Here is an equivalent definition that uses bodies instead of roots [TODO: check equivalence]:
-
-```python
-def mk_combined_data_root(depths, bodies):
-    default_value = get_zeroroot_at_depth(max(depths))
-    padded_body_length = max([CHUNK_SIZE * 2**d for d in depths])
-    data = b''
-    for body in bodies:
-        padded_body = body + bytes([0] * (padded_body_length - len(body)))
-        data += padded_body
-    data += bytes([0] * (next_power_of_2(len(data)) - len(data))
-    return compute_merkle_root([data[pos:pos+CHUNK_SIZE] for pos in range(0, len(data), CHUNK_SIZE)])
-```
-
-Verify that the `shard_block_combined_data_root` is the output of these functions.
-
-### Shard block fork choice rule
-
-The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_hash`).
 
 ### TODO
 
