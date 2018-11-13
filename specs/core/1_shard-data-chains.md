@@ -110,7 +110,7 @@ def mk_combined_data_root(depths, roots):
     return compute_merkle_root(data)
 ```
 
-Essentially, this outputs the root of a tree of the data roots, with the data roots all adjusted to have the same height if needed. The tree can also be viewed as a tree of all of the underlying data concatenated together, appropriately padded. Here is an equivalent definition that uses bodies instead of roots [TODO: check equivalence]:
+This outputs the root of a tree of the data roots, with the data roots all adjusted to have the same height if needed. The tree can also be viewed as a tree of all of the underlying data concatenated together, appropriately padded. Here is an equivalent definition that uses bodies instead of roots [TODO: check equivalence]:
 
 ```python
 def mk_combined_data_root(depths, bodies):
