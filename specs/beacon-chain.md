@@ -168,7 +168,7 @@ A `SpecialRecord` has the following fields:
 
 ### Beacon chain state
 
-The `state` has the following fields:
+The `BeaconState` has the following fields:
 
 ```python
 {
@@ -311,7 +311,7 @@ We now define the state transition function. At the high level, the state transi
 1. The per-block processing, which happens every block, and only affects a few parts of the `state`.
 2. The inter-cycle state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the entire `state`.
 
-The inter-cycle state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, while the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `State`.
+The inter-cycle state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, while the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
 
 ### Helper functions
 
@@ -449,13 +449,13 @@ Here's a diagram of what's going on:
 We also define two functions for retrieving data from the state:
 
 ```python
-def get_shards_and_committees_for_slot(state: State,
+def get_shards_and_committees_for_slot(state: BeaconState,
                                        slot: int) -> List[ShardAndCommittee]:
     earliest_slot_in_array = state.last_state_recalculation - CYCLE_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
     return state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
 
-def get_block_hash(state: State,
+def get_block_hash(state: BeaconState,
                    current_block: BeaconBlock,
                    slot: int) -> Hash32:
     earliest_slot_in_array = current_block.slot - len(state.recent_block_hashes)
@@ -470,7 +470,7 @@ We define another set of helpers to be used throughout: `bytes1(x): return x.to_
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
 ```python
-def add_validator_set_change_record(state: State,
+def add_validator_set_change_record(state: BeaconState,
                                     index: int,
                                     pubkey: int,
                                     flag: int) -> None:
@@ -496,7 +496,7 @@ def int_sqrt(n: int) -> int:
 Run the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any]) -> State:
+def on_startup(initial_validator_entries: List[Any]) -> BeaconState:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
@@ -520,7 +520,7 @@ def on_startup(initial_validator_entries: List[Any]) -> State:
         )
         for i in range(SHARD_COUNT)
     ]
-    state = State(
+    state = BeaconState(
         validator_set_change_slot=0,
         validators=validators,
         crosslinks=crosslinks,
@@ -664,7 +664,7 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `V = state.validators[curblock_proposer_index]`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and append to `State.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal])`.
+* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and append to `state.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal])`.
 
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
