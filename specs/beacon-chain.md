@@ -178,7 +178,7 @@ The `BeaconState` has the following fields:
     'validators': [ValidatorRecord],
     # Most recent crosslink for each shard
     'crosslinks': [CrosslinkRecord],
-    # Last crystallized state recalculation
+    # Last cycle-boundary state recalculation
     'last_state_recalculation_slot': 'uint64',
     # Last finalized slot
     'last_finalized_slot': 'uint64',
