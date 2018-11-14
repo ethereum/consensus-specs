@@ -546,7 +546,7 @@ def on_startup(initial_validator_entries: List[Any]) -> State:
     return state
 ```
 
-The `State()` constructor should initialize all values to zero bytes, an empty value or an empty array depending on context. The `add_validator` routine is defined below.
+The `add_validator` routine is defined below.
 
 ### Routine for adding a validator
 
