@@ -30,6 +30,8 @@ A `ShardBlock` object has the following fields:
 {
     # Slot number
     'slot': 'uint64',
+    # What shard is it on
+    'shard_id': 'uint64',
     # Parent block hash
     'parent_hash': 'hash32',
     # Beacon chain block
@@ -55,10 +57,10 @@ For a block on a shard to be processed by a node, the following conditions must 
 
 To validate a block header on shard `shard_id`, compute as follows:
 
-* Verify that `beacon_chain_ref` is the hash of the `slot`'th block in the beacon chain.
+* Verify that `beacon_chain_ref` is the hash of a block in the beacon chain with slot less than or equal to `slot`. Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_hash`.
 * Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
 * Assert `len(attester_bitfield) == ceil_div8(len(validators))`
-* Let `curblock_proposer_index = hash(state.randao_mix + bytes8(shard_id)) % len(validators)`. Let `parent_proposer_index` be the same value calculated for the parent block.
+* Let `curblock_proposer_index = hash(state.randao_mix + bytes8(shard_id) + bytes8(slot)) % len(validators)`. Let `parent_proposer_index` be the same value calculated for the parent block.
 * Make sure that the `parent_proposer_index`'th bit in the `attester_bitfield` is set to 1.
 * Generate the group public key by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify the `aggregate_sig` using this as the pubkey and the `parent_hash` as the message.
 
@@ -128,4 +130,4 @@ Verify that the `shard_block_combined_data_root` is the output of these function
 
 ### Shard block fork choice rule
 
-The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_hash`).
+The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_hash`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
