@@ -1,12 +1,14 @@
-# Ethereum 2.0 spec—Casper and sharding
+# Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-###### tags: `spec`, `eth2.0`, `casper`, `sharding`
+###### tags: `spec`, `eth2.0`, `casper`, `sharding`, `beacon`
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
 ### Introduction
 
-At the center of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a registration contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after registration transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
+This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
+
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a registration contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after registration transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain are "attestations". Attestations simultaneously attest to a shard block and a corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
@@ -35,7 +37,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_BALANCE` | 2**4 (= 16) | ETH |
 | `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
-| `MIN_COMMITTEE_SIZE` | 2**7 (= 128) | validators |
+| `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
@@ -51,7 +53,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 **Notes**
 
-* See a recommended `MIN_COMMITTEE_SIZE`  of 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf).
+* See a recommended min committee size of 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
 * The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each validator set change.
@@ -125,6 +127,10 @@ An `AttestationRecord` has the following fields:
     'oblique_parent_hashes': ['hash32'],
     # Shard block hash being attested to
     'shard_block_hash': 'hash32',
+    # Last crosslink hash
+    'last_crosslink_hash': 'hash32',
+    # Root of data between last hash and this one
+    'shard_block_combined_data_root': 'hash32',
     # Attester participation bitfield (1 bit per attester)
     'attester_bitfield': 'bytes',
     # Slot of last justified beacon block
@@ -150,6 +156,10 @@ An `AttestationSignedData` has the following fields:
     'parent_hashes': ['hash32'],
     # Shard block hash
     'shard_block_hash': 'hash32',
+    # Last crosslink hash
+    'last_crosslink_hash': 'hash32',
+    # Root of data between last hash and this one
+    'shard_block_combined_data_root': 'hash32',
     # Slot of last justified beacon block referenced in the attestation
     'justified_slot': 'uint64'
 }
@@ -317,8 +327,11 @@ The inter-cycle state recalculation generally focuses on changes to the validato
 
 Below are various helper functions.
 
+The following is a function that gets active validator indices from the validator list:
+```python
 def get_active_validator_indices(validators)
     return [i for i, v in enumerate(validators) if v.status == ACTIVE]
+```
 
 The following is a function that shuffles the validator list:
 
@@ -413,7 +426,7 @@ def get_new_shuffling(seed: Hash32,
     committees_per_slot = clamp(
         1,
         SHARD_COUNT // CYCLE_LENGTH,
-        len(active_validators) // CYCLE_LENGTH // (MIN_COMMITTEE_SIZE * 2) + 1,
+        len(active_validators) // CYCLE_LENGTH // TARGET_COMMITTEE_SIZE,
     )
 
     output = []
@@ -649,12 +662,13 @@ For each one of these attestations:
 * Verify that `slot <= parent.slot` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
+* Verify that either `last_crosslink_hash` or `shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * Compute `parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
 * Let `attestation_indices` be `get_shards_and_committees_for_slot(state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
 * Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1.
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
-* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
+* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)` as the message.
 
 Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `state` with those included in the block.
 
@@ -664,7 +678,7 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `V = state.validators[curblock_proposer_index]`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_reveal) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and append to `state.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal])`.
+* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and append to `state.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal, bytes8(block.slot)])`.
 
 ### State recalculations (every `CYCLE_LENGTH` slots)
 
@@ -725,9 +739,9 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 For each `SpecialRecord` `obj` in `state.pending_specials`:
 
-* **[covers logouts]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a validator index as an `uint32` and `data[1]` as a signature. If `BLSVerify(pubkey=validators[data[0]].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data[1])`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[i].status == ACTIVE`, run `exit_validator(data[0], state, penalize=False, current_slot=block.slot)`
+* **[covers `LOGOUT`]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a `uint24` and `data[1]` as a `hash32`, where `validator_index = data[0]` and `signature = data[1]`. If `BLSVerify(pubkey=validators[validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=signature)`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[validator_index].status == ACTIVE`, run `exit_validator(validator_index, state, penalize=False, current_slot=block.slot)`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
-* **[covers RANDAO updates]**: If `obj.kind == RANDAO_REVEAL`, interpret `data[0]` as an integer and `data[1]` as a hash32. Set `validators[data[0]].randao_commitment = data[1]`.
+* **[covers `RANDAO_CHANGE`]**: If `obj.kind == RANDAO_CHANGE`, interpret `data[0]` as a `uint24`, `data[1]` as a `hash32`, and `data[2]` as a `uint64`,  where `proposer_index = data[0]`, `randao_commitment = data[1]`, and `randao_last_change = data[2]`. Set `validators[proposer_index].randao_commitment = randao_commitment`, and set `validators[proposer_index].randao_last_change = randao_last_change`.
 
 ### Validator set change
 
@@ -830,6 +844,8 @@ Now run the following code to reshuffle a few proposers:
 active_validator_indices = get_active_validator_indices(validators)
 num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
 for i in range(num_validators_to_reshuffle):
+    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
+    # and none of the hashes used for entropy in this loop will be the same
     vid = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
     new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
     shard_reassignment_record = ShardReassignmentRecord(
@@ -846,7 +862,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
             committee.pop(
                 committee.index(rec.validator_index)
             )
-    state.persistent_committees[rec.shard].append(vid)
+    state.persistent_committees[rec.shard].append(rec.validator_index)
 ```
 
 ### TODO
