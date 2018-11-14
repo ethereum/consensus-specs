@@ -311,7 +311,7 @@ We now define the state transition function. At the high level, the state transi
 1. The per-block processing, which happens every block, and only affects a few parts of the `state`.
 2. The inter-cycle state recalculation, which happens only if `block.slot >= last_state_recalculation_slot + CYCLE_LENGTH`, and affects the entire `state`.
 
-The inter-cycle state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, and the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the in-block activity in the `State`.
+The inter-cycle state recalculation generally focuses on changes to the validator set, including adjusting balances and adding and removing validators, as well as processing crosslinks and managing block justification/finalization, while the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `State`.
 
 ### Helper functions
 
