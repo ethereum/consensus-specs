@@ -449,7 +449,7 @@ assert item_index == start + LENGTH_BYTES + length
 return typ(**values), item_index
 ```
 
-### Tree hash
+### Tree_hash
 
 The below algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
 
@@ -502,13 +502,13 @@ def merkle_hash(lst):
     return hash(chunkz[0] + datalen)
 ```
 
-To hash a list, we simply do:
+To `tree_hash` a list, we simply do:
 
 ```python
 return merkle_hash([tree_hash(item) for item in value])
 ```
 
-Where `tree_hash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+Where the inner `tree_hash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
 
 
 #### Container
