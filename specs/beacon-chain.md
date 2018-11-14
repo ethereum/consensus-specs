@@ -676,7 +676,7 @@ For each one of these attestations:
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
 * Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, justified_slot)` as the message.
 
-Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block.
+Extend the list of `AttestationRecord` objects in the `active_state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `active_state` with those included in the block. Verify that there are at most `MAX_SPECIALS_PER_BLOCK` special records.
 
 Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(crystallized_state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(crystallized_state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a beacon block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
 
@@ -742,8 +742,6 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
     * Non-participating validators lose `B // reward_quotient`.
 
 #### Process penalties, logouts and other special objects
-
-Verify that there are at most `MAX_SPECIALS_PER_BLOCK` special records.
 
 For each `SpecialRecord` `obj` in `active_state.pending_specials`:
 
