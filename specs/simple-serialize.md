@@ -16,22 +16,16 @@ deserializing objects and data types.
       - [uint: 8/16/24/32/64/256](#uint-816243264256)
       - [Address](#address)
       - [Hash](#hash)
-         * [Hash32](#hash32)
-         * [Hash96](#hash96)
-         * [Hash97](#hash97)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
-      - [Container (TODO)](#container)
+      - [Container](#container)
    + [Deserialize/Decode](#deserializedecode)
       - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
       - [Address](#address-1)
       - [Hash](#hash-1)
-         * [Hash32](#hash32-1)
-         * [Hash96](#hash96-1)
-         * [Hash97](#hash97-1)
       - [Bytes](#bytes-1)
       - [List/Vectors](#listvectors-1)
-      - [Container (TODO)](#container-1)
+      - [Container](#container-1)
 * [Implementations](#implementations)
 
 ## About
@@ -97,7 +91,7 @@ return b'\x01' if value is True else b'\x00'
 
 #### Address
 
-The address should already come as a hash/byte format. Ensure that length is
+The `address` should already come as a hash/byte format. Ensure that length is
 **20**.
 
 | Check to perform       | Code                 |
@@ -113,63 +107,24 @@ return value
 
 | Hash Type | Usage                                           |
 |:---------:|:------------------------------------------------|
-|  `hash32` | Hash size of ``keccak`` or `blake2b[0.. < 32]`. |
-|  `hash96` | BLS Public Key Size.                            |
-|  `hash97` | BLS Public Key Size with recovery bit.          |
+|  `hashN`  | Hash of arbitrary byte length `N`.              |
 
 
-| Checks to perform                   | Code                 |
-|:-----------------------------------|:---------------------|
-| Length is correct (32) if `hash32` | ``len(value) == 32`` |
-| Length is correct (96) if `hash96` | ``len(value) == 96`` |
-| Length is correct (97) if `hash97` | ``len(value) == 97`` |
+| Checks to perform                      | Code                 |
+|:---------------------------------------|:---------------------|
+| Length in bytes is correct for `hashN` | ``len(value) == N``  |
 
-
-**Example all together**
+##### hashN
 
 ```python
-if (type(value) == 'hash32'):
-   assert(len(value) == 32)
-elif (type(value) == 'hash96'):
-   assert(len(value) == 96)
-elif (type(value) == 'hash97'):
-   assert(len(value) == 97)
-else:
-   raise TypeError('Invalid hash type supplied')
+assert(len(value) == N)
 
-return value
-```
-
-##### Hash32
-
-Ensure 32 byte length and return the bytes.
-
-```python
-assert(len(value) == 32)
-return value
-```
-
-##### Hash96
-
-Ensure 96 byte length and return the bytes.
-
-```python
-assert(len(value) == 96)
-return value
-```
-
-##### Hash97
-
-Ensure 97 byte length and return the bytes.
-
-```python
-assert(len(value) == 97)
 return value
 ```
 
 #### Bytes
 
-For general `byte` type:
+For general `bytes` type:
 1. Get the length/number of bytes; Encode into a `4-byte` integer.
 2. Append the value to the length and return: ``[ length_bytes ] + [
    value_bytes ]``
@@ -185,6 +140,8 @@ return byte_length + value
 ```
 
 #### List/Vectors
+
+Lists are a collection of elements of the same homogeneous type.
 
 | Check to perform                            | Code                        |
 |:--------------------------------------------|:----------------------------|
@@ -215,12 +172,51 @@ return serialized_len + serialized_list_string
 
 #### Container
 
-```
-########################################
-                 TODO
-########################################
-```
+A container represents a heterogenous, associative collection of key-value pairs. Each pair is referred to as a `field`. To get the value for a given field, you supply the key which is a symbol unique to the container referred to as the field's `name`. The container data type is analogous to the `struct` type found in many languages like C or Go.
 
+To serialize a container, obtain the set of its field's names and sort them lexicographically. For each field name in this sorted list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the sorted field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **big endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
+
+
+| Check to perform                            | Code                        |
+|:--------------------------------------------|:----------------------------|
+| Length of serialized fields fits into 4 bytes | ``len(serialized) < 2**32`` |
+
+To serialize:
+
+1. Get the names of the container's fields and sort them.
+
+2. For each name in the sorted list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
+
+3. Get the number of raw bytes in the serialized buffer. Encode that number as a `4-byte` **big endian** `uint32`.
+
+4. Prepend the length to the serialized buffer.
+
+**Example in Python**
+
+```python
+def get_field_names(typ):
+    return typ.fields.keys()
+
+def get_value_for_field_name(value, field_name):
+    return getattr(value, field_name)
+
+def get_type_for_field_name(typ, field_name):
+    return typ.fields[field_name]
+
+serialized_buffer = b''
+
+typ = type(value)
+for field_name in sorted(get_field_names(typ)):
+    field_value = get_value_for_field_name(value, field_name)
+    field_type = get_type_for_field_name(typ, field_name)
+    serialized_buffer += serialize(field_value, field_type)
+
+assert(len(serialized_buffer) < 2**32)
+
+serialized_len = (len(serialized_buffer).to_bytes(LENGTH_BYTES, 'big'))
+
+return serialized_len + serialized_buffer
+```
 
 ### Deserialize/Decode
 
@@ -272,36 +268,15 @@ return rawbytes[current_index:current_index+20], new_index
 
 #### Hash
 
-##### Hash32
+##### hashN
 
-Return the 32 bytes.
-
-```python
-assert(len(rawbytes) >= current_index + 32)
-new_index = current_index + 32
-return rawbytes[current_index:current_index+32], new_index
-```
-
-##### Hash96
-
-Return the 96 bytes.
+Return the `N` bytes.
 
 ```python
-assert(len(rawbytes) >= current_index + 96)
-new_index = current_index + 96
-return rawbytes[current_index:current_index+96], new_index
+assert(len(rawbytes) >= current_index + N)
+new_index = current_index + N
+return rawbytes[current_index:current_index+N], new_index
 ```
-
-##### Hash97
-
-Return the 97 bytes.
-
-```python
-assert(len(rawbytes) >= current_index + 97)
-new_index = current_index + 97
-return rawbytes[current_index:current_index+97], new_index
-```
-
 
 #### Bytes
 
@@ -327,7 +302,7 @@ return rawbytes[bytes_start:bytes_end], new_index
 
 #### List/Vectors
 
-Deserialize each object in the list.
+Deserialize each element in the list.
 1. Get the length of the serialized list.
 2. Loop through deserializing each item in the list until you reach the
 entire length of the list.
@@ -355,11 +330,131 @@ return deserialized_list, new_index
 
 #### Container
 
+Refer to the section on container encoding for some definitions.
+
+To deserialize a container, loop over each field in the container and use the type of that field to know what kind of deserialization to perform. Consume successive elements of the data stream for each successful deserialization.
+
+Instantiate a container with the full set of deserialized data, matching each member with the corresponding field.
+
+| Check to perform                          | code                                                            |
+|:------------------------------------------|:----------------------------------------------------------------|
+| rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
+| list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
+
+To deserialize:
+
+1. Get the names of the container's fields and sort them.
+
+2. For each name in the sorted list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
+
+3. Construct a container instance after successfully consuming the entire subset of the stream for the serialized container.
+
+**Example in Python**
+
+```python
+def get_field_names(typ):
+    return typ.fields.keys()
+
+def get_value_for_field_name(value, field_name):
+    return getattr(value, field_name)
+
+def get_type_for_field_name(typ, field_name):
+    return typ.fields[field_name]
+
+class Container:
+    # this is the container; here we will define an empty class for demonstration
+    pass
+
+# get a reference to the type in some way...
+container = Container()
+typ = type(container)
+
+assert(len(rawbytes) > current_index + LENGTH_BYTES)
+total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
+new_index = current_index + LENGTH_BYTES + total_length
+assert(len(rawbytes) >= new_index)
+item_index = current_index + LENGTH_BYTES
+
+values = {}
+for field_name in sorted(get_field_names(typ)):
+    field_name_type = get_type_for_field_name(typ, field_name)
+    values[field_name], item_index = deserialize(data, item_index, field_name_type)
+assert item_index == start + LENGTH_BYTES + length
+return typ(**values), item_index
 ```
-########################################
-                 TODO
-########################################
+
+### Tree_hash
+
+The below `tree_hash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
+
+We define `hash(x)` as `BLAKE2b-512(x)[0:32]`.
+
+#### uint: 8/16/24/32/64/256, bool, address, hash32
+
+Return the serialization of the value.
+
+#### bytes, hash96
+
+Return the hash of the serialization of the value.
+
+#### List/Vectors
+
+First, we define some helpers and then the Merkle tree function. The constant `CHUNK_SIZE` is set to 128.
+
+```python
+# Returns the smallest power of 2 equal to or higher than x
+def next_power_of_2(x):
+    return x if x == 1 else next_power_of_2((x+1) // 2) * 2
+
+# Extends data length to a power of 2 by minimally right-zero-padding
+def extend_to_power_of_2(data):
+    return data + b'\x00' * (next_power_of_2(len(data)) - len(data))
+
+# Concatenate a list of homogeneous objects into data and pad it
+def list_to_glob(lst):
+    if len(lst) == 0:
+        return b''
+    if len(lst[0]) != next_power_of_2(len(lst[0])):
+        lst = [extend_to_power_of_2(x) for x in lst]
+    data = b''.join(lst)
+    # Pad to chunksize
+    data += b'\x00' * (CHUNKSIZE - (len(data) % CHUNKSIZE or CHUNKSIZE))
+    return data
+
+# Merkle tree hash of a list of items
+def merkle_hash(lst):
+    # Turn list into padded data
+    data = list_to_glob(lst)
+    # Store length of list (to compensate for non-bijectiveness of padding)
+    datalen = len(lst).to_bytes(32, 'big')
+    # Convert to chunks
+    chunkz = [data[i:i+CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]
+    # Tree-hash
+    while len(chunkz) > 1:
+        if len(chunkz) % 2 == 1:
+            chunkz.append(b'\x00' * CHUNKSIZE)
+        chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
+    # Return hash of root and length data
+    return hash((chunkz[0] if len(chunks) > 0 else b'\x00' * 32) + datalen)
 ```
+
+To `tree_hash` a list, we simply do:
+
+```python
+return merkle_hash([tree_hash(item) for item in value])
+```
+
+Where the inner `tree_hash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+
+
+#### Container
+
+Recursively tree hash the values in the container in order sorted by key, and return the hash of the concatenation of the results.
+
+```python
+return hash(b''.join([tree_hash(getattr(x, field)) for field in sorted(value.fields)))
+```
+
 
 ## Implementations
 
