@@ -4,6 +4,8 @@
 
 This repo hosts the current eth2.0 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed upon changes to spec can be made through pull requests. 
 
+# Specs
+
 Core specifications for eth2.0 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 * [Phase 0 -- The Beacon Chain](specs/core/0_beacon-chain.md)
 * [Phase 1 -- Shard Data Chains](specs/core/1_shard-data-chains.md)
