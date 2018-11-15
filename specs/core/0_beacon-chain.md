@@ -871,7 +871,6 @@ Note: This spec is ~65% complete.
 
 **Missing**
 
-* [ ] Specify the Merklelisation rules for beacon state and blocks and merge `crystallized_state_root` and `active_state_root` ([issue 54](https://github.com/ethereum/eth2.0-specs/issues/54))
 * [ ] Specify the rules around acceptable values for `pow_chain_reference` ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
 * [ ] Specify the shard chain blocks, blobs, proposers, etc.
 * [ ] Specify the deposit contract on the PoW chain in Vyper
