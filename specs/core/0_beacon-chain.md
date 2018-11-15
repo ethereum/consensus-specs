@@ -463,7 +463,7 @@ We also define two functions for retrieving data from the state:
 ```python
 def get_shards_and_committees_for_slot(state: BeaconState,
                                        slot: int) -> List[ShardAndCommittee]:
-    earliest_slot_in_array = state.last_state_recalculation - CYCLE_LENGTH
+    earliest_slot_in_array = state.last_state_recalculation_slot - CYCLE_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + CYCLE_LENGTH * 2
     return state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
 
