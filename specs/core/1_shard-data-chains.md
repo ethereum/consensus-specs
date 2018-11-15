@@ -16,9 +16,10 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-| Constant | Value | Unit | Approximation |
-| `CHUNK_SIZE` | 2**8 (= 256) | bytes |
-| `MAX_SHARD_BLOCK_SIZE` | 2**15 (= 32768) | bytes |
+| Constant               | Value           | Unit  | Approximation |
+|------------------------|-----------------|-------|---------------|
+| `CHUNK_SIZE`           | 2**8 (= 256)    | bytes |               |
+| `MAX_SHARD_BLOCK_SIZE` | 2**15 (= 32768) | bytes |               |
 
 ## Data Structures
 
