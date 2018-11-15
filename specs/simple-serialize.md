@@ -478,6 +478,8 @@ def extend_to_power_of_2(data):
 
 # Concatenate a list of homogeneous objects into data and pad it
 def list_to_glob(lst):
+    if len(lst) == 0:
+        return b''
     if len(lst[0]) != next_power_of_2(len(lst[0])):
         lst = [extend_to_power_of_2(x) for x in lst]
     data = b''.join(lst)
