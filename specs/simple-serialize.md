@@ -383,6 +383,79 @@ assert item_index == start + LENGTH_BYTES + length
 return typ(**values), item_index
 ```
 
+### Tree_hash
+
+The below `tree_hash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
+
+We define `hash(x)` as `BLAKE2b-512(x)[0:32]`.
+
+#### uint: 8/16/24/32/64/256, bool, address, hash32
+
+Return the serialization of the value.
+
+#### bytes, hash96
+
+Return the hash of the serialization of the value.
+
+#### List/Vectors
+
+First, we define some helpers and then the Merkle tree function. The constant `CHUNK_SIZE` is set to 128.
+
+```python
+# Returns the smallest power of 2 equal to or higher than x
+def next_power_of_2(x):
+    return x if x == 1 else next_power_of_2((x+1) // 2) * 2
+
+# Extends data length to a power of 2 by minimally right-zero-padding
+def extend_to_power_of_2(data):
+    return data + b'\x00' * (next_power_of_2(len(data)) - len(data))
+
+# Concatenate a list of homogeneous objects into data and pad it
+def list_to_glob(lst):
+    if len(lst) == 0:
+        return b''
+    if len(lst[0]) != next_power_of_2(len(lst[0])):
+        lst = [extend_to_power_of_2(x) for x in lst]
+    data = b''.join(lst)
+    # Pad to chunksize
+    data += b'\x00' * (CHUNKSIZE - (len(data) % CHUNKSIZE or CHUNKSIZE))
+    return data
+
+# Merkle tree hash of a list of items
+def merkle_hash(lst):
+    # Turn list into padded data
+    data = list_to_glob(lst)
+    # Store length of list (to compensate for non-bijectiveness of padding)
+    datalen = len(lst).to_bytes(32, 'big')
+    # Convert to chunks
+    chunkz = [data[i:i+CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]
+    # Tree-hash
+    while len(chunkz) > 1:
+        if len(chunkz) % 2 == 1:
+            chunkz.append(b'\x00' * CHUNKSIZE)
+        chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
+    # Return hash of root and length data
+    return hash((chunkz[0] if len(chunks) > 0 else b'\x00' * 32) + datalen)
+```
+
+To `tree_hash` a list, we simply do:
+
+```python
+return merkle_hash([tree_hash(item) for item in value])
+```
+
+Where the inner `tree_hash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+
+
+#### Container
+
+Recursively tree hash the values in the container in order sorted by key, and return the hash of the concatenation of the results.
+
+```python
+return hash(b''.join([tree_hash(getattr(x, field)) for field in sorted(value.fields)))
+```
+
+
 ## Implementations
 
 | Language | Implementation                                                                                                                                                     | Description                                              |
