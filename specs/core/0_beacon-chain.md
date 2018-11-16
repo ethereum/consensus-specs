@@ -562,7 +562,21 @@ If the user wishes to deposit more than 32 ETH, they would need to make multiple
 
 ### On startup
 
-Run the following code:
+A valid block with slot `0` (the "genesis block") has the following values. Other validity rules (eg. requiring a signature) do not apply.
+
+```python
+{
+    'slot': 0,
+    'randao_reveal': bytes32(0),
+    'candidate_pow_receipt_root': bytes32(0),
+    'ancestor_hashes': [bytes32(0) for i in range(32)],
+    'state_root': STARTUP_STATE_ROOT,
+    'attestations': [],
+    'specials': []
+}
+```
+
+`STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
 def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_hash_chain_tip: Hash32) -> BeaconState:
@@ -808,7 +822,7 @@ For each `SpecialRecord` `obj` in `state.pending_specials`:
 * **[covers `LOGOUT`]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a `uint24` and `data[1]` as a `hash32`, where `validator_index = data[0]` and `signature = data[1]`. If `BLSVerify(pubkey=validators[validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=signature)`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[validator_index].status == ACTIVE`, run `exit_validator(validator_index, state, penalize=False, current_slot=block.slot)`
 * **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
 * **[covers `RANDAO_CHANGE`]**: If `obj.kind == RANDAO_CHANGE`, interpret `data[0]` as a `uint24`, `data[1]` as a `hash32`, and `data[2]` as a `uint64`,  where `proposer_index = data[0]`, `randao_commitment = data[1]`, and `randao_last_change = data[2]`. Set `validators[proposer_index].randao_commitment = randao_commitment`, and set `validators[proposer_index].randao_last_change = randao_last_change`.
-* **[covers `DEPOSIT_PROOF`]**: If `obj.kind == DEPOSIT_PROOF`, interpret `data[0]` as a Merkle branch from a deposit object to the `known_pow_receipt_root` (hashes in order lower to higher, concatenated), `data[1]` as being the `int128` index in the tree, and `data[2]` as being the deposit object itself, having the format `concat(data, as_bytes32(msg.value), as_bytes32(timestamp)` where `data` itself is a `DepositParams`. Verify that `msg.value == DEPOSIT_SIZE` and `block.slot - (timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`. Run `add_validator(validators, data.pubkey, data.proof_of_possession, data.withdrawal_shard, data.withdrawal_address, data.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+* **[covers `DEPOSIT_PROOF`]**: If `obj.kind == DEPOSIT_PROOF`, interpret `data[0]` as a Merkle branch from a deposit object to the `known_pow_receipt_root` (hashes in order lower to higher, concatenated), `data[1]` as being the `int128` index in the tree, and `data[2]` as being the deposit object itself, having the format `concat(data, as_bytes32(msg.value), as_bytes32(timestamp)` where `data` itself is a `DepositParams`. Verify the Merkle branch. Verify that `msg.value == DEPOSIT_SIZE` and `block.slot - (timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`. Run `add_validator(validators, data.pubkey, data.proof_of_possession, data.withdrawal_shard, data.withdrawal_address, data.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 #### Finally...
 
