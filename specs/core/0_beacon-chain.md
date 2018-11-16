@@ -47,6 +47,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `MAX_SPECIALS_PER_BLOCK` | 2**4 (= 16) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -676,6 +677,8 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and set `V.randao_commitment = block.randao_reveal`, and set `V.randao_last_change = block.slot`.
 
 ### Process penalties, logouts and other special objects
+
+Verify that there are at most `MAX_SPECIALS_PER_BLOCK` objects in `block.specials`.
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
