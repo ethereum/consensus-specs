@@ -402,40 +402,32 @@ Return the hash of the serialization of the value.
 First, we define some helpers and then the Merkle tree function. The constant `CHUNK_SIZE` is set to 128.
 
 ```python
-# Returns the smallest power of 2 equal to or higher than x
-def next_power_of_2(x):
-    return x if x == 1 else next_power_of_2((x+1) // 2) * 2
-
-# Extends data length to a power of 2 by minimally right-zero-padding
-def extend_to_power_of_2(data):
-    return data + b'\x00' * (next_power_of_2(len(data)) - len(data))
-
-# Concatenate a list of homogeneous objects into data and pad it
-def list_to_glob(lst):
-    if len(lst) == 0:
-        return b''
-    if len(lst[0]) != next_power_of_2(len(lst[0])):
-        lst = [extend_to_power_of_2(x) for x in lst]
-    data = b''.join(lst)
-    # Pad to chunksize
-    data += b'\x00' * (CHUNKSIZE - (len(data) % CHUNKSIZE or CHUNKSIZE))
-    return data
-
-# Merkle tree hash of a list of items
+# Merkle tree hash of a list of homogenous, non-empty items
 def merkle_hash(lst):
-    # Turn list into padded data
-    data = list_to_glob(lst)
     # Store length of list (to compensate for non-bijectiveness of padding)
     datalen = len(lst).to_bytes(32, 'big')
-    # Convert to chunks
-    chunkz = [data[i:i+CHUNKSIZE] for i in range(0, len(data), CHUNKSIZE)]
+
+    if len(lst) == 0:
+        # Handle empty list case
+        chunkz = [b'\x00' * CHUNKSIZE]
+    elif len(lst[0]) < CHUNKSIZE:
+        # See how many items fit in a chunk
+        items_per_chunk = CHUNKSIZE // len(lst[0])
+
+        # Build a list of chunks based on the number of items in the chunk
+        chunkz = [b''.join(lst[i:i+items_per_chunk]) for i in range(0, len(lst), items_per_chunk)]
+    else:
+        # Leave large items alone
+        chunkz = lst
+
     # Tree-hash
     while len(chunkz) > 1:
         if len(chunkz) % 2 == 1:
             chunkz.append(b'\x00' * CHUNKSIZE)
         chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
+
     # Return hash of root and length data
-    return hash((chunkz[0] if len(chunks) > 0 else b'\x00' * 32) + datalen)
+    return hash((chunkz[0] + datalen)
 ```
 
 To `tree_hash` a list, we simply do:
