@@ -700,9 +700,9 @@ Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(
     'vote1_aggregate_sig_indices': '[uint24]',
     'vote1_data': AttestationSignedData,
     'vote1_aggregate_sig': '[uint256]',
-    'vote1_aggregate_sig_indices': '[uint24]',
+    'vote2_aggregate_sig_indices': '[uint24]',
     'vote2_data': AttestationSignedData,
-    'vote1_aggregate_sig': '[uint256]',
+    'vote2_aggregate_sig': '[uint256]',
 }
 ```
 
