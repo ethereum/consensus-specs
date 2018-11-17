@@ -612,7 +612,6 @@ def on_startup(initial_validator_entries: List[Any]) -> BeaconState:
         post_fork_version=INITIAL_FORK_VERSION,
         fork_slot_number=0,
         pending_attestations=[],
-        pending_specials=[],
         recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
         randao_mix=bytes([0] * 32)  # stub
     )
@@ -674,7 +673,8 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `V = state.validators[curblock_proposer_index]`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and set `V.randao_commitment = block.randao_reveal`, and set `V.randao_last_change = block.slot`.
+* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
+* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
 ### Process penalties, logouts and other special objects
 
@@ -697,21 +697,21 @@ Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(
 
 ```python
 {
-    'vote1_aggsig_indices': '[uint24]',
+    'vote1_aggregate_sig_indices': '[uint24]',
     'vote1_data': AttestationSignedData,
-    'vote1_aggsig': '[uint256]',
-    'vote2_aggsig_indices': '[uint24]',
+    'vote1_aggregate_sig': '[uint256]',
+    'vote1_aggregate_sig_indices': '[uint24]',
     'vote2_data': AttestationSignedData,
-    'vote2_aggsig': '[uint256]',
+    'vote1_aggregate_sig': '[uint256]',
 }
 ```
 
-Verify that:
+Perform the following checks:
 
-* For each `aggsig`, `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in aggsig_indices]), msg=vote_data, sig=aggsig)` passes.
-* `vote1_data != vote2_data`
-* Let `intersection = [x for x in vote1_aggsig_indices if x in vote2_aggsig_indices]`. Verify that `len(intersection) >= 1`.
-* `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`
+* For each `aggregate_sig`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in aggregate_sig_indices]), msg=vote_data, sig=aggsig)` passes.
+* Verify that `vote1_data != vote2_data`.
+* Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
+* Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
 
 For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
 
