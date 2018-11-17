@@ -137,7 +137,7 @@ An `AttestationRecord` has the following fields:
     # Hash of last justified beacon block
     'justified_block_hash': 'hash32',
     # BLS aggregate signature
-    'aggregate_sig': ['uint256']
+    'aggregate_sig': ['uint384']
 }
 ```
 
@@ -227,7 +227,7 @@ A `ValidatorRecord` has the following fields:
 ```python
 {
     # BLS public key
-    'pubkey': 'uint256',
+    'pubkey': 'uint384',
     # Withdrawal shard number
     'withdrawal_shard': 'uint16',
     # Withdrawal address
@@ -608,6 +608,8 @@ def add_validator(validators: List[ValidatorRecord],
         validators[index] = rec
         return index
 ```
+
+`BLSVerify` is a function for verifying a BLS-12-381 signature, defined in the BLS-12-381 spec.
 
 ## Routine for removing a validator
 
