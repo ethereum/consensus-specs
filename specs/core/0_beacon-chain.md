@@ -690,8 +690,12 @@ For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is on
     'signature': '[uint256]'
 }
 ```
+Perform the following checks:
 
-Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature)`, where `fork_version = pre_fork_version if block.slot < fork_slot_number else post_fork_version`, and `validators[validator_index].status == ACTIVE`. Run `exit_validator(data.validator_index, state, penalize=False, current_slot=block.slot)`.
+* Let `fork_version = pre_fork_version if block.slot < fork_slot_number else post_fork_version`. Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature)`
+* Verify that `validators[validator_index].status == ACTIVE`.
+
+Run `exit_validator(data.validator_index, state, penalize=False, current_slot=block.slot)`.
 
 #### CASPER_SLASHING
 
