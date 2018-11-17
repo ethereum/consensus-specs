@@ -47,6 +47,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `MAX_SPECIALS_PER_BLOCK` | 2**4 (= 16) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -171,7 +172,7 @@ A `SpecialRecord` has the following fields:
     # Kind
     'kind': 'uint8',
     # Data
-    'data': ['bytes']
+    'data': 'bytes'
 }
 ```
 
@@ -213,8 +214,6 @@ The `BeaconState` has the following fields:
     'fork_slot_number': 'uint64',
     # Attestations not yet processed
     'pending_attestations': [AttestationRecord],
-    # Specials not yet been processed
-    'pending_specials': [SpecialRecord]
     # recent beacon block hashes needed to process attestations, older to newer
     'recent_block_hashes': ['hash32'],
     # RANDAO state
@@ -503,63 +502,6 @@ def int_sqrt(n: int) -> int:
     return x
 ```
 
-### On startup
-
-Run the following code:
-
-```python
-def on_startup(initial_validator_entries: List[Any]) -> BeaconState:
-    # Induct validators
-    validators = []
-    for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
-            randao_commitment in initial_validator_entries:
-        add_validator(
-            validators=validators,
-            pubkey=pubkey,
-            proof_of_possession=proof_of_possession,
-            withdrawal_shard=withdrawal_shard,
-            withdrawal_address=withdrawal_address,
-            randao_commitment=randao_commitment,
-            current_slot=0,
-            status=ACTIVE,
-        )
-    # Setup state
-    x = get_new_shuffling(bytes([0] * 32), validators, 0)
-    crosslinks = [
-        CrosslinkRecord(
-            slot=0,
-            hash=bytes([0] * 32)
-        )
-        for i in range(SHARD_COUNT)
-    ]
-    state = BeaconState(
-        validator_set_change_slot=0,
-        validators=validators,
-        crosslinks=crosslinks,
-        last_state_recalculation_slot=0,
-        last_finalized_slot=0,
-        last_justified_slot=0,
-        justified_streak=0,
-        shard_and_committee_for_slots=x + x,
-        persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
-        persistent_committee_reassignments=[],
-        deposits_penalized_in_period=[],
-        next_shuffling_seed=b'\x00'*32,
-        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
-        pre_fork_version=INITIAL_FORK_VERSION,
-        post_fork_version=INITIAL_FORK_VERSION,
-        fork_slot_number=0,
-        pending_attestations=[],
-        pending_specials=[],
-        recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
-        randao_mix=bytes([0] * 32)  # stub
-    )
-
-    return state
-```
-
-The `add_validator` routine is defined below.
-
 ### Routine for adding a validator
 
 This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
@@ -609,7 +551,7 @@ def add_validator(validators: List[ValidatorRecord],
         return index
 ```
 
-## Routine for removing a validator
+### Routine for removing a validator
 
 ```python
 def exit_validator(index, state, penalize, current_slot):
@@ -623,7 +565,61 @@ def exit_validator(index, state, penalize, current_slot):
     add_validator_set_change_record(state, index, validator.pubkey, EXIT)
 ```
 
-### Per-block processing
+## On startup
+
+Run the following code:
+
+```python
+def on_startup(initial_validator_entries: List[Any]) -> BeaconState:
+    # Induct validators
+    validators = []
+    for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
+            randao_commitment in initial_validator_entries:
+        add_validator(
+            validators=validators,
+            pubkey=pubkey,
+            proof_of_possession=proof_of_possession,
+            withdrawal_shard=withdrawal_shard,
+            withdrawal_address=withdrawal_address,
+            randao_commitment=randao_commitment,
+            current_slot=0,
+            status=ACTIVE,
+        )
+    # Setup state
+    x = get_new_shuffling(bytes([0] * 32), validators, 0)
+    crosslinks = [
+        CrosslinkRecord(
+            slot=0,
+            hash=bytes([0] * 32)
+        )
+        for i in range(SHARD_COUNT)
+    ]
+    state = BeaconState(
+        validator_set_change_slot=0,
+        validators=validators,
+        crosslinks=crosslinks,
+        last_state_recalculation_slot=0,
+        last_finalized_slot=0,
+        last_justified_slot=0,
+        justified_streak=0,
+        shard_and_committee_for_slots=x + x,
+        persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
+        persistent_committee_reassignments=[],
+        deposits_penalized_in_period=[],
+        next_shuffling_seed=b'\x00'*32,
+        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        pre_fork_version=INITIAL_FORK_VERSION,
+        post_fork_version=INITIAL_FORK_VERSION,
+        fork_slot_number=0,
+        pending_attestations=[],
+        recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
+        randao_mix=bytes([0] * 32)  # stub
+    )
+
+    return state
+```
+
+## Per-block processing
 
 This procedure should be carried out every beacon block.
 
@@ -669,7 +665,7 @@ For each one of these attestations:
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
 * Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)` as the message.
 
-Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block. Similarly extend the list of `SpecialRecord` objects in the `state` with those included in the block.
+Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block.
 
 Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a beacon block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
 
@@ -677,9 +673,53 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `V = state.validators[curblock_proposer_index]`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`, and set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)` and append to `state.pending_specials` a `SpecialObject(kind=RANDAO_CHANGE, data=[bytes8(curblock_proposer_index), block.randao_reveal, bytes8(block.slot)])`.
+* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
+* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
-### State recalculations (every `CYCLE_LENGTH` slots)
+### Process penalties, logouts and other special objects
+
+Verify that there are at most `MAX_SPECIALS_PER_BLOCK` objects in `block.specials`.
+
+For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
+
+#### LOGOUT
+
+```python
+{
+    'validator_index': 'uint64',
+    'signature': '[uint256]'
+}
+```
+Perform the following checks:
+
+* Let `fork_version = pre_fork_version if block.slot < fork_slot_number else post_fork_version`. Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature)`
+* Verify that `validators[validator_index].status == ACTIVE`.
+
+Run `exit_validator(data.validator_index, state, penalize=False, current_slot=block.slot)`.
+
+#### CASPER_SLASHING
+
+```python
+{
+    'vote1_aggregate_sig_indices': '[uint24]',
+    'vote1_data': AttestationSignedData,
+    'vote1_aggregate_sig': '[uint256]',
+    'vote2_aggregate_sig_indices': '[uint24]',
+    'vote2_data': AttestationSignedData,
+    'vote2_aggregate_sig': '[uint256]',
+}
+```
+
+Perform the following checks:
+
+* For each `aggregate_sig`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in aggregate_sig_indices]), msg=vote_data, sig=aggsig)` passes.
+* Verify that `vote1_data != vote2_data`.
+* Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
+* Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
+
+For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
+
+## State recalculations (every `CYCLE_LENGTH` slots)
 
 Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
 
@@ -733,14 +773,6 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 * Adjust balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
     * Non-participating validators lose `B // reward_quotient`.
-
-#### Process penalties, logouts and other special objects
-
-For each `SpecialRecord` `obj` in `state.pending_specials`:
-
-* **[covers `LOGOUT`]**: If `obj.kind == LOGOUT`, interpret `data[0]` as a `uint24` and `data[1]` as a `hash32`, where `validator_index = data[0]` and `signature = data[1]`. If `BLSVerify(pubkey=validators[validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=signature)`, where `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`, and `validators[validator_index].status == ACTIVE`, run `exit_validator(validator_index, state, penalize=False, current_slot=block.slot)`
-* **[covers `NO_DBL_VOTE`, `NO_SURROUND`, `NO_DBL_PROPOSE` slashing conditions]:** If `obj.kind == CASPER_SLASHING`, interpret `data[0]` as a list of concatenated `uint32` values where each value represents an index into `validators`, `data[1]` as the data being signed and `data[2]` as an aggregate signature. Interpret `data[3:6]` similarly. Verify that both signatures are valid, that the two signatures are signing distinct data, and that they are either signing the same slot number, or that one surrounds the other (ie. `source1 < source2 < target2 < target1`). Let `indices` be the list of indices in both signatures; verify that its length is at least 1. For each validator index `v` in `indices`, if its `status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
-* **[covers `RANDAO_CHANGE`]**: If `obj.kind == RANDAO_CHANGE`, interpret `data[0]` as a `uint24`, `data[1]` as a `hash32`, and `data[2]` as a `uint64`,  where `proposer_index = data[0]`, `randao_commitment = data[1]`, and `randao_last_change = data[2]`. Set `validators[proposer_index].randao_commitment = randao_commitment`, and set `validators[proposer_index].randao_last_change = randao_last_change`.
 
 ### Validator set change
 
