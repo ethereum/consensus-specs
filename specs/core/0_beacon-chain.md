@@ -85,6 +85,8 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `CASPER_SLASHING` | `1` |
 | `RANDAO_CHANGE` | `2` |
 | `PROOF_OF_CUSTODY_SEED_CHANGE` | `4` |
+| `PROOF_OF_CUSTODY_CHALLENGE` | `5` |
+| `PROOF_OF_CUSTODY_RESPONSE` | `6` |
 
 **Validator set delta flags**
 
@@ -970,9 +972,14 @@ Let `signed_data = bytes8(fork_version) + new_commitment`. Verify that `BLSVerif
 }
 ```
 
-Verify the given attestation. Verify that `attestation.slot > state.validators[index].proof_of_custody_second_last_change`. Let `seed_preimage = state.validators[index].proof_of_custody_commitment if attestation.slot > state.validators[index].proof_of_custody_last_change else hash(state.validators[index].proof_of_custody_commitment)`. Assert `validator_index in attestation.aggregate_sig_poc_0_indices` or `validator_index in attestation.aggregate_sig_poc_1_indices`; if the formet, let `bit = False`, else `bit = True`.
+Perform the following checks:
 
-Append to `state.proof_of_custody_challenges` the object `ProofOfCustodyChallenge(responder_index=validator_index, seed_preimage=seed_preimage, depth=attestation.proof_of_custody_depth, data_index=data_index, expiry_slot=block.slot+PROOF_OF_CUSTODY_RESPONSE_DEADLINE, challenger_index=get_proposer(state, block), bit=bit)`.
+* Verify that the attestation is valid.
+* Verify that `attestation.slot > state.validators[index].proof_of_custody_second_last_change`.
+* Verify that `validator_index in attestation.aggregate_sig_poc_0_indices` or `validator_index in attestation.aggregate_sig_poc_1_indices`; if the former, let `bit = False`, else `bit = True`.
+* Verify that `state.validators[index].status == ACTIVE` or `state.validators[index].status == PENDING_EXIT` and `block.slot < state.validators[index].exit_slot + PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD`
+
+Let `seed_preimage = state.validators[index].proof_of_custody_commitment if attestation.slot > state.validators[index].proof_of_custody_last_change else hash(state.validators[index].proof_of_custody_commitment)`. Append to `state.proof_of_custody_challenges` the object `ProofOfCustodyChallenge(responder_index=validator_index, seed_preimage=seed_preimage, depth=attestation.proof_of_custody_depth, data_index=data_index, expiry_slot=block.slot+PROOF_OF_CUSTODY_RESPONSE_DEADLINE, challenger_index=get_proposer(state, block), bit=bit)`.
 
 A block can have maximum one proof of custody challenge, and it must appear before all `PROOF_OF_CUSTODY_SEED_CHANGE` objects.
 
@@ -1118,7 +1125,9 @@ def change_validators(state: State, current_slot: int) -> None:
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
     for i in range(len(validators)):
-        if validators[i].status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= validators[i].exit_slot + WITHDRAWAL_PERIOD:
+        if validators[i].status in (PENDING_WITHDRAW, PENALIZED) and \
+                current_slot >= validators[i].exit_slot + WITHDRAWAL_PERIOD and \
+                len([c in state.challenges if c.responder_index == i]) == 0:
             if validators[i].status == PENALIZED:
                 validators[i].balance -= validators[i].balance * min(total_penalties * 3, total_balance) // total_balance
             validators[i].status = WITHDRAWN
