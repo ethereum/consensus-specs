@@ -505,6 +505,15 @@ def get_block_hash(state: BeaconState,
 
 `get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
 
+The following is a function that determines the proposer of a block:
+
+```python
+def get_proposer(state, block):
+    first_committee = get_shards_and_committees_for_slot(state, block.slot)[0]
+    index = first_committee[block.slot % len(first_committee)]
+    return state.validators[index]
+```
+
 We define another set of helpers to be used throughout: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
@@ -826,14 +835,14 @@ Extend the list of `AttestationRecord` objects in the `state` with those include
 
 ### Verify proposer signature
 
-Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`. Let `proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(state, block.slot)[0]`, and `proposer = validators[proposer_index]`.
+Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`. 
 
-Verify that `BLSVerify(pubkey=proposer.pubkey, data=proposal_hash, sig=block.proposer_signature)` passes.
+Verify that `BLSVerify(pubkey=get_proposer(state, block).pubkey, data=proposal_hash, sig=block.proposer_signature)` passes.
 
 ### Verify and process RANDAO reveal
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `V = state.validators[curblock_proposer_index]`.
+* Let `V = get_proposer(state, block).
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
