@@ -609,7 +609,7 @@ def add_validator(validators: List[ValidatorRecord],
         return index
 ```
 
-`BLSVerify` is a function for verifying a BLS-12-381 signature, defined in the BLS-12-381 spec.
+`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the BLS12-381 spec.
 
 ## Routine for removing a validator
 
