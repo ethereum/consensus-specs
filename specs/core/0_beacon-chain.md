@@ -51,7 +51,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
- `MAX_SPECIALS_PER_BLOCK` | 2**4 (= 16) | - |
+| `MAX_SPECIALS_PER_BLOCK` | 2**4 (= 16) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
