@@ -36,6 +36,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
 | `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
+| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
 | `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
@@ -44,11 +45,14 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~18 hours |
 | `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
 | `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
+| `DELETION_PERIOD` | 2**21 (= 2,097,152) | slots | ~1.06 years |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
-| `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — | 
+| `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
+| `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
+| `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
 | `MAX_SPECIALS_PER_BLOCK` | 2**4 (= 16) | - |
-| `LOGOUT_MESSAGE` | `"LOGOUT"` | — | 
+| `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
 **Notes**
@@ -101,8 +105,8 @@ A `BeaconBlock` has the following fields:
     'slot': 'uint64',
     # Proposer RANDAO reveal
     'randao_reveal': 'hash32',
-    # Recent PoW chain reference (block hash)
-    'pow_chain_reference': 'hash32',
+    # Recent PoW chain reference (receipt root)
+    'candidate_pow_receipt_root': 'hash32',
     # Skip list of previous beacon block hashes
     # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
     'ancestor_hashes': ['hash32'],
@@ -207,6 +211,12 @@ The `BeaconState` has the following fields:
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
+    # Genesis time
+    'genesis_time': 'hash32',
+    # PoW chain reference
+    'known_pow_receipt_root': 'hash32',
+    'candidate_pow_receipt_root': 'hash32',
+    'candidate_pow_receipt_root_votes': 'uint32',
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
     'pre_fork_version': 'uint32',
@@ -502,6 +512,130 @@ def int_sqrt(n: int) -> int:
     return x
 ```
 
+### PoW chain contract
+
+The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
+
+```python
+HashChainValue: event({prev_tip: bytes32, data: bytes[2048], value: wei_value, time: timestamp, total_deposit_count: int128})
+ChainStart: event({hash_chain_tip: bytes32, time: timestamp})
+
+receipt_tree: bytes32[int128]
+total_deposit_count: int128
+
+@payable
+@public
+def deposit(data: bytes[2048]):
+    log.HashChainValue(self.receipt_tree[1], data, msg.value, block.timestamp, self.total_deposit_count)
+    index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+    self.receipt_tree[index] = sha3(concat(data, as_bytes32(msg.value), as_bytes32(block.timestamp))
+    for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
+        index //= 2
+        self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
+    self.total_deposit_count += 1
+    if self.total_deposit_count == 16384:
+        log.ChainStart(self.receipt_tree[1], block.timestamp)
+
+@public
+@constant
+def get_receipt_root() -> bytes32:
+    return self.receipt_tree[1]
+```
+
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `data` a SimpleSerialize'd `DepositParams` object of the form:
+
+```python
+{
+    'pubkey': 'int256',
+    'proof_of_possession': ['int256'],
+    'withdrawal_shard': 'int64',
+    'withdrawal_address`: 'bytes20',
+    'randao_commitment`: 'hash32'
+}
+```
+
+If the user wishes to deposit more than `DEPOSIT_SIZE` ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
+
+* `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
+* `genesis_time` equal to the `time` value published in the log
+* `pow_hash_chain_tip` equal to the `hash_chain_tip` value published in the log
+
+### On startup
+
+A valid block with slot `0` (the "genesis block") has the following values. Other validity rules (eg. requiring a signature) do not apply.
+
+```python
+{
+    'slot': 0,
+    'randao_reveal': bytes32(0),
+    'candidate_pow_receipt_root': bytes32(0),
+    'ancestor_hashes': [bytes32(0) for i in range(32)],
+    'state_root': STARTUP_STATE_ROOT,
+    'attestations': [],
+    'specials': []
+}
+```
+
+`STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
+
+```python
+def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_hash_chain_tip: Hash32) -> BeaconState:
+    # Induct validators
+    validators = []
+    for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
+            randao_commitment in initial_validator_entries:
+        add_validator(
+            validators=validators,
+            pubkey=pubkey,
+            proof_of_possession=proof_of_possession,
+            withdrawal_shard=withdrawal_shard,
+            withdrawal_address=withdrawal_address,
+            randao_commitment=randao_commitment,
+            current_slot=0,
+            status=ACTIVE,
+        )
+    # Setup state
+    x = get_new_shuffling(bytes([0] * 32), validators, 0)
+    crosslinks = [
+        CrosslinkRecord(
+            slot=0,
+            hash=bytes([0] * 32)
+        )
+        for i in range(SHARD_COUNT)
+    ]
+    state = BeaconState(
+        validator_set_change_slot=0,
+        validators=validators,
+        crosslinks=crosslinks,
+        last_state_recalculation_slot=0,
+        last_finalized_slot=0,
+        last_justified_slot=0,
+        justified_streak=0,
+        shard_and_committee_for_slots=x + x,
+        persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
+        persistent_committee_reassignments=[],
+        deposits_penalized_in_period=[],
+        next_shuffling_seed=b'\x00'*32,
+        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        genesis_time=genesis_time,
+        known_pow_hash_chain_tip=pow_hash_chain_tip,
+        processed_pow_hash_chain_tip=pow_hash_chain_tip,
+        candidate_pow_hash_chain_tip=bytes([0] * 32),
+        candidate_pow_hash_chain_tip_votes=0,
+        pre_fork_version=INITIAL_FORK_VERSION,
+        post_fork_version=INITIAL_FORK_VERSION,
+        fork_slot_number=0,
+        pending_attestations=[],
+        pending_specials=[],
+        recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
+        randao_mix=bytes([0] * 32)  # stub
+    )
+
+    return state
+```
+
+The `add_validator` routine is defined below.
+
 ### Routine for adding a validator
 
 This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
@@ -509,9 +643,9 @@ This routine should be run for every validator that is inducted as part of a log
 First, a helper function:
 
 ```python
-def min_empty_validator(validators: List[ValidatorRecord]):
+def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
     for i, v in enumerate(validators):
-        if v.status == WITHDRAWN:
+        if v.status == WITHDRAWN and v.exit_slot <= current_slot - DELETION_PERIOD:
             return i
     return None
 ```
@@ -529,9 +663,12 @@ def add_validator(validators: List[ValidatorRecord],
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
+    signed_message = as_bytes32(pubkey) + as_bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
     assert BLSVerify(pub=pubkey,
-                     msg=hash(pubkey),
+                     msg=hash(signed_message),
                      sig=proof_of_possession)
+    # Pubkey uniqueness
+    assert pubkey not in [v.pubkey for v in validators]
     rec = ValidatorRecord(
         pubkey=pubkey,
         withdrawal_shard=withdrawal_shard,
@@ -676,6 +813,8 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
+Finally, if `block.candidate_pow_hash_chain_tip = crystallized_state.candidate_pow_hash_chain_tip`, set `crystallized_state.candidate_hash_chain_tip_votes += 1`.
+
 ### Process penalties, logouts and other special objects
 
 Verify that there are at most `MAX_SPECIALS_PER_BLOCK` objects in `block.specials`.
@@ -718,6 +857,39 @@ Perform the following checks:
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
 
 For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
+
+#### DEPOSIT_PROOF
+
+```python
+{
+    'merkle_branch': '[hash32]',
+    'merkle_tree_index': 'uint64',
+    'deposit_data': {
+         'params': DepositParams,
+         'msg_value': 'uint256',
+         'timestamp': 'uint256'
+    }
+}
+```
+
+Note that `deposit_data` in serialized form should be the `DepositParams` followed by 32 bytes for the `msg.value` and 32 bytes for the `timestamp`, or exactly the data the hash of which was placed into the Merkle tree in the PoW contract.
+
+Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.known_pow_receipt_root`:
+
+```python
+def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
+    value = leaf
+    for i in range(depth):
+        if index % 2:
+            value = hash(branch[i], value)
+        else:
+            value = hash(value, branch[i])
+    return value == root
+```
+
+Verify that `msg.value == DEPOSIT_SIZE` and `block.slot - (timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
+
+Run `add_validator(validators, deposit_data.params.pubkey, deposit_data.params.proof_of_possession, deposit_data.params.withdrawal_shard, data.withdrawal_address, deposit_data.params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 ## State recalculations (every `CYCLE_LENGTH` slots)
 
@@ -773,6 +945,14 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 * Adjust balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
     * Non-participating validators lose `B // reward_quotient`.
+    
+#### PoW chain related rules
+
+If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
+
+* If `crystallized_state.candidate_hash_chain_tip_votes * 3 >= POW_HASH_VOTING_PERIOD * 2`, set `crystallized_state.hash_chain_tip = crystallized_state.candidate_hash_chain_tip`
+* Set `crystallized_state.candidate_hash_chain_tip = block.candidate_pow_hash_chain_tip`
+* Set `crystallized_state.candidate_hash_chain_tip_votes = 0`
 
 ### Validator set change
 
@@ -785,7 +965,7 @@ A validator set change can happen after a state recalculation if all of the foll
 Then, run the following algorithm to update the validator set:
 
 ```python
-def change_validators(validators: List[ValidatorRecord]) -> None:
+def change_validators(validators: List[ValidatorRecord], current_slot: int) -> None:
     # The active validator set
     active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
@@ -834,10 +1014,12 @@ def change_validators(validators: List[ValidatorRecord]) -> None:
             if validators[i].status == PENALIZED:
                 validators[i].balance -= validators[i].balance * min(total_penalties * 3, total_balance) // total_balance
             validators[i].status = WITHDRAWN
+            validators[i].exit_slot = current_slot
 
             withdraw_amount = validators[i].balance
             ...
             # STUB: withdraw to shard chain
+    
 ```
 
 * Set `state.validator_set_change_slot = state.last_state_recalculation_slot`
