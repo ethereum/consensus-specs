@@ -1111,9 +1111,9 @@ def change_validators(state: State, current_slot: int) -> None:
             break
 
     # Penalize validators that have not responded to proof of custody challenges long enough
-    while len(state.challenges) and current_slot > state.challenges[0].expiry_slot:
-        exit_validator(state.challenges[0].responder_index, state, True, current_slot)
-        state.challenges.pop(0)
+    while len(state.proof_of_custody_challenges) and current_slot > state.proof_of_custody_challenges[0].expiry_slot:
+        exit_validator(state.proof_of_custody_challenges[0].responder_index, state, True, current_slot)
+        state.proof_of_custody_challenges.pop(0)
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // WITHDRAWAL_PERIOD
@@ -1127,7 +1127,7 @@ def change_validators(state: State, current_slot: int) -> None:
     for i in range(len(validators)):
         if validators[i].status in (PENDING_WITHDRAW, PENALIZED) and \
                 current_slot >= validators[i].exit_slot + WITHDRAWAL_PERIOD and \
-                len([c in state.challenges if c.responder_index == i]) == 0:
+                len([c in state.proof_of_custody_challenges if c.responder_index == i]) == 0:
             if validators[i].status == PENALIZED:
                 validators[i].balance -= validators[i].balance * min(total_penalties * 3, total_balance) // total_balance
             validators[i].status = WITHDRAWN
