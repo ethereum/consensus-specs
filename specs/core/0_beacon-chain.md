@@ -946,15 +946,6 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
     * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
     * Non-participating validators lose `B // reward_quotient`.
     
-#### Finally...
-
-* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, crystallized_state, penalize=False, current_slot=block.slot)`
-* Set `crystallized_state.last_state_recalculation_slot += CYCLE_LENGTH`
-* Remove all attestation records older than slot `crystallized_state.last_state_recalculation_slot`
-* Empty the `active_state.pending_specials` list
-* Set `active_state.recent_block_hashes = active_state.recent_block_hashes[CYCLE_LENGTH:]`
-* Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
-
 #### PoW chain related rules
 
 If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
