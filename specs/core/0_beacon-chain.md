@@ -212,7 +212,7 @@ The `BeaconState` has the following fields:
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
     # Genesis time
-    'genesis_time': 'hash32',
+    'genesis_time': 'uint64',
     # PoW chain reference
     'known_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
@@ -528,7 +528,9 @@ total_deposit_count: int128
 def deposit(data: bytes[2048]):
     log.HashChainValue(self.receipt_tree[1], data, msg.value, block.timestamp, self.total_deposit_count)
     index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    self.receipt_tree[index] = sha3(concat(data, as_bytes32(msg.value), as_bytes32(block.timestamp))
+    msg_gwei_bytes8: bytes[8] = slice(as_bytes32(msg.value / 10**9), 24, 8)
+    timestamp_bytes8: bytes[8] = slice(s_bytes32(block.timestamp), 24, 8)
+    self.receipt_tree[index] = sha3(concat(data, msg_gwei_bytes8, timestamp_bytes8))
     for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
         index //= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
@@ -866,8 +868,8 @@ For each validator index `v` in `intersection`, if `state.validators[v].status` 
     'merkle_tree_index': 'uint64',
     'deposit_data': {
          'params': DepositParams,
-         'msg_value': 'uint256',
-         'timestamp': 'uint256'
+         'msg_value': 'uint64',
+         'timestamp': 'uint64'
     }
 }
 ```
