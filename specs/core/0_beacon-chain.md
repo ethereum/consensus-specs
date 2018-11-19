@@ -328,7 +328,7 @@ A `ProofOfCustodyChallenge` has the following fields:
     # Expiry date
     'expiry_slot': 'uint64',
     # Who is challenging
-    'challenger_indexz': 'uint64',
+    'challenger_index': 'uint64',
     # Proof of custody bit
     'bit': 'bool'
 }
@@ -1225,7 +1225,7 @@ Note: This spec is ~65% complete.
 * [ ] Specify the deposit contract on the PoW chain in Vyper
 * [ ] Specify the beacon chain genesis rules ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
 * [ ] Specify the logic for proofs of custody, including slashing conditions
-* [ ] Specify BLSVerify and rework the spec for BLS12-381 throughout
+* [ ] Specify BLSVerify, BLSMultiVerify, BLSAddPubkeys and rework the spec for BLS12-381 throughout
 * [ ] Specify the constraints for `SpecialRecord`s ([issue 43](https://github.com/ethereum/eth2.0-specs/issues/43))
 * [ ] Specify the calculation and validation of `BeaconBlock.state_root`
 * [ ] Undergo peer review, security audits and formal verification
