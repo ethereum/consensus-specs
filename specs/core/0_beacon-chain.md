@@ -1096,6 +1096,7 @@ Note: This spec is ~65% complete.
 * [ ] Specify the logic for proofs of custody, including slashing conditions
 * [ ] Specify BLSVerify and rework the spec for BLS12-381 throughout
 * [ ] Specify the constraints for `SpecialRecord`s ([issue 43](https://github.com/ethereum/eth2.0-specs/issues/43))
+* [ ] Specify the calculation and validation of `BeaconBlock.state_root`
 * [ ] Undergo peer review, security audits and formal verification
 
 **Documentation**
