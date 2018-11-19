@@ -628,6 +628,7 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_h
         deposits_penalized_in_period=[],
         next_shuffling_seed=b'\x00'*32,
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        current_exit_seq=0,
         genesis_time=genesis_time,
         known_pow_hash_chain_tip=pow_hash_chain_tip,
         processed_pow_hash_chain_tip=pow_hash_chain_tip,
