@@ -828,7 +828,7 @@ Additionally, verify and update the RANDAO reveal. This is done as follows:
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
-Finally, if `block.candidate_pow_hash_chain_tip = crystallized_state.candidate_pow_hash_chain_tip`, set `crystallized_state.candidate_hash_chain_tip_votes += 1`.
+Finally, if `block.candidate_pow_hash_chain_tip = state.candidate_pow_hash_chain_tip`, set `state.candidate_hash_chain_tip_votes += 1`.
 
 ### Process penalties, logouts and other special objects
 
@@ -965,9 +965,9 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
 
-* If `crystallized_state.candidate_hash_chain_tip_votes * 3 >= POW_HASH_VOTING_PERIOD * 2`, set `crystallized_state.hash_chain_tip = crystallized_state.candidate_hash_chain_tip`
-* Set `crystallized_state.candidate_hash_chain_tip = block.candidate_pow_hash_chain_tip`
-* Set `crystallized_state.candidate_hash_chain_tip_votes = 0`
+* If `state.candidate_hash_chain_tip_votes * 3 >= POW_HASH_VOTING_PERIOD * 2`, set `state.hash_chain_tip = state.candidate_hash_chain_tip`
+* Set `state.candidate_hash_chain_tip = block.candidate_pow_hash_chain_tip`
+* Set `state.candidate_hash_chain_tip_votes = 0`
 
 ### Validator set change
 
