@@ -917,7 +917,7 @@ For each validator index `v` in `intersection`, if `state.validators[v].status` 
     'proposal1_sig': '[uint256]',
 }
 ```
-For each `proposal_sig`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=proposal_data, sig=proposal_sig)` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
+For each `proposal_sig`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_sig)` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
 
 #### DEPOSIT_PROOF
 
