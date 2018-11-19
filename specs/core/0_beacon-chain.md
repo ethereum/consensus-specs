@@ -714,7 +714,7 @@ def exit_validator(index, state, block, penalize, current_slot):
         validator.status = PENALIZED
         whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
         validator.deposit -= whistleblower_xfer_amount
-        state.validators[get_beacon_proposer(state, block.slot)].deposit += whistleblower_xfer_amount
+        get_beacon_proposer(state, block.slot).deposit += whistleblower_xfer_amount
         state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
     else:
         validator.status = PENDING_EXIT
