@@ -707,8 +707,8 @@ def add_validator(validators: List[ValidatorRecord],
 def exit_validator(index, state, penalize, current_slot):
     validator = state.validators[index]
     validator.exit_slot = current_slot
-    validator.exit_seq = crystallized_state.current_exit_seq
-    crystallized_state.current_exit_seq += 1
+    validator.exit_seq = state.current_exit_seq
+    state.current_exit_seq += 1
     if penalize:
         validator.status = PENALIZED
         state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
