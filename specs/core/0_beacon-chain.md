@@ -831,7 +831,7 @@ Finally, if `block.candidate_pow_hash_chain_tip = state.candidate_pow_hash_chain
 
 ### Process penalties, logouts and other special objects
 
-Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top).
+Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top). Verify that objects are sorted in order of `kind` (ie. `block.specials[i+1].kind >= block.specials[i].kind` for all `0 <= i < len(block.specials-1)`).
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
