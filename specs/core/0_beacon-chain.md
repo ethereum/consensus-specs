@@ -41,15 +41,14 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 2**4 (= 16) | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
-| `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~1.1 hours |
 | `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~18 hours |
-| `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
+| `SQRT_E_DROP_TIME` | 2**10 (= 1,024) | cycles | ~12 days |
 | `MIN_WITHDRAWAL_PERIOD` | 2**12 (= 4096) | slots | ~18 hours |
 | `WITHDRAWALS_PER_CYCLE` | 8 | - | 4.3m ETH in ~6 months |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**19 (= 524,288) | slots | ~3 months |
 | `DELETION_PERIOD` | 2**21 (= 2,097,152) | slots | ~1.06 years |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
-| `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
+| `BASE_REWARD_QUOTIENT` | 2**9 (= 512) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
@@ -61,7 +60,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 * See a recommended min committee size of 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
-* The `BASE_REWARD_QUOTIENT` constant is the per-slot interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
+* The `BASE_REWARD_QUOTIENT` constant is the per-cycle interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~3.88% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each validator set change.
 
 **Validator status codes**
@@ -200,8 +199,6 @@ The `BeaconState` has the following fields:
     'last_finalized_slot': 'uint64',
     # Last justified slot
     'last_justified_slot': 'uint64',
-    # Number of consecutive justified slots
-    'justified_streak': 'uint64',
     # Committee members and their assigned shard, per slot
     'shard_and_committee_for_slots': [[ShardAndCommittee]],
     # Persistent shard committees
@@ -692,13 +689,14 @@ def add_validator(validators: List[ValidatorRecord],
         exit_slot=0,
         exit_seq=0
     )
+    # Add the validator
     index = min_empty_validator(validators)
     if index is None:
         validators.append(rec)
-        return len(validators) - 1
+        index = len(validators) - 1
     else:
         validators[index] = rec
-        return index
+    return index
 ```
 
 ### Routine for removing a validator
@@ -709,6 +707,11 @@ def exit_validator(index, state, penalize, current_slot):
     validator.exit_slot = current_slot
     validator.exit_seq = state.current_exit_seq
     state.current_exit_seq += 1
+    for committee in state.persistent_committees:
+        for i, vindex in committee:
+            if vindex == index:
+                committee.pop(i)
+                break
     if penalize:
         validator.status = PENALIZED
         state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
@@ -906,18 +909,15 @@ Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_
 
 Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_shard, data.deposit_params.withdrawal_address, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
-## State recalculations (every `CYCLE_LENGTH` slots)
+## Cycle boundary processing (every `CYCLE_LENGTH` slots)
 
-Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
+Repeat the steps in this section while `block.slot - last_state_recalculation_slot >= CYCLE_LENGTH`. For simplicity, we'll use `s` as `last_state_recalculation_slot`.
 
 #### Adjust justified slots and crosslink status
 
-For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
-
 * Let `total_balance` be the total balance of active validators.
 * Let `total_balance_attesting_at_s` be the total balance of validators that attested to the beacon block at slot `s`.
-* If `3 * total_balance_attesting_at_s >= 2 * total_balance` set `last_justified_slot = max(last_justified_slot, s)` and `justified_streak += 1`. Otherwise set `justified_streak = 0`.
-* If `justified_streak >= CYCLE_LENGTH + 1` set `last_finalized_slot = max(last_finalized_slot, s - CYCLE_LENGTH - 1)`.
+* If `3 * total_balance_attesting_at_s >= 2 * total_balance` then first (i) if `last_justified_slot == s - CYCLE_LENGTH`, set `last_finalized_slot = last_justified_slot`, then (ii) set `last_justified_slot = s`.
 
 For every `(shard, shard_block_hash)` tuple:
 
@@ -932,12 +932,11 @@ Note: When applying penalties in the following balance recalculations implemente
 * Let `total_balance` be the total balance of active validators.
 * Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
 * Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `1/reward_quotient`.)
-* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` slots is about `D*D/2/quadratic_penalty_quotient`.)
-* Let `time_since_finality = block.slot - last_finalized_slot`.
+* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
+* Let `time_since_finality = slot - last_finalized_slot`.
 
-For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`:
+* Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon block at slot `s` (note: every attestation for a block in the slot span `s ... s + CYCLE_LENGTH - 1` counts as this)
 
-* Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon block at slot `s`. In the normal case every validator will be in one of the `CYCLE_LENGTH` slots following slot `s` and so can vote for a block at slot `s`.
 * Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation.
 * If `time_since_finality <= 3 * CYCLE_LENGTH` adjust the balance of participating and non-participating validators as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_participating - total_balance) // total_balance`. (Note that this value may be negative.)
@@ -950,13 +949,13 @@ In addition, validators with `status == PENALIZED` lose `B // reward_quotient + 
 
 #### Balance recalculations related to crosslink rewards
 
-For every shard number `shard` for which a crosslink committee exists in the cycle prior to the most recent cycle (`last_state_recalculation_slot - CYCLE_LENGTH ... last_state_recalculation_slot - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `shard`, `V`:
+For every shard number `shard` for which a crosslink committee exists in the cycle prior to the most recent cycle (`s - CYCLE_LENGTH ... s - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `shard`, `V`:
 
 * Let `total_balance_of_v` be the total balance of `V`.
 * Let `winning_shard_hash` be the hash that the largest total deposits signed for the `shard` during the cycle.
 * Define a "participating validator" as a member of `V` that signed a crosslink of `winning_shard_hash`.
 * Let `total_balance_of_v_participating` be the total balance of the subset of `V` that participated.
-* Let `time_since_last_confirmation = block.slot - crosslinks[shard].slot`.
+* Let `time_since_last_confirmation = s - crosslinks[shard].slot`.
 * Adjust balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
     * Non-participating validators lose `B // reward_quotient`.
@@ -969,11 +968,39 @@ If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
 * Set `state.candidate_hash_chain_tip = block.candidate_pow_hash_chain_tip`
 * Set `state.candidate_hash_chain_tip_votes = 0`
 
-### Validator set change
+#### Proposer reshuffling
 
-A validator set change can happen after a state recalculation if all of the following criteria are satisfied:
+Run the following code:
 
-* `block.slot - state.validator_set_change_slot >= MIN_VALIDATOR_SET_CHANGE_INTERVAL`
+```python
+active_validator_indices = get_active_validator_indices(validators)
+num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
+for i in range(num_validators_to_reshuffle):
+    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
+    # and none of the hashes used for entropy in this loop will be the same
+    vid = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
+    new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
+    shard_reassignment_record = ShardReassignmentRecord(
+        validator_index=vid,
+        shard=new_shard,
+        slot=s + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
+    )
+    state.persistent_committee_reassignments.append(shard_reassignment_record)
+
+while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= s:
+    rec = state.persistent_committee_reassignments.pop(0)
+    for committee in state.persistent_committees:
+        if rec.validator_index in committee:
+            committee.pop(
+                committee.index(rec.validator_index)
+            )
+    state.persistent_committees[rec.shard].append(rec.validator_index)
+```
+
+#### Validator set change
+
+A validator set change can happen if all of the following criteria are satisfied:
+
 * `last_finalized_slot > state.validator_set_change_slot`
 * For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_set_change_slot`
 
@@ -1040,13 +1067,13 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
         # STUB: withdraw to shard chain
 ```
 
-* Set `state.validator_set_change_slot = state.last_state_recalculation_slot`
+* Set `state.validator_set_change_slot = s`
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
 * Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, next_start_shard)`
 * Set `state.next_shuffling_seed = state.randao_mix`
 
-### If a validator set change does NOT happen
+#### If a validator set change does NOT happen
 
 * Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `time_since_finality = block.slot - state.validator_set_change_slot`
@@ -1055,46 +1082,10 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
 
 #### Finally...
 
-* Remove all attestation records older than slot `state.last_state_recalculation_slot`
-* Empty the `state.pending_specials` list
+* Remove all attestation records older than slot `s`
 * For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, state, penalize=False, current_slot=block.slot)`
 * Set `state.recent_block_hashes = state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `state.last_state_recalculation_slot += CYCLE_LENGTH`
-
-For any validator that was added or removed from the active validator list during this state recalculation:
-
-* If the validator was removed, remove their index from the `persistent_committees` and remove any `ShardReassignmentRecord`s containing their index from `persistent_committee_reassignments`.
-* If the validator was added with index `validator_index`:
-  * let `assigned_shard = hash(state.randao_mix + bytes8(validator_index)) % SHARD_COUNT`
-  * let `reassignment_record = ShardReassignmentRecord(validator_index=validator_index, shard=assigned_shard, slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD)`
-  * Append `reassignment_record` to the end of `persistent_committee_reassignments`
-
-Now run the following code to reshuffle a few proposers:
-
-```python
-active_validator_indices = get_active_validator_indices(validators)
-num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-for i in range(num_validators_to_reshuffle):
-    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
-    # and none of the hashes used for entropy in this loop will be the same
-    vid = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
-    new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
-    shard_reassignment_record = ShardReassignmentRecord(
-        validator_index=vid,
-        shard=new_shard,
-        slot=block.slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-    )
-    state.persistent_committee_reassignments.append(shard_reassignment_record)
-
-while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= block.slot:
-    rec = state.persistent_committee_reassignments.pop(0)
-    for committee in state.persistent_committees:
-        if rec.validator_index in committee:
-            committee.pop(
-                committee.index(rec.validator_index)
-            )
-    state.persistent_committees[rec.shard].append(rec.validator_index)
-```
 
 ### TODO
 
