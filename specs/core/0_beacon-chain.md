@@ -212,7 +212,7 @@ The `BeaconState` has the following fields:
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
     # Genesis time
-    'genesis_time': 'hash32',
+    'genesis_time': 'uint64',
     # PoW chain reference
     'known_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
@@ -517,24 +517,29 @@ def int_sqrt(n: int) -> int:
 The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
 
 ```python
-HashChainValue: event({prev_tip: bytes32, data: bytes[2048], value: wei_value, time: timestamp, total_deposit_count: int128})
-ChainStart: event({hash_chain_tip: bytes32, time: timestamp})
+HashChainValue: event({prev_tip: bytes32, data: bytes[2064], total_deposit_count: int128})
+ChainStart: event({hash_chain_tip: bytes32, time: bytes[8]})
 
 receipt_tree: bytes32[int128]
 total_deposit_count: int128
 
 @payable
 @public
-def deposit(data: bytes[2048]):
-    log.HashChainValue(self.receipt_tree[1], data, msg.value, block.timestamp, self.total_deposit_count)
+def deposit(deposit_params: bytes[2048]):
     index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    self.receipt_tree[index] = sha3(concat(data, as_bytes32(msg.value), as_bytes32(block.timestamp))
+    msg_gwei_bytes8: bytes[8] = slice(as_bytes32(msg.value / 10**9), 24, 8)
+    timestamp_bytes8: bytes[8] = slice(s_bytes32(block.timestamp), 24, 8)
+    deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
+
+    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)    
+
+    self.receipt_tree[index] = sha3(deposit_data)
     for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
         index //= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
     self.total_deposit_count += 1
     if self.total_deposit_count == 16384:
-        log.ChainStart(self.receipt_tree[1], block.timestamp)
+        log.ChainStart(self.receipt_tree[1], timestamp_bytes8)
 
 @public
 @constant
@@ -542,7 +547,7 @@ def get_receipt_root() -> bytes32:
     return self.receipt_tree[1]
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `data` a SimpleSerialize'd `DepositParams` object of the form:
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
 
 ```python
 {
@@ -865,14 +870,14 @@ For each validator index `v` in `intersection`, if `state.validators[v].status` 
     'merkle_branch': '[hash32]',
     'merkle_tree_index': 'uint64',
     'deposit_data': {
-         'params': DepositParams,
-         'msg_value': 'uint256',
-         'timestamp': 'uint256'
+         'deposit_params': DepositParams,
+         'msg_value': 'uint64',
+         'timestamp': 'uint64'
     }
 }
 ```
 
-Note that `deposit_data` in serialized form should be the `DepositParams` followed by 32 bytes for the `msg.value` and 32 bytes for the `timestamp`, or exactly the data the hash of which was placed into the Merkle tree in the PoW contract.
+Note that `deposit_data` in serialized form should be the `DepositParams` followed by 8 bytes for the `msg_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the PoW contract of which the hash was placed into the Merkle tree.
 
 Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.known_pow_receipt_root`:
 
@@ -887,9 +892,9 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-Verify that `msg.value == DEPOSIT_SIZE` and `block.slot - (timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
+Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
 
-Run `add_validator(validators, deposit_data.params.pubkey, deposit_data.params.proof_of_possession, deposit_data.params.withdrawal_shard, data.withdrawal_address, deposit_data.params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_shard, data.deposit_params.withdrawal_address, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 ## State recalculations (every `CYCLE_LENGTH` slots)
 
