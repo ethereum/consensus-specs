@@ -109,8 +109,6 @@ A `BeaconBlock` has the following fields:
     'slot': 'uint64',
     # Proposer RANDAO reveal
     'randao_reveal': 'hash32',
-    # Proposer signature
-    'proposer_signature': ['uint256'],
     # Recent PoW chain reference (receipt root)
     'candidate_pow_receipt_root': 'hash32',
     # Skip list of previous beacon block hashes
@@ -121,7 +119,9 @@ A `BeaconBlock` has the following fields:
     # Attestations
     'attestations': [AttestationRecord],
     # Specials (e.g. logouts, penalties)
-    'specials': [SpecialRecord]
+    'specials': [SpecialRecord],
+    # Proposer signature
+    'proposer_signature': ['uint256'],
 }
 ```
 
