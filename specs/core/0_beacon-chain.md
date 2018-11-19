@@ -53,7 +53,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
-| `MAX_SPECIALS_PER_BLOCK` | 2**4 (= 16) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -77,11 +76,11 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 **Special record types**
 
-| Name | Value |
-| - | :-: |
-| `LOGOUT` | `0` |
-| `CASPER_SLASHING` | `1` |
-| `RANDAO_CHANGE` | `2` |
+| Name | Value | Maximum count |
+| - | :-: | :-: |
+| `LOGOUT` | `0` | `16` |
+| `CASPER_SLASHING` | `1` | `16` |
+| `DEPOSIT_PROOF` | `2` | `16` |
 
 **Validator set delta flags**
 
@@ -832,7 +831,7 @@ Finally, if `block.candidate_pow_hash_chain_tip = state.candidate_pow_hash_chain
 
 ### Process penalties, logouts and other special objects
 
-Verify that there are at most `MAX_SPECIALS_PER_BLOCK` objects in `block.specials`.
+Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top).
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
