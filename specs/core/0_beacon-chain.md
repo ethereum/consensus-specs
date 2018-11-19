@@ -877,7 +877,7 @@ Verify that there are at most `MAX_SPECIALS_PER_BLOCK` objects in `block.special
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
-We define the following object `SpecialAttestationData` and helper `verify_special_attesation_data`:
+We define the following object `SpecialAttestationData` and helper `verify_special_attestation_data`:
 
 ```python
 {
@@ -889,7 +889,7 @@ We define the following object `SpecialAttestationData` and helper `verify_speci
 ```
 
 ```python
-def verify_special_attesation_data(state: State, obj: SpecialAttestationData) -> bool:
+def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
     pubs = [aggregate_pubkey([validators[i].pubkey for i in obj.aggregate_sig_poc_0_indices]),
             aggregate_pubkey([validators[i].pubkey for i in obj.aggregate_sig_poc_1_indices])]
     assert obj.voteproof_of_custody_hash_mod_2 == False
@@ -926,11 +926,11 @@ Perform the following checks:
 
 * Run and check `verify_special_attestation_data` on both votes.
 * Verify that `vote1.data != vote2.data`.
-* Let `indices(vote) = vote.aggregate_sig_poc_0_indices + vote.aggregate_sig_poc_1_indices`
+* Let `indices(vote) = vote.aggregate_sig_poc_0_indices + vote.aggregate_sig_poc_1_indices`.
 * Let `intersection = [x for x in indices(vote1) if x in indices(vote2)]`. Verify that `len(intersection) >= 1`.
-* Verify that either `vote1.data.justified_slot + 1 < vote2.data.justified_slot + 1 == vote2.data.slot < vote1.data.slot` or `vote1.data.slot == vote2.data.slot`
+* Verify that either `vote1.data.justified_slot + 1 < vote2.data.justified_slot + 1 == vote2.data.slot < vote1.data.slot` or `vote1.data.slot == vote2.data.slot`.
 
-For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
+For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`.
 
 #### DEPOSIT_PROOF
 
