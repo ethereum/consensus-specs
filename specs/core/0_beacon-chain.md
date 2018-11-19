@@ -44,7 +44,9 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~1.1 hours |
 | `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~18 hours |
 | `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
-| `WITHDRAWAL_PERIOD` | 2**19 (= 524,288) | slots | ~97 days |
+| `MIN_WITHDRAWAL_PERIOD` | 2**12 (= 4096) | slots | ~18 hours |
+| `WITHDRAWALS_PER_CYCLE` | 8 | - | 4.3m ETH in ~6 months |
+| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**19 (= 524,288) | slots | ~3 months |
 | `DELETION_PERIOD` | 2**21 (= 2,097,152) | slots | ~1.06 years |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
@@ -211,6 +213,8 @@ The `BeaconState` has the following fields:
     'deposits_penalized_in_period': ['uint32'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
+    # Current sequence number for withdrawals
+    'current_exit_seq': 'uint64',
     # Genesis time
     'genesis_time': 'uint64',
     # PoW chain reference
@@ -251,6 +255,8 @@ A `ValidatorRecord` has the following fields:
     'status': 'uint8',
     # Slot when validator exited (or 0)
     'exit_slot': 'uint64'
+    # Sequence number when validator exited (or 0)
+    'exit_seq': 'uint64'
 }
 ```
 
@@ -622,6 +628,7 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_h
         deposits_penalized_in_period=[],
         next_shuffling_seed=b'\x00'*32,
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        current_exit_seq=0,
         genesis_time=genesis_time,
         known_pow_hash_chain_tip=pow_hash_chain_tip,
         processed_pow_hash_chain_tip=pow_hash_chain_tip,
@@ -682,7 +689,8 @@ def add_validator(validators: List[ValidatorRecord],
         randao_last_change=current_slot,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH,
         status=status,
-        exit_slot=0
+        exit_slot=0,
+        exit_seq=0
     )
     index = min_empty_validator(validators)
     if index is None:
@@ -699,9 +707,11 @@ def add_validator(validators: List[ValidatorRecord],
 def exit_validator(index, state, penalize, current_slot):
     validator = state.validators[index]
     validator.exit_slot = current_slot
+    validator.exit_seq = state.current_exit_seq
+    state.current_exit_seq += 1
     if penalize:
         validator.status = PENALIZED
-        state.deposits_penalized_in_period[current_slot // WITHDRAWAL_PERIOD] += validator.balance
+        state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
     else:
         validator.status = PENDING_EXIT
     add_validator_set_change_record(state, index, validator.pubkey, EXIT)
@@ -1006,7 +1016,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
             break
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
-    period_index = current_slot // WITHDRAWAL_PERIOD
+    period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
     total_penalties = (
         (state.deposits_penalized_in_period[period_index]) +
         (state.deposits_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
@@ -1014,17 +1024,20 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
-    for i in range(len(validators)):
-        if validators[i].status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= validators[i].exit_slot + WITHDRAWAL_PERIOD:
-            if validators[i].status == PENALIZED:
-                validators[i].balance -= validators[i].balance * min(total_penalties * 3, total_balance) // total_balance
-            validators[i].status = WITHDRAWN
-            validators[i].exit_slot = current_slot
 
-            withdraw_amount = validators[i].balance
-            ...
-            # STUB: withdraw to shard chain
-    
+    def withdrawable(v):
+        return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.exit_slot + MIN_WITHDRAWAL_PERIOD
+
+    withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_seq)
+    for v in withdrawable_validators[:WITHDRAWALS_PER_CYCLE]:
+        if v.status == PENALIZED:
+            v.balance -= v.balance * min(total_penalties * 3, total_balance) // total_balance
+        v.status = WITHDRAWN
+        v.exit_slot = current_slot
+
+        withdraw_amount = v.balance
+        ...
+        # STUB: withdraw to shard chain
 ```
 
 * Set `state.validator_set_change_slot = state.last_state_recalculation_slot`
