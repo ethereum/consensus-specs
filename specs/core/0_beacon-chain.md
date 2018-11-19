@@ -514,9 +514,9 @@ def get_block_hash(state: BeaconState,
 The following is a function that determines the proposer of a beacon block:
 
 ```python
-def get_proposer(state, block):
-    first_committee = get_shards_and_committees_for_slot(state, block.slot)[0]
-    index = first_committee[block.slot % len(first_committee)]
+def get_beacon_proposer(state, slot):
+    first_committee = get_shards_and_committees_for_slot(state, slot)[0]
+    index = first_committee[slot % len(first_committee)]
     return state.validators[index]
 ```
 
@@ -852,12 +852,12 @@ Extend the list of `AttestationRecord` objects in the `state` with those include
 
 Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`. 
 
-Verify that `BLSVerify(pubkey=get_proposer(state, block).pubkey, data=proposal_hash, sig=block.proposer_signature)` passes.
+Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, data=proposal_hash, sig=block.proposer_signature)` passes.
 
 ### Verify and process RANDAO reveal
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `V = get_proposer(state, block).
+* Let `V = get_beacon_proposer(state, block.slot).
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
