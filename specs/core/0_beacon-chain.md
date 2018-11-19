@@ -511,7 +511,7 @@ def get_block_hash(state: BeaconState,
 
 `get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
 
-The following is a function that determines the proposer of a block:
+The following is a function that determines the proposer of a beacon block:
 
 ```python
 def get_proposer(state, block):
