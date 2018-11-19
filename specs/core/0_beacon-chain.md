@@ -517,7 +517,7 @@ def int_sqrt(n: int) -> int:
 The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
 
 ```python
-HashChainValue: event({prev_tip: bytes32, data: bytes[2048], value: wei_value, time: timestamp, total_deposit_count: int128})
+HashChainValue: event({prev_tip: bytes32, data: bytes[2064], total_deposit_count: int128})
 ChainStart: event({hash_chain_tip: bytes32, time: timestamp})
 
 receipt_tree: bytes32[int128]
@@ -526,11 +526,13 @@ total_deposit_count: int128
 @payable
 @public
 def deposit(data: bytes[2048]):
-    log.HashChainValue(self.receipt_tree[1], data, msg.value, block.timestamp, self.total_deposit_count)
     index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(as_bytes32(msg.value / 10**9), 24, 8)
     timestamp_bytes8: bytes[8] = slice(s_bytes32(block.timestamp), 24, 8)
-    self.receipt_tree[index] = sha3(concat(data, msg_gwei_bytes8, timestamp_bytes8))
+    fulldata: bytes[2064] = concat(data, msg_gwei_bytes8, timestamp_bytes8)
+    self.receipt_tree[index] = sha3(fulldata)
+    log.HashChainValue(self.receipt_tree[1], fulldata, self.total_deposit_count)
+
     for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
         index //= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
