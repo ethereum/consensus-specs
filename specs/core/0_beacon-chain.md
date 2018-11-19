@@ -210,7 +210,7 @@ The `BeaconState` has the following fields:
     # Randao seed used for next shuffling
     'next_shuffling_seed': 'hash32',
     # Total deposits penalized in the given withdrawal period
-    'deposits_penalized_in_period': ['uint32'],
+    'deposits_penalized_in_period': ['uint64'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
     # Current sequence number for withdrawals
@@ -220,11 +220,11 @@ The `BeaconState` has the following fields:
     # PoW chain reference
     'known_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_root_votes': 'uint32',
+    'candidate_pow_receipt_root_votes': 'uint64',
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
-    'pre_fork_version': 'uint32',
-    'post_fork_version': 'uint32',
+    'pre_fork_version': 'uint64',
+    'post_fork_version': 'uint64',
     'fork_slot_number': 'uint64',
     # Attestations not yet processed
     'pending_attestations': [AttestationRecord],
