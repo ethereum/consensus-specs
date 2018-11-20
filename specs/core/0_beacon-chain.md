@@ -54,7 +54,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
-| `MAX_SPECIALS_PER_BLOCK` | 2**4 (= 16) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -78,12 +77,12 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 **Special record types**
 
-| Name | Value |
-| - | :-: |
-| `LOGOUT` | `0` |
-| `CASPER_SLASHING` | `1` |
-| `PROPOSER_SLASHING` | `2` |
-| `DEPOSIT_PROOF` | `3` |
+| Name | Value | Maximum count |
+| - | :-: | :-: |
+| `LOGOUT` | `0` | `16` |
+| `CASPER_SLASHING` | `1` | `16` |
+| `PROPOSER_SLASHING` | `2` | `16` |
+| `DEPOSIT_PROOF` | `3` | `16` |
 
 **Validator set delta flags**
 
@@ -229,7 +228,7 @@ The `BeaconState` has the following fields:
     # Randao seed used for next shuffling
     'next_shuffling_seed': 'hash32',
     # Total deposits penalized in the given withdrawal period
-    'deposits_penalized_in_period': ['uint32'],
+    'deposits_penalized_in_period': ['uint64'],
     # Hash chain of validator set changes (for light clients to easily track deltas)
     'validator_set_delta_hash_chain': 'hash32'
     # Current sequence number for withdrawals
@@ -239,11 +238,11 @@ The `BeaconState` has the following fields:
     # PoW chain reference
     'known_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_root_votes': 'uint32',
+    'candidate_pow_receipt_root_votes': 'uint64',
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
-    'pre_fork_version': 'uint32',
-    'post_fork_version': 'uint32',
+    'pre_fork_version': 'uint64',
+    'post_fork_version': 'uint64',
     'fork_slot_number': 'uint64',
     # Attestations not yet processed
     'pending_attestations': [AttestationRecord],
@@ -865,7 +864,7 @@ Finally, if `block.candidate_pow_hash_chain_tip = state.candidate_pow_hash_chain
 
 ### Process penalties, logouts and other special objects
 
-Verify that there are at most `MAX_SPECIALS_PER_BLOCK` objects in `block.specials`.
+Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top). Verify that objects are sorted in order of `kind` (ie. `block.specials[i+1].kind >= block.specials[i].kind` for all `0 <= i < len(block.specials-1)`).
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
