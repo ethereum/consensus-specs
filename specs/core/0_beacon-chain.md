@@ -133,7 +133,7 @@ An `AttestationRecord` has the following fields:
     # Shard number
     'shard': 'uint16',
     # Beacon block hashes not part of the current chain, oldest to newest
-    'oblique_parent_hashes': ['hash32'],
+    'parent_hashes': ['hash32'],
     # Shard block hash being attested to
     'shard_block_hash': 'hash32',
     # Last crosslink hash
@@ -517,6 +517,24 @@ def get_beacon_proposer(state:BeaconState, slot: int) -> ValidatorRecord:
     return state.validators[index]
 ```
 
+The following is a function that determines the validators that participated in an attestation:
+
+```python
+def get_attestation_participants(state: State, attestation: AttestationRecord):
+    sncs_for_slot = get_shards_and_committees_for_slot(state, attestation.slot)
+    snc = [x for x in sncs_for_slot if x.shard == attestation.shard][0]
+    assert len(attestation.attester_bitfield) == ceil_div8(len(snc.committee) * 2)
+    bit0_participants, bit1_participants = [], []
+    for i, vindex in snc.committee:
+        bits = (attestation.attester_bitfield[i//4] >> (3 - (i % 4)) * 2) % 4
+        assert bits in (0, 2, 3)
+        if bits == 2:
+            bit0_participants.append(vindex)
+        elif bits == 3:
+            bit1_participants.append(vindex)
+    return bit0_participants, bit1_participants
+```
+
 We define another set of helpers to be used throughout: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
@@ -834,20 +852,19 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
 
 ### Verify attestations
 
-For each `AttestationRecord` object:
+For each `AttestationRecord` object `obj`:
 
 * Verify that `slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
 * Verify that either `last_crosslink_hash` or `shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
-* Compute `parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
-* Let `attestation_indices` be `get_shards_and_committees_for_slot(state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
-* Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
-* Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1.
+* Compute `full_parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(parent_hashes) + 1)] + parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
+* Let `bit0_attestation_indices, bit1_attestation_indices = get_attestation_participants(state, obj)` (and verify that the method returns successfully)
+* Let `bit0_group_public_key = BLSAddPubkeys(bit0_attestation_indices)` and `bit1_group_public_key = BLSAddPubkeys(bit1_attestation_indices)`
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
 * Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)` as the message.
 
-Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block.
+Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block, and replacing `obj.parent_hashes` with the calculated value of `full_parent_hashes`.
 
 ### Verify proposer signature
 
@@ -953,14 +970,24 @@ Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_
 
 Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_shard, data.deposit_params.withdrawal_address, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
-## Cycle boundary processing (every `CYCLE_LENGTH` slots)
+## Cycle boundary processing
 
 Repeat the steps in this section while `block.slot - last_state_recalculation_slot >= CYCLE_LENGTH`. For simplicity, we'll use `s` as `last_state_recalculation_slot`.
 
+_Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGTH`. In the "happy case", this process will trigger, and loop once, every time `block.slot` passes a new exact multiple of `CYCLE_LENGTH`, but if a chain skips more than an entire cycle then the loop may run multiple times, incrementing `last_state_recalculation_slot` by `CYCLE_LENGTH` with each iteration._
+
+#### Precomputation
+
+* Let `active_validators = [state.validators[i] for i in get_active_validator_indices(state.validators)]`
+* Let `total_balance = sum([v.balance for v in active_validators])`
+* Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]` (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`)
+* Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]
+* Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes]
+* Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
+* Let `total_balance_attesting_at_s = sum([v.balance for v in s_attesters])`
+
 #### Adjust justified slots and crosslink status
 
-* Let `total_balance` be the total balance of active validators.
-* Let `total_balance_attesting_at_s` be the total balance of validators that attested to the beacon block at slot `s`.
 * If `3 * total_balance_attesting_at_s >= 2 * total_balance` then first (i) if `last_justified_slot == s - CYCLE_LENGTH`, set `last_finalized_slot = last_justified_slot`, then (ii) set `last_justified_slot = s`.
 
 For every `(shard, shard_block_hash)` tuple:
