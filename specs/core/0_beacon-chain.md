@@ -39,16 +39,17 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
 | `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
-| `SLOT_DURATION` | 2**4 (= 16) | seconds |
-| `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~17 minutes |
-| `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~1.1 hours |
-| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~18 hours |
-| `SQRT_E_DROP_TIME` | 2**16 (= 65,536) | slots | ~12 days |
-| `MIN_WITHDRAWAL_PERIOD` | 2**12 (= 4096) | slots | ~18 hours |
-| `WITHDRAWALS_PER_CYCLE` | 8 | - | 4.3m ETH in ~6 months |
-| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**19 (= 524,288) | slots | ~3 months |
-| `DELETION_PERIOD` | 2**21 (= 2,097,152) | slots | ~1.06 years |
-| `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**16 (= 65,536) | slots | ~12 days |
+| `SLOT_DURATION` | 6 | seconds |
+| `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~6 minutes |
+| `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
+| `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
+| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~7 hours |
+| `SQRT_E_DROP_TIME` | 2**18 (= 262,144) | slots | ~18 days |
+| `WITHDRAWALS_PER_CYCLE` | 2**2 (=4) | validators | 5.2m ETH in ~6 months |
+| `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8192) | slots | ~14 hours |
+| `DELETION_PERIOD` | 2**22 (= 4,194,304) | slots | ~290 days |
+| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**20 (= 1,048,576) | slots | ~2.4 months |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
@@ -80,7 +81,8 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | - | :-: | :-: |
 | `LOGOUT` | `0` | `16` |
 | `CASPER_SLASHING` | `1` | `16` |
-| `DEPOSIT_PROOF` | `2` | `16` |
+| `PROPOSER_SLASHING` | `2` | `16` |
+| `DEPOSIT_PROOF` | `3` | `16` |
 
 **Validator set delta flags**
 
@@ -116,7 +118,9 @@ A `BeaconBlock` has the following fields:
     # Attestations
     'attestations': [AttestationRecord],
     # Specials (e.g. logouts, penalties)
-    'specials': [SpecialRecord]
+    'specials': [SpecialRecord],
+    # Proposer signature
+    'proposer_signature': ['uint256'],
 }
 ```
 
@@ -144,6 +148,21 @@ An `AttestationRecord` has the following fields:
     'justified_block_hash': 'hash32',
     # BLS aggregate signature
     'aggregate_sig': ['uint256']
+}
+```
+
+A `ProposalSignedData` has the following fields:
+
+```python
+{
+    # Fork version
+    'fork_version': 'uint64',
+    # Slot number
+    'slot': 'uint64',
+    # Shard ID (or `2**64 - 1` for beacon chain)
+    'shard_id': 'uint64',
+    # Block hash
+    'block_hash': 'hash32',
 }
 ```
 
@@ -491,6 +510,15 @@ def get_block_hash(state: BeaconState,
 
 `get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
 
+The following is a function that determines the proposer of a beacon block:
+
+```python
+def get_beacon_proposer(state:BeaconState, slot: int) -> ValidatorRecord:
+    first_committee = get_shards_and_committees_for_slot(state, slot)[0]
+    index = first_committee[slot % len(first_committee)]
+    return state.validators[index]
+```
+
 We define another set of helpers to be used throughout: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
@@ -582,7 +610,8 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
     'ancestor_hashes': [bytes32(0) for i in range(32)],
     'state_root': STARTUP_STATE_ROOT,
     'attestations': [],
-    'specials': []
+    'specials': [],
+    'proposer_signature': [0, 0]
 }
 ```
 
@@ -801,11 +830,11 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
     return new_ancestor_hashes
 ```
 
-A beacon block can have 0 or more `AttestationRecord` objects
+### Verify attestations
 
-For each one of these attestations:
+For each `AttestationRecord` object:
 
-* Verify that `slot <= parent.slot` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
+* Verify that `slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
 * Verify that either `last_crosslink_hash` or `shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
@@ -818,12 +847,16 @@ For each one of these attestations:
 
 Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block.
 
-Let `curblock_proposer_index` be the validator index of the `block.slot % len(get_shards_and_committees_for_slot(state, block.slot)[0].committee)`'th attester in `get_shards_and_committees_for_slot(state, block.slot)[0]`, and `parent_proposer_index` be the validator index of the parent block, calculated similarly. Verify that an attestation from the `parent_proposer_index`'th validator is part of the first (ie. item 0 in the array) `AttestationRecord` object; this attester can be considered to be the proposer of the parent block. In general, when a beacon block is produced, it is broadcasted at the network layer along with the attestation from its proposer.
+### Verify proposer signature
 
-Additionally, verify and update the RANDAO reveal. This is done as follows:
+Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`. 
+
+Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, data=proposal_hash, sig=block.proposer_signature)` passes.
+
+### Verify and process RANDAO reveal
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `V = state.validators[curblock_proposer_index]`.
+* Let `V = get_beacon_proposer(state, block.slot).
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
@@ -871,6 +904,19 @@ Perform the following checks:
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
 
 For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
+
+#### PROPOSER_SLASHING
+
+```python
+{
+    'proposer_index': 'uint24',
+    'proposal1_data': ProposalSignedData,
+    'proposal1_signature': '[uint256]',
+    'proposal2_data': ProposalSignedData,
+    'proposal1_signature': '[uint256]',
+}
+```
+For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature)` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
 
 #### DEPOSIT_PROOF
 
