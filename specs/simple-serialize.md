@@ -427,7 +427,7 @@ def merkle_hash(lst):
         chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
 
     # Return hash of root and length data
-    return hash((chunkz[0] + datalen)
+    return hash(chunkz[0] + datalen)
 ```
 
 To `tree_hash` a list, we simply do:
