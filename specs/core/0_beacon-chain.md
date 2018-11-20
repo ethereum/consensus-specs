@@ -693,7 +693,7 @@ def add_validator(state: State,
                      sig=proof_of_possession,
                      domain=get_fork_version(state, current_slot) * 2**32 + DOMAIN_DEPOSIT)
     # Pubkey uniqueness
-    assert pubkey not in [v.pubkey for v in validators]
+    assert pubkey not in [v.pubkey for v in state.validators]
     rec = ValidatorRecord(
         pubkey=pubkey,
         withdrawal_shard=withdrawal_shard,
@@ -705,12 +705,12 @@ def add_validator(state: State,
         exit_slot=0,
         exit_seq=0
     )
-    index = min_empty_validator(validators)
+    index = min_empty_validator(state.validators)
     if index is None:
-        validators.append(rec)
-        return len(validators) - 1
+        state.validators.append(rec)
+        return len(state.validators) - 1
     else:
-        validators[index] = rec
+        state.validators[index] = rec
         return index
 ```
 
