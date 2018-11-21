@@ -43,7 +43,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~6 minutes |
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
-| `PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD` | 2**18 | (= 65,536) | slots | ~18 days |
+| `PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD` | 2**17 | (= 65,536) | slots | ~9 days |
 | `PROOF_OF_CUSTODY_RESPONSE_DEADLINE` | 2**20 (= 524,288) | slots | ~73 days |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
 | `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~7 hours |
