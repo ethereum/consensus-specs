@@ -50,6 +50,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8192) | slots | ~14 hours |
 | `DELETION_PERIOD` | 2**22 (= 4,194,304) | slots | ~290 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**20 (= 1,048,576) | slots | ~2.4 months |
+| `SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR` | 2**9 (= 512) |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
@@ -732,13 +733,16 @@ def add_validator(validators: List[ValidatorRecord],
 ### Routine for removing a validator
 
 ```python
-def exit_validator(index, state, penalize, current_slot):
+def exit_validator(index, state, block, penalize, current_slot):
     validator = state.validators[index]
     validator.exit_slot = current_slot
     validator.exit_seq = state.current_exit_seq
     state.current_exit_seq += 1
     if penalize:
         validator.status = PENALIZED
+        whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
+        validator.deposit -= whistleblower_xfer_amount
+        get_beacon_proposer(state, block.slot).deposit += whistleblower_xfer_amount
         state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
     else:
         validator.status = PENDING_EXIT
@@ -881,7 +885,7 @@ Perform the following checks:
 * Let `fork_version = pre_fork_version if block.slot < fork_slot_number else post_fork_version`. Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature)`
 * Verify that `validators[validator_index].status == ACTIVE`.
 
-Run `exit_validator(data.validator_index, state, penalize=False, current_slot=block.slot)`.
+Run `exit_validator(data.validator_index, state, block, penalize=False, current_slot=block.slot)`.
 
 #### CASPER_SLASHING
 
@@ -903,7 +907,7 @@ Perform the following checks:
 * Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
 
-For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
+For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, block, penalize=True, current_slot=block.slot)`
 
 #### PROPOSER_SLASHING
 
@@ -1102,7 +1106,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
 
 * Remove all attestation records older than slot `state.last_state_recalculation_slot`
 * Empty the `state.pending_specials` list
-* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, state, penalize=False, current_slot=block.slot)`
+* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, state, block, penalize=False, current_slot=block.slot)`
 * Set `state.recent_block_hashes = state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `state.last_state_recalculation_slot += CYCLE_LENGTH`
 
