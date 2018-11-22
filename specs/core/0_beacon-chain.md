@@ -160,8 +160,8 @@ A `ProposalSignedData` has the following fields:
     'fork_version': 'uint64',
     # Slot number
     'slot': 'uint64',
-    # Shard ID (or `2**64 - 1` for beacon chain)
-    'shard_id': 'uint64',
+    # Shard number (or `2**64 - 1` for beacon chain)
+    'shard': 'uint64',
     # Block hash
     'block_hash': 'hash32',
 }
