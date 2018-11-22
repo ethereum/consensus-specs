@@ -337,15 +337,33 @@ Beacon block production is significantly different because of the proof of stake
 
 ### Beacon chain fork choice rule
 
-The beacon chain uses the Casper FFG fork choice rule of "favor the chain containing the highest-slot-number justified block". To choose between chains that are all descended from the same justified block, the chain uses "immediate message driven GHOST" (IMD GHOST) to choose the head of the chain.
+The beacon chain uses a hybrid fork choice rule that combines together FFG justification/finality with latest-message-driven GHOST.
 
-For a description see: **https://ethresear.ch/t/beacon-chain-casper-ffg-rpj-mini-spec/2760**
+The following is a description of how to calculate the head at any given point in time.
 
-For an implementation with a network simulator see: **https://github.com/ethereum/research/blob/master/clock_disparity/ghost_node.py**
+1. Set `finalized_head` to the finalized block with the highest slot number.
+2. Set `justified_head` be the descendant of `finalized_head` that is justified, and has been known to be justified for at least `SLOT_DURATION * CYCLE_LENGTH` seconds, with the highest slot number.
+3. Return `LMD_GHOST(store, justified_head)`, where `store` contains all attestations and blocks that the validator has received.
 
-Here's an example of its working (green is finalized blocks, yellow is justified, grey is attestations):
+Let `get_most_recent_attestation_target(store, v)` be a function that returns the block that a validator attested to in the attestation in `store` that has the highest slot number. Let `get_ancestor(store, block, slot)` be the function that returns the ancestor of the given block at the given slot; it could be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`. LMD GHOST is defined as follows:
 
-![](https://vitalik.ca/files/RPJ.png)
+```python
+def lmd_ghost(store, start):
+    validators = [start.state.validators[i] for i in range(get_active_validators(start.state.validators, start.slot))]
+    latest_message_targets = [get_most_recent_attestation_target(store, v) for v in validators]
+    head = start
+    while 1:
+        c = get_children(head)
+        if len(c) == 0:
+            return head
+            
+        def get_vote_count(block):
+            return len([t for t in latest_message_targets if get_ancestor(store, t, block.slot) == block])
+        
+        head = max(c, key=get_vote_count)
+```
+
+Note that the above is a definition, not an optimal implementation; implementations that determine the head in logarithmic time are possible.
 
 ## Beacon chain state transition function
 
