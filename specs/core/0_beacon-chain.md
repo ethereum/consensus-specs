@@ -562,7 +562,7 @@ total_deposit_count: int128
 def deposit(deposit_params: bytes[2048]):
     index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(as_bytes32(msg.value / 10**9), 24, 8)
-    timestamp_bytes8: bytes[8] = slice(s_bytes32(block.timestamp), 24, 8)
+    timestamp_bytes8: bytes[8] = slice(as_bytes32(block.timestamp), 24, 8)
     deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
 
     log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)    
@@ -704,7 +704,7 @@ def add_validator(validators: List[ValidatorRecord],
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
-    signed_message = as_bytes32(pubkey) + as_bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
+    signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
     assert BLSVerify(pub=pubkey,
                      msg=hash(signed_message),
                      sig=proof_of_possession)
