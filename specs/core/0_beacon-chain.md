@@ -561,8 +561,8 @@ total_deposit_count: int128
 @public
 def deposit(deposit_params: bytes[2048]):
     index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(as_bytes32(msg.value / 10**9), 24, 8)
-    timestamp_bytes8: bytes[8] = slice(as_bytes32(block.timestamp), 24, 8)
+    msg_gwei_bytes8: bytes[8] = slice(convert(msg.value / 10**9, 'bytes32'), 24, 8)
+    timestamp_bytes8: bytes[8] = slice(convert(block.timestamp, 'bytes32'), 24, 8)
     deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
 
     log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)    
