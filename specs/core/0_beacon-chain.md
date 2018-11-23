@@ -44,17 +44,17 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
-| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~7 hours |
+| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4,096) | slots | ~7 hours |
 | `SQRT_E_DROP_TIME` | 2**18 (= 262,144) | slots | ~18 days |
 | `WITHDRAWALS_PER_CYCLE` | 2**2 (=4) | validators | 5.2m ETH in ~6 months |
-| `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8192) | slots | ~14 hours |
+| `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8,192) | slots | ~14 hours |
 | `DELETION_PERIOD` | 2**22 (= 4,194,304) | slots | ~290 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**20 (= 1,048,576) | slots | ~2.4 months |
+| `POW_RECEIPT_ROOT_VOTING_PERIOD` | 2**10 (= 1,024) | slots | ~1.7 hours |
 | `SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR` | 2**9 (= 512) |
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
-| `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
-| `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
+| `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (= 32) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -109,7 +109,7 @@ A `BeaconBlock` has the following fields:
     'slot': 'uint64',
     # Proposer RANDAO reveal
     'randao_reveal': 'hash32',
-    # Recent PoW chain reference (receipt root)
+    # Recent PoW receipt root
     'candidate_pow_receipt_root': 'hash32',
     # Skip list of previous beacon block hashes
     # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
@@ -236,8 +236,8 @@ The `BeaconState` has the following fields:
     'current_exit_seq': 'uint64',
     # Genesis time
     'genesis_time': 'uint64',
-    # PoW chain reference
-    'known_pow_receipt_root': 'hash32',
+    # PoW receipt root
+    'processed_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_root_votes': 'uint64',
     # Parameters relevant to hard forks / versioning.
@@ -328,7 +328,7 @@ For a block on the beacon chain to be processed by a node, four conditions have 
 
 * The parent pointed to by the `ancestor_hashes[0]` has already been processed and accepted
 * An attestation from the _proposer_ of the block (see later for definition) is included along with the block in the network message object
-* The PoW chain block pointed to by the `pow_chain_reference` has already been processed and accepted
+* The PoW chain block pointed to by the `processed_pow_receipt_root` has already been processed and accepted
 * The node's local clock time is greater than or equal to the minimum timestamp as computed by `GENESIS_TIME + block.slot * SLOT_DURATION`
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
@@ -551,8 +551,8 @@ def int_sqrt(n: int) -> int:
 The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
 
 ```python
-HashChainValue: event({prev_tip: bytes32, data: bytes[2064], total_deposit_count: int128})
-ChainStart: event({hash_chain_tip: bytes32, time: bytes[8]})
+HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: int128})
+ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
 receipt_tree: bytes32[int128]
 total_deposit_count: int128
@@ -597,7 +597,7 @@ If the user wishes to deposit more than `DEPOSIT_SIZE` ETH, they would need to m
 
 * `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
 * `genesis_time` equal to the `time` value published in the log
-* `pow_hash_chain_tip` equal to the `hash_chain_tip` value published in the log
+* `pow_receipt_root` equal to the `receipt_root` value published in the log
 
 ### On startup
 
@@ -619,7 +619,7 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 `STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_hash_chain_tip: Hash32) -> BeaconState:
+def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
@@ -655,14 +655,13 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_h
         persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
         persistent_committee_reassignments=[],
         deposits_penalized_in_period=[],
-        next_shuffling_seed=b'\x00'*32,
+        next_shuffling_seed=bytes([0] * 32),
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         current_exit_seq=0,
         genesis_time=genesis_time,
-        known_pow_hash_chain_tip=pow_hash_chain_tip,
-        processed_pow_hash_chain_tip=pow_hash_chain_tip,
-        candidate_pow_hash_chain_tip=bytes([0] * 32),
-        candidate_pow_hash_chain_tip_votes=0,
+        processed_pow_receipt_root=pow_receipt_root,
+        candidate_pow_receipt_root=bytes([0] * 32),
+        candidate_pow_receipt_root_votes=0,
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
         fork_slot_number=0,
@@ -790,7 +789,7 @@ def on_startup(initial_validator_entries: List[Any]) -> BeaconState:
         persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
         persistent_committee_reassignments=[],
         deposits_penalized_in_period=[],
-        next_shuffling_seed=b'\x00'*32,
+        next_shuffling_seed=bytes([0] * 32),
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
@@ -860,11 +859,13 @@ Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, dat
 ### Verify and process RANDAO reveal
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `V = get_beacon_proposer(state, block.slot).
+* Let `V = get_beacon_proposer(state, block.slot)`.
 * Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
 
-Finally, if `block.candidate_pow_hash_chain_tip = state.candidate_pow_hash_chain_tip`, set `state.candidate_hash_chain_tip_votes += 1`.
+### Process PoW receipt root
+
+If `block.candidate_pow_receipt_root == state.candidate_pow_receipt_root` set `state.candidate_pow_receipt_root_votes += 1`.
 
 ### Process penalties, logouts and other special objects
 
@@ -938,7 +939,7 @@ For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer
 
 Note that `deposit_data` in serialized form should be the `DepositParams` followed by 8 bytes for the `msg_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the PoW contract of which the hash was placed into the Merkle tree.
 
-Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.known_pow_receipt_root`:
+Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
@@ -1012,11 +1013,11 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 #### PoW chain related rules
 
-If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
+If `last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
-* If `state.candidate_hash_chain_tip_votes * 3 >= POW_HASH_VOTING_PERIOD * 2`, set `state.hash_chain_tip = state.candidate_hash_chain_tip`
-* Set `state.candidate_hash_chain_tip = block.candidate_pow_hash_chain_tip`
-* Set `state.candidate_hash_chain_tip_votes = 0`
+* If `state.candidate_pow_receipt_root_votes * 3 >= POW_RECEIPT_ROOT_VOTING_PERIOD * 2` set `state.processed_pow_receipt_root = state.candidate_pow_receipt_root`.
+* Set `state.candidate_pow_receipt_root = block.candidate_pow_receipt_root`.
+* Set `state.candidate_pow_receipt_root_votes = 0`.
 
 ### Validator set change
 
@@ -1151,7 +1152,6 @@ Note: This spec is ~65% complete.
 
 **Missing**
 
-* [ ] Specify the rules around acceptable values for `pow_chain_reference` ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
 * [ ] Specify the shard chain blocks, blobs, proposers, etc.
 * [ ] Specify the deposit contract on the PoW chain in Vyper
 * [ ] Specify the beacon chain genesis rules ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
