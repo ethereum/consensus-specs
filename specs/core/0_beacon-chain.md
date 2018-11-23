@@ -701,6 +701,9 @@ def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
 ```python
 def get_fork_version(state: State, slot: int) -> int:
     return state.pre_fork_version if slot < state.fork_slot_number else state.post_fork_version
+    
+def get_domain(state: State, slot: int, base_domain: int) -> int:
+    return get_fork_version(state, slot) * 2**32 + base_domain
 ```
 
 Now, to add a validator:
@@ -720,7 +723,7 @@ def add_validator(state: State,
     assert BLSVerify(pub=pubkey,
                      msg=hash(signed_message),
                      sig=proof_of_possession,
-                     domain=get_fork_version(state, current_slot) * 2**32 + DOMAIN_DEPOSIT)
+                     domain=get_domain(state, current_slot, DOMAIN_DEPOSIT))
     # Pubkey uniqueness
     assert pubkey not in [v.pubkey for v in state.validators]
     rec = ValidatorRecord(
@@ -862,7 +865,7 @@ For each `AttestationRecord` object:
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
 * Derive a `group_public_key` by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1.
 * Let `data = AttestationSignedData(slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)`
-* Check `BLSVerify(pubkey=group_public_key, msg=data, sig=aggregate_sig, domain=get_fork_version(state, slot) * 2**32 + DOMAIN_ATTESTATION)`
+* Check `BLSVerify(pubkey=group_public_key, msg=data, sig=aggregate_sig, domain=get_domain(state, slot, DOMAIN_ATTESTATION))`
 
 Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block.
 
@@ -897,7 +900,7 @@ For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is on
 ```
 Perform the following checks:
 
-* Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature, domain=get_fork_version(state, current_slot) * 2**32 + DOMAIN_LOGOUT)`
+* Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature, domain=get_domain(state, current_slot, DOMAIN_LOGOUT))`
 * Verify that `validators[validator_index].status == ACTIVE`.
 
 Run `exit_validator(data.validator_index, state, block, penalize=False, current_slot=block.slot)`.
@@ -917,7 +920,7 @@ Run `exit_validator(data.validator_index, state, block, penalize=False, current_
 
 Perform the following checks:
 
-* For each `aggregate_sig`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in aggregate_sig_indices]), msg=vote_data, sig=aggsig, domain=get_fork_version(state, vote_data.slot) * 2**32 + DOMAIN_ATTESTATION)` passes.
+* For each `aggregate_sig`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in aggregate_sig_indices]), msg=vote_data, sig=aggsig, domain=get_domain(state, vote_data.slot, DOMAIN_ATTESTATION))` passes.
 * Verify that `vote1_data != vote2_data`.
 * Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
