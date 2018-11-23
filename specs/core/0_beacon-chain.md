@@ -337,15 +337,15 @@ Beacon block production is significantly different because of the proof of stake
 
 ### Beacon chain fork choice rule
 
-The beacon chain uses a hybrid fork choice rule that combines together FFG justification/finality with latest-message-driven GHOST.
+The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) GHOST. At any point in time a validator `v` calculates the head as follows.
 
-The following is a description of how to calculate the head at any given point in time.
-
-1. Set `finalized_head` to the finalized block with the highest slot number (as in, the block B with the highest slot number such that there exists a descendant of B the processing of which set B as finalized)
-2. Set `justified_head` be the descendant of `finalized_head` that is justified, and has been known to be justified for at least `SLOT_DURATION * CYCLE_LENGTH` seconds, with the highest slot number (as in, the block B with the highest slot number such that there exists a descendant of B the processing of which set B as justified; if no such block exists, then it is just set to the `finalized_head`)
-3. Return `LMD_GHOST(store, justified_head)`, where `store` contains all attestations and blocks that the validator has received, including those that have not been included in any chain.
-
-Let `get_most_recent_attestation_target(store, v)` be a function that returns the block that a validator attested to in the attestation in `store` with the highest slot number; only attestations pointing to blocks that the validator has verified (including recursively verifying ancestors) are considered. If more than one attestation exists in the same slot, `get_most_recent_attestation_target` should return the attestation that the client learned about earlier. Let `get_ancestor(store, block, slot)` be the function that returns the ancestor of the given block at the given slot; it could be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`. LMD GHOST is defined as follows:
+* Let `store` be the set of all attestations and blocks that the validator `v` has verified (in particular, ancestors must be recursively verified), including attestations not included in any chain.
+* Let `finalized_head` be the finalized block with the highest slot number. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
+* Let `justified_head` be the descendant of `finalized_head` with the highest slot number that has been justified for at least `CYCLE_LENGTH` slots. (A block `B` is justified is there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
+* Let `get_most_recent_attestation(store, validator)` be the attestation in `store` from `validator` with the highest slot number. If several such attestations exist use the one the validator `v` verified first.
+* Let `get_most_recent_attestation_target(store, validator)` be the target block in `get_most_recent_attestation(store, validator)`.
+* Let `get_ancestor(store, block, slot)` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
+* The head is `lmd_ghost(store, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in logarithmic time.
 
 ```python
 def lmd_ghost(store, start):
@@ -362,8 +362,6 @@ def lmd_ghost(store, start):
         
         head = max(c, key=get_vote_count)
 ```
-
-Note that the above is a definition, not an optimal implementation; implementations that determine the head in logarithmic time are possible.
 
 ## Beacon chain state transition function
 
