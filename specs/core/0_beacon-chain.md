@@ -699,7 +699,7 @@ def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
 ```
 
 ```python
-def get_fork_version(state: State, slot: uint64):
+def get_fork_version(state: State, slot: int) -> int:
     return state.pre_fork_version if slot < state.fork_slot_number else state.post_fork_version
 ```
 
