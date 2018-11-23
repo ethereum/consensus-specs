@@ -515,7 +515,7 @@ The following is a function that determines the proposer of a beacon block:
 
 ```python
 def get_beacon_proposer(state:BeaconState, slot: int) -> ValidatorRecord:
-    first_committee = get_shards_and_committees_for_slot(state, slot)[0]
+    first_committee = get_shards_and_committees_for_slot(state, slot)[0].committee
     index = first_committee[slot % len(first_committee)]
     return state.validators[index]
 ```
@@ -686,7 +686,7 @@ First, a helper function:
 ```python
 def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
     for i, v in enumerate(validators):
-        if v.status == WITHDRAWN and v.exit_slot <= current_slot - DELETION_PERIOD:
+        if v.status == WITHDRAWN and v.exit_slot + DELETION_PERIOD <= current_slot:
             return i
     return None
 ```
