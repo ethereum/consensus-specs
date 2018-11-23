@@ -337,22 +337,23 @@ Beacon block production is significantly different because of the proof of stake
 
 ### Beacon chain fork choice rule
 
-The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a validator `v` calculates the beacon chain head as follows.
+The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a validator `v` subjectively calculates the beacon chain head as follows.
 
 * Let `store` be the set of attestations and blocks that the validator `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not part of any chain are still included in `store`.
 * Let `finalized_head` be the finalized block with the highest slot number. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
 * Let `justified_head` be the descendant of `finalized_head` with the highest slot number that has been justified for at least `CYCLE_LENGTH` slots. (A block `B` is justified is there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
 * Let `get_ancestor(store, block, slot)` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
-* Let `get_latest_attestation(store, validator)` be the attestation in `store` from `validator` with the highest slot number. If several such attestations exist use the one the validator `v` verified first.
+* Let `get_latest_attestation(store, validator)` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist use the one the validator `v` observed first.
 * Let `get_latest_attestation_target(store, validator)` be the target block in the attestation `get_latest_attestation(store, validator)`.
 * The head is `lmd_ghost(store, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in logarithmic time.
 
 ```python
 def lmd_ghost(store, start):
-    active_validators = [start.state.validators[i] for i in range(get_active_validators(start.state.validators, start.slot))]
-    latest_attestation_targets = [get_latest_attestation_target(store, validator) for validator in active_validators]
+    validators = start.state.validators
+    active_validators = [validators[i] for i in range(get_active_validators(validators, start.slot))]
+    attestation_targets = [get_latest_attestation_target(store, validator) for validator in active_validators]
     def get_vote_count(block):
-        return len([target for target in latest_attestation_targets if get_ancestor(store, target, block.slot) == block])
+        return len([target for target in attestation_targets if get_ancestor(store, target, block.slot) == block])
 
     head = start
     while 1:
