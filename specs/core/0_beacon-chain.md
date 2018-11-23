@@ -337,15 +337,31 @@ Beacon block production is significantly different because of the proof of stake
 
 ### Beacon chain fork choice rule
 
-The beacon chain uses the Casper FFG fork choice rule of "favor the chain containing the highest-slot-number justified block". To choose between chains that are all descended from the same justified block, the chain uses "immediate message driven GHOST" (IMD GHOST) to choose the head of the chain.
+The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a validator `v` subjectively calculates the beacon chain head as follows.
 
-For a description see: **https://ethresear.ch/t/beacon-chain-casper-ffg-rpj-mini-spec/2760**
+* Let `store` be the set of attestations and blocks that the validator `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not part of any chain are still included in `store`.
+* Let `finalized_head` be the finalized block with the highest slot number. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
+* Let `justified_head` be the descendant of `finalized_head` with the highest slot number that has been justified for at least `CYCLE_LENGTH` slots. (A block `B` is justified is there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
+* Let `get_ancestor(store, block, slot)` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
+* Let `get_latest_attestation(store, validator)` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist use the one the validator `v` observed first.
+* Let `get_latest_attestation_target(store, validator)` be the target block in the attestation `get_latest_attestation(store, validator)`.
+* The head is `lmd_ghost(store, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
 
-For an implementation with a network simulator see: **https://github.com/ethereum/research/blob/master/clock_disparity/ghost_node.py**
+```python
+def lmd_ghost(store, start):
+    validators = start.state.validators
+    active_validators = [validators[i] for i in get_active_validator_indices(validators, start.slot)]
+    attestation_targets = [get_latest_attestation_target(store, validator) for validator in active_validators]
+    def get_vote_count(block):
+        return len([target for target in attestation_targets if get_ancestor(store, target, block.slot) == block])
 
-Here's an example of its working (green is finalized blocks, yellow is justified, grey is attestations):
-
-![](https://vitalik.ca/files/RPJ.png)
+    head = start
+    while 1:
+        children = get_children(head)
+        if len(children) == 0:
+            return head        
+        head = max(children, key=get_vote_count)
+```
 
 ## Beacon chain state transition function
 
@@ -1171,7 +1187,6 @@ Note: This spec is ~65% complete.
 
 **Possible modifications and additions**
 
-* [ ] Replace the IMD fork choice rule with LMD
 * [ ] Homogenise types to `uint64` ([PR 36](https://github.com/ethereum/eth2.0-specs/pull/36))
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
