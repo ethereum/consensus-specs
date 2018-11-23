@@ -341,11 +341,11 @@ The beacon chain uses a hybrid fork choice rule that combines together FFG justi
 
 The following is a description of how to calculate the head at any given point in time.
 
-1. Set `finalized_head` to the finalized block with the highest slot number.
-2. Set `justified_head` be the descendant of `finalized_head` that is justified, and has been known to be justified for at least `SLOT_DURATION * CYCLE_LENGTH` seconds, with the highest slot number.
-3. Return `LMD_GHOST(store, justified_head)`, where `store` contains all attestations and blocks that the validator has received.
+1. Set `finalized_head` to the finalized block with the highest slot number (as in, the block B with the highest slot number such that there exists a descendant of B the processing of which set B as finalized)
+2. Set `justified_head` be the descendant of `finalized_head` that is justified, and has been known to be justified for at least `SLOT_DURATION * CYCLE_LENGTH` seconds, with the highest slot number (as in, the block B with the highest slot number such that there exists a descendant of B the processing of which set B as justified; if no such block exists, then it is just set to the `finalized_head`)
+3. Return `LMD_GHOST(store, justified_head)`, where `store` contains all attestations and blocks that the validator has received, including those that have not been included in any chain.
 
-Let `get_most_recent_attestation_target(store, v)` be a function that returns the block that a validator attested to in the attestation in `store` that has the highest slot number. Let `get_ancestor(store, block, slot)` be the function that returns the ancestor of the given block at the given slot; it could be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`. LMD GHOST is defined as follows:
+Let `get_most_recent_attestation_target(store, v)` be a function that returns the block that a validator attested to in the attestation in `store` with the highest slot number; only attestations pointing to blocks that the validator has verified (including recursively verifying ancestors) are considered. If more than one attestation exists in the same slot, `get_most_recent_attestation_target` should return the attestation that the client learned about earlier. Let `get_ancestor(store, block, slot)` be the function that returns the ancestor of the given block at the given slot; it could be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`. LMD GHOST is defined as follows:
 
 ```python
 def lmd_ghost(store, start):
