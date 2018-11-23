@@ -521,7 +521,8 @@ def get_beacon_proposer(state:BeaconState, slot: int) -> ValidatorRecord:
 The following is a function that determines the validators that participated in an attestation:
 
 ```python
-def get_attestation_participants(state: State, attestation: AttestationRecord):
+def get_attestation_participants(state: State,
+                                 attestation: AttestationRecord) -> Tuple[List[int], List[int]]:
     sncs_for_slot = get_shards_and_committees_for_slot(state, attestation.slot)
     snc = [x for x in sncs_for_slot if x.shard == attestation.shard][0]
     assert len(attestation.attester_bitfield) == ceil_div8(len(snc.committee) * 2)
@@ -984,7 +985,7 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 
 * Let `active_validators = [state.validators[i] for i in get_active_validator_indices(state.validators)]`
 * Let `total_balance = sum([v.balance for v in active_validators])`
-* Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]` (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`)
+* Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]` (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`_)
 * Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]
 * Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes]
 * Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
