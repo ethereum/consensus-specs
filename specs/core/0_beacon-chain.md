@@ -865,7 +865,7 @@ Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, dat
 
 ### Process PoW receipt root
 
-If `block.candidate_pow_receipt_root = state.candidate_pow_receipt_root` set `state.candidate_pow_receipt_root_votes += 1`.
+If `block.candidate_pow_receipt_root == state.candidate_pow_receipt_root` set `state.candidate_pow_receipt_root_votes += 1`.
 
 ### Process penalties, logouts and other special objects
 
