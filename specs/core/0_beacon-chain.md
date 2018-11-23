@@ -337,30 +337,29 @@ Beacon block production is significantly different because of the proof of stake
 
 ### Beacon chain fork choice rule
 
-The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) GHOST. At any point in time a validator `v` calculates the head as follows.
+The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a validator `v` calculates the beacon chain head as follows.
 
-* Let `store` be the set of all attestations and blocks that the validator `v` has verified (in particular, ancestors must be recursively verified), including attestations not included in any chain.
+* Let `store` be the set of attestations and blocks that the validator `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not part of any chain are still included in `store`.
 * Let `finalized_head` be the finalized block with the highest slot number. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
 * Let `justified_head` be the descendant of `finalized_head` with the highest slot number that has been justified for at least `CYCLE_LENGTH` slots. (A block `B` is justified is there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
-* Let `get_most_recent_attestation(store, validator)` be the attestation in `store` from `validator` with the highest slot number. If several such attestations exist use the one the validator `v` verified first.
-* Let `get_most_recent_attestation_target(store, validator)` be the target block in `get_most_recent_attestation(store, validator)`.
 * Let `get_ancestor(store, block, slot)` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
+* Let `get_latest_attestation(store, validator)` be the attestation in `store` from `validator` with the highest slot number. If several such attestations exist use the one the validator `v` verified first.
+* Let `get_latest_attestation_target(store, validator)` be the target block in the attestation `get_latest_attestation(store, validator)`.
 * The head is `lmd_ghost(store, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in logarithmic time.
 
 ```python
 def lmd_ghost(store, start):
-    validators = [start.state.validators[i] for i in range(get_active_validators(start.state.validators, start.slot))]
-    latest_message_targets = [get_most_recent_attestation_target(store, v) for v in validators]
+    active_validators = [start.state.validators[i] for i in range(get_active_validators(start.state.validators, start.slot))]
+    latest_attestation_targets = [get_latest_attestation_target(store, validator) for validator in active_validators]
+    def get_vote_count(block):
+        return len([target for target in latest_attestation_targets if get_ancestor(store, target, block.slot) == block])
+
     head = start
     while 1:
-        c = get_children(head)
-        if len(c) == 0:
-            return head
-            
-        def get_vote_count(block):
-            return len([t for t in latest_message_targets if get_ancestor(store, t, block.slot) == block])
-        
-        head = max(c, key=get_vote_count)
+        children = get_children(head)
+        if len(children) == 0:
+            return head        
+        head = max(children, key=get_vote_count)
 ```
 
 ## Beacon chain state transition function
@@ -1187,7 +1186,6 @@ Note: This spec is ~65% complete.
 
 **Possible modifications and additions**
 
-* [ ] Replace the IMD fork choice rule with LMD
 * [ ] Homogenise types to `uint64` ([PR 36](https://github.com/ethereum/eth2.0-specs/pull/36))
 * [ ] Reduce the slot duration to 8 seconds
 * [ ] Allow for the delayed inclusion of aggregated signatures
