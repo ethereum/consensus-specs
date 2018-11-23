@@ -50,6 +50,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8192) | slots | ~14 hours |
 | `DELETION_PERIOD` | 2**22 (= 4,194,304) | slots | ~290 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**20 (= 1,048,576) | slots | ~2.4 months |
+| `SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR` | 2**9 (= 512) |
 | `BASE_REWARD_QUOTIENT` | 2**11 (= 2,048) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
@@ -59,8 +60,8 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 **Notes**
 
-* See a recommended min committee size of 111 here https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
-* The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%. 
+* See a recommended min committee size of 111 [here](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
+* The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%.
 * The `BASE_REWARD_QUOTIENT` constant dictates the per-cycle interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each validator set change.
 
@@ -576,8 +577,8 @@ total_deposit_count: int128
 @public
 def deposit(deposit_params: bytes[2048]):
     index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(as_bytes32(msg.value / 10**9), 24, 8)
-    timestamp_bytes8: bytes[8] = slice(s_bytes32(block.timestamp), 24, 8)
+    msg_gwei_bytes8: bytes[8] = slice(convert(msg.value / 10**9, 'bytes32'), 24, 8)
+    timestamp_bytes8: bytes[8] = slice(convert(block.timestamp, 'bytes32'), 24, 8)
     deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
 
     log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)    
@@ -718,7 +719,7 @@ def add_validator(validators: List[ValidatorRecord],
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
-    signed_message = as_bytes32(pubkey) + as_bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
+    signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
     assert BLSVerify(pub=pubkey,
                      msg=hash(signed_message),
                      sig=proof_of_possession)
@@ -748,7 +749,7 @@ def add_validator(validators: List[ValidatorRecord],
 ### Routine for removing a validator
 
 ```python
-def exit_validator(index, state, penalize, current_slot):
+def exit_validator(index, state, block, penalize, current_slot):
     validator = state.validators[index]
     validator.exit_slot = current_slot
     validator.exit_seq = state.current_exit_seq
@@ -760,6 +761,9 @@ def exit_validator(index, state, penalize, current_slot):
                 break
     if penalize:
         validator.status = PENALIZED
+        whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
+        validator.deposit -= whistleblower_xfer_amount
+        get_beacon_proposer(state, block.slot).deposit += whistleblower_xfer_amount
         state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
     else:
         validator.status = PENDING_EXIT
@@ -868,7 +872,7 @@ Extend the list of `AttestationRecord` objects in the `state` with those include
 
 ### Verify proposer signature
 
-Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`. 
+Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
 
 Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, data=proposal_hash, sig=block.proposer_signature)` passes.
 
@@ -900,7 +904,7 @@ Perform the following checks:
 * Let `fork_version = pre_fork_version if block.slot < fork_slot_number else post_fork_version`. Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature)`
 * Verify that `validators[validator_index].status == ACTIVE`.
 
-Run `exit_validator(data.validator_index, state, penalize=False, current_slot=block.slot)`.
+Run `exit_validator(data.validator_index, state, block, penalize=False, current_slot=block.slot)`.
 
 #### CASPER_SLASHING
 
@@ -922,7 +926,7 @@ Perform the following checks:
 * Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
 
-For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
+For each validator index `v` in `intersection`, if `state.validators[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, block, penalize=True, current_slot=block.slot)`
 
 #### PROPOSER_SLASHING
 
@@ -1030,7 +1034,7 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 * Adjust balances as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
     * Non-participating validators lose `B // reward_quotient`.
-    
+
 #### PoW chain related rules
 
 If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
@@ -1154,7 +1158,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
 #### Finally...
 
 * Remove all attestation records older than slot `s`
-* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, state, penalize=False, current_slot=block.slot)`
+* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, state, block, penalize=False, current_slot=block.slot)`
 * Set `state.recent_block_hashes = state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `state.last_state_recalculation_slot += CYCLE_LENGTH`
 
