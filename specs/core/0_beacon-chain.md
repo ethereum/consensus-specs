@@ -52,6 +52,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**20 (= 1,048,576) | slots | ~2.4 months |
 | `SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR` | 2**9 (= 512) |
 | `BASE_REWARD_QUOTIENT` | 2**11 (= 2,048) | — |
+| `INCLUDER_REWARD_QUOTIENT` | 2**14 (= 16,384) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
@@ -951,6 +952,13 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
     * `total_attesting_balance(obj)` be the maximal sum balance
     * `winning_hash(obj)` be the winning `shard_block_hash` value
     * `total_balance(obj) = sum([v.balance for v in obj.committee])`
+    
+Let `inclusion_slot(a)` equal the slot in which attestation `a` was included, and `inclusion_distance(a) = inclusion_slot(a) - a.slot`. Let `inclusion_slot(v)` equal `inclusion_distance(a)` for the attestation `a` where `v` is in `get_attestation_participants(state, a)`, and define `inclusion_distance(v)` similarly. We define a function `adjust_for_inclusion_distance(magnitude, dist)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`
+
+```python
+def adjust_for_inclusion_distance(magnitude, dist):
+    return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // dist
+```
 
 #### Adjust justified slots and crosslink status
 
@@ -977,19 +985,21 @@ Note: When applying penalties in the following balance recalculations implemente
 
 Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
 
-* Any validator in `prev_s_attesters` with balance `B` gains `B // reward_quotient * (prev_s_attesters - total_balance) // total_balance`.
-* All other active validators lose `B // reward_quotient`.
+* Any validator `V` in `prev_s_attesters` gains `adjust_for_inclusion_distance(V.balance // reward_quotient * (prev_s_attesters - total_balance) // total_balance, inclusion_distance(V))``.
+* All other active validators lose `V.balance // reward_quotient`.
 
 Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
 
-* Any validator in `prev_s_attesters` with balance `B` sees their balance unchanged.
-* All other active validators, and validators with `status == PENALIZED`, lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`.
+* Any validator in `prev_s_attesters` sees their balance unchanged.
+* All other active validators, and validators with `status == PENALIZED`, lose `V.balance // reward_quotient + V.balance * time_since_finality // quadratic_penalty_quotient`.
+
+For each `V` in `prev_s_attesters`, the validator `proposer = get_beacon_proposer(state, inclusion_slot(V))` gains `proposer.balance // INCLUDER_REWARD_QUOTIENT`.
 
 #### Balance recalculations related to crosslink rewards
 
 For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the slot before the current one), for each `v in obj.committee`, where `V = state.validators[b]` adjust balances as follows:
 
-* If `v in attesting_validators(obj)`, `V.balance += V.balance // reward_quotient * total_attesting_balance(obj) // total_balance(obj))`.
+* If `v in attesting_validators(obj)`, `V.balance += adjust_for_inclusion_distance(V.balance // reward_quotient * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(V))`.
 * If `v not in attesting_validators(obj)`, `V.balance -= V.balance // reward_quotient`.
 
 #### PoW chain related rules
