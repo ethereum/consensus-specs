@@ -132,7 +132,7 @@ An `AttestationRecord` has the following fields:
     # Slot number
     'slot': 'uint64',
     # Shard number
-    'shard': 'uint16',
+    'shard': 'uint64',
     # Beacon block hashes not part of the current chain, oldest to newest
     'oblique_parent_hashes': ['hash32'],
     # Shard block hash being attested to
@@ -176,7 +176,7 @@ An `AttestationSignedData` has the following fields:
     # Slot number
     'slot': 'uint64',
     # Shard number
-    'shard': 'uint16',
+    'shard': 'uint64',
     # CYCLE_LENGTH parent hashes
     'parent_hashes': ['hash32'],
     # Shard block hash
@@ -293,7 +293,7 @@ A `ShardAndCommittee` object has the following fields:
 ```python
 {
     # Shard number
-    'shard': 'uint16',
+    'shard': 'uint64',
     # Validator indices
     'committee': ['uint24']
 }
@@ -306,7 +306,7 @@ A `ShardReassignmentRecord` object has the following fields:
     # Which validator to reassign
     'validator_index': 'uint24',
     # To which shard
-    'shard': 'uint16',
+    'shard': 'uint64',
     # When
     'slot': 'uint64'
 }
