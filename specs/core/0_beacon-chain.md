@@ -160,8 +160,8 @@ A `ProposalSignedData` has the following fields:
     'fork_version': 'uint64',
     # Slot number
     'slot': 'uint64',
-    # Shard ID (or `2**64 - 1` for beacon chain)
-    'shard_id': 'uint64',
+    # Shard number (or `2**64 - 1` for beacon chain)
+    'shard': 'uint64',
     # Block hash
     'block_hash': 'hash32',
 }
@@ -762,60 +762,6 @@ def exit_validator(index, state, block, penalize, current_slot):
     else:
         validator.status = PENDING_EXIT
     add_validator_set_change_record(state, index, validator.pubkey, EXIT)
-```
-
-## On startup
-
-Run the following code:
-
-```python
-def on_startup(initial_validator_entries: List[Any]) -> BeaconState:
-    # Induct validators
-    validators = []
-    for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
-            randao_commitment in initial_validator_entries:
-        add_validator(
-            validators=validators,
-            pubkey=pubkey,
-            proof_of_possession=proof_of_possession,
-            withdrawal_shard=withdrawal_shard,
-            withdrawal_address=withdrawal_address,
-            randao_commitment=randao_commitment,
-            current_slot=0,
-            status=ACTIVE,
-        )
-    # Setup state
-    x = get_new_shuffling(bytes([0] * 32), validators, 0)
-    crosslinks = [
-        CrosslinkRecord(
-            slot=0,
-            hash=bytes([0] * 32)
-        )
-        for i in range(SHARD_COUNT)
-    ]
-    state = BeaconState(
-        validator_set_change_slot=0,
-        validators=validators,
-        crosslinks=crosslinks,
-        last_state_recalculation_slot=0,
-        last_finalized_slot=0,
-        last_justified_slot=0,
-        justified_streak=0,
-        shard_and_committee_for_slots=x + x,
-        persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
-        persistent_committee_reassignments=[],
-        deposits_penalized_in_period=[],
-        next_shuffling_seed=bytes([0] * 32),
-        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
-        pre_fork_version=INITIAL_FORK_VERSION,
-        post_fork_version=INITIAL_FORK_VERSION,
-        fork_slot_number=0,
-        pending_attestations=[],
-        recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
-        randao_mix=bytes([0] * 32)  # stub
-    )
-
-    return state
 ```
 
 ## Per-block processing
