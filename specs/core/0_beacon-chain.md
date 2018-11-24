@@ -942,9 +942,10 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 * Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes and a.justified_slot == state.justification_source]`
 * Let `prev_s_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if get_block_hash(state, block, s - CYCLE_LENGTH) in a.parent_hashes and a.justified_slot == state.prev_cycle_justification_source]`
 * Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
-* Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
+* Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in prev_s_attestations]`
 * Let `total_balance_attesting_at_s = sum([v.balance for v in s_attesters])`
 * Let `total_balance_attesting_at_prev_s = sum([v.balance for v in prev_s_attesters])`
+* For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`, let `validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_attestations + prev_cycle_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`. Let `validators(obj)` be equal to `validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([v.balance for v in validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values). Let `total_attesting_balance(obj)` be this maximal sum balance, and `winning_hash(obj)` be the winning `shard_block_hash` value.
 
 #### Adjust justified slots and crosslink status
 
@@ -956,33 +957,33 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 * If `justification_source == prev_s - CYCLE_LENGTH and state.justified_slot_bitfield % 8 == 7`, set `last_finalized_slot = justification_source`.
 * Set `prev_cycle_justification_source = justification_source` and `justification_source = new_justification_source`.
 
-For every `(shard, shard_block_hash)` tuple:
+For every `ShardAndCommittee` object `obj`:
 
-* Let `total_balance_attesting_to_h` be the total balance of validators that attested to the shard block with hash `shard_block_hash`.
-* Let `total_committee_balance` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_block_hash`.
-* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance`, set `crosslinks[shard] = CrosslinkRecord(slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
+* Let `total_committee_balance = sum([state.validators[v].balance for v in obj.committee])`
+* If `3 * total_attesting_balance(obj) >= 2 * total_committee_balance`, set `crosslinks[shard] = CrosslinkRecord(slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=winning_hash(obj))`.
 
 #### Balance recalculations related to FFG rewards
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `total_balance` be the total balance of active validators.
 * Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
 * Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
 * Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
 * Let `time_since_finality = slot - last_finalized_slot`.
-* Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon block at slot `s` (note: every attestation for a block in the slot span `s ... s + CYCLE_LENGTH - 1` counts as this)
-* Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation.
-* If `time_since_finality <= 3 * CYCLE_LENGTH` adjust the balance of participating and non-participating validators as follows:
-    * Participating validators gain `B // reward_quotient * (2 * total_balance_participating - total_balance) // total_balance`. (Note that this value may be negative.)
-    * Non-participating validators lose `B // reward_quotient`.
-* Otherwise:
-    * Participating validators gain nothing.
-    * Non-participating validators lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`.
 
-In addition, validators with `status == PENALIZED` lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`.
+Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
+
+* Any validator in `prev_s_attesters` with balance `B` gains `B // reward_quotient * (prev_s_attesters - total_balance) // total_balance`.
+* All other active validators lose `B // reward_quotient`.
+
+Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
+
+* Any validator in `prev_s_attesters` with balance `B` sees their balance unchanged.
+* All other active validators, and validators with `status == PENALIZED`, lose `B // reward_quotient + B * time_since_finality // quadratic_penalty_quotient`.
 
 #### Balance recalculations related to crosslink rewards
+
+For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the slot before the current one):
 
 For every shard number `shard` for which a crosslink committee exists in the cycle prior to the most recent cycle (`s - CYCLE_LENGTH ... s - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `shard`, `V`:
 
