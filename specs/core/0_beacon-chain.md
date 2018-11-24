@@ -94,7 +94,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 ### PoW chain registration contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_shard`, `withdrawal_address`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
 The registration contract emits a log with the various arguments for consumption by the beacon chain. It does not do validation, pushing the registration logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
 
@@ -260,10 +260,8 @@ A `ValidatorRecord` has the following fields:
 {
     # BLS public key
     'pubkey': 'uint256',
-    # Withdrawal shard number
-    'withdrawal_shard': 'uint16',
-    # Withdrawal address
-    'withdrawal_address': 'address',
+    # Withdrawal credentials
+    'withdrawal_credentials': 'hash32',
     # RANDAO commitment
     'randao_commitment': 'hash32',
     # Slot the RANDAO commitment was last changed
@@ -603,8 +601,7 @@ The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to bec
 {
     'pubkey': 'int256',
     'proof_of_possession': ['int256'],
-    'withdrawal_shard': 'int64',
-    'withdrawal_address`: 'bytes20',
+    'withdrawal_credentials`: 'hash32',
     'randao_commitment`: 'hash32'
 }
 ```
@@ -638,14 +635,13 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
     validators = []
-    for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
+    for pubkey, proof_of_possession, withdrawal_credentials, \
             randao_commitment in initial_validator_entries:
         add_validator(
             validators=validators,
             pubkey=pubkey,
             proof_of_possession=proof_of_possession,
-            withdrawal_shard=withdrawal_shard,
-            withdrawal_address=withdrawal_address,
+            withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
             current_slot=0,
             status=ACTIVE,
@@ -712,14 +708,13 @@ Now, to add a validator:
 def add_validator(validators: List[ValidatorRecord],
                   pubkey: int,
                   proof_of_possession: bytes,
-                  withdrawal_shard: int,
-                  withdrawal_address: Address,
+                  withdrawal_credentials: Hash32,
                   randao_commitment: Hash32,
                   status: int,
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
-    signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
+    signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_credentials + randao_commitment
     assert BLSVerify(pub=pubkey,
                      msg=hash(signed_message),
                      sig=proof_of_possession)
@@ -727,8 +722,7 @@ def add_validator(validators: List[ValidatorRecord],
     assert pubkey not in [v.pubkey for v in validators]
     rec = ValidatorRecord(
         pubkey=pubkey,
-        withdrawal_shard=withdrawal_shard,
-        withdrawal_address=withdrawal_address,
+        withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
         randao_last_change=current_slot,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH,
@@ -916,7 +910,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
 
 Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
 
-Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_shard, data.deposit_params.withdrawal_address, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_credentials, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 ## State recalculations (every `CYCLE_LENGTH` slots)
 
@@ -977,7 +971,7 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 If `last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
-* If `state.candidate_pow_receipt_root_votes * 3 >= POW_RECEIPT_ROOT_VOTING_PERIOD * 2` set `state.processed_pow_receipt_root = state.candidate_pow_receipt_root`.
+* If `state.candidate_pow_receipt_root_votes * 2 >= POW_RECEIPT_ROOT_VOTING_PERIOD` set `state.processed_pow_receipt_root = state.candidate_pow_receipt_root`.
 * Set `state.candidate_pow_receipt_root = block.candidate_pow_receipt_root`.
 * Set `state.candidate_pow_receipt_root_votes = 0`.
 
