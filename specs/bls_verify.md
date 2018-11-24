@@ -18,7 +18,7 @@ We represent a point in G2 as a pair of 384-bit integers `(z1, z2)` that are eac
 
 * Verify that `pubkey` is a valid G1 point and `sig` is a valid G2 point.
 * Convert `msg` to a G2 point using `hash_to_G2` defined below.
-* Do the pairing check: verify `e(pubkey, hash_to_G2(msg)) == e(G1, sig)`
+* Do the pairing check: verify `e(pubkey, hash_to_G2(msg)) == e(G1, sig)` (where `e` is the BLS pairing function)
 
 Here is the `hash_to_G2` definition:
 
