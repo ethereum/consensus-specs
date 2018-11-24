@@ -587,7 +587,8 @@ def deposit(deposit_params: bytes[2048]):
     for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
         index //= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
-    self.total_deposit_count += 1
+    if msg.value == MIN_DEPOSIT_SIZE:
+        self.total_deposit_count += 1
     if self.total_deposit_count == 16384:
         log.ChainStart(self.receipt_tree[1], timestamp_bytes8)
 
