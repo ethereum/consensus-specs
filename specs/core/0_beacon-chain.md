@@ -945,7 +945,12 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 * Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in prev_s_attestations]`
 * Let `total_balance_attesting_at_s = sum([v.balance for v in s_attesters])`
 * Let `total_balance_attesting_at_prev_s = sum([v.balance for v in prev_s_attesters])`
-* For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`, let `validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_attestations + prev_cycle_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`. Let `validators(obj)` be equal to `validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([v.balance for v in validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values). Let `total_attesting_balance(obj)` be this maximal sum balance, and `winning_hash(obj)` be the winning `shard_block_hash` value.
+* For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`, let:
+    * `attesting_validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_attestations + prev_cycle_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`
+    * `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([v.balance for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values)
+    * `total_attesting_balance(obj)` be the maximal sum balance
+    * `winning_hash(obj)` be the winning `shard_block_hash` value
+    * `total_balance(obj) = sum([v.balance for v in obj.committee])`
 
 #### Adjust justified slots and crosslink status
 
@@ -959,8 +964,7 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 
 For every `ShardAndCommittee` object `obj`:
 
-* Let `total_committee_balance = sum([state.validators[v].balance for v in obj.committee])`
-* If `3 * total_attesting_balance(obj) >= 2 * total_committee_balance`, set `crosslinks[shard] = CrosslinkRecord(slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=winning_hash(obj))`.
+* If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `crosslinks[shard] = CrosslinkRecord(slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=winning_hash(obj))`.
 
 #### Balance recalculations related to FFG rewards
 
@@ -983,18 +987,10 @@ Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
 
 #### Balance recalculations related to crosslink rewards
 
-For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the slot before the current one):
+For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the slot before the current one), for each `v in obj.committee`, where `V = state.validators[b]` adjust balances as follows:
 
-For every shard number `shard` for which a crosslink committee exists in the cycle prior to the most recent cycle (`s - CYCLE_LENGTH ... s - 1`), let `V` be the corresponding validator set. Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation. For each `shard`, `V`:
-
-* Let `total_balance_of_v` be the total balance of `V`.
-* Let `winning_shard_hash` be the hash that the largest total deposits signed for the `shard` during the cycle.
-* Define a "participating validator" as a member of `V` that signed a crosslink of `winning_shard_hash`.
-* Let `total_balance_of_v_participating` be the total balance of the subset of `V` that participated.
-* Let `time_since_last_confirmation = s - crosslinks[shard].slot`.
-* Adjust balances as follows:
-    * Participating validators gain `B // reward_quotient * (2 * total_balance_of_v_participating - total_balance_of_v) // total_balance_of_v`.
-    * Non-participating validators lose `B // reward_quotient`.
+* If `v in attesting_validators(obj)`, `V.balance += V.balance // reward_quotient * total_attesting_balance(obj) // total_balance(obj))`.
+* If `v not in attesting_validators(obj)`, `V.balance -= V.balance // reward_quotient`.
 
 #### PoW chain related rules
 
@@ -1006,7 +1002,7 @@ If `last_state_recalculation_slot % POW_HASH_VOTING_PERIOD == 0`, then:
 
 #### Proposer reshuffling
 
-Run the following code:
+Run the following code to update the shard proposer set:
 
 ```python
 active_validator_indices = get_active_validator_indices(validators)
@@ -1099,22 +1095,23 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
         v.exit_slot = current_slot
 
         withdraw_amount = v.balance
-        ...
-        # STUB: withdraw to shard chain
+        # STUB: withdraw to shard chain    
 ```
 
+And perform the following updates to the `state`:
+
 * Set `state.validator_set_change_slot = s`
-* Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
-* Let `next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, next_start_shard)`
+* Set `state.shard_and_committee_for_slots[:CYCLE_LENGTH] = state.shard_and_committee_for_slots[CYCLE_LENGTH:]`
+* Let `state.next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
+* Set `state.shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, next_start_shard)`
 * Set `state.next_shuffling_seed = state.randao_mix`
 
 #### If a validator set change does NOT happen
 
-* Set `shard_and_committee_for_slots[:CYCLE_LENGTH] = shard_and_committee_for_slots[CYCLE_LENGTH:]`
+* Set `state.shard_and_committee_for_slots[:CYCLE_LENGTH] = state.shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `time_since_finality = block.slot - state.validator_set_change_slot`
-* Let `start_shard = shard_and_committee_for_slots[0][0].shard`
-* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, start_shard)` and set `state.next_shuffling_seed = state.randao_mix`. Note that `start_shard` is not changed from last cycle.
+* Let `start_shard = state.shard_and_committee_for_slots[0][0].shard`
+* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, start_shard)` and set `state.next_shuffling_seed = state.randao_mix`. Note that `start_shard` is not changed from last cycle.
 
 #### Finally...
 
