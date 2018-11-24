@@ -18,7 +18,7 @@ We represent a point in G2 as a pair of 384-bit integers `(z1, z2)` that are eac
 
 * Verify that `pubkey` is a valid G1 point and `sig` is a valid G2 point.
 * Convert `msg` to a G2 point using `hash_to_G2` defined below.
-* Do the pairing check: verify `e(pubkey, hash_to_G2(msg)) == e(G1, sig)` (where `e` is the BLS pairing function)
+* Do the pairing check: verify `e(pubkey, hash_to_G2(msg, domain)) == e(G1, sig)` (where `e` is the BLS pairing function)
 
 Here is the `hash_to_G2` definition:
 
@@ -57,6 +57,6 @@ def mod_sqrt(val):
 `BLSMultiVerify(pubkeys: [uint384], msgs: [bytes32], sig: [uint384], domain: uint64)` is done as follows:
 
 * Verify that each element of `pubkeys` is a valid G1 point and `sig` is a valid G2 point.
-* Convert each element of `mssg` to a G2 point using `hash_to_G2` defined above.
+* Convert each element of `msg` to a G2 point using `hash_to_G2` defined above, using the specified `domain`.
 * Check that the length of `pubkeys` and `msgs` is the same, call the length `L`
-* Do the pairing check: verify `e(pubkeys[0], hash_to_G2(msgs[0])) * ... * e(pubkeys[L-1], hash_to_G2(msgs[L-1])) == e(G1, sig)`
+* Do the pairing check: verify `e(pubkeys[0], hash_to_G2(msgs[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(msgs[L-1], domain)) == e(G1, sig)`
