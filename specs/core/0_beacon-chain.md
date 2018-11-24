@@ -238,7 +238,7 @@ The `BeaconState` has the following fields:
     'genesis_time': 'uint64',
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_roots': [CandidateReceiptRootRecord],
+    'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
     'pre_fork_version': 'uint64',
@@ -311,12 +311,14 @@ A `ShardReassignmentRecord` object has the following fields:
 }
 ```
 
-A `CandidateReceiptRootRecord` object contains the following fields:
+A `CandidatePoWReceiptRootRecord` object contains the following fields:
 
 ```python
 {
-    'receipt_root': 'hash32',
-    'votes': 'uint64',
+    # Candidate PoW receipt root
+    'candidate_pow_receipt_root': 'hash32',
+    # Vote count
+    'votes': 'uint64'
 }
 ```
 
@@ -618,7 +620,7 @@ If the user wishes to deposit more than `DEPOSIT_SIZE` ETH, they would need to m
 
 * `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
 * `genesis_time` equal to the `time` value published in the log
-* `pow_receipt_root` equal to the `receipt_root` value published in the log
+* `processed_pow_receipt_root` equal to the `receipt_root` value published in the log
 
 ### On startup
 
@@ -640,7 +642,7 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 `STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_receipt_root: Hash32) -> BeaconState:
+def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, processed_pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_credentials, \
@@ -679,7 +681,7 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_r
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         current_exit_seq=0,
         genesis_time=genesis_time,
-        processed_pow_receipt_root=pow_receipt_root,
+        processed_pow_receipt_root=processed_pow_receipt_root,
         candidate_pow_receipt_roots=[],
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
@@ -828,7 +830,7 @@ Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, dat
 
 ### Process PoW receipt root
 
-If `block.candidate_pow_receipt_root` is `x.receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`. Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidateReceiptRootRecord(receipt_root=block.candidate_pow_receipt_root, votes=1)`.
+If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`. Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
 ### Process penalties, logouts and other special objects
 
