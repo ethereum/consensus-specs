@@ -37,6 +37,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
+| `DEPOSITS_FOR_CHAIN_START` | 2**14 (= 16,384) | deposits |
 | `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
 | `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 6 | seconds |
@@ -576,8 +577,8 @@ total_deposit_count: int128
 @payable
 @public
 def deposit(deposit_params: bytes[2048]):
-    index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(convert(msg.value / 10**9, 'bytes32'), 24, 8)
+    index: int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+    msg_gwei_bytes8: bytes[8] = slice(convert(msg.value / GWEI_PER_ETH, 'bytes32'), 24, 8)
     timestamp_bytes8: bytes[8] = slice(convert(block.timestamp, 'bytes32'), 24, 8)
     deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
 
@@ -587,9 +588,9 @@ def deposit(deposit_params: bytes[2048]):
     for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
         index //= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
-    if msg.value == MIN_DEPOSIT_SIZE:
+    if msg.value >= MIN_DEPOSIT_SIZE:
         self.total_deposit_count += 1
-    if self.total_deposit_count == 16384:
+    if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
         log.ChainStart(self.receipt_tree[1], timestamp_bytes8)
 
 @public
