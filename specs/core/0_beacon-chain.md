@@ -217,8 +217,11 @@ The `BeaconState` has the following fields:
     'last_state_recalculation_slot': 'uint64',
     # Last finalized slot
     'last_finalized_slot': 'uint64',
-    # Last justified slot
-    'last_justified_slot': 'uint64',
+    # Justification source
+    'justification_source': 'uint64',
+    'prev_cycle_justification_source': 'uint64',
+    # Recent justified slot bitmask
+    'justified_slot_bitfield': 'uint64',
     # Committee members and their assigned shard, per slot
     'shard_and_committee_for_slots': [[ShardAndCommittee]],
     # Persistent shard committees
@@ -666,7 +669,9 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_h
         crosslinks=crosslinks,
         last_state_recalculation_slot=0,
         last_finalized_slot=0,
-        last_justified_slot=0,
+        justification_source=0,
+        prev_cycle_justification_source=0,
+        justified_slot_bitfield=0,
         shard_and_committee_for_slots=x + x,
         persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
         persistent_committee_reassignments=[],
@@ -771,59 +776,6 @@ def exit_validator(index, state, block, penalize, current_slot):
     add_validator_set_change_record(state, index, validator.pubkey, EXIT)
 ```
 
-## On startup
-
-Run the following code:
-
-```python
-def on_startup(initial_validator_entries: List[Any]) -> BeaconState:
-    # Induct validators
-    validators = []
-    for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
-            randao_commitment in initial_validator_entries:
-        add_validator(
-            validators=validators,
-            pubkey=pubkey,
-            proof_of_possession=proof_of_possession,
-            withdrawal_shard=withdrawal_shard,
-            withdrawal_address=withdrawal_address,
-            randao_commitment=randao_commitment,
-            current_slot=0,
-            status=ACTIVE,
-        )
-    # Setup state
-    x = get_new_shuffling(bytes([0] * 32), validators, 0)
-    crosslinks = [
-        CrosslinkRecord(
-            slot=0,
-            hash=bytes([0] * 32)
-        )
-        for i in range(SHARD_COUNT)
-    ]
-    state = BeaconState(
-        validator_set_change_slot=0,
-        validators=validators,
-        crosslinks=crosslinks,
-        last_state_recalculation_slot=0,
-        last_finalized_slot=0,
-        last_justified_slot=0,
-        shard_and_committee_for_slots=x + x,
-        persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
-        persistent_committee_reassignments=[],
-        deposits_penalized_in_period=[],
-        next_shuffling_seed=b'\x00'*32,
-        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
-        pre_fork_version=INITIAL_FORK_VERSION,
-        post_fork_version=INITIAL_FORK_VERSION,
-        fork_slot_number=0,
-        pending_attestations=[],
-        recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
-        randao_mix=bytes([0] * 32)  # stub
-    )
-
-    return state
-```
-
 ## Per-block processing
 
 This procedure should be carried out every beacon block.
@@ -860,7 +812,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
 For each `AttestationRecord` object `obj`:
 
 * Verify that `slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
-* Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
+* Verify that `justified_slot` is equal to `justification_source if slot >= block.slot - (block.slot % CYCLE_LENGTH) else prev_cycle_justification_source`
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
 * Verify that either `last_crosslink_hash` or `shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * Compute `full_parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(parent_hashes) + 1)] + parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
@@ -987,13 +939,22 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 * Let `total_balance = sum([v.balance for v in active_validators])`
 * Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]` (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`_)
 * Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]
-* Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes]
+* Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes and a.justified_slot == state.justification_source]
+* Let `prev_s_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if get_block_hash(state, block, s - CYCLE_LENGTH) in a.parent_hashes and a.justified_slot == state.prev_cycle_justification_source]
 * Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
+* Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
 * Let `total_balance_attesting_at_s = sum([v.balance for v in s_attesters])`
+* Let `total_balance_attesting_at_prev_s = sum([v.balance for v in prev_s_attesters])`
 
 #### Adjust justified slots and crosslink status
 
-* If `3 * total_balance_attesting_at_s >= 2 * total_balance` then first (i) if `last_justified_slot == s - CYCLE_LENGTH`, set `last_finalized_slot = last_justified_slot`, then (ii) set `last_justified_slot = s`.
+* Set `state.justified_slot_bitfield = (state.justified_slot_bitfield * 2) % 2**64`.
+* If `3 * total_balance_attesting_at_prev_s >= 2 * total_balance` then set `state.justified_slot_bitfield &= 2` (ie. flip the second lowest bit to 1) and `new_justification_source = prev_s`.
+* If `3 * total_balance_attesting_at_s >= 2 * total_balance` then set `state.justified_slot_bitfield &= 1` (ie. flip the lowest bit to 1) and `new_justification_source = s`.
+* If `justification_source == prev_s and state.justified_slot_bitfield % 4 == 3`, set `last_finalized_slot = justification_source`.
+* If `justification_source == prev_s - 2 * CYCLE_LENGTH and state.justified_slot_bitfield % 16 in (15, 14)`, set `last_finalized_slot = justification_source`.
+* If `justification_source == prev_s - CYCLE_LENGTH and state.justified_slot_bitfield % 8 == 7`, set `last_finalized_slot = justification_source`.
+* Set `prev_cycle_justification_source = justification_source` and `justification_source = new_justification_source`.
 
 For every `(shard, shard_block_hash)` tuple:
 
