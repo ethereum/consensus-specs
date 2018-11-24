@@ -238,8 +238,7 @@ The `BeaconState` has the following fields:
     'genesis_time': 'uint64',
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_root_votes': 'uint64',
+    'candidate_pow_receipt_roots': [CandidateReceiptRootRecord],
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
     'pre_fork_version': 'uint64',
@@ -309,6 +308,15 @@ A `ShardReassignmentRecord` object has the following fields:
     'shard': 'uint16',
     # When
     'slot': 'uint64'
+}
+```
+
+A `CandidateReceiptRootRecord` object contains the following fields:
+
+```python
+{
+    'receipt_root': 'hash32',
+    'votes': 'uint64',
 }
 ```
 
@@ -620,7 +628,7 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 {
     'slot': 0,
     'randao_reveal': bytes32(0),
-    'candidate_pow_receipt_root': bytes32(0),
+    'candidate_pow_receipt_roots': [],
     'ancestor_hashes': [bytes32(0) for i in range(32)],
     'state_root': STARTUP_STATE_ROOT,
     'attestations': [],
@@ -672,8 +680,7 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_r
         current_exit_seq=0,
         genesis_time=genesis_time,
         processed_pow_receipt_root=pow_receipt_root,
-        candidate_pow_receipt_root=bytes([0] * 32),
-        candidate_pow_receipt_root_votes=0,
+        candidate_pow_receipt_roots=[],
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
         fork_slot_number=0,
@@ -821,7 +828,7 @@ Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, dat
 
 ### Process PoW receipt root
 
-If `block.candidate_pow_receipt_root == state.candidate_pow_receipt_root` set `state.candidate_pow_receipt_root_votes += 1`.
+If `block.candidate_pow_receipt_root` is `x.receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`. Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidateReceiptRootRecord(receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
 ### Process penalties, logouts and other special objects
 
@@ -972,9 +979,8 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 If `last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
-* If `state.candidate_pow_receipt_root_votes * 2 >= POW_RECEIPT_ROOT_VOTING_PERIOD` set `state.processed_pow_receipt_root = state.candidate_pow_receipt_root`.
-* Set `state.candidate_pow_receipt_root = block.candidate_pow_receipt_root`.
-* Set `state.candidate_pow_receipt_root_votes = 0`.
+* If for any `x` in `state.candidate_pow_receipt_root`,  `x.votes * 2 >= POW_RECEIPT_ROOT_VOTING_PERIOD` set `state.processed_pow_receipt_root = x.receipt_root`.
+* Set `state.candidate_pow_receipt_roots = []`.
 
 ### Validator set change
 
