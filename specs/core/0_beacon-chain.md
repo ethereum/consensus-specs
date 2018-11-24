@@ -938,9 +938,9 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 * Let `active_validators = [state.validators[i] for i in get_active_validator_indices(state.validators)]`
 * Let `total_balance = sum([v.balance for v in active_validators])`
 * Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]` (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`_)
-* Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]
-* Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes and a.justified_slot == state.justification_source]
-* Let `prev_s_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if get_block_hash(state, block, s - CYCLE_LENGTH) in a.parent_hashes and a.justified_slot == state.prev_cycle_justification_source]
+* Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]`
+* Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes and a.justified_slot == state.justification_source]`
+* Let `prev_s_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if get_block_hash(state, block, s - CYCLE_LENGTH) in a.parent_hashes and a.justified_slot == state.prev_cycle_justification_source]`
 * Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
 * Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
 * Let `total_balance_attesting_at_s = sum([v.balance for v in s_attesters])`
@@ -971,9 +971,7 @@ Note: When applying penalties in the following balance recalculations implemente
 * Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
 * Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
 * Let `time_since_finality = slot - last_finalized_slot`.
-
 * Let `total_balance_participating` be the total balance of validators that voted for the canonical beacon block at slot `s` (note: every attestation for a block in the slot span `s ... s + CYCLE_LENGTH - 1` counts as this)
-
 * Let `B` be the balance of any given validator whose balance we are adjusting, not including any balance changes from this round of state recalculation.
 * If `time_since_finality <= 3 * CYCLE_LENGTH` adjust the balance of participating and non-participating validators as follows:
     * Participating validators gain `B // reward_quotient * (2 * total_balance_participating - total_balance) // total_balance`. (Note that this value may be negative.)
