@@ -270,8 +270,8 @@ A `ValidatorRecord` has the following fields:
     'balance': 'uint64',
     # Status code
     'status': 'uint8',
-    # Slot when validator exited (or 0)
-    'exit_slot': 'uint64'
+    # Slot when validator last changed status (or 0)
+    'last_status_change_slot': 'uint64'
     # Sequence number when validator exited (or 0)
     'exit_seq': 'uint64'
 }
@@ -697,7 +697,7 @@ First, a helper function:
 ```python
 def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
     for i, v in enumerate(validators):
-        if v.status == WITHDRAWN and v.exit_slot + DELETION_PERIOD <= current_slot:
+        if v.status == WITHDRAWN and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
             return i
     return None
 ```
@@ -727,7 +727,7 @@ def add_validator(validators: List[ValidatorRecord],
         randao_last_change=current_slot,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH,
         status=status,
-        exit_slot=0,
+        last_status_change_slot=current_slot,
         exit_seq=0
     )
     index = min_empty_validator(validators)
@@ -744,7 +744,7 @@ def add_validator(validators: List[ValidatorRecord],
 ```python
 def exit_validator(index, state, block, penalize, current_slot):
     validator = state.validators[index]
-    validator.exit_slot = current_slot
+    validator.last_status_change_slot = current_slot
     validator.exit_seq = state.current_exit_seq
     state.current_exit_seq += 1
     if penalize:
@@ -841,6 +841,7 @@ Perform the following checks:
 
 * Let `fork_version = pre_fork_version if block.slot < fork_slot_number else post_fork_version`. Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature)`
 * Verify that `validators[validator_index].status == ACTIVE`.
+* Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`
 
 Run `exit_validator(data.validator_index, state, block, penalize=False, current_slot=block.slot)`.
 
@@ -1010,7 +1011,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
             )
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
-            validators[i].exit_slot = current_slot
+            validators[i].last_status_change_slot = current_slot
             total_changed += validators[i].balance
             add_validator_set_change_record(
                 state=state,
@@ -1032,14 +1033,14 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
     # calculate their penalties if they were slashed
 
     def withdrawable(v):
-        return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.exit_slot + MIN_WITHDRAWAL_PERIOD
+        return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
 
     withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_seq)
     for v in withdrawable_validators[:WITHDRAWALS_PER_CYCLE]:
         if v.status == PENALIZED:
             v.balance -= v.balance * min(total_penalties * 3, total_balance) // total_balance
         v.status = WITHDRAWN
-        v.exit_slot = current_slot
+        v.last_status_change_slot = current_slot
 
         withdraw_amount = v.balance
         ...
