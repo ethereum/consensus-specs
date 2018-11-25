@@ -575,6 +575,9 @@ def int_sqrt(n: int) -> int:
 The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
 
 ```python
+SECONDS_PER_DAY: constant(uint256) = 86400
+POW_CONTRACT_MERKLE_TREE_DEPTH: constant(int128) = 32
+
 HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: int128})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
@@ -585,20 +588,20 @@ total_deposit_count: int128
 @public
 def deposit(deposit_params: bytes[2048]):
     index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(convert(msg.value / 10**9, 'bytes32'), 24, 8)
-    timestamp_bytes8: bytes[8] = slice(convert(block.timestamp, 'bytes32'), 24, 8)
+    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / 10**9, bytes32)), start=24, len=8)
+    timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
 
     log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)    
 
     self.receipt_tree[index] = sha3(deposit_data)
     for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
-        index //= 2
+        index /= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
     self.total_deposit_count += 1
     if self.total_deposit_count == 16384:
-        timestamp_day_boundary: timestamp = (block.timestamp - block.timestamp % 86400) + 86400
-        timestamp_day_boundary_bytes8: bytes[8] = slice(convert(timestamp_day_boundary, 'bytes32'), 24, 8)
+        timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
+        timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
         log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
 
 @public
