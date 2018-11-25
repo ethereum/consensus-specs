@@ -343,7 +343,7 @@ For a block on the beacon chain to be processed by a node, four conditions have 
 * The parent pointed to by the `ancestor_hashes[0]` has already been processed and accepted
 * An attestation from the _proposer_ of the block (see later for definition) is included along with the block in the network message object
 * The PoW chain block pointed to by the `processed_pow_receipt_root` has already been processed and accepted
-* The node's local clock time is greater than or equal to the minimum timestamp as computed by `GENESIS_TIME + block.slot * SLOT_DURATION`
+* The node's local clock time is greater than or equal to the minimum timestamp as computed by `state.genesis_time + block.slot * SLOT_DURATION`
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
