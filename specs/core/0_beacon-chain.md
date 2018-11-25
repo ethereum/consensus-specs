@@ -44,7 +44,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
-| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4,096) | slots | ~7 hours |
 | `SQRT_E_DROP_TIME` | 2**18 (= 262,144) | slots | ~18 days |
 | `WITHDRAWALS_PER_CYCLE` | 2**2 (=4) | validators | 5.2m ETH in ~6 months |
 | `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8,192) | slots | ~14 hours |
@@ -55,6 +54,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (= 32) | - |
+| `MAX_ATTESTATION_COUNT` | 2**7 (= 128) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -263,8 +263,8 @@ A `ValidatorRecord` has the following fields:
     'withdrawal_credentials': 'hash32',
     # RANDAO commitment
     'randao_commitment': 'hash32',
-    # Slot the RANDAO commitment was last changed
-    'randao_last_change': 'uint64',
+    # Slot the proposer has skipped (ie. layers of RANDAO expected)
+    'randao_skips': 'uint64',
     # Balance in Gwei
     'balance': 'uint64',
     # Status code
@@ -597,7 +597,9 @@ def deposit(deposit_params: bytes[2048]):
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
     self.total_deposit_count += 1
     if self.total_deposit_count == 16384:
-        log.ChainStart(self.receipt_tree[1], timestamp_bytes8)
+        timestamp_day_boundary = (block.timestamp - block.timestamp % 86400) + 86400
+        timestamp_day_boundary_bytes8: bytes[8] = slice(convert(timestamp_day_boundary, 'bytes32'), 24, 8)
+        log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8 )
 
 @public
 @constant
@@ -733,7 +735,7 @@ def add_validator(validators: List[ValidatorRecord],
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
-        randao_last_change=current_slot,
+        randao_skips=0,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH,
         status=status,
         last_status_change_slot=current_slot,
@@ -800,7 +802,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
 
 ### Verify attestations
 
-For each `AttestationRecord` object:
+Verify that there are at most `MAX_ATTESTATION_COUNT` `AttestationRecord` objects. For each `AttestationRecord` object:
 
 * Verify that `slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
@@ -824,10 +826,20 @@ Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, dat
 
 ### Verify and process RANDAO reveal
 
+First run the following state transition to update `randao_skips` variables for the missing slots.
+
+```python
+for slot in range(parent.slot + 1, block.slot):
+    proposer = get_beacon_proposer(state, slot)
+    proposer.randao_skips += 1
+```
+
+Then:
+
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `V = get_beacon_proposer(state, block.slot)`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
-* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
+* Verify that `repeat_hash(block.randao_reveal, V.randao_skips + 1) == V.randao_commitment`
+* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_skips = 0`
 
 ### Process PoW receipt root
 
