@@ -597,7 +597,7 @@ def deposit(deposit_params: bytes[2048]):
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
     self.total_deposit_count += 1
     if self.total_deposit_count == 16384:
-        timestamp_day_boundary = (block.timestamp - block.timestamp % 86400) + 86400
+        timestamp_day_boundary: timestamp = (block.timestamp - block.timestamp % 86400) + 86400
         timestamp_day_boundary_bytes8: bytes[8] = slice(convert(timestamp_day_boundary, 'bytes32'), 24, 8)
         log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8 )
 
