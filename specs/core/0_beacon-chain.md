@@ -201,7 +201,7 @@ A `SpecialRecord` has the following fields:
 ```python
 {
     # Kind
-    'kind': 'uint8',
+    'kind': 'uint64',
     # Data
     'data': 'bytes'
 }
