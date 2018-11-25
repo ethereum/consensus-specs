@@ -164,8 +164,6 @@ A `ProposalSignedData` has the following fields:
 
 ```python
 {
-    # Fork version
-    'fork_version': 'uint64',
     # Slot number
     'slot': 'uint64',
     # Shard number (or `2**64 - 1` for beacon chain)
@@ -835,7 +833,7 @@ Extend the list of `AttestationRecord` objects in the `state` with those include
 
 ### Verify proposer signature
 
-Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
+Let `proposal_hash = hash(ProposalSignedData(block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
 
 Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state, block.slot, DOMAIN_PROPOSAL))` passes.
 
