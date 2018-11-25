@@ -73,7 +73,7 @@ To validate a block header on shard `shard_id`, compute as follows:
 * Let `proposer_index = hash(state.randao_mix + bytes8(shard_id) + bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
 * Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_hash, sig=block.aggregate_sig, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
 
-### Block Merklization heper
+### Block Merklization helper
 
 ```python
 def merkle_root(block_body):
