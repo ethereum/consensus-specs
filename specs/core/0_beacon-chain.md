@@ -38,7 +38,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
 | `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
-| `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 6 | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~6 minutes |
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
