@@ -543,6 +543,13 @@ def get_attestation_participants(state: State,
 
 We define another set of helpers to be used throughout: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
+We define a function to determine the balance of a validator used for determining punishments and calculating stake:
+
+ ```python
+def balance_at_stake(validator):
+    return min(validator.balance, DEPOSIT_SIZE)
+```
+
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
 ```python
@@ -771,7 +778,7 @@ def exit_validator(index, state, block, penalize, current_slot):
         whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
         validator.deposit -= whistleblower_xfer_amount
         get_beacon_proposer(state, block.slot).deposit += whistleblower_xfer_amount
-        state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
+        state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += balance_at_stake(validator)
     else:
         validator.status = PENDING_EXIT
     add_validator_set_change_record(state, index, validator.pubkey, EXIT)
@@ -937,21 +944,21 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 #### Precomputation
 
 * Let `active_validators = [state.validators[i] for i in get_active_validator_indices(state.validators)]`
-* Let `total_balance = sum([v.balance for v in active_validators])`
+* Let `total_balance = sum([balance_at_stake(v) for v in active_validators])`
 * Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]` (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`_)
 * Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]`
 * Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes and a.justified_slot == state.justification_source]`
 * Let `prev_s_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if get_block_hash(state, block, s - CYCLE_LENGTH) in a.parent_hashes and a.justified_slot == state.prev_cycle_justification_source]`
 * Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
 * Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in prev_s_attestations]`
-* Let `total_balance_attesting_at_s = sum([v.balance for v in s_attesters])`
-* Let `total_balance_attesting_at_prev_s = sum([v.balance for v in prev_s_attesters])`
+* Let `total_balance_attesting_at_s = sum([balance_at_stake(v) for v in s_attesters])`
+* Let `total_balance_attesting_at_prev_s = sum([balance_at_stake(v) for v in prev_s_attesters])`
 * For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`, let:
     * `attesting_validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_attestations + prev_cycle_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`
-    * `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([v.balance for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values)
+    * `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([balance_at_stake(v) for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values)
     * `total_attesting_balance(obj)` be the maximal sum balance
     * `winning_hash(obj)` be the winning `shard_block_hash` value
-    * `total_balance(obj) = sum([v.balance for v in obj.committee])`
+    * `total_balance(obj) = sum([balance_at_stake(v) for v in obj.committee])`
     
 Let `inclusion_slot(a)` equal the slot in which attestation `a` was included, and `inclusion_distance(a) = inclusion_slot(a) - a.slot`. Let `inclusion_slot(v)` equal `inclusion_distance(a)` for the attestation `a` where `v` is in `get_attestation_participants(state, a)`, and define `inclusion_distance(v)` similarly. We define a function `adjust_for_inclusion_distance(magnitude, dist)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`
 
@@ -985,22 +992,22 @@ Note: When applying penalties in the following balance recalculations implemente
 
 Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
 
-* Any validator `V` in `prev_s_attesters` gains `adjust_for_inclusion_distance(V.balance // reward_quotient * (prev_s_attesters - total_balance) // total_balance, inclusion_distance(V))``.
-* All other active validators lose `V.balance // reward_quotient`.
+* Any validator `V` in `prev_s_attesters` gains `adjust_for_inclusion_distance(balance_at_stake(V) // reward_quotient * (prev_s_attesters - total_balance) // total_balance, inclusion_distance(V))``.
+* Any active validator `V` not in `prev_s_attesters` loses `balance_at_stake(V) // reward_quotient`.
 
 Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
 
 * Any validator in `prev_s_attesters` sees their balance unchanged.
-* All other active validators, and validators with `status == PENALIZED`, lose `V.balance // reward_quotient + V.balance * time_since_finality // quadratic_penalty_quotient`.
+* Any active validator `V` not in `prev_s_attesters`, and any validator with `status == PENALIZED`, loses `balance_at_stake(V) // reward_quotient + balance_at_stake(V) * time_since_finality // quadratic_penalty_quotient`.
 
-For each `V` in `prev_s_attesters`, the validator `proposer = get_beacon_proposer(state, inclusion_slot(V))` gains `proposer.balance // INCLUDER_REWARD_QUOTIENT`.
+For each `V` in `prev_s_attesters`, the validator `proposer = get_beacon_proposer(state, inclusion_slot(V))` gains `balance_at_stake(proposer) // INCLUDER_REWARD_QUOTIENT`.
 
 #### Balance recalculations related to crosslink rewards
 
 For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the slot before the current one), for each `v in obj.committee`, where `V = state.validators[b]` adjust balances as follows:
 
-* If `v in attesting_validators(obj)`, `V.balance += adjust_for_inclusion_distance(V.balance // reward_quotient * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(V))`.
-* If `v not in attesting_validators(obj)`, `V.balance -= V.balance // reward_quotient`.
+* If `v in attesting_validators(obj)`, `V.balance += adjust_for_inclusion_distance(balance_at_stake(V) // reward_quotient * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(V))`.
+* If `v not in attesting_validators(obj)`, `V.balance -= balance_at_stake(V) // reward_quotient`.
 
 #### PoW chain related rules
 
@@ -1053,7 +1060,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
     # The active validator set
     active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
-    total_balance = sum([v.balance for i, v in enumerate(validators) if i in active_validators])
+    total_balance = sum([balance_at_stake(v) for i, v in enumerate(validators) if i in active_validators])
     # The maximum total wei that can deposit+withdraw
     max_allowable_change = max(
         2 * DEPOSIT_SIZE * GWEI_PER_ETH,
@@ -1074,7 +1081,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
             validators[i].exit_slot = current_slot
-            total_changed += validators[i].balance
+            total_changed += balance_at_stake(validators[i])
             add_validator_set_change_record(
                 state=state,
                 index=i,
@@ -1100,7 +1107,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
     withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_seq)
     for v in withdrawable_validators[:WITHDRAWALS_PER_CYCLE]:
         if v.status == PENALIZED:
-            v.balance -= v.balance * min(total_penalties * 3, total_balance) // total_balance
+            v.balance -= balance_at_stake(v) * min(total_penalties * 3, total_balance) // total_balance
         v.status = WITHDRAWN
         v.exit_slot = current_slot
 
