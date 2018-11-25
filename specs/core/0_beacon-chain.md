@@ -129,7 +129,7 @@ A `BeaconBlock` has the following fields:
     # Specials (e.g. logouts, penalties)
     'specials': [SpecialRecord],
     # Proposer signature
-    'proposer_signature': ['uint256'],
+    'proposer_signature': ['uint384'],
 }
 ```
 
@@ -900,9 +900,9 @@ For each validator index `v` in `intersection`, if `state.validators[v].status` 
 {
     'proposer_index': 'uint24',
     'proposal1_data': ProposalSignedData,
-    'proposal1_signature': '[uint256]',
+    'proposal1_signature': '[uint384]',
     'proposal2_data': ProposalSignedData,
-    'proposal1_signature': '[uint256]',
+    'proposal1_signature': '[uint384]',
 }
 ```
 For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state, proposal_data.slot, DOMAIN_PROPOSAL))` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
