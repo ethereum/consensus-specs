@@ -403,7 +403,7 @@ def get_active_validator_indices(validators)
     return [i for i, v in enumerate(validators) if v.status == ACTIVE]
 ```
 
-The following is a function that shuffles the validator list:
+The following is a function that shuffles any list; we primarily use it for the validator list:
 
 ```python
 def shuffle(values: List[Any],
@@ -551,10 +551,10 @@ def get_block_hash(state: BeaconState,
 The following is a function that determines the proposer of a beacon block:
 
 ```python
-def get_beacon_proposer(state:BeaconState, slot: int) -> ValidatorRecord:
+def get_beacon_proposer_index(state:BeaconState, slot: int) -> ValidatorRecord:
     first_committee = get_shards_and_committees_for_slot(state, slot)[0].committee
     index = first_committee[slot % len(first_committee)]
-    return state.validators[index]
+    return index
 ```
 
 The following is a function that determines the validators that participated in an attestation:
@@ -747,7 +747,7 @@ This routine should be run for every validator that is inducted as part of a log
 First, some helper functions:
 
 ```python
-def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
+def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int):
     for i, v in enumerate(validators):
         if v.status == WITHDRAWN and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
             return i
@@ -792,7 +792,7 @@ def add_validator(state: State,
         exit_seq=0
     )
     # Add the validator
-    index = min_empty_validator(state.validators)
+    index = min_empty_validator_index(state.validators)
     if index is None:
         state.validators.append(rec)
         index = len(state.validators) - 1
@@ -821,7 +821,7 @@ def exit_validator(index, state, block, penalize, current_slot):
         validator.status = PENALIZED
         whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
         validator.deposit -= whistleblower_xfer_amount
-        get_beacon_proposer(state, block.slot).deposit += whistleblower_xfer_amount
+        state.validators[get_beacon_proposer_index(state, block.slot)].deposit += whistleblower_xfer_amount
     else:
         validator.status = PENDING_EXIT
     add_validator_set_change_record(state, index, validator.pubkey, EXIT)
@@ -879,7 +879,7 @@ For each `AttestationRecord` object `obj`:
 
 Let `proposal_hash = hash(ProposalSignedData(block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
 
-Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state, block.slot, DOMAIN_PROPOSAL))` passes.
+Verify that `BLSVerify(pubkey=state.validators[get_beacon_proposer_index(state, block.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state, block.slot, DOMAIN_PROPOSAL))` passes.
 
 ### Verify and process RANDAO reveal
 
@@ -887,16 +887,16 @@ First run the following state transition to update `randao_skips` variables for 
 
 ```python
 for slot in range(parent.slot + 1, block.slot):
-    proposer = get_beacon_proposer(state, slot)
-    proposer.randao_skips += 1
+    proposer_index = get_beacon_proposer_index(state, slot)
+    state.validators[proposer_index].randao_skips += 1
 ```
 
 Then:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `proposer = get_beacon_proposer(state, block.slot)`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips + 1) == V.randao_commitment`
-* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `proposer.randao_commitment = block.randao_reveal`, `V.randao_skips = 0`
+* Let `proposer = state.validators[get_beacon_proposer_index(state, block.slot)]`.
+* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`
+* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `proposer.randao_commitment = block.randao_reveal`, `proposer.randao_skips = 0`
 
 ### Process PoW receipt root
 
@@ -1069,7 +1069,7 @@ Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
 * Any validator in `prev_cycle_boundary_attesters` sees their balance unchanged.
 * Any active validator `v` not in `prev_cycle_boundary_attesters`, and any validator with `status == PENALIZED`, loses `base_reward(v) + balance_at_stake(v) * time_since_finality // quadratic_penalty_quotient`.
 
-For each `v` in `prev_cycle_boundary_attesters`, the validator `proposer = get_beacon_proposer(state, inclusion_slot(v))` gains `base_reward(v) // INCLUDER_REWARD_SHARE_QUOTIENT`.
+For each `v` in `prev_cycle_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validators[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_SHARE_QUOTIENT`.
 
 #### Balance recalculations related to crosslink rewards
 
