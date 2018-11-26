@@ -567,7 +567,7 @@ def get_attestation_participants(state: State,
     snc = [x for x in sncs_for_slot if x.shard == attestation_data.shard][0]
     assert len(attester_bitfield) == ceil_div8(len(snc.committee))
     participants = []
-    for i, vindex in snc.committee:
+    for i, vindex in enumerate(snc.committee):
         bit = (attester_bitfield[i//8] >> (7 - (i % 8))) % 2
         if bit == 1:
             participants.append(vindex)
