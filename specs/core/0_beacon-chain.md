@@ -1038,11 +1038,6 @@ def adjust_for_inclusion_distance(magnitude: int, dist: int) -> int:
 
 For any validator `v`, `base_reward(v) = balance_at_stake(v) // reward_quotient`
 
-Miscellaneous:
-
-* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
-* Let `time_since_finality = block.slot - state.last_finalized_slot`.
-
 #### Adjust justified slots and crosslink status
 
 * Set `state.justified_slot_bitfield = (state.justified_slot_bitfield * 2) % 2**64`.
@@ -1060,6 +1055,9 @@ For every `ShardAndCommittee` object `obj`:
 #### Balance recalculations related to FFG rewards
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
+
+* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
+* Let `time_since_finality = block.slot - state.last_finalized_slot`.
 
 Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
 
