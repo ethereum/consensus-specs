@@ -84,9 +84,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `CASPER_SLASHING` | `1` | `16` |
 | `PROPOSER_SLASHING` | `2` | `16` |
 | `DEPOSIT_PROOF` | `3` | `16` |
-| `PROOF_OF_CUSTODY_SEED_CHANGE` | `4` | `16` |
-| `PROOF_OF_CUSTODY_CHALLENGE` | `5` | `16` |
-| `PROOF_OF_CUSTODY_RESPONSE` | `6` | `16` |
 
 **Validator set delta flags**
 

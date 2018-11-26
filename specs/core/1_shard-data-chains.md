@@ -30,6 +30,13 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `SHARD_PROPOSER_DOMAIN`| 129             |
 | `SHARD_ATTESTER_DOMAIN`| 130             |
 
+**Special record types**
+
+| Name | Value | Maximum count |
+| `PROOF_OF_CUSTODY_SEED_CHANGE` | `4` | `16` |
+| `PROOF_OF_CUSTODY_CHALLENGE` | `5` | `16` |
+| `PROOF_OF_CUSTODY_RESPONSE` | `6` | `16` |
+
 ## Data Structures
 
 ### Shard chain blocks
