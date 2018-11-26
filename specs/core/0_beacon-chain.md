@@ -1008,7 +1008,7 @@ All validators:
 Validators justifying the cycle boundary block at the start of the current cycle:
 
 * Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.data.slot < s + CYCLE_LENGTH]`. (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`_)
-* Let `this_cycle_boundary_attestations = [a for a in this_cycle_attestations if a.data.cycle_boundary_hash == get_block_hash(state, block, s) a.justified_slot == state.justification_source]`.
+* Let `this_cycle_boundary_attestations = [a for a in this_cycle_attestations if a.data.cycle_boundary_hash == get_block_hash(state, block, s) and a.justified_slot == state.justification_source]`.
 * Let `this_cycle_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.attester_bitfield) for a in this_cycle_boundary_attestations]`.
 * Let `this_cycle_boundary_attesting_balance = sum([balance_at_stake(v) for v in this_cycle_boundary_attesters])`.
 
