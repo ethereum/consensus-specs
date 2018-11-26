@@ -837,7 +837,7 @@ Verify that there are at most `MAX_ATTESTATION_COUNT` `AttestationRecord` object
 * Check `BLSVerify(pubkey=group_public_key, msg=data, sig=aggregate_sig, domain=get_domain(state, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
 
-Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block.
+Extend `BeaconState.pending_attestations` with those included in the block, ordering the new additions in the same order as they came in the block.
 
 ### Verify proposer signature
 
