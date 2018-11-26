@@ -1074,7 +1074,7 @@ For each `v` in `prev_cycle_boundary_attesters`, the validator `proposer = get_b
 
 #### Balance recalculations related to crosslink rewards
 
-For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the cycle before the current one), for each `v` in `[validators[index] for index in obj.committee]`, adjust balances as follows:
+For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the cycle before the current one), for each `v` in `[state.validators[index] for index in obj.committee]`, adjust balances as follows:
 
 * If `v in attesting_validators(obj)`, `v.balance += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(v))`.
 * If `v not in attesting_validators(obj)`, `v.balance -= base_reward(v)`.
