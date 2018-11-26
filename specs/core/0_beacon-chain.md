@@ -863,7 +863,7 @@ For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is on
 ```
 Perform the following checks:
 
-* Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg="", sig=data.signature, domain=get_domain(state, current_slot, DOMAIN_LOGOUT))`
+* Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=bytes([0] * 32), sig=data.signature, domain=get_domain(state, current_slot, DOMAIN_LOGOUT))`
 * Verify that `validators[validator_index].status == ACTIVE`.
 * Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`
 
