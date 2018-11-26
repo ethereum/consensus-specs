@@ -823,7 +823,7 @@ For each `AttestationRecord` object `obj`:
 * Verify that `justified_slot` is equal to `justification_source if slot >= block.slot - (block.slot % CYCLE_LENGTH) else prev_cycle_justification_source`
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
 * Verify that either `last_crosslink_hash` or `shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
-* Compute `full_parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(parent_hashes) + 1)] + parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
+* Compute `full_parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(parent_hashes) + 1)] + parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `parent_hashes = [D', E']` then `full_parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
 * Let `bit0_attestation_indices, bit1_attestation_indices = get_attestation_participants(state, obj)` (and verify that the method returns successfully)
 * Let `bit0_group_public_key = BLSAddPubkeys(bit0_attestation_indices)` and `bit1_group_public_key = BLSAddPubkeys(bit1_attestation_indices)`
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
@@ -992,7 +992,7 @@ Note: When applying penalties in the following balance recalculations implemente
 
 Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
 
-* Any validator `v` in `prev_s_attesters` gains `adjust_for_inclusion_distance(balance_at_stake(v) // reward_quotient * (prev_s_attesters - total_balance) // total_balance, inclusion_distance(v))``.
+* Any validator `v` in `prev_s_attesters` gains `adjust_for_inclusion_distance(balance_at_stake(v) // reward_quotient * (prev_s_attesters - total_balance) // total_balance, inclusion_distance(v))`.
 * Any active validator `v` not in `prev_s_attesters` loses `balance_at_stake(v) // reward_quotient`.
 
 Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
