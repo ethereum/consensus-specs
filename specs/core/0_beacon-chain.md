@@ -1118,7 +1118,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
             validators[i].status = PENDING_WITHDRAW
             validators[i].last_status_change_slot = current_slot
             total_changed += validators[i].balance
-            state.validator_set_delta_hash_chain = calcuate_validator_set_delta_hash_chain(
+            state.validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
                 validator_set_delta_hash_chain=state.validator_set_delta_hash_chain,
                 index=i,
                 pubkey=validators[i].pubkey,
