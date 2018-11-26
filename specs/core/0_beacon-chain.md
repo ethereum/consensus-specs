@@ -1003,7 +1003,8 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 All validators:
 
 * Let `active_validators = [state.validators[i] for i in get_active_validator_indices(state.validators)]`.
-* Let `total_balance = sum([balance_at_stake(v) for v in active_validators])`.
+* Let `total_balance = sum([balance_at_stake(v) for v in active_validators])`. Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
+* Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
 
 Validators justifying the cycle boundary block at the start of the current cycle:
 
@@ -1035,7 +1036,12 @@ def adjust_for_inclusion_distance(magnitude: int, dist: int) -> int:
     return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // dist
 ```
 
-For any validator `v`, `base_reward(v) = balance_at_stake(v) // BASE_REWARD_QUOTIENT`
+For any validator `v`, `base_reward(v) = balance_at_stake(v) // reward_quotient`
+
+Miscellaneous:
+
+* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
+* Let `time_since_finality = block.slot - state.last_finalized_slot`.
 
 #### Adjust justified slots and crosslink status
 
@@ -1043,8 +1049,8 @@ For any validator `v`, `base_reward(v) = balance_at_stake(v) // BASE_REWARD_QUOT
 * If `3 * prev_cycle_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 2` (ie. flip the second lowest bit to 1) and `new_justification_source = s - CYCLE_LENGTH`.
 * If `3 * this_cycle_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 1` (ie. flip the lowest bit to 1) and `new_justification_source = s`.
 * If `state.justification_source == s - CYCLE_LENGTH and state.justified_slot_bitfield % 4 == 3`, set `last_finalized_slot = justification_source`.
-* If `state.justification_source == s - CYCLE_LENGTH - 2 * CYCLE_LENGTH and state.justified_slot_bitfield % 16 in (15, 14)`, set `last_finalized_slot = justification_source`.
 * If `state.justification_source == s - CYCLE_LENGTH - CYCLE_LENGTH and state.justified_slot_bitfield % 8 == 7`, set `state.last_finalized_slot = state.justification_source`.
+* If `state.justification_source == s - CYCLE_LENGTH - 2 * CYCLE_LENGTH and state.justified_slot_bitfield % 16 in (15, 14)`, set `last_finalized_slot = justification_source`.
 * Set `state.prev_cycle_justification_source = state.justification_source` and if `new_justification_source` has been set, set `state.justification_source = new_justification_source`.
 
 For every `ShardAndCommittee` object `obj`:
@@ -1054,11 +1060,6 @@ For every `ShardAndCommittee` object `obj`:
 #### Balance recalculations related to FFG rewards
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
-
-* Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
-* Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
-* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
-* Let `time_since_finality = block.slot - state.last_finalized_slot`.
 
 Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
 
