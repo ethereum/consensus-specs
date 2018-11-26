@@ -840,9 +840,9 @@ Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, dat
 ### Verify and process RANDAO reveal
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `V = get_beacon_proposer(state, block.slot).
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
-* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
+* Let `proposer = get_beacon_proposer(state, block.slot).
+* Verify that `repeat_hash(block.randao_reveal, (block.slot - proposer.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == proposer.randao_commitment`
+* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `proposer.randao_commitment = block.randao_reveal`, `proposer.randao_last_change = block.slot`
 
 Finally, if `block.candidate_pow_hash_chain_tip = state.candidate_pow_hash_chain_tip`, set `state.candidate_hash_chain_tip_votes += 1`.
 
@@ -992,22 +992,22 @@ Note: When applying penalties in the following balance recalculations implemente
 
 Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
 
-* Any validator `V` in `prev_s_attesters` gains `adjust_for_inclusion_distance(balance_at_stake(V) // reward_quotient * (prev_s_attesters - total_balance) // total_balance, inclusion_distance(V))``.
-* Any active validator `V` not in `prev_s_attesters` loses `balance_at_stake(V) // reward_quotient`.
+* Any validator `v` in `prev_s_attesters` gains `adjust_for_inclusion_distance(balance_at_stake(v) // reward_quotient * (prev_s_attesters - total_balance) // total_balance, inclusion_distance(v))``.
+* Any active validator `v` not in `prev_s_attesters` loses `balance_at_stake(v) // reward_quotient`.
 
 Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
 
 * Any validator in `prev_s_attesters` sees their balance unchanged.
-* Any active validator `V` not in `prev_s_attesters`, and any validator with `status == PENALIZED`, loses `balance_at_stake(V) // reward_quotient + balance_at_stake(V) * time_since_finality // quadratic_penalty_quotient`.
+* Any active validator `v` not in `prev_s_attesters`, and any validator with `status == PENALIZED`, loses `balance_at_stake(v) // reward_quotient + balance_at_stake(v) * time_since_finality // quadratic_penalty_quotient`.
 
-For each `V` in `prev_s_attesters`, the validator `proposer = get_beacon_proposer(state, inclusion_slot(V))` gains `balance_at_stake(proposer) // INCLUDER_REWARD_QUOTIENT`.
+For each `v` in `prev_s_attesters`, the validator `proposer = get_beacon_proposer(state, inclusion_slot(v))` gains `balance_at_stake(proposer) // INCLUDER_REWARD_QUOTIENT`.
 
 #### Balance recalculations related to crosslink rewards
 
-For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the slot before the current one), for each `v in obj.committee`, where `V = state.validators[b]` adjust balances as follows:
+For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CYCLE_LENGTH]` (ie. the objects corresponding to the slot before the current one), for each `v in obj.committee`, where `v = state.validators[b]` adjust balances as follows:
 
-* If `v in attesting_validators(obj)`, `V.balance += adjust_for_inclusion_distance(balance_at_stake(V) // reward_quotient * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(V))`.
-* If `v not in attesting_validators(obj)`, `V.balance -= balance_at_stake(V) // reward_quotient`.
+* If `v in attesting_validators(obj)`, `v.balance += adjust_for_inclusion_distance(balance_at_stake(v) // reward_quotient * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(v))`.
+* If `v not in attesting_validators(obj)`, `v.balance -= balance_at_stake(v) // reward_quotient`.
 
 #### PoW chain related rules
 
