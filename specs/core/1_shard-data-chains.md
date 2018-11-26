@@ -51,10 +51,10 @@ A `ShardBlock` object has the following fields:
     # State root (placeholder for now)
     'state_root': 'hash32',
     # Block signature
-    'signature': ['uint256'],
+    'signature': ['uint384'],
     # Attestation
     'attester_bitfield': 'bytes',
-    'aggregate_sig': ['uint256'],
+    'aggregate_sig': ['uint384'],
 }
 ```
 
