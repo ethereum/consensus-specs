@@ -1206,44 +1206,6 @@ And perform the following updates to the `state`:
 * Set `state.recent_block_hashes = state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `state.last_state_recalculation_slot += CYCLE_LENGTH`
 
-### TODO
-
-Note: This spec is ~65% complete.
-
-**Missing**
-
-* [ ] Specify the rules around acceptable values for `pow_chain_reference` ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
-* [ ] Specify the shard chain blocks, blobs, proposers, etc.
-* [ ] Specify the deposit contract on the PoW chain in Vyper
-* [ ] Specify the beacon chain genesis rules ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
-* [ ] Specify the logic for proofs of custody, including slashing conditions
-* [ ] Specify BLSVerify and rework the spec for BLS12-381 throughout
-* [ ] Specify the constraints for `SpecialRecord`s ([issue 43](https://github.com/ethereum/eth2.0-specs/issues/43))
-* [ ] Specify the calculation and validation of `BeaconBlock.state_root`
-* [ ] Undergo peer review, security audits and formal verification
-
-**Documentation**
-
-* [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
-* [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
-* [ ] Add a glossary (in a separate `glossary.md`) to comprehensively and precisely define all the terms
-* [ ] Clearly document the various edge cases, e.g. with committee sizing
-* [ ] Rework the document for readability
-
-**Possible modifications and additions**
-
-* [ ] Replace the IMD fork choice rule with LMD
-* [ ] Homogenise types to `uint64` ([PR 36](https://github.com/ethereum/eth2.0-specs/pull/36))
-* [ ] Reduce the slot duration to 8 seconds
-* [ ] Allow for the delayed inclusion of aggregated signatures
-* [ ] Introduce a RANDAO slashing condition for early reveals
-* [ ] Use a separate hash function for the proof of possession
-* [ ] Rework the `ShardAndCommittee` data structures
-* [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
-* [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
-* [ ] Add penalties for deposits below 32 ETH (or some other threshold)
-* [ ] Add a `SpecialRecord` to (re)register
-
 # Appendix
 ## Appendix A - Hash function
 
