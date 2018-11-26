@@ -150,7 +150,7 @@ An `AttestationRecord` has the following fields:
     'last_crosslink_hash': 'hash32',
     # Root of data between last hash and this one
     'shard_block_combined_data_root': 'hash32',
-    # Attester participation bitfield (1 bit per attester)
+    # Attester participation bitfield (2 bits per attester)
     'attester_bitfield': 'bytes',
     # Slot of last justified beacon block
     'justified_slot': 'uint64',
@@ -577,7 +577,7 @@ We define another set of helpers to be used throughout: `bytes1(x): return x.to_
 We define a function to determine the balance of a validator used for determining punishments and calculating stake:
 
  ```python
-def balance_at_stake(validator):
+def balance_at_stake(validator: ValidatorRecord) -> int:
     return min(validator.balance, DEPOSIT_SIZE)
 ```
 
@@ -825,7 +825,7 @@ def exit_validator(index, state, block, penalize, current_slot):
 This procedure should be carried out every beacon block.
 
 * Let `parent_hash` be the hash of the immediate previous beacon block (ie. equal to `ancestor_hashes[0]`).
-* Let `parent` be the beacon block with the hash `parent_hash`
+* Let `parent` be the beacon block with the hash `parent_hash`.
 
 First, set `recent_block_hashes` to the output of the following:
 
@@ -860,10 +860,11 @@ For each `AttestationRecord` object `obj`:
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
 * Verify that either `last_crosslink_hash` or `shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * Compute `full_parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(parent_hashes) + 1)] + parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `parent_hashes = [D', E']` then `full_parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
-* Let `bit0_attestation_indices, bit1_attestation_indices = get_attestation_participants(state, obj)` (and verify that the method returns successfully)
-* Let `bit0_group_public_key = BLSAddPubkeys(bit0_attestation_indices)` and `bit1_group_public_key = BLSAddPubkeys(bit1_attestation_indices)`
-* Let `data = AttestationSignedData(slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)`.
-* Check `BLSVerify(pubkey=group_public_key, msg=data, sig=aggregate_sig, domain=get_domain(state, slot, DOMAIN_ATTESTATION))`.
+* `aggregate_sig` verification:
+    * Let `bit0_attestation_indices, bit1_attestation_indices = get_attestation_participants(state, obj)` (and verify that the method returns successfully)
+    * Let `bit0_group_public_key = BLSAddPubkeys(bit0_attestation_indices)` and `bit1_group_public_key = BLSAddPubkeys(bit1_attestation_indices)`.
+    * Let `data = AttestationSignedData(slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)`.
+    * Check `BLSVerify(pubkey=group_public_key, msg=data, sig=aggregate_sig, domain=get_domain(state, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
 
 Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block, and replacing `obj.parent_hashes` with the calculated value of `full_parent_hashes`.
@@ -983,16 +984,16 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 
 #### Precomputation
 
-* Let `active_validators = [state.validators[i] for i in get_active_validator_indices(state.validators)]`
-* Let `total_balance = sum([balance_at_stake(v) for v in active_validators])`
-* Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]` (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`_)
-* Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]`
-* Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes and a.justified_slot == state.justification_source]`
-* Let `prev_s_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if get_block_hash(state, block, s - CYCLE_LENGTH) in a.parent_hashes and a.justified_slot == state.prev_cycle_justification_source]`
-* Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`
-* Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in prev_s_attestations]`
-* Let `total_balance_attesting_at_s = sum([balance_at_stake(v) for v in s_attesters])`
-* Let `total_balance_attesting_at_prev_s = sum([balance_at_stake(v) for v in prev_s_attesters])`
+* Let `active_validators = [state.validators[i] for i in get_active_validator_indices(state.validators)]`.
+* Let `total_balance = sum([balance_at_stake(v) for v in active_validators])`.
+* Let `this_cycle_attestations = [a for a in state.pending_attestations if s <= a.slot < s + CYCLE_LENGTH]`. (note: this is the set of attestations _of slots in the cycle `s...s+CYCLE_LENGTH-1`_, not attestations _that got included in the chain during the cycle `s...s+CYCLE_LENGTH-1`_)
+* Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]`.
+* Let `this_cycle_s_attestations = [a for a in this_cycle_attestations if get_block_hash(state, block, s) in a.parent_hashes and a.justified_slot == state.justification_source]`.
+* Let `prev_s_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if get_block_hash(state, block, s - CYCLE_LENGTH) in a.parent_hashes and a.justified_slot == state.prev_cycle_justification_source]`.
+* Let `s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_s_attestations]`.
+* Let `prev_s_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in prev_s_attestations]`.
+* Let `total_balance_attesting_at_s = sum([balance_at_stake(v) for v in s_attesters])`.
+* Let `total_balance_attesting_at_prev_s = sum([balance_at_stake(v) for v in prev_s_attesters])`.
 * For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`, let:
     * `attesting_validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a) for a in this_cycle_attestations + prev_cycle_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`
     * `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([balance_at_stake(v) for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values)
@@ -1003,7 +1004,7 @@ _Note: `last_state_recalculation_slot` will always be a multiple of `CYCLE_LENGT
 Let `inclusion_slot(a)` equal the slot in which attestation `a` was included, and `inclusion_distance(a) = inclusion_slot(a) - a.slot`. Let `inclusion_slot(v)` equal `inclusion_distance(a)` for the attestation `a` where `v` is in `get_attestation_participants(state, a)`, and define `inclusion_distance(v)` similarly. We define a function `adjust_for_inclusion_distance(magnitude, dist)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`
 
 ```python
-def adjust_for_inclusion_distance(magnitude, dist):
+def adjust_for_inclusion_distance(magnitude: int, dist: int) -> int:
     return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // dist
 ```
 
@@ -1213,7 +1214,6 @@ Note: This spec is ~65% complete.
 * [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
 * [ ] Add penalties for deposits below 32 ETH (or some other threshold)
 * [ ] Add a `SpecialRecord` to (re)register
-
 
 # Appendix
 ## Appendix A - Hash function
