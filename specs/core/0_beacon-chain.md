@@ -1058,7 +1058,7 @@ Note: When applying penalties in the following balance recalculations implemente
 * Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
 * Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
 * Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` cycles is about `D*D/2/quadratic_penalty_quotient`.)
-* Let `time_since_finality = slot - state.last_finalized_slot`.
+* Let `time_since_finality = block.slot - state.last_finalized_slot`.
 
 Case 1: `time_since_finality <= 4 * CYCLE_LENGTH`:
 
