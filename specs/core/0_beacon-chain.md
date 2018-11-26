@@ -660,10 +660,8 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 ```python
 def on_startup(current_validators: List[ValidatorRecord],
                pre_fork_version: int,
-               post_fork_version: int,
-               fork_slot_number: int,
                initial_validator_entries: List[Any],
-               genesis_time: uint64,
+               genesis_time: int,
                processed_pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
     validators = []
@@ -672,8 +670,8 @@ def on_startup(current_validators: List[ValidatorRecord],
         validators, _ = get_new_validators(
             current_validators=validators,
             pre_fork_version=pre_fork_version,
-            pre_fork_version=post_fork_version,
-            fork_slot_number=fork_slot_number,
+            post_fork_version=pre_fork_version,
+            fork_slot_number=2**64 - 1,
             pubkey=pubkey,
             proof_of_possession=proof_of_possession,
             withdrawal_credentials=withdrawal_credentials,
