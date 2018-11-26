@@ -796,7 +796,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
     index = min_empty_validator(current_validators)
     if index is None:
         new_validators.append(rec)
-        return new_validators, len(new_validators.validators) - 1, 
+        return new_validators, len(new_validators.validators) - 1
     else:
         new_validators[index] = rec
         return new_validators, index
@@ -811,7 +811,7 @@ def add_validator(state: BeaconState,
                   withdrawal_credentials: Hash32,
                   randao_commitment: Hash32,
                   status: int,
-                  current_slot: int) -> index:
+                  current_slot: int) -> int:
     state.validators, index = get_new_validators(
         current_validators=state.validators,
         pre_fork_version=state.pre_fork_version,
