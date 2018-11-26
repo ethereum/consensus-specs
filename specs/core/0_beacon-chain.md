@@ -274,7 +274,7 @@ A `ValidatorRecord` has the following fields:
     # Balance in Gwei
     'balance': 'uint64',
     # Status code
-    'status': 'uint8',
+    'status': 'uint64',
     # Slot when validator last changed status (or 0)
     'last_status_change_slot': 'uint64'
     # Sequence number when validator exited (or 0)
