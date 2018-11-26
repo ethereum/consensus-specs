@@ -19,7 +19,14 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | Constant               | Value           | Unit  | Approximation |
 |------------------------|-----------------|-------|---------------|
 | `CHUNK_SIZE`           | 2**8 (= 256)    | bytes |               |
-| `MAX_SHARD_BLOCK_SIZE` | 2**15 (= 32768) | bytes |               |
+| `SHARD_BLOCK_SIZE`     | 2**14 (= 16384) | bytes |               |
+
+### Flags, domains, etc.
+
+| Constant               | Value           |
+|------------------------|-----------------|
+| `SHARD_PROPOSER_DOMAIN`| 129             |
+| `SHARD_ATTESTER_DOMAIN`| 130             |
 
 ## Data Structures
 
@@ -43,7 +50,9 @@ A `ShardBlock` object has the following fields:
     'data_root': 'hash32'
     # State root (placeholder for now)
     'state_root': 'hash32',
-    # Attestation (including block signature)
+    # Block signature
+    'signature': ['uint256'],
+    # Attestation
     'attester_bitfield': 'bytes',
     'aggregate_sig': ['uint256'],
 }
@@ -61,31 +70,27 @@ To validate a block header on shard `shard_id`, compute as follows:
 * Verify that `beacon_chain_ref` is the hash of a block in the beacon chain with slot less than or equal to `slot`. Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_hash`.
 * Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
 * Assert `len(attester_bitfield) == ceil_div8(len(validators))`
-* Let `curblock_proposer_index = hash(state.randao_mix + bytes8(shard_id) + bytes8(slot)) % len(validators)`. Let `parent_proposer_index` be the same value calculated for the parent block.
-* Make sure that the `parent_proposer_index`'th bit in the `attester_bitfield` is set to 1.
-* Generate the group public key by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify the `aggregate_sig` using this as the pubkey and the `parent_hash` as the message.
+* Let `proposer_index = hash(state.randao_mix + bytes8(shard_id) + bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
+* Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_hash, sig=block.aggregate_sig, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
+
+### Block Merklization helper
+
+```python
+def merkle_root(block_body):
+    assert len(block_body) == SHARD_BLOCK_SIZE
+    chunks = SHARD_BLOCK_SIZE // CHUNK_SIZE
+    o = [0] * chunks + [block_body[i * CHUNK_SIZE: (i+1) * CHUNK_SIZE] for i in range(chunks)]
+    for i in range(chunks-1, 0, -1):
+        o[i] = hash(o[i*2] + o[i*2+1])
+    return o[1]
+```
 
 ### Verifying shard block data
 
-At network layer, we expect a shard block header to be broadcast along with its `block_body`. First, we define a helper function that takes as input beacon chain state and outputs the max block size in bytes:
+At network layer, we expect a shard block header to be broadcast along with its `block_body`.
 
-```python
-def shard_block_maxbytes(state):
-    max_grains = MAX_SHARD_BLOCK_SIZE // CHUNK_SIZE
-    validators_at_target_committee_size = SHARD_COUNT * TARGET_COMMITTEE_SIZE
-
-    # number of grains per block is proportional to the number of validators
-    # up until `validators_at_target_committee_size`
-    grains = min(
-        len(get_active_validator_indices(state.validators)) * max_grains // validators_at_target_committee_size,
-        max_grains
-    )
-
-    return CHUNK_SIZE * grains
-```
-
-* Verify that `len(block_body) == shard_block_maxbytes(state)`
-* Define `filler_bytes = next_power_of_2(len(block_body)) - len(block_body)`. Compute a simple binary Merkle tree of `block_body + bytes([0] * filler_bytes)` and verify that the root equals the `data_root` in the header.
+* Verify that `len(block_body) == SHARD_BLOCK_SIZE`
+* Verify that `merkle_root(block_body)` equals the `data_root` in the header.
 
 ### Verifying a crosslink
 
@@ -93,23 +98,13 @@ A node should sign a crosslink only if the following conditions hold. **If a nod
 
 First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_hash` for the same shard (unless `last_crosslink_hash` equals zero, in which case we are at the genesis).
 
-Second, we verify the `shard_block_combined_data_root`. Let `h` be the slot _immediately after_ the slot of the shard block included by the last crosslink, and `h+n-1` be the slot number of the block directly referenced by the current `shard_block_hash`. Let `B[i]` be the block at slot `h+i` in the shard chain. Let `bodies[0] .... bodies[n-1]` be the bodies of these blocks and `roots[0] ... roots[n-1]` the data roots. If there is a missing slot in the shard chain at position `h+i`, then `bodies[i] == b'\x00' * shard_block_maxbytes(state[i])` and `roots[i]` be the Merkle root of the empty data. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. Let `state[i]` be the beacon chain state at height `h+i` (if the beacon chain is missing a block at some slot, the state is unchanged), and `depths[i]` be equal to `log2(next_power_of_2(shard_block_maxbytes(state[i]) // CHUNK_SIZE))` (ie. the expected depth of the i'th data tree). We define the function for computing the combined data root as follows:
+Second, we verify the `shard_block_combined_data_root`. Let `h` be the slot _immediately after_ the slot of the shard block included by the last crosslink, and `h+n-1` be the slot number of the block directly referenced by the current `shard_block_hash`. Let `B[i]` be the block at slot `h+i` in the shard chain. Let `bodies[0] .... bodies[n-1]` be the bodies of these blocks and `roots[0] ... roots[n-1]` the data roots. If there is a missing slot in the shard chain at position `h+i`, then `bodies[i] == b'\x00' * shard_block_maxbytes(state[i])` and `roots[i]` be the Merkle root of the empty data. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. We define the function for computing the combined data root as follows:
 
 ```python
-def get_zeroroot_at_depth(n):
-    o = b'\x00' * CHUNK_SIZE
-    for i in range(n):
-        o = hash(o + o)
-    return o
+ZERO_ROOT = merkle_root(bytes([0] * SHARD_BLOCK_SIZE))
 
-def mk_combined_data_root(depths, roots):
-    default_value = get_zeroroot_at_depth(max(depths))
-    data = [default_value for _ in range(next_power_of_2(len(roots)))]
-    for i, (depth, root) in enumerate(zip(depths, roots)):
-        value = root
-        for j in range(depth, max(depths)):
-            value = hash(value, get_zeroroot_at_depth(depth + j))
-        data[i] = value
+def mk_combined_data_root(roots):
+    data = roots + [ZERO_ROOT for _ in range(len(roots), next_power_of_2(len(roots)))]
     return compute_merkle_root(data)
 ```
 
@@ -117,12 +112,7 @@ This outputs the root of a tree of the data roots, with the data roots all adjus
 
 ```python
 def mk_combined_data_root(depths, bodies):
-    default_value = get_zeroroot_at_depth(max(depths))
-    padded_body_length = max([CHUNK_SIZE * 2**d for d in depths])
-    data = b''
-    for body in bodies:
-        padded_body = body + bytes([0] * (padded_body_length - len(body)))
-        data += padded_body
+    data = b''.join(bodies)
     data += bytes([0] * (next_power_of_2(len(data)) - len(data))
     return compute_merkle_root([data[pos:pos+CHUNK_SIZE] for pos in range(0, len(data), CHUNK_SIZE)])
 ```

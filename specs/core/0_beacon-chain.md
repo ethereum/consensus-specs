@@ -39,13 +39,11 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
 | `DEPOSITS_FOR_CHAIN_START` | 2**14 (= 16,384) | deposits |
 | `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
-| `GENESIS_TIME` | **TBD** | seconds |
 | `SLOT_DURATION` | 6 | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~6 minutes |
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
-| `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4,096) | slots | ~7 hours |
 | `SQRT_E_DROP_TIME` | 2**18 (= 262,144) | slots | ~18 days |
 | `WITHDRAWALS_PER_CYCLE` | 2**2 (=4) | validators | 5.2m ETH in ~6 months |
 | `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8,192) | slots | ~14 hours |
@@ -56,6 +54,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `BASE_REWARD_QUOTIENT` | 2**15 (= 32,768) | — |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (= 32) | - |
+| `MAX_ATTESTATION_COUNT` | 2**7 (= 128) | - |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -93,9 +92,18 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `ENTRY` | `0` |
 | `EXIT` | `1` |
 
+**Domains for BLS signatures**
+
+| Name | Value | 
+| - | :-: |
+| `DOMAIN_DEPOSIT` | `0` |
+| `DOMAIN_ATTESTATION` | `1` |
+| `DOMAIN_PROPOSAL` | `2` |
+| `DOMAIN_LOGOUT` | `3` |
+
 ### PoW chain registration contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_shard`, `withdrawal_address`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
 The registration contract emits a log with the various arguments for consumption by the beacon chain. It does not do validation, pushing the registration logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
 
@@ -122,7 +130,7 @@ A `BeaconBlock` has the following fields:
     # Specials (e.g. logouts, penalties)
     'specials': [SpecialRecord],
     # Proposer signature
-    'proposer_signature': ['uint256'],
+    'proposer_signature': ['uint384'],
 }
 ```
 
@@ -133,7 +141,7 @@ An `AttestationRecord` has the following fields:
     # Slot number
     'slot': 'uint64',
     # Shard number
-    'shard': 'uint16',
+    'shard': 'uint64',
     # Beacon block hashes not part of the current chain, oldest to newest
     'oblique_parent_hashes': ['hash32'],
     # Shard block hash being attested to
@@ -149,7 +157,7 @@ An `AttestationRecord` has the following fields:
     # Hash of last justified beacon block
     'justified_block_hash': 'hash32',
     # BLS aggregate signature
-    'aggregate_sig': ['uint256']
+    'aggregate_sig': ['uint384']
 }
 ```
 
@@ -157,8 +165,6 @@ A `ProposalSignedData` has the following fields:
 
 ```python
 {
-    # Fork version
-    'fork_version': 'uint64',
     # Slot number
     'slot': 'uint64',
     # Shard number (or `2**64 - 1` for beacon chain)
@@ -172,12 +178,10 @@ An `AttestationSignedData` has the following fields:
 
 ```python
 {
-    # Fork version
-    'fork_version': 'uint64',
     # Slot number
     'slot': 'uint64',
     # Shard number
-    'shard': 'uint16',
+    'shard': 'uint64',
     # CYCLE_LENGTH parent hashes
     'parent_hashes': ['hash32'],
     # Shard block hash
@@ -196,7 +200,7 @@ A `SpecialRecord` has the following fields:
 ```python
 {
     # Kind
-    'kind': 'uint8',
+    'kind': 'uint64',
     # Data
     'data': 'bytes'
 }
@@ -239,8 +243,7 @@ The `BeaconState` has the following fields:
     'genesis_time': 'uint64',
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_root_votes': 'uint64',
+    'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
     'pre_fork_version': 'uint64',
@@ -260,21 +263,19 @@ A `ValidatorRecord` has the following fields:
 ```python
 {
     # BLS public key
-    'pubkey': 'uint256',
-    # Withdrawal shard number
-    'withdrawal_shard': 'uint16',
-    # Withdrawal address
-    'withdrawal_address': 'address',
+    'pubkey': 'uint384',
+    # Withdrawal credentials
+    'withdrawal_credentials': 'hash32',
     # RANDAO commitment
     'randao_commitment': 'hash32',
-    # Slot the RANDAO commitment was last changed
-    'randao_last_change': 'uint64',
+    # Slot the proposer has skipped (ie. layers of RANDAO expected)
+    'randao_skips': 'uint64',
     # Balance in Gwei
     'balance': 'uint64',
     # Status code
-    'status': 'uint8',
-    # Slot when validator exited (or 0)
-    'exit_slot': 'uint64'
+    'status': 'uint64',
+    # Slot when validator last changed status (or 0)
+    'last_status_change_slot': 'uint64'
     # Sequence number when validator exited (or 0)
     'exit_seq': 'uint64'
 }
@@ -296,7 +297,7 @@ A `ShardAndCommittee` object has the following fields:
 ```python
 {
     # Shard number
-    'shard': 'uint16',
+    'shard': 'uint64',
     # Validator indices
     'committee': ['uint24']
 }
@@ -309,9 +310,20 @@ A `ShardReassignmentRecord` object has the following fields:
     # Which validator to reassign
     'validator_index': 'uint24',
     # To which shard
-    'shard': 'uint16',
+    'shard': 'uint64',
     # When
     'slot': 'uint64'
+}
+```
+
+A `CandidatePoWReceiptRootRecord` object contains the following fields:
+
+```python
+{
+    # Candidate PoW receipt root
+    'candidate_pow_receipt_root': 'hash32',
+    # Vote count
+    'votes': 'uint64'
 }
 ```
 
@@ -330,7 +342,7 @@ For a block on the beacon chain to be processed by a node, four conditions have 
 * The parent pointed to by the `ancestor_hashes[0]` has already been processed and accepted
 * An attestation from the _proposer_ of the block (see later for definition) is included along with the block in the network message object
 * The PoW chain block pointed to by the `processed_pow_receipt_root` has already been processed and accepted
-* The node's local clock time is greater than or equal to the minimum timestamp as computed by `GENESIS_TIME + block.slot * SLOT_DURATION`
+* The node's local clock time is greater than or equal to the minimum timestamp as computed by `state.genesis_time + block.slot * SLOT_DURATION`
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
@@ -351,10 +363,13 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 ```python
 def lmd_ghost(store, start):
     validators = start.state.validators
-    active_validators = [validators[i] for i in get_active_validator_indices(validators, start.slot)]
-    attestation_targets = [get_latest_attestation_target(store, validator) for validator in active_validators]
+    active_validators = [validators[i] for i in
+                         get_active_validator_indices(validators, start.slot)]
+    attestation_targets = [get_latest_attestation_target(store, validator)
+                           for validator in active_validators]
     def get_vote_count(block):
-        return len([target for target in attestation_targets if get_ancestor(store, target, block.slot) == block])
+        return len([target for target in attestation_targets if
+                    get_ancestor(store, target, block.slot) == block])
 
     head = start
     while 1:
@@ -568,35 +583,45 @@ def int_sqrt(n: int) -> int:
 The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
 
 ```python
-HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: int128})
+DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
+DEPOSIT_SIZE: constant(wei_value) = 32
+GWEI_PER_ETH: constant(uint256) = 10**9
+POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
+SECONDS_PER_DAY: constant(uint256) = 86400
+
+HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: uint256})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
-receipt_tree: bytes32[int128]
-total_deposit_count: int128
+receipt_tree: bytes32[uint256]
+total_deposit_count: uint256
 
 @payable
 @public
 def deposit(deposit_params: bytes[2048]):
-    index: int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(convert(msg.value / GWEI_PER_ETH, 'bytes32'), 24, 8)
-    timestamp_bytes8: bytes[8] = slice(convert(block.timestamp, 'bytes32'), 24, 8)
+    index: uint256 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
+    timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
 
-    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)    
+    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)
 
     self.receipt_tree[index] = sha3(deposit_data)
-    for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
-        index //= 2
+    for i in range(32):  # POW_CONTRACT_MERKLE_TREE_DEPTH (range of constant var not yet supported)
+        index /= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
+
     if msg.value >= as_wei_value(DEPOSIT_SIZE, "ether"):
         self.total_deposit_count += 1
     if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
-        log.ChainStart(self.receipt_tree[1], timestamp_bytes8)
+        timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
+        timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
+        log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
 
 @public
 @constant
 def get_receipt_root() -> bytes32:
     return self.receipt_tree[1]
+
 ```
 
 The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
@@ -605,8 +630,7 @@ The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to bec
 {
     'pubkey': 'int256',
     'proof_of_possession': ['int256'],
-    'withdrawal_shard': 'int64',
-    'withdrawal_address`: 'bytes20',
+    'withdrawal_credentials`: 'hash32',
     'randao_commitment`: 'hash32'
 }
 ```
@@ -615,7 +639,7 @@ If the user wishes to deposit more than `DEPOSIT_SIZE` ETH, they would need to m
 
 * `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
 * `genesis_time` equal to the `time` value published in the log
-* `pow_receipt_root` equal to the `receipt_root` value published in the log
+* `processed_pow_receipt_root` equal to the `receipt_root` value published in the log
 
 ### On startup
 
@@ -625,7 +649,7 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 {
     'slot': 0,
     'randao_reveal': bytes32(0),
-    'candidate_pow_receipt_root': bytes32(0),
+    'candidate_pow_receipt_roots': [],
     'ancestor_hashes': [bytes32(0) for i in range(32)],
     'state_root': STARTUP_STATE_ROOT,
     'attestations': [],
@@ -637,17 +661,16 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 `STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_receipt_root: Hash32) -> BeaconState:
+def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, processed_pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
     validators = []
-    for pubkey, proof_of_possession, withdrawal_shard, withdrawal_address, \
+    for pubkey, proof_of_possession, withdrawal_credentials, \
             randao_commitment in initial_validator_entries:
         add_validator(
             validators=validators,
             pubkey=pubkey,
             proof_of_possession=proof_of_possession,
-            withdrawal_shard=withdrawal_shard,
-            withdrawal_address=withdrawal_address,
+            withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
             current_slot=0,
             status=ACTIVE,
@@ -677,9 +700,8 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_r
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
         current_exit_seq=0,
         genesis_time=genesis_time,
-        processed_pow_receipt_root=pow_receipt_root,
-        candidate_pow_receipt_root=bytes([0] * 32),
-        candidate_pow_receipt_root_votes=0,
+        processed_pow_receipt_root=processed_pow_receipt_root,
+        candidate_pow_receipt_roots=[],
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
         fork_slot_number=0,
@@ -698,61 +720,70 @@ The `add_validator` routine is defined below.
 
 This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
 
-First, a helper function:
+First, some helper functions:
 
 ```python
 def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
     for i, v in enumerate(validators):
-        if v.status == WITHDRAWN and v.exit_slot + DELETION_PERIOD <= current_slot:
+        if v.status == WITHDRAWN and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
             return i
     return None
+```
+
+```python
+def get_fork_version(state: State, slot: int) -> int:
+    return state.pre_fork_version if slot < state.fork_slot_number else state.post_fork_version
+    
+def get_domain(state: State, slot: int, base_domain: int) -> int:
+    return get_fork_version(state, slot) * 2**32 + base_domain
 ```
 
 Now, to add a validator:
 
 ```python
-def add_validator(validators: List[ValidatorRecord],
+def add_validator(state: State,
                   pubkey: int,
                   proof_of_possession: bytes,
-                  withdrawal_shard: int,
-                  withdrawal_address: Address,
+                  withdrawal_credentials: Hash32,
                   randao_commitment: Hash32,
                   status: int,
                   current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
-    signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_address + randao_commitment
+    signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_credentials + randao_commitment
     assert BLSVerify(pub=pubkey,
                      msg=hash(signed_message),
-                     sig=proof_of_possession)
+                     sig=proof_of_possession,
+                     domain=get_domain(state, current_slot, DOMAIN_DEPOSIT))
     # Pubkey uniqueness
-    assert pubkey not in [v.pubkey for v in validators]
+    assert pubkey not in [v.pubkey for v in state.validators]
     rec = ValidatorRecord(
         pubkey=pubkey,
-        withdrawal_shard=withdrawal_shard,
-        withdrawal_address=withdrawal_address,
+        withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
-        randao_last_change=current_slot,
+        randao_skips=0,
         balance=DEPOSIT_SIZE * GWEI_PER_ETH,
         status=status,
-        exit_slot=0,
+        last_status_change_slot=current_slot,
         exit_seq=0
     )
-    index = min_empty_validator(validators)
+    index = min_empty_validator(state.validators)
     if index is None:
-        validators.append(rec)
-        return len(validators) - 1
+        state.validators.append(rec)
+        return len(state.validators) - 1
     else:
-        validators[index] = rec
+        state.validators[index] = rec
         return index
 ```
+
+`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the BLS12-381 spec.
 
 ### Routine for removing a validator
 
 ```python
 def exit_validator(index, state, block, penalize, current_slot):
     validator = state.validators[index]
-    validator.exit_slot = current_slot
+    validator.last_status_change_slot = current_slot
     validator.exit_seq = state.current_exit_seq
     state.current_exit_seq += 1
     if penalize:
@@ -799,7 +830,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
 
 ### Verify attestations
 
-For each `AttestationRecord` object:
+Verify that there are at most `MAX_ATTESTATION_COUNT` `AttestationRecord` objects. For each `AttestationRecord` object:
 
 * Verify that `slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
@@ -808,28 +839,39 @@ For each `AttestationRecord` object:
 * Compute `parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
 * Let `attestation_indices` be `get_shards_and_committees_for_slot(state, slot)[x]`, choosing `x` so that `attestation_indices.shard` equals the `shard` value provided to find the set of validators that is creating this attestation record.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices))`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
-* Derive a group public key by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i %8))) % 2`) equals 1.
-* Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
-* Verify that `aggregate_sig` verifies using the group pubkey generated and the serialized form of `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)` as the message.
+* Derive a `group_public_key` by adding the public keys of all of the attesters in `attestation_indices` for whom the corresponding bit in `attester_bitfield` (the ith bit is `(attester_bitfield[i // 8] >> (7 - (i % 8))) % 2`) equals 1.
+* Let `data = AttestationSignedData(slot, shard, parent_hashes, shard_block_hash, last_crosslinked_hash, shard_block_combined_data_root, justified_slot)`.
+* Check `BLSVerify(pubkey=group_public_key, msg=data, sig=aggregate_sig, domain=get_domain(state, slot, DOMAIN_ATTESTATION))`.
+* [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
 
 Extend the list of `AttestationRecord` objects in the `state` with those included in the block, ordering the new additions in the same order as they came in the block.
 
 ### Verify proposer signature
 
-Let `proposal_hash = hash(ProposalSignedData(fork_version, block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
+Let `proposal_hash = hash(ProposalSignedData(block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
 
-Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, data=proposal_hash, sig=block.proposer_signature)` passes.
+Verify that `BLSVerify(pubkey=get_beacon_proposer(state, block.slot).pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state, block.slot, DOMAIN_PROPOSAL))` passes.
 
 ### Verify and process RANDAO reveal
 
+First run the following state transition to update `randao_skips` variables for the missing slots.
+
+```python
+for slot in range(parent.slot + 1, block.slot):
+    proposer = get_beacon_proposer(state, slot)
+    proposer.randao_skips += 1
+```
+
+Then:
+
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `V = get_beacon_proposer(state, block.slot)`.
-* Verify that `repeat_hash(block.randao_reveal, (block.slot - V.randao_last_change) // RANDAO_SLOTS_PER_LAYER + 1) == V.randao_commitment`
-* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_last_change = block.slot`
+* Verify that `repeat_hash(block.randao_reveal, V.randao_skips + 1) == V.randao_commitment`
+* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `V.randao_commitment = block.randao_reveal`, `V.randao_skips = 0`
 
 ### Process PoW receipt root
 
-If `block.candidate_pow_receipt_root == state.candidate_pow_receipt_root` set `state.candidate_pow_receipt_root_votes += 1`.
+If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`. Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
 ### Process penalties, logouts and other special objects
 
@@ -842,13 +884,14 @@ For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is on
 ```python
 {
     'validator_index': 'uint64',
-    'signature': '[uint256]'
+    'signature': '[uint384]'
 }
 ```
 Perform the following checks:
 
-* Let `fork_version = pre_fork_version if block.slot < fork_slot_number else post_fork_version`. Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=hash(LOGOUT_MESSAGE + bytes8(fork_version)), sig=data.signature)`
+* Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=bytes([0] * 32), sig=data.signature, domain=get_domain(state, current_slot, DOMAIN_LOGOUT))`
 * Verify that `validators[validator_index].status == ACTIVE`.
+* Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`
 
 Run `exit_validator(data.validator_index, state, block, penalize=False, current_slot=block.slot)`.
 
@@ -858,16 +901,16 @@ Run `exit_validator(data.validator_index, state, block, penalize=False, current_
 {
     'vote1_aggregate_sig_indices': '[uint24]',
     'vote1_data': AttestationSignedData,
-    'vote1_aggregate_sig': '[uint256]',
+    'vote1_aggregate_sig': '[uint384]',
     'vote2_aggregate_sig_indices': '[uint24]',
     'vote2_data': AttestationSignedData,
-    'vote2_aggregate_sig': '[uint256]',
+    'vote2_aggregate_sig': '[uint384]',
 }
 ```
 
 Perform the following checks:
 
-* For each `aggregate_sig`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in aggregate_sig_indices]), msg=vote_data, sig=aggsig)` passes.
+* For each `vote`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in vote_aggregate_sig_indices]), msg=vote_data, sig=vote_aggregate_sig, domain=get_domain(state, vote_data.slot, DOMAIN_ATTESTATION))` passes.
 * Verify that `vote1_data != vote2_data`.
 * Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
@@ -880,12 +923,12 @@ For each validator index `v` in `intersection`, if `state.validators[v].status` 
 {
     'proposer_index': 'uint24',
     'proposal1_data': ProposalSignedData,
-    'proposal1_signature': '[uint256]',
+    'proposal1_signature': '[uint384]',
     'proposal2_data': ProposalSignedData,
-    'proposal1_signature': '[uint256]',
+    'proposal1_signature': '[uint384]',
 }
 ```
-For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature)` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
+For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state, proposal_data.slot, DOMAIN_PROPOSAL))` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
 
 #### DEPOSIT_PROOF
 
@@ -918,7 +961,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
 
 Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
 
-Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_shard, data.deposit_params.withdrawal_address, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_credentials, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 ## State recalculations (every `CYCLE_LENGTH` slots)
 
@@ -979,9 +1022,8 @@ For every shard number `shard` for which a crosslink committee exists in the cyc
 
 If `last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
-* If `state.candidate_pow_receipt_root_votes * 3 >= POW_RECEIPT_ROOT_VOTING_PERIOD * 2` set `state.processed_pow_receipt_root = state.candidate_pow_receipt_root`.
-* Set `state.candidate_pow_receipt_root = block.candidate_pow_receipt_root`.
-* Set `state.candidate_pow_receipt_root_votes = 0`.
+* If for any `x` in `state.candidate_pow_receipt_root`,  `x.votes * 2 >= POW_RECEIPT_ROOT_VOTING_PERIOD` set `state.processed_pow_receipt_root = x.receipt_root`.
+* Set `state.candidate_pow_receipt_roots = []`.
 
 ### Validator set change
 
@@ -1018,7 +1060,7 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
             )
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
-            validators[i].exit_slot = current_slot
+            validators[i].last_status_change_slot = current_slot
             total_changed += validators[i].balance
             add_validator_set_change_record(
                 state=state,
@@ -1040,14 +1082,14 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
     # calculate their penalties if they were slashed
 
     def withdrawable(v):
-        return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.exit_slot + MIN_WITHDRAWAL_PERIOD
+        return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
 
     withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_seq)
     for v in withdrawable_validators[:WITHDRAWALS_PER_CYCLE]:
         if v.status == PENALIZED:
             v.balance -= v.balance * min(total_penalties * 3, total_balance) // total_balance
         v.status = WITHDRAWN
-        v.exit_slot = current_slot
+        v.last_status_change_slot = current_slot
 
         withdraw_amount = v.balance
         ...
@@ -1109,42 +1151,6 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
             )
     state.persistent_committees[rec.shard].append(rec.validator_index)
 ```
-
-### TODO
-
-Note: This spec is ~65% complete.
-
-**Missing**
-
-* [ ] Specify the shard chain blocks, blobs, proposers, etc.
-* [ ] Specify the deposit contract on the PoW chain in Vyper
-* [ ] Specify the beacon chain genesis rules ([issue 58](https://github.com/ethereum/eth2.0-specs/issues/58))
-* [ ] Specify the logic for proofs of custody, including slashing conditions
-* [ ] Specify BLSVerify and rework the spec for BLS12-381 throughout
-* [ ] Specify the constraints for `SpecialRecord`s ([issue 43](https://github.com/ethereum/eth2.0-specs/issues/43))
-* [ ] Specify the calculation and validation of `BeaconBlock.state_root`
-* [ ] Undergo peer review, security audits and formal verification
-
-**Documentation**
-
-* [ ] Specify the various assumptions (global clock, networking latency, validator honesty, validator liveness, etc.)
-* [ ] Add an appendix on gossip networks and the offchain signature aggregation logic
-* [ ] Add a glossary (in a separate `glossary.md`) to comprehensively and precisely define all the terms
-* [ ] Clearly document the various edge cases, e.g. with committee sizing
-* [ ] Rework the document for readability
-
-**Possible modifications and additions**
-
-* [ ] Homogenise types to `uint64` ([PR 36](https://github.com/ethereum/eth2.0-specs/pull/36))
-* [ ] Reduce the slot duration to 8 seconds
-* [ ] Allow for the delayed inclusion of aggregated signatures
-* [ ] Introduce a RANDAO slashing condition for early reveals
-* [ ] Use a separate hash function for the proof of possession
-* [ ] Rework the `ShardAndCommittee` data structures
-* [ ] Add a double-batched Merkle accumulator for historical beacon chain blocks
-* [ ] Allow for deposits larger than 32 ETH, as well as deposit top-ups
-* [ ] Add penalties for deposits below 32 ETH (or some other threshold)
-* [ ] Add a `SpecialRecord` to (re)register
 
 # Appendix
 ## Appendix A - Hash function
