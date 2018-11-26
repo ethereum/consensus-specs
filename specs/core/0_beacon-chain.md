@@ -815,11 +815,11 @@ def exit_validator(index, state, block, penalize, current_slot):
                 committee.pop(i)
                 break
     if penalize:
+        state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += balance_at_stake(validator)
         validator.status = PENALIZED
         whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
         validator.deposit -= whistleblower_xfer_amount
         get_beacon_proposer(state, block.slot).deposit += whistleblower_xfer_amount
-        state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += balance_at_stake(validator)
     else:
         validator.status = PENDING_EXIT
     add_validator_set_change_record(state, index, validator.pubkey, EXIT)
