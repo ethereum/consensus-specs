@@ -362,10 +362,13 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 ```python
 def lmd_ghost(store, start):
     validators = start.state.validators
-    active_validators = [validators[i] for i in get_active_validator_indices(validators, start.slot)]
-    attestation_targets = [get_latest_attestation_target(store, validator) for validator in active_validators]
+    active_validators = [validators[i] for i in
+                         get_active_validator_indices(validators, start.slot)]
+    attestation_targets = [get_latest_attestation_target(store, validator)
+                           for validator in active_validators]
     def get_vote_count(block):
-        return len([target for target in attestation_targets if get_ancestor(store, target, block.slot) == block])
+        return len([target for target in attestation_targets if
+                    get_ancestor(store, target, block.slot) == block])
 
     head = start
     while 1:
