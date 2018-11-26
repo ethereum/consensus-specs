@@ -232,7 +232,7 @@ The `BeaconState` has the following fields:
     # Persistent shard committees
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
-    # Open proof of custody challenges
+    # Open proof of custody challenges; NOTE: must remain empty in phase 0
     'proof_of_custody_challenges': [ProofOfCustodyChallenge],
     # Randao seed used for next shuffling
     'next_shuffling_seed': 'hash32',
@@ -326,29 +326,6 @@ A `ShardReassignmentRecord` object has the following fields:
     'shard': 'uint64',
     # When
     'slot': 'uint64'
-}
-```
-
-A `ProofOfCustodyChallenge` has the following fields:
-
-```python
-{
-    # Which validator is responding
-    'responder_index': 'uint64',
-    # Seed hash
-    'seed_hash': 'hash32',
-    # Depth
-    'depth': 'uint64',
-    # Index in tree
-    'data_index': 'uint64',
-    # Expiry date
-    'expiry_slot': 'uint64',
-    # Who is challenging
-    'challenger_index': 'uint64',
-    # Data root
-    'data_root': 'hash32',
-    # Proof of custody bit
-    'bit': 'bool'
 }
 ```
 

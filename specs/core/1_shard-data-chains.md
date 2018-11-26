@@ -131,6 +131,31 @@ Change to attestation verification:
 
 * Let `expected_depth = log2(SHARD_BLOCK_SIZE // SHARD_CHUNK_SIZE * next_power_of_2(slot - last_crosslink_slot))`. For each integer `i = 0, 1`, let `messages[i]` be `AttestationSignedData(slot, shard, parent_hashes, shard_block_hash, i == 1, expected_depth, attestation_indices.total_validator_count, justified_slot)`.
 
+A `ProofOfCustodyChallenge` has the following fields:
+
+```python
+{
+    # Which validator is responding
+    'responder_index': 'uint64',
+    # Seed hash
+    'seed_hash': 'hash32',
+    # Depth
+    'depth': 'uint64',
+    # Index in tree
+    'data_index': 'uint64',
+    # Expiry date
+    'expiry_slot': 'uint64',
+    # Who is challenging
+    'challenger_index': 'uint64',
+    # Data root
+    'data_root': 'hash32',
+    # Proof of custody bit
+    'bit': 'bool'
+}
+```
+
+
+
 Three new types of `SpecialObject` records:
 
 #### PROOF_OF_CUSTODY_SEED_CHANGE
