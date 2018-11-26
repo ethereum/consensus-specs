@@ -31,12 +31,12 @@ def hash_to_G2(m, domain):
     x2 = hash(bytes8(domain) + b'\x02' + m)
     x_coord = FQ2([x1, x2]) # x1 + x2 * i
     while 1:
-        x_cubed_plus_b2 = x ** 3 + FQ2([4,4])
+        x_cubed_plus_b2 = x_coord ** 3 + FQ2([4,4])
         y_coord = mod_sqrt(x_cubed_plus_b2)
-        if y_coord ** 2 == x_cubed_plus_b2:
+        if y_coord is not None:
             break
         x_coord += FQ2([1, 0]) # Add one until we get a quadratic residue
-    assert is_on_curve(x_coord, y_coord)
+    assert is_on_curve((x_coord, y_coord))
     return multiply((x_coord, y_coord), G2_cofactor)
 ```
 
