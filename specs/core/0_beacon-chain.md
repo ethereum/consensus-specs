@@ -43,8 +43,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~6 minutes |
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
-| `PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD` | 2**17 | (= 65,536) | slots | ~9 days |
-| `PROOF_OF_CUSTODY_RESPONSE_DEADLINE` | 2**20 (= 524,288) | slots | ~73 days |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
 | `RANDAO_SLOTS_PER_LAYER` | 2**12 (= 4096) | slots | ~7 hours |
 | `SQRT_E_DROP_TIME` | 2**18 (= 262,144) | slots | ~18 days |
@@ -57,8 +55,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | — |
 | `POW_HASH_VOTING_PERIOD` | 2**10 (=1024) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (=32) | - |
-| `SHARD_CHUNK_SIZE` | 2**8 (= 256)    | bytes |               |
-| `SHARD_BLOCK_SIZE` | 2**15 (= 32768) | bytes |               |
 | `LOGOUT_MESSAGE` | `"LOGOUT"` | — |
 | `INITIAL_FORK_VERSION` | 0 | — |
 
@@ -142,8 +138,8 @@ An `AttestationRecord` has the following fields:
     'shard': 'uint64',
     # Beacon block hashes not part of the current chain, oldest to newest
     'oblique_parent_hashes': ['hash32'],
-    # Shard block hash being attested to
-    'shard_block_hash': 'hash32',
+    # Shard data root being attested to
+    'shard_data_root': 'hash32',
     # Last crosslink hash
     'last_crosslink_hash': 'hash32',
     # Root of data between last hash and this one
@@ -178,16 +174,14 @@ An `AttestationSignedData` has the following fields:
 
 ```python
 {
-    # Fork version
-    'fork_version': 'uint64',
     # Slot number
     'slot': 'uint64',
     # Shard number
     'shard': 'uint64',
     # CYCLE_LENGTH parent hashes
     'parent_hashes': ['hash32'],
-    # Shard block hash
-    'shard_block_hash': 'hash32',
+    # Shard data root
+    'shard_data_root': 'hash32',
     # Proof of custody data
     'proof_of_custody_hash_bit': 'bool',
     'proof_of_custody_depth': 'uint64',
@@ -305,7 +299,7 @@ A `CrosslinkRecord` has the following fields:
     # Slot number
     'slot': 'uint64',
     # Shard chain block hash
-    'shard_block_hash': 'hash32',
+    'shard_data_root': 'hash32',
 }
 ```
 
@@ -690,8 +684,6 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, pow_h
     ]
     state = BeaconState(
         validator_set_change_slot=0,
-        this_validator_set_start_valcount=0,
-        last_validator_set_start_valcount=0,
         validators=validators,
         crosslinks=crosslinks,
         last_state_recalculation_slot=0,
@@ -789,7 +781,7 @@ def exit_validator(index, state, penalize, current_slot):
         validator.status = PENALIZED
         whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
         validator.deposit -= whistleblower_xfer_amount
-        get_beacon_proposer(state, slot).deposit += whistleblower_xfer_amount
+        get_beacon_proposer(state, current_slot).deposit += whistleblower_xfer_amount
         state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += validator.balance
     else:
         validator.status = PENDING_EXIT
@@ -836,13 +828,13 @@ For each `AttestationRecord` object:
 * Verify that `justified_slot` is equal to or earlier than `last_justified_slot`.
 * Verify that `justified_block_hash` is the hash of the block in the current chain at the slot -- `justified_slot`.
 * Verify that one of the following is true:
-    * [Regular inclusion] `last_crosslink_hash` equals `state.crosslinks[shard].shard_block_hash` and `last_crosslink_slot == state.crosslinks[shard].slot`
-    * [Late inclusion] `shard_block_hash` equals `state.crosslinks[shard].shard_block_hash` and `slot == state.crosslinks[shard].slot`
+    * [Regular inclusion] `last_crosslink_hash` equals `state.crosslinks[shard].shard_data_root` and `last_crosslink_slot == state.crosslinks[shard].slot`
+    * [Late inclusion] `shard_data_root` equals `state.crosslinks[shard].shard_data_root` and `slot == state.crosslinks[shard].slot`
 * Compute `parent_hashes` = `[get_block_hash(state, block, slot - CYCLE_LENGTH + i) for i in range(1, CYCLE_LENGTH - len(oblique_parent_hashes) + 1)] + oblique_parent_hashes` (eg, if `CYCLE_LENGTH = 4`, `slot = 5`, the actual block hashes starting from slot 0 are `Z A B C D E F G H I J`, and `oblique_parent_hashes = [D', E']` then `parent_hashes = [B, C, D' E']`). Note that when *creating* an attestation for a block, the hash of that block itself won't yet be in the `state`, so you would need to add it explicitly.
 * Verify that `len(attester_bitfield) == ceil_div8(len(attestation_indices)) * 2`, where `ceil_div8 = (x + 7) // 8`. Verify that bits `len(attestation_indices)*2....` and higher, if present (i.e. `len(attestation_indices)` is not a multiple of 8), are all zero.
 * Verify that in every byte, none of the four adjacent bit pairs are set to 01 (ie. only 00, 10 and 11 are allowed).
 * For each integer `i = 0, 1`, let `pubkeys[i]` be the public keys of all of the attesters in `attestation_indices` for whom the corresponding two bits in `attester_bitfield` (ie. `(attester_bitfield[i // 4] >> (6 - (i %3)*2)) % 8`) are set to 1 and i.
-* Let `expected_depth = log2(SHARD_BLOCK_SIZE // SHARD_CHUNK_SIZE * next_power_of_2(slot - last_crosslink_slot))`. For each integer `i = 0, 1`, let `messages[i]` be `AttestationSignedData(fork_version, slot, shard, parent_hashes, shard_block_hash, i == 1, expected_depth, attestation_indices.total_validator_count, shard_block_combined_data_root, justified_slot)`.
+* For each integer `i = 0, 1`, let `messages[i]` be `AttestationSignedData(slot, shard, parent_hashes, shard_data_root, i == 1, 0, attestation_indices.total_validator_count, justified_slot)`.
 * Let `fork_version = pre_fork_version if slot < fork_slot_number else post_fork_version`.
 * Verify `BLSMultiVerify(pubkeys=[BLSAddPubkeys(p) for p in pubkeys], msgs=messages, sig=aggregate_sig)`
 
@@ -970,64 +962,6 @@ Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_
 
 Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_shard, data.deposit_params.withdrawal_address, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
-#### PROOF_OF_CUSTODY_SEED_CHANGE
-
-```python
-{
-    'index': 'uint64',
-    'new_commitment': 'hash32',
-    'signature': ['uint256']
-}
-```
-
-Let `signed_data = bytes8(fork_version) + new_commitment`. Verify that `BLSVerify(pub=state.validators[index].pubkey, msg=hash(signed_data), sig=signature)` passes. Verify that `hash(new_commitment) = state.validators[index].proof_of_custody_commitment`, and the `block.slot >= state.validators[index].proof_of_custody_last_change + PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD`. Set `state.validators[index].proof_of_custody_second_last_change = state.validators[index].proof_of_custody_last_change` and `state.validators[index].proof_of_custody_last_change = block.slot`.
-
-#### PROOF_OF_CUSTODY_CHALLENGE
-
-```
-{
-    'attestation': SpecialAttestationData,
-    'validator_index': 'uint64',
-    'data_index': 'uint64',
-}
-```
-
-Perform the following checks:
-
-* Verify that the attestation is valid.
-* Verify that `attestation.slot > state.validators[index].proof_of_custody_second_last_change`.
-* Verify that `validator_index in attestation.aggregate_sig_poc_0_indices` or `validator_index in attestation.aggregate_sig_poc_1_indices`; if the former, let `bit = False`, else `bit = True`.
-* Verify that `state.validators[index].status == ACTIVE` or `state.validators[index].status == PENDING_EXIT` and `block.slot < state.validators[index].exit_slot + PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD`
-* Let `check_value = as_uint256(hash(as_bytes8(validator_index) + as_bytes8(attestation.slot) + as_bytes8(attestation.shard_id)))`.
-* Let `FULL_PROOF_OF_CUSTODY_VALCOUNT = TARGET_COMMITEE_SIZE * SHARD_COUNT`, and `target = 2**256 * attestation.total_validator_count // FULL_PROOF_OF_CUSTODY_VALCOUNT`.
-* Verify that `check_value <= target`.
-
-Let `seed_hash = state.validators[index].proof_of_custody_commitment if attestation.slot > state.validators[index].proof_of_custody_last_change else hash(state.validators[index].proof_of_custody_commitment)`. Append to `state.proof_of_custody_challenges` the object `ProofOfCustodyChallenge(responder_index=validator_index, seed_hash=seed_hash, depth=attestation.proof_of_custody_depth, data_root=attestation.data.shard_block_hash, data_index=data_index, expiry_slot=block.slot+PROOF_OF_CUSTODY_RESPONSE_DEADLINE, challenger_index=get_proposer(state, block), bit=bit)`.
-
-A block can have maximum one proof of custody challenge, and it must appear before all `PROOF_OF_CUSTODY_SEED_CHANGE` objects.
-
-#### PROOF_OF_CUSTODY_RESPONSE
-```
-{
-    'challenge_index': 'uint64',
-    'leaf': 'hash32',
-    'root': 'hash32',
-    'seed': 'hash32',
-    'data_merkle_branch': '[hash32]',
-    'poc_merkle_branch': '[hash32]',
-}
-```
-Perform the following checks:
-
-* Verify `challenge_index < len(state.proof_of_custody_challenges)`.
-* Let`challenge = state.proof_of_custody_challenges[challenge_index]`.
-* Verify that `hash(seed) = challenge.seed_hash`
-* Verify that `verify_merkle_branch(leaf, data_merkle_branch, challenge.depth, challenge.data_index, root)` passes.
-* Verify that `verify_merkle_branch(leaf, poc_merkle_branch, challenge.depth, challenge.data_index, xor(root, seed))` passes.
-* Verify that `uint256(root) % 2 == challenge.bit`.
-
-Remove `challenge` from `state.proof_of_custody_challenges` (note: if a block has multiple `PROOF_OF_CUSTODY_RESPONSE` objects , later objects' `challenge_index` values will need to take removals from earlier objects into account).
-
 ## State recalculations (every `CYCLE_LENGTH` slots)
 
 Repeat while `slot - last_state_recalculation_slot >= CYCLE_LENGTH`:
@@ -1041,11 +975,11 @@ For every slot `s` in the range `last_state_recalculation_slot - CYCLE_LENGTH ..
 * If `3 * total_balance_attesting_at_s >= 2 * total_balance` set `last_justified_slot = max(last_justified_slot, s)` and `justified_streak += 1`. Otherwise set `justified_streak = 0`.
 * If `justified_streak >= CYCLE_LENGTH + 1` set `last_finalized_slot = max(last_finalized_slot, s - CYCLE_LENGTH - 1)`.
 
-For every `(shard, shard_block_hash)` tuple:
+For every `(shard, shard_data_root)` tuple:
 
-* Let `total_balance_attesting_to_h` be the total balance of validators that attested to the shard block with hash `shard_block_hash`.
-* Let `total_committee_balance` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_block_hash`.
-* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance`, set `crosslinks[shard] = CrosslinkRecord(slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_block_hash)`.
+* Let `total_balance_attesting_to_h` be the total balance of validators that attested to the shard block with hash `shard_data_root`.
+* Let `total_committee_balance` be the total balance in the committee of validators that could have attested to the shard block with hash `shard_data_root`.
+* If `3 * total_balance_attesting_to_h >= 2 * total_committee_balance`, set `crosslinks[shard] = CrosslinkRecord(slot=last_state_recalculation_slot + CYCLE_LENGTH, hash=shard_data_root)`.
 
 #### Balance recalculations related to FFG rewards
 
