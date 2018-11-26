@@ -866,7 +866,7 @@ For each `AttestationRecord` object `obj`:
 
 * Verify that `obj.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `obj.data.slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
 * Verify that `obj.data.justified_slot` is equal to `justification_source if obj.data.slot >= state.last_state_recalculation_slot else prev_cycle_justification_source`
-* Verify that `obj.data.justified_block_hash` is the hash of the block in the current chain at the slot -- `obj.data.justified_slot`.
+* Verify that `obj.data.justified_block_hash` is equal to `get_block_hash(state, block, obj.data.justified_slot)`.
 * Verify that either `obj.data.last_crosslink_hash` or `obj.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * `aggregate_sig` verification:
     * Let `participants = get_attestation_participants(state, obj.data, obj.attester_bitfield)`
