@@ -783,14 +783,12 @@ def add_validator(state: State,
             state.validators[index] = rec
             return index
     else:
+        assert val.status != WITHDRAWN
         index = validator_pubkeys.index(pubkey)
         val = state.validators[index]
         assert val.withdrawal_credentials == withdrawal_credentials
         assert deposit_size >= MIN_TOPUP_SIZE
         val.balance += deposit_size
-        # If the validator is withdrawn, overwrite it with the new validator data
-        if val.status == WITHDRAWN:
-            state.validators[index] = rec
         return index
 ```
 
