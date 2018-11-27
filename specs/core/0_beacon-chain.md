@@ -138,7 +138,7 @@ An `AttestationRecord` has the following fields:
 
 ```python
 {
-   data: AttestationSignedData,
+    'data': AttestationSignedData,
     # Attester participation bitfield
     'attester_bitfield': 'bytes',
     # Proof of custody bitfield
