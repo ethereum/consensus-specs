@@ -152,22 +152,22 @@ An `AttestationRecord` has the following fields:
 
 ```python
 {
-        # Slot number
-        'slot': 'uint64',
-        # Shard number
-        'shard': 'uint64',
-        # Hash of the block we're signing
-        'block_hash': 'hash32',
-        # Hash of the ancestor at the cycle boundary
-        'cycle_boundary_hash': 'hash32',
-        # Shard block hash being attested to
-        'shard_block_hash': 'hash32',
-        # Last crosslink hash
-        'last_crosslink_hash': 'hash32',
-        # Slot of last justified beacon block
-        'justified_slot': 'uint64',
-        # Hash of last justified beacon block
-        'justified_block_hash': 'hash32',
+    # Slot number
+    'slot': 'uint64',
+    # Shard number
+    'shard': 'uint64',
+    # Hash of the block we're signing
+    'block_hash': 'hash32',
+    # Hash of the ancestor at the cycle boundary
+    'cycle_boundary_hash': 'hash32',
+    # Shard block hash being attested to
+    'shard_block_hash': 'hash32',
+    # Last crosslink hash
+    'last_crosslink_hash': 'hash32',
+    # Slot of last justified beacon block
+    'justified_slot': 'uint64',
+    # Hash of last justified beacon block
+    'justified_block_hash': 'hash32',
 }
 ```
 
