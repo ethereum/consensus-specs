@@ -34,9 +34,11 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | --- | --- | :---: | - |
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
+| `MIN_TOPUP_SIZE` | 1 | ETH |
 | `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
+| `DEPOSITS_FOR_CHAIN_START` | 2**14 (= 16,384) | deposits |
 | `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
 | `SLOT_DURATION` | 6 | seconds |
 | `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~6 minutes |
@@ -624,31 +626,39 @@ def int_sqrt(n: int) -> int:
 The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
 
 ```python
+DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
+DEPOSIT_SIZE: constant(uint256) = 32  # ETH
+MIN_TOPUP_SIZE: constant(uint256) = 1  # ETH
+GWEI_PER_ETH: constant(uint256) = 10**9
+POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
-POW_CONTRACT_MERKLE_TREE_DEPTH: constant(int128) = 32
 
-HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: int128})
+HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: uint256})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
-receipt_tree: bytes32[int128]
-total_deposit_count: int128
+receipt_tree: bytes32[uint256]
+total_deposit_count: uint256
 
 @payable
 @public
 def deposit(deposit_params: bytes[2048]):
-    index:int128 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / 10**9, bytes32)), start=24, len=8)
+    index: uint256 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
-    deposit_data: bytes[2064] = concat(deposit_params, msg_gwei_bytes8, timestamp_bytes8)
+    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_params)
 
-    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)    
+    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)
 
     self.receipt_tree[index] = sha3(deposit_data)
-    for i in range(POW_CONTRACT_MERKLE_TREE_DEPTH):
+    for i in range(32):  # POW_CONTRACT_MERKLE_TREE_DEPTH (range of constant var not yet supported)
         index /= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
-    self.total_deposit_count += 1
-    if self.total_deposit_count == 16384:
+
+    assert msg.value >= as_wei_value(MIN_TOPUP_SIZE, "ether")
+    assert msg.value <= as_wei_value(DEPOSIT_SIZE, "ether")
+    if msg.value == as_wei_value(DEPOSIT_SIZE, "ether"):
+        self.total_deposit_count += 1
+    if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
         timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
         timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
         log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
@@ -657,9 +667,10 @@ def deposit(deposit_params: bytes[2048]):
 @constant
 def get_receipt_root() -> bytes32:
     return self.receipt_tree[1]
+
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along 32 ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along `DEPOSIT_SIZE` ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
 
 ```python
 {
@@ -703,7 +714,7 @@ def on_startup(current_validators: List[ValidatorRecord],
                processed_pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
     validators = []
-    for pubkey, proof_of_possession, withdrawal_credentials, \
+    for pubkey, deposit_size, proof_of_possession, withdrawal_credentials, \
             randao_commitment in initial_validator_entries:
         validators, _ = get_new_validators(
             current_validators=validators,
@@ -713,6 +724,7 @@ def on_startup(current_validators: List[ValidatorRecord],
                 fork_slot_number=2**64 - 1,
             ),
             pubkey=pubkey,
+            deposit_size=deposit_size,
             proof_of_possession=proof_of_possession,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
@@ -759,7 +771,7 @@ def on_startup(current_validators: List[ValidatorRecord],
     return state
 ```
 
-The `add_validator` routine is defined below.
+The `add_or_topup_validator` routine is defined below.
 
 ### Routine for adding a validator
 
@@ -795,13 +807,14 @@ def get_domain(fork_data: ForkData,
 def get_new_validators(current_validators: List[ValidatorRecord],
                        fork_data: ForkData,
                        pubkey: int,
+                       deposit_size: int,
                        proof_of_possession: bytes,
                        withdrawal_credentials: Hash32,
                        randao_commitment: Hash32,
                        status: int,
                        current_slot: int) -> Tuple[List[ValidatorRecord], int]:
-    # if following assert fails, validator induction failed
-    # move on to next validator registration log
+    # if any asserts fail, validator induction/topup failed
+    # move on to next validator deposit log
     signed_message = bytes32(pubkey) + withdrawal_credentials + randao_commitment
     assert BLSVerify(
         pub=pubkey,
@@ -813,40 +826,55 @@ def get_new_validators(current_validators: List[ValidatorRecord],
             DOMAIN_DEPOSIT
         )
     )
-    # Pubkey uniqueness
     new_validators = copy.deepcopy(current_validators)
-    assert pubkey not in [v.pubkey for v in current_validators]
-    rec = ValidatorRecord(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        randao_commitment=randao_commitment,
-        randao_skips=0,
-        balance=DEPOSIT_SIZE * GWEI_PER_ETH,
-        status=status,
-        last_status_change_slot=current_slot,
-        exit_seq=0
-    )
-    # Add the validator
-    index = min_empty_validator_index(current_validators)
-    if index is None:
-        new_validators.append(rec)
-        index = len(new_validators) - 1
-    else:
-        new_validators[index] = rec
+    validator_pubkeys = [v.pubkey for v in new_validators]
 
-    return new_validators, index
+    # add new validator
+    if pubkey not in validator_pubkeys:
+        assert deposit_size == DEPOSIT_SIZE
+
+        rec = ValidatorRecord(
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            randao_commitment=randao_commitment,
+            randao_skips=0,
+            balance=DEPOSIT_SIZE * GWEI_PER_ETH,
+            status=status,
+            last_status_change_slot=current_slot,
+            exit_seq=0
+        )
+
+        index = min_empty_validator(new_validators)
+        if index is None:
+            new_validators.append(rec)
+            index = len(new_validators) - 1
+        else:
+            new_validators[index] = rec
+        return new_validators, index
+
+    # topup existing validator
+    else:
+        index = validator_pubkeys.index(pubkey)
+        val = new_validators[index]
+        assert deposit_size >= MIN_TOPUP_SIZE
+        assert val.status != WITHDRAWN
+        assert val.withdrawal_credentials == withdrawal_credentials
+
+        val.balance += deposit_size
+        return new_validators, index
 ```
 
-Now, to add a validator:
+Now, to add a validator or top up an existing validator's balance:
 
 ```python
-def add_validator(state: BeaconState,
-                  pubkey: int,
-                  proof_of_possession: bytes,
-                  withdrawal_credentials: Hash32,
-                  randao_commitment: Hash32,
-                  status: int,
-                  current_slot: int) -> int:
+def add_or_topup_validator(state: BeaconState,
+                           pubkey: int,
+                           deposit_size: int,
+                           proof_of_possession: bytes,
+                           withdrawal_credentials: Hash32,
+                           randao_commitment: Hash32,
+                           status: int,
+                           current_slot: int) -> int:
     """
     Add the validator into the given `state`.
     Note that this function mutates `state`.
@@ -859,6 +887,7 @@ def add_validator(state: BeaconState,
             fork_slot_number=state.fork_slot_number,
         ),
         pubkey=pubkey,
+        deposit_size=deposit_size,
         proof_of_possession=proof_of_possession,
         withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
@@ -1068,9 +1097,9 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
+Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
 
-Run `add_validator(state, pubkey=deposit_data.deposit_params.pubkey, proof_of_possession=deposit_data.deposit_params.proof_of_possession, withdrawal_credentials=deposit_data.deposit_params.withdrawal_credentials, randao_commitment=deposit_data.deposit_params.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
+Run `add_or_topup_validator(state, pupkey=deposit_data.deposit_params.pubkey, deposit_size=deposit_data.msg_value, proof_of_possession=deposit_data.deposit_params.proof_of_possession, withdrawal_credentials=deposit_data.deposit_params.withdrawal_credentials, randao_commitment=deposit_data.deposit_params.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
 
 ## Cycle boundary processing
 
