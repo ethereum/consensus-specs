@@ -586,6 +586,7 @@ The beacon chain is initialized when a condition is met inside a contract on the
 ```python
 DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
 DEPOSIT_SIZE: constant(wei_value) = 32
+MIN_TOPUP_SIZE: constant(wei_value) = 1
 GWEI_PER_ETH: constant(uint256) = 10**9
 POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
@@ -611,7 +612,9 @@ def deposit(deposit_params: bytes[2048]):
         index /= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
 
-    if msg.value >= as_wei_value(DEPOSIT_SIZE, "ether"):
+    assert msg.value >= as_wei_value(MIN_TOPUP_SIZE, "ether")
+    assert msg.value <= as_wei_value(DEPOSIT_SIZE, "ether")
+    if msg.value == as_wei_value(DEPOSIT_SIZE, "ether"):
         self.total_deposit_count += 1
     if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
         timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
