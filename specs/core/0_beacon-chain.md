@@ -760,11 +760,7 @@ def add_validator(state: State,
                      msg=hash(signed_message),
                      sig=proof_of_possession,
                      domain=get_domain(state, current_slot, DOMAIN_DEPOSIT))
-    # Pubkey uniqueness
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    if pubkey not in validator_pubkeys:
-        assert deposit_size == DEPOSIT_SIZE
-        rec = ValidatorRecord(
+    rec = ValidatorRecord(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
@@ -773,7 +769,12 @@ def add_validator(state: State,
             status=status,
             last_status_change_slot=current_slot,
             exit_seq=0
-        )
+    )
+    # Pubkey uniqueness
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if pubkey not in validator_pubkeys:
+        assert deposit_size == DEPOSIT_SIZE
+
         index = min_empty_validator(state.validators)
         if index is None:
             state.validators.append(rec)
@@ -787,6 +788,9 @@ def add_validator(state: State,
         assert val.withdrawal_credentials == withdrawal_credentials
         assert deposit_size >= MIN_TOPUP_SIZE
         val.balance += deposit_size
+        # If the validator is withdrawn, overwrite it with the new validator data
+        if val.status == WITHDRAWN:
+            state.validators[index] = rec
         return index
 ```
 
