@@ -760,7 +760,7 @@ def add_validator(state: State,
     # Pubkey uniqueness
     validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
-        assert deposit_size == DEPOSIT_SIZE`
+        assert deposit_size == DEPOSIT_SIZE
         rec = ValidatorRecord(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
