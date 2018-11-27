@@ -670,7 +670,7 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, proce
     validators = []
     for pubkey, proof_of_possession, withdrawal_credentials, \
             randao_commitment in initial_validator_entries:
-        add_validator(
+        add_or_topup_validator(
             validators=validators,
             pubkey=pubkey,
             proof_of_possession=proof_of_possession,
@@ -718,7 +718,7 @@ def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, proce
     return state
 ```
 
-The `add_validator` routine is defined below.
+The `add_or_topup_validator` routine is defined below.
 
 ### Routine for adding a validator
 
@@ -745,14 +745,14 @@ def get_domain(state: State, slot: int, base_domain: int) -> int:
 Now, to add a validator:
 
 ```python
-def add_validator(state: State,
-                  pubkey: int,
-                  deposit_size: int,
-                  proof_of_possession: bytes,
-                  withdrawal_credentials: Hash32,
-                  randao_commitment: Hash32,
-                  status: int,
-                  current_slot: int) -> int:
+def add_or_topup_validator(state: State,
+                           pubkey: int,
+                           deposit_size: int,
+                           proof_of_possession: bytes,
+                           withdrawal_credentials: Hash32,
+                           randao_commitment: Hash32,
+                           status: int,
+                           current_slot: int) -> int:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
     signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_credentials + randao_commitment
@@ -977,7 +977,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
 
 Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
 
-Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.msg_value, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_credentials, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+Run `add_or_topup_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.msg_value, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_credentials, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 ## State recalculations (every `CYCLE_LENGTH` slots)
 
