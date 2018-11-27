@@ -13,7 +13,7 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 ## Design goals
 The following are the broad design goals for Ethereum 2.0:
 * to minimize complexity, even at the cost of some losses in efficiency
-* to remain live through major network partitions and when very large portions of nodes going offline
+* to remain live through major network partitions and when very large portions of nodes go offline
 * to select all components such that they are either quantum secure or can be easily swapped out for quantum secure counterparts when available
 * to utilize crypto and design techniques that allow for a large participation of validators in total and per unit time
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
