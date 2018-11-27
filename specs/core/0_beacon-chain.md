@@ -138,7 +138,7 @@ An `AttestationRecord` has the following fields:
 
 ```python
 {
-    'data': AttestationSignedData,
+    'data': AttestationData,
     # Attester participation bitfield
     'attester_bitfield': 'bytes',
     # Proof of custody bitfield
@@ -148,7 +148,7 @@ An `AttestationRecord` has the following fields:
 }
 ```
 
-`AttestationSignedData`:
+`AttestationData`:
 
 ```python
 {
@@ -339,7 +339,7 @@ A `ProcessedAttestation` object has the following fields:
 ```python
 {
     # Signed data
-    'data': AttestationSignedData,
+    'data': AttestationData,
     # Attester participation bitfield (2 bits per attester)
     'attester_bitfield': 'bytes',
     # Proof of custody bitfield
@@ -579,15 +579,18 @@ The following is a function that determines the validators that participated in 
 
 ```python
 def get_attestation_participants(state: State,
-                                 attestation_data: AttestationSignedData,
-                                 attester_bitfield: bytes) -> List[int]:
+                                 attestation_data: AttestationData,
+                                 attester_bitfield: bytes,
+                                 poc_bitfield: bytes,
+                                 filter_poc_bit: bool or None) -> List[int]:
     sncs_for_slot = get_shards_and_committees_for_slot(state, attestation_data.slot)
     snc = [x for x in sncs_for_slot if x.shard == attestation_data.shard][0]
-    assert len(attester_bitfield) == ceil_div8(len(snc.committee))
+    assert len(attester_bitfield) == len(poc_bitfield) == ceil_div8(len(snc.committee))
     participants = []
     for i, vindex in enumerate(snc.committee):
-        bit = (attester_bitfield[i//8] >> (7 - (i % 8))) % 2
-        if bit == 1:
+        attester_bit = (attester_bitfield[i//8] >> (7 - (i % 8))) % 2
+        poc_bit = (poc_bitfield[i//8] >> (7 - (i % 8))) % 2
+        if attester_bit == 1 and (filter_poc_bit == poc_bit or filter_poc_bit is None):
             participants.append(vindex)
     return participants
 ```
@@ -734,7 +737,7 @@ def on_startup(current_validators: List[ValidatorRecord],
     crosslinks = [
         CrosslinkRecord(
             slot=0,
-            hash=bytes([0] * 32),
+            hash=bytes([0] * 32)
         )
         for i in range(SHARD_COUNT)
     ]
@@ -884,10 +887,8 @@ def add_validator(state: BeaconState,
 ### Routine for removing a validator
 
 ```python
-
 def exit_validator(index: int,
                    state: BeaconState,
-                   block: BeaconBlock,
                    penalize: bool,
                    current_slot: int) -> None:
     """
@@ -908,7 +909,7 @@ def exit_validator(index: int,
         validator.status = PENALIZED
         whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
         validator.deposit -= whistleblower_xfer_amount
-        state.validators[get_beacon_proposer_index(state, block.slot)].deposit += whistleblower_xfer_amount
+        state.validators[get_beacon_proposer_index(state, current_slot)].deposit += whistleblower_xfer_amount
     else:
         validator.status = PENDING_EXIT
     state.validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
@@ -963,9 +964,9 @@ For each `AttestationRecord` object `obj`:
     * [Regular inclusion] `last_crosslink_hash` equals `state.crosslinks[shard].shard_data_root` and `last_crosslink_slot == state.crosslinks[shard].slot`
     * [Late inclusion] `shard_data_root` equals `state.crosslinks[shard].shard_data_root` and `slot == state.crosslinks[shard].slot`
 * `aggregate_sig` verification:
-    * Let `participants = get_attestation_participants(state, obj.data, obj.attester_bitfield)`
-    * Let `group_public_key = BLSAddPubkeys([state.validators[v].pubkey for v in participants])`
-    * Check `BLSVerify(pubkey=group_public_key, msg=obj.data, sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
+    * Let `bit_0_participants = get_attestation_participants(state, obj.data, obj.attester_bitfield, obj.poc_bitfield, 0)` and `bit_1_participants = get_attestation_participants(state, obj.data, obj.attester_bitfield, obj.poc_bitfield, 1)`
+    * Let `group_public_key_0 = BLSAddPubkeys([state.validators[v].pubkey for v in bit_0_participants])` and `group_public_key_1 = BLSAddPubkeys([state.validators[v].pubkey for v in bit_1_participants])`
+    * Check `BLSMultiVerify(pubkeys=[group_public_key_0, group_public_key_1], msgs=[hash(obj.data)+bytes1(0), hash(obj.data)+bytes1(1)], sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
 * Append `ProcessedAttestation(data=obj.data, attester_bitfield=obj.attester_bitfield, poc_bitfield=obj.poc_bitfield, slot_included=block.slot)` to `state.pending_attestations`.
 
@@ -1008,7 +1009,7 @@ We define the following object `SpecialAttestationData` and helper `verify_speci
 {
     'aggregate_sig_poc_0_indices': '[uint24]',
     'aggregate_sig_poc_1_indices': '[uint24]',
-    'data': AttestationSignedData,
+    'data': AttestationData,
     'aggregate_sig': '[uint256]',
 }
 ```
@@ -1017,10 +1018,7 @@ We define the following object `SpecialAttestationData` and helper `verify_speci
 def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
     pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_0_indices]),
             aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_1_indices])]
-    assert obj.voteproof_of_custody_hash_bit == False
-    obj2 = copy(obj)
-    obj2.voteproof_of_custody_hash_bit = True
-    return BLSMultiVerify(pubkeys=pubs, msgs=[obj, obj2], sig=aggregate_sig)`
+    return BLSMultiVerify(pubkeys=pubs, msgs=[hash(obj)+bytes1(0), hash(obj)+bytes1(1), sig=aggregate_sig)`
 ```
 
 #### LOGOUT
