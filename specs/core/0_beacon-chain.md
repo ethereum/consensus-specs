@@ -761,14 +761,14 @@ def add_validator(state: State,
                      sig=proof_of_possession,
                      domain=get_domain(state, current_slot, DOMAIN_DEPOSIT))
     rec = ValidatorRecord(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            randao_commitment=randao_commitment,
-            randao_skips=0,
-            balance=DEPOSIT_SIZE * GWEI_PER_ETH,
-            status=status,
-            last_status_change_slot=current_slot,
-            exit_seq=0
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        randao_commitment=randao_commitment,
+        randao_skips=0,
+        balance=DEPOSIT_SIZE * GWEI_PER_ETH,
+        status=status,
+        last_status_change_slot=current_slot,
+        exit_seq=0
     )
     # Pubkey uniqueness
     validator_pubkeys = [v.pubkey for v in state.validators]
