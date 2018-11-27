@@ -966,7 +966,7 @@ For each `AttestationRecord` object `obj`:
 * `aggregate_sig` verification:
     * Let `bit_0_participants = get_attestation_participants(state, obj.data, obj.attester_bitfield, obj.poc_bitfield, 0)` and `bit_1_participants = get_attestation_participants(state, obj.data, obj.attester_bitfield, obj.poc_bitfield, 1)`
     * Let `group_public_key_0 = BLSAddPubkeys([state.validators[v].pubkey for v in bit_0_participants])` and `group_public_key_1 = BLSAddPubkeys([state.validators[v].pubkey for v in bit_1_participants])`
-    * Check `BLSMultiVerify(pubkeys=[group_public_key_0, group_public_key_1], msgs=[hash(obj.data)+bytes1(0), hash(obj.data)+bytes1(1)], sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
+    * Check `BLSMultiVerify(pubkeys=[group_public_key_0, group_public_key_1], msgs=[SSZTreeHash(obj.data)+bytes1(0), SSZTreeHash(obj.data)+bytes1(1)], sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
 * Append `ProcessedAttestation(data=obj.data, attester_bitfield=obj.attester_bitfield, poc_bitfield=obj.poc_bitfield, slot_included=block.slot)` to `state.pending_attestations`.
 
@@ -1018,7 +1018,7 @@ We define the following object `SpecialAttestationData` and helper `verify_speci
 def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
     pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_0_indices]),
             aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_1_indices])]
-    return BLSMultiVerify(pubkeys=pubs, msgs=[hash(obj)+bytes1(0), hash(obj)+bytes1(1), sig=aggregate_sig)`
+    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_sig)`
 ```
 
 #### LOGOUT
@@ -1066,7 +1066,7 @@ For each validator index `v` in `intersection`, if `state.validators[v].status` 
     'proposal1_signature': '[uint384]',
 }
 ```
-For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state.fork_data, proposal_data.slot, DOMAIN_PROPOSAL))` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
+For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=SSZTreeHash(proposal_data), sig=proposal_signature, domain=get_domain(state.fork_data, proposal_data.slot, DOMAIN_PROPOSAL))` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
 
 #### DEPOSIT_PROOF
 
