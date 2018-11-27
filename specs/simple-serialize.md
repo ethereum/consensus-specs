@@ -1,6 +1,6 @@
 # [WIP] SimpleSerialize (SSZ) Spec
 
-This is the **work in progress** document to describe `simpleserialize`, the
+This is the **work in progress** document to describe `SimpleSerialize`, the
 current selected serialization method for Ethereum 2.0 using the Beacon Chain.
 
 This document specifies the general information for serializing and
@@ -13,19 +13,22 @@ deserializing objects and data types.
 * [Constants](#constants)
 * [Overview](#overview)
    + [Serialize/Encode](#serializeencode)
-      - [uint: 8/16/24/32/64/256](#uint-816243264256)
+      - [uint](#uint)
+      - [Bool](#bool)
       - [Address](#address)
       - [Hash](#hash)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
       - [Container](#container)
    + [Deserialize/Decode](#deserializedecode)
-      - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
+      - [uint](#uint-1)
+      - [Bool](#bool-1)
       - [Address](#address-1)
       - [Hash](#hash-1)
       - [Bytes](#bytes-1)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
+    + [Tree Hash](#tree-hash)
 * [Implementations](#implementations)
 
 ## About
@@ -50,16 +53,22 @@ overhead.
 
 ## Constants
 
-| Constant       | Value | Definition                                                                            |
-|:---------------|:-----:|:--------------------------------------------------------------------------------------|
-| `LENGTH_BYTES` |   4   | Number of bytes used for the length added before a variable-length serialized object. |
+| Constant          | Value | Definition                                                                            |
+|:------------------|:-----:|:--------------------------------------------------------------------------------------|
+| `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
+| `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chuck size of the Merkle tree leaf.                           |
 
 
 ## Overview
 
 ### Serialize/Encode
 
-#### uint: 8/16/24/32/64/256
+#### uint
+
+| uint Type | Usage                                                      |
+|:---------:|:-----------------------------------------------------------|
+|  `uintN`  | Type of `N` bits unsigned integer, where ``N % 8 == 0``.   |
+
 
 Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
 
@@ -75,7 +84,7 @@ buffer_size = int_size / 8
 return value.to_bytes(buffer_size, 'big')
 ```
 
-#### bool
+#### Bool
 
 Convert directly to a single 0x00 or 0x01 byte.
 
@@ -91,8 +100,7 @@ return b'\x01' if value is True else b'\x00'
 
 #### Address
 
-The `address` should already come as a hash/byte format. Ensure that length is
-**20**.
+The `address` should already come as a hash/byte format. Ensure that length is **20**.
 
 | Check to perform       | Code                 |
 |:-----------------------|:---------------------|
@@ -126,8 +134,7 @@ return value
 
 For general `bytes` type:
 1. Get the length/number of bytes; Encode into a `4-byte` integer.
-2. Append the value to the length and return: ``[ length_bytes ] + [
-   value_bytes ]``
+2. Append the value to the length and return: ``[ length_bytes ] + [ value_bytes ]``
 
 | Check to perform                     | Code                   |
 |:-------------------------------------|:-----------------------|
@@ -233,7 +240,7 @@ At each step, the following checks should be made:
 |:-------------------------|:-----------------------------------------------------------|
 | Ensure sufficient length | ``length(rawbytes) >= current_index + deserialize_length`` |
 
-#### uint: 8/16/24/32/64/256
+#### uint
 
 Convert directly from bytes into integer utilising the number of bytes the same
 size as the integer length. (e.g. ``uint16 == 2 bytes``)
@@ -258,7 +265,7 @@ return True if rawbytes == b'\x01' else False
 
 #### Address
 
-Return the 20 bytes.
+Return the 20-byte deserialized address.
 
 ```python
 assert(len(rawbytes) >= current_index + 20)
@@ -344,9 +351,7 @@ Instantiate a container with the full set of deserialized data, matching each me
 To deserialize:
 
 1. Get the names of the container's fields and sort them.
-
 2. For each name in the sorted list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
-
 3. Construct a container instance after successfully consuming the entire subset of the stream for the serialized container.
 
 **Example in Python**
@@ -383,23 +388,23 @@ assert item_index == start + LENGTH_BYTES + length
 return typ(**values), item_index
 ```
 
-### Tree_hash
+### Tree Hash
 
 The below `tree_hash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
 
 We define `hash(x)` as `BLAKE2b-512(x)[0:32]`.
 
-#### uint: 8/16/24/32/64/256, bool, address, hash32
+#### `uintN`, `bool`, `address`, `hash32`
 
 Return the serialization of the value.
 
-#### bytes, hash96
+#### `bytes`, `hashN`
 
 Return the hash of the serialization of the value.
 
 #### List/Vectors
 
-First, we define some helpers and then the Merkle tree function. The constant `CHUNK_SIZE` is set to 128.
+First, we define some helpers and then the Merkle tree function.
 
 ```python
 # Merkle tree hash of a list of homogenous, non-empty items
@@ -409,10 +414,10 @@ def merkle_hash(lst):
 
     if len(lst) == 0:
         # Handle empty list case
-        chunkz = [b'\x00' * CHUNKSIZE]
-    elif len(lst[0]) < CHUNKSIZE:
+        chunkz = [b'\x00' * SSZ_CHUNK_SIZE]
+    elif len(lst[0]) < SSZ_CHUNK_SIZE:
         # See how many items fit in a chunk
-        items_per_chunk = CHUNKSIZE // len(lst[0])
+        items_per_chunk = SSZ_CHUNK_SIZE // len(lst[0])
 
         # Build a list of chunks based on the number of items in the chunk
         chunkz = [b''.join(lst[i:i+items_per_chunk]) for i in range(0, len(lst), items_per_chunk)]
@@ -423,7 +428,7 @@ def merkle_hash(lst):
     # Tree-hash
     while len(chunkz) > 1:
         if len(chunkz) % 2 == 1:
-            chunkz.append(b'\x00' * CHUNKSIZE)
+            chunkz.append(b'\x00' * SSZ_CHUNK_SIZE)
         chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
 
     # Return hash of root and length data
