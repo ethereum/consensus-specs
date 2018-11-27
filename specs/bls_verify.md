@@ -1,5 +1,7 @@
 ### BLS Verification
 
+**Warning: This document is pending academic review and should not yet be considered secure.**
+
 See https://z.cash/blog/new-snark-curve/ for BLS-12-381 parameters.
 
 We represent coordinates as defined in https://github.com/zkcrypto/pairing/tree/master/src/bls12_381/.
