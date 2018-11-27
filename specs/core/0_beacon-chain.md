@@ -767,7 +767,7 @@ def add_validator(state: State,
             randao_commitment=randao_commitment,
             randao_skips=0,
             balance=DEPOSIT_SIZE * GWEI_PER_ETH,
-        status=status,
+            status=status,
             last_status_change_slot=current_slot,
             exit_seq=0
         )
