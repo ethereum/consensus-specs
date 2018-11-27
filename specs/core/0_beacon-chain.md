@@ -245,9 +245,7 @@ The `BeaconState` has the following fields:
     'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
-    'pre_fork_version': 'uint64',
-    'post_fork_version': 'uint64',
-    'fork_slot_number': 'uint64',
+    'fork_data': ForkData,
     # Attestations not yet processed
     'pending_attestations': [AttestationRecord],
     # recent beacon block hashes needed to process attestations, older to newer
@@ -323,6 +321,18 @@ A `CandidatePoWReceiptRootRecord` object contains the following fields:
     'candidate_pow_receipt_root': 'hash32',
     # Vote count
     'votes': 'uint64'
+}
+```
+
+A `ForkData` object contains the following fields:
+```python
+{
+    # Previous fork version
+    'pre_fork_version': 'uint64',
+    # Post fork version
+    'post_fork_version': 'uint64',
+    # Fork slot number
+    'fork_slot_number': 'uint64'
 }
 ```
 
@@ -669,9 +679,11 @@ def on_startup(current_validators: List[ValidatorRecord],
             randao_commitment in initial_validator_entries:
         validators, _ = get_new_validators(
             current_validators=validators,
-            pre_fork_version=pre_fork_version,
-            post_fork_version=pre_fork_version,
-            fork_slot_number=2**64 - 1,
+            fork_data=ForkData(
+                pre_fork_version=pre_fork_version,
+                post_fork_version=pre_fork_version,
+                fork_slot_number=2**64 - 1,
+            ),
             pubkey=pubkey,
             proof_of_possession=proof_of_possession,
             withdrawal_credentials=withdrawal_credentials,
@@ -735,28 +747,23 @@ def min_empty_validator(validators: List[ValidatorRecord], current_slot: int):
 ```
 
 ```python
-def get_fork_version(pre_fork_version: int,
-                     post_fork_version: int,
-                     fork_slot_number: int,
+def get_fork_version(fork_data: ForkData,
                      slot: int) -> int:
-    return pre_fork_version if slot < fork_slot_number else post_fork_version
-    
-def get_domain(pre_fork_version: int,
-               post_fork_version: int,
-               fork_slot_number: int,
+    if slot < fork_data.fork_slot_number:
+        return fork_data.pre_fork_version
+    else:
+        return fork_data.post_fork_version
+
+def get_domain(fork_data: ForkData,
                slot: int,
                base_domain: int) -> int:
     return get_fork_version(
-        pre_fork_version,
-        post_fork_version,
-        fork_slot_number,
+        fork_data,
         slot
     ) * 2**32 + base_domain
 
 def get_new_validators(current_validators: List[ValidatorRecord],
-                       pre_fork_version: int,
-                       post_fork_version: int,
-                       fork_slot_number: int,
+                       fork_data: ForkData,
                        pubkey: int,
                        proof_of_possession: bytes,
                        withdrawal_credentials: Hash32,
@@ -771,9 +778,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
         msg=hash(signed_message),
         sig=proof_of_possession,
         domain=get_domain(
-            pre_fork_version,
-            post_fork_version,
-            fork_slot_number,
+            fork_data,
             current_slot,
             DOMAIN_DEPOSIT
         )
@@ -812,9 +817,11 @@ def add_validator(state: BeaconState,
                   current_slot: int) -> int:
     state.validators, index = get_new_validators(
         current_validators=state.validators,
-        pre_fork_version=state.pre_fork_version,
-        post_fork_version=state.post_fork_version,
-        fork_slot_number=state.fork_slot_number,
+        fork_data=ForkData(
+            pre_fork_version=state.pre_fork_version,
+            post_fork_version=state.post_fork_version,
+            fork_slot_number=state.fork_slot_number,
+        ),
         pubkey=pubkey,
         proof_of_possession=proof_of_possession,
         withdrawal_credentials=withdrawal_credentials,
@@ -830,7 +837,11 @@ def add_validator(state: BeaconState,
 ### Routine for removing a validator
 
 ```python
-def exit_validator(index, state, block, penalize, current_slot):
+def exit_validator(index: int,
+                   state: BeaconState,
+                   block: BeaconBlock,
+                   penalize: bool,
+                   current_slot: int) -> None:
     validator = state.validators[index]
     validator.last_status_change_slot = current_slot
     validator.exit_seq = state.current_exit_seq
