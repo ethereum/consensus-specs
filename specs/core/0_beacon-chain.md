@@ -773,15 +773,15 @@ def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: i
         if v.status == WITHDRAWN and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
             return i
     return None
-```
 
-```python
+
 def get_fork_version(fork_data: ForkData,
                      slot: int) -> int:
     if slot < fork_data.fork_slot_number:
         return fork_data.pre_fork_version
     else:
         return fork_data.post_fork_version
+
 
 def get_domain(fork_data: ForkData,
                slot: int,
@@ -790,6 +790,7 @@ def get_domain(fork_data: ForkData,
         fork_data,
         slot
     ) * 2**32 + base_domain
+
 
 def get_new_validators(current_validators: List[ValidatorRecord],
                        fork_data: ForkData,
@@ -846,6 +847,10 @@ def add_validator(state: BeaconState,
                   randao_commitment: Hash32,
                   status: int,
                   current_slot: int) -> int:
+    """
+    Add the validator into the given `state`.
+    Note that this function mutates `state`.
+    """
     state.validators, index = get_new_validators(
         current_validators=state.validators,
         fork_data=ForkData(
@@ -874,6 +879,10 @@ def exit_validator(index: int,
                    block: BeaconBlock,
                    penalize: bool,
                    current_slot: int) -> None:
+    """
+    Remove the validator with the given `index` from `state`.
+    Note that this function mutates `state`.
+    """
     validator = state.validators[index]
     validator.last_status_change_slot = current_slot
     validator.exit_seq = state.current_exit_seq
@@ -1163,10 +1172,16 @@ A validator set change can happen if all of the following criteria are satisfied
 * `last_finalized_slot > state.validator_set_change_slot`
 * For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_set_change_slot`
 
-Then, run the following algorithm to update the validator set:
+A helper function is defined as:
 
 ```python
-def change_validators(validators: List[ValidatorRecord], current_slot: int) -> None:
+def get_changed_validators(validators: List[ValidatorRecord],
+                           deposits_penalized_in_period: List[int],
+                           validator_set_delta_hash_chain: int,
+                           current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
+    """
+    Return changed validator set and `deposits_penalized_in_period`, `validator_set_delta_hash_chain`.
+    """
     # The active validator set
     active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
@@ -1182,8 +1197,8 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE * GWEI_PER_ETH
-            state.validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
-                validator_set_delta_hash_chain=state.validator_set_delta_hash_chain,
+            validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
+                validator_set_delta_hash_chain=validator_set_delta_hash_chain,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=ENTRY,
@@ -1192,8 +1207,8 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
             validators[i].status = PENDING_WITHDRAW
             validators[i].last_status_change_slot = current_slot
             total_changed += balance_at_stake(validators[i])
-            state.validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
-                validator_set_delta_hash_chain=state.validator_set_delta_hash_chain,
+            validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
+                validator_set_delta_hash_chain=validator_set_delta_hash_chain,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=EXIT,
@@ -1204,9 +1219,9 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
     total_penalties = (
-        (state.deposits_penalized_in_period[period_index]) +
-        (state.deposits_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
-        (state.deposits_penalized_in_period[period_index - 2] if period_index >= 2 else 0)
+        (deposits_penalized_in_period[period_index]) +
+        (deposits_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
+        (deposits_penalized_in_period[period_index - 2] if period_index >= 2 else 0)
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
@@ -1222,7 +1237,26 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
         v.last_status_change_slot = current_slot
 
         withdraw_amount = v.balance
-        # STUB: withdraw to shard chain    
+        # STUB: withdraw to shard chain   
+
+    return validators, deposits_penalized_in_period, validator_set_delta_hash_chain
+```
+
+Then, run the following algorithm to update the validator set:
+
+```python
+def change_validators(state: BeaconState,
+                      current_slot: int) -> None:
+    """
+    Change validator set.
+    Note that this function mutates `state`.
+    """
+    state.validators, state.deposits_penalized_in_period = get_changed_validators(
+        copy.deepcopy(state.validators),
+        copy.deepcopy(state.deposits_penalized_in_period),
+        state.validator_set_delta_hash_chain,
+        current_slot
+    )
 ```
 
 And perform the following updates to the `state`:
