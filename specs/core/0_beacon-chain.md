@@ -236,9 +236,7 @@ The `BeaconState` has the following fields:
     'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
     # Parameters relevant to hard forks / versioning.
     # Should be updated only by hard forks.
-    'pre_fork_version': 'uint64',
-    'post_fork_version': 'uint64',
-    'fork_slot_number': 'uint64',
+    'fork_data': ForkData,
     # Attestations not yet processed
     'pending_attestations': [ProcessedAttestations],
     # recent beacon block hashes needed to process attestations, older to newer
@@ -317,8 +315,18 @@ A `CandidatePoWReceiptRootRecord` object contains the following fields:
 }
 ```
 
-A `ProcessedAttestation` object has the following fields:
+A `ForkData` object contains the following fields:
+```python
+{
+    # Previous fork version
+    'pre_fork_version': 'uint64',
+    # Post fork version
+    'post_fork_version': 'uint64',
+    # Fork slot number
+    'fork_slot_number': 'uint64'
+```
 
+A `ProcessedAttestation` object has the following fields:
 ```python
 {
     # Signed data
@@ -586,13 +594,17 @@ def balance_at_stake(validator: ValidatorRecord) -> int:
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
 
 ```python
-def add_validator_set_change_record(state: BeaconState,
-                                    index: int,
-                                    pubkey: int,
-                                    flag: int) -> None:
-    state.validator_set_delta_hash_chain = \
-        hash(state.validator_set_delta_hash_chain +
-             bytes1(flag) + bytes3(index) + bytes32(pubkey))
+def get_new_validator_set_delta_hash_chain(current_validator_set_delta_hash_chain: Hash32,
+                                           index: int,
+                                           pubkey: int,
+                                           flag: int) -> Hash32:
+    new_validator_set_delta_hash_chain = hash(
+        current_validator_set_delta_hash_chain +
+        bytes1(flag) +
+        bytes3(index) +
+        bytes32(pubkey)
+    )
+    return new_validator_set_delta_hash_chain
 ```
 
 Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
@@ -684,13 +696,22 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 `STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any], genesis_time: uint64, processed_pow_receipt_root: Hash32) -> BeaconState:
+def on_startup(current_validators: List[ValidatorRecord],
+               pre_fork_version: int,
+               initial_validator_entries: List[Any],
+               genesis_time: int,
+               processed_pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
     validators = []
     for pubkey, proof_of_possession, withdrawal_credentials, \
             randao_commitment in initial_validator_entries:
-        add_validator(
-            validators=validators,
+        validators, _ = get_new_validators(
+            current_validators=validators,
+            fork_data=ForkData(
+                pre_fork_version=pre_fork_version,
+                post_fork_version=pre_fork_version,
+                fork_slot_number=2**64 - 1,
+            ),
             pubkey=pubkey,
             proof_of_possession=proof_of_possession,
             withdrawal_credentials=withdrawal_credentials,
@@ -752,35 +773,49 @@ def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: i
         if v.status == WITHDRAWN and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
             return i
     return None
-```
 
-```python
-def get_fork_version(state: State, slot: int) -> int:
-    return state.pre_fork_version if slot < state.fork_slot_number else state.post_fork_version
-    
-def get_domain(state: State, slot: int, base_domain: int) -> int:
-    return get_fork_version(state, slot) * 2**32 + base_domain
-```
 
-Now, to add a validator:
+def get_fork_version(fork_data: ForkData,
+                     slot: int) -> int:
+    if slot < fork_data.fork_slot_number:
+        return fork_data.pre_fork_version
+    else:
+        return fork_data.post_fork_version
 
-```python
-def add_validator(state: State,
-                  pubkey: int,
-                  proof_of_possession: bytes,
-                  withdrawal_credentials: Hash32,
-                  randao_commitment: Hash32,
-                  status: int,
-                  current_slot: int) -> int:
+
+def get_domain(fork_data: ForkData,
+               slot: int,
+               base_domain: int) -> int:
+    return get_fork_version(
+        fork_data,
+        slot
+    ) * 2**32 + base_domain
+
+
+def get_new_validators(current_validators: List[ValidatorRecord],
+                       fork_data: ForkData,
+                       pubkey: int,
+                       proof_of_possession: bytes,
+                       withdrawal_credentials: Hash32,
+                       randao_commitment: Hash32,
+                       status: int,
+                       current_slot: int) -> Tuple[List[ValidatorRecord], int]:
     # if following assert fails, validator induction failed
     # move on to next validator registration log
-    signed_message = bytes32(pubkey) + bytes2(withdrawal_shard) + withdrawal_credentials + randao_commitment
-    assert BLSVerify(pub=pubkey,
-                     msg=hash(signed_message),
-                     sig=proof_of_possession,
-                     domain=get_domain(state, current_slot, DOMAIN_DEPOSIT))
+    signed_message = bytes32(pubkey) + withdrawal_credentials + randao_commitment
+    assert BLSVerify(
+        pub=pubkey,
+        msg=hash(signed_message),
+        sig=proof_of_possession,
+        domain=get_domain(
+            fork_data,
+            current_slot,
+            DOMAIN_DEPOSIT
+        )
+    )
     # Pubkey uniqueness
-    assert pubkey not in [v.pubkey for v in state.validators]
+    new_validators = copy.deepcopy(current_validators)
+    assert pubkey not in [v.pubkey for v in current_validators]
     rec = ValidatorRecord(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -792,12 +827,45 @@ def add_validator(state: State,
         exit_seq=0
     )
     # Add the validator
-    index = min_empty_validator_index(state.validators)
+    index = min_empty_validator_index(current_validators)
     if index is None:
-        state.validators.append(rec)
-        index = len(state.validators) - 1
+        new_validators.append(rec)
+        index = len(new_validators) - 1
     else:
-        state.validators[index] = rec
+        new_validators[index] = rec
+
+    return new_validators, index
+```
+
+Now, to add a validator:
+
+```python
+def add_validator(state: BeaconState,
+                  pubkey: int,
+                  proof_of_possession: bytes,
+                  withdrawal_credentials: Hash32,
+                  randao_commitment: Hash32,
+                  status: int,
+                  current_slot: int) -> int:
+    """
+    Add the validator into the given `state`.
+    Note that this function mutates `state`.
+    """
+    state.validators, index = get_new_validators(
+        current_validators=state.validators,
+        fork_data=ForkData(
+            pre_fork_version=state.pre_fork_version,
+            post_fork_version=state.post_fork_version,
+            fork_slot_number=state.fork_slot_number,
+        ),
+        pubkey=pubkey,
+        proof_of_possession=proof_of_possession,
+        withdrawal_credentials=withdrawal_credentials,
+        randao_commitment=randao_commitment,
+        status=status,
+        current_slot=current_slot,
+    )
+
     return index
 ```
 
@@ -806,7 +874,15 @@ def add_validator(state: State,
 ### Routine for removing a validator
 
 ```python
-def exit_validator(index, state, block, penalize, current_slot):
+def exit_validator(index: int,
+                   state: BeaconState,
+                   block: BeaconBlock,
+                   penalize: bool,
+                   current_slot: int) -> None:
+    """
+    Remove the validator with the given `index` from `state`.
+    Note that this function mutates `state`.
+    """
     validator = state.validators[index]
     validator.last_status_change_slot = current_slot
     validator.exit_seq = state.current_exit_seq
@@ -824,7 +900,12 @@ def exit_validator(index, state, block, penalize, current_slot):
         state.validators[get_beacon_proposer_index(state, block.slot)].deposit += whistleblower_xfer_amount
     else:
         validator.status = PENDING_EXIT
-    add_validator_set_change_record(state, index, validator.pubkey, EXIT)
+    state.validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
+        validator_set_delta_hash_chain=state.validator_set_delta_hash_chain,
+        index=index,
+        pubkey=validator.pubkey,
+        flag=EXIT,
+    )
 ```
 
 ## Per-block processing
@@ -871,7 +952,7 @@ For each `AttestationRecord` object `obj`:
 * `aggregate_sig` verification:
     * Let `participants = get_attestation_participants(state, obj.data, obj.attester_bitfield)`
     * Let `group_public_key = BLSAddPubkeys([state.validators[v].pubkey for v in participants])`
-    * Check `BLSVerify(pubkey=group_public_key, msg=obj.data, sig=aggregate_sig, domain=get_domain(state, slot, DOMAIN_ATTESTATION))`.
+    * Check `BLSVerify(pubkey=group_public_key, msg=obj.data, sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
 * Append `ProcessedAttestation(data=obj.data, attester_bitfield=obj.attester_bitfield, poc_bitfield=obj.poc_bitfield, slot_included=block.slot)` to `state.pending_attestations`.
 
@@ -879,7 +960,7 @@ For each `AttestationRecord` object `obj`:
 
 Let `proposal_hash = hash(ProposalSignedData(block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
 
-Verify that `BLSVerify(pubkey=state.validators[get_beacon_proposer_index(state, block.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state, block.slot, DOMAIN_PROPOSAL))` passes.
+Verify that `BLSVerify(pubkey=state.validators[get_beacon_proposer_index(state, block.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state.fork_data, block.slot, DOMAIN_PROPOSAL))` passes.
 
 ### Verify and process RANDAO reveal
 
@@ -917,10 +998,9 @@ For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is on
 }
 ```
 Perform the following checks:
-
-* Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=bytes([0] * 32), sig=data.signature, domain=get_domain(state, current_slot, DOMAIN_LOGOUT))`
+* Verify that `BLSVerify(pubkey=validators[data.validator_index].pubkey, msg=bytes([0] * 32), sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_LOGOUT))`.
 * Verify that `validators[validator_index].status == ACTIVE`.
-* Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`
+* Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
 
 Run `exit_validator(data.validator_index, state, block, penalize=False, current_slot=block.slot)`.
 
@@ -939,7 +1019,7 @@ Run `exit_validator(data.validator_index, state, block, penalize=False, current_
 
 Perform the following checks:
 
-* For each `vote`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in vote_aggregate_sig_indices]), msg=vote_data, sig=vote_aggregate_sig, domain=get_domain(state, vote_data.slot, DOMAIN_ATTESTATION))` passes.
+* For each `vote`, verify that `BLSVerify(pubkey=aggregate_pubkey([validators[i].pubkey for i in vote_aggregate_sig_indices]), msg=vote_data, sig=vote_aggregate_sig, domain=get_domain(state.fork_data, vote_data.slot, DOMAIN_ATTESTATION))` passes.
 * Verify that `vote1_data != vote2_data`.
 * Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
@@ -957,7 +1037,7 @@ For each validator index `v` in `intersection`, if `state.validators[v].status` 
     'proposal1_signature': '[uint384]',
 }
 ```
-For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state, proposal_data.slot, DOMAIN_PROPOSAL))` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
+For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state.fork_data, proposal_data.slot, DOMAIN_PROPOSAL))` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validators[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
 
 #### DEPOSIT_PROOF
 
@@ -990,7 +1070,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
 
 Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
 
-Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_credentials, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+Run `add_validator(state, pubkey=deposit_data.deposit_params.pubkey, proof_of_possession=deposit_data.deposit_params.proof_of_possession, withdrawal_credentials=deposit_data.deposit_params.withdrawal_credentials, randao_commitment=deposit_data.deposit_params.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
 
 ## Cycle boundary processing
 
@@ -1092,10 +1172,16 @@ A validator set change can happen if all of the following criteria are satisfied
 * `last_finalized_slot > state.validator_set_change_slot`
 * For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_set_change_slot`
 
-Then, run the following algorithm to update the validator set:
+A helper function is defined as:
 
 ```python
-def change_validators(validators: List[ValidatorRecord], current_slot: int) -> None:
+def get_changed_validators(validators: List[ValidatorRecord],
+                           deposits_penalized_in_period: List[int],
+                           validator_set_delta_hash_chain: int,
+                           current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
+    """
+    Return changed validator set and `deposits_penalized_in_period`, `validator_set_delta_hash_chain`.
+    """
     # The active validator set
     active_validators = get_active_validator_indices(validators)
     # The total balance of active validators
@@ -1111,21 +1197,21 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
             total_changed += DEPOSIT_SIZE * GWEI_PER_ETH
-            add_validator_set_change_record(
-                state=state,
+            validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
+                validator_set_delta_hash_chain=validator_set_delta_hash_chain,
                 index=i,
                 pubkey=validators[i].pubkey,
-                flag=ENTRY
+                flag=ENTRY,
             )
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
             validators[i].last_status_change_slot = current_slot
             total_changed += balance_at_stake(validators[i])
-            add_validator_set_change_record(
-                state=state,
+            validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
+                validator_set_delta_hash_chain=validator_set_delta_hash_chain,
                 index=i,
                 pubkey=validators[i].pubkey,
-                flag=EXIT
+                flag=EXIT,
             )
         if total_changed >= max_allowable_change:
             break
@@ -1133,9 +1219,9 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
     total_penalties = (
-        (state.deposits_penalized_in_period[period_index]) +
-        (state.deposits_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
-        (state.deposits_penalized_in_period[period_index - 2] if period_index >= 2 else 0)
+        (deposits_penalized_in_period[period_index]) +
+        (deposits_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
+        (deposits_penalized_in_period[period_index - 2] if period_index >= 2 else 0)
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
@@ -1151,7 +1237,26 @@ def change_validators(validators: List[ValidatorRecord], current_slot: int) -> N
         v.last_status_change_slot = current_slot
 
         withdraw_amount = v.balance
-        # STUB: withdraw to shard chain    
+        # STUB: withdraw to shard chain   
+
+    return validators, deposits_penalized_in_period, validator_set_delta_hash_chain
+```
+
+Then, run the following algorithm to update the validator set:
+
+```python
+def change_validators(state: BeaconState,
+                      current_slot: int) -> None:
+    """
+    Change validator set.
+    Note that this function mutates `state`.
+    """
+    state.validators, state.deposits_penalized_in_period = get_changed_validators(
+        copy.deepcopy(state.validators),
+        copy.deepcopy(state.deposits_penalized_in_period),
+        state.validator_set_delta_hash_chain,
+        current_slot
+    )
 ```
 
 And perform the following updates to the `state`:
