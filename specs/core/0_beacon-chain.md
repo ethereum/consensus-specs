@@ -34,6 +34,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | --- | --- | :---: | - |
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
 | `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
+| `MIN_TOPUP_SIZE` | 1 | ETH |
 | `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
@@ -743,6 +744,7 @@ Now, to add a validator:
 ```python
 def add_validator(state: State,
                   pubkey: int,
+                  deposit_size: int,
                   proof_of_possession: bytes,
                   withdrawal_credentials: Hash32,
                   randao_commitment: Hash32,
@@ -756,23 +758,32 @@ def add_validator(state: State,
                      sig=proof_of_possession,
                      domain=get_domain(state, current_slot, DOMAIN_DEPOSIT))
     # Pubkey uniqueness
-    assert pubkey not in [v.pubkey for v in state.validators]
-    rec = ValidatorRecord(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        randao_commitment=randao_commitment,
-        randao_skips=0,
-        balance=DEPOSIT_SIZE * GWEI_PER_ETH,
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if pubkey not in validator_pubkeys:
+        assert deposit_size == DEPOSIT_SIZE`
+        rec = ValidatorRecord(
+            pubkey=pubkey,
+            withdrawal_credentials=withdrawal_credentials,
+            randao_commitment=randao_commitment,
+            randao_skips=0,
+            balance=DEPOSIT_SIZE * GWEI_PER_ETH,
         status=status,
-        last_status_change_slot=current_slot,
-        exit_seq=0
-    )
-    index = min_empty_validator(state.validators)
-    if index is None:
-        state.validators.append(rec)
-        return len(state.validators) - 1
+            last_status_change_slot=current_slot,
+            exit_seq=0
+        )
+        index = min_empty_validator(state.validators)
+        if index is None:
+            state.validators.append(rec)
+            return len(state.validators) - 1
+        else:
+            state.validators[index] = rec
+            return index
     else:
-        state.validators[index] = rec
+        index = validator_pubkeys.index(pubkey)
+        val = state.validators[index]
+        assert val.withdrawal_credentials == withdrawal_credentials
+        assert deposit_size >= MIN_TOPUP_SIZE
+        val.balance += deposit_size
         return index
 ```
 
@@ -959,9 +970,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-Verify that `deposit_data.msg_value == DEPOSIT_SIZE` and `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
-
-Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_credentials, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
+Run `add_validator(validators, deposit_data.deposit_params.pubkey, deposit_data.msg_value, deposit_data.deposit_params.proof_of_possession, deposit_data.deposit_params.withdrawal_credentials, deposit_data.deposit_params.randao_commitment, PENDING_ACTIVATION, block.slot)`.
 
 ## State recalculations (every `CYCLE_LENGTH` slots)
 
