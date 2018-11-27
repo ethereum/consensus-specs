@@ -747,7 +747,7 @@ This routine should be run for every validator that is inducted as part of a log
 First, some helper functions:
 
 ```python
-def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int):
+def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int) -> int:
     for i, v in enumerate(validators):
         if v.status == WITHDRAWN and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
             return i
