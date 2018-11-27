@@ -551,7 +551,7 @@ def get_block_hash(state: BeaconState,
 The following is a function that determines the proposer of a beacon block:
 
 ```python
-def get_beacon_proposer_index(state:BeaconState, slot: int) -> ValidatorRecord:
+def get_beacon_proposer_index(state:BeaconState, slot: int) -> int:
     first_committee = get_shards_and_committees_for_slot(state, slot)[0].committee
     index = first_committee[slot % len(first_committee)]
     return index
