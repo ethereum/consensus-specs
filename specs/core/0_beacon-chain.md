@@ -1085,35 +1085,6 @@ If `last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 * If for any `x` in `state.candidate_pow_receipt_root`,  `x.votes * 2 >= POW_RECEIPT_ROOT_VOTING_PERIOD` set `state.processed_pow_receipt_root = x.receipt_root`.
 * Set `state.candidate_pow_receipt_roots = []`.
 
-#### Proposer reshuffling
-
-Run the following code to update the shard proposer set:
-
-```python
-active_validator_indices = get_active_validator_indices(validators)
-num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-for i in range(num_validators_to_reshuffle):
-    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
-    # and none of the hashes used for entropy in this loop will be the same
-    vid = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
-    new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
-    shard_reassignment_record = ShardReassignmentRecord(
-        validator_index=vid,
-        shard=new_shard,
-        slot=s + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-    )
-    state.persistent_committee_reassignments.append(shard_reassignment_record)
-
-while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= s:
-    rec = state.persistent_committee_reassignments.pop(0)
-    for committee in state.persistent_committees:
-        if rec.validator_index in committee:
-            committee.pop(
-                committee.index(rec.validator_index)
-            )
-    state.persistent_committees[rec.shard].append(rec.validator_index)
-```
-
 #### Validator set change
 
 A validator set change can happen if all of the following criteria are satisfied:
@@ -1197,6 +1168,35 @@ And perform the following updates to the `state`:
 * Let `time_since_finality = block.slot - state.validator_set_change_slot`
 * Let `start_shard = state.shard_and_committee_for_slots[0][0].shard`
 * If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, validators, start_shard)` and set `state.next_shuffling_seed = state.randao_mix`. Note that `start_shard` is not changed from last cycle.
+
+#### Proposer reshuffling
+
+Run the following code to update the shard proposer set:
+
+```python
+active_validator_indices = get_active_validator_indices(validators)
+num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
+for i in range(num_validators_to_reshuffle):
+    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
+    # and none of the hashes used for entropy in this loop will be the same
+    vid = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
+    new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
+    shard_reassignment_record = ShardReassignmentRecord(
+        validator_index=vid,
+        shard=new_shard,
+        slot=s + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
+    )
+    state.persistent_committee_reassignments.append(shard_reassignment_record)
+
+while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= s:
+    rec = state.persistent_committee_reassignments.pop(0)
+    for committee in state.persistent_committees:
+        if rec.validator_index in committee:
+            committee.pop(
+                committee.index(rec.validator_index)
+            )
+    state.persistent_committees[rec.shard].append(rec.validator_index)
+```
 
 #### Finally...
 
