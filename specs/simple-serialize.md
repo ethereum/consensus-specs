@@ -53,10 +53,10 @@ overhead.
 
 ## Constants
 
-| Constant       | Value | Definition                                                                            |
-|:---------------|:-----:|:--------------------------------------------------------------------------------------|
-| `LENGTH_BYTES` |   4   | Number of bytes used for the length added before a variable-length serialized object. |
-| `CHUNK_SIZE`   |  128  | The chuck size of the Merkle tree leaf.                                               | 
+| Constant          | Value | Definition                                                                            |
+|:------------------|:-----:|:--------------------------------------------------------------------------------------|
+| `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
+| `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chuck size of the Merkle tree leaf.                           |
 
 
 ## Overview
@@ -65,9 +65,9 @@ overhead.
 
 #### uint
 
-| uint Type | Usage                                           |
-|:---------:|:------------------------------------------------|
-|  `uintN`  | Type of arbitrary `N` bits unsigned integer.    |
+| uint Type | Usage                                                      |
+|:---------:|:-----------------------------------------------------------|
+|  `uintN`  | Type of `N` bits unsigned integer, where ``N % 8 == 0``.   |
 
 
 Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
@@ -414,10 +414,10 @@ def merkle_hash(lst):
 
     if len(lst) == 0:
         # Handle empty list case
-        chunkz = [b'\x00' * CHUNK_SIZE]
-    elif len(lst[0]) < CHUNK_SIZE:
+        chunkz = [b'\x00' * SSZ_CHUNK_SIZE]
+    elif len(lst[0]) < SSZ_CHUNK_SIZE:
         # See how many items fit in a chunk
-        items_per_chunk = CHUNK_SIZE // len(lst[0])
+        items_per_chunk = SSZ_CHUNK_SIZE // len(lst[0])
 
         # Build a list of chunks based on the number of items in the chunk
         chunkz = [b''.join(lst[i:i+items_per_chunk]) for i in range(0, len(lst), items_per_chunk)]
@@ -428,7 +428,7 @@ def merkle_hash(lst):
     # Tree-hash
     while len(chunkz) > 1:
         if len(chunkz) % 2 == 1:
-            chunkz.append(b'\x00' * CHUNK_SIZE)
+            chunkz.append(b'\x00' * SSZ_CHUNK_SIZE)
         chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
 
     # Return hash of root and length data
