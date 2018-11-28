@@ -88,7 +88,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
-| `SQRT_E_DROP_TIME` | 2**11 (= 1,024) | cycles | ~9 days |
+| `SQRT_E_DROP_TIME` | 2**11 (= 2,048) | cycles | ~9 days |
 | `WITHDRAWALS_PER_CYCLE` | 2**2 (=4) | validators | 5.2m ETH in ~6 months |
 | `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8,192) | slots | ~14 hours |
 | `DELETION_PERIOD` | 2**22 (= 4,194,304) | slots | ~290 days |
