@@ -11,6 +11,7 @@
     * [Terminology](#terminology)
     * [Constants](#constants)
     * [PoW chain registration contract](#pow-chain-registration-contract)
+        * [Contract code in Vyper](#contract-code-in-vyper)
     * [Data structures](#data-structures)
         * [Beacon chain blocks](#beacon-chain-blocks)
         * [Beacon chain state](#beacon-chain-state)
@@ -18,7 +19,6 @@
         * [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     * [Beacon chain state transition function](#beacon-chain-state-transition-function)
         * [Helper functions](#helper-functions)
-        * [PoW chain contract](#pow-chain-contract)
         * [On startup](#on-startup)
         * [Routine for adding a validator](#routine-for-adding-a-validator)
         * [Routine for removing a validator](#routine-for-removing-a-validator)
@@ -150,6 +150,72 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
 The registration contract emits a log with the various arguments for consumption by the beacon chain. It does not do validation, pushing the registration logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
+
+### Contract code in Vyper
+
+The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
+
+```python
+DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
+DEPOSIT_SIZE: constant(uint256) = 32  # ETH
+MIN_TOPUP_SIZE: constant(uint256) = 1  # ETH
+GWEI_PER_ETH: constant(uint256) = 10**9
+POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
+SECONDS_PER_DAY: constant(uint256) = 86400
+
+HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: uint256})
+ChainStart: event({receipt_root: bytes32, time: bytes[8]})
+
+receipt_tree: bytes32[uint256]
+total_deposit_count: uint256
+
+@payable
+@public
+def deposit(deposit_params: bytes[2048]):
+    index: uint256 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
+    timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
+    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_params)
+
+    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)
+
+    self.receipt_tree[index] = sha3(deposit_data)
+    for i in range(32):  # POW_CONTRACT_MERKLE_TREE_DEPTH (range of constant var not yet supported)
+        index /= 2
+        self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
+
+    assert msg.value >= as_wei_value(MIN_TOPUP_SIZE, "ether")
+    assert msg.value <= as_wei_value(DEPOSIT_SIZE, "ether")
+    if msg.value == as_wei_value(DEPOSIT_SIZE, "ether"):
+        self.total_deposit_count += 1
+    if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
+        timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
+        timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
+        log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
+
+@public
+@constant
+def get_receipt_root() -> bytes32:
+    return self.receipt_tree[1]
+
+```
+
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along `DEPOSIT_SIZE` ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
+
+```python
+{
+    'pubkey': 'int256',
+    'proof_of_possession': ['int256'],
+    'withdrawal_credentials`: 'hash32',
+    'randao_commitment`: 'hash32'
+}
+```
+
+If the user wishes to deposit more than `DEPOSIT_SIZE` ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
+
+* `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
+* `genesis_time` equal to the `time` value published in the log
+* `processed_pow_receipt_root` equal to the `receipt_root` value published in the log
 
 ## Data structures
 ### Beacon chain blocks
@@ -663,72 +729,6 @@ def int_sqrt(n: int) -> int:
     return x
 ```
 
-### PoW chain contract
-
-The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
-
-```python
-DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
-DEPOSIT_SIZE: constant(uint256) = 32  # ETH
-MIN_TOPUP_SIZE: constant(uint256) = 1  # ETH
-GWEI_PER_ETH: constant(uint256) = 10**9
-POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
-SECONDS_PER_DAY: constant(uint256) = 86400
-
-HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: uint256})
-ChainStart: event({receipt_root: bytes32, time: bytes[8]})
-
-receipt_tree: bytes32[uint256]
-total_deposit_count: uint256
-
-@payable
-@public
-def deposit(deposit_params: bytes[2048]):
-    index: uint256 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
-    timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
-    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_params)
-
-    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)
-
-    self.receipt_tree[index] = sha3(deposit_data)
-    for i in range(32):  # POW_CONTRACT_MERKLE_TREE_DEPTH (range of constant var not yet supported)
-        index /= 2
-        self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
-
-    assert msg.value >= as_wei_value(MIN_TOPUP_SIZE, "ether")
-    assert msg.value <= as_wei_value(DEPOSIT_SIZE, "ether")
-    if msg.value == as_wei_value(DEPOSIT_SIZE, "ether"):
-        self.total_deposit_count += 1
-    if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
-        timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
-        timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
-        log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
-
-@public
-@constant
-def get_receipt_root() -> bytes32:
-    return self.receipt_tree[1]
-
-```
-
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along `DEPOSIT_SIZE` ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
-
-```python
-{
-    'pubkey': 'int256',
-    'proof_of_possession': ['int256'],
-    'withdrawal_credentials`: 'hash32',
-    'randao_commitment`: 'hash32'
-}
-```
-
-If the user wishes to deposit more than `DEPOSIT_SIZE` ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
-
-* `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
-* `genesis_time` equal to the `time` value published in the log
-* `processed_pow_receipt_root` equal to the `receipt_root` value published in the log
-
 ### On startup
 
 A valid block with slot `0` (the "genesis block") has the following values. Other validity rules (eg. requiring a signature) do not apply.
@@ -1124,7 +1124,7 @@ For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer
 }
 ```
 
-Note that `deposit_data` in serialized form should be the `DepositParams` followed by 8 bytes for the `msg_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the PoW contract of which the hash was placed into the Merkle tree.
+Note that `deposit_data` in serialized form should be the `DepositParams` followed by 8 bytes for the `msg_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [PoW chain registration contract](#pow-chain-registration-contract) of which the hash was placed into the Merkle tree.
 
 Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
