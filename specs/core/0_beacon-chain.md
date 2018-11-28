@@ -8,7 +8,7 @@
     * [Introduction](#introduction)
     * [Terminology](#terminology)
     * [Constants](#constants)
-    * [PoW chain deposit contract](#pow-chain-deposit-contract)
+    * [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract)
         * [Contract code in Vyper](#contract-code-in-vyper)
     * [Data structures](#data-structures)
         * [Beacon chain blocks](#beacon-chain-blocks)
@@ -35,7 +35,7 @@
         * [Adjust justified slots and crosslink status](#adjust-justified-slots-and-crosslink-status)
         * [Balance recalculations related to FFG rewards](#balance-recalculations-related-to-ffg-rewards)
         * [Balance recalculations related to crosslink rewards](#balance-recalculations-related-to-crosslink-rewards)
-        * [PoW chain related rules](#pow-chain-related-rules)
+        * [Ethereum 1.0 chain related rules](#ethereum-10-chain-related-rules)
         * [Validator set change](#validator-set-change)
         * [If a validator set change does NOT happen](#if-a-validator-set-change-does-not-happen)
         * [Proposer reshuffling](#proposer-reshuffling)
@@ -48,7 +48,7 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on the Ethereum 1.0 PoW chain. Activation as a validator happens when deposit transaction receipts are processed by the beaocn chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on the Ethereum 1.0 chain. Activation as a validator happens when deposit transaction receipts are processed by the beaocn chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain are "attestations". Attestations are availability votes for a shard block, and simultaneously attest to the corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
@@ -147,39 +147,39 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_EXIT` | `3` |
 
-## PoW chain deposit contract
+## Ethereum 1.0 chain deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A deposit contract is added to the PoW chain to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the Ethereum 1.0 chain. A deposit contract is added to the Ethereum 1.0 chain to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
 The deposit contract emits a log with the various arguments for consumption by the beacon chain. It does little validation, pushing the deposit logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the deposit contract.
 
 ### Contract code in Vyper
 
-The beacon chain is initialized when a condition is met inside a contract on the existing PoW chain. This contract's code in Vyper is as follows:
+The beacon chain is initialized when a condition is met inside a contract on the existing Ethereum 1.0 chain. This contract's code in Vyper is as follows:
 
 ```python
-DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
+MAX_DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
 MAX_DEPOSIT: constant(uint256) = 32  # ETH
 MIN_DEPOSIT: constant(uint256) = 1  # ETH
 GWEI_PER_ETH: constant(uint256) = 10**9
 POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], total_deposit_count: uint256})
+HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], max_deposit_count: uint256})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
 receipt_tree: bytes32[uint256]
-total_deposit_count: uint256
+max_deposit_count: uint256
 
 @payable
 @public
-def deposit(deposit_params: bytes[2048]):
-    index: uint256 = self.total_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+def deposit(deposit_parameters: bytes[2048]):
+    index: uint256 = self.max_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
-    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_params)
+    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
 
-    log.HashChainValue(self.receipt_tree[1], deposit_data, self.total_deposit_count)
+    log.HashChainValue(self.receipt_tree[1], deposit_data, self.max_deposit_count)
 
     self.receipt_tree[index] = sha3(deposit_data)
     for i in range(32):  # POW_CONTRACT_MERKLE_TREE_DEPTH (range of constant var not yet supported)
@@ -189,8 +189,8 @@ def deposit(deposit_params: bytes[2048]):
     assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
     assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
-        self.total_deposit_count += 1
-    if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
+        self.max_deposit_count += 1
+    if self.max_deposit_count == MAX_DEPOSITS_FOR_CHAIN_START:
         timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
         timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
         log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
@@ -202,7 +202,7 @@ def get_receipt_root() -> bytes32:
 
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending up to `MAX_DEPOSIT` ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the Ethereum 1.0 chain to the Ethereum 2.0 chain, they should call the `deposit` function, sending up to `MAX_DEPOSIT` ETH and providing as `deposit_parameters` a SimpleSerialize'd `DepositParameters` object of the form:
 
 ```python
 {
@@ -451,13 +451,13 @@ The beacon chain is the "main chain" of the PoS system. The beacon chain's main 
 * Process crosslinks (see above)
 * Process its own block-by-block consensus, as well as the finality gadget
 
-Processing the beacon chain is fundamentally similar to processing a PoW chain in many respects. Clients download and process blocks, and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with the existing PoW chain, and because it is a PoS chain, there are differences.
+Processing the beacon chain is fundamentally similar to processing a Ethereum 1.0 chain in many respects. Clients download and process blocks, and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with the existing Ethereum 1.0 chain, and because it is a PoS chain, there are differences.
 
 For a block on the beacon chain to be processed by a node, four conditions have to be met:
 
 * The parent pointed to by the `ancestor_hashes[0]` has already been processed and accepted
 * An attestation from the _proposer_ of the block (see later for definition) is included along with the block in the network message object
-* The PoW chain block pointed to by the `processed_pow_receipt_root` has already been processed and accepted
+* The Ethereum 1.0 chain block pointed to by the `processed_pow_receipt_root` has already been processed and accepted
 * The node's local clock time is greater than or equal to the minimum timestamp as computed by `state.genesis_time + block.slot * SLOT_DURATION`
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
@@ -810,7 +810,7 @@ The `add_or_topup_validator` routine is defined below.
 
 ### Routine for adding a validator
 
-This routine should be run for every validator that is activated as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
+This routine should be run for every validator that is activated as part of a log created on the Ethereum 1.0 chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the Ethereum 1.0 chain.
 
 First, some helper functions:
 
@@ -1081,7 +1081,7 @@ Perform the following checks:
 
 * For each `vote`, verify that `BLSVerify(pubkey=aggregate_pubkey([state.validator_set[i].pubkey for i in vote_aggregate_sig_indices]), msg=vote_data, sig=vote_aggregate_sig, domain=get_domain(state.fork_data, vote_data.slot, DOMAIN_ATTESTATION))`.
 * Verify that `vote1_data != vote2_data`.
-* Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
+* Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]` and verify that `len(intersection) >= 1`.
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
 
 For each validator index `v` in `intersection`, if `state.validator_set[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, block, penalize=True, current_slot=block.slot)`
@@ -1111,14 +1111,14 @@ For each validator index `v` in `intersection`, if `state.validator_set[v].statu
     'merkle_branch': '[hash32]',
     'merkle_tree_index': 'uint64',
     'deposit_data': {
-         'deposit_params': DepositParams,
-         'msg_value': 'uint64',
+         'deposit_parameters': DepositParameters,
+         'message_value': 'uint64',
          'timestamp': 'uint64'
     }
 }
 ```
 
-Note that `deposit_data` in serialized form should be the `DepositParams` followed by 8 bytes for the `msg_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [PoW chain deposit contract](#pow-chain-deposit-contract) of which the hash was placed into the Merkle tree.
+Note that `deposit_data` in serialized form should be the `DepositParameters` followed by 8 bytes for the `message_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
 
 Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
@@ -1135,7 +1135,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
 
 Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
 
-Run `add_or_topup_validator(state, pupkey=deposit_data.deposit_params.pubkey, deposit_size=deposit_data.msg_value, proof_of_possession=deposit_data.deposit_params.proof_of_possession, withdrawal_credentials=deposit_data.deposit_params.withdrawal_credentials, randao_commitment=deposit_data.deposit_params.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
+Run `add_or_topup_validator(state, pupkey=deposit_data.deposit_parameters.pubkey, deposit_size=deposit_data.message_value, proof_of_possession=deposit_data.deposit_parameters.proof_of_possession, withdrawal_credentials=deposit_data.deposit_parameters.withdrawal_credentials, randao_commitment=deposit_data.deposit_parameters.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
 
 ## Cycle boundary processing
 
@@ -1223,7 +1223,7 @@ For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots[:CY
 * If `v in attesting_validators(obj)`, `v.balance += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(v))`.
 * If `v not in attesting_validators(obj)`, `v.balance -= base_reward(v)`.
 
-### PoW chain related rules
+### Ethereum 1.0 chain related rules
 
 If `last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
