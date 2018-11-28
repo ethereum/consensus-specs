@@ -348,7 +348,7 @@ The `BeaconState` has the following fields:
     # Should be updated only by hard forks.
     'fork_data': ForkData,
     # Attestations not yet processed
-    'pending_attestations': [ProcessedAttestations],
+    'pending_attestations': [ProcessedAttestation],
     # recent beacon block hashes needed to process attestations, older to newer
     'recent_block_hashes': ['hash32'],
     # RANDAO state
