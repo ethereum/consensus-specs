@@ -390,7 +390,7 @@ return typ(**values), item_index
 
 ### Tree Hash
 
-The below `tree_hash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
+The below `SSZTreeHash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
 
 We define `hash(x)` as `BLAKE2b-512(x)[0:32]`.
 
@@ -435,13 +435,13 @@ def merkle_hash(lst):
     return hash(chunkz[0] + datalen)
 ```
 
-To `tree_hash` a list, we simply do:
+To `SSZTreeHash` a list, we simply do:
 
 ```python
-return merkle_hash([tree_hash(item) for item in value])
+return merkle_hash([SSZTreeHash(item) for item in value])
 ```
 
-Where the inner `tree_hash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+Where the inner `SSZTreeHash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
 
 
 #### Container
@@ -449,7 +449,7 @@ Where the inner `tree_hash` is a recursive application of the tree-hashing funct
 Recursively tree hash the values in the container in order sorted by key, and return the hash of the concatenation of the results.
 
 ```python
-return hash(b''.join([tree_hash(getattr(x, field)) for field in sorted(value.fields)))
+return hash(b''.join([SSZTreeHash(getattr(x, field)) for field in sorted(value.fields)))
 ```
 
 
