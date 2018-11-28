@@ -25,8 +25,8 @@
         * [Verify proposer signature](#verify-proposer-signature)
         * [Verify and process RANDAO reveal](#verify-and-process-randao-reveal)
         * [Process PoW receipt root](#process-pow-receipt-root)
-        * [Process penalties, logouts and other special objects](#process-penalties-logouts-and-other-special-objects)
-            * [LOGOUT](#logout)
+        * [Process penalties, exits and other special objects](#process-penalties-exits-and-other-special-objects)
+            * [EXIT](#exit)
             * [CASPER_SLASHING](#casper_slashing)
             * [PROPOSER_SLASHING](#proposer_slashing)
             * [DEPOSIT_PROOF](#deposit_proof)
@@ -48,9 +48,9 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a deposit contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after deposit transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on the Ethereum 1.0 PoW chain. Activation as a validator happens when deposit transaction receipts are processed by the beaocn chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
-The primary source of load on the beacon chain are "attestations". Attestations simultaneously attest to a shard block and a corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
+The primary source of load on the beacon chain are "attestations". Attestations are availability votes for a shard block, and simultaneously attest to the corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
 ## Terminology
 
@@ -120,13 +120,13 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `PENDING_EXIT` | `2` |
 | `PENDING_WITHDRAW` | `3` |
 | `WITHDRAWN` | `4` |
-| `PENALIZED` | `127` |
+| `PENALIZED` | `2**64 - 1` |
 
 **Special record types**
 
 | Name | Value | Maximum count |
 | - | :-: | :-: |
-| `LOGOUT` | `0` | `16` |
+| `EXIT` | `0` | `16` |
 | `CASPER_SLASHING` | `1` | `16` |
 | `PROPOSER_SLASHING` | `2` | `16` |
 | `DEPOSIT_PROOF` | `3` | `16` |
@@ -145,7 +145,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `DOMAIN_DEPOSIT` | `0` |
 | `DOMAIN_ATTESTATION` | `1` |
 | `DOMAIN_PROPOSAL` | `2` |
-| `DOMAIN_LOGOUT` | `3` |
+| `DOMAIN_EXIT` | `3` |
 
 ## PoW chain deposit contract
 
@@ -239,7 +239,7 @@ A `BeaconBlock` has the following fields:
     'state_root': 'hash32',
     # Attestations
     'attestations': [AttestationRecord],
-    # Specials (e.g. logouts, penalties)
+    # Specials (e.g. exits, penalties)
     'specials': [SpecialRecord],
     # Proposer signature
     'proposer_signature': ['uint384'],
@@ -1017,7 +1017,7 @@ Let `proposal_hash = hash(ProposalSignedData(block.slot, 2**64 - 1, block_hash_w
 
 Verify that `BLSVerify(pubkey=state.validator_set[get_beacon_proposer_index(state, block.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state.fork_data, block.slot, DOMAIN_PROPOSAL))` passes.
 
-### Verify and process RANDAO reveal
+### Verify and process the RANDAO reveal
 
 First run the following state transition to update `randao_skips` variables for the missing slots.
 
@@ -1031,20 +1031,22 @@ Then:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_set[get_beacon_proposer_index(state, block.slot)]`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`
-* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`, `proposer.randao_commitment = block.randao_reveal`, `proposer.randao_skips = 0`
+* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`.
+* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`.
+* Set `proposer.randao_commitment = block.randao_reveal`.
+* Set `proposer.randao_skips = 0`.
 
 ### Process PoW receipt root
 
 If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`. Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
-### Process penalties, logouts and other special objects
+### Process penalties, exits and other special objects
 
 Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top). Verify that objects are sorted in order of `kind` (ie. `block.specials[i+1].kind >= block.specials[i].kind` for all `0 <= i < len(block.specials-1)`).
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
-#### LOGOUT
+#### EXIT
 
 ```python
 {
@@ -1052,8 +1054,10 @@ For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is on
     'signature': '[uint384]'
 }
 ```
+
 Perform the following checks:
-* Verify that `BLSVerify(pubkey=state.validator_set[data.validator_index].pubkey, msg=NULL_HASH, sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_LOGOUT))`.
+
+* Verify that `BLSVerify(pubkey=state.validator_set[data.validator_index].pubkey, msg=NULL_HASH, sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_EXIT))`.
 * Verify that `state.validator_set[validator_index].status == ACTIVE`.
 * Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
 
