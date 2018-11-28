@@ -94,13 +94,12 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `DELETION_PERIOD` | 2**22 (= 4,194,304) | slots | ~290 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**20 (= 1,048,576) | slots | ~2.4 months |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | 2**10 (= 1,024) | slots | ~1.7 hours |
-| `SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR` | 2**9 (= 512) |
+| `SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR` | 2**9 (= 512) | - |
 | `BASE_REWARD_QUOTIENT` | 2**11 (= 2,048) | - |
 | `INCLUDER_REWARD_SHARE_QUOTIENT` | 2**3 (= 8) | - |
 | `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (= 32) | - |
 | `MAX_ATTESTATION_COUNT` | 2**7 (= 128) | - |
-
 | `INITIAL_FORK_VERSION` | 0 | - |
 
 **Notes**
