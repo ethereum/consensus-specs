@@ -8,7 +8,7 @@
     * [Introduction](#introduction)
     * [Terminology](#terminology)
     * [Constants](#constants)
-    * [PoW chain registration contract](#pow-chain-registration-contract)
+    * [PoW chain deposit contract](#pow-chain-deposit-contract)
         * [Contract code in Vyper](#contract-code-in-vyper)
     * [Data structures](#data-structures)
         * [Beacon chain blocks](#beacon-chain-blocks)
@@ -48,10 +48,9 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a registration contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after registration transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the set of active proof-of-stake validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a fixed-size one-way ETH deposit to a deposit contract on the Ethereum 1.0 PoW chain. Induction as a validator happens after deposit transaction receipts are processed by the beacon chain and after a queuing process. Deregistration is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain are "attestations". Attestations simultaneously attest to a shard block and a corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
-
 
 ## Terminology
 
@@ -71,41 +70,45 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 ## Constants
 
-| Constant | Value | Unit | Approximation |
-| --- | --- | :---: | - |
+| Constant | Value | Unit |
+| --- | --- | :---: |
 | `SHARD_COUNT` | 2**10 (= 1,024)| shards |
-| `DEPOSIT_SIZE` | 2**5 (= 32) | ETH |
-| `MIN_TOPUP_SIZE` | 1 | ETH |
-| `MIN_ONLINE_DEPOSIT_SIZE` | 2**4 (= 16) | ETH |
-| `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
-| `DEPOSITS_FOR_CHAIN_START` | 2**14 (= 16,384) | deposits |
 | `TARGET_COMMITTEE_SIZE` | 2**8 (= 256) | validators |
-| `SLOT_DURATION` | 6 | seconds |
-| `CYCLE_LENGTH` | 2**6 (= 64) | slots | ~6 minutes |
-| `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**8 (= 256) | slots | ~25 minutes |
-| `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**17 (= 131,072) | slots | ~9 days |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | ~24 seconds |
-| `SQRT_E_DROP_TIME` | 2**11 (= 2,048) | cycles | ~9 days |
-| `WITHDRAWALS_PER_CYCLE` | 2**2 (=4) | validators | 5.2m ETH in ~6 months |
-| `MIN_WITHDRAWAL_PERIOD` | 2**13 (= 8,192) | slots | ~14 hours |
-| `DELETION_PERIOD` | 2**22 (= 4,194,304) | slots | ~290 days |
-| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**20 (= 1,048,576) | slots | ~2.4 months |
-| `POW_RECEIPT_ROOT_VOTING_PERIOD` | 2**10 (= 1,024) | slots | ~1.7 hours |
-| `SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR` | 2**9 (= 512) | - |
+| `MAX_WITHDRAWALS_PER_CYCLE` | 2**2 (= 4) | withdrawals |
+| `MAX_ATTESTATIONS_PER_BLOCK` | 2**7 (= 128) | attestations |
+| `MIN_DEPOSIT` | 2**0 (= 1) | ETH |
+| `MAX_DEPOSIT` | 2**5 (= 32) | ETH |
+| `MIN_BALANCE` | 2**4 (= 16) | ETH |
 | `BASE_REWARD_QUOTIENT` | 2**11 (= 2,048) | - |
-| `INCLUDER_REWARD_SHARE_QUOTIENT` | 2**3 (= 8) | - |
-| `MAX_VALIDATOR_CHURN_QUOTIENT` | 2**5 (= 32) | - |
+| `WHISTLEBLOWER_REWARD_QUOTIENT` | 2**9 (= 512) | - |
+| `INCLUDER_REWARD_QUOTIENT` | 2**3 (= 8) | - |
+| `MAX_CHURN_QUOTIENT` | 2**5 (= 32) | - |
 | `POW_CONTRACT_MERKLE_TREE_DEPTH` | 2**5 (= 32) | - |
-| `MAX_ATTESTATION_COUNT` | 2**7 (= 128) | - |
 | `INITIAL_FORK_VERSION` | 0 | - |
+| `INITIAL_SLOT_NUMBER` | 0 | - |
+| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
+| `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
+
+| Time constant | Value | Unit | Duration |
+| --- | --- | :---: | :---: |
+| `SLOT_DURATION` | 6 | seconds | 6 seconds |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | 2**2 (= 4) | slots | 24 seconds |
+| `CYCLE_LENGTH` | 2**6 (= 64) | slots | 6.4 minutes |
+| `MIN_VALIDATOR_SET_CHANGE_INTERVAL` | 2**2 (= 4) | cycles | 25.6 minutes |
+| `POW_RECEIPT_ROOT_VOTING_PERIOD` | 2**4 (= 16) | cycles | ~1.7 hours |
+| `MIN_WITHDRAWAL_PERIOD` | 2**7 (= 128) | cycles | ~14 hours |
+| `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | 2**11 (= 2,048) | cycles | ~9 days |
+| `SQRT_E_DROP_TIME` | 2**11 (= 2,048) | cycles | ~9 days |
+| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | 2**14 (= 16,384) | cycles | ~73 days |
+| `DELETION_PERIOD` | 2**16 (= 65,536) | cycles | ~290 days |
 
 **Notes**
 
 * See a recommended min committee size of 111 [here](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%.
 * The `BASE_REWARD_QUOTIENT` constant dictates the per-cycle interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
-* At most `1/MAX_VALIDATOR_CHURN_QUOTIENT` of the validators can change during each validator set change.
+* At most `1/MAX_CHURN_QUOTIENT` of the validators can change during each validator set change.
+* The `MAX_WITHDRAWALS_PER_CYCLE` parameter correspond to 5.2m ETH in ~6 months.
 
 **Validator status codes**
 
@@ -143,11 +146,11 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_LOGOUT` | `3` |
 
-## PoW chain registration contract
+## PoW chain deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A registration contract is added to the PoW chain to deposit ETH. This contract has a `registration` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the PoW chain. A deposit contract is added to the PoW chain to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
-The registration contract emits a log with the various arguments for consumption by the beacon chain. It does not do validation, pushing the registration logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the registration contract.
+The deposit contract emits a log with the various arguments for consumption by the beacon chain. It does little validation, pushing the deposit logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the deposit contract.
 
 ### Contract code in Vyper
 
@@ -155,8 +158,8 @@ The beacon chain is initialized when a condition is met inside a contract on the
 
 ```python
 DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
-DEPOSIT_SIZE: constant(uint256) = 32  # ETH
-MIN_TOPUP_SIZE: constant(uint256) = 1  # ETH
+MAX_DEPOSIT: constant(uint256) = 32  # ETH
+MIN_DEPOSIT: constant(uint256) = 1  # ETH
 GWEI_PER_ETH: constant(uint256) = 10**9
 POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
@@ -182,9 +185,9 @@ def deposit(deposit_params: bytes[2048]):
         index /= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
 
-    assert msg.value >= as_wei_value(MIN_TOPUP_SIZE, "ether")
-    assert msg.value <= as_wei_value(DEPOSIT_SIZE, "ether")
-    if msg.value == as_wei_value(DEPOSIT_SIZE, "ether"):
+    assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
+    assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
+    if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
         self.total_deposit_count += 1
     if self.total_deposit_count == DEPOSITS_FOR_CHAIN_START:
         timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
@@ -198,18 +201,18 @@ def get_receipt_root() -> bytes32:
 
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending along `DEPOSIT_SIZE` ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the 1.0 chain to the 2.0 chain, they should call the `deposit` function, sending up to `MAX_DEPOSIT` ETH and providing as `deposit_params` a SimpleSerialize'd `DepositParams` object of the form:
 
 ```python
 {
     'pubkey': 'int256',
     'proof_of_possession': ['int256'],
-    'withdrawal_credentials`: 'hash32',
-    'randao_commitment`: 'hash32'
+    'withdrawal_credentials': 'hash32',
+    'randao_commitment': 'hash32'
 }
 ```
 
-If the user wishes to deposit more than `DEPOSIT_SIZE` ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
+If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls. When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
 
 * `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
 * `genesis_time` equal to the `time` value published in the log
@@ -696,7 +699,7 @@ We define a function to determine the balance of a validator used for determinin
 
  ```python
 def balance_at_stake(validator: ValidatorRecord) -> int:
-    return min(validator.balance, DEPOSIT_SIZE)
+    return min(validator.balance, MAX_DEPOSIT)
 ```
 
 We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
@@ -781,13 +784,13 @@ def on_startup(current_validators: List[ValidatorRecord],
         for i in range(SHARD_COUNT)
     ]
     state = BeaconState(
-        validator_set_change_slot=0,
+        validator_set_change_slot=INITIAL_SLOT_NUMBER,
         validators=validators,
         crosslinks=crosslinks,
-        last_state_recalculation_slot=0,
-        last_finalized_slot=0,
-        justification_source=0,
-        prev_cycle_justification_source=0,
+        last_state_recalculation_slot=INITIAL_SLOT_NUMBER,
+        last_finalized_slot=INITIAL_SLOT_NUMBER,
+        justification_source=INITIAL_SLOT_NUMBER,
+        prev_cycle_justification_source=INITIAL_SLOT_NUMBER,
         justified_slot_bitfield=0,
         shard_and_committee_for_slots=x + x,
         persistent_committees=split(shuffle(validators, bytes([0] * 32)), SHARD_COUNT),
@@ -801,7 +804,7 @@ def on_startup(current_validators: List[ValidatorRecord],
         candidate_pow_receipt_roots=[],
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
-        fork_slot_number=0,
+        fork_slot_number=INITIAL_SLOT_NUMBER,
         pending_attestations=[],
         pending_specials=[],
         recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
@@ -871,14 +874,14 @@ def get_new_validators(current_validators: List[ValidatorRecord],
 
     # add new validator
     if pubkey not in validator_pubkeys:
-        assert deposit_size == DEPOSIT_SIZE
+        assert deposit_size == MAX_DEPOSIT
 
         rec = ValidatorRecord(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
             randao_skips=0,
-            balance=DEPOSIT_SIZE * GWEI_PER_ETH,
+            balance=MAX_DEPOSIT * GWEI_PER_ETH,
             status=status,
             last_status_change_slot=current_slot,
             exit_seq=0
@@ -896,7 +899,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
     else:
         index = validator_pubkeys.index(pubkey)
         val = new_validators[index]
-        assert deposit_size >= MIN_TOPUP_SIZE
+        assert deposit_size >= MIN_DEPOSIT
         assert val.status != WITHDRAWN
         assert val.withdrawal_credentials == withdrawal_credentials
 
@@ -964,7 +967,7 @@ def exit_validator(index: int,
     if penalize:
         state.deposits_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += balance_at_stake(validator)
         validator.status = PENALIZED
-        whistleblower_xfer_amount = validator.deposit // SLASHING_WHISTLEBLOWER_REWARD_DENOMINATOR
+        whistleblower_xfer_amount = validator.deposit // WHISTLEBLOWER_REWARD_QUOTIENT
         validator.deposit -= whistleblower_xfer_amount
         state.validators[get_beacon_proposer_index(state, block.slot)].deposit += whistleblower_xfer_amount
     else:
@@ -1010,7 +1013,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
 
 ### Verify attestations
 
-Verify that there are at most `MAX_ATTESTATION_COUNT` `AttestationRecord` objects.
+Verify that there are at most `MAX_ATTESTATIONS_PER_BLOCK` `AttestationRecord` objects.
 
 For each `AttestationRecord` object `obj`:
 
@@ -1122,7 +1125,7 @@ For each `proposal_signature`, verify that `BLSVerify(pubkey=validators[proposer
 }
 ```
 
-Note that `deposit_data` in serialized form should be the `DepositParams` followed by 8 bytes for the `msg_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [PoW chain registration contract](#pow-chain-registration-contract) of which the hash was placed into the Merkle tree.
+Note that `deposit_data` in serialized form should be the `DepositParams` followed by 8 bytes for the `msg_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [PoW chain deposit contract](#pow-chain-deposit-contract) of which the hash was placed into the Merkle tree.
 
 Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
@@ -1218,7 +1221,7 @@ Case 2: `time_since_finality > 4 * CYCLE_LENGTH`:
 * Any validator in `prev_cycle_boundary_attesters` sees their balance unchanged.
 * Any active validator `v` not in `prev_cycle_boundary_attesters`, and any validator with `status == PENALIZED`, loses `base_reward(v) + balance_at_stake(v) * time_since_finality // quadratic_penalty_quotient`.
 
-For each `v` in `prev_cycle_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validators[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_SHARE_QUOTIENT`.
+For each `v` in `prev_cycle_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validators[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
 ### Balance recalculations related to crosslink rewards
 
@@ -1257,15 +1260,15 @@ def get_changed_validators(validators: List[ValidatorRecord],
     total_balance = sum([balance_at_stake(v) for i, v in enumerate(validators) if i in active_validator_indices])
     # The maximum total wei that can deposit+withdraw
     max_allowable_change = max(
-        2 * DEPOSIT_SIZE * GWEI_PER_ETH,
-        total_balance // MAX_VALIDATOR_CHURN_QUOTIENT
+        2 * MAX_DEPOSIT * GWEI_PER_ETH,
+        total_balance // MAX_CHURN_QUOTIENT
     )
     # Go through the list start to end depositing+withdrawing as many as possible
     total_changed = 0
     for i in range(len(validators)):
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
-            total_changed += DEPOSIT_SIZE * GWEI_PER_ETH
+            total_changed += MAX_DEPOSIT * GWEI_PER_ETH
             validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
                 validator_set_delta_hash_chain=validator_set_delta_hash_chain,
                 index=i,
@@ -1299,7 +1302,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
         return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
 
     withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_seq)
-    for v in withdrawable_validators[:WITHDRAWALS_PER_CYCLE]:
+    for v in withdrawable_validators[:MAX_WITHDRAWALS_PER_CYCLE]:
         if v.status == PENALIZED:
             v.balance -= balance_at_stake(v) * min(total_penalties * 3, total_balance) // total_balance
         v.status = WITHDRAWN
@@ -1375,7 +1378,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ### Finally...
 
 * Remove all attestation records older than slot `s`
-* For any validator with index `v` with balance less than `MIN_ONLINE_DEPOSIT_SIZE` and status `ACTIVE`, run `exit_validator(v, state, block, penalize=False, current_slot=block.slot)`
+* For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, state, block, penalize=False, current_slot=block.slot)`
 * Set `state.recent_block_hashes = state.recent_block_hashes[CYCLE_LENGTH:]`
 * Set `state.last_state_recalculation_slot += CYCLE_LENGTH`
 
