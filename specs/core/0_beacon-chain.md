@@ -106,7 +106,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 **Notes**
 
 * See a recommended min committee size of 111 [here](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
-* The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the quadratic leak to cut deposits of non-participating validators by ~39.4%.
+* The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the inactivity leak to cut deposits of non-participating validators by ~39.4%.
 * The `BASE_REWARD_QUOTIENT` constant dictates the per-cycle interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_CHURN_QUOTIENT` of the validators can change during each validator set change.
 * The `MAX_WITHDRAWALS_PER_CYCLE` parameter correspond to 5.2m ETH in ~6 months.
@@ -747,7 +747,7 @@ def on_startup(current_validators: List[ValidatorRecord],
                initial_validator_entries: List[Any],
                genesis_time: int,
                processed_pow_receipt_root: Hash32) -> BeaconState:
-    # Induct validators
+    # Activate validators
     initial_validator_set = []
     for pubkey, deposit_size, proof_of_possession, withdrawal_credentials, \
             randao_commitment in initial_validator_entries:
@@ -810,7 +810,7 @@ The `add_or_topup_validator` routine is defined below.
 
 ### Routine for adding a validator
 
-This routine should be run for every validator that is inducted as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
+This routine should be run for every validator that is activated as part of a log created on the PoW chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the PoW chain.
 
 First, some helper functions:
 
@@ -839,7 +839,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
                        randao_commitment: Hash32,
                        status: int,
                        current_slot: int) -> Tuple[List[ValidatorRecord], int]:
-    # if any asserts fail, validator induction/topup failed
+    # if any asserts fail, validator activation/topup failed
     # move on to next validator deposit log
     signed_message = bytes32(pubkey) + withdrawal_credentials + randao_commitment
     assert BLSVerify(
@@ -1000,14 +1000,15 @@ Verify that there are at most `MAX_ATTESTATIONS_PER_BLOCK` `AttestationRecord` o
 
 For each `AttestationRecord` object `obj`:
 
-* Verify that `obj.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `obj.data.slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
-* Verify that `obj.data.justified_slot` is equal to `justification_source if obj.data.slot >= state.last_state_recalculation_slot else previous_cycle_justification_source`
+* Verify that `obj.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
+* Verify that `obj.data.slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
+* Verify that `obj.data.justified_slot` is equal to `justification_source if obj.data.slot >= state.last_state_recalculation_slot else previous_cycle_justification_source`.
 * Verify that `obj.data.justified_block_hash` is equal to `get_block_hash(state, block, obj.data.justified_slot)`.
 * Verify that either `obj.data.last_crosslink_hash` or `obj.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * `aggregate_sig` verification:
-    * Let `participants = get_attestation_participants(state, obj.data, obj.attester_bitfield)`
-    * Let `group_public_key = BLSAddPubkeys([state.validator_set[v].pubkey for v in participants])`
-    * Check `BLSVerify(pubkey=group_public_key, msg=obj.data, sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
+    * Let `participants = get_attestation_participants(state, obj.data, obj.attester_bitfield)`.
+    * Let `group_public_key = BLSAddPubkeys([state.validator_set[v].pubkey for v in participants])`.
+    * Verify that `BLSVerify(pubkey=group_public_key, msg=obj.data, sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == NULL_HASH`.
 * Append `PendingAttestationRecord(data=obj.data, attester_bitfield=obj.attester_bitfield, poc_bitfield=obj.poc_bitfield, slot_included=block.slot)` to `state.pending_attestations`.
 
@@ -1015,7 +1016,7 @@ For each `AttestationRecord` object `obj`:
 
 Let `proposal_hash = hash(ProposalSignedData(block.slot, 2**64 - 1, block_hash_without_sig))` where `block_hash_without_sig` is the hash of the block except setting `proposer_signature` to `[0, 0]`.
 
-Verify that `BLSVerify(pubkey=state.validator_set[get_beacon_proposer_index(state, block.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state.fork_data, block.slot, DOMAIN_PROPOSAL))` passes.
+Verify that `BLSVerify(pubkey=state.validator_set[get_beacon_proposer_index(state, block.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state.fork_data, block.slot, DOMAIN_PROPOSAL))`.
 
 ### Verify and process the RANDAO reveal
 
@@ -1046,7 +1047,7 @@ Verify that the quantity of each type of object in `block.specials` is less than
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
-#### EXIT
+#### `EXIT`
 
 ```python
 {
@@ -1063,7 +1064,7 @@ Perform the following checks:
 
 Run `exit_validator(data.validator_index, state, block, penalize=False, current_slot=block.slot)`.
 
-#### CASPER_SLASHING
+#### `CASPER_SLASHING`
 
 ```python
 {
@@ -1078,14 +1079,14 @@ Run `exit_validator(data.validator_index, state, block, penalize=False, current_
 
 Perform the following checks:
 
-* For each `vote`, verify that `BLSVerify(pubkey=aggregate_pubkey([state.validator_set[i].pubkey for i in vote_aggregate_sig_indices]), msg=vote_data, sig=vote_aggregate_sig, domain=get_domain(state.fork_data, vote_data.slot, DOMAIN_ATTESTATION))` passes.
+* For each `vote`, verify that `BLSVerify(pubkey=aggregate_pubkey([state.validator_set[i].pubkey for i in vote_aggregate_sig_indices]), msg=vote_data, sig=vote_aggregate_sig, domain=get_domain(state.fork_data, vote_data.slot, DOMAIN_ATTESTATION))`.
 * Verify that `vote1_data != vote2_data`.
 * Let `intersection = [x for x in vote1_aggregate_sig_indices if x in vote2_aggregate_sig_indices]`. Verify that `len(intersection) >= 1`.
 * Verify that `vote1_data.justified_slot < vote2_data.justified_slot < vote2_data.slot <= vote1_data.slot`.
 
 For each validator index `v` in `intersection`, if `state.validator_set[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, block, penalize=True, current_slot=block.slot)`
 
-#### PROPOSER_SLASHING
+#### `PROPOSER_SLASHING`
 
 ```python
 {
@@ -1096,9 +1097,14 @@ For each validator index `v` in `intersection`, if `state.validator_set[v].statu
     'proposal1_signature': '[uint384]',
 }
 ```
-For each `proposal_signature`, verify that `BLSVerify(pubkey=state.validator_set[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state.fork_data, proposal_data.slot, DOMAIN_PROPOSAL))` passes. Verify that `proposal1_data.slot == proposal2_data.slot` but `proposal1 != proposal2`. If `state.validator_set[proposer_index].status` does not equal `PENALIZED`, then run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`
 
-#### DEPOSIT_PROOF
+* For each `proposal_signature` verify that `BLSVerify(pubkey=state.validator_set[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state.fork_data, proposal_data.slot, DOMAIN_PROPOSAL))`.
+* Verify that `proposal1_data != proposal2_data`.
+* Verify that `proposal1_data.slot == proposal2_data.slot`.
+* Verify that `state.validator_set[proposer_index].status != PENALIZED`.
+* Run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`.
+
+#### `DEPOSIT_PROOF`
 
 ```python
 {
