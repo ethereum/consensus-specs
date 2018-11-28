@@ -308,54 +308,43 @@ A `SpecialRecord` has the following fields:
 
 ### Beacon chain state
 
-The `BeaconState` has the following fields:
+The `BeaconState` object has the following fields:
 
 ```python
 {
     # Validator set
-    'validators': [ValidatorRecord],
-    # Slot of last validator set change
-    'validator_set_change_slot': 'uint64',
-    # Hash chain of validator set changes (for light clients to easily track deltas)
-    'validator_set_delta_hash_chain': 'hash32'
+    'validator_set': [ValidatorRecord],
+    'validator_set_last_change_slot': 'uint64',
+    'validator_set_exit_sequence': 'uint64',
+    'validator_set_delta_hash_chain': 'hash32',  # For light clients to easily track delta
 
-
-    # Most recent crosslink for each shard
-    'crosslinks': [CrosslinkRecord],
-    # Last cycle-boundary state recalculation
-    'last_state_recalculation_slot': 'uint64',
-    # Last finalized slot
-    'last_finalized_slot': 'uint64',
-    # Justification source
-    'justification_source': 'uint64',
-    'prev_cycle_justification_source': 'uint64',
-    # Recent justified slot bitmask
-    'justified_slot_bitfield': 'uint64',
-    # Committee members and their assigned shard, per slot
+    # Randomness and committees
+    'randao_mix': 'hash32',
+    'next_seed': 'hash32',
     'shard_and_committee_for_slots': [[ShardAndCommittee]],
-    # Persistent shard committees
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
-    # Randao seed used for next shuffling
-    'next_shuffling_seed': 'hash32',
-    # Total balances penalized in the given withdrawal period
-    'balances_penalized_in_periodpenalized_in_period': ['uint64'],
-    # Current sequence number for withdrawals
-    'current_exit_seq': 'uint64',
-    # Genesis time
-    'genesis_time': 'uint64',
+
+    # Finality
+    'justification_source': 'uint64',
+    'last_finalized_slot': 'uint64',
+    'previous_cycle_justification_source': 'uint64',
+    'justified_slot_bitfield': 'uint64',
+
+    # Recent state
+    'last_crosslinks': [CrosslinkRecord],
+    'last_state_recalculation_slot': 'uint64',
+    'last_block_hashes': ['hash32'],  # Needed to process attestations, older to newer
+    'balances_penalized_in_period': ['uint64'],  # Balances penalized in the current withdrawal period
+    'pending_attestations': [PendingAttestationRecord],
+
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
-    # Parameters relevant to hard forks / versioning.
-    # Should be updated only by hard forks.
-    'fork_data': ForkData,
-    # Attestations not yet processed
-    'pending_attestations': [ProcessedAttestation],
-    # recent beacon block hashes needed to process attestations, older to newer
-    'recent_block_hashes': ['hash32'],
-    # RANDAO state
-    'randao_mix': 'hash32'
+
+    # Misc
+    'genesis_time': 'uint64',
+    'fork_data': ForkData,  # For versioning hard forks
 }
 ```
 
@@ -378,7 +367,7 @@ A `ValidatorRecord` has the following fields:
     # Slot when validator last changed status (or 0)
     'last_status_change_slot': 'uint64'
     # Sequence number when validator exited (or 0)
-    'exit_seq': 'uint64'
+    'exit_sequence': 'uint64'
 }
 ```
 
@@ -428,18 +417,7 @@ A `CandidatePoWReceiptRootRecord` object contains the following fields:
 }
 ```
 
-A `ForkData` object contains the following fields:
-```python
-{
-    # Previous fork version
-    'pre_fork_version': 'uint64',
-    # Post fork version
-    'post_fork_version': 'uint64',
-    # Fork slot number
-    'fork_slot_number': 'uint64'
-```
-
-A `ProcessedAttestation` object has the following fields:
+A `PendingAttestationRecord` object has the following fields:
 ```python
 {
     # Signed data
@@ -451,6 +429,17 @@ A `ProcessedAttestation` object has the following fields:
     # Slot in which it was included
     'slot_included': 'uint64'
 }
+```
+
+A `ForkData` object contains the following fields:
+```python
+{
+    # Previous fork version
+    'pre_fork_version': 'uint64',
+    # Post fork version
+    'post_fork_version': 'uint64',
+    # Fork slot number
+    'fork_slot': 'uint64'
 ```
 
 ## Beacon chain processing
@@ -662,9 +651,9 @@ def get_shards_and_committees_for_slot(state: BeaconState,
 def get_block_hash(state: BeaconState,
                    current_block: BeaconBlock,
                    slot: int) -> Hash32:
-    earliest_slot_in_array = current_block.slot - len(state.recent_block_hashes)
+    earliest_slot_in_array = current_block.slot - len(state.last_block_hashes)
     assert earliest_slot_in_array <= slot < current_block.slot
-    return state.recent_block_hashes[slot - earliest_slot_in_array]
+    return state.last_block_hashes[slot - earliest_slot_in_array]
 ```
 
 `get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator set changes.
@@ -766,7 +755,7 @@ def on_startup(current_validators: List[ValidatorRecord],
             fork_data=ForkData(
                 pre_fork_version=pre_fork_version,
                 post_fork_version=pre_fork_version,
-                fork_slot_number=2**64 - 1,
+                fork_slot=2**64 - 1,
             ),
             pubkey=pubkey,
             deposit_size=deposit_size,
@@ -778,7 +767,7 @@ def on_startup(current_validators: List[ValidatorRecord],
         )
     # Setup state
     x = get_new_shuffling(bytes([0] * 32), initial_validator_set, 0)
-    crosslinks = [
+    initial_crosslinks = [
         CrosslinkRecord(
             slot=0,
             hash=bytes([0] * 32)
@@ -787,29 +776,29 @@ def on_startup(current_validators: List[ValidatorRecord],
     ]
     state = BeaconState(
         validator_set=initial_validator_set,
-        validator_set_change_slot=INITIAL_SLOT_NUMBER,
+        validator_set_last_change_slot=INITIAL_SLOT_NUMBER,
         validator_set_delta_hash_chain=bytes([0] * 32),  # stub
-        crosslinks=crosslinks,
+        last_crosslinks=initial_crosslinks,
         last_state_recalculation_slot=INITIAL_SLOT_NUMBER,
         last_finalized_slot=INITIAL_SLOT_NUMBER,
         justification_source=INITIAL_SLOT_NUMBER,
-        prev_cycle_justification_source=INITIAL_SLOT_NUMBER,
+        previous_cycle_justification_source=INITIAL_SLOT_NUMBER,
         justified_slot_bitfield=0,
         shard_and_committee_for_slots=x + x,
         persistent_committees=split(shuffle(initial_validator_set, bytes([0] * 32)), SHARD_COUNT),
         persistent_committee_reassignments=[],
-        balances_penalized_in_periodpenalized_in_period=[],
-        next_shuffling_seed=bytes([0] * 32),
-        current_exit_seq=0,
+        balances_penalized_in_period=[],
+        next_seed=bytes([0] * 32),
+        validator_set_exit_sequence=0,
         genesis_time=genesis_time,
         processed_pow_receipt_root=processed_pow_receipt_root,
         candidate_pow_receipt_roots=[],
         pre_fork_version=INITIAL_FORK_VERSION,
         post_fork_version=INITIAL_FORK_VERSION,
-        fork_slot_number=INITIAL_SLOT_NUMBER,
+        fork_slot=INITIAL_SLOT_NUMBER,
         pending_attestations=[],
         pending_specials=[],
-        recent_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
+        last_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
         randao_mix=bytes([0] * 32)  # stub
     )
 
@@ -834,7 +823,7 @@ def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: i
 
 def get_fork_version(fork_data: ForkData,
                      slot: int) -> int:
-    if slot < fork_data.fork_slot_number:
+    if slot < fork_data.fork_slot:
         return fork_data.pre_fork_version
     else:
         return fork_data.post_fork_version
@@ -886,7 +875,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
             balance=MAX_DEPOSIT * GWEI_PER_ETH,
             status=status,
             last_status_change_slot=current_slot,
-            exit_seq=0
+            exit_sequence=0
         )
 
         index = min_empty_validator(new_validators)
@@ -929,7 +918,7 @@ def add_or_topup_validator(state: BeaconState,
         fork_data=ForkData(
             pre_fork_version=state.pre_fork_version,
             post_fork_version=state.post_fork_version,
-            fork_slot_number=state.fork_slot_number,
+            fork_slot=state.fork_slot,
         ),
         pubkey=pubkey,
         deposit_size=deposit_size,
@@ -959,15 +948,15 @@ def exit_validator(index: int,
     """
     validator = state.validator_set[index]
     validator.last_status_change_slot = current_slot
-    validator.exit_seq = state.current_exit_seq
-    state.current_exit_seq += 1
+    validator.exit_sequence = state.validator_set_exit_sequence
+    state.validator_set_exit_sequence += 1
     for committee in state.persistent_committees:
         for i, vindex in committee:
             if vindex == index:
                 committee.pop(i)
                 break
     if penalize:
-        state.balances_penalized_in_periodpenalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += balance_at_stake(validator)
+        state.balances_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += balance_at_stake(validator)
         validator.status = PENALIZED
         whistleblower_xfer_amount = validator.deposit // WHISTLEBLOWER_REWARD_QUOTIENT
         validator.deposit -= whistleblower_xfer_amount
@@ -989,7 +978,7 @@ This procedure should be carried out every beacon block.
 * Let `parent_hash` be the hash of the immediate previous beacon block (ie. equal to `ancestor_hashes[0]`).
 * Let `parent` be the beacon block with the hash `parent_hash`.
 
-First, set `recent_block_hashes` to the output of the following:
+First, set `last_block_hashes` to the output of the following:
 
 ```python
 def append_to_recent_block_hashes(old_block_hashes: List[Hash32],
@@ -1004,11 +993,11 @@ The output of `get_block_hash` should not change, except that it will no longer 
 
 ```python
 def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
-                           parent_slot_number: int,
+                           parent_slot: int,
                            parent_hash: Hash32) -> List[Hash32]:
     new_ancestor_hashes = copy.copy(parent_ancestor_hashes)
     for i in range(32):
-        if parent_slot_number % 2**i == 0:
+        if parent_slot % 2**i == 0:
             new_ancestor_hashes[i] = parent_hash
     return new_ancestor_hashes
 ```
@@ -1020,7 +1009,7 @@ Verify that there are at most `MAX_ATTESTATIONS_PER_BLOCK` `AttestationRecord` o
 For each `AttestationRecord` object `obj`:
 
 * Verify that `obj.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY` and `obj.data.slot >= max(parent.slot - CYCLE_LENGTH + 1, 0)`.
-* Verify that `obj.data.justified_slot` is equal to `justification_source if obj.data.slot >= state.last_state_recalculation_slot else prev_cycle_justification_source`
+* Verify that `obj.data.justified_slot` is equal to `justification_source if obj.data.slot >= state.last_state_recalculation_slot else previous_cycle_justification_source`
 * Verify that `obj.data.justified_block_hash` is equal to `get_block_hash(state, block, obj.data.justified_slot)`.
 * Verify that either `obj.data.last_crosslink_hash` or `obj.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * `aggregate_sig` verification:
@@ -1028,7 +1017,7 @@ For each `AttestationRecord` object `obj`:
     * Let `group_public_key = BLSAddPubkeys([state.validator_set[v].pubkey for v in participants])`
     * Check `BLSVerify(pubkey=group_public_key, msg=obj.data, sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
-* Append `ProcessedAttestation(data=obj.data, attester_bitfield=obj.attester_bitfield, poc_bitfield=obj.poc_bitfield, slot_included=block.slot)` to `state.pending_attestations`.
+* Append `PendingAttestationRecord(data=obj.data, attester_bitfield=obj.attester_bitfield, poc_bitfield=obj.poc_bitfield, slot_included=block.slot)` to `state.pending_attestations`.
 
 ### Verify proposer signature
 
@@ -1170,7 +1159,7 @@ Validators justifying the cycle boundary block at the start of the current cycle
 Validators justifying the cycle boundary block at the start of the previous cycle:
 
 * Let `prev_cycle_attestations = [a for a in state.pending_attestations if s - CYCLE_LENGTH <= a.slot < s]`.
-* Let `prev_cycle_boundary_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if a.cycle_boundary_hash == get_block_hash(state, block, s - CYCLE_LENGTH) and a.justified_slot == state.prev_cycle_justification_source]`.
+* Let `prev_cycle_boundary_attestations = [a for a in this_cycle_attestations + prev_cycle_attestations if a.cycle_boundary_hash == get_block_hash(state, block, s - CYCLE_LENGTH) and a.justified_slot == state.previous_cycle_justification_source]`.
 * Let `prev_cycle_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.attester_bitfield) for a in prev_cycle_boundary_attestations]`.
 * Let `prev_cycle_boundary_attesting_balance = sum([balance_at_stake(v) for v in prev_cycle_boundary_attesters])`.
 
@@ -1200,7 +1189,7 @@ For any validator `v`, `base_reward(v) = balance_at_stake(v) // reward_quotient`
 * If `state.justification_source == s - CYCLE_LENGTH and state.justified_slot_bitfield % 4 == 3`, set `last_finalized_slot = justification_source`.
 * If `state.justification_source == s - CYCLE_LENGTH - CYCLE_LENGTH and state.justified_slot_bitfield % 8 == 7`, set `state.last_finalized_slot = state.justification_source`.
 * If `state.justification_source == s - CYCLE_LENGTH - 2 * CYCLE_LENGTH and state.justified_slot_bitfield % 16 in (15, 14)`, set `last_finalized_slot = justification_source`.
-* Set `state.prev_cycle_justification_source = state.justification_source` and if `new_justification_source` has been set, set `state.justification_source = new_justification_source`.
+* Set `state.previous_cycle_justification_source = state.justification_source` and if `new_justification_source` has been set, set `state.justification_source = new_justification_source`.
 
 For every `ShardAndCommittee` object `obj`:
 
@@ -1243,18 +1232,18 @@ If `last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
 A validator set change can happen if all of the following criteria are satisfied:
 
-* `last_finalized_slot > state.validator_set_change_slot`
-* For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_set_change_slot`
+* `last_finalized_slot > state.validator_set_last_change_slot`
+* For every shard number `shard` in `shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_set_last_change_slot`
 
 A helper function is defined as:
 
 ```python
 def get_changed_validators(validators: List[ValidatorRecord],
-                           balances_penalized_in_periodpenalized_in_period: List[int],
+                           balances_penalized_in_period: List[int],
                            validator_set_delta_hash_chain: int,
                            current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
     """
-    Return changed validator set and `balances_penalized_in_periodpenalized_in_period`, `validator_set_delta_hash_chain`.
+    Return changed validator set and `balances_penalized_in_period`, `validator_set_delta_hash_chain`.
     """
     # The active validator set
     active_validator_indices = get_active_validator_indices(validators)
@@ -1293,9 +1282,9 @@ def get_changed_validators(validators: List[ValidatorRecord],
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
     total_penalties = (
-        (balances_penalized_in_periodpenalized_in_period[period_index]) +
-        (balances_penalized_in_periodpenalized_in_period[period_index - 1] if period_index >= 1 else 0) +
-        (balances_penalized_in_periodpenalized_in_period[period_index - 2] if period_index >= 2 else 0)
+        (balances_penalized_in_period[period_index]) +
+        (balances_penalized_in_period[period_index - 1] if period_index >= 1 else 0) +
+        (balances_penalized_in_period[period_index - 2] if period_index >= 2 else 0)
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
@@ -1303,7 +1292,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
     def withdrawable(v):
         return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
 
-    withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_seq)
+    withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_sequence)
     for v in withdrawable_validators[:MAX_WITHDRAWALS_PER_CYCLE]:
         if v.status == PENALIZED:
             v.balance -= balance_at_stake(v) * min(total_penalties * 3, total_balance) // total_balance
@@ -1313,7 +1302,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
         withdraw_amount = v.balance
         # STUB: withdraw to shard chain   
 
-    return validators, balances_penalized_in_periodpenalized_in_period, validator_set_delta_hash_chain
+    return validators, balances_penalized_in_period, validator_set_delta_hash_chain
 ```
 
 Then, run the following algorithm to update the validator set:
@@ -1325,9 +1314,9 @@ def change_validators(state: BeaconState,
     Change validator set.
     Note that this function mutates `state`.
     """
-    state.validator_set, state.balances_penalized_in_periodpenalized_in_period = get_changed_validators(
+    state.validator_set, state.balances_penalized_in_period = get_changed_validators(
         copy.deepcopy(state.validator_set),
-        copy.deepcopy(state.balances_penalized_in_periodpenalized_in_period),
+        copy.deepcopy(state.balances_penalized_in_period),
         state.validator_set_delta_hash_chain,
         current_slot
     )
@@ -1335,18 +1324,18 @@ def change_validators(state: BeaconState,
 
 And perform the following updates to the `state`:
 
-* Set `state.validator_set_change_slot = s + CYCLE_LENGTH`
+* Set `state.validator_set_last_change_slot = s + CYCLE_LENGTH`
 * Set `state.shard_and_committee_for_slots[:CYCLE_LENGTH] = state.shard_and_committee_for_slots[CYCLE_LENGTH:]`
 * Let `state.next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `state.shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, state.validator_set, next_start_shard)`
-* Set `state.next_shuffling_seed = state.randao_mix`
+* Set `state.shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_set, next_start_shard)`
+* Set `state.next_seed = state.randao_mix`
 
 ### If a validator set change does NOT happen
 
 * Set `state.shard_and_committee_for_slots[:CYCLE_LENGTH] = state.shard_and_committee_for_slots[CYCLE_LENGTH:]`
-* Let `time_since_finality = block.slot - state.validator_set_change_slot`
+* Let `time_since_finality = block.slot - state.validator_set_last_change_slot`
 * Let `start_shard = state.shard_and_committee_for_slots[0][0].shard`
-* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_shuffling_seed, state.validator_set, start_shard)` and set `state.next_shuffling_seed = state.randao_mix`. Note that `start_shard` is not changed from last cycle.
+* If `time_since_finality * CYCLE_LENGTH <= MIN_VALIDATOR_SET_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[CYCLE_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_set, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from last cycle.
 
 ### Proposer reshuffling
 
@@ -1381,7 +1370,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 * Remove all attestation records older than slot `s`
 * For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, state, block, penalize=False, current_slot=block.slot)`
-* Set `state.recent_block_hashes = state.recent_block_hashes[CYCLE_LENGTH:]`
+* Set `state.last_block_hashes = state.last_block_hashes[CYCLE_LENGTH:]`
 * Set `state.last_state_recalculation_slot += CYCLE_LENGTH`
 
 # Appendix
