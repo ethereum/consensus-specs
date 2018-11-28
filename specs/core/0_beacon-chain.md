@@ -88,6 +88,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `INITIAL_SLOT_NUMBER` | 0 | - |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
 | `GWEI_PER_ETH` | 10**9 | Gwei/ETH |
+| `NULL_HASH` | bytes([0] * 32) | - |
 
 | Time constant | Value | Unit | Duration |
 | --- | --- | :---: | :---: |
@@ -766,18 +767,18 @@ def on_startup(current_validators: List[ValidatorRecord],
             status=ACTIVE,
         )
     # Setup state
-    x = get_new_shuffling(bytes([0] * 32), initial_validator_set, 0)
+    x = get_new_shuffling(NULL_HASH, initial_validator_set, 0)
     initial_crosslinks = [
         CrosslinkRecord(
             slot=0,
-            hash=bytes([0] * 32)
+            hash=NULL_HASH
         )
         for i in range(SHARD_COUNT)
     ]
     state = BeaconState(
         validator_set=initial_validator_set,
         validator_set_last_change_slot=INITIAL_SLOT_NUMBER,
-        validator_set_delta_hash_chain=bytes([0] * 32),  # stub
+        validator_set_delta_hash_chain=NULL_HASH,  # stub
         last_crosslinks=initial_crosslinks,
         last_state_recalculation_slot=INITIAL_SLOT_NUMBER,
         last_finalized_slot=INITIAL_SLOT_NUMBER,
@@ -785,10 +786,10 @@ def on_startup(current_validators: List[ValidatorRecord],
         previous_cycle_justification_source=INITIAL_SLOT_NUMBER,
         justified_slot_bitfield=0,
         shard_and_committee_for_slots=x + x,
-        persistent_committees=split(shuffle(initial_validator_set, bytes([0] * 32)), SHARD_COUNT),
+        persistent_committees=split(shuffle(initial_validator_set, NULL_HASH), SHARD_COUNT),
         persistent_committee_reassignments=[],
         balances_penalized_in_period=[],
-        next_seed=bytes([0] * 32),
+        next_seed=NULL_HASH,
         validator_set_exit_sequence=0,
         genesis_time=genesis_time,
         processed_pow_receipt_root=processed_pow_receipt_root,
@@ -798,8 +799,8 @@ def on_startup(current_validators: List[ValidatorRecord],
         fork_slot=INITIAL_SLOT_NUMBER,
         pending_attestations=[],
         pending_specials=[],
-        last_block_hashes=[bytes([0] * 32) for _ in range(CYCLE_LENGTH * 2)],
-        randao_mix=bytes([0] * 32)  # stub
+        last_block_hashes=[NULL_HASH for _ in range(CYCLE_LENGTH * 2)],
+        randao_mix=NULL_HASH  # stub
     )
 
     return state
@@ -820,23 +821,14 @@ def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: i
             return i
     return None
 
-
-def get_fork_version(fork_data: ForkData,
-                     slot: int) -> int:
-    if slot < fork_data.fork_slot:
-        return fork_data.pre_fork_version
-    else:
-        return fork_data.post_fork_version
-
-
 def get_domain(fork_data: ForkData,
                slot: int,
                base_domain: int) -> int:
-    return get_fork_version(
-        fork_data,
-        slot
-    ) * 2**32 + base_domain
-
+    if slot < fork_data.fork_slot:
+        fork_version = fork_data.pre_fork_version
+    else:
+        fork_version = fork_data.post_fork_version
+    return fork_version * 2**32 + base_domain
 
 def get_new_validators(current_validators: List[ValidatorRecord],
                        fork_data: ForkData,
@@ -867,7 +859,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
     if pubkey not in validator_pubkeys:
         assert deposit_size == MAX_DEPOSIT
 
-        rec = ValidatorRecord(
+        validator = ValidatorRecord(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
@@ -880,10 +872,10 @@ def get_new_validators(current_validators: List[ValidatorRecord],
 
         index = min_empty_validator(new_validators)
         if index is None:
-            new_validators.append(rec)
+            new_validators.append(validator)
             index = len(new_validators) - 1
         else:
-            new_validators[index] = rec
+            new_validators[index] = validator
         return new_validators, index
 
     # topup existing validator
@@ -958,9 +950,9 @@ def exit_validator(index: int,
     if penalize:
         state.balances_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += balance_at_stake(validator)
         validator.status = PENALIZED
-        whistleblower_xfer_amount = validator.deposit // WHISTLEBLOWER_REWARD_QUOTIENT
-        validator.deposit -= whistleblower_xfer_amount
-        state.validator_set[get_beacon_proposer_index(state, block.slot)].deposit += whistleblower_xfer_amount
+        whistleblower_transfer_amount = validator.deposit // WHISTLEBLOWER_REWARD_QUOTIENT
+        validator.deposit -= whistleblower_transfer_amount
+        state.validator_set[get_beacon_proposer_index(state, block.slot)].deposit += whistleblower_transfer_amount
     else:
         validator.status = PENDING_EXIT
     state.validator_set_delta_hash_chain = get_new_validator_set_delta_hash_chain(
@@ -1016,7 +1008,7 @@ For each `AttestationRecord` object `obj`:
     * Let `participants = get_attestation_participants(state, obj.data, obj.attester_bitfield)`
     * Let `group_public_key = BLSAddPubkeys([state.validator_set[v].pubkey for v in participants])`
     * Check `BLSVerify(pubkey=group_public_key, msg=obj.data, sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
-* [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == bytes([0] * 32)`.
+* [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == NULL_HASH`.
 * Append `PendingAttestationRecord(data=obj.data, attester_bitfield=obj.attester_bitfield, poc_bitfield=obj.poc_bitfield, slot_included=block.slot)` to `state.pending_attestations`.
 
 ### Verify proposer signature
@@ -1061,7 +1053,7 @@ For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is on
 }
 ```
 Perform the following checks:
-* Verify that `BLSVerify(pubkey=state.validator_set[data.validator_index].pubkey, msg=bytes([0] * 32), sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_LOGOUT))`.
+* Verify that `BLSVerify(pubkey=state.validator_set[data.validator_index].pubkey, msg=NULL_HASH, sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_LOGOUT))`.
 * Verify that `state.validator_set[validator_index].status == ACTIVE`.
 * Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
 
