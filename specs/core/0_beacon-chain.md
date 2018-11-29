@@ -930,7 +930,7 @@ def process_deposit(state: BeaconState,
 ```python
 def exit_validator(index: int,
                    state: BeaconState,
-                   penalized_exit: bool,
+                   penalize: bool,
                    current_slot: int) -> None:
     """
     Exit the validator with the given `index`.
@@ -949,7 +949,7 @@ def exit_validator(index: int,
                 committee.pop(i)
                 break
 
-    if penalized_exit:
+    if penalize:
         validator.status = EXITED_WITH_PENALTY
         state.last_penalized_exit_balances[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += effective_balance(validator)
         
@@ -1061,15 +1061,18 @@ For each `special` in `block.specials`:
 
 ```python
 {
+    'minimum_slot': 'unit64',
     'validator_index': 'uint64',
     'signature': '[uint384]',
 }
 ```
 
-* Verify that `BLSVerify(pubkey=state.validator_registry[data.validator_index].pubkey, msg=ZERO_HASH, sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_EXIT))`.
-* Verify that `state.validator_registry[validator_index].status == ACTIVE`.
-* Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `exit_validator(data.validator_index, state, penalized_exit=False, current_slot=block.slot)`.
+* Let `validator = state.validator_registry[data.validator_index]`.
+* Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=data.signature, domain=get_domain(state.fork_data, data.minimum_slot, DOMAIN_EXIT))`.
+* Verify that `validator.status == ACTIVE`.
+* Verify that `block.slot >= minimum_slot`.
+* Verify that `block.slot >= validator.last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
+* Run `exit_validator(data.validator_index, state, penalize=False, current_slot=block.slot)`.
 
 #### `CASPER_SLASHING`
 
@@ -1106,7 +1109,7 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
 * Verify that `len(intersection) >= 1`.
 * Verify that `vote1.data.justified_slot + 1 < vote2.data.justified_slot + 1 == vote2.data.slot < vote1.data.slot` or `vote1.data.slot == vote2.data.slot`.
 
-For each validator index `v` in `intersection`, if `state.validator_registry[v].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(v, state, penalized_exit=True, current_slot=block.slot)`
+For each validator index `v` in `intersection`, if `state.validator_registry[v].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
 
 #### `PROPOSER_SLASHING`
 
@@ -1124,7 +1127,7 @@ For each validator index `v` in `intersection`, if `state.validator_registry[v].
 * Verify that `proposal1_data != proposal2_data`.
 * Verify that `proposal1_data.slot == proposal2_data.slot`.
 * Verify that `state.validator_registry[proposer_index].status != EXITED_WITH_PENALTY`.
-* Run `exit_validator(proposer_index, state, penalized_exit=True, current_slot=block.slot)`.
+* Run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`.
 
 #### `DEPOSIT_PROOF`
 
@@ -1382,7 +1385,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ### Finally...
 
 * Remove all attestation records older than slot `s`.
-* For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, state, penalized_exit=False, current_slot=block.slot)`.
+* For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, state, penalize=False, current_slot=block.slot)`.
 * Set `state.last_block_hashes = state.last_block_hashes[EPOCH_LENGTH:]`.
 * Set `state.last_state_recalculation_slot += EPOCH_LENGTH`.
 
