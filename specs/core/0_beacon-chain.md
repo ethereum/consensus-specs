@@ -519,21 +519,24 @@ The inter-epoch state recalculation generally focuses on changes to the validato
 
 ### Helper functions
 
-Below are various helper functions.
+Note: The definitions below are for specification purposes and are not necessarily optimal implementations.
 
-The following is a function that gets active validator indices from the validator list:
+#### `get_active_validator_indices`
+
 ```python
 def get_active_validator_indices(validators: [ValidatorRecords]) -> List[int]:
+    """
+    Gets indices of active validators from ``validators``.
+    """
     return [i for i, v in enumerate(validators) if v.status == ACTIVE]
 ```
 
-The following is a function that shuffles any list; we primarily use it for the validator list:
+#### `shuffle`
 
 ```python
-def shuffle(values: List[Any],
-            seed: Hash32) -> List[Any]:
+def shuffle(values: List[Any], seed: Hash32) -> List[Any]:
     """
-    Returns the shuffled ``values`` with seed as entropy.
+    Returns the shuffled ``values`` with ``seed`` as entropy.
     """
     values_count = len(values)
 
@@ -581,24 +584,27 @@ def shuffle(values: List[Any],
     return output
 ```
 
-Here's a function that splits a list into `split_count` pieces:
+#### `split`
 
 ```python
-def split(seq: List[Any], split_count: int) -> List[Any]:
+def split(values: List[Any], split_count: int) -> List[Any]:
     """
-    Returns the split ``seq`` in ``split_count`` pieces in protocol.
+    Splits ``values`` into ``split_count`` pieces.
     """
-    list_length = len(seq)
+    list_length = len(values)
     return [
-        seq[(list_length * i // split_count): (list_length * (i + 1) // split_count)]
+        values[(list_length * i // split_count): (list_length * (i + 1) // split_count)]
         for i in range(split_count)
     ]
 ```
 
-A helper method for readability:
+#### `clamp`
 
 ```python
 def clamp(minval: int, maxval: int, x: int) -> int:
+    """
+    Clamps ``x`` between ``minval`` and ``maxval``.
+    """
     if x <= minval:
         return minval
     elif x >= maxval:
@@ -607,12 +613,15 @@ def clamp(minval: int, maxval: int, x: int) -> int:
         return x
 ```
 
-Now, our combined helper method:
+#### `get_new_shuffling`
 
 ```python
 def get_new_shuffling(seed: Hash32,
                       validators: List[ValidatorRecord],
                       crosslinking_start_shard: int) -> List[List[ShardAndCommittee]]:
+    """
+    Shuffles ``validators`` into shard committees using ``seed`` as entropy.
+    """
     active_validator_indices = get_active_validator_indices(validators)
 
     committees_per_slot = clamp(
@@ -651,41 +660,56 @@ Here's a diagram of what is going on:
 
 ![](http://vitalik.ca/files/ShuffleAndAssign.png?1)
 
-We also define two functions for retrieving data from the state:
+#### `get_shard_and_committees_for_slot`
 
 ```python
-def get_shards_and_committees_for_slot(state: BeaconState,
-                                       slot: int) -> List[ShardAndCommittee]:
+def get_shard_and_committees_for_slot(state: BeaconState,
+                                      slot: int) -> List[ShardAndCommittee]:
+    """
+    Returns the ``ShardAndCommittee`` for the ``slot``.
+    """
     earliest_slot_in_array = state.last_state_recalculation_slot - EPOCH_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + EPOCH_LENGTH * 2
     return state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
+```
 
+#### `get_block_hash`
+
+```python
 def get_block_hash(state: BeaconState,
                    current_block: BeaconBlock,
                    slot: int) -> Hash32:
+    """
+    Returns the block hash at a recent ``slot``.
+    """
     earliest_slot_in_array = current_block.slot - len(state.last_block_hashes)
     assert earliest_slot_in_array <= slot < current_block.slot
     return state.last_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shards_and_committees_for_slot(_, s)` should not change unless the validator registry changes.
+`get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_and_committees_for_slot(_, s)` should not change unless the validator registry changes.
 
-The following is a function that determines the proposer of a beacon block:
+#### `get_beacon_proposer_index`
 
 ```python
 def get_beacon_proposer_index(state:BeaconState, slot: int) -> int:
-    first_committee = get_shards_and_committees_for_slot(state, slot)[0].committee
-    index = first_committee[slot % len(first_committee)]
-    return index
+    """
+    Returns the beacon proposer index for the ``slot``.
+    """
+    first_committee = get_shard_and_committees_for_slot(state, slot)[0].committee
+    return first_committee[slot % len(first_committee)]
 ```
 
-The following is a function that determines the validators that participated in an attestation:
+#### `get_attestation_participants`
 
 ```python
 def get_attestation_participants(state: State,
                                  attestation_data: AttestationData,
                                  participation_bitfield: bytes) -> List[int]:
-    sncs_for_slot = get_shards_and_committees_for_slot(state, attestation_data.slot)
+    """
+    Returns the participant indices at for the ``attestation_data`` and ``participation_bitfield``.
+    """
+    sncs_for_slot = get_shard_and_committees_for_slot(state, attestation_data.slot)
     snc = [x for x in sncs_for_slot if x.shard == attestation_data.shard][0]
     assert len(participation_bitfield) == ceil_div8(len(snc.committee))
     participants = []
@@ -696,22 +720,31 @@ def get_attestation_participants(state: State,
     return participants
 ```
 
-We define another set of helpers to be used throughout: `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
+#### `bytes1`, `bytes2`, ...
 
-We define a function to determine the balance of a validator used for determining punishments and calculating stake:
+`bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
+
+
+#### `get_effective_balance`
 
  ```python
 def get_effective_balance(validator: ValidatorRecord) -> int:
+    """
+    Returns the effective balance (also known as "balance at stake") for the ``validator``.
+    """
     return min(validator.balance, MAX_DEPOSIT)
 ```
 
-We define a function to "add a link" to the validator hash chain, used when a validator is added or removed:
+#### `get_new_validator_registry_delta_chain_tip`
 
 ```python
 def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_chain_tip: Hash32,
                                               index: int,
                                               pubkey: int,
                                               flag: int) -> Hash32:
+    """
+    Compute the next hash in the validator registry delta hash chain.
+    """
     return hash(
         current_validator_registry_delta_chain_tip +
         bytes1(flag) +
@@ -720,10 +753,13 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     )
 ```
 
-Finally, we define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Below is a possible implementation:
+#### `int_sqrt`
 
 ```python
 def int_sqrt(n: int) -> int:
+    """
+    The largest integer k such that k**2 is less than ``n``.
+    """
     x = n
     y = (x + 1) // 2
     while y < x:
@@ -1224,7 +1260,7 @@ def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
     return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // distance
 ```
 
-For any validator `v`, `base_reward(v) = get_effective_balance(v) // reward_quotient`.
+For any validator `v` let `base_reward(v) = get_effective_balance(v) // reward_quotient`.
 
 ### Adjust justified slots and crosslink status
 
@@ -1244,7 +1280,7 @@ For every `ShardAndCommittee` object `obj`:
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `quadratic_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` epochs is about `D*D/2/quadratic_penalty_quotient`.)
+* Let `inactivity_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline validators after `D` epochs is about `D*D/2/inactivity_penalty_quotient`.)
 * Let `time_since_finality = block.slot - state.finalized_slot`.
 
 Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
@@ -1255,7 +1291,7 @@ Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
 Case 2: `time_since_finality > 4 * EPOCH_LENGTH`:
 
 * Any validator in `previous_epoch_boundary_attesters` sees their balance unchanged.
-* Any active validator `v` not in `previous_epoch_boundary_attesters`, and any validator with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * time_since_finality // quadratic_penalty_quotient`.
+* Any active validator `v` not in `previous_epoch_boundary_attesters`, and any validator with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * time_since_finality // inactivity_penalty_quotient`.
 
 For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
@@ -1294,7 +1330,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
     active_validator_indices = get_active_validator_indices(validators)
     # The total balance of active validators
     total_balance = sum([get_effective_balance(v) for i, v in enumerate(validators) if i in active_validator_indices])
-    # The maximum total wei that can deposit+withdraw
+    # The maximum total Gwei that can be deposited and withdrawn
     max_allowable_change = max(
         2 * MAX_DEPOSIT * GWEI_PER_ETH,
         total_balance // MAX_CHURN_QUOTIENT
