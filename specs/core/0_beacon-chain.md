@@ -904,7 +904,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
         val.balance += deposit_size
         return new_validators, index
 ```
-
+`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).  
 Now, to add a validator or top up an existing validator's balance:
 
 ```python
@@ -939,7 +939,6 @@ def add_or_topup_validator(state: BeaconState,
     return index
 ```
 
-`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the BLS12-381 spec.
 
 ### Routine for removing a validator
 
