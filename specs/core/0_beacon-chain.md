@@ -893,13 +893,13 @@ Now, to add a validator or top up an existing validator's balance:
 
 ```python
 def process_deposit(state: BeaconState,
-                           pubkey: int,
-                           deposit: int,
-                           proof_of_possession: bytes,
-                           withdrawal_credentials: Hash32,
-                           randao_commitment: Hash32,
-                           status: int,
-                           current_slot: int) -> int:
+                    pubkey: int,
+                    deposit: int,
+                    proof_of_possession: bytes,
+                    withdrawal_credentials: Hash32,
+                    randao_commitment: Hash32,
+                    status: int,
+                    current_slot: int) -> int:
     """
     Add the validator into the given `state`.
     Note that this function mutates `state`.
@@ -1055,24 +1055,24 @@ For each `special` in `block.specials`:
 
 * Verify that `special.kind` is a valid values.
 * Verify that `special.data` deserializes according to the format for the given `kind`.
-* Process `special`, as specified below for each `kind`.
+* Process `special.data` as specified below for each `kind`.
 
 #### `VOLUNTARY_EXIT`
 
 ```python
 {
-    'minimum_slot': 'unit64',
+    'slot': 'unit64',
     'validator_index': 'uint64',
     'signature': '[uint384]',
 }
 ```
 
-* Let `validator = state.validator_registry[data.validator_index]`.
-* Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=data.signature, domain=get_domain(state.fork_data, data.minimum_slot, DOMAIN_EXIT))`.
+* Let `validator = state.validator_registry[special.data.validator_index]`.
+* Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=special.data.signature, domain=get_domain(state.fork_data, special.data.slot, DOMAIN_EXIT))`.
 * Verify that `validator.status == ACTIVE`.
-* Verify that `block.slot >= minimum_slot`.
+* Verify that `block.slot >= special.data.slot`.
 * Verify that `block.slot >= validator.last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `exit_validator(data.validator_index, state, penalize=False, current_slot=block.slot)`.
+* Run `exit_validator(special.data.validator_index, state, penalize=False, current_slot=block.slot)`.
 
 #### `CASPER_SLASHING`
 
@@ -1096,38 +1096,39 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
 
 ```python
 {
-    vote1: SpecialAttestationData,
-    vote2: SpecialAttestationData,
+    vote_1: SpecialAttestationData,
+    vote_2: SpecialAttestationData,
 }
 ```
 
-* Verify that `verify_special_attestation_data(vote1)`.
-* Verify that `verify_special_attestation_data(vote2)`.
-* Verify that `vote1.data != vote2.data`.
+* Verify that `verify_special_attestation_data(special.data.vote_1)`.
+* Verify that `verify_special_attestation_data(special.data.vote_2)`.
+* Verify that `special.data.vote_1.data != special.data.vote_2.data`.
 * Let `indices(vote) = vote.aggregate_sig_poc_0_indices + vote.aggregate_sig_poc_1_indices`.
-* Let `intersection [x for x in indices(vote1) if x in indices(vote2)]`.
+* Let `intersection [x for x in indices(special.data.vote_1) if x in indices(special.data.vote_2)]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `vote1.data.justified_slot + 1 < vote2.data.justified_slot + 1 == vote2.data.slot < vote1.data.slot` or `vote1.data.slot == vote2.data.slot`.
+* Verify that `special.data.vote_1.data.justified_slot + 1 < special.data.vote_2.data.justified_slot + 1 == special.data.vote_2.data.slot < special.data.vote_1.data.slot` or `special.data.vote_1.data.slot == special.data.vote_2.data.slot`.
 
-For each validator index `v` in `intersection`, if `state.validator_registry[v].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(v, state, penalize=True, current_slot=block.slot)`
+For each validator index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, current_slot=block.slot)`
 
 #### `PROPOSER_SLASHING`
 
 ```python
 {
     'proposer_index': 'uint24',
-    'proposal1_data': ProposalSignedData,
-    'proposal1_signature': '[uint384]',
-    'proposal2_data': ProposalSignedData,
-    'proposal1_signature': '[uint384]',
+    'proposal_data_1': ProposalSignedData,
+    'proposal_signature_1': '[uint384]',
+    'proposal_data_2': ProposalSignedData,
+    'proposal_signature_2': '[uint384]',
 }
 ```
 
-* Verify that `BLSVerify(pubkey=state.validator_registry[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state.fork_data, proposal_data.slot, DOMAIN_PROPOSAL))` for each `proposal_signature`.
-* Verify that `proposal1_data != proposal2_data`.
-* Verify that `proposal1_data.slot == proposal2_data.slot`.
-* Verify that `state.validator_registry[proposer_index].status != EXITED_WITH_PENALTY`.
-* Run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`.
+* Verify that `BLSVerify(pubkey=state.validator_registry[special.data.proposer_index].pubkey, msg=hash(special.data.proposal_data_1), sig=special.data.proposal_signature_1, domain=get_domain(state.fork_data, special.data.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `BLSVerify(pubkey=state.validator_registry[special.data.proposer_index].pubkey, msg=hash(special.data.proposal_data_2), sig=special.data.proposal_signature_2, domain=get_domain(state.fork_data, special.data.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
+* Verify that `special.data.proposal_data_1 != special.data.proposal_data_2`.
+* Verify that `special.data.proposal_data_1.slot == special.data.proposal_data_2.slot`.
+* Verify that `state.validator_registry[special.data.proposer_index].status != EXITED_WITH_PENALTY`.
+* Run `exit_validator(special.data.proposer_index, state, penalize=True, current_slot=block.slot)`.
 
 #### `DEPOSIT_PROOF`
 
@@ -1136,14 +1137,14 @@ For each validator index `v` in `intersection`, if `state.validator_registry[v].
     'merkle_branch': '[hash32]',
     'merkle_tree_index': 'uint64',
     'deposit_data': {
-         'deposit_parameters': DepositParameters,
-         'message_value': 'uint64',
-         'timestamp': 'uint64'
+        'deposit_parameters': DepositParameters,
+        'message_value': 'uint64',
+        'timestamp': 'uint64'
     },
 }
 ```
 
-Note that `deposit_data` in serialized form should be the `DepositParameters` followed by 8 bytes for the `message_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
+Note that `special.data.deposit_data` in serialized form should be the `DepositParameters` followed by 8 bytes for the `message_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
 
 Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
@@ -1158,8 +1159,21 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-* Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
-* Run `process_deposit(state, pubkey=deposit_data.deposit_parameters.pubkey, deposit=deposit_data.message_value, proof_of_possession=deposit_data.deposit_parameters.proof_of_possession, withdrawal_credentials=deposit_data.deposit_parameters.withdrawal_credentials, randao_commitment=deposit_data.deposit_parameters.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
+* Verify that `block.slot - (special.data.deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
+* Run the following:
+
+```python
+process_deposit(
+    state=state,
+    pubkey=special.data.deposit_data.deposit_parameters.pubkey,
+    deposit=special.data.deposit_data.message_value,
+    proof_of_possession=special.data.deposit_data.deposit_parameters.proof_of_possession,
+    withdrawal_credentials=special.data.deposit_data.deposit_parameters.withdrawal_credentials,
+    randao_commitment=special.data.deposit_data.deposit_parameters.randao_commitment,
+    status=PENDING_ACTIVATION,
+    current_slot=block.slot
+)
+```
 
 ## Cycle boundary processing
 
@@ -1385,7 +1399,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ### Finally...
 
 * Remove all attestation records older than slot `s`.
-* For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, state, penalize=False, current_slot=block.slot)`.
+* For any validator with index `i` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(i, state, penalize=False, current_slot=block.slot)`.
 * Set `state.last_block_hashes = state.last_block_hashes[EPOCH_LENGTH:]`.
 * Set `state.last_state_recalculation_slot += EPOCH_LENGTH`.
 
