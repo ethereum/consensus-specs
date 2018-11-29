@@ -700,10 +700,10 @@ We define a function to "add a link" to the validator hash chain, used when a va
 
 ```python
 def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_chain_tip: Hash32,
-                                           index: int,
-                                           pubkey: int,
-                                           flag: int) -> Hash32:
-    return = hash(
+                                              index: int,
+                                              pubkey: int,
+                                              flag: int) -> Hash32:
+    return hash(
         current_validator_registry_delta_chain_tip +
         bytes1(flag) +
         bytes3(index) +
@@ -711,7 +711,7 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     )
 ```
 
-Finally, we abstractly define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Here is one possible implementation, though clients are free to use their own including standard libraries for [integer square root](https://en.wikipedia.org/wiki/Integer_square_root) if available and meet the specification.
+Finally, we define `int_sqrt(n)` for use in reward/penalty calculations as the largest integer `k` such that `k**2 <= n`. Below is a possible implementation:
 
 ```python
 def int_sqrt(n: int) -> int:
@@ -725,14 +725,14 @@ def int_sqrt(n: int) -> int:
 
 ### On startup
 
-A valid block with slot `0` (the "genesis block") has the following values. Other validity rules (eg. requiring a signature) do not apply.
+A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the following values. Other validity rules (eg. requiring a signature) do not apply.
 
 ```python
 {
-    'slot': 0,
-    'randao_reveal': bytes32(0),
+    'slot': INITIAL_SLOT_NUMBER,
+    'randao_reveal': ZERO_HASH,
     'candidate_pow_receipt_roots': [],
-    'ancestor_hashes': [bytes32(0) for i in range(32)],
+    'ancestor_hashes': [ZERO_HASH for i in range(32)],
     'state_root': STARTUP_STATE_ROOT,
     'attestations': [],
     'specials': [],
@@ -750,7 +750,7 @@ def on_startup(current_validators: List[ValidatorRecord],
                processed_pow_receipt_root: Hash32) -> BeaconState:
     # Activate validators
     initial_validator_registry = []
-    for pubkey, deposit_size, proof_of_possession, withdrawal_credentials, \
+    for pubkey, balance, proof_of_possession, withdrawal_credentials, \
             randao_commitment in initial_validator_entries:
         initial_validator_registry, _ = get_new_validators(
             current_validators=initial_validator_registry,
@@ -760,7 +760,7 @@ def on_startup(current_validators: List[ValidatorRecord],
                 fork_slot=2**64 - 1,
             ),
             pubkey=pubkey,
-            deposit_size=deposit_size,
+            balance=balance,
             proof_of_possession=proof_of_possession,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
@@ -769,14 +769,7 @@ def on_startup(current_validators: List[ValidatorRecord],
         )
 
     # Setup state
-    x = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
-    initial_crosslinks = [
-        CrosslinkRecord(
-            slot=INITIAL_SLOT_NUMBER,
-            hash=ZERO_HASH
-        )
-        for i in range(SHARD_COUNT)
-    ]
+    initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
     state = BeaconState(
         validator_registry=initial_validator_registry,
         validator_registry_last_change_slot=INITIAL_SLOT_NUMBER,
@@ -785,7 +778,7 @@ def on_startup(current_validators: List[ValidatorRecord],
 
         randao_mix=ZERO_HASH,
         next_seed=ZERO_HASH,
-        shard_and_committee_for_slots=x + x,
+        shard_and_committee_for_slots=initial_shuffling + initial_shuffling,
         persistent_committees=split(shuffle(initial_validator_registry, ZERO_HASH), SHARD_COUNT),
         persistent_committee_reassignments=[],
         
@@ -794,7 +787,7 @@ def on_startup(current_validators: List[ValidatorRecord],
         justified_slot_bitfield=0,
         finalized_slot=INITIAL_SLOT_NUMBER,
         
-        last_crosslinks=initial_crosslinks,
+        last_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
         last_state_recalculation_slot=INITIAL_SLOT_NUMBER,
         last_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
         last_penalized_exit_balances=[],
@@ -814,7 +807,7 @@ def on_startup(current_validators: List[ValidatorRecord],
     return state
 ```
 
-The `add_or_topup_validator` routine is defined below.
+The `process_deposit` routine is defined below.
 
 ### Routine for adding a validator
 
@@ -844,10 +837,10 @@ def get_domain(fork_data: ForkData,
         slot
     ) * 2**32 + domain_type
 
-def get_new_validators(current_validators: List[ValidatorRecord],
+def get_new_validators(validators: List[ValidatorRecord],
                        fork_data: ForkData,
                        pubkey: int,
-                       deposit_size: int,
+                       deposit: int,
                        proof_of_possession: bytes,
                        withdrawal_credentials: Hash32,
                        randao_commitment: Hash32,
@@ -863,48 +856,45 @@ def get_new_validators(current_validators: List[ValidatorRecord],
             DOMAIN_DEPOSIT
         )
     )
-    new_validators = copy.deepcopy(current_validators)
-    validator_pubkeys = [v.pubkey for v in new_validators]
-
-    # Add new validator
+    validators_copy = copy.deepcopy(validators)
+    validator_pubkeys = [v.pubkey for v in validators_copy]
+    
     if pubkey not in validator_pubkeys:
-        assert deposit_size == MAX_DEPOSIT
-
+        # Add new validator
         validator = ValidatorRecord(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
             randao_skips=0,
-            balance=MAX_DEPOSIT * GWEI_PER_ETH,
+            balance=deposit,
             status=status,
             last_status_change_slot=current_slot,
             exit_counter=0
         )
 
-        index = min_empty_validator_index(new_validators)
+        index = min_empty_validator_index(validators_copy)
         if index is None:
-            new_validators.append(validator)
-            index = len(new_validators) - 1
+            validators_copy.append(validator)
+            index = len(validators_copy) - 1
         else:
-            new_validators[index] = validator
-        return new_validators, index
-
-    # Topup existing validator
+            validators_copy[index] = validator
     else:
+        # Increase balance by deposit
         index = validator_pubkeys.index(pubkey)
-        val = new_validators[index]
-        assert val.withdrawal_credentials == withdrawal_credentials
+        validator = validators_copy[index]
+        assert validator.withdrawal_credentials == withdrawal_credentials
 
-        val.balance += deposit_size
-        return new_validators, index
+        validator.balance += deposit
+
+    return validators_copy, index
 ```
 
 Now, to add a validator or top up an existing validator's balance:
 
 ```python
-def add_or_topup_validator(state: BeaconState,
+def process_deposit(state: BeaconState,
                            pubkey: int,
-                           deposit_size: int,
+                           deposit: int,
                            proof_of_possession: bytes,
                            withdrawal_credentials: Hash32,
                            randao_commitment: Hash32,
@@ -922,7 +912,7 @@ def add_or_topup_validator(state: BeaconState,
             fork_slot=state.fork_slot,
         ),
         pubkey=pubkey,
-        deposit_size=deposit_size,
+        deposit=deposit,
         proof_of_possession=proof_of_possession,
         withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
@@ -1165,9 +1155,8 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
-
-Run `add_or_topup_validator(state, pupkey=deposit_data.deposit_parameters.pubkey, deposit_size=deposit_data.message_value, proof_of_possession=deposit_data.deposit_parameters.proof_of_possession, withdrawal_credentials=deposit_data.deposit_parameters.withdrawal_credentials, randao_commitment=deposit_data.deposit_parameters.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
+* Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
+* Run `process_deposit(state, pubkey=deposit_data.deposit_parameters.pubkey, deposit=deposit_data.message_value, proof_of_possession=deposit_data.deposit_parameters.proof_of_possession, withdrawal_credentials=deposit_data.deposit_parameters.withdrawal_credentials, randao_commitment=deposit_data.deposit_parameters.randao_commitment, status=PENDING_ACTIVATION, current_slot=block.slot)`.
 
 ## Cycle boundary processing
 
@@ -1359,7 +1348,7 @@ And perform the following updates to the `state`:
 * Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`
 * Let `time_since_finality = block.slot - state.validator_registry_last_change_slot`
 * Let `start_shard = state.shard_and_committee_for_slots[0][0].shard`
-* If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from last epoch.
+* If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
