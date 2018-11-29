@@ -74,7 +74,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | - | - | :-: |
 | `SHARD_COUNT` | `2**10` (= 1,024)| shards |
 | `TARGET_COMMITTEE_SIZE` | `2**8` (= 256) | validators |
-| `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
 | `MAX_ATTESTATIONS_PER_BLOCK` | `2**7` (= 128) | attestations |
 | `MAX_DEPOSIT` | `2**5` (= 32) | ETH |
 | `MIN_BALANCE` | `2**4` (= 16) | ETH |
@@ -95,7 +94,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
-| `MIN_WITHDRAWAL_PERIOD` | `2**7` (= 128) | epochs | ~14 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `SQRT_E_DROP_TIME` | `2**11` (= 2,048) | epochs | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**14` (= 16,384) | epochs | ~73 days |
@@ -116,10 +114,8 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | - | - |
 | `PENDING_ACTIVATION` | `0` |
 | `ACTIVE` | `1` |
-| `PENDING_WITHDRAW` | `2` |
-| `WITHDRAWN` | `3` |
-| `EXITED_WITHOUT_PENALTY` | `4` |
-| `EXITED_WITH_PENALTY` | `5` |
+| `EXITED_WITHOUT_PENALTY` | `2` |
+| `EXITED_WITH_PENALTY` | `3` |
 
 **Special record types**
 
@@ -152,7 +148,6 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the inactivity leak to cut deposits of non-participating validators by ~39.4%.
 * The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_CHURN_QUOTIENT` of the validators can change during each validator registry change.
-* The `MAX_WITHDRAWALS_PER_EPOCH` parameter correspond to 5.2m ETH in ~6 months.
 
 ## Ethereum 1.0 chain deposit contract
 
@@ -830,7 +825,7 @@ First, some helper functions:
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int) -> int:
     for i, v in enumerate(validators):
-        if v.status == WITHDRAWN and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
+        if v.balance == 0 and v.last_status_change_slot + DELETION_PERIOD <= current_slot:
             return i
     return None
 
@@ -898,7 +893,6 @@ def get_new_validators(current_validators: List[ValidatorRecord],
     else:
         index = validator_pubkeys.index(pubkey)
         val = new_validators[index]
-        assert val.status != WITHDRAWN
         assert val.withdrawal_credentials == withdrawal_credentials
 
         val.balance += deposit_size
@@ -1306,7 +1300,6 @@ def get_changed_validators(validators: List[ValidatorRecord],
                 flag=ACTIVATION,
             )
         if validators[i].status == EXITED_WITHOUT_PENALTY:
-            validators[i].status = PENDING_WITHDRAW
             validators[i].last_status_change_slot = current_slot
             total_changed += effective_balance(validators[i])
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
@@ -1325,21 +1318,13 @@ def get_changed_validators(validators: List[ValidatorRecord],
         (last_penalized_exit_balances[period_index - 1] if period_index >= 1 else 0) +
         (last_penalized_exit_balances[period_index - 2] if period_index >= 2 else 0)
     )
-    # Separate loop to withdraw validators that have been logged out for long enough, and
-    # calculate their penalties if they were slashed
 
-    def withdrawable(v):
-        return v.status in (PENDING_WITHDRAW, EXITED_WITH_PENALTY) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
-
-    withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_counter)
-    for v in withdrawable_validators[:MAX_WITHDRAWALS_PER_EPOCH]:
-        if v.status == EXITED_WITH_PENALTY:
-            v.balance -= effective_balance(v) * min(total_penalties * 3, total_balance) // total_balance
-        v.status = WITHDRAWN
-        v.last_status_change_slot = current_slot
-
-        withdraw_amount = v.balance
-        # STUB: withdraw to shard chain   
+    # Calculate penalties for slashed validators
+    def to_penalize(v):
+        return v.status == EXITED_WITH_PENALTY
+    validators_to_penalize = filter(to_penalize, validators)
+    for v in validators_to_penalize:
+        v.balance -= effective_balance(v) * min(total_penalties * 3, total_balance) // total_balance
 
     return validators, last_penalized_exit_balances, validator_registry_delta_chain_tip
 ```
