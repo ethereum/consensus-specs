@@ -747,9 +747,7 @@ A valid block with slot `0` (the "genesis block") has the following values. Othe
 `STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
-def on_startup(current_validators: List[ValidatorRecord],
-               pre_fork_version: int,
-               initial_validator_entries: List[Any],
+def on_startup(initial_validator_entries: List[Any],
                genesis_time: int,
                processed_pow_receipt_root: Hash32) -> BeaconState:
     # Induct validators
@@ -759,8 +757,8 @@ def on_startup(current_validators: List[ValidatorRecord],
         validators, _ = get_new_validators(
             current_validators=validators,
             fork_data=ForkData(
-                pre_fork_version=pre_fork_version,
-                post_fork_version=pre_fork_version,
+                pre_fork_version=INITIAL_FORK_VERSION,
+                post_fork_version=INITIAL_FORK_VERSION,
                 fork_slot_number=2**64 - 1,
             ),
             pubkey=pubkey,
@@ -811,7 +809,6 @@ def on_startup(current_validators: List[ValidatorRecord],
     return state
 ```
 
-The `add_or_topup_validator` routine is defined below.
 
 ### Routine for adding a validator
 
