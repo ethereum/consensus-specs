@@ -65,7 +65,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
 * **Epoch** - an aligned span of slots during which all validators get exactly one chance to make an attestation
 * **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
-* **Withdrawal period** - number of slots between a validator exit and the validator balance being withdrawable
+* **Withdrawal period** - the number of slots between a validator exit and the validator balance being withdrawable
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
 
 ## Constants
