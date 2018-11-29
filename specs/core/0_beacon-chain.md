@@ -160,10 +160,10 @@ The deposit contract emits a log with the various arguments for consumption by t
 The beacon chain is initialized when a condition is met inside a contract on the existing Ethereum 1.0 chain. This contract's code in Vyper is as follows:
 
 ```python
-MAX_DEPOSITS_FOR_CHAIN_START: constant(uint256) = 2**14
-MAX_DEPOSIT: constant(uint256) = 32  # ETH
 MIN_DEPOSIT: constant(uint256) = 1  # ETH
+MAX_DEPOSIT: constant(uint256) = 32  # ETH
 GWEI_PER_ETH: constant(uint256) = 10**9
+FULL_DEPOSIT_COUNT_THRESHOLD: constant(uint256) = 2**14
 POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
@@ -192,7 +192,7 @@ def deposit(deposit_parameters: bytes[2048]):
     assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
         self.full_deposit_count += 1
-    if self.full_deposit_count == MAX_DEPOSITS_FOR_CHAIN_START:
+    if self.full_deposit_count == FULL_DEPOSIT_COUNT_THRESHOLD:
         timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
         timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
         log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
@@ -746,7 +746,7 @@ def on_startup(initial_validator_entries: List[Any],
                processed_pow_receipt_root: Hash32) -> BeaconState:
     # Activate validators
     initial_validator_registry = []
-    for pubkey, balance, proof_of_possession, withdrawal_credentials, randao_commitment in initial_validator_entries:
+    for pubkey, deposit, proof_of_possession, withdrawal_credentials, randao_commitment in initial_validator_entries:
         initial_validator_registry, _ = get_new_validators(
             current_validators=initial_validator_registry,
             fork_data=ForkData(
@@ -965,9 +965,9 @@ def exit_validator(index: int,
 
 ## Per-block processing
 
-This procedure should be carried out every beacon block.
+This procedure should be carried out for every beacon block (denoted `block`).
 
-* Let `parent_hash` be the hash of the immediate previous beacon block (ie. equal to `ancestor_hashes[0]`).
+* Let `parent_hash` be the hash of the immediate previous beacon block (ie. equal to `block.ancestor_hashes[0]`).
 * Let `parent` be the beacon block with the hash `parent_hash`.
 
 First, set `state.last_block_hashes` to the output of the following:
@@ -1172,9 +1172,9 @@ process_deposit(
 
 ## Epoch boundary processing
 
-Repeat the steps in this section while `block.slot - state.last_state_recalculation_slot >= EPOCH_LENGTH`. For simplicity, we'll use `s` as `state.last_state_recalculation_slot`.
+Repeat the steps in this section while `block.slot - state.last_state_recalculation_slot >= EPOCH_LENGTH`. For simplicity, we use `s` as `state.last_state_recalculation_slot`.
 
-Note that `state.last_state_recalculation_slot` will always be a multiple of `EPOCH_LENGTH`. In the "happy case", this process will trigger, and loop once, every time `block.slot` passes a new exact multiple of `EPOCH_LENGTH`, but if a chain skips more than an entire epoch then the loop may run multiple times, incrementing `state.last_state_recalculation_slot` by `EPOCH_LENGTH` with each iteration._
+Note that `state.last_state_recalculation_slot` will always be a multiple of `EPOCH_LENGTH`. In the "happy case", this process will trigger, and loop once, every time `block.slot` passes a new exact multiple of `EPOCH_LENGTH`, but if a chain skips more than an entire epoch then the loop may run multiple times, incrementing `state.last_state_recalculation_slot` by `EPOCH_LENGTH` with each iteration.
 
 ### Precomputation
 
@@ -1372,23 +1372,21 @@ num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_
 for i in range(num_validators_to_reshuffle):
     # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
     # and none of the hashes used for entropy in this loop will be the same
-    vid = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
+    validator_index = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
     new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
     shard_reassignment_record = ShardReassignmentRecord(
-        validator_index=vid,
+        validator_index=validator_index,
         shard=new_shard,
         slot=s + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
     )
     state.persistent_committee_reassignments.append(shard_reassignment_record)
 
 while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= s:
-    rec = state.persistent_committee_reassignments.pop(0)
+    reassignment = state.persistent_committee_reassignments.pop(0)
     for committee in state.persistent_committees:
-        if rec.validator_index in committee:
-            committee.pop(
-                committee.index(rec.validator_index)
-            )
-    state.persistent_committees[rec.shard].append(rec.validator_index)
+        if reassignment.validator_index in committee:
+            committee.pop(committee.index(reassignment.validator_index))
+    state.persistent_committees[reassignment.shard].append(reassignment.validator_index)
 ```
 
 ### Finally...
