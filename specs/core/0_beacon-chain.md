@@ -92,7 +92,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SLOT_DURATION` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
-| `MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` | `2**8` (= 4) | slots | 25.6 minutes |
+| `MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` | `2**8` (= 256) | slots | 25.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `SQRT_E_DROP_TIME` | `2**17` (= 131,072) | slots | ~9 days |
