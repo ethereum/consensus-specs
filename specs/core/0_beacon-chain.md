@@ -167,21 +167,21 @@ GWEI_PER_ETH: constant(uint256) = 10**9
 POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], max_deposit_count: uint256})
+HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], full_deposit_count: uint256})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
 receipt_tree: bytes32[uint256]
-max_deposit_count: uint256
+full_deposit_count: uint256
 
 @payable
 @public
 def deposit(deposit_parameters: bytes[2048]):
-    index: uint256 = self.max_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+    index: uint256 = self.full_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
 
-    log.HashChainValue(self.receipt_tree[1], deposit_data, self.max_deposit_count)
+    log.HashChainValue(self.receipt_tree[1], deposit_data, self.full_deposit_count)
 
     self.receipt_tree[index] = sha3(deposit_data)
     for i in range(32):  # POW_CONTRACT_MERKLE_TREE_DEPTH (range of constant var not yet supported)
@@ -191,8 +191,8 @@ def deposit(deposit_parameters: bytes[2048]):
     assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
     assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
-        self.max_deposit_count += 1
-    if self.max_deposit_count == MAX_DEPOSITS_FOR_CHAIN_START:
+        self.full_deposit_count += 1
+    if self.full_deposit_count == MAX_DEPOSITS_FOR_CHAIN_START:
         timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
         timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
         log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
@@ -1083,7 +1083,7 @@ We define the following `SpecialAttestationData` object and the helper `verify_s
     'aggregate_sig_poc_0_indices': '[uint24]',
     'aggregate_sig_poc_1_indices': '[uint24]',
     'data': AttestationData,
-    'aggregate_sig': '[uint256]',
+    'aggregate_sig': '[uint384]',
 }
 ```
 
