@@ -824,7 +824,7 @@ def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: i
 
 def get_fork_version(fork_data: ForkData,
                      slot: int) -> int:
-    if slot < fork_data.fork_slot_number:
+    if slot < fork_data.fork_slot:
         return fork_data.pre_fork_version
     else:
         return fork_data.post_fork_version
@@ -907,9 +907,9 @@ def process_deposit(state: BeaconState,
     state.validator_registry, index = get_new_validators(
         current_validators=state.validator_registry,
         fork_data=ForkData(
-            pre_fork_version=state.pre_fork_version,
-            post_fork_version=state.post_fork_version,
-            fork_slot=state.fork_slot,
+            pre_fork_version=state.fork_data.pre_fork_version,
+            post_fork_version=state.fork_data.post_fork_version,
+            fork_slot=state.fork_data.fork_slot,
         ),
         pubkey=pubkey,
         deposit=deposit,
@@ -1013,7 +1013,7 @@ For each `attestation` in `block.attestations`:
 * `aggregate_sig` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `BLSVerify(pubkey=group_public_key, msg=attestation.data, sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
+    * Verify that `BLSVerify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=block.slot)` to `state.last_attestations`.
 
@@ -1053,9 +1053,9 @@ If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some
 
 For each `special` in `block.specials`:
 
-* Verify that `special.kind` is a valid values.
+* Verify that `special.kind` is a valid value.
 * Verify that `special.data` deserializes according to the format for the given `kind`.
-* Process `special.data` as specified below for each `kind`.
+* Process `special.data` as specified below for each kind.
 
 #### `VOLUNTARY_EXIT`
 
