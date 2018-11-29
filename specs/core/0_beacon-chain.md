@@ -1353,7 +1353,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
     for i in range(len(validators)):
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
-            total_changed += MAX_DEPOSIT * GWEI_PER_ETH
+            total_changed += validators[i].balance * GWEI_PER_ETH
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
