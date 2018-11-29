@@ -887,7 +887,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
             exit_counter=0
         )
 
-        index = min_empty_validator(new_validators)
+        index = min_empty_validator_index(new_validators)
         if index is None:
             new_validators.append(validator)
             index = len(new_validators) - 1
@@ -1366,7 +1366,7 @@ And perform the following updates to the `state`:
 
 * Set `state.validator_registry_last_change_slot = s + EPOCH_LENGTH`
 * Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`
-* Let `state.next_start_shard = (shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
+* Let `state.next_start_shard = (state.shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
 * Set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`
 * Set `state.next_seed = state.randao_mix`
 
