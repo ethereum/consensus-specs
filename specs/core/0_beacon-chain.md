@@ -8,7 +8,7 @@
     * [Introduction](#introduction)
     * [Terminology](#terminology)
     * [Constants](#constants)
-    * [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract)
+    * [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract)
         * [Contract code in Vyper](#contract-code-in-vyper)
     * [Data structures](#data-structures)
         * [Beacon chain blocks](#beacon-chain-blocks)
@@ -48,7 +48,7 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on the Ethereum 1.0 chain. Activation as a validator happens when deposit transaction receipts are processed by the beaocn chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a validator happens when deposit transaction receipts are processed by the beaocn chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain are "attestations". Attestations are availability votes for a shard block, and simultaneously attest to the corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
@@ -92,12 +92,12 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | `SLOT_DURATION` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
-| `MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
-| `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
-| `SQRT_E_DROP_TIME` | `2**11` (= 2,048) | epochs | ~9 days |
-| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**14` (= 16,384) | epochs | ~73 days |
-| `DELETION_PERIOD` | `2**16` (= 65,536) | epochs | ~290 days |
+| `MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` | `2**8` (= 4) | slots | 25.6 minutes |
+| `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
+| `SQRT_E_DROP_TIME` | `2**17` (= 131,072) | slots | ~9 days |
+| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
+| `DELETION_PERIOD` | `2**24` (= 16,777,216) | slots | ~290 days |
 
 **Quotients**
 
@@ -151,7 +151,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 ## Ethereum 1.0 chain deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to the Ethereum 1.0 chain. A deposit contract is added to the Ethereum 1.0 chain to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract is added to Ethereum 1.0 to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
 
 The deposit contract emits a log with the various arguments for consumption by the beacon chain. It does little validation, pushing the deposit logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the deposit contract.
 
@@ -204,7 +204,7 @@ def get_receipt_root() -> bytes32:
 
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from the Ethereum 1.0 chain to the Ethereum 2.0 chain, they should call the `deposit` function, sending up to `MAX_DEPOSIT` ETH and providing as `deposit_parameters` a SimpleSerialize'd `DepositParameters` object of the form:
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending up to `MAX_DEPOSIT` ETH and providing as `deposit_parameters` a SimpleSerialize'd `DepositParameters` object of the form:
 
 ```python
 {
@@ -362,7 +362,7 @@ A `ValidatorRecord` object has the following fields:
     'withdrawal_credentials': 'hash32',
     # RANDAO commitment
     'randao_commitment': 'hash32',
-    # Slot the proposer has skipped (ie. layers of RANDAO expected)
+    # Slots the proposer has skipped (ie. layers of RANDAO expected)
     'randao_skips': 'uint64',
     # Balance in Gwei
     'balance': 'uint64',
@@ -454,12 +454,12 @@ The beacon chain is the system chain for Ethereum 2.0. The beacon chain's main r
 * Process crosslinks (see above)
 * Process its own block-by-block consensus, as well as the finality gadget
 
-Processing the beacon chain is fundamentally similar to processing a Ethereum 1.0 chain in many respects. Clients download and process blocks, and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with the existing Ethereum 1.0 chain, and because it is a PoS chain, there are differences.
+Processing the beacon chain is fundamentally similar to processing the Ethereum 1.0 chain in many respects. Clients download and process blocks, and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with Ethereum 1.0, and because it is a proof-of-stake chain, there are differences.
 
 For a beacon chain block `block` to be processed by a node, the following conditions must be met:
 
 * The parent block `block.ancestor_hashes[0]` has been processed and accepted.
-* The Ethereum 1.0 chain block pointed to by the `state.processed_pow_receipt_root` has already been processed and accepted.
+* The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has already been processed and accepted.
 * The node's local clock time is greater than or equal to the `state.genesis_time + block.slot * SLOT_DURATION`.
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
@@ -550,9 +550,7 @@ def shuffle(values: List[Any],
                 break
 
             # Read 3-bytes of `source` as a 24-bit big-endian integer.
-            sample_from_source = int.from_bytes(
-                source[position:position + rand_bytes], 'big'
-            )
+            sample_from_source = int.from_bytes(source[position:position + rand_bytes], 'big')
 
             # Sample values greater than or equal to `sample_max` will cause
             # modulo bias when mapped into the `remaining` range.
@@ -736,27 +734,24 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
     'state_root': STARTUP_STATE_ROOT,
     'attestations': [],
     'specials': [],
-    'proposer_signature': [0, 0]
+    'proposer_signature': [0, 0],
 }
 ```
 
 `STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
-def on_startup(current_validators: List[ValidatorRecord],
-               pre_fork_version: int,
-               initial_validator_entries: List[Any],
+def on_startup(initial_validator_entries: List[Any],
                genesis_time: int,
                processed_pow_receipt_root: Hash32) -> BeaconState:
     # Activate validators
     initial_validator_registry = []
-    for pubkey, balance, proof_of_possession, withdrawal_credentials, \
-            randao_commitment in initial_validator_entries:
+    for pubkey, balance, proof_of_possession, withdrawal_credentials, randao_commitment in initial_validator_entries:
         initial_validator_registry, _ = get_new_validators(
             current_validators=initial_validator_registry,
             fork_data=ForkData(
-                pre_fork_version=pre_fork_version,
-                post_fork_version=pre_fork_version,
+                pre_fork_version=INITIAL_FORK_VERSION,
+                post_fork_version=INITIAL_FORK_VERSION,
                 fork_slot=2**64 - 1,
             ),
             pubkey=pubkey,
@@ -811,7 +806,7 @@ The `process_deposit` routine is defined below.
 
 ### Routine for adding a validator
 
-This routine should be run for every validator that is activated as part of a log created on the Ethereum 1.0 chain [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by the Ethereum 1.0 chain.
+This routine should be run for every validator that is activated as part of a log created on Ethereum 1.0 [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by Ethereum 1.0.
 
 First, some helper functions:
 
@@ -1144,7 +1139,7 @@ For each validator index `i` in `intersection`, if `state.validator_registry[i].
 }
 ```
 
-Note that `special.data.deposit_data` in serialized form should be the `DepositParameters` followed by 8 bytes for the `message_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
+Note that `special.data.deposit_data` in serialized form should be the `DepositParameters` followed by 8 bytes for the `message_value` and 8 bytes for the `timestamp`, or exactly the `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
 
 Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
@@ -1211,11 +1206,11 @@ For every `ShardAndCommittee` object `obj` in `state.shard_and_committee_for_slo
 * Let `winning_hash(obj)` be the winning `shard_block_hash` value.
 * Let `total_balance(obj) = sum([effective_balance(v) for v in obj.committee])`.
     
-Let `inclusion_slot(v)` equal `a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`, and `inclusion_distance(v) = a.slot_included - a.data.slot` for the same attestation. We define a function `adjust_for_inclusion_distance(magnitude, dist)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`.
+Let `inclusion_slot(v)` equal `a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`, and `inclusion_distance(v) = a.slot_included - a.data.slot` for the same attestation. We define a function `adjust_for_inclusion_distance(magnitude, distance)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`.
 
 ```python
-def adjust_for_inclusion_distance(magnitude: int, dist: int) -> int:
-    return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // dist
+def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
+    return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // distance
 ```
 
 For any validator `v`, `base_reward(v) = effective_balance(v) // reward_quotient`.
