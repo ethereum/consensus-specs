@@ -1311,7 +1311,7 @@ If `state.last_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, 
 
 ### Validator registry change
 
-A validator registry change can happen if all of the following criteria are satisfied:
+A validator registry change occurs if all of the following criteria are satisfied:
 
 * `state.finalized_slot > state.validator_registry_last_change_slot`
 * For every shard number `shard` in `state.shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_registry_last_change_slot`
