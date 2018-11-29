@@ -1147,7 +1147,7 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
 * Verify that `verify_special_attestation_data(vote_2)`.
 * Verify that `vote_1.data != vote_2.data`.
 * Let `indices(vote) = vote.aggregate_sig_poc_0_indices + vote.aggregate_sig_poc_1_indices`.
-* Let `intersection [x for x in indices(vote_1) if x in indices(vote_2)]`.
+* Let `intersection = [x for x in indices(vote_1) if x in indices(vote_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `vote_1.data.justified_slot + 1 < vote_2.data.justified_slot + 1 == vote_2.data.slot < vote_1.data.slot` or `vote_1.data.slot == vote_2.data.slot`.
 
