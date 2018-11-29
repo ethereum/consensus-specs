@@ -6,6 +6,7 @@
 * [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
     * [Table of contents](#table-of-contents)
     * [Introduction](#introduction)
+    * [Notation](#notation)
     * [Terminology](#terminology)
     * [Constants](#constants)
     * [PoW chain registration contract](#pow-chain-registration-contract)
@@ -52,6 +53,9 @@ At the core of Ethereum 2.0 is a system chain called the "beacon chain". The bea
 
 The primary source of load on the beacon chain are "attestations". Attestations simultaneously attest to a shard block and a corresponding beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
+## Notation
+
+Unless otherwise indicated, code appearing in `this style` is to be interpreted as an algorithm defined in Python.  Implementations may implement such algorithms using any code and programming language desired as long as the behavior is identical to that of the algorithm provided.
 
 ## Terminology
 
