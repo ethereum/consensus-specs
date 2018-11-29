@@ -323,7 +323,7 @@ The `BeaconState` object has the following fields:
     # Validator registry
     'validator_registry': [ValidatorRecord],
     'validator_registry_last_change_slot': 'uint64',
-    'validator_registry_exit_sequence': 'uint64',
+    'validator_registry_exit_counter': 'uint64',
     'validator_registry_delta_chain_tip': 'hash32',  # For light clients to easily track delta
 
     # Randomness and committees
@@ -374,8 +374,8 @@ A `ValidatorRecord` object has the following fields:
     'status': 'uint64',
     # Slot when validator last changed status (or 0)
     'last_status_change_slot': 'uint64',
-    # Sequence number when validator exited (or 0)
-    'exit_sequence': 'uint64',
+    # Exit counter when validator exited (or 0)
+    'exit_counter': 'uint64',
 }
 ```
 
@@ -685,10 +685,10 @@ def get_attestation_participants(state: State,
     snc = [x for x in sncs_for_slot if x.shard == attestation_data.shard][0]
     assert len(participation_bitfield) == ceil_div8(len(snc.committee))
     participants = []
-    for i, vindex in enumerate(snc.committee):
+    for i, validator_index in enumerate(snc.committee):
         bit = (participation_bitfield[i//8] >> (7 - (i % 8))) % 2
         if bit == 1:
-            participants.append(vindex)
+            participants.append(validator_index)
     return participants
 ```
 
@@ -785,7 +785,7 @@ def on_startup(current_validators: List[ValidatorRecord],
     state = BeaconState(
         validator_registry=initial_validator_registry,
         validator_registry_last_change_slot=INITIAL_SLOT_NUMBER,
-        validator_registry_exit_sequence=0,
+        validator_registry_exit_counter=0,
         validator_registry_delta_chain_tip=ZERO_HASH,
         last_crosslinks=initial_crosslinks,
         last_state_recalculation_slot=INITIAL_SLOT_NUMBER,
@@ -880,7 +880,7 @@ def get_new_validators(current_validators: List[ValidatorRecord],
             balance=MAX_DEPOSIT * GWEI_PER_ETH,
             status=status,
             last_status_change_slot=current_slot,
-            exit_sequence=0
+            exit_counter=0
         )
 
         index = min_empty_validator(new_validators)
@@ -946,26 +946,33 @@ def exit_validator(index: int,
                    forced_exit: bool,
                    current_slot: int) -> None:
     """
-    Remove the validator with the given `index` from `state`.
+    Exit the validator with the given `index`.
     Note that this function mutates `state`.
     """
+    state.validator_registry_exit_counter += 1
+
     validator = state.validator_registry[index]
     validator.last_status_change_slot = current_slot
-    validator.exit_sequence = state.validator_registry_exit_sequence
-    state.validator_registry_exit_sequence += 1
+    validator.exit_counter = state.validator_registry_exit_counter
+
+    # Remove validator from persistent committees
     for committee in state.persistent_committees:
-        for i, vindex in committee:
-            if vindex == index:
+        for i, validator_index in committee:
+            if validator_index == index:
                 committee.pop(i)
                 break
+
     if forced_exit:
-        state.balances_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += effective_balance(validator)
         validator.status = PENALIZED
-        whistleblower_transfer_amount = validator.deposit // WHISTLEBLOWER_REWARD_QUOTIENT
-        validator.deposit -= whistleblower_transfer_amount
-        state.validator_registry[get_beacon_proposer_index(state, current_slot)].deposit += whistleblower_transfer_amount
+        state.balances_penalized_in_period[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += effective_balance(validator)
+        
+        whistleblower = state.validator_registry[get_beacon_proposer_index(state, current_slot)]
+        whistleblower_reward = validator.balance // WHISTLEBLOWER_REWARD_QUOTIENT
+        whistleblower.balance += whistleblower_reward
+        validator.balance -= whistleblower_reward
     else:
         validator.status = PENDING_EXIT
+
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
         index=index,
@@ -1099,7 +1106,8 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
 }
 ```
 
-* Verify that `verify_special_attestation_data(vote)` for both `vote`s.
+* Verify that `verify_special_attestation_data(vote1)`.
+* Verify that `verify_special_attestation_data(vote2)`.
 * Verify that `vote1.data != vote2.data`.
 * Let `indices(vote) = vote.aggregate_sig_poc_0_indices + vote.aggregate_sig_poc_1_indices`.
 * Let `intersection [x for x in indices(vote1) if x in indices(vote2)]`.
@@ -1187,22 +1195,22 @@ Validators justifying the epoch boundary block at the start of the previous epoc
 * Let `previous_epoch_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
 * Let `previous_epoch_boundary_attesting_balance = sum([effective_balance(v) for v in previous_epoch_boundary_attesters])`.
 
-For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`, let:
+For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`:
 
-* `attesting_validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`
-* `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([effective_balance(v) for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values)
-* `total_attesting_balance(obj)` be the sum of the balances-at-stake of `attesting_validators(obj)`
-* `winning_hash(obj)` be the winning `shard_block_hash` value
-* `total_balance(obj) = sum([effective_balance(v) for v in obj.committee])`
+* Let `attesting_validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`.
+* Let `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([effective_balance(v) for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values).
+* Let `total_attesting_balance(obj)` be the sum of the balances-at-stake of `attesting_validators(obj)`.
+* Let `winning_hash(obj)` be the winning `shard_block_hash` value.
+* Let `total_balance(obj) = sum([effective_balance(v) for v in obj.committee])`.
     
-Let `inclusion_slot(v)` equal `a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`, and `inclusion_distance(v) = a.slot_included - a.data.slot` for the same attestation. We define a function `adjust_for_inclusion_distance(magnitude, dist)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`
+Let `inclusion_slot(v)` equal `a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`, and `inclusion_distance(v) = a.slot_included - a.data.slot` for the same attestation. We define a function `adjust_for_inclusion_distance(magnitude, dist)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`.
 
 ```python
 def adjust_for_inclusion_distance(magnitude: int, dist: int) -> int:
     return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // dist
 ```
 
-For any validator `v`, `base_reward(v) = effective_balance(v) // reward_quotient`
+For any validator `v`, `base_reward(v) = effective_balance(v) // reward_quotient`.
 
 ### Adjust justified slots and crosslink status
 
@@ -1315,7 +1323,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
     def withdrawable(v):
         return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
 
-    withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_sequence)
+    withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_counter)
     for v in withdrawable_validators[:MAX_WITHDRAWALS_PER_EPOCH]:
         if v.status == PENALIZED:
             v.balance -= effective_balance(v) * min(total_penalties * 3, total_balance) // total_balance
