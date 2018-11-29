@@ -208,8 +208,8 @@ The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to bec
 
 ```python
 {
-    'pubkey': 'int256',
-    'proof_of_possession': ['int256'],
+    'pubkey': 'int384',
+    'proof_of_possession': ['int384'],
     'withdrawal_credentials': 'hash32',
     'randao_commitment': 'hash32',
 }
@@ -394,6 +394,8 @@ A `ShardAndCommittee` object has the following fields:
     'shard': 'uint64',
     # Validator indices
     'committee': ['uint24'],
+    # Total validator count (for proofs of custody)
+    'total_validator_count': 'uint64',
 }
 ```
 
@@ -448,9 +450,9 @@ A `ForkData` object has the following fields:
 
 ## Beacon chain processing
 
-The beacon chain is the system chain for Ethereum 2.0. The beacon chain's main responsibilities are:
+The beacon chain is the system chain for Ethereum 2.0. The main responsibilities of the beacon chain are:
 
-* Store and maintain the registry of active, queued and exited validators
+* Store and maintain the registry of validators
 * Process crosslinks (see above)
 * Process its own block-by-block consensus, as well as the finality gadget
 
@@ -499,7 +501,7 @@ def lmd_ghost(store, start):
 
 ## Beacon chain state transition function
 
-We now define the state transition function. At the high level, the state transition is made up of two parts:
+We now define the state transition function. At a high level the state transition is made up of two parts:
 
 1. The per-block processing, which happens every block, and only affects a few parts of the `state`.
 2. The inter-epoch state recalculation, which happens only if `block.slot >= state.last_state_recalculation_slot + EPOCH_LENGTH`, and affects the entire `state`.
@@ -610,14 +612,13 @@ def get_new_shuffling(seed: Hash32,
         len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
     )
 
-    output = []
-
     # Shuffle with seed
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length pieces
     validators_per_slot = split(shuffled_active_validator_indices, EPOCH_LENGTH)
 
+    output = []
     for slot, slot_indices in enumerate(validators_per_slot):
         # Split the shuffled list into committees_per_slot pieces
         shard_indices = split(slot_indices, committees_per_slot)
@@ -627,7 +628,8 @@ def get_new_shuffling(seed: Hash32,
         shards_and_committees_for_slot = [
             ShardAndCommittee(
                 shard=(shard_id_start + shard_position) % SHARD_COUNT,
-                committee=indices
+                committee=indices,
+                total_validator_count=len(active_validator_indices),
             )
             for shard_position, indices in enumerate(shard_indices)
         ]
@@ -1349,17 +1351,17 @@ def change_validators(state: BeaconState,
 
 And perform the following updates to the `state`:
 
-* Set `state.validator_registry_last_change_slot = s + EPOCH_LENGTH`
-* Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`
-* Let `state.next_start_shard = (state.shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`
-* Set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`
-* Set `state.next_seed = state.randao_mix`
+* Set `state.validator_registry_last_change_slot = s + EPOCH_LENGTH`.
+* Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`.
+* Let `state.next_start_shard = (state.shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`.
+* Set `state.next_seed = state.randao_mix`.
 
 ### If a validator registry change does NOT happen
 
-* Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`
-* Let `time_since_finality = block.slot - state.validator_registry_last_change_slot`
-* Let `start_shard = state.shard_and_committee_for_slots[0][0].shard`
+* Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`.
+* Let `time_since_finality = block.slot - state.validator_registry_last_change_slot`.
+* Let `start_shard = state.shard_and_committee_for_slots[0][0].shard`.
 * If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
