@@ -162,7 +162,7 @@ The beacon chain is initialized when a condition is met inside a contract on the
 ```python
 MIN_DEPOSIT: constant(uint256) = 1  # ETH
 MAX_DEPOSIT: constant(uint256) = 32  # ETH
-GWEI_PER_ETH: constant(uint256) = 10**9
+GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
 FULL_DEPOSIT_COUNT_THRESHOLD: constant(uint256) = 2**14
 POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
