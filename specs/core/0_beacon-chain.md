@@ -17,6 +17,19 @@
         * [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     * [Beacon chain state transition function](#beacon-chain-state-transition-function)
         * [Helper functions](#helper-functions)
+            * [`get_active_validator_indices`](#get_active_validator_indices)
+            * [`shuffle`](#shuffle)
+            * [`split`](#split)
+            * [`clamp`](#clamp)
+            * [`get_new_shuffling`](#get_new_shuffling)
+            * [`get_shard_and_committees_for_slot`](#get_shard_and_committees_for_slot)
+            * [`get_block_hash`](#get_block_hash)
+            * [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+            * [`get_attestation_participants`](#get_attestation_participants)
+            * [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
+            * [`get_effective_balance`](#get_effective_balance)
+            * [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
+            * [`integer_squareroot`](#integer_squareroot)
         * [On startup](#on-startup)
         * [Routine for adding a validator](#routine-for-adding-a-validator)
         * [Routine for removing a validator](#routine-for-removing-a-validator)
@@ -753,10 +766,10 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     )
 ```
 
-#### `int_sqrt`
+#### `integer_squareroot`
 
 ```python
-def int_sqrt(n: int) -> int:
+def integer_squareroot(n: int) -> int:
     """
     The largest integer k such that k**2 is less than ``n``.
     """
@@ -1229,7 +1242,7 @@ All validators:
 
 * Let `active_validators = [state.validator_registry[i] for i in get_active_validator_indices(state.validator_registry)]`.
 * Let `total_balance = sum([get_effective_balance(v) for v in active_validators])`. Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
-* Let `reward_quotient = BASE_REWARD_QUOTIENT * int_sqrt(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
+* Let `reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
 
 Validators justifying the epoch boundary block at the start of the current epoch:
 
