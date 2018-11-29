@@ -25,7 +25,7 @@
         * [Verify proposer signature](#verify-proposer-signature)
         * [Verify and process RANDAO reveal](#verify-and-process-randao-reveal)
         * [Process PoW receipt root](#process-pow-receipt-root)
-        * [Process penalties, exits and other special objects](#process-penalties-exits-and-other-special-objects)
+        * [Process special objects](#process-special-objects)
             * [`VOLUNTARY_EXIT`](#voluntary_exit)
             * [`CASPER_SLASHING`](#casper_slashing)
             * [`PROPOSER_SLASHING`](#proposer_slashing)
@@ -116,10 +116,10 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 | - | - |
 | `PENDING_ACTIVATION` | `0` |
 | `ACTIVE` | `1` |
-| `PENDING_EXIT` | `2` |
+| `EXITED_VOLUNTARILY` | `2` |
 | `PENDING_WITHDRAW` | `3` |
 | `WITHDRAWN` | `4` |
-| `PENALIZED` | `5` |
+| `EXITED_FORCEFULLY` | `5` |
 
 **Special record types**
 
@@ -344,7 +344,7 @@ The `BeaconState` object has the following fields:
     'last_crosslinks': [CrosslinkRecord],
     'last_state_recalculation_slot': 'uint64',
     'last_block_hashes': ['hash32'],  # Needed to process attestations, older to newer
-    'last_penalized_balances': ['uint64'],  # Balances penalized in the current withdrawal period
+    'last_forceful_exit_balances': ['uint64'],  # Balances penalized in the current withdrawal period
     'last_attestations': [PendingAttestationRecord],
 
     # PoW receipt root
@@ -803,7 +803,7 @@ def on_startup(current_validators: List[ValidatorRecord],
         last_crosslinks=initial_crosslinks,
         last_state_recalculation_slot=INITIAL_SLOT_NUMBER,
         last_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
-        last_penalized_balances=[],
+        last_forceful_exit_balances=[],
         last_attestations=[],
         
         processed_pow_receipt_root=processed_pow_receipt_root,
@@ -967,15 +967,15 @@ def exit_validator(index: int,
                 break
 
     if forced_exit:
-        validator.status = PENALIZED
-        state.last_penalized_balances[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += effective_balance(validator)
+        validator.status = EXITED_FORCEFULLY
+        state.last_forceful_exit_balances[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += effective_balance(validator)
         
         whistleblower = state.validator_registry[get_beacon_proposer_index(state, current_slot)]
         whistleblower_reward = validator.balance // WHISTLEBLOWER_REWARD_QUOTIENT
         whistleblower.balance += whistleblower_reward
         validator.balance -= whistleblower_reward
     else:
-        validator.status = PENDING_EXIT
+        validator.status = EXITED_VOLUNTARILY
 
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
@@ -1063,11 +1063,32 @@ Then:
 
 If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`. Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
-### Process penalties, exits and other special objects
+### Process special objects
 
-Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top). Verify that objects are sorted in order of `kind` (ie. `block.specials[i+1].kind >= block.specials[i].kind` for all `0 <= i < len(block.specials-1)`).
+* Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top).
+* Verify that objects are sorted in order of `kind`. That is, `block.specials[i+1].kind >= block.specials[i].kind` for `0 <= i < len(block.specials-1)`.
 
-For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
+For each `special` in `block.specials`:
+
+* Verify that `special.kind` is a valid values.
+* Verify that `special.data` deserializes according to the format for the given `kind`.
+* Process `special`, as specified below for each `kind`.
+
+#### `VOLUNTARY_EXIT`
+
+```python
+{
+    'validator_index': 'uint64',
+    'signature': '[uint384]',
+}
+```
+
+* Verify that `BLSVerify(pubkey=state.validator_registry[data.validator_index].pubkey, msg=ZERO_HASH, sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_EXIT))`.
+* Verify that `state.validator_registry[validator_index].status == ACTIVE`.
+* Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
+* Run `exit_validator(data.validator_index, state, forced_exit=False, current_slot=block.slot)`.
+
+#### `CASPER_SLASHING`
 
 We define the following `SpecialAttestationData` object and the helper `verify_special_attestation_data`:
  
@@ -1087,22 +1108,6 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
     return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_sig)
 ```
 
-#### `VOLUNTARY_EXIT`
-
-```python
-{
-    'validator_index': 'uint64',
-    'signature': '[uint384]',
-}
-```
-
-* Verify that `BLSVerify(pubkey=state.validator_registry[data.validator_index].pubkey, msg=ZERO_HASH, sig=data.signature, domain=get_domain(state.fork_data, current_slot, DOMAIN_EXIT))`.
-* Verify that `state.validator_registry[validator_index].status == ACTIVE`.
-* Verify that `block.slot >= last_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `exit_validator(data.validator_index, state, forced_exit=False, current_slot=block.slot)`.
-
-#### `CASPER_SLASHING`
-
 ```python
 {
     vote1: SpecialAttestationData,
@@ -1118,7 +1123,7 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
 * Verify that `len(intersection) >= 1`.
 * Verify that `vote1.data.justified_slot + 1 < vote2.data.justified_slot + 1 == vote2.data.slot < vote1.data.slot` or `vote1.data.slot == vote2.data.slot`.
 
-For each validator index `v` in `intersection`, if `state.validator_registry[v].status` does not equal `PENALIZED`, then run `exit_validator(v, state, forced_exit=True, current_slot=block.slot)`
+For each validator index `v` in `intersection`, if `state.validator_registry[v].status` does not equal `EXITED_FORCEFULLY`, then run `exit_validator(v, state, forced_exit=True, current_slot=block.slot)`
 
 #### `PROPOSER_SLASHING`
 
@@ -1135,7 +1140,7 @@ For each validator index `v` in `intersection`, if `state.validator_registry[v].
 * Verify that `BLSVerify(pubkey=state.validator_registry[proposer_index].pubkey, msg=hash(proposal_data), sig=proposal_signature, domain=get_domain(state.fork_data, proposal_data.slot, DOMAIN_PROPOSAL))` for each `proposal_signature`.
 * Verify that `proposal1_data != proposal2_data`.
 * Verify that `proposal1_data.slot == proposal2_data.slot`.
-* Verify that `state.validator_registry[proposer_index].status != PENALIZED`.
+* Verify that `state.validator_registry[proposer_index].status != EXITED_FORCEFULLY`.
 * Run `exit_validator(proposer_index, state, forced_exit=True, current_slot=block.slot)`.
 
 #### `DEPOSIT_PROOF`
@@ -1245,7 +1250,7 @@ Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
 Case 2: `time_since_finality > 4 * EPOCH_LENGTH`:
 
 * Any validator in `previous_epoch_boundary_attesters` sees their balance unchanged.
-* Any active validator `v` not in `previous_epoch_boundary_attesters`, and any validator with `status == PENALIZED`, loses `base_reward(v) + effective_balance(v) * time_since_finality // quadratic_penalty_quotient`.
+* Any active validator `v` not in `previous_epoch_boundary_attesters`, and any validator with `status == EXITED_FORCEFULLY`, loses `base_reward(v) + effective_balance(v) * time_since_finality // quadratic_penalty_quotient`.
 
 For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
@@ -1274,11 +1279,11 @@ A helper function is defined as:
 
 ```python
 def get_changed_validators(validators: List[ValidatorRecord],
-                           last_penalized_balances: List[int],
+                           last_forceful_exit_balances: List[int],
                            validator_registry_delta_chain_tip: int,
                            current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
     """
-    Return changed validator registry and `last_penalized_balances`, `validator_registry_delta_chain_tip`.
+    Return changed validator registry and `last_forceful_exit_balances`, `validator_registry_delta_chain_tip`.
     """
     # The active validators
     active_validator_indices = get_active_validator_indices(validators)
@@ -1301,7 +1306,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
                 pubkey=validators[i].pubkey,
                 flag=ACTIVATION,
             )
-        if validators[i].status == PENDING_EXIT:
+        if validators[i].status == EXITED_VOLUNTARILY:
             validators[i].status = PENDING_WITHDRAW
             validators[i].last_status_change_slot = current_slot
             total_changed += effective_balance(validators[i])
@@ -1317,19 +1322,19 @@ def get_changed_validators(validators: List[ValidatorRecord],
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
     total_penalties = (
-        (last_penalized_balances[period_index]) +
-        (last_penalized_balances[period_index - 1] if period_index >= 1 else 0) +
-        (last_penalized_balances[period_index - 2] if period_index >= 2 else 0)
+        (last_forceful_exit_balances[period_index]) +
+        (last_forceful_exit_balances[period_index - 1] if period_index >= 1 else 0) +
+        (last_forceful_exit_balances[period_index - 2] if period_index >= 2 else 0)
     )
     # Separate loop to withdraw validators that have been logged out for long enough, and
     # calculate their penalties if they were slashed
 
     def withdrawable(v):
-        return v.status in (PENDING_WITHDRAW, PENALIZED) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
+        return v.status in (PENDING_WITHDRAW, EXITED_FORCEFULLY) and current_slot >= v.last_status_change_slot + MIN_WITHDRAWAL_PERIOD
 
     withdrawable_validators = sorted(filter(withdrawable, validators), key=lambda v: v.exit_counter)
     for v in withdrawable_validators[:MAX_WITHDRAWALS_PER_EPOCH]:
-        if v.status == PENALIZED:
+        if v.status == EXITED_FORCEFULLY:
             v.balance -= effective_balance(v) * min(total_penalties * 3, total_balance) // total_balance
         v.status = WITHDRAWN
         v.last_status_change_slot = current_slot
@@ -1337,7 +1342,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
         withdraw_amount = v.balance
         # STUB: withdraw to shard chain   
 
-    return validators, last_penalized_balances, validator_registry_delta_chain_tip
+    return validators, last_forceful_exit_balances, validator_registry_delta_chain_tip
 ```
 
 Then, run the following algorithm to update the validator registry:
@@ -1349,9 +1354,9 @@ def change_validators(state: BeaconState,
     Change validator registry.
     Note that this function mutates `state`.
     """
-    state.validator_registry, state.last_penalized_balances = get_changed_validators(
+    state.validator_registry, state.last_forceful_exit_balances = get_changed_validators(
         copy.deepcopy(state.validator_registry),
-        copy.deepcopy(state.last_penalized_balances),
+        copy.deepcopy(state.last_forceful_exit_balances),
         state.validator_registry_delta_chain_tip,
         current_slot
     )
