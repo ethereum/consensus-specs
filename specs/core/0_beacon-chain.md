@@ -68,7 +68,7 @@ The primary source of load on the beacon chain is "attestations". Attestations a
 ## Terminology
 
 * **Validator** - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
-* **Active validator** - a validator currently participating, and which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
+* **Active validator** - a validator currently participating in the protocol which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
 * **Committee** - a (pseudo-) randomly sampled subset of active validators. When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
 * **Proposer** - the validator that creates a beacon chain block
 * **Attester** - a validator that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
