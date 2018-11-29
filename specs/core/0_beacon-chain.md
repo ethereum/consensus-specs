@@ -26,10 +26,10 @@
         * [Verify and process RANDAO reveal](#verify-and-process-randao-reveal)
         * [Process PoW receipt root](#process-pow-receipt-root)
         * [Process penalties, exits and other special objects](#process-penalties-exits-and-other-special-objects)
-            * [EXIT](#exit)
-            * [CASPER_SLASHING](#casper_slashing)
-            * [PROPOSER_SLASHING](#proposer_slashing)
-            * [DEPOSIT_PROOF](#deposit_proof)
+            * [`VOLUNTARY_EXIT`](#voluntary_exit)
+            * [`CASPER_SLASHING`](#casper_slashing)
+            * [`PROPOSER_SLASHING`](#proposer_slashing)
+            * [`DEPOSIT_PROOF`](#deposit_proof)
     * [Cycle boundary processing](#epoch-boundary-processing)
         * [Precomputation](#precomputation)
         * [Adjust justified slots and crosslink status](#adjust-justified-slots-and-crosslink-status)
@@ -123,7 +123,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 | Name | Value | Maximum count |
 | - | :-: | :-: |
-| `EXIT` | `0` | `16` |
+| `VOLUNTARY_EXIT` | `0` | `16` |
 | `CASPER_SLASHING` | `1` | `16` |
 | `PROPOSER_SLASHING` | `2` | `16` |
 | `DEPOSIT_PROOF` | `3` | `16` |
@@ -132,7 +132,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 
 | Name | Value |
 | - | :-: |
-| `ENTRY` | `0` |
+| `ACTIVATION` | `0` |
 | `EXIT` | `1` |
 
 **Domains for BLS signatures**
@@ -214,7 +214,7 @@ The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to bec
     'pubkey': 'int256',
     'proof_of_possession': ['int256'],
     'withdrawal_credentials': 'hash32',
-    'randao_commitment': 'hash32'
+    'randao_commitment': 'hash32',
 }
 ```
 
@@ -227,7 +227,7 @@ If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to ma
 ## Data structures
 ### Beacon chain blocks
 
-A `BeaconBlock` has the following fields:
+A `BeaconBlock` object has the following fields:
 
 ```python
 {
@@ -251,7 +251,7 @@ A `BeaconBlock` has the following fields:
 }
 ```
 
-An `AttestationRecord` has the following fields:
+An `AttestationRecord` object has the following fields:
 
 ```python
 {
@@ -265,7 +265,7 @@ An `AttestationRecord` has the following fields:
 }
 ```
 
-`AttestationSignedData`:
+An `AttestationSignedData` object has the following fields:
 
 ```python
 {
@@ -288,7 +288,7 @@ An `AttestationRecord` has the following fields:
 }
 ```
 
-A `ProposalSignedData` has the following fields:
+A `ProposalSignedData` object has the following fields:
 
 ```python
 {
@@ -301,7 +301,7 @@ A `ProposalSignedData` has the following fields:
 }
 ```
 
-A `SpecialRecord` has the following fields:
+A `SpecialRecord` object has the following fields:
 
 ```python
 {
@@ -354,7 +354,7 @@ The `BeaconState` object has the following fields:
 }
 ```
 
-A `ValidatorRecord` has the following fields:
+A `ValidatorRecord` object has the following fields:
 
 ```python
 {
@@ -377,7 +377,7 @@ A `ValidatorRecord` has the following fields:
 }
 ```
 
-A `CrosslinkRecord` has the following fields:
+A `CrosslinkRecord` object has the following fields:
 
 ```python
 {
@@ -412,7 +412,7 @@ A `ShardReassignmentRecord` object has the following fields:
 }
 ```
 
-A `CandidatePoWReceiptRootRecord` object contains the following fields:
+A `CandidatePoWReceiptRootRecord` object has the following fields:
 
 ```python
 {
@@ -437,7 +437,7 @@ A `PendingAttestationRecord` object has the following fields:
 }
 ```
 
-A `ForkData` object contains the following fields:
+A `ForkData` object has the following fields:
 ```python
 {
     # Previous fork version
@@ -1056,12 +1056,12 @@ Verify that the quantity of each type of object in `block.specials` is less than
 
 For each `SpecialRecord` `obj` in `block.specials`, verify that its `kind` is one of the below values, and that `obj.data` deserializes according to the format for the given `kind`, then process it. The word "verify" when used below means that if the given verification check fails, the block containing that `SpecialRecord` is invalid.
 
-#### `EXIT`
+#### `VOLUNTARY_EXIT`
 
 ```python
 {
     'validator_index': 'uint64',
-    'signature': '[uint384]'
+    'signature': '[uint384]',
 }
 ```
 
@@ -1123,7 +1123,7 @@ For each validator index `v` in `intersection`, if `state.validator_registry[v].
          'deposit_parameters': DepositParameters,
          'message_value': 'uint64',
          'timestamp': 'uint64'
-    }
+    },
 }
 ```
 
@@ -1169,15 +1169,14 @@ Validators justifying the epoch boundary block at the start of the current epoch
 
 Validators justifying the epoch boundary block at the start of the previous epoch:
 
-* Let `prev_epoch_attestations = [a for a in state.pending_attestations if s - EPOCH_LENGTH <= a.slot < s]`.
-* Let `prev_epoch_boundary_attestations = [a for a in this_epoch_attestations + prev_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, block, s - EPOCH_LENGTH) and a.justified_slot == state.previous_epoch_justification_source]`.
-* Let `prev_epoch_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.attester_bitfield) for a in prev_epoch_boundary_attestations]`.
-* Let `prev_epoch_boundary_attesting_balance = sum([effective_balance(v) for v in prev_epoch_boundary_attesters])`.
+* Let `previous_epoch_attestations = [a for a in state.pending_attestations if s - EPOCH_LENGTH <= a.slot < s]`.
+* Let `previous_epoch_boundary_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, block, s - EPOCH_LENGTH) and a.justified_slot == state.previous_epoch_justification_source]`.
+* Let `previous_epoch_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.attester_bitfield) for a in previous_epoch_boundary_attestations]`.
+* Let `previous_epoch_boundary_attesting_balance = sum([effective_balance(v) for v in previous_epoch_boundary_attesters])`.
 
 For every `ShardAndCommittee` object `obj` in `shard_and_committee_for_slots`, let:
 
-
-* `attesting_validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.attester_bitfield) for a in this_epoch_attestations + prev_epoch_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`
+* `attesting_validators(obj, shard_block_hash)` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.attester_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`
 * `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([effective_balance(v) for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values)
 * `total_attesting_balance(obj)` be the sum of the balances-at-stake of `attesting_validators(obj)`
 * `winning_hash(obj)` be the winning `shard_block_hash` value
@@ -1195,7 +1194,7 @@ For any validator `v`, `base_reward(v) = effective_balance(v) // reward_quotient
 ### Adjust justified slots and crosslink status
 
 * Set `state.justified_slot_bitfield = (state.justified_slot_bitfield * 2) % 2**64`.
-* If `3 * prev_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 2` (ie. flip the second lowest bit to 1) and `new_justification_source = s - EPOCH_LENGTH`.
+* If `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 2` (ie. flip the second lowest bit to 1) and `new_justification_source = s - EPOCH_LENGTH`.
 * If `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 1` (ie. flip the lowest bit to 1) and `new_justification_source = s`.
 * If `state.justification_source == s - EPOCH_LENGTH and state.justified_slot_bitfield % 4 == 3`, set `last_finalized_slot = justification_source`.
 * If `state.justification_source == s - EPOCH_LENGTH - EPOCH_LENGTH and state.justified_slot_bitfield % 8 == 7`, set `state.last_finalized_slot = state.justification_source`.
@@ -1215,15 +1214,15 @@ Note: When applying penalties in the following balance recalculations implemente
 
 Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
 
-* Any validator `v` in `prev_epoch_boundary_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * prev_epoch_boundary_attesting_balance // total_balance, inclusion_distance(v))`.
-* Any active validator `v` not in `prev_epoch_boundary_attesters` loses `base_reward(v)`.
+* Any validator `v` in `previous_epoch_boundary_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(v))`.
+* Any active validator `v` not in `previous_epoch_boundary_attesters` loses `base_reward(v)`.
 
 Case 2: `time_since_finality > 4 * EPOCH_LENGTH`:
 
-* Any validator in `prev_epoch_boundary_attesters` sees their balance unchanged.
-* Any active validator `v` not in `prev_epoch_boundary_attesters`, and any validator with `status == PENALIZED`, loses `base_reward(v) + effective_balance(v) * time_since_finality // quadratic_penalty_quotient`.
+* Any validator in `previous_epoch_boundary_attesters` sees their balance unchanged.
+* Any active validator `v` not in `previous_epoch_boundary_attesters`, and any validator with `status == PENALIZED`, loses `base_reward(v) + effective_balance(v) * time_since_finality // quadratic_penalty_quotient`.
 
-For each `v` in `prev_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
+For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
 ### Balance recalculations related to crosslink rewards
 
@@ -1275,7 +1274,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
                 validator_registry_detla_chain_tip=validator_registry_detla_chain_tip,
                 index=i,
                 pubkey=validators[i].pubkey,
-                flag=ENTRY,
+                flag=ACTIVATION,
             )
         if validators[i].status == PENDING_EXIT:
             validators[i].status = PENDING_WITHDRAW
@@ -1379,10 +1378,10 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 ### Finally...
 
-* Remove all attestation records older than slot `s`
-* For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, state, block, penalize=False, current_slot=block.slot)`
-* Set `state.last_block_hashes = state.last_block_hashes[EPOCH_LENGTH:]`
-* Set `state.last_state_recalculation_slot += EPOCH_LENGTH`
+* Remove all attestation records older than slot `s`.
+* For any validator with index `v` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(v, state, block, penalize=False, current_slot=block.slot)`.
+* Set `state.last_block_hashes = state.last_block_hashes[EPOCH_LENGTH:]`.
+* Set `state.last_state_recalculation_slot += EPOCH_LENGTH`.
 
 # Appendix
 ## Appendix A - Hash function
