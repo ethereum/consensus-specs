@@ -157,7 +157,7 @@ The primary source of load on the beacon chain is "attestations". Attestations a
 
 **Notes**
 
-* See a recommended min committee size of 111 [here](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); our algorithm will generally ensure the committee size is at least half the target.
+* See a recommended min committee size of 111 [here](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); the shuffling algorithm will generally ensure the committee size is at least half the target.
 * The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the inactivity leak to cut deposits of non-participating validators by ~39.4%.
 * The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch interest rate assuming all validators are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_CHURN_QUOTIENT` of the validators can change during each validator registry change.
