@@ -30,7 +30,7 @@
             * [`CASPER_SLASHING`](#casper_slashing)
             * [`PROPOSER_SLASHING`](#proposer_slashing)
             * [`DEPOSIT_PROOF`](#deposit_proof)
-    * [Cycle boundary processing](#epoch-boundary-processing)
+    * [Epoch boundary processing](#epoch-boundary-processing)
         * [Precomputation](#precomputation)
         * [Adjust justified slots and crosslink status](#adjust-justified-slots-and-crosslink-status)
         * [Balance recalculations related to FFG rewards](#balance-recalculations-related-to-ffg-rewards)
@@ -63,7 +63,7 @@ The primary source of load on the beacon chain are "attestations". Attestations 
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
 * **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
-* **Cycle** - a span of slots during which all validators get exactly one chance to make an attestation
+* **Epoch** - an aligned span of slots during which all validators get exactly one chance to make an attestation
 * **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
 * **Withdrawal period** - number of slots between a validator exit and the validator balance being withdrawable
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
@@ -1175,7 +1175,7 @@ process_deposit(
 )
 ```
 
-## Cycle boundary processing
+## Epoch boundary processing
 
 Repeat the steps in this section while `block.slot - state.last_state_recalculation_slot >= EPOCH_LENGTH`. For simplicity, we'll use `s` as `state.last_state_recalculation_slot`.
 
