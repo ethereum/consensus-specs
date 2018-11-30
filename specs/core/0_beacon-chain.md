@@ -6,6 +6,7 @@
 * [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
     * [Table of contents](#table-of-contents)
     * [Introduction](#introduction)
+    * [Notation](#notation)
     * [Terminology](#terminology)
     * [Constants](#constants)
     * [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract)
@@ -64,6 +65,10 @@ This document represents the specification for Phase 0 of Ethereum 2.0 -- The Be
 At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of Ethereum 2.0 the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a validator happens when deposit transaction receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
+
+## Notation
+
+Unless otherwise indicated, code appearing in `this style` is to be interpreted as an algorithm defined in Python. Implementations may implement such algorithms using any code and programming language desired as long as the behavior is identical to that of the algorithm provided.
 
 ## Terminology
 
@@ -862,8 +867,6 @@ def on_startup(initial_validator_entries: List[Any],
     return state
 ```
 
-The `process_deposit` routine is defined below.
-
 ### Routine for adding a validator
 
 This routine should be run for every validator that is activated as part of a log created on Ethereum 1.0 [TODO: explain where to check for these logs]. The status of the validators added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by Ethereum 1.0.
@@ -943,7 +946,7 @@ def get_new_validators(validators: List[ValidatorRecord],
 
     return validators_copy, index
 ```
-
+`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).  
 Now, to add a validator or top up an existing validator's balance:
 
 ```python
@@ -978,7 +981,6 @@ def process_deposit(state: BeaconState,
     return index
 ```
 
-`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the BLS12-381 spec.
 
 ### Routine for removing a validator
 
