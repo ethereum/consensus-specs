@@ -56,6 +56,9 @@
         * [Finally...](#finally)
 * [Appendix](#appendix)
     * [Appendix A - Hash function](#appendix-a---hash-function)
+* [References](#references)
+    * [Normative](#normative)
+    * [Informative](#informative)
 * [Copyright](#copyright)
 
 ## Introduction
@@ -1462,6 +1465,14 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ## Appendix A - Hash function
 
 We aim to have a STARK-friendly hash function `hash(x)` for the production launch of the beacon chain. While the standardisation process for a STARK-friendly hash function takes place—led by STARKware, who will produce a detailed report with recommendations—we use `BLAKE2b-512` as a placeholder. Specifically, we set `hash(x) := BLAKE2b-512(x)[0:32]` where the `BLAKE2b-512` algorithm is defined in [RFC 7693](https://tools.ietf.org/html/rfc7693) and the input `x` is of type `bytes`.
+
+# References
+
+This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely that, information.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
+
+## Normative
+
+## Informative
 
 # Copyright
 Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
