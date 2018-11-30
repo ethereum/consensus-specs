@@ -1273,7 +1273,7 @@ def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
     return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // distance
 ```
 
-For any validator `v` let `base_reward(v) = get_effective_balance(v) // reward_quotient`.
+For any validator `v`, let `base_reward(v) = get_effective_balance(v) // reward_quotient`.
 
 ### Adjust justified slots and crosslink status
 
