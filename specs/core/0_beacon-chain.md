@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-**NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
+**NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the Python proof-of-concept implementation [[python-poc]]](#ref-python-poc).
 
 ## Table of contents
 * [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
@@ -1395,6 +1395,8 @@ This section is divided into Normative and Informative references.  Normative re
 ## Normative
 
 ## Informative
+<a id="ref-python-poc"></a> _**python-poc**_  
+ &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
 
 # Copyright
 Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
