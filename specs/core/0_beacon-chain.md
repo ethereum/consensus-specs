@@ -73,8 +73,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ## Terminology
 
 * **Validator** - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
-* **Active validator** - a validator currently participating in the protocol which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
-* **Committee** - a (pseudo-) randomly sampled subset of active validators. When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
+* **Active validator** <a id="dfn-active-validator"></a> - a validator currently participating in the protocol which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
+* **Committee** - a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough validators that the protocol recognizes it as representing the committee".
 * **Proposer** - the validator that creates a beacon chain block
 * **Attester** - a validator that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
 * **Beacon chain** - the central PoS chain that is the base of the sharding system.
@@ -1301,12 +1301,12 @@ Note: When applying penalties in the following balance recalculations implemente
 Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
 
 * Any validator `v` in `previous_epoch_boundary_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(v))`.
-* Any active validator `v` not in `previous_epoch_boundary_attesters` loses `base_reward(v)`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters` loses `base_reward(v)`.
 
 Case 2: `time_since_finality > 4 * EPOCH_LENGTH`:
 
 * Any validator in `previous_epoch_boundary_attesters` sees their balance unchanged.
-* Any active validator `v` not in `previous_epoch_boundary_attesters`, and any validator with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * time_since_finality // inactivity_penalty_quotient`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, and any validator with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * time_since_finality // inactivity_penalty_quotient`.
 
 For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
