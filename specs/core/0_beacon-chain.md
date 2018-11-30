@@ -229,7 +229,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
 
 ### Deposits
 
-A `DepositParametersRecord` object has the following fields:
+#### `DepositParametersRecord`
 
 ```python
 {
@@ -246,7 +246,7 @@ A `DepositParametersRecord` object has the following fields:
 
 ### Beacon chain blocks
 
-A `BeaconBlock` object has the following fields:
+#### `BeaconBlock`
 
 ```python
 {
@@ -270,7 +270,7 @@ A `BeaconBlock` object has the following fields:
 }
 ```
 
-An `AttestationRecord` object has the following fields:
+#### `AttestationRecord`
 
 ```python
 {
@@ -285,7 +285,7 @@ An `AttestationRecord` object has the following fields:
 }
 ```
 
-An `AttestationData` object has the following fields:
+#### `AttestationData`
 
 ```python
 {
@@ -308,7 +308,7 @@ An `AttestationData` object has the following fields:
 }
 ```
 
-A `ProposalSignedData` object has the following fields:
+#### `ProposalSignedData`
 
 ```python
 {
@@ -334,7 +334,7 @@ A `SpecialRecord` object has the following fields:
 
 ### Beacon chain state
 
-The `BeaconState` object has the following fields:
+#### `BeaconState`
 
 ```python
 {
@@ -374,7 +374,7 @@ The `BeaconState` object has the following fields:
 }
 ```
 
-A `ValidatorRecord` object has the following fields:
+#### `ValidatorRecord`
 
 ```python
 {
@@ -397,7 +397,7 @@ A `ValidatorRecord` object has the following fields:
 }
 ```
 
-A `CrosslinkRecord` object has the following fields:
+#### `CrosslinkRecord`
 
 ```python
 {
@@ -434,7 +434,7 @@ A `ShardReassignmentRecord` object has the following fields:
 }
 ```
 
-A `CandidatePoWReceiptRootRecord` object has the following fields:
+#### `CandidatePoWReceiptRootRecord`
 
 ```python
 {
@@ -445,7 +445,7 @@ A `CandidatePoWReceiptRootRecord` object has the following fields:
 }
 ```
 
-A `PendingAttestationRecord` object has the following fields:
+#### `PendingAttestationRecord`
 ```python
 {
     # Signed data
@@ -459,7 +459,7 @@ A `PendingAttestationRecord` object has the following fields:
 }
 ```
 
-A `ForkData` object has the following fields:
+#### `ForkData`
 ```python
 {
     # Previous fork version
@@ -541,7 +541,7 @@ def get_active_validator_indices(validators: [ValidatorRecords]) -> List[int]:
     """
     Gets indices of active validators from ``validators``.
     """
-    return [i for i, v in enumerate(validators) if v.status == ACTIVE]
+    return [i for i, v in enumerate(validators) if v.status in [ACTIVE, PENDING_EXIT]]
 ```
 
 #### `shuffle`
@@ -771,7 +771,7 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
 ```python
 def integer_squareroot(n: int) -> int:
     """
-    The largest integer k such that k**2 is less than ``n``.
+    The largest integer ``x`` such that ``x**2`` is less than ``n``.
     """
     x = n
     y = (x + 1) // 2
@@ -830,27 +830,27 @@ def on_startup(initial_validator_entries: List[Any],
         validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
         validator_registry_exit_count=0,
         validator_registry_delta_chain_tip=ZERO_HASH,
-
+        # Randomness and committees
         randao_mix=ZERO_HASH,
         next_seed=ZERO_HASH,
         shard_and_committee_for_slots=initial_shuffling + initial_shuffling,
         persistent_committees=split(shuffle(initial_validator_registry, ZERO_HASH), SHARD_COUNT),
         persistent_committee_reassignments=[],
-        
+        # Finality
         previous_justified_slot=INITIAL_SLOT_NUMBER,
         justified_slot=INITIAL_SLOT_NUMBER,
         justified_slot_bitfield=0,
         finalized_slot=INITIAL_SLOT_NUMBER,
-        
+        # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_state_recalculation_slot=INITIAL_SLOT_NUMBER,
         latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
-        
+        # PoW receipt root
         processed_pow_receipt_root=processed_pow_receipt_root,
         candidate_pow_receipt_roots=[],
-        
+        # Misc
         genesis_time=genesis_time,
         fork_data=ForkData(
             pre_fork_version=INITIAL_FORK_VERSION,
@@ -1013,7 +1013,7 @@ def exit_validator(index: int,
         whistleblower.balance += whistleblower_reward
         validator.balance -= whistleblower_reward
     else:
-        validator.status = EXITED_WITHOUT_PENALTY
+        validator.status = PENDING_EXIT
 
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
