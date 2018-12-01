@@ -222,3 +222,21 @@ Perform the following checks:
 * Verify that `uint256(root) % 2 == challenge.bit`.
 
 Remove `challenge` from `state.proof_of_custody_challenges` (note: if a block has multiple `PROOF_OF_CUSTODY_RESPONSE` objects , later objects' `challenge_index` values will need to take removals from earlier objects into account).
+
+#### Add withdrawals
+
+Add to `exit_validators`
+
+```python
+    # Separate loop to withdraw validators that have been logged out for long enough, and
+    # calculate their penalties if they were slashed
+    # Do not allow validators to leave if they have unanswered PoC challenges, unless the
+    # validator voluntarily "surrenders" by slashing themselves
+    def withdrawable(v):
+        return (
+            v.status in (PENDING_WITHDRAW, PENALIZED) and \
+            current_slot >= v.exit_slot + MIN_WITHDRAWAL_PERIOD and \
+            (v.status == PENALIZED or len([c in state.proof_of_custody_challenges if c.responder_index == i]) == 0)
+        )    
+        
+```
