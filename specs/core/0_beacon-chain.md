@@ -3,63 +3,82 @@
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the Python proof-of-concept implementation [[python-poc]](#ref-python-poc).
 
 ## Table of contents
-* [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
-    * [Table of contents](#table-of-contents)
-    * [Introduction](#introduction)
-    * [Notation](#notation)
-    * [Terminology](#terminology)
-    * [Constants](#constants)
-    * [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract)
-        * [Contract code in Vyper](#contract-code-in-vyper)
-    * [Data structures](#data-structures)
-        * [Beacon chain blocks](#beacon-chain-blocks)
-        * [Beacon chain state](#beacon-chain-state)
-    * [Beacon chain processing](#beacon-chain-processing)
-        * [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
-    * [Beacon chain state transition function](#beacon-chain-state-transition-function)
-        * [Helper functions](#helper-functions)
-            * [`get_active_validator_indices`](#get_active_validator_indices)
-            * [`shuffle`](#shuffle)
-            * [`split`](#split)
-            * [`clamp`](#clamp)
-            * [`get_new_shuffling`](#get_new_shuffling)
-            * [`get_shard_and_committees_for_slot`](#get_shard_and_committees_for_slot)
-            * [`get_block_hash`](#get_block_hash)
-            * [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            * [`get_attestation_participants`](#get_attestation_participants)
-            * [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
-            * [`get_effective_balance`](#get_effective_balance)
-            * [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
-            * [`integer_squareroot`](#integer_squareroot)
-        * [On startup](#on-startup)
-        * [Routine for adding a validator](#routine-for-adding-a-validator)
-        * [Routine for removing a validator](#routine-for-removing-a-validator)
-    * [Per-block processing](#per-block-processing)
-        * [Verify attestations](#verify-attestations)
-        * [Verify proposer signature](#verify-proposer-signature)
-        * [Verify and process RANDAO reveal](#verify-and-process-randao-reveal)
-        * [Process PoW receipt root](#process-pow-receipt-root)
-        * [Process special objects](#process-special-objects)
-            * [`VOLUNTARY_EXIT`](#voluntary_exit)
-            * [`CASPER_SLASHING`](#casper_slashing)
-            * [`PROPOSER_SLASHING`](#proposer_slashing)
-            * [`DEPOSIT_PROOF`](#deposit_proof)
-    * [Epoch boundary processing](#epoch-boundary-processing)
-        * [Precomputation](#precomputation)
-        * [Adjust justified slots and crosslink status](#adjust-justified-slots-and-crosslink-status)
-        * [Balance recalculations related to FFG rewards](#balance-recalculations-related-to-ffg-rewards)
-        * [Balance recalculations related to crosslink rewards](#balance-recalculations-related-to-crosslink-rewards)
-        * [Ethereum 1.0 chain related rules](#ethereum-10-chain-related-rules)
-        * [Validator registry change](#validator-registry-change)
-        * [If a validator registry change does NOT happen](#if-a-validator-registry-change-does-not-happen)
-        * [Proposer reshuffling](#proposer-reshuffling)
-        * [Finally...](#finally)
-* [Appendix](#appendix)
-    * [Appendix A - Hash function](#appendix-a---hash-function)
-* [References](#references)
-    * [Normative](#normative)
-    * [Informative](#informative)
-* [Copyright](#copyright)
+<!-- TOC -->
+
+- [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
+    - [Table of contents](#table-of-contents)
+    - [Introduction](#introduction)
+    - [Notation](#notation)
+    - [Terminology](#terminology)
+    - [Constants](#constants)
+    - [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract)
+        - [Contract code in Vyper](#contract-code-in-vyper)
+    - [Data structures](#data-structures)
+        - [Deposits](#deposits)
+            - [`DepositParametersRecord`](#depositparametersrecord)
+        - [Beacon chain blocks](#beacon-chain-blocks)
+            - [`BeaconBlock`](#beaconblock)
+            - [`AttestationRecord`](#attestationrecord)
+            - [`AttestationData`](#attestationdata)
+            - [`ProposalSignedData`](#proposalsigneddata)
+            - [`SpecialRecord`](#specialrecord)
+        - [Beacon chain state](#beacon-chain-state)
+            - [`BeaconState`](#beaconstate)
+            - [`ValidatorRecord`](#validatorrecord)
+            - [`CrosslinkRecord`](#crosslinkrecord)
+            - [`ShardAndCommittee`](#shardandcommittee)
+            - [`ShardReassignmentRecord`](#shardreassignmentrecord)
+            - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
+            - [`PendingAttestationRecord`](#pendingattestationrecord)
+            - [`ForkData`](#forkdata)
+    - [Beacon chain processing](#beacon-chain-processing)
+        - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
+    - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+        - [Helper functions](#helper-functions)
+            - [`get_active_validator_indices`](#get_active_validator_indices)
+            - [`shuffle`](#shuffle)
+            - [`split`](#split)
+            - [`clamp`](#clamp)
+            - [`get_new_shuffling`](#get_new_shuffling)
+            - [`get_shard_and_committees_for_slot`](#get_shard_and_committees_for_slot)
+            - [`get_block_hash`](#get_block_hash)
+            - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+            - [`get_attestation_participants`](#get_attestation_participants)
+            - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
+            - [`get_effective_balance`](#get_effective_balance)
+            - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
+            - [`integer_squareroot`](#integer_squareroot)
+        - [On startup](#on-startup)
+        - [Routine for adding a validator](#routine-for-adding-a-validator)
+        - [Routine for removing a validator](#routine-for-removing-a-validator)
+    - [Per-block processing](#per-block-processing)
+        - [Verify attestations](#verify-attestations)
+        - [Verify proposer signature](#verify-proposer-signature)
+        - [Verify and process the RANDAO reveal](#verify-and-process-the-randao-reveal)
+        - [Process PoW receipt root](#process-pow-receipt-root)
+        - [Process special objects](#process-special-objects)
+            - [`VOLUNTARY_EXIT`](#voluntary_exit)
+            - [`CASPER_SLASHING`](#casper_slashing)
+            - [`PROPOSER_SLASHING`](#proposer_slashing)
+            - [`DEPOSIT_PROOF`](#deposit_proof)
+    - [Epoch boundary processing](#epoch-boundary-processing)
+        - [Precomputation](#precomputation)
+        - [Adjust justified slots and crosslink status](#adjust-justified-slots-and-crosslink-status)
+        - [Balance recalculations related to FFG rewards](#balance-recalculations-related-to-ffg-rewards)
+        - [Balance recalculations related to crosslink rewards](#balance-recalculations-related-to-crosslink-rewards)
+        - [Ethereum 1.0 chain related rules](#ethereum-10-chain-related-rules)
+        - [Validator registry change](#validator-registry-change)
+        - [If a validator registry change does NOT happen](#if-a-validator-registry-change-does-not-happen)
+        - [Proposer reshuffling](#proposer-reshuffling)
+        - [Finally...](#finally)
+- [Appendix](#appendix)
+    - [Appendix A - Hash function](#appendix-a---hash-function)
+- [References](#references)
+    - [Normative](#normative)
+    - [Informative](#informative)
+- [Copyright](#copyright)
+
+<!-- /TOC -->
 
 ## Introduction
 
@@ -329,7 +348,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
 }
 ```
 
-A `SpecialRecord` object has the following fields:
+#### `SpecialRecord`
 
 ```python
 {
@@ -416,7 +435,7 @@ A `SpecialRecord` object has the following fields:
 }
 ```
 
-A `ShardAndCommittee` object has the following fields:
+#### `ShardAndCommittee`
 
 ```python
 {
@@ -429,7 +448,7 @@ A `ShardAndCommittee` object has the following fields:
 }
 ```
 
-A `ShardReassignmentRecord` object has the following fields:
+#### `ShardReassignmentRecord`
 
 ```python
 {
@@ -748,7 +767,7 @@ def get_attestation_participants(state: State,
 
 #### `get_effective_balance`
 
- ```python
+```python
 def get_effective_balance(validator: ValidatorRecord) -> int:
     """
     Returns the effective balance (also known as "balance at stake") for the ``validator``.
