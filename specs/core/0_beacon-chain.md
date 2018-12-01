@@ -1382,11 +1382,6 @@ def get_changed_validators(validators: List[ValidatorRecord],
         if total_changed >= max_allowable_change:
             break
 
-    # Penalize validators that have not responded to proof of custody challenges long enough
-    while len(state.proof_of_custody_challenges) and current_slot > state.proof_of_custody_challenges[0].expiry_slot:
-        exit_validator(state.proof_of_custody_challenges[0].responder_index, state, True, current_slot)
-        state.proof_of_custody_challenges.pop(0)
-
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
     total_penalties = (
