@@ -1285,7 +1285,7 @@ For any [validator](#dfn-validator) `v`, let `base_reward(v) = get_effective_bal
 * Set `state.justified_slot_bitfield = (state.justified_slot_bitfield * 2) % 2**64`.
 * If `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 2` (ie. flip the second lowest bit to 1) and `new_justified_slot = s - EPOCH_LENGTH`.
 * If `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 1` (ie. flip the lowest bit to 1) and `new_justified_slot = s`.
-* If `state.justified_slot == s - EPOCH_LENGTH and state.justified_slot_bitfield % 4 == 3`, set `state.finalized_slot = justified_slot`.
+* If `state.justified_slot == s - EPOCH_LENGTH and state.justified_slot_bitfield % 4 == 3`, set `state.finalized_slot = state.justified_slot`.
 * If `state.justified_slot == s - EPOCH_LENGTH - EPOCH_LENGTH and state.justified_slot_bitfield % 8 == 7`, set `state.finalized_slot = state.justified_slot`.
 * If `state.justified_slot == s - EPOCH_LENGTH - 2 * EPOCH_LENGTH and state.justified_slot_bitfield % 16 in (15, 14)`, set `state.finalized_slot = state.justified_slot`.
 * Set `state.previous_justified_slot = state.justified_slot` and if `new_justified_slot` has been set, set `state.justified_slot = new_justified_slot`.
