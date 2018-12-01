@@ -1142,7 +1142,6 @@ For each `special` in `block.specials`, perform the appropriate check based on i
 
 #### `VOLUNTARY_EXIT`
 
-
 ```python
 {
     'slot': 'unit64',
