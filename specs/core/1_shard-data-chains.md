@@ -175,7 +175,12 @@ Three new types of `SpecialObject` records:
 }
 ```
 
-Let `signed_data = bytes8(fork_version) + new_commitment`. Verify that `BLSVerify(pub=state.validators[index].pubkey, msg=hash(signed_data), sig=signature)` passes. Verify that `hash(new_commitment) = state.validators[index].proof_of_custody_commitment`, and the `block.slot >= state.validators[index].proof_of_custody_last_change + PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD`. Set `state.validators[index].proof_of_custody_second_last_change = state.validators[index].proof_of_custody_last_change` and `state.validators[index].proof_of_custody_last_change = block.slot`.
+* Let `signed_data` be `bytes8(fork_version) + new_commitment`.
+* Verify that `BLSVerify(pub=state.validators[index].pubkey, msg=hash(signed_data), sig=signature)` passes.
+* Verify that `hash(new_commitment) = state.validators[index].proof_of_custody_commitment`.
+* Verify that `block.slot >= state.validators[index].proof_of_custody_last_change + PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD`.
+* Set `state.validators[index].proof_of_custody_second_last_change` to `state.validators[index].proof_of_custody_last_change`.
+* Set `state.validators[index].proof_of_custody_last_change` to `block.slot`.
 
 #### PROOF_OF_CUSTODY_CHALLENGE
 
