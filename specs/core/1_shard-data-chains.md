@@ -136,7 +136,7 @@ The fork choice rule for any shard is LMD GHOST using the validators currently a
 
 Change to attestation verification:
 
-* Let `expected_depth = log2(SHARD_BLOCK_SIZE // SHARD_CHUNK_SIZE * next_power_of_2(slot - last_crosslink_slot))`. For each integer `i = 0, 1`, let `messages[i]` be `AttestationSignedData(slot, shard, parent_hashes, shard_block_hash, i == 1, expected_depth, attestation_indices.total_validator_count, justified_slot)`.
+* Let `expected_depth = log2(SHARD_BLOCK_SIZE // SHARD_CHUNK_SIZE * next_power_of_2(slot - last_crosslink_slot))`. For each integer `i = 0, 1`, let `messages[i]` be `AttestationData(slot, shard, parent_hashes, shard_block_hash, expected_depth, attestation_indices.total_validator_count, justified_slot)`.
 
 A `ProofOfCustodyChallenge` has the following fields:
 
