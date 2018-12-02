@@ -215,7 +215,7 @@ A block can have maximum one proof of custody challenge, and it must appear befo
 ```
 Perform the following checks:
 
-* Verify `challenge_index < len(state.proof_of_custody_challenges)`.
+* Verify that `challenge_index < len(state.proof_of_custody_challenges)`.
 * Let`challenge = state.proof_of_custody_challenges[challenge_index]`.
 * Verify that `hash(seed) = challenge.seed_hash`
 * Verify that `verify_merkle_branch(leaf, data_merkle_branch, challenge.depth, challenge.data_index, root)` passes.
