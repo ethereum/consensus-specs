@@ -487,6 +487,17 @@ A `ShardReassignmentRecord` object has the following fields:
 }
 ```
 
+### `SpecialAttestationData`
+
+```python
+{
+    'aggregate_sig_poc_0_indices': '[uint24]',
+    'aggregate_sig_poc_1_indices': '[uint24]',
+    'data': AttestationData,
+    'aggregate_sig': '[uint256]',
+}
+```
+
 ## Beacon chain processing
 
 The beacon chain is the system chain for Ethereum 2.0. The main responsibilities of the beacon chain are:
@@ -748,6 +759,15 @@ def get_attestation_participants(state: State,
         if bit == 1:
             participants.append(validator_index)
     return participants
+```
+
+#### `verify_special_attestation_data`
+
+```python
+def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
+    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_0_indices]),
+            aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_1_indices])]
+    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_sig)`
 ```
 
 #### `bytes1`, `bytes2`, ...
@@ -1119,24 +1139,6 @@ If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some
 
 * Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top).
 * Verify that objects are sorted in order of `kind`. That is, `block.specials[i+1].kind >= block.specials[i].kind` for `0 <= i < len(block.specials-1)`.
-
-We define the following object `SpecialAttestationData` and helper `verify_special_attestation_data`:
-
-```python
-{
-    'aggregate_sig_poc_0_indices': '[uint24]',
-    'aggregate_sig_poc_1_indices': '[uint24]',
-    'data': AttestationData,
-    'aggregate_sig': '[uint256]',
-}
-```
-
-```python
-def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
-    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_0_indices]),
-            aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_1_indices])]
-    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_sig)`
-```
 
 For each `special` in `block.specials`, perform the appropriate check based on its `kind`:
 
