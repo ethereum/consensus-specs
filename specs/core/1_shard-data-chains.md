@@ -197,7 +197,8 @@ Perform the following checks:
 * Let `FULL_PROOF_OF_CUSTODY_VALCOUNT = TARGET_COMMITEE_SIZE * SHARD_COUNT`, and `target = 2**256 * attestation.total_validator_count // FULL_PROOF_OF_CUSTODY_VALCOUNT`.
 * Verify that `check_value <= target`.
 
-Let `seed_hash = state.validators[index].proof_of_custody_commitment if attestation.slot > state.validators[index].proof_of_custody_last_change else hash(state.validators[index].proof_of_custody_commitment)`. Append to `state.proof_of_custody_challenges` the object `ProofOfCustodyChallenge(responder_index=validator_index, seed_hash=seed_hash, depth=attestation.proof_of_custody_depth, data_root=attestation.data.shard_block_hash, data_index=data_index, expiry_slot=block.slot+PROOF_OF_CUSTODY_RESPONSE_DEADLINE, challenger_index=get_proposer(state, block), bit=bit)`.
+* Let `seed_hash = state.validators[index].proof_of_custody_commitment if attestation.slot > state.validators[index].proof_of_custody_last_change else hash(state.validators[index].proof_of_custody_commitment)`.
+* Append to `state.proof_of_custody_challenges` the object `ProofOfCustodyChallenge(responder_index=validator_index, seed_hash=seed_hash, depth=attestation.proof_of_custody_depth, data_root=attestation.data.shard_block_hash, data_index=data_index, expiry_slot=block.slot+PROOF_OF_CUSTODY_RESPONSE_DEADLINE, challenger_index=get_proposer(state, block), bit=bit)`.
 
 A block can have maximum one proof of custody challenge, and it must appear before all `PROOF_OF_CUSTODY_SEED_CHANGE` objects.
 
