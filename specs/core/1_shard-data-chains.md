@@ -18,7 +18,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 | Constant               | Value           | Unit  | Approximation |
 |------------------------|-----------------|-------|---------------|
-| `CHUNK_SIZE`           | 2**8 (= 256)    | bytes |               |
+| `SHARD_CHUNK_SIZE`     | 2**8 (= 256)    | bytes |               |
 | `SHARD_BLOCK_SIZE`     | 2**14 (= 16384) | bytes |               |
 | `PROOF_OF_CUSTODY_MIN_CHANGE_PERIOD` | 2**17 | (= 65,536) | slots | ~9 days |
 | `PROOF_OF_CUSTODY_RESPONSE_DEADLINE` | 2**20 (= 524,288) | slots | ~73 days |
