@@ -11,6 +11,15 @@
     - [Notation](#notation)
     - [Terminology](#terminology)
     - [Constants](#constants)
+        - [Misc](#misc)
+        - [Deposit contract](#deposit-contract)
+        - [Initial values](#initial-values)
+        - [Time parameters](#time-parameters)
+        - [Reward and penalty quotients](#reward-and-penalty-quotients)
+        - [Status codes](#status-codes)
+        - [Special record types](#special-record-types)
+        - [Validator registry delta flags](#validator-registry-delta-flags)
+        - [Signature domains](#signature-domains)
     - [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract)
         - [Contract code in Vyper](#contract-code-in-vyper)
     - [Data structures](#data-structures)
@@ -31,6 +40,12 @@
             - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
+        - [Specials](#specials)
+            - [`VoluntaryExitSpecial`](#voluntaryexitspecial)
+            - [`CasperSlashingSpecial`](#casperslashingspecial)
+            - [`SpecialAttestationData`](#specialattestationdata)
+            - [`ProposerSlashingSpecial`](#proposerslashingspecial)
+            - [`DepositProofSpecial`](#depositproofspecial)
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -110,22 +125,36 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Constants
 
+### Misc
+
 | Name | Value | Unit |
 | - | - | :-: |
-| `SHARD_COUNT` | `2**10` (= 1,024)| shards |
+| `SHARD_COUNT` | `2**10` (= 1,024) | shards |
 | `TARGET_COMMITTEE_SIZE` | `2**8` (= 256) | [validators](#dfn-validator) |
 | `MAX_ATTESTATIONS_PER_BLOCK` | `2**7` (= 128) | attestations |
-| `MAX_DEPOSIT` | `2**5` (= 32) | ETH |
 | `MIN_BALANCE` | `2**4` (= 16) | ETH |
-| `POW_CONTRACT_MERKLE_TREE_DEPTH` | `2**5` (= 32) | - |
-| `INITIAL_FORK_VERSION` | `0` | - |
-| `INITIAL_SLOT_NUMBER` | `0` | - |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** | - |
+| `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
-| `ZERO_HASH` | `bytes([0] * 32)` | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 
-**Time constants**
+### Deposit contract
+
+| Name | Value | Unit |
+| - | - | :-: |
+| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) | - |
+| `MIN_DEPOSIT` | `2**0` (= 1) | ETH |
+| `MAX_DEPOSIT` | `2**5` (= 32) | ETH |
+
+### Initial values
+
+| Name | Value |
+| - | - |
+| `INITIAL_FORK_VERSION` | `0` |
+| `INITIAL_SLOT_NUMBER` | `0` |
+| `ZERO_HASH` | `bytes([0] * 32)` |
+
+### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
@@ -135,29 +164,29 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` | `2**8` (= 256) | slots | 25.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
-| `SQRT_E_DROP_TIME` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
-| `DELETION_PERIOD` | `2**22` (= 16,777,216) | slots | ~290 days |
+| `EMPTY_VALIDATOR_EXPIRY` | `2**22` (= 16,777,216) | slots | ~290 days |
 
-**Quotients**
+### Reward and penalty quotients
 
 | Name | Value |
 | - | - |
 | `BASE_REWARD_QUOTIENT` | `2**11` (= 2,048) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
-| `MAX_CHURN_QUOTIENT` | `2**5` (= 32) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `2**34` (= 131,072) |
 
-**Validator status codes**
+### Status codes
 
 | Name | Value |
 | - | - |
 | `PENDING_ACTIVATION` | `0` |
 | `ACTIVE` | `1` |
-| `EXITED_WITHOUT_PENALTY` | `2` |
-| `EXITED_WITH_PENALTY` | `3` |
+| `PENDING_EXIT | `2` |
+| `EXITED_WITHOUT_PENALTY` | `3` |
+| `EXITED_WITH_PENALTY` | `4` |
 
-**Special record types**
+### Special record types
 
 | Name | Value | Maximum count |
 | - | - | :-: |
@@ -166,14 +195,14 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `PROPOSER_SLASHING` | `2` | `16` |
 | `DEPOSIT_PROOF` | `3` | `16` |
 
-**Validator registry delta flags**
+### Validator registry delta flags
 
 | Name | Value |
 | - | - |
 | `ACTIVATION` | `0` |
 | `EXIT` | `1` |
 
-**Domains for BLS signatures**
+### Signature domains
 
 | Name | Value | 
 | - | - |
@@ -185,9 +214,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 **Notes**
 
 * See a recommended min committee size of 111 [here](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); the shuffling algorithm will generally ensure the committee size is at least half the target.
-* The `SQRT_E_DROP_TIME` constant is the amount of time it takes for the inactivity leak to cut deposits of non-participating [validators](#dfn-validator) by ~39.4%.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `SQRT_E_DROP_TIME**2` where `SQRT_E_DROP_TIME := 2**17 slots` (~9 days) is the amount of time it takes for the inactivity penalty to cut deposits of non-participating [validators](#dfn-validator) by ~39.4%. The portion lost by offline [validators](#dfn-validator) after `D` epochs is about `D*D/2/INACTIVITY_PENALTY_QUOTIENT`.
 * The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch interest rate assuming all [validators](#dfn-validator) are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
-* At most `1/MAX_CHURN_QUOTIENT` of the [validators](#dfn-validator) can change during each [validator](#dfn-validator) registry change.
+* At most `1/MAX_BALANCE_CHURN_QUOTIENT` of the [validators](#dfn-validator) can change during each [validator](#dfn-validator) registry change.
 
 ## Ethereum 1.0 chain deposit contract
 
@@ -204,7 +233,7 @@ MIN_DEPOSIT: constant(uint256) = 1  # ETH
 MAX_DEPOSIT: constant(uint256) = 32  # ETH
 GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
 CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
-POW_CONTRACT_MERKLE_TREE_DEPTH: constant(uint256) = 32
+DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
 HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], full_deposit_count: uint256})
@@ -216,7 +245,7 @@ full_deposit_count: uint256
 @payable
 @public
 def deposit(deposit_parameters: bytes[2048]):
-    index: uint256 = self.full_deposit_count + 2**POW_CONTRACT_MERKLE_TREE_DEPTH
+    index: uint256 = self.full_deposit_count + 2**DEPOSIT_CONTRACT_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
@@ -224,7 +253,7 @@ def deposit(deposit_parameters: bytes[2048]):
     log.HashChainValue(self.receipt_tree[1], deposit_data, self.full_deposit_count)
 
     self.receipt_tree[index] = sha3(deposit_data)
-    for i in range(32):  # POW_CONTRACT_MERKLE_TREE_DEPTH (range of constant var not yet supported)
+    for i in range(32):  # DEPOSIT_CONTRACT_TREE_DEPTH (range of constant var not yet supported)
         index /= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
 
@@ -244,7 +273,7 @@ def get_receipt_root() -> bytes32:
 
 ```
 
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a [validator](#dfn-validator) by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending up to `MAX_DEPOSIT` ETH and providing as `deposit_parameters` a SimpleSerialize'd `DepositParametersRecord` object (defined in "Data structures" below). If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls.
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a [validator](#dfn-validator) by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending between `MIN_DEPOSIT` and `MAX_DEPOSIT` and providing as `deposit_parameters` a SimpleSerialize'd `DepositParametersRecord` object (defined in "Data structures" below). If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls.
 
 When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
 
@@ -473,6 +502,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
 ```
 
 #### `PendingAttestationRecord`
+
 ```python
 {
     # Signed data
@@ -487,6 +517,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
 ```
 
 #### `ForkData`
+
 ```python
 {
     # Previous fork version
@@ -495,6 +526,81 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
     'post_fork_version': 'uint64',
     # Fork slot number
     'fork_slot': 'uint64',
+}
+```
+
+### Specials
+
+#### `VoluntaryExitSpecial`
+
+```python
+{
+    # Minimum slot for processing exit
+    'slot': 'unit64',
+    # Index of the exiting validator
+    'validator_index': 'uint64',
+    # Validator signature
+    'signature': '[uint384]',
+}
+```
+
+#### `CasperSlashingSpecial`
+
+```python
+{
+    # First vote
+    vote_1: SpecialAttestationData,
+    # Second vote
+    vote_2: SpecialAttestationData,
+}
+```
+
+#### `SpecialAttestationData`
+
+ ```python
+{
+    # Proof-of-custody indices (0 bits)
+    'aggregate_sig_poc_0_indices': '[uint24]',
+    # Proof-of-custody indices (1 bits)
+    'aggregate_sig_poc_1_indices': '[uint24]',
+    # Attestation data
+    'data': AttestationData,
+    # Aggregate signature
+    'aggregate_sig': '[uint384]',
+}
+```
+
+#### `ProposerSlashingSpecial`
+
+```python
+{
+    # Proposer index
+    'proposer_index': 'uint24',
+    # First proposal data
+    'proposal_data_1': ProposalSignedData,
+    # First proposal signature
+    'proposal_signature_1': '[uint384]',
+    # Second proposal data
+    'proposal_data_2': ProposalSignedData,
+    # Second proposal signature
+    'proposal_signature_2': '[uint384]',
+}
+```
+
+#### `DepositProofSpecial`
+
+```python
+{
+    # Receipt Merkle branch
+    'merkle_branch': '[hash32]',
+    # Merkle tree index
+    'merkle_tree_index': 'uint64',
+    # Deposit data
+    'deposit_data': {
+        'deposit_parameters': DepositParametersRecord,
+        'value': 'uint64',
+        'timestamp': 'uint64',
+    },
 }
 ```
 
@@ -883,7 +989,7 @@ def on_startup(initial_validator_entries: List[Any],
         fork_data=ForkData(
             pre_fork_version=INITIAL_FORK_VERSION,
             post_fork_version=INITIAL_FORK_VERSION,
-            fork_slot=INITIAL_SLOT_NUMBER,
+            fork_slot=2**64 - 1,
         ),
     )
 
@@ -899,7 +1005,7 @@ First, some helper functions:
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int) -> int:
     for i, v in enumerate(validators):
-        if v.balance == 0 and v.latest_status_change_slot + DELETION_PERIOD <= current_slot:
+        if v.balance == 0 and v.latest_status_change_slot + EMPTY_VALIDATOR_EXPIRY <= current_slot:
             return i
     return None
 
@@ -983,7 +1089,7 @@ def process_deposit(state: BeaconState,
                     current_slot: int) -> int:
     """
     Process a deposit from Ethereum 1.0.
-    Note that this function mutates `state`.
+    Note that this function mutates ``state``.
     """
     state.validator_registry, index = get_new_validators(
         current_validators=state.validator_registry,
@@ -1013,8 +1119,8 @@ def exit_validator(index: int,
                    penalize: bool,
                    current_slot: int) -> None:
     """
-    Exit the validator with the given `index`.
-    Note that this function mutates `state`.
+    Exit the validator with the given ``index``.
+    Note that this function mutates ``state``.
     """
     state.validator_registry_exit_count += 1
 
@@ -1134,18 +1240,10 @@ If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some
 For each `special` in `block.specials`:
 
 * Verify that `special.kind` is a valid value.
-* Verify that `special.data` deserializes according to the format for the given `kind`.
+* Verify that `special.data` deserializes according to the format for the given `kind` (see format definitions in "Data structures" above).
 * Process `special.data` as specified below for each kind.
 
 #### `VOLUNTARY_EXIT`
-
-```python
-{
-    'slot': 'unit64',
-    'validator_index': 'uint64',
-    'signature': '[uint384]',
-}
-```
 
 * Let `validator = state.validator_registry[validator_index]`.
 * Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=signature, domain=get_domain(state.fork_data, slot, DOMAIN_EXIT))`.
@@ -1156,29 +1254,13 @@ For each `special` in `block.specials`:
 
 #### `CASPER_SLASHING`
 
-We define the following `SpecialAttestationData` object and the helper `verify_special_attestation_data`:
- 
- ```python
-{
-    'aggregate_sig_poc_0_indices': '[uint24]',
-    'aggregate_sig_poc_1_indices': '[uint24]',
-    'data': AttestationData,
-    'aggregate_sig': '[uint384]',
-}
-```
+Let `verify_special_attestation_data` be the following helper:
 
  ```python
 def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
     pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_0_indices]),
             aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_1_indices])]
     return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_sig)
-```
-
-```python
-{
-    vote_1: SpecialAttestationData,
-    vote_2: SpecialAttestationData,
-}
 ```
 
 * Verify that `verify_special_attestation_data(vote_1)`.
@@ -1193,16 +1275,6 @@ For each [validator](#dfn-validator) index `i` in `intersection`, if `state.vali
 
 #### `PROPOSER_SLASHING`
 
-```python
-{
-    'proposer_index': 'uint24',
-    'proposal_data_1': ProposalSignedData,
-    'proposal_signature_1': '[uint384]',
-    'proposal_data_2': ProposalSignedData,
-    'proposal_signature_2': '[uint384]',
-}
-```
-
 * Verify that `BLSVerify(pubkey=state.validator_registry[proposer_index].pubkey, msg=hash(proposal_data_1), sig=proposal_signature_1, domain=get_domain(state.fork_data, proposal_data_1.slot, DOMAIN_PROPOSAL))`.
 * Verify that `BLSVerify(pubkey=state.validator_registry[proposer_index].pubkey, msg=hash(proposal_data_2), sig=proposal_signature_2, domain=get_domain(state.fork_data, proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Verify that `proposal_data_1 != proposal_data_2`.
@@ -1212,21 +1284,9 @@ For each [validator](#dfn-validator) index `i` in `intersection`, if `state.vali
 
 #### `DEPOSIT_PROOF`
 
-```python
-{
-    'merkle_branch': '[hash32]',
-    'merkle_tree_index': 'uint64',
-    'deposit_data': {
-        'deposit_parameters': DepositParametersRecord,
-        'value': 'uint64',
-        'timestamp': 'uint64'
-    },
-}
-```
-
 Let `serialized_deposit_data` be the serialized form of `deposit_data. It should be the `DepositParametersRecord` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
 
-Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=POW_CONTRACT_MERKLE_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
+Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
@@ -1239,7 +1299,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-* Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < DELETION_PERIOD`.
+* Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < EMPTY_VALIDATOR_EXPIRY`.
 * Run the following:
 
 ```python
@@ -1318,7 +1378,6 @@ For every `ShardAndCommittee` object `obj`:
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `inactivity_penalty_quotient = SQRT_E_DROP_TIME**2`. (The portion lost by offline [validators](#dfn-validator) after `D` epochs is about `D*D/2/inactivity_penalty_quotient`.)
 * Let `time_since_finality = block.slot - state.finalized_slot`.
 
 Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
@@ -1329,7 +1388,7 @@ Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
 Case 2: `time_since_finality > 4 * EPOCH_LENGTH`:
 
 * Any [validator](#dfn-validator) in `previous_epoch_boundary_attesters` sees their balance unchanged.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, and any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * time_since_finality // inactivity_penalty_quotient`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, and any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * time_since_finality // INACTIVITY_PENALTY_QUOTIENT`.
 
 For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
@@ -1362,7 +1421,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
                            validator_registry_delta_chain_tip: int,
                            current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
     """
-    Return changed validator registry and `latest_penalized_exit_balances`, `validator_registry_delta_chain_tip`.
+    Return changed validator registry and ``latest_penalized_exit_balances``, ``validator_registry_delta_chain_tip``.
     """
     # The active validators
     active_validator_indices = get_active_validator_indices(validators)
@@ -1371,7 +1430,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
     # The maximum total Gwei that can be deposited and withdrawn
     max_allowable_change = max(
         2 * MAX_DEPOSIT * GWEI_PER_ETH,
-        total_balance // MAX_CHURN_QUOTIENT
+        total_balance // MAX_BALANCE_CHURN_QUOTIENT
     )
     # Go through the list start to end, depositing and withdrawing as many as possible
     total_changed = 0
@@ -1422,7 +1481,7 @@ def change_validators(state: BeaconState,
                       current_slot: int) -> None:
     """
     Change validator registry.
-    Note that this function mutates `state`.
+    Note that this function mutates ``state``.
     """
     state.validator_registry, state.latest_penalized_exit_balances = get_changed_validators(
         copy.deepcopy(state.validator_registry),
