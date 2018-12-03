@@ -790,7 +790,7 @@ def get_new_shuffling(seed: Hash32,
 
         shard_id_start = crosslinking_start_shard + slot * committees_per_slot
 
-        shards_and_committees_for_slot = [
+        shard_committees = [
             ShardCommittee(
                 shard=(shard_id_start + shard_position) % SHARD_COUNT,
                 committee=indices,
@@ -811,7 +811,7 @@ Here's a diagram of what is going on:
 
 ```python
 def get_shard_committees_at_slot(state: BeaconState,
-                                      slot: int) -> List[ShardCommittee]:
+                                 slot: int) -> List[ShardCommittee]:
     """
     Returns the ``ShardCommittee`` for the ``slot``.
     """
