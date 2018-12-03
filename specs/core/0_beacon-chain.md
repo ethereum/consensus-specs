@@ -840,7 +840,7 @@ def on_startup(initial_validator_entries: List[Any],
             fork_data=ForkData(
                 pre_fork_version=INITIAL_FORK_VERSION,
                 post_fork_version=INITIAL_FORK_VERSION,
-                fork_slot=2**64 - 1,
+                fork_slot=INITIAL_SLOT_NUMBER,
             ),
             pubkey=pubkey,
             deposit=deposit,
@@ -883,7 +883,7 @@ def on_startup(initial_validator_entries: List[Any],
         fork_data=ForkData(
             pre_fork_version=INITIAL_FORK_VERSION,
             post_fork_version=INITIAL_FORK_VERSION,
-            fork_slot=2**64 - 1,
+            fork_slot=INITIAL_SLOT_NUMBER,
         ),
     )
 
