@@ -565,7 +565,7 @@ Note: The definitions below are for specification purposes and are not necessari
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: [ValidatorRecords]) -> List[int]:
+def get_active_validator_indices(validators: [ValidatorRecord]) -> List[int]:
     """
     Gets indices of active validators from ``validators``.
     """
