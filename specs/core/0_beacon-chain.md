@@ -35,7 +35,7 @@
             - [`BeaconState`](#beaconstate)
             - [`ValidatorRecord`](#validatorrecord)
             - [`CrosslinkRecord`](#crosslinkrecord)
-            - [`ShardAndCommittee`](#shardandcommittee)
+            - [`ShardCommittee`](#shardcommittee)
             - [`ShardReassignmentRecord`](#shardreassignmentrecord)
             - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
@@ -55,7 +55,7 @@
             - [`split`](#split)
             - [`clamp`](#clamp)
             - [`get_new_shuffling`](#get_new_shuffling)
-            - [`get_shard_and_committees_for_slot`](#get_shard_and_committees_for_slot)
+            - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
             - [`get_block_hash`](#get_block_hash)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_attestation_participants`](#get_attestation_participants)
@@ -403,14 +403,14 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
     # Randomness and committees
     'randao_mix': 'hash32',
     'next_seed': 'hash32',
-    'shard_and_committee_for_slots': [[ShardAndCommittee]],
+    'shard_committees_at_slots': [[ShardCommittee]],
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
 
     # Finality
     'previous_justified_slot': 'uint64',
     'justified_slot': 'uint64',
-    'justified_slot_bitfield': 'uint64',
+    'justification_bitfield': 'uint64',
     'finalized_slot': 'uint64',
 
     # Recent state
@@ -464,7 +464,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
 }
 ```
 
-#### `ShardAndCommittee`
+#### `ShardCommittee`
 
 ```python
 {
@@ -765,7 +765,7 @@ def clamp(minval: int, maxval: int, x: int) -> int:
 ```python
 def get_new_shuffling(seed: Hash32,
                       validators: List[ValidatorRecord],
-                      crosslinking_start_shard: int) -> List[List[ShardAndCommittee]]:
+                      crosslinking_start_shard: int) -> List[List[ShardCommittee]]:
     """
     Shuffles ``validators`` into shard committees using ``seed`` as entropy.
     """
@@ -791,7 +791,7 @@ def get_new_shuffling(seed: Hash32,
         shard_id_start = crosslinking_start_shard + slot * committees_per_slot
 
         shards_and_committees_for_slot = [
-            ShardAndCommittee(
+            ShardCommittee(
                 shard=(shard_id_start + shard_position) % SHARD_COUNT,
                 committee=indices,
                 total_validator_count=len(active_validator_indices),
@@ -807,17 +807,17 @@ Here's a diagram of what is going on:
 
 ![](http://vitalik.ca/files/ShuffleAndAssign.png?1)
 
-#### `get_shard_and_committees_for_slot`
+#### `get_shard_committees_at_slot`
 
 ```python
-def get_shard_and_committees_for_slot(state: BeaconState,
-                                      slot: int) -> List[ShardAndCommittee]:
+def get_shard_committees_at_slot(state: BeaconState,
+                                      slot: int) -> List[ShardCommittee]:
     """
-    Returns the ``ShardAndCommittee`` for the ``slot``.
+    Returns the ``ShardCommittee`` for the ``slot``.
     """
     earliest_slot_in_array = state.latest_state_recalculation_slot - EPOCH_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + EPOCH_LENGTH * 2
-    return state.shard_and_committee_for_slots[slot - earliest_slot_in_array]
+    return state.shard_committees_at_slots[slot - earliest_slot_in_array]
 ```
 
 #### `get_block_hash`
@@ -834,7 +834,7 @@ def get_block_hash(state: BeaconState,
     return state.latest_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_and_committees_for_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
+`get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
 #### `get_beacon_proposer_index`
 
@@ -843,7 +843,7 @@ def get_beacon_proposer_index(state:BeaconState, slot: int) -> int:
     """
     Returns the beacon proposer index for the ``slot``.
     """
-    first_committee = get_shard_and_committees_for_slot(state, slot)[0].committee
+    first_committee = get_shard_committees_at_slot(state, slot)[0].committee
     return first_committee[slot % len(first_committee)]
 ```
 
@@ -856,15 +856,19 @@ def get_attestation_participants(state: State,
     """
     Returns the participant indices at for the ``attestation_data`` and ``participation_bitfield``.
     """
-    sncs_for_slot = get_shard_and_committees_for_slot(state, attestation_data.slot)
-    snc = [x for x in sncs_for_slot if x.shard == attestation_data.shard][0]
-    assert len(participation_bitfield) == ceil_div8(len(snc.committee))
-    participants = []
-    for i, validator_index in enumerate(snc.committee):
-        bit = (participation_bitfield[i//8] >> (7 - (i % 8))) % 2
-        if bit == 1:
-            participants.append(validator_index)
-    return participants
+
+    # Find the relevant committee
+    shard_committees = get_shard_committees_at_slot(state, attestation_data.slot)
+    shard_committee = [x for x in shard_committees if x.shard == attestation_data.shard][0]
+    assert len(participation_bitfield) == ceil_div8(len(shard_committee.committee))
+
+    # Find the attesters in the committee
+    attesters = []
+    for i, validator_index in enumerate(shard_committee.committee):
+        participation_bit = (participation_bitfield[i//8] >> (7 - (i % 8))) % 2
+        if participation_bit == 1:
+            attesters.append(validator_index)
+    return attesters
 ```
 
 #### `bytes1`, `bytes2`, ...
@@ -967,13 +971,13 @@ def on_startup(initial_validator_entries: List[Any],
         # Randomness and committees
         randao_mix=ZERO_HASH,
         next_seed=ZERO_HASH,
-        shard_and_committee_for_slots=initial_shuffling + initial_shuffling,
+        shard_committees_at_slots=initial_shuffling + initial_shuffling,
         persistent_committees=split(shuffle(initial_validator_registry, ZERO_HASH), SHARD_COUNT),
         persistent_committee_reassignments=[],
         # Finality
         previous_justified_slot=INITIAL_SLOT_NUMBER,
         justified_slot=INITIAL_SLOT_NUMBER,
-        justified_slot_bitfield=0,
+        justification_bitfield=0,
         finalized_slot=INITIAL_SLOT_NUMBER,
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
@@ -989,7 +993,7 @@ def on_startup(initial_validator_entries: List[Any],
         fork_data=ForkData(
             pre_fork_version=INITIAL_FORK_VERSION,
             post_fork_version=INITIAL_FORK_VERSION,
-            fork_slot=2**64 - 1,
+            fork_slot=INITIAL_SLOT_NUMBER,
         ),
     )
 
@@ -1343,7 +1347,7 @@ All [validators](#dfn-validator):
 * Let `previous_epoch_boundary_attesters` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
 * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_boundary_attesters])`.
 
-For every `ShardAndCommittee` object `obj` in `state.shard_and_committee_for_slots`:
+For every `ShardCommittee` object `obj` in `state.shard_committees_at_slots`:
 
 * Let `attesting_validators(obj, shard_block_hash)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`.
 * Let `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([get_effective_balance(v) for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values).
@@ -1362,15 +1366,15 @@ For any [validator](#dfn-validator) `v`, let `base_reward(v) = get_effective_bal
 
 ### Adjust justified slots and crosslink status
 
-* Set `state.justified_slot_bitfield = (state.justified_slot_bitfield * 2) % 2**64`.
-* If `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 2` (ie. flip the second lowest bit to 1) and `new_justified_slot = s - EPOCH_LENGTH`.
-* If `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justified_slot_bitfield &= 1` (ie. flip the lowest bit to 1) and `new_justified_slot = s`.
-* If `state.justified_slot == s - EPOCH_LENGTH and state.justified_slot_bitfield % 4 == 3`, set `state.finalized_slot = state.justified_slot`.
-* If `state.justified_slot == s - EPOCH_LENGTH - EPOCH_LENGTH and state.justified_slot_bitfield % 8 == 7`, set `state.finalized_slot = state.justified_slot`.
-* If `state.justified_slot == s - EPOCH_LENGTH - 2 * EPOCH_LENGTH and state.justified_slot_bitfield % 16 in (15, 14)`, set `state.finalized_slot = state.justified_slot`.
+* Set `state.justification_bitfield = (state.justification_bitfield * 2) % 2**64`.
+* If `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justification_bitfield &= 2` (ie. flip the second lowest bit to 1) and `new_justified_slot = s - EPOCH_LENGTH`.
+* If `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justification_bitfield &= 1` (ie. flip the lowest bit to 1) and `new_justified_slot = s`.
+* If `state.justified_slot == s - EPOCH_LENGTH and state.justification_bitfield % 4 == 3`, set `state.finalized_slot = state.justified_slot`.
+* If `state.justified_slot == s - EPOCH_LENGTH - EPOCH_LENGTH and state.justification_bitfield % 8 == 7`, set `state.finalized_slot = state.justified_slot`.
+* If `state.justified_slot == s - EPOCH_LENGTH - 2 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`, set `state.finalized_slot = state.justified_slot`.
 * Set `state.previous_justified_slot = state.justified_slot` and if `new_justified_slot` has been set, set `state.justified_slot = new_justified_slot`.
 
-For every `ShardAndCommittee` object `obj`:
+For every `ShardCommittee` object `obj`:
 
 * If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `crosslinks[shard] = CrosslinkRecord(slot=state.latest_state_recalculation_slot + EPOCH_LENGTH, hash=winning_hash(obj))`.
 
@@ -1394,7 +1398,7 @@ For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `
 
 ### Balance recalculations related to crosslink rewards
 
-For every `ShardAndCommittee` object `obj` in `state.shard_and_committee_for_slots[:EPOCH_LENGTH]` (ie. the objects corresponding to the epoch before the current one), for each `v` in `[state.validator_registry[index] for index in obj.committee]`, adjust balances as follows:
+For every `ShardCommittee` object `obj` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (ie. the objects corresponding to the epoch before the current one), for each `v` in `[state.validator_registry[index] for index in obj.committee]`, adjust balances as follows:
 
 * If `v in attesting_validators(obj)`, `v.balance += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(v))`.
 * If `v not in attesting_validators(obj)`, `v.balance -= base_reward(v)`.
@@ -1411,7 +1415,7 @@ If `state.latest_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`
 A [validator](#dfn-validator) registry change occurs if all of the following criteria are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* For every shard number `shard` in `state.shard_and_committee_for_slots`, `crosslinks[shard].slot > state.validator_registry_latest_change_slot`
+* For every shard number `shard` in `state.shard_committees_at_slots`, `crosslinks[shard].slot > state.validator_registry_latest_change_slot`
 
 A helper function is defined as:
 
@@ -1494,17 +1498,17 @@ def change_validators(state: BeaconState,
 And perform the following updates to the `state`:
 
 * Set `state.validator_registry_latest_change_slot = s + EPOCH_LENGTH`.
-* Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`.
-* Let `state.next_start_shard = (state.shard_and_committee_for_slots[-1][-1].shard + 1) % SHARD_COUNT`.
-* Set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`.
+* Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
+* Let `state.next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`.
 * Set `state.next_seed = state.randao_mix`.
 
 ### If a validator registry change does NOT happen
 
-* Set `state.shard_and_committee_for_slots[:EPOCH_LENGTH] = state.shard_and_committee_for_slots[EPOCH_LENGTH:]`.
+* Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
 * Let `time_since_finality = block.slot - state.validator_registry_latest_change_slot`.
-* Let `start_shard = state.shard_and_committee_for_slots[0][0].shard`.
-* If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_and_committee_for_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
+* Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
+* If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
