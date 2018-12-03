@@ -20,8 +20,6 @@
         - [Special record types](#special-record-types)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
-    - [Ethereum 1.0 chain deposit contract](#ethereum-10-chain-deposit-contract)
-        - [Contract code in Vyper](#contract-code-in-vyper)
     - [Data structures](#data-structures)
         - [Deposits](#deposits)
             - [`DepositParametersRecord`](#depositparametersrecord)
@@ -46,6 +44,8 @@
             - [`SpecialAttestationData`](#specialattestationdata)
             - [`ProposerSlashingSpecial`](#proposerslashingspecial)
             - [`DepositProofSpecial`](#depositproofspecial)
+    - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
+        - [Contract code in Vyper](#contract-code-in-vyper)
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -64,8 +64,8 @@
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
             - [`integer_squareroot`](#integer_squareroot)
         - [On startup](#on-startup)
-        - [Routine for adding a validator](#routine-for-adding-a-validator)
-        - [Routine for removing a validator](#routine-for-removing-a-validator)
+        - [Routine for activating a validator](#routine-for-activating-a-validator)
+        - [Routine for exiting a validator](#routine-for-exiting-a-validator)
     - [Per-block processing](#per-block-processing)
         - [Verify attestations](#verify-attestations)
         - [Verify proposer signature](#verify-proposer-signature)
@@ -218,69 +218,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 * The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch interest rate assuming all [validators](#dfn-validator) are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
 * At most `1/MAX_BALANCE_CHURN_QUOTIENT` of the [validators](#dfn-validator) can change during each [validator](#dfn-validator) registry change.
 
-## Ethereum 1.0 chain deposit contract
-
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract is added to Ethereum 1.0 to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
-
-The deposit contract emits a log with the various arguments for consumption by the beacon chain. It does little validation, pushing the deposit logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the deposit contract.
-
-### Contract code in Vyper
-
-The beacon chain is initialized when a condition is met inside the deposit contract on the existing Ethereum 1.0 chain. This contract's code in Vyper is as follows:
-
-```python
-MIN_DEPOSIT: constant(uint256) = 1  # ETH
-MAX_DEPOSIT: constant(uint256) = 32  # ETH
-GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
-CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
-DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
-SECONDS_PER_DAY: constant(uint256) = 86400
-
-HashChainValue: event({previous_receipt_root: bytes32, data: bytes[2064], full_deposit_count: uint256})
-ChainStart: event({receipt_root: bytes32, time: bytes[8]})
-
-receipt_tree: bytes32[uint256]
-full_deposit_count: uint256
-
-@payable
-@public
-def deposit(deposit_parameters: bytes[2048]):
-    index: uint256 = self.full_deposit_count + 2**DEPOSIT_CONTRACT_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
-    timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
-    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
-
-    log.HashChainValue(self.receipt_tree[1], deposit_data, self.full_deposit_count)
-
-    self.receipt_tree[index] = sha3(deposit_data)
-    for i in range(32):  # DEPOSIT_CONTRACT_TREE_DEPTH (range of constant var not yet supported)
-        index /= 2
-        self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
-
-    assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
-    assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
-    if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
-        self.full_deposit_count += 1
-    if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
-        timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
-        timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
-        log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
-
-@public
-@constant
-def get_receipt_root() -> bytes32:
-    return self.receipt_tree[1]
-
-```
-
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a [validator](#dfn-validator) by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending between `MIN_DEPOSIT` and `MAX_DEPOSIT` and providing as `deposit_parameters` a SimpleSerialize'd `DepositParametersRecord` object (defined in "Data structures" below). If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls.
-
-When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
-
-* `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
-* `genesis_time` equal to the `time` value published in the log
-* `processed_pow_receipt_root` equal to the `receipt_root` value published in the log
-
 ## Data structures
 
 ### Deposits
@@ -293,9 +230,9 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
     'pubkey': 'int384',
     # BLS proof of possession (a BLS signature)
     'proof_of_possession': ['int384'],
-    # Withdrawal credentials (TODO: define the format)
+    # Withdrawal credentials
     'withdrawal_credentials': 'hash32',
-    # The initial RANDAO commitment
+    # Initial RANDAO commitment
     'randao_commitment': 'hash32',
 }
 ```
@@ -337,7 +274,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
     # Proof of custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
-    'aggregate_sig': ['uint384'],
+    'aggregate_signature': ['uint384'],
 }
 ```
 
@@ -417,7 +354,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
     'latest_crosslinks': [CrosslinkRecord],
     'latest_state_recalculation_slot': 'uint64',
     'latest_block_hashes': ['hash32'],  # Needed to process attestations, older to newer
-    'latest_penalized_exit_balances': ['uint64'],  # Balances penalized in the current withdrawal period
+    'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
 
     # PoW receipt root
@@ -560,13 +497,13 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
  ```python
 {
     # Proof-of-custody indices (0 bits)
-    'aggregate_sig_poc_0_indices': '[uint24]',
+    'aggregate_signature_poc_0_indices': '[uint24]',
     # Proof-of-custody indices (1 bits)
-    'aggregate_sig_poc_1_indices': '[uint24]',
+    'aggregate_signature_poc_1_indices': '[uint24]',
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
-    'aggregate_sig': '[uint384]',
+    'aggregate_signature': '[uint384]',
 }
 ```
 
@@ -603,6 +540,69 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
     },
 }
 ```
+
+## Ethereum 1.0 deposit contract
+
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract is added to Ethereum 1.0 to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
+
+The deposit contract emits a log with the various arguments for consumption by the beacon chain. It does little validation, pushing the deposit logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the deposit contract.
+
+### Contract code in Vyper
+
+The beacon chain is initialized when a condition is met inside the deposit contract on the existing Ethereum 1.0 chain. This contract's code in Vyper is as follows:
+
+```python
+MIN_DEPOSIT: constant(uint256) = 1  # ETH
+MAX_DEPOSIT: constant(uint256) = 32  # ETH
+GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
+CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
+DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
+SECONDS_PER_DAY: constant(uint256) = 86400
+
+DepositEvent: event({previous_receipt_root: bytes32, data: bytes[2064], full_deposit_count: uint256})
+ChainStart: event({receipt_root: bytes32, time: bytes[8]})
+
+receipt_tree: bytes32[uint256]
+full_deposit_count: uint256
+
+@payable
+@public
+def deposit(deposit_parameters: bytes[2048]):
+    index: uint256 = self.full_deposit_count + 2**DEPOSIT_CONTRACT_TREE_DEPTH
+    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
+    timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
+    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
+
+    log.DepositEvent(self.receipt_tree[1], deposit_data, self.full_deposit_count)
+
+    self.receipt_tree[index] = sha3(deposit_data)
+    for i in range(32):  # DEPOSIT_CONTRACT_TREE_DEPTH (range of constant var not yet supported)
+        index /= 2
+        self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
+
+    assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
+    assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
+    if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
+        self.full_deposit_count += 1
+    if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
+        timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
+        timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
+        log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
+
+@public
+@constant
+def get_receipt_root() -> bytes32:
+    return self.receipt_tree[1]
+
+```
+
+The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a [validator](#dfn-validator) by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending between `MIN_DEPOSIT` and `MAX_DEPOSIT` and providing as `deposit_parameters` a SimpleSerialize'd `DepositParametersRecord` object (defined in "Data structures" below). If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls.
+
+When the contract publishes a `ChainStart` log, the beacon chain may be initialized by calling the `on_startup` function (defined below) with:
+
+* `genesis_time` equal to the `time` value published in the log
+* `processed_pow_receipt_root` equal to the `receipt_root` value published in the log
+* `initial_validator_entries` equal to the list of deposit records published as `DepositEvent` logs so far, in the order in which they were published (oldest to newest)
 
 ## Beacon chain processing
 
@@ -662,7 +662,7 @@ We now define the state transition function. At a high level the state transitio
 1. The per-block processing, which happens every block, and only affects a few parts of the `state`.
 2. The inter-epoch state recalculation, which happens only if `block.slot >= state.latest_state_recalculation_slot + EPOCH_LENGTH`, and affects the entire `state`.
 
-The inter-epoch state recalculation generally focuses on changes to the [validator](#dfn-validator) registry, including adjusting balances and adding and removing [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization, while the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
+The inter-epoch state recalculation generally focuses on changes to the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization, while the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
 
 ### Helper functions
 
@@ -875,7 +875,6 @@ def get_attestation_participants(state: State,
 
 `bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
-
 #### `get_effective_balance`
 
 ```python
@@ -1000,7 +999,7 @@ def on_startup(initial_validator_entries: List[Any],
     return state
 ```
 
-### Routine for adding a validator
+### Routine for activating a validator
 
 This routine should be run for every [validator](#dfn-validator) that is activated as part of a log created on Ethereum 1.0 [TODO: explain where to check for these logs]. The status of the [validators](#dfn-validator) added after genesis is `PENDING_ACTIVATION`. These logs should be processed in the order in which they are emitted by Ethereum 1.0.
 
@@ -1114,8 +1113,7 @@ def process_deposit(state: BeaconState,
     return index
 ```
 
-
-### Routine for removing a validator
+### Routine for exiting a validator
 
 ```python
 def exit_validator(index: int,
@@ -1200,10 +1198,10 @@ For each `attestation` in `block.attestations`:
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.latest_state_recalculation_slot else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, block, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
-* `aggregate_sig` verification:
+* `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `BLSVerify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=aggregate_sig, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
+    * Verify that `BLSVerify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=aggregate_signature, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=block.slot)` to `state.latest_attestations`.
 
@@ -1262,15 +1260,15 @@ Let `verify_special_attestation_data` be the following helper:
 
  ```python
 def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
-    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_0_indices]),
-            aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_sig_poc_1_indices])]
-    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_sig)
+    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_0_indices]),
+            aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_1_indices])]
+    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_signature)
 ```
 
 * Verify that `verify_special_attestation_data(vote_1)`.
 * Verify that `verify_special_attestation_data(vote_2)`.
 * Verify that `vote_1.data != vote_2.data`.
-* Let `indices(vote) = vote.aggregate_sig_poc_0_indices + vote.aggregate_sig_poc_1_indices`.
+* Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
 * Let `intersection = [x for x in indices(vote_1) if x in indices(vote_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `vote_1.data.justified_slot + 1 < vote_2.data.justified_slot + 1 == vote_2.data.slot < vote_1.data.slot` or `vote_1.data.slot == vote_2.data.slot`.
