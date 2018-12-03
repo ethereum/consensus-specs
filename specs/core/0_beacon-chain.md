@@ -495,6 +495,7 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
     'post_fork_version': 'uint64',
     # Fork slot number
     'fork_slot': 'uint64',
+}
 ```
 
 ## Beacon chain processing
