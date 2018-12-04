@@ -226,9 +226,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # BLS pubkey
-    'pubkey': 'int384',
+    'pubkey': 'uint384',
     # BLS proof of possession (a BLS signature)
-    'proof_of_possession': ['int384'],
+    'proof_of_possession': ['uint384'],
     # Withdrawal credentials
     'withdrawal_credentials': 'hash32',
     # Initial RANDAO commitment
