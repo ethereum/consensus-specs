@@ -1442,39 +1442,44 @@ def get_changed_validators(validators: List[ValidatorRecord],
     """
     # The active validators
     active_validator_indices = get_active_validator_indices(validators)
-    # The total balance of active validators
+    # The total effective balance of active validators
     total_balance = sum([get_effective_balance(v) for i, v in enumerate(validators) if i in active_validator_indices])
-    # The maximum total balance in Gwei that can be deposited or withdrawn
-    max_allowable_balance_changes = max(
+    
+    # The maximum balance churn in Gwei (for deposits and exits separately)
+    max_balance_churn = max(
         MAX_DEPOSIT * GWEI_PER_ETH,
         total_balance // (2 * MAX_BALANCE_CHURN_QUOTIENT)
     )
-    # Go through the list start to end, depositing and withdrawing as many as possible
+    
+    # Activate validators within the allowable balance churn
     total_activated_balance = 0
-    total_exited_balance = 0
     for i in range(len(validators)):
         if validators[i].status == PENDING_ACTIVATION:
             validators[i].status = ACTIVE
             total_activated_balance += get_effective_balance(validators[i])
+            if total_activated_balance >= max_balance_churn:
+                break
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=ACTIVATION,
             )
+
+    # Exit valdiators within the allowable balance churn 
+    total_exited_balance = 0
+    for i in range(len(validators)):
         if validators[i].status == EXITED_WITHOUT_PENALTY:
             validators[i].latest_status_change_slot = current_slot
             total_exited_balance += get_effective_balance(validators[i])
+            if total_exited_balance >= max_balance_churn:
+                break
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=EXIT,
             )
-        if total_activated_balance >= max_allowable_balance_changes:
-            break
-        if total_exited_balance >= max_allowable_balance_changes:
-            break
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
