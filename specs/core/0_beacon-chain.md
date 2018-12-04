@@ -1461,7 +1461,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
         if validators[i].status == PENDING_ACTIVATION and validators[i].balance >= MAX_DEPOSIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validators[i])
-            if balance_churn >= max_balance_churn:
+            if balance_churn > max_balance_churn:
                 break
 
             # Activate validator
@@ -1480,7 +1480,7 @@ def get_changed_validators(validators: List[ValidatorRecord],
         if validators[i].status == ACTIVE_PENDING_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validators[i])
-            if balance_churn >= max_balance_churn:
+            if balance_churn > max_balance_churn:
                 break
 
             # Exit validator
