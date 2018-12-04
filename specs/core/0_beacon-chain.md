@@ -192,7 +192,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | - | - |
 | `PENDING_ACTIVATION` | `0` |
 | `ACTIVE` | `1` |
-| `PENDING_EXIT` | `2` |
+| `ACTIVE_PENDING_EXIT` | `2` |
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
 
@@ -582,29 +582,33 @@ CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Deposit: event({previous_receipt_root: bytes32, data: bytes[2064], full_deposit_count: uint256})
+Deposit: event({previous_receipt_root: bytes32, data: bytes[2064], deposit_count: uint256})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
 receipt_tree: bytes32[uint256]
+deposit_count: uint256
 full_deposit_count: uint256
 
 @payable
 @public
 def deposit(deposit_parameters: bytes[2048]):
-    index: uint256 = self.full_deposit_count + 2**DEPOSIT_CONTRACT_TREE_DEPTH
+    assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
+    assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
+
+    index: uint256 = self.deposit_count + 2**DEPOSIT_CONTRACT_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
 
-    log.Deposit(self.receipt_tree[1], deposit_data, self.full_deposit_count)
+    log.Deposit(self.receipt_tree[1], deposit_data, self.deposit_count)
 
+    # add deposit to merkle tree
     self.receipt_tree[index] = sha3(deposit_data)
     for i in range(32):  # DEPOSIT_CONTRACT_TREE_DEPTH (range of constant var not yet supported)
         index /= 2
         self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
 
-    assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
-    assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
+    self.deposit_count += 1
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
         self.full_deposit_count += 1
         if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
@@ -690,7 +694,7 @@ def get_active_validator_indices(validators: [ValidatorRecord]) -> List[int]:
     """
     Gets indices of active validators from ``validators``.
     """
-    return [i for i, v in enumerate(validators) if v.status in [ACTIVE, PENDING_EXIT]]
+    return [i for i, v in enumerate(validators) if v.status in [ACTIVE, ACTIVE_PENDING_EXIT]]
 ```
 
 #### `shuffle`
@@ -1161,7 +1165,7 @@ def exit_validator(index: int,
         whistleblower.balance += whistleblower_reward
         validator.balance -= whistleblower_reward
     else:
-        validator.status = PENDING_EXIT
+        validator.status = ACTIVE_PENDING_EXIT
 
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
@@ -1452,8 +1456,9 @@ def get_changed_validators(validators: List[ValidatorRecord],
     # Go through the list start to end, depositing and withdrawing as many as possible
     total_changed = 0
     for i in range(len(validators)):
-        if validators[i].status == PENDING_ACTIVATION:
+        if validators[i].status == PENDING_ACTIVATION and validators[i].balance >= MAX_DEPOSIT:
             validators[i].status = ACTIVE
+            validators[i].latest_status_change_slot = current_slot
             total_changed += get_effective_balance(validators[i])
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
@@ -1461,7 +1466,8 @@ def get_changed_validators(validators: List[ValidatorRecord],
                 pubkey=validators[i].pubkey,
                 flag=ACTIVATION,
             )
-        if validators[i].status == EXITED_WITHOUT_PENALTY:
+        if validators[i].status == ACTIVE_PENDING_EXIT:
+            validators[i].status = EXITED_WITHOUT_PENALTY
             validators[i].latest_status_change_slot = current_slot
             total_changed += get_effective_balance(validators[i])
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
