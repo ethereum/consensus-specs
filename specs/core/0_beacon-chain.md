@@ -1027,7 +1027,7 @@ First, some helper functions:
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int) -> int:
     for i, v in enumerate(validators):
-        if v.balance == WITHDRAWN and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
+        if v.balance == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
             return i
     return None
 
