@@ -1512,7 +1512,7 @@ And perform the following updates to the `state`:
 
 * Set `state.validator_registry_latest_change_slot = s + EPOCH_LENGTH`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Let `state.next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Let `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 * Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`.
 * Set `state.next_seed = state.randao_mix`.
 
