@@ -45,7 +45,10 @@
             - [`ProposerSlashingSpecial`](#proposerslashingspecial)
             - [`DepositProofSpecial`](#depositproofspecial)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
-        - [Contract code in Vyper](#contract-code-in-vyper)
+        - [Deposit arguments](#deposit-arguments)
+        - [`Deposit` logs](#deposit-logs)
+        - [`ChainStart` log](#chainstart-log)
+        - [Vyper code](#vyper-code)
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -136,6 +139,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
+| `BLS_WITHDRAWAL_CREDENTIALS` | `0x00` | - |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 * At most `1/MAX_BALANCE_CHURN_QUOTIENT` of the [validators](#dfn-validator) can change during each [validator](#dfn-validator) registry change.
@@ -545,13 +549,30 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract is added to Ethereum 1.0 to deposit ETH. This contract has a `deposit` function which takes as arguments `pubkey`, `withdrawal_credentials`, `randao_commitment` as defined in a `ValidatorRecord` below. A BLS `proof_of_possession` of types `bytes` is given as a final argument.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards when the EVM2.0 is deployed and the shards have state.
 
-The deposit contract emits a log with the various arguments for consumption by the beacon chain. It does little validation, pushing the deposit logic to the beacon chain. In particular, the proof of possession (based on the BLS12-381 curve) is not verified by the deposit contract.
+### Deposit arguments
 
-### Contract code in Vyper
+The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositParametersRecord` object. One of the `DepositParametersRecord` fields is `withdrawal_credentials` which must satisfy:
 
-The beacon chain is initialized when a condition is met inside the deposit contract on the existing Ethereum 1.0 chain. This contract's code in Vyper is as follows:
+* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_CREDENTIALS`
+* `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
+
+We recommend the private key corresponding to `withdrawal_pubkey` be stored in cold storage until a withdrawal is required.
+
+### `Deposit` logs
+
+Every deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+
+### `ChainStart` log
+
+When sufficiently many full deposits have been made the deposit contract emits the `ChainStart` log. The beacon chain may then be initialized by calling the `on_startup` function (defined below) where:
+
+* `genesis_time` equals `time` in the `ChainStart` log
+* `processed_pow_receipt_root` equals `receipt_root` in the `ChainStart` log
+* `initial_validator_entries` is built according to the `Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
+
+### Vyper code
 
 ```python
 MIN_DEPOSIT: constant(uint256) = 1  # ETH
@@ -597,14 +618,6 @@ def get_receipt_root() -> bytes32:
     return self.receipt_tree[1]
 
 ```
-
-The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a [validator](#dfn-validator) by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending between `MIN_DEPOSIT` and `MAX_DEPOSIT` and providing as `deposit_parameters` a SimpleSerialize'd `DepositParametersRecord` object (defined in "Data structures" below). If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls.
-
-When the contract publishes the `ChainStart` log, the beacon chain may be initialized by calling the `on_startup` function (defined below) with:
-
-* `genesis_time` equal to the `time` value published in the `ChainStart` log
-* `processed_pow_receipt_root` equal to the `receipt_root` value published in the `ChainStart` log
-* `initial_validator_entries` equal to the list of deposit records published as `Deposit` logs so far, in the order in which they were published (oldest to newest)
 
 ## Beacon chain processing
 
