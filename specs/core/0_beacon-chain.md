@@ -261,9 +261,9 @@ When the contract publishes a `ChainStart` log, this initializes the chain, call
 ```python
 {
     # BLS pubkey
-    'pubkey': 'int384',
+    'pubkey': 'uint384',
     # BLS proof of possession (a BLS signature)
-    'proof_of_possession': ['int384'],
+    'proof_of_possession': ['uint384'],
     # Withdrawal credentials (TODO: define the format)
     'withdrawal_credentials': 'hash32',
     # The initial RANDAO commitment
