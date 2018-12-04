@@ -158,8 +158,10 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | Name | Value |
 | - | - |
 | `INITIAL_FORK_VERSION` | `0` |
-| `INITIAL_SLOT_NUMBER` | `0` |
+| `INITIAL_SLOT_NUMBER` | `3 * EPOCH_LENGTH` |
 | `ZERO_HASH` | `bytes([0] * 32)` |
+
+* `INITIAL_SLOT_NUMBER` is defined in reference to `EPOCH_LENGTH` to ensure that negative slot values in state recalculations are entirely avoided.
 
 ### Time parameters
 
@@ -1209,7 +1211,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
 For each `attestation` in `block.attestations`:
 
 * Verify that `attestation.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
-* Verify that `attestation.data.slot >= max(parent.slot - EPOCH_LENGTH + 1, 0)`.
+* Verify that `attestation.data.slot >= parent.slot - EPOCH_LENGTH + 1`.
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.latest_state_recalculation_slot else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, block, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
