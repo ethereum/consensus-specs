@@ -1450,15 +1450,15 @@ def get_changed_validators(validators: List[ValidatorRecord],
         MAX_DEPOSIT * GWEI_PER_ETH,
         total_balance // (2 * MAX_BALANCE_CHURN_QUOTIENT)
     )
-    
+
     # Activate validators within the allowable balance churn
     total_activated_balance = 0
     for i in range(len(validators)):
         if validators[i].status == PENDING_ACTIVATION:
-            validators[i].status = ACTIVE
             total_activated_balance += get_effective_balance(validators[i])
             if total_activated_balance >= max_balance_churn:
                 break
+            validators[i].status = ACTIVE
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
@@ -1466,14 +1466,14 @@ def get_changed_validators(validators: List[ValidatorRecord],
                 flag=ACTIVATION,
             )
 
-    # Exit valdiators within the allowable balance churn 
+    # Exit validators within the allowable balance churn 
     total_exited_balance = 0
     for i in range(len(validators)):
         if validators[i].status == EXITED_WITHOUT_PENALTY:
-            validators[i].latest_status_change_slot = current_slot
             total_exited_balance += get_effective_balance(validators[i])
             if total_exited_balance >= max_balance_churn:
                 break
+            validators[i].latest_status_change_slot = current_slot
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
