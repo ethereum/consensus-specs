@@ -69,22 +69,22 @@
         - [On startup](#on-startup)
         - [Routine for activating a validator](#routine-for-activating-a-validator)
         - [Routine for exiting a validator](#routine-for-exiting-a-validator)
-    - [Per-block processing](#per-block-processing)
+    - [Per-slot processing](#per-slot-processing)
         - [Verify attestations](#verify-attestations)
         - [Verify proposer signature](#verify-proposer-signature)
-        - [Verify and process the RANDAO reveal](#verify-and-process-the-randao-reveal)
+        - [Process RANDAO](#process-randao)
         - [Process PoW receipt root](#process-pow-receipt-root)
         - [Process special objects](#process-special-objects)
             - [`VOLUNTARY_EXIT`](#voluntary_exit)
             - [`CASPER_SLASHING`](#casper_slashing)
             - [`PROPOSER_SLASHING`](#proposer_slashing)
             - [`DEPOSIT_PROOF`](#deposit_proof)
-    - [Epoch boundary processing](#epoch-boundary-processing)
+    - [Per-epoch processing](#per-epoch-processing)
         - [Precomputation](#precomputation)
         - [Adjust justified slots and crosslink status](#adjust-justified-slots-and-crosslink-status)
         - [Balance recalculations related to FFG rewards](#balance-recalculations-related-to-ffg-rewards)
         - [Balance recalculations related to crosslink rewards](#balance-recalculations-related-to-crosslink-rewards)
-        - [Ethereum 1.0 chain related rules](#ethereum-10-chain-related-rules)
+        - [Receipt root voting](#receipt-root-voting)
         - [Validator registry change](#validator-registry-change)
         - [If a validator registry change does NOT happen](#if-a-validator-registry-change-does-not-happen)
         - [Proposer reshuffling](#proposer-reshuffling)
@@ -334,11 +334,16 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
+    # Misc
+    'slot': 'uint64',
+    'genesis_time': 'uint64',
+    'fork_data': ForkData,  # For versioning hard forks
+
     # Validator registry
     'validator_registry': [ValidatorRecord],
     'validator_registry_latest_change_slot': 'uint64',
     'validator_registry_exit_count': 'uint64',
-    'validator_registry_delta_chain_tip': 'hash32',  # For light clients to easily track delta
+    'validator_registry_delta_chain_tip': 'hash32',  # For light clients to track deltas
 
     # Randomness and committees
     'randao_mix': 'hash32',
@@ -363,10 +368,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
     'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
-
-    # Misc
-    'genesis_time': 'uint64',
-    'fork_data': ForkData,  # For versioning hard forks
 }
 ```
 
@@ -629,13 +630,13 @@ The beacon chain is the system chain for Ethereum 2.0. The main responsibilities
 
 * Store and maintain the registry of [validators](#dfn-validator)
 * Process crosslinks (see above)
-* Process its own block-by-block consensus, as well as the finality gadget
+* Process its per-slot consensus, as well as the finality gadget
 
-Processing the beacon chain is fundamentally similar to processing the Ethereum 1.0 chain in many respects. Clients download and process blocks, and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with Ethereum 1.0, and because it is a proof-of-stake chain, there are differences.
+Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Clients download and process blocks, and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with Ethereum 1.0, and because it is a proof-of-stake chain, there are differences.
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block, `block.ancestor_hashes[0]`, has been processed and accepted.
+* The parent block (possibly a skip block) with hash `block.ancestor_hashes[0]` has been processed and accepted.
 * The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
 
@@ -678,10 +679,10 @@ def lmd_ghost(store, start):
 
 We now define the state transition function. At a high level the state transition is made up of two parts:
 
-1. The per-block processing, which happens every block, and only affects a few parts of the `state`.
-2. The inter-epoch state recalculation, which happens only if `block.slot >= state.latest_state_recalculation_slot + EPOCH_LENGTH`, and affects the entire `state`.
+1. The per-slot transitions, which happens every slot, and only affects a parts of the `state`.
+2. The per-epoch transitions, which happens at every epoch boundary (i.e. `state.slot % EPOCH_LENGTH == 0`), and affects the entire `state`.
 
-The inter-epoch state recalculation generally focuses on changes to the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization, while the per-block processing generally focuses on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
+The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization. The per-slot transitions generally focuses on verifying aggregate signatures and saving temporary records relating to the per-slot activity in the `BeaconState`.
 
 ### Helper functions
 
@@ -982,37 +983,44 @@ def on_startup(initial_validator_entries: List[Any],
     # Setup state
     initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
     state = BeaconState(
-        validator_registry=initial_validator_registry,
-        validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
-        validator_registry_exit_count=0,
-        validator_registry_delta_chain_tip=ZERO_HASH,
-        # Randomness and committees
-        randao_mix=ZERO_HASH,
-        next_seed=ZERO_HASH,
-        shard_committees_at_slots=initial_shuffling + initial_shuffling,
-        persistent_committees=split(shuffle(initial_validator_registry, ZERO_HASH), SHARD_COUNT),
-        persistent_committee_reassignments=[],
-        # Finality
-        previous_justified_slot=INITIAL_SLOT_NUMBER,
-        justified_slot=INITIAL_SLOT_NUMBER,
-        justification_bitfield=0,
-        finalized_slot=INITIAL_SLOT_NUMBER,
-        # Recent state
-        latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_state_recalculation_slot=INITIAL_SLOT_NUMBER,
-        latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
-        latest_penalized_exit_balances=[],
-        latest_attestations=[],
-        # PoW receipt root
-        processed_pow_receipt_root=processed_pow_receipt_root,
-        candidate_pow_receipt_roots=[],
         # Misc
+        slot=INITIAL_SLOT_NUMBER,
         genesis_time=genesis_time,
         fork_data=ForkData(
             pre_fork_version=INITIAL_FORK_VERSION,
             post_fork_version=INITIAL_FORK_VERSION,
             fork_slot=INITIAL_SLOT_NUMBER,
         ),
+
+        # Validator registry
+        validator_registry=initial_validator_registry,
+        validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
+        validator_registry_exit_count=0,
+        validator_registry_delta_chain_tip=ZERO_HASH,
+
+        # Randomness and committees
+        randao_mix=ZERO_HASH,
+        next_seed=ZERO_HASH,
+        shard_committees_at_slots=initial_shuffling + initial_shuffling,
+        persistent_committees=split(shuffle(initial_validator_registry, ZERO_HASH), SHARD_COUNT),
+        persistent_committee_reassignments=[],
+
+        # Finality
+        previous_justified_slot=INITIAL_SLOT_NUMBER,
+        justified_slot=INITIAL_SLOT_NUMBER,
+        justification_bitfield=0,
+        finalized_slot=INITIAL_SLOT_NUMBER,
+
+        # Recent state
+        latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
+        latest_state_recalculation_slot=INITIAL_SLOT_NUMBER,
+        latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
+        latest_penalized_exit_balances=[],
+        latest_attestations=[],
+
+        # PoW receipt root
+        processed_pow_receipt_root=processed_pow_receipt_root,
+        candidate_pow_receipt_roots=[],
     )
 
     return state
@@ -1175,12 +1183,12 @@ def exit_validator(index: int,
     )
 ```
 
-## Per-block processing
+## Per-slot processing
 
-This procedure should be carried out for every beacon block (denoted `block`).
+Below are the steps that happen at every slot. Denote by `block` the associated block, possibly a "skip block".
 
-* Let `parent_hash` be the hash of the immediate previous beacon block (ie. equal to `block.ancestor_hashes[0]`).
-* Let `parent` be the beacon block with the hash `parent_hash`.
+* Let `parent_hash` be the hash of the immediate previous beacon slot (ie. equal to `block.ancestor_hashes[0]`).
+* Let `parent` be the beacon slot with the hash `parent_hash`.
 
 First, set `state.latest_block_hashes` to the output of the following:
 
@@ -1212,7 +1220,7 @@ def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
 
 For each `attestation` in `block.attestations`:
 
-* Verify that `attestation.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
+* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
 * Verify that `attestation.data.slot >= max(parent.slot - EPOCH_LENGTH + 1, 0)`.
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.latest_state_recalculation_slot else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, block, attestation.data.justified_slot)`.
@@ -1222,28 +1230,24 @@ For each `attestation` in `block.attestations`:
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
     * Verify that `BLSVerify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=aggregate_signature, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == ZERO_HASH`.
-* Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=block.slot)` to `state.latest_attestations`.
+* Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
 ### Verify proposer signature
 
 * Let `block_hash_without_sig` be the hash of `block` where `proposer_signature` is set to `[0, 0]`.
-* Let `proposal_hash = hash(ProposalSignedData(block.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
-* Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, block.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state.fork_data, block.slot, DOMAIN_PROPOSAL))`.
+* Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
+* Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
-### Verify and process the RANDAO reveal
+### Process RANDAO
 
-First run the following state transition to update `randao_skips` variables for the missing slots.
+If `block` is a skip block:
 
-```python
-for slot in range(parent.slot + 1, block.slot):
-    proposer_index = get_beacon_proposer_index(state, slot)
-    state.validator_registry[proposer_index].randao_skips += 1
-```
+* Let `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
 
-Then:
+If `block` is not a skip block:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, block.slot)]`.
+* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`.
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`.
 * Set `proposer.randao_commitment = block.randao_reveal`.
@@ -1269,9 +1273,9 @@ For each `special` in `block.specials`:
 * Let `validator = state.validator_registry[validator_index]`.
 * Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=signature, domain=get_domain(state.fork_data, slot, DOMAIN_EXIT))`.
 * Verify that `validator.status == ACTIVE`.
-* Verify that `block.slot >= slot`.
-* Verify that `block.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `exit_validator(validator_index, state, penalize=False, current_slot=block.slot)`.
+* Verify that `state.slot >= slot`.
+* Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
+* Run `exit_validator(validator_index, state, penalize=False, current_slot=state.slot)`.
 
 #### `CASPER_SLASHING`
 
@@ -1292,7 +1296,7 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
 * Verify that `len(intersection) >= 1`.
 * Verify that `vote_1.data.justified_slot + 1 < vote_2.data.justified_slot + 1 == vote_2.data.slot < vote_1.data.slot` or `vote_1.data.slot == vote_2.data.slot`.
 
-For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, current_slot=block.slot)`
+For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, current_slot=state.slot)`
 
 #### `PROPOSER_SLASHING`
 
@@ -1301,7 +1305,7 @@ For each [validator](#dfn-validator) index `i` in `intersection`, if `state.vali
 * Verify that `proposal_data_1 != proposal_data_2`.
 * Verify that `proposal_data_1.slot == proposal_data_2.slot`.
 * Verify that `state.validator_registry[proposer_index].status != EXITED_WITH_PENALTY`.
-* Run `exit_validator(proposer_index, state, penalize=True, current_slot=block.slot)`.
+* Run `exit_validator(proposer_index, state, penalize=True, current_slot=state.slot)`.
 
 #### `DEPOSIT_PROOF`
 
@@ -1320,7 +1324,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-* Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < ZERO_BALANCE_VALIDATOR_TTL`.
+* Verify that `state.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < ZERO_BALANCE_VALIDATOR_TTL`.
 * Run the following:
 
 ```python
@@ -1332,15 +1336,13 @@ process_deposit(
     withdrawal_credentials=deposit_data.deposit_parameters.withdrawal_credentials,
     randao_commitment=deposit_data.deposit_parameters.randao_commitment,
     status=PENDING_ACTIVATION,
-    current_slot=block.slot
+    current_slot=state.slot
 )
 ```
 
-## Epoch boundary processing
+## Per-epoch processing
 
-Repeat the steps in this section while `block.slot - state.latest_state_recalculation_slot >= EPOCH_LENGTH`. For simplicity, we use `s` as `state.latest_state_recalculation_slot`.
-
-Note that `state.latest_state_recalculation_slot` will always be a multiple of `EPOCH_LENGTH`. In the "happy case", this process will trigger, and loop once, every time `block.slot` passes a new exact multiple of `EPOCH_LENGTH`, but if a chain skips more than an entire epoch then the loop may run multiple times, incrementing `state.latest_state_recalculation_slot` by `EPOCH_LENGTH` with each iteration.
+The steps below happen when `state.slot % EPOCH_LENGTH == 0`. For simplicity we denote `state.slot - EPOCH_LENGTH` by `s`.
 
 ### Precomputation
 
@@ -1352,7 +1354,7 @@ All [validators](#dfn-validator):
 
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the current epoch:
 
-* Let `this_epoch_attestations = [a for a in state.latest_attestations if s <= a.data.slot < s + EPOCH_LENGTH]`. (note: this is the set of attestations _of slots in the epoch `s...s+EPOCH_LENGTH-1`_, not attestations _that got included in the chain during the epoch `s...s+EPOCH_LENGTH-1`_)
+* Let `this_epoch_attestations = [a for a in state.latest_attestations if s <= a.data.slot < s + EPOCH_LENGTH]`. (Note: this is the set of attestations of slots in the epoch `s...s+EPOCH_LENGTH-1`, _not_ attestations that got included in the chain during the epoch `s...s+EPOCH_LENGTH-1`.)
 * Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_hash == get_block_hash(state, block, s) and a.justified_slot == state.justified_slot]`.
 * Let `this_epoch_boundary_attesters` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_boundary_attestations]`.
 * Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in this_epoch_boundary_attesters])`.
@@ -1393,13 +1395,13 @@ For any [validator](#dfn-validator) `v`, let `base_reward(v) = get_effective_bal
 
 For every `ShardCommittee` object `obj`:
 
-* If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `crosslinks[shard] = CrosslinkRecord(slot=state.latest_state_recalculation_slot + EPOCH_LENGTH, hash=winning_hash(obj))`.
+* If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `crosslinks[shard] = CrosslinkRecord(slot=state.slot, hash=winning_hash(obj))`.
 
 ### Balance recalculations related to FFG rewards
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `time_since_finality = block.slot - state.finalized_slot`.
+* Let `time_since_finality = state.slot - state.finalized_slot`.
 
 Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
 
@@ -1420,19 +1422,19 @@ For every `ShardCommittee` object `obj` in `state.shard_committees_at_slots[:EPO
 * If `v in attesting_validators(obj)`, `v.balance += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(v))`.
 * If `v not in attesting_validators(obj)`, `v.balance -= base_reward(v)`.
 
-### Ethereum 1.0 chain related rules
+### Receipt root voting
 
-If `state.latest_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
+If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
-* If for any `x` in `state.candidate_pow_receipt_root`,  `x.votes * 2 >= POW_RECEIPT_ROOT_VOTING_PERIOD` set `state.processed_pow_receipt_root = x.receipt_root`.
+* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.votes * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for any `x` in `state.candidate_pow_receipt_root`.
 * Set `state.candidate_pow_receipt_roots = []`.
 
 ### Validator registry change
 
-A [validator](#dfn-validator) registry change occurs if all of the following criteria are satisfied:
+A [validator](#dfn-validator) registry change occurs if the following criteria are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* For every shard number `shard` in `state.shard_committees_at_slots`, `crosslinks[shard].slot > state.validator_registry_latest_change_slot`
+* `crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `state.shard_committees_at_slots`
 
 A helper function is defined as:
 
@@ -1528,18 +1530,17 @@ def change_validators(state: BeaconState,
     )
 ```
 
-And perform the following updates to the `state`:
+And perform the following updates:
 
-* Set `state.validator_registry_latest_change_slot = s + EPOCH_LENGTH`.
+* Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Let `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)` where next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 * Set `state.next_seed = state.randao_mix`.
 
 ### If a validator registry change does NOT happen
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Let `time_since_finality = block.slot - state.validator_registry_latest_change_slot`.
+* Let `time_since_finality = state.slot - state.validator_registry_latest_change_slot`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
 * If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
 
@@ -1573,9 +1574,8 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ### Finally...
 
 * Remove all attestation records older than slot `s`.
-* For any [validator](#dfn-validator) with index `i` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(i, state, penalize=False, current_slot=block.slot)`.
+* For any [validator](#dfn-validator) with index `i` with balance less than `MIN_BALANCE` and status `ACTIVE`, run `exit_validator(i, state, penalize=False, current_slot=state.slot)`.
 * Set `state.latest_block_hashes = state.latest_block_hashes[EPOCH_LENGTH:]`.
-* Set `state.latest_state_recalculation_slot += EPOCH_LENGTH`.
 
 # Appendix
 ## Appendix A - Hash function
