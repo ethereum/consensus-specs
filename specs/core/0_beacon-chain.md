@@ -137,6 +137,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 
+* For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
+* At most `1/MAX_BALANCE_CHURN_QUOTIENT` of the [validators](#dfn-validator) can change during each [validator](#dfn-validator) registry change.
+
 ### Deposit contract
 
 | Name | Value | Unit |
@@ -165,7 +168,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
-| `EMPTY_VALIDATOR_EXPIRY` | `2**22` (= 16,777,216) | slots | ~290 days |
+| `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 16,777,216) | slots | ~290 days |
 
 ### Reward and penalty quotients
 
@@ -176,13 +179,16 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**34` (= 131,072) |
 
+* The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch interest rate assuming all [validators](#dfn-validator) are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `SQRT_E_DROP_TIME**2` where `SQRT_E_DROP_TIME := 2**17 slots` (~9 days) is the amount of time it takes for the inactivity penalty to cut deposits of non-participating [validators](#dfn-validator) by ~39.4%. The portion lost by offline [validators](#dfn-validator) after `D` epochs is about `D*D/2/INACTIVITY_PENALTY_QUOTIENT`.
+
 ### Status codes
 
 | Name | Value |
 | - | - |
 | `PENDING_ACTIVATION` | `0` |
 | `ACTIVE` | `1` |
-| `PENDING_EXIT | `2` |
+| `PENDING_EXIT` | `2` |
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
 
@@ -210,13 +216,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `DOMAIN_ATTESTATION` | `1` |
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_EXIT` | `3` |
-
-**Notes**
-
-* See a recommended min committee size of 111 [here](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); the shuffling algorithm will generally ensure the committee size is at least half the target.
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `SQRT_E_DROP_TIME**2` where `SQRT_E_DROP_TIME := 2**17 slots` (~9 days) is the amount of time it takes for the inactivity penalty to cut deposits of non-participating [validators](#dfn-validator) by ~39.4%. The portion lost by offline [validators](#dfn-validator) after `D` epochs is about `D*D/2/INACTIVITY_PENALTY_QUOTIENT`.
-* The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch interest rate assuming all [validators](#dfn-validator) are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
-* At most `1/MAX_BALANCE_CHURN_QUOTIENT` of the [validators](#dfn-validator) can change during each [validator](#dfn-validator) registry change.
 
 ## Data structures
 
@@ -534,8 +533,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'merkle_tree_index': 'uint64',
     # Deposit data
     'deposit_data': {
+        # Deposit parameters
         'deposit_parameters': DepositParametersRecord,
+        # Value in Gwei 
         'value': 'uint64',
+        # Timestamp from deposit contract
         'timestamp': 'uint64',
     },
 }
@@ -559,7 +561,7 @@ CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-DepositEvent: event({previous_receipt_root: bytes32, data: bytes[2064], full_deposit_count: uint256})
+Deposit: event({previous_receipt_root: bytes32, data: bytes[2064], full_deposit_count: uint256})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
 receipt_tree: bytes32[uint256]
@@ -573,7 +575,7 @@ def deposit(deposit_parameters: bytes[2048]):
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
 
-    log.DepositEvent(self.receipt_tree[1], deposit_data, self.full_deposit_count)
+    log.Deposit(self.receipt_tree[1], deposit_data, self.full_deposit_count)
 
     self.receipt_tree[index] = sha3(deposit_data)
     for i in range(32):  # DEPOSIT_CONTRACT_TREE_DEPTH (range of constant var not yet supported)
@@ -584,10 +586,10 @@ def deposit(deposit_parameters: bytes[2048]):
     assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
         self.full_deposit_count += 1
-    if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
-        timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
-        timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
-        log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
+        if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
+            timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
+            timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
+            log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
 
 @public
 @constant
@@ -598,11 +600,11 @@ def get_receipt_root() -> bytes32:
 
 The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a [validator](#dfn-validator) by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending between `MIN_DEPOSIT` and `MAX_DEPOSIT` and providing as `deposit_parameters` a SimpleSerialize'd `DepositParametersRecord` object (defined in "Data structures" below). If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls.
 
-When the contract publishes a `ChainStart` log, the beacon chain may be initialized by calling the `on_startup` function (defined below) with:
+When the contract publishes the `ChainStart` log, the beacon chain may be initialized by calling the `on_startup` function (defined below) with:
 
-* `genesis_time` equal to the `time` value published in the log
-* `processed_pow_receipt_root` equal to the `receipt_root` value published in the log
-* `initial_validator_entries` equal to the list of deposit records published as `DepositEvent` logs so far, in the order in which they were published (oldest to newest)
+* `genesis_time` equal to the `time` value published in the `ChainStart` log
+* `processed_pow_receipt_root` equal to the `receipt_root` value published in the `ChainStart` log
+* `initial_validator_entries` equal to the list of deposit records published as `Deposit` logs so far, in the order in which they were published (oldest to newest)
 
 ## Beacon chain processing
 
@@ -862,13 +864,13 @@ def get_attestation_participants(state: State,
     shard_committee = [x for x in shard_committees if x.shard == attestation_data.shard][0]
     assert len(participation_bitfield) == ceil_div8(len(shard_committee.committee))
 
-    # Find the attesters in the committee
-    attesters = []
+    # Find the participating attesters in the committee
+    participants = []
     for i, validator_index in enumerate(shard_committee.committee):
         participation_bit = (participation_bitfield[i//8] >> (7 - (i % 8))) % 2
         if participation_bit == 1:
-            attesters.append(validator_index)
-    return attesters
+            participants.append(validator_index)
+    return participants
 ```
 
 #### `bytes1`, `bytes2`, ...
@@ -1008,7 +1010,7 @@ First, some helper functions:
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int) -> int:
     for i, v in enumerate(validators):
-        if v.balance == 0 and v.latest_status_change_slot + EMPTY_VALIDATOR_EXPIRY <= current_slot:
+        if v.balance == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
             return i
     return None
 
@@ -1301,7 +1303,7 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-* Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < EMPTY_VALIDATOR_EXPIRY`.
+* Verify that `block.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < ZERO_BALANCE_VALIDATOR_TTL`.
 * Run the following:
 
 ```python
