@@ -1446,38 +1446,52 @@ def get_changed_validators(validators: List[ValidatorRecord],
     """
     # The active validators
     active_validator_indices = get_active_validator_indices(validators)
-    # The total balance of active validators
+    # The total effective balance of active validators
     total_balance = sum([get_effective_balance(v) for i, v in enumerate(validators) if i in active_validator_indices])
-    # The maximum total Gwei that can be deposited and withdrawn
-    max_allowable_change = max(
-        2 * MAX_DEPOSIT * GWEI_PER_ETH,
-        total_balance // MAX_BALANCE_CHURN_QUOTIENT
+    
+    # The maximum balance churn in Gwei (for deposits and exits separately)
+    max_balance_churn = max(
+        MAX_DEPOSIT * GWEI_PER_ETH,
+        total_balance // (2 * MAX_BALANCE_CHURN_QUOTIENT)
     )
-    # Go through the list start to end, depositing and withdrawing as many as possible
-    total_changed = 0
+
+    # Activate validators within the allowable balance churn
+    balance_churn = 0
     for i in range(len(validators)):
         if validators[i].status == PENDING_ACTIVATION and validators[i].balance >= MAX_DEPOSIT:
+            # Check the balance churn would be within the allowance
+            balance_churn += get_effective_balance(validators[i])
+            if balance_churn > max_balance_churn:
+                break
+
+            # Activate validator
             validators[i].status = ACTIVE
             validators[i].latest_status_change_slot = current_slot
-            total_changed += get_effective_balance(validators[i])
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=ACTIVATION,
             )
+
+    # Exit validators within the allowable balance churn 
+    balance_churn = 0
+    for i in range(len(validators)):
         if validators[i].status == ACTIVE_PENDING_EXIT:
+            # Check the balance churn would be within the allowance
+            balance_churn += get_effective_balance(validators[i])
+            if balance_churn > max_balance_churn:
+                break
+
+            # Exit validator
             validators[i].status = EXITED_WITHOUT_PENALTY
             validators[i].latest_status_change_slot = current_slot
-            total_changed += get_effective_balance(validators[i])
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
                 pubkey=validators[i].pubkey,
                 flag=EXIT,
             )
-        if total_changed >= max_allowable_change:
-            break
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
