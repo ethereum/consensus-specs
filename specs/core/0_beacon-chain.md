@@ -1452,12 +1452,15 @@ def get_changed_validators(validators: List[ValidatorRecord],
     )
 
     # Activate validators within the allowable balance churn
-    total_activated_balance = 0
+    balance_churn = 0
     for i in range(len(validators)):
         if validators[i].status == PENDING_ACTIVATION:
-            total_activated_balance += get_effective_balance(validators[i])
-            if total_activated_balance >= max_balance_churn:
+            # Check the balance churn would be within the allowance
+            balance_churn += get_effective_balance(validators[i])
+            if balance_churn >= max_balance_churn:
                 break
+
+            # Activate validator
             validators[i].status = ACTIVE
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
@@ -1467,12 +1470,15 @@ def get_changed_validators(validators: List[ValidatorRecord],
             )
 
     # Exit validators within the allowable balance churn 
-    total_exited_balance = 0
+    balance_churn = 0
     for i in range(len(validators)):
         if validators[i].status == EXITED_WITHOUT_PENALTY:
-            total_exited_balance += get_effective_balance(validators[i])
-            if total_exited_balance >= max_balance_churn:
+            # Check the balance churn would be within the allowance
+            balance_churn += get_effective_balance(validators[i])
+            if balance_churn >= max_balance_churn:
                 break
+
+            # Exit validator
             validators[i].latest_status_change_slot = current_slot
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
