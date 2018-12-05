@@ -65,6 +65,7 @@
             - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
+            - [`get_domain`](#get_domain)
             - [`integer_squareroot`](#integer_squareroot)
         - [On startup](#on-startup)
         - [Routine for activating a validator](#routine-for-activating-a-validator)
@@ -172,7 +173,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
-| `ZERO_BALANCE_VALIDATOR_TTL` | `2**24` (= 16,777,216) | slots | ~290 days |
+| `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 4,194,304) | slots | ~291 days |
 
 ### Reward and penalty quotients
 
