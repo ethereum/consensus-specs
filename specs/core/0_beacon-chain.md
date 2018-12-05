@@ -1216,7 +1216,7 @@ For each `attestation` in `block.attestations`:
 * Verify that `attestation.data.slot >= max(parent.slot - EPOCH_LENGTH + 1, 0)`.
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.latest_state_recalculation_slot else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, block, attestation.data.justified_slot)`.
-* Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
+* Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.latest_crosslinks[shard].shard_block_hash`.
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
@@ -1393,7 +1393,7 @@ For any [validator](#dfn-validator) `v`, let `base_reward(v) = get_effective_bal
 
 For every `ShardCommittee` object `obj`:
 
-* If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `crosslinks[shard] = CrosslinkRecord(slot=state.latest_state_recalculation_slot + EPOCH_LENGTH, hash=winning_hash(obj))`.
+* If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `latest_crosslinks[shard] = CrosslinkRecord(slot=state.latest_state_recalculation_slot + EPOCH_LENGTH, hash=winning_hash(obj))`.
 
 ### Balance recalculations related to FFG rewards
 
@@ -1432,7 +1432,7 @@ If `state.latest_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`
 A [validator](#dfn-validator) registry change occurs if all of the following criteria are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* For every shard number `shard` in `state.shard_committees_at_slots`, `crosslinks[shard].slot > state.validator_registry_latest_change_slot`
+* For every shard number `shard` in `state.shard_committees_at_slots`, `latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot`
 
 A helper function is defined as:
 
