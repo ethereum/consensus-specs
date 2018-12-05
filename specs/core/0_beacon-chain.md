@@ -90,6 +90,7 @@
         - [Validator registry](#validator-registry)
         - [Proposer reshuffling](#proposer-reshuffling)
         - [Final updates](#final-updates)
+    - [State root processing](#state-root-processing)
 - [Appendix](#appendix)
     - [Appendix A - Hash function](#appendix-a---hash-function)
 - [References](#references)
@@ -1602,6 +1603,14 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < s`.
 * Run `exit_validator(i, state, penalize=False, current_slot=state.slot)` for indices `i` such that `state.validator_registry[i].status = ACTIVE and state.validator_registry[i].balance < MIN_BALANCE`.
 * Set `state.latest_block_hashes = state.latest_block_hashes[EPOCH_LENGTH:]`.
+
+## State root processing
+
+If `block` is not a skip block:
+* Verify `block.state_root == hash(state)`
+
+If `block` is a skip block:
+* Set `block.state_root = hash(state)`
 
 # Appendix
 ## Appendix A - Hash function
