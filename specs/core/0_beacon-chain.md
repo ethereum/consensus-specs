@@ -183,7 +183,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**34` (= 131,072) |
 
-* The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch interest rate assuming all [validators](#dfn-validator) are participating, assuming total deposits of 1 ETH. It corresponds to ~2.57% annual interest assuming 10 million participating ETH.
+* The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `SQRT_E_DROP_TIME**2` where `SQRT_E_DROP_TIME := 2**17 slots` (~9 days) is the amount of time it takes for the inactivity penalty to cut deposits of non-participating [validators](#dfn-validator) by ~39.4%. The portion lost by offline [validators](#dfn-validator) after `D` epochs is about `D*D/2/INACTIVITY_PENALTY_QUOTIENT`.
 
 ### Status codes
@@ -400,7 +400,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # Slot number
     'slot': 'uint64',
-    # Shard chain block hash
+    # Shard block hash
     'shard_block_hash': 'hash32',
 }
 ```
@@ -1012,7 +1012,7 @@ def on_startup(initial_validator_entries: List[Any],
         finalized_slot=INITIAL_SLOT_NUMBER,
 
         # Recent state
-        latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
+        latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_state_recalculation_slot=INITIAL_SLOT_NUMBER,
         latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
         latest_penalized_exit_balances=[],
@@ -1350,9 +1350,8 @@ All [validators](#dfn-validator):
 
 * Let `active_validators = [state.validator_registry[i] for i in get_active_validator_indices(state.validator_registry)]`.
 * Let `total_balance = sum([get_effective_balance(v) for v in active_validators])`.
-* Let `total_balance_in_eth = total_balance // GWEI_PER_ETH`.
-* Let `reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance_in_eth)`. (The per-slot maximum interest rate is `2/reward_quotient`.)
-* Let `base_reward(v) = get_effective_balance(v) // reward_quotient` for any validator `v`.
+* Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
+* Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient` for any validator `v`.
 
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the current epoch:
 
@@ -1365,18 +1364,19 @@ All [validators](#dfn-validator):
 
 * Let `previous_epoch_attestations = [a for a in state.latest_attestations if s - EPOCH_LENGTH <= a.slot < s]`.
 * Let `previous_epoch_boundary_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, block, s - EPOCH_LENGTH) and a.justified_slot == state.previous_justified_slot]`.
-* Let `previous_epoch_boundary_attesters` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
+* Let `previous_epoch_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
 * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_boundary_attesters])`.
 
-For every `ShardCommittee` object `obj` in `state.shard_committees_at_slots`:
+For every `shard_committee` in `state.shard_committees_at_slots`:
 
-* Let `attesting_validators(obj, shard_block_hash)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == obj.shard and a.shard_block_hash == shard_block_hash]`.
-* Let `attesting_validators(obj)` be equal to `attesting_validators(obj, shard_block_hash)` for the value of `shard_block_hash` such that `sum([get_effective_balance(v) for v in attesting_validators(obj, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values).
-* Let `total_attesting_balance(obj)` be the sum of the balances-at-stake of `attesting_validators(obj)`.
-* Let `winning_hash(obj)` be the winning `shard_block_hash` value.
-* Let `total_balance(obj) = sum([get_effective_balance(v) for v in obj.committee])`.
+* Let `attesting_validators(shard_committee, shard_block_hash)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == shard_committee.shard and a.shard_block_hash == shard_block_hash]`.
+* Let `attesting_validators(shard_committee)` be equal to `attesting_validators(shard_committee, shard_block_hash)` for the value of `shard_block_hash` such that `sum([get_effective_balance(v) for v in attesting_validators(shard_committee, shard_block_hash)])` is maximized (ties broken by favoring lower `shard_block_hash` values).
+* Let `total_attesting_balance(shard_committee)` be the sum of the balances-at-stake of `attesting_validators(shard_committee)`.
+* Let `winning_hash(shard_committee)` be the winning `shard_block_hash` value.
+* Let `total_balance(shard_committee) = sum([get_effective_balance(v) for v in shard_committee.committee])`.
     
-* Let `inclusion_slot(v)` equal `a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`, and `inclusion_distance(v) = a.slot_included - a.data.slot` for the same attestation.
+* Let `inclusion_slot(v) = a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
+* Let `inclusion_distance(v) = a.slot_included - a.data.slot` where `a` is the above attestation.
 * Let `adjust_for_inclusion_distance(magnitude, distance)` be the function below. 
 
 ```python
@@ -1390,18 +1390,17 @@ def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
 
 ### Receipt roots
 
-If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
+If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 
-* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.votes * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for any `x` in `state.candidate_pow_receipt_root`.
+* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.votes * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
 * Set `state.candidate_pow_receipt_roots = []`.
 
 ### Justification
 
-* Set `state.justification_bitfield = (state.justification_bitfield * 2) % 2**64`.
-* If `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justification_bitfield &= 2` (i.e. set the second lowest bit to 1) and `new_justified_slot = s - EPOCH_LENGTH`.
-* If `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance` then set `state.justification_bitfield &= 1` (i.e. set the lowest bit to 1) and `new_justified_slot = s`.
 * Set `state.previous_justified_slot = state.justified_slot`.
-* Set `state.justified_slot = new_justified_slot` if `new_justified_slot` has been set.
+* Set `state.justification_bitfield = (state.justification_bitfield * 2) % 2**64`.
+* Set `state.justification_bitfield &= 2` and `state.justified_slot = s - EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield &= 1` and `state.justified_slot = s` if `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
 ### Finalization
 
@@ -1413,32 +1412,32 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`, then:
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
-* Set `crosslinks[shard] = CrosslinkRecord(slot=state.slot, hash=winning_hash(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
+* Set `crosslinks[shard] = CrosslinkRecord(slot=state.slot, shard_block_hash=winning_hash(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
 ### Justification and finalization rewards and penalties
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `time_since_finality = state.slot - state.finalized_slot`.
+* Let `slots_since_finality = state.slot - state.finalized_slot`.
 
-Case 1: `time_since_finality <= 4 * EPOCH_LENGTH`:
+Case 1: `slots_since_finality <= 4 * EPOCH_LENGTH`:
 
 * Any [validator](#dfn-validator) `v` in `previous_epoch_boundary_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(v))`.
 * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters` loses `base_reward(v)`.
 
-Case 2: `time_since_finality > 4 * EPOCH_LENGTH`:
+Case 2: `slots_since_finality > 4 * EPOCH_LENGTH`:
 
 * Any [validator](#dfn-validator) in `previous_epoch_boundary_attesters` sees their balance unchanged.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, and any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * time_since_finality // INACTIVITY_PENALTY_QUOTIENT`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, and any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT`.
 
 For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
 ### Crosslink rewards and penalties
 
-For every `ShardCommittee` object `obj` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `v` in `[state.validator_registry[index] for index in obj.committee]`, adjust balances as follows:
+For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `v` in `[state.validator_registry[index] for index in shard_committee.committee]`, adjust balances as follows:
 
-* If `v in attesting_validators(obj)`, `v.balance += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(obj) // total_balance(obj)), inclusion_distance(v))`.
-* If `v not in attesting_validators(obj)`, `v.balance -= base_reward(v)`.
+* If `v in attesting_validators(shard_committee)`, `v.balance += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(shard_committee) // total_balance(shard_committee)), inclusion_distance(v))`.
+* If `v not in attesting_validators(shard_committee)`, `v.balance -= base_reward(v)`.
 
 ### Validator registry
 
@@ -1550,9 +1549,9 @@ Also perform the following updates:
 If a validator registry update does _not_ happen do the following:
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Let `time_since_finality = state.slot - state.validator_registry_latest_change_slot`.
+* Let `slots_since_finality = state.slot - state.validator_registry_latest_change_slot`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
+* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
