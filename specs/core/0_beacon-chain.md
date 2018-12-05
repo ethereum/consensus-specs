@@ -1469,27 +1469,36 @@ If the following are satisfied:
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
 * `state.latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `state.shard_committees_at_slots`
 
-update the validator registry by running
+update the validator registry and associated fields by running
 
 ```python
-    update_validator_registry(
-        copy.deepcopy(state.validator_registry),
-        copy.deepcopy(state.latest_penalized_exit_balances),
-        state.validator_registry_delta_chain_tip,
-        state.slot
-    )
+def change_validators(state: BeaconState) -> None:
+    """
+    Change validator registry.
+    Note that this function mutates ``state``.
+    """
+  state.validator_registry, state.latest_penalized_exit_balances, state.validator_registry_delta_chain_tip = get_update_validator_registry(
+      state.validator_registry,
+      state.latest_penalized_exit_balances,
+      state.validator_registry_delta_chain_tip,
+      state.slot
+  )
 ```
 
-where
+which utilizes the following helper
 
 ```python
-def update_validator_registry(validator_registry: List[ValidatorRecord],
-                              latest_penalized_exit_balances: List[int],
-                              validator_registry_delta_chain_tip: int,
-                              current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
+def get_updated_validator_registry(validator_registry: List[ValidatorRecord],
+                                   latest_penalized_exit_balances: List[int],
+                                   validator_registry_delta_chain_tip: int,
+                                   current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
     """
-    Update the validator registry, as well as ``latest_penalized_exit_balances`` and ``validator_registry_delta_chain_tip``.
+    return the validator registry, as well as ``latest_penalized_exit_balances`` and ``validator_registry_delta_chain_tip``.
     """
+    # make copies to prevent mutating inputs
+    validator_registry = copy.deepcopy(state.validator_registry)
+    latest_penalized_exit_balances = copy.deepcopy(latest_penalized_exit_balances)
+
     # The active validators
     active_validator_indices = get_active_validator_indices(validator_registry)
     # The total effective balance of active validators
@@ -1503,8 +1512,7 @@ def update_validator_registry(validator_registry: List[ValidatorRecord],
 
     # Activate validators within the allowable balance churn
     balance_churn = 0
-    for i in range(len(validator_registry)):
-        validator = validator_registry[i]
+    for i, validator in enumerate(validator_registry):
         if validator.status == PENDING_ACTIVATION and validator.balance >= MAX_DEPOSIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validator)
@@ -1523,8 +1531,7 @@ def update_validator_registry(validator_registry: List[ValidatorRecord],
 
     # Exit validators within the allowable balance churn 
     balance_churn = 0
-    for i in range(len(validators)):
-        validator = validator_registry[i]
+    for i, validator in enumerate(validators):
         if validator.status == ACTIVE_PENDING_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validator)
@@ -1556,10 +1563,7 @@ def update_validator_registry(validator_registry: List[ValidatorRecord],
     for v in validators_to_penalize:
         v.balance -= get_effective_balance(v) * min(total_penalties * 3, total_balance) // total_balance
 
-    # Update the state
-    state.validator_registry = validator_registry
-    state.validator_registry_delta_chain_tip = validator_registry_delta_chain_tip
-    state.latest_penalized_exit_balances = latest_penalized_exit_balances
+    return validator_registry, latest_penalized_exit_balances, validator_registry_delta_chain_tip
 ```
 
 Also perform the following updates:
