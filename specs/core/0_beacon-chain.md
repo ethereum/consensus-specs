@@ -172,7 +172,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
-| `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 16,777,216) | slots | ~290 days |
+| `ZERO_BALANCE_VALIDATOR_TTL` | `2**24` (= 16,777,216) | slots | ~290 days |
 
 ### Reward and penalty quotients
 
@@ -922,6 +922,18 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     )
 ```
 
+#### `get_domain`
+
+```python
+def get_domain(fork_data: ForkData,
+               slot: int,
+               domain_type: int) -> int:
+    return get_fork_version(
+        fork_data,
+        slot
+    ) * 2**32 + domain_type
+```
+
 #### `integer_squareroot`
 
 ```python
@@ -1037,14 +1049,6 @@ def get_fork_version(fork_data: ForkData,
         return fork_data.pre_fork_version
     else:
         return fork_data.post_fork_version
-
-def get_domain(fork_data: ForkData,
-               slot: int,
-               domain_type: int) -> int:
-    return get_fork_version(
-        fork_data,
-        slot
-    ) * 2**32 + domain_type
 
 def get_new_validators(validators: List[ValidatorRecord],
                        fork_data: ForkData,
