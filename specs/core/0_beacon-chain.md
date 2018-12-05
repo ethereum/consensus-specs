@@ -65,6 +65,7 @@
             - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
+            - [`get_domain`](#get_domain)
             - [`integer_squareroot`](#integer_squareroot)
         - [On startup](#on-startup)
         - [Routine for activating a validator](#routine-for-activating-a-validator)
@@ -173,7 +174,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
-| `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 16,777,216) | slots | ~290 days |
+| `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 4,194,304) | slots | ~291 days |
 
 ### Reward and penalty quotients
 
@@ -923,6 +924,18 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     )
 ```
 
+#### `get_domain`
+
+```python
+def get_domain(fork_data: ForkData,
+               slot: int,
+               domain_type: int) -> int:
+    return get_fork_version(
+        fork_data,
+        slot
+    ) * 2**32 + domain_type
+```
+
 #### `integer_squareroot`
 
 ```python
@@ -946,7 +959,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 {
     'slot': INITIAL_SLOT_NUMBER,
     'randao_reveal': ZERO_HASH,
-    'candidate_pow_receipt_roots': [],
+    'candidate_pow_receipt_root': ZERO_HASH,
     'ancestor_hashes': [ZERO_HASH for i in range(32)],
     'state_root': STARTUP_STATE_ROOT,
     'attestations': [],
@@ -1044,14 +1057,6 @@ def get_fork_version(fork_data: ForkData,
         return fork_data.pre_fork_version
     else:
         return fork_data.post_fork_version
-
-def get_domain(fork_data: ForkData,
-               slot: int,
-               domain_type: int) -> int:
-    return get_fork_version(
-        fork_data,
-        slot
-    ) * 2**32 + domain_type
 
 def get_new_validators(validators: List[ValidatorRecord],
                        fork_data: ForkData,
@@ -1245,7 +1250,7 @@ For each `attestation` in `block.attestations`:
 * Verify that `attestation.data.slot >= max(parent.slot - EPOCH_LENGTH + 1, 0)`.
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, attestation.data.justified_slot)`.
-* Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
+* Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.latest_crosslinks[shard].shard_block_hash`.
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
@@ -1430,7 +1435,7 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
-* Set `crosslinks[shard] = CrosslinkRecord(slot=state.slot, shard_block_hash=winning_hash(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
+* Set `state.latest_crosslinks[shard] = CrosslinkRecord(slot=state.slot, shard_block_hash=winning_hash(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
 ### Justification and finalization rewards and penalties
 
@@ -1462,7 +1467,7 @@ For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` 
 If the following are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* `crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `state.shard_committees_at_slots`
+* `state.latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `state.shard_committees_at_slots`
 
 update the validator registry by running
 
