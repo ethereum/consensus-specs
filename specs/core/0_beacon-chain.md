@@ -958,7 +958,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 {
     'slot': INITIAL_SLOT_NUMBER,
     'randao_reveal': ZERO_HASH,
-    'candidate_pow_receipt_roots': [],
+    'candidate_pow_receipt_root': ZERO_HASH,
     'ancestor_hashes': [ZERO_HASH for i in range(32)],
     'state_root': STARTUP_STATE_ROOT,
     'attestations': [],
