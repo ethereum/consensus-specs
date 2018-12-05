@@ -1222,8 +1222,9 @@ If there is a block from the proposer for `state.slot`, we process that incoming
 If there is not a block from the proposer for `state.slot`, a "skip block" is inserted into the beacon chain:
 * Let `block` be a skip block defined by `get_skip_block(state.slot, parent, parent_hash)`.
 
-Set `state.latest_block_hashes` to `state.latest_block_hashes + [parent_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`.)
-Also, check that the `block.ancestor_hashes` equals `get_updated_ancestor_hashes(parent, parent_hash)`.
+Verify that `block.ancestor_hashes` equals `get_updated_ancestor_hashes(parent, parent_hash)`.
+
+Set `state.latest_block_hashes = state.latest_block_hashes + [parent_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
 
 ### Proposer signature
 
