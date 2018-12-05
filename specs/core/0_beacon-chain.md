@@ -857,7 +857,7 @@ def get_block_hash(state: BeaconState,
 #### `get_beacon_proposer_index`
 
 ```python
-def get_beacon_proposer_index(state:BeaconState,
+def get_beacon_proposer_index(state: BeaconState,
                               slot: int) -> int:
     """
     Returns the beacon proposer index for the ``slot``.
