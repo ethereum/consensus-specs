@@ -360,7 +360,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
     # Recent state
     'latest_crosslinks': [CrosslinkRecord],
-    'latest_state_recalculation_slot': 'uint64',
     'latest_block_hashes': ['hash32'],  # Needed to process attestations, older to newer
     'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
@@ -671,7 +670,7 @@ def lmd_ghost(store, start):
     while 1:
         children = get_children(head)
         if len(children) == 0:
-            return head        
+            return head
         head = max(children, key=get_vote_count)
 ```
 
@@ -682,7 +681,7 @@ We now define the state transition function. At a high level the state transitio
 1. The per-slot transitions, which happens every slot, and only affects a parts of the `state`.
 2. The per-epoch transitions, which happens at every epoch boundary (i.e. `state.slot % EPOCH_LENGTH == 0`), and affects the entire `state`.
 
-The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization. The per-slot transitions generally focuses on verifying aggregate signatures and saving temporary records relating to the per-slot activity in the `BeaconState`.
+The per-slot transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-slot activity in the `BeaconState`. The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
 
 ### Helper functions
 
@@ -835,7 +834,7 @@ def get_shard_committees_at_slot(state: BeaconState,
     """
     Returns the ``ShardCommittee`` for the ``slot``.
     """
-    earliest_slot_in_array = state.latest_state_recalculation_slot - EPOCH_LENGTH
+    earliest_slot_in_array = state.slot - (state.slot % EPOCH_LENGTH) - EPOCH_LENGTH
     assert earliest_slot_in_array <= slot < earliest_slot_in_array + EPOCH_LENGTH * 2
     return state.shard_committees_at_slots[slot - earliest_slot_in_array]
 ```
@@ -844,22 +843,22 @@ def get_shard_committees_at_slot(state: BeaconState,
 
 ```python
 def get_block_hash(state: BeaconState,
-                   current_block: BeaconBlock,
                    slot: int) -> Hash32:
     """
     Returns the block hash at a recent ``slot``.
     """
-    earliest_slot_in_array = current_block.slot - len(state.latest_block_hashes)
-    assert earliest_slot_in_array <= slot < current_block.slot
+    earliest_slot_in_array = state.slot - len(state.latest_block_hashes)
+    assert earliest_slot_in_array <= slot < state.slot
     return state.latest_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, _, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
+`get_block_hash(_, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
 #### `get_beacon_proposer_index`
 
 ```python
-def get_beacon_proposer_index(state:BeaconState, slot: int) -> int:
+def get_beacon_proposer_index(state:BeaconState,
+                              slot: int) -> int:
     """
     Returns the beacon proposer index for the ``slot``.
     """
@@ -1013,7 +1012,6 @@ def on_startup(initial_validator_entries: List[Any],
 
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_state_recalculation_slot=INITIAL_SLOT_NUMBER,
         latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
@@ -1105,6 +1103,7 @@ def get_new_validators(validators: List[ValidatorRecord],
 
     return validators_copy, index
 ```
+
 `BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).  
 Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance:
 
@@ -1185,45 +1184,50 @@ def exit_validator(index: int,
 
 ## Per-slot processing
 
-Below are the processing steps that happen at every slot. If there is no block from the proposer for a given slot a "skip block" is inserted into the beacon chain. The skip block is a `BeaconBlock` where the non-zero fields are:
+Below are the processing steps that happen at every slot.
 
-* `parent_hash`: the hash of the previous block (which may itself be a skip block)
-* `slot`: the current slot
-* `state_root`: the state root at the current slot
+First we define the following helpers.
 
 ```python
-
-```
-Denote by `block` the associated block, possibly a skip block.
-
-* Let `parent_hash` be the hash of the immediate previous beacon slot (i.e. equal to `block.ancestor_hashes[0]`).
-* Let `parent` be the beacon slot with the hash `parent_hash`.
-
-First, set `state.latest_block_hashes` to the output of the following:
-
-```python
-def append_to_recent_block_hashes(old_block_hashes: List[Hash32],
-                                  parent_slot: int,
-                                  current_slot: int,
-                                  parent_hash: Hash32) -> List[Hash32]:
-    d = current_slot - parent_slot
-    return old_block_hashes + [parent_hash] * d
-```
-
-The output of `get_block_hash` should not change, except that it will no longer throw for `current_slot - 1`. Also, check that the block's `ancestor_hashes` array was correctly updated, using the following algorithm:
-
-```python
-def update_ancestor_hashes(parent_ancestor_hashes: List[Hash32],
-                           parent_slot: int,
-                           parent_hash: Hash32) -> List[Hash32]:
-    new_ancestor_hashes = copy.copy(parent_ancestor_hashes)
+def get_updated_ancestor_hashes(parent: BeaconBlock,
+                                parent_hash: Hash32) -> List[Hash32]:
+    new_ancestor_hashes = copy.copy(parent.ancestor_hashes)
     for i in range(32):
-        if parent_slot % 2**i == 0:
+        if parent.slot % 2**i == 0:
             new_ancestor_hashes[i] = parent_hash
     return new_ancestor_hashes
+
+
+def get_skip_block(slot: int,
+                   parent: BeaconBlock,
+                   parent_hash: Hash32) -> BeaconBlock:
+    return BeaconBlock(
+        slot=state.slot,
+        randao_reveal=ZERO_HASH,
+        candidate_pow_receipt_root=ZERO_HASH,
+        ancestor_hashes=get_updated_ancestor_hashes(parent, parent_hash),
+        state_root=ZERO_HASH,  # filled in with post-state-transition root
+        attestations=[],
+        specials=[],
+        proposer_signature=[0, 0]
+    )
 ```
 
+* Let `parent_hash` be the hash of the beacon block at the immediate previous slot.
+* Let `parent` be the `BeaconBlock` with the hash `parent_hash`.
+
+If there is a block from the proposer for `state.slot`, we process that incoming block:
+* Let `block` be that associated incoming block.
+
+If there is not a block from the proposer for `state.slot`, a "skip block" is inserted into the beacon chain:
+* Let `block` be a skip block defined by `get_skip_block(state.slot, parent, parent_hash)`.
+
+Set `state.latest_block_hashes` to `state.latest_block_hashes + [parent_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`.)
+Also, check that the `block.ancestor_hashes` equals `get_updated_ancestor_hashes(parent, parent_hash)`.
+
 ### Proposer signature
+
+If `block` is not a skip block:
 
 * Let `block_hash_without_sig` be the hash of `block` where `proposer_signature` is set to `[0, 0]`.
 * Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
@@ -1237,7 +1241,7 @@ For each `attestation` in `block.attestations`:
 
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
 * Verify that `attestation.data.slot >= max(parent.slot - EPOCH_LENGTH + 1, 0)`.
-* Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.latest_state_recalculation_slot else state.previous_justified_slot`.
+* Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, block, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * `aggregate_signature` verification:
@@ -1264,7 +1268,10 @@ If `block` is not a skip block:
 
 ### PoW receipt root
 
-If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`. Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
+If `block` is not a skip block:
+
+* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
+* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
 ### Special objects
 
