@@ -1185,7 +1185,16 @@ def exit_validator(index: int,
 
 ## Per-slot processing
 
-Below are the processing steps that happen at every slot. Denote by `block` the associated block, possibly a skip block.
+Below are the processing steps that happen at every slot. If there is no block from the proposer for a given slot a "skip block" is inserted into the beacon chain. The skip block is a `BeaconBlock` where the non-zero fields are:
+
+* `parent_hash`: the hash of the previous block (which may itself be a skip block)
+* `slot`: the current slot
+* `state_root`: the state root at the current slot
+
+```python
+
+```
+Denote by `block` the associated block, possibly a skip block.
 
 * Let `parent_hash` be the hash of the immediate previous beacon slot (i.e. equal to `block.ancestor_hashes[0]`).
 * Let `parent` be the beacon slot with the hash `parent_hash`.
