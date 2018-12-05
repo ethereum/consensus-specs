@@ -1422,14 +1422,14 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 
 * Set `state.previous_justified_slot = state.justified_slot`.
 * Set `state.justification_bitfield = (state.justification_bitfield * 2) % 2**64`.
-* Set `state.justification_bitfield &= 2` and `state.justified_slot = s - EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
-* Set `state.justification_bitfield &= 1` and `state.justified_slot = s` if `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 2` and `state.justified_slot = s - EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 1` and `state.justified_slot = s` if `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
-### Finalization
+# Finalization
 
-* Set `state.finalized_slot = state.justified_slot` if `state.justified_slot == s - 1 * EPOCH_LENGTH and state.justification_bitfield % 4 == 3`.
-* Set `state.finalized_slot = state.justified_slot` if `state.justified_slot == s - 2 * EPOCH_LENGTH and state.justification_bitfield % 8 == 7`.
-* Set `state.finalized_slot = state.justified_slot` If `state.justified_slot == s - 3 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`.
+* Set `state.finalized_slot = state.justified_slot - EPOCH_LENGTH` if `state.justified_slot == s and state.justification_bitfield % 4 == 3`.
+* Set `state.finalized_slot = state.justified_slot - EPOCH_LENGTH` if `state.justified_slot == s - EPOCH_LENGTH and state.justification_bitfield % 8 == 7`.
+* Set `state.finalized_slot = state.justified_slot - EPOCH_LENGTH` if `state.justified_slot == s - 2 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`.
 
 ### Crosslinks
 
