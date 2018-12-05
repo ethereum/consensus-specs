@@ -1242,7 +1242,7 @@ For each `attestation` in `block.attestations`:
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
 * Verify that `attestation.data.slot >= max(parent.slot - EPOCH_LENGTH + 1, 0)`.
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
-* Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, block, attestation.data.justified_slot)`.
+* Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.crosslinks[shard].shard_block_hash`.
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
@@ -1372,14 +1372,14 @@ All [validators](#dfn-validator):
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the current epoch:
 
 * Let `this_epoch_attestations = [a for a in state.latest_attestations if s <= a.data.slot < s + EPOCH_LENGTH]`. (Note: this is the set of attestations of slots in the epoch `s...s+EPOCH_LENGTH-1`, _not_ attestations that got included in the chain during the epoch `s...s+EPOCH_LENGTH-1`.)
-* Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_hash == get_block_hash(state, block, s) and a.justified_slot == state.justified_slot]`.
+* Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_hash == get_block_hash(state, s) and a.justified_slot == state.justified_slot]`.
 * Let `this_epoch_boundary_attesters` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_boundary_attestations]`.
 * Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in this_epoch_boundary_attesters])`.
 
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the previous epoch:
 
 * Let `previous_epoch_attestations = [a for a in state.latest_attestations if s - EPOCH_LENGTH <= a.slot < s]`.
-* Let `previous_epoch_boundary_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, block, s - EPOCH_LENGTH) and a.justified_slot == state.previous_justified_slot]`.
+* Let `previous_epoch_boundary_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, s - EPOCH_LENGTH) and a.justified_slot == state.previous_justified_slot]`.
 * Let `previous_epoch_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
 * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_boundary_attesters])`.
 
