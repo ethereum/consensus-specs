@@ -1393,7 +1393,7 @@ For any [validator](#dfn-validator) `v`, let `base_reward(v) = get_effective_bal
 
 For every `ShardCommittee` object `obj`:
 
-* If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `crosslinks[shard] = CrosslinkRecord(slot=state.latest_state_recalculation_slot + EPOCH_LENGTH, hash=winning_hash(obj))`.
+* If `3 * total_attesting_balance(obj) >= 2 * total_balance(obj)`, set `latest_crosslinks[shard] = CrosslinkRecord(slot=state.latest_state_recalculation_slot + EPOCH_LENGTH, hash=winning_hash(obj))`.
 
 ### Balance recalculations related to FFG rewards
 
@@ -1432,7 +1432,7 @@ If `state.latest_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`
 A [validator](#dfn-validator) registry change occurs if all of the following criteria are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* For every shard number `shard` in `state.shard_committees_at_slots`, `crosslinks[shard].slot > state.validator_registry_latest_change_slot`
+* For every shard number `shard` in `state.shard_committees_at_slots`, `latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot`
 
 A helper function is defined as:
 
