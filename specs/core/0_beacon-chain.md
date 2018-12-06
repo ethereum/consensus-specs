@@ -1403,9 +1403,10 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 
 ### Finalization
 
-* Set `state.finalized_slot = state.previous_justified_slot` if `state.previous_justified_slot == state.slot - 2 * EPOCH_LENGTH and state.justification_bitfield % 4 == 3`.
-* Set `state.finalized_slot = state.previous_justified_slot` if `state.previous_justified_slot == state.slot - 3 * EPOCH_LENGTH and state.justification_bitfield % 8 == 7`.
-* Set `state.finalized_slot = state.previous_justified_slot` if `state.previous_justified_slot == state.slot - 4 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`.
+Set `state.finalized_slot = state.previous_justified_slot` if any of the following are true:
+* `state.previous_justified_slot == state.slot - 2 * EPOCH_LENGTH and state.justification_bitfield % 4 == 3`
+* `state.previous_justified_slot == state.slot - 3 * EPOCH_LENGTH and state.justification_bitfield % 8 == 7`
+* `state.previous_justified_slot == state.slot - 4 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`
 
 ### Crosslinks
 
