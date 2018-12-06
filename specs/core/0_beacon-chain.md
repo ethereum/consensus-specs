@@ -661,7 +661,7 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 def lmd_ghost(store, start):
     validators = start.state.validator_registry
     active_validators = [validators[i] for i in
-                         get_active_validator_indices(validators, start.slot)]
+                         get_active_validator_indices(validators)]
     attestation_targets = [get_latest_attestation_target(store, validator)
                            for validator in active_validators]
     def get_vote_count(block):
@@ -1599,7 +1599,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ### Final updates
 
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < s`.
-* Run `exit_validator(i, state, penalize=False, current_slot=state.slot)` for indices `i` such that `state.validator_registry[i].status = ACTIVE and state.validator_registry[i].balance < MIN_BALANCE`.
+* Run `exit_validator(i, state, penalize=False, current_slot=state.slot)` for indices `i` such that `state.validator_registry[i].status == ACTIVE and state.validator_registry[i].balance < MIN_BALANCE`.
 * Set `state.latest_block_hashes = state.latest_block_hashes[EPOCH_LENGTH:]`.
 
 ## State root processing
