@@ -1454,7 +1454,7 @@ def change_validators(state: BeaconState) -> None:
     Change validator registry.
     Note that this function mutates ``state``.
     """
-  state.validator_registry, state.latest_penalized_exit_balances, state.validator_registry_delta_chain_tip = get_update_validator_registry(
+  state.validator_registry, state.latest_penalized_exit_balances, state.validator_registry_delta_chain_tip = get_updated_validator_registry(
       state.validator_registry,
       state.latest_penalized_exit_balances,
       state.validator_registry_delta_chain_tip,
@@ -1547,7 +1547,7 @@ Also perform the following updates:
 
 * Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)` where next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 * Set `state.next_seed = state.randao_mix`.
 
 If a validator registry update does _not_ happen do the following:
@@ -1592,8 +1592,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 ## State root processing
 
-If there exists a `block` for the slot being processed:
-* Verify `block.state_root == hash(state)`
+Verify `block.state_root == hash(state)` if there exists a `block` for the slot being processed.
 
 # Appendix
 ## Appendix A - Hash function
