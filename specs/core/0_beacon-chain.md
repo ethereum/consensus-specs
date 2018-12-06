@@ -1205,8 +1205,8 @@ def exit_validator(index: int,
 
 Below are the processing steps that happen at every slot.
 
-* Let `latest_hash` be the hash of the latest beacon block that was processed in the chain.
-* Let `latest_block` be the `BeaconBlock` with the hash `latest_hash`.
+* Let `latest_block` be the latest `BeaconBlock` that was processed in the chain.
+* Let `latest_hash` be the hash of `latest_block`.
 * Set `state.slot += 1`
 * Set `state.latest_block_hashes = state.latest_block_hashes + [latest_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
 
@@ -1215,8 +1215,8 @@ If there is a block from the proposer for `state.slot`, we process that incoming
 * Verify that `block.slot == state.slot`
 * Verify that `block.ancestor_hashes` equals `get_updated_ancestor_hashes(latest_block, latest_hash)`.
 
-If there is not a block from the proposer for `state.slot`, the slot is processed without a block:
-* Let `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
+If there is no block from the proposer at state.slot:
+* Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
 * Skip all other per-slot processing. Move directly to [per-epoch processing](#per-epoch-processing).
 
 ### Proposer signature
@@ -1449,9 +1449,9 @@ If the following are satisfied:
 update the validator registry and associated fields by running
 
 ```python
-def change_validators(state: BeaconState) -> None:
+def update_validator_registry(state: BeaconState) -> None:
     """
-    Change validator registry.
+    Update validator registry.
     Note that this function mutates ``state``.
     """
   state.validator_registry, state.latest_penalized_exit_balances, state.validator_registry_delta_chain_tip = get_updated_validator_registry(
