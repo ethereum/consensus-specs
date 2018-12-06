@@ -86,7 +86,7 @@
         - [Balance recalculations related to FFG rewards](#balance-recalculations-related-to-ffg-rewards)
         - [Balance recalculations related to crosslink rewards](#balance-recalculations-related-to-crosslink-rewards)
         - [Ethereum 1.0 chain related rules](#ethereum-10-chain-related-rules)
-        - [Validator registry change](#validator-registry-change)
+        - [Validator registry](#validator-registry)
         - [If a validator registry change does NOT happen](#if-a-validator-registry-change-does-not-happen)
         - [Proposer reshuffling](#proposer-reshuffling)
         - [Finally...](#finally)
@@ -1432,27 +1432,48 @@ If `state.latest_state_recalculation_slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`
 * If for any `x` in `state.candidate_pow_receipt_root`,  `x.votes * 2 >= POW_RECEIPT_ROOT_VOTING_PERIOD` set `state.processed_pow_receipt_root = x.receipt_root`.
 * Set `state.candidate_pow_receipt_roots = []`.
 
-### Validator registry change
+### Validator registry
 
-A [validator](#dfn-validator) registry change occurs if all of the following criteria are satisfied:
+If the following are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* For every shard number `shard` in `state.shard_committees_at_slots`, `latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot`
+* `state.latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `state.shard_committees_at_slots`
 
-A helper function is defined as:
+update the validator registry and associated fields by running
 
 ```python
-def get_changed_validators(validators: List[ValidatorRecord],
-                           latest_penalized_exit_balances: List[int],
-                           validator_registry_delta_chain_tip: int,
-                           current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
+def change_validators(state: BeaconState,
+                      current_slot: int) -> None:
     """
-    Return changed validator registry and ``latest_penalized_exit_balances``, ``validator_registry_delta_chain_tip``.
+    Change validator registry.
+    Note that this function mutates ``state``.
     """
+  state.validator_registry, state.latest_penalized_exit_balances, state.validator_registry_delta_chain_tip = get_updated_validator_registry(
+      state.validator_registry,
+      state.latest_penalized_exit_balances,
+      state.validator_registry_delta_chain_tip,
+      current_slot
+  )
+```
+
+which utilizes the following helper
+
+```python
+def get_updated_validator_registry(validator_registry: List[ValidatorRecord],
+                                   latest_penalized_exit_balances: List[int],
+                                   validator_registry_delta_chain_tip: int,
+                                   current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
+    """
+    return the validator registry, as well as ``latest_penalized_exit_balances`` and ``validator_registry_delta_chain_tip``.
+    """
+    # make copies to prevent mutating inputs
+    validator_registry = copy.deepcopy(state.validator_registry)
+    latest_penalized_exit_balances = copy.deepcopy(latest_penalized_exit_balances)
+
     # The active validators
-    active_validator_indices = get_active_validator_indices(validators)
+    active_validator_indices = get_active_validator_indices(validator_registry)
     # The total effective balance of active validators
-    total_balance = sum([get_effective_balance(v) for i, v in enumerate(validators) if i in active_validator_indices])
+    total_balance = sum([get_effective_balance(v) for i, v in enumerate(validator_registry) if i in active_validator_indices])
     
     # The maximum balance churn in Gwei (for deposits and exits separately)
     max_balance_churn = max(
@@ -1462,39 +1483,39 @@ def get_changed_validators(validators: List[ValidatorRecord],
 
     # Activate validators within the allowable balance churn
     balance_churn = 0
-    for i in range(len(validators)):
-        if validators[i].status == PENDING_ACTIVATION and validators[i].balance >= MAX_DEPOSIT:
+    for i, validator in enumerate(validator_registry):
+        if validator.status == PENDING_ACTIVATION and validator.balance >= MAX_DEPOSIT:
             # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(validators[i])
+            balance_churn += get_effective_balance(validator)
             if balance_churn > max_balance_churn:
                 break
 
             # Activate validator
-            validators[i].status = ACTIVE
-            validators[i].latest_status_change_slot = current_slot
+            validator.status = ACTIVE
+            validator.latest_status_change_slot = current_slot
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
-                pubkey=validators[i].pubkey,
+                pubkey=validator.pubkey,
                 flag=ACTIVATION,
             )
 
     # Exit validators within the allowable balance churn 
     balance_churn = 0
-    for i in range(len(validators)):
-        if validators[i].status == ACTIVE_PENDING_EXIT:
+    for i, validator in enumerate(validators):
+        if validator.status == ACTIVE_PENDING_EXIT:
             # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(validators[i])
+            balance_churn += get_effective_balance(validator)
             if balance_churn > max_balance_churn:
                 break
 
             # Exit validator
-            validators[i].status = EXITED_WITHOUT_PENALTY
-            validators[i].latest_status_change_slot = current_slot
+            validator.status = EXITED_WITHOUT_PENALTY
+            validator.latest_status_change_slot = current_slot
             validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
                 validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
                 index=i,
-                pubkey=validators[i].pubkey,
+                pubkey=validator.pubkey,
                 flag=EXIT,
             )
 
@@ -1509,44 +1530,26 @@ def get_changed_validators(validators: List[ValidatorRecord],
     # Calculate penalties for slashed validators
     def to_penalize(v):
         return v.status == EXITED_WITH_PENALTY
-    validators_to_penalize = filter(to_penalize, validators)
+    validators_to_penalize = filter(to_penalize, validator_registry)
     for v in validators_to_penalize:
         v.balance -= get_effective_balance(v) * min(total_penalties * 3, total_balance) // total_balance
 
-    return validators, latest_penalized_exit_balances, validator_registry_delta_chain_tip
+    return validator_registry, latest_penalized_exit_balances, validator_registry_delta_chain_tip
 ```
 
-Then, run the following algorithm to update the [validator](#dfn-validator) registry:
-
-```python
-def change_validators(state: BeaconState,
-                      current_slot: int) -> None:
-    """
-    Change validator registry.
-    Note that this function mutates ``state``.
-    """
-    state.validator_registry, state.latest_penalized_exit_balances = get_changed_validators(
-        copy.deepcopy(state.validator_registry),
-        copy.deepcopy(state.latest_penalized_exit_balances),
-        state.validator_registry_delta_chain_tip,
-        current_slot
-    )
-```
-
-And perform the following updates to the `state`:
+Also perform the following updates:
 
 * Set `state.validator_registry_latest_change_slot = s + EPOCH_LENGTH`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Let `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)` where next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 * Set `state.next_seed = state.randao_mix`.
 
-### If a validator registry change does NOT happen
+If a validator registry update does _not_ happen do the following:
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Let `time_since_finality = block.slot - state.validator_registry_latest_change_slot`.
+* Let `slots_since_finality = s + EPOCH_LENGTH - state.validator_registry_latest_change_slot`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `time_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `time_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
+* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
