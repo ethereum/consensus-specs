@@ -1520,7 +1520,7 @@ def get_updated_validator_registry(validator_registry: List[ValidatorRecord],
 
     # Exit validators within the allowable balance churn 
     balance_churn = 0
-    for i, validator in enumerate(validators):
+    for i, validator in enumerate(validator_registry):
         if validator.status == ACTIVE_PENDING_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validator)
