@@ -638,6 +638,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
 * The parent block with hash `block.ancestor_hashes[0]` has been processed and accepted.
+* The node has processed its `state` up to slot, `block.slot - 1`.
 * The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
 
@@ -866,6 +867,18 @@ def get_beacon_proposer_index(state: BeaconState,
     """
     first_committee = get_shard_committees_at_slot(state, slot)[0].committee
     return first_committee[slot % len(first_committee)]
+```
+
+#### `get_updated_ancestor_hashes`
+
+```python
+def get_updated_ancestor_hashes(parent: BeaconBlock,
+                                parent_hash: Hash32) -> List[Hash32]:
+    new_ancestor_hashes = copy.deepcopy(parent.ancestor_hashes)
+    for i in range(32):
+        if parent.slot % 2**i == 0:
+            new_ancestor_hashes[i] = parent_hash
+    return new_ancestor_hashes
 ```
 
 #### `get_attestation_participants`
@@ -1192,33 +1205,22 @@ def exit_validator(index: int,
 
 Below are the processing steps that happen at every slot.
 
-First we define the following helper.
-
-```python
-def get_updated_ancestor_hashes(parent: BeaconBlock,
-                                parent_hash: Hash32) -> List[Hash32]:
-    new_ancestor_hashes = copy.copy(parent.ancestor_hashes)
-    for i in range(32):
-        if parent.slot % 2**i == 0:
-            new_ancestor_hashes[i] = parent_hash
-    return new_ancestor_hashes
-```
-
 * Let `parent_hash` be the hash of the latest beacon block that was processed in the chain.
 * Let `parent` be the `BeaconBlock` with the hash `parent_hash`.
+* Set `state.slot += 1`
 * Set `state.latest_block_hashes = state.latest_block_hashes + [parent_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
 
 If there is a block from the proposer for `state.slot`, we process that incoming block:
-* Let `skip_block = False`
+* Let `slot_has_block = True`
 * Let `block` be that associated incoming block.
 * Verify that `block.ancestor_hashes` equals `get_updated_ancestor_hashes(parent, parent_hash)`.
 
 If there is not a block from the proposer for `state.slot`, the slot is processed without a block:
-* Let `skip_block = True`
+* Let `slot_has_block = False`
 
 ### Proposer signature
 
-If not `skip_block`:
+If `slot_has_block`:
 
 * Let `block_hash_without_sig` be the hash of `block` where `proposer_signature` is set to `[0, 0]`.
 * Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
@@ -1226,14 +1228,14 @@ If not `skip_block`:
 
 ### Attestations
 
-*If `skip_block`, do not process attestations. Move to next section.*
+*If not `slot_has_block`, do not process attestations. Move to next section.*
 
 * Verify that `len(block.attestations) <= MAX_ATTESTATIONS_PER_BLOCK`.
 
 For each `attestation` in `block.attestations`:
 
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
-* Verify that `attestation.data.slot >= max(parent.slot - EPOCH_LENGTH + 1, 0)`.
+* Verify that `attestation.data.slot >= max(state.slot - EPOCH_LENGTH, 0)`.
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.latest_crosslinks[shard].shard_block_hash`.
@@ -1246,11 +1248,7 @@ For each `attestation` in `block.attestations`:
 
 ### RANDAO
 
-If `skip_block`:
-
-* Let `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
-
-If not `skip_block`:
+If `slot_has_block`:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
@@ -1259,9 +1257,14 @@ If not `skip_block`:
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_skips = 0`.
 
+
+If not `slot_has_block`:
+
+* Let `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
+
 ### PoW receipt root
 
-*If `skip_block`, do not process PoW receipt root. Move to next section.*
+*If not `slot_has_block`, do not process PoW receipt root. Move to next section.*
 
 
 * If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
@@ -1269,7 +1272,7 @@ If not `skip_block`:
 
 ### Special objects
 
-*If `skip_block`, do not process special objects. Move to next section.*
+*If not `slot_has_block`, do not process special objects. Move to next section.*
 
 * Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top).
 * Verify that objects are sorted in order of `kind`. That is, `block.specials[i+1].kind >= block.specials[i].kind` for `0 <= i < len(block.specials-1)`.
@@ -1604,7 +1607,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 ## State root processing
 
-*If `skip_block`, do not process state root. Move to next section.*
+*If not `slot_has_block`, do not process state root. Move to next section.*
 
 Verify `block.state_root == hash(state)`
 
