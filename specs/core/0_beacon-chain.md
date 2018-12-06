@@ -1589,7 +1589,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ### Final updates
 
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < s`.
-* Run `exit_validator(i, state, penalize=False, current_slot=state.slot)` for indices `i` such that `state.validator_registry[i].status == ACTIVE and state.validator_registry[i].balance < MIN_BALANCE`.
+* Run `exit_validator(i, state, penalize=False, current_slot=block.slot)` for indices `i` such that `state.validator_registry[i].status == ACTIVE and state.validator_registry[i].balance < MIN_BALANCE`.
 * Set `state.latest_block_hashes = state.latest_block_hashes[EPOCH_LENGTH:]`.
 * Set `state.latest_state_recalculation_slot += EPOCH_LENGTH`.
 
