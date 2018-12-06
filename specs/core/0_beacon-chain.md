@@ -1374,7 +1374,6 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 * Let `total_attesting_balance(shard_committee)` be the sum of the balances-at-stake of `attesting_validators(shard_committee)`.
 * Let `winning_hash(shard_committee)` be the winning `shard_block_hash` value.
 * Let `total_balance(shard_committee) = sum([get_effective_balance(v) for v in shard_committee.committee])`.
-
 * Let `inclusion_slot(v) = a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(v) = a.slot_included - a.data.slot` where `a` is the above attestation.
 * Let `adjust_for_inclusion_distance(magnitude, distance)` be the function below. 
@@ -1470,7 +1469,7 @@ def get_updated_validator_registry(validator_registry: List[ValidatorRecord],
                                    validator_registry_delta_chain_tip: int,
                                    current_slot: int) -> Tuple[List[ValidatorRecord], List[int], int]:
     """
-    return the validator registry, as well as ``latest_penalized_exit_balances`` and ``validator_registry_delta_chain_tip``.
+    Returns the validator registry, as well as ``latest_penalized_exit_balances`` and ``validator_registry_delta_chain_tip``.
     """
     # make copies to prevent mutating inputs
     validator_registry = copy.deepcopy(state.validator_registry)
