@@ -87,6 +87,7 @@
         - [Finalization](#finalization)
         - [Crosslinks](#crosslinks)
         - [Justification and finalization rewards and penalties](#justification-and-finalization-rewards-and-penalties)
+        - [Crosslink rewards and penalties](#crosslink-rewards-and-penalties)
         - [Validator registry change](#validator-registry-change)
         - [If a validator registry change does NOT happen](#if-a-validator-registry-change-does-not-happen)
         - [Proposer reshuffling](#proposer-reshuffling)
