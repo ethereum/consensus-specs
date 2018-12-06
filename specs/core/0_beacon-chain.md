@@ -24,6 +24,8 @@
         - [Deposits](#deposits)
             - [`DepositParametersRecord`](#depositparametersrecord)
         - [Beacon chain blocks](#beacon-chain-blocks)
+            - [`BeaconBlockHeader`](#beaconblock)
+            - [`BeaconBlockBody`](#beaconblock)
             - [`BeaconBlock`](#beaconblock)
             - [`AttestationRecord`](#attestationrecord)
             - [`AttestationData`](#attestationdata)
@@ -244,27 +246,37 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ### Beacon chain blocks
 
+#### `BeaconBlockHeader`
+
+```python
+{
+    'slot': 'uint64',
+    # Skip list of ancestor beacon block hashes
+    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
+    'ancestor_hashes': ['hash32'],
+    'state_root': 'hash32',
+    'randao_reveal': 'hash32',
+    'deposit_receipt_root': 'hash32',
+    'candidate_pow_receipt_root': 'hash32',
+    'signature': ['uint384'],
+}
+```
+
+#### `BeaconBlockBody`
+
+```python
+{
+    'attestations': [AttestationRecord],
+    'specials': [SpecialRecord],
+}
+```
+
 #### `BeaconBlock`
 
 ```python
 {
-    # Slot number
-    'slot': 'uint64',
-    # Proposer RANDAO reveal
-    'randao_reveal': 'hash32',
-    # Candidate PoW receipt root
-    'candidate_pow_receipt_root': 'hash32',
-    # Skip list of ancestor beacon block hashes
-    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
-    'ancestor_hashes': ['hash32'],
-    # State root
-    'state_root': 'hash32',
-    # Attestations
-    'attestations': [AttestationRecord],
-    # Specials (e.g. exits, penalties)
-    'specials': [SpecialRecord],
-    # Proposer signature
-    'proposer_signature': ['uint384'],
+    'header': BeaconBlockHeader,
+    'body': BeaconBlockBody,
 }
 ```
 
@@ -637,10 +649,10 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with hash `block.ancestor_hashes[0]` has been processed and accepted.
-* The node has processed its `state` up to slot, `block.slot - 1`.
+* The parent block with hash `block.header.ancestor_hashes[0]` has been processed and accepted.
+* The node has processed its `state` up to slot, `block.header.slot - 1`.
 * The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
-* The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
+* The node's local clock time is greater than or equal to `state.genesis_time + block.header.slot * SLOT_DURATION`.
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
@@ -653,7 +665,7 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 * Let `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not part of any chain are still included in `store`.
 * Let `finalized_head` be the finalized block with the highest slot number. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
 * Let `justified_head` be the descendant of `finalized_head` with the highest slot number that has been justified for at least `EPOCH_LENGTH` slots. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
-* Let `get_ancestor(store, block, slot)` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
+* Let `get_ancestor(store, block, slot)` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store, block, slot): return block if block.header.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
 * Let `get_latest_attestation(store, validator)` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
 * Let `get_latest_attestation_target(store, validator)` be the target block in the attestation `get_latest_attestation(store, validator)`.
 * The head is `lmd_ghost(store, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
@@ -667,7 +679,7 @@ def lmd_ghost(store, start):
                            for validator in active_validators]
     def get_vote_count(block):
         return len([target for target in attestation_targets if
-                    get_ancestor(store, target, block.slot) == block])
+                    get_ancestor(store, target, block.header.slot) == block])
 
     head = start
     while 1:
@@ -874,9 +886,9 @@ def get_beacon_proposer_index(state: BeaconState,
 ```python
 def get_updated_ancestor_hashes(latest_block: BeaconBlock,
                                 latest_hash: Hash32) -> List[Hash32]:
-    new_ancestor_hashes = copy.deepcopy(latest_block.ancestor_hashes)
+    new_ancestor_hashes = copy.deepcopy(latest_block.header.ancestor_hashes)
     for i in range(32):
-        if latest_block.slot % 2**i == 0:
+        if latest_block.header.slot % 2**i == 0:
             new_ancestor_hashes[i] = latest_hash
     return new_ancestor_hashes
 ```
@@ -1212,8 +1224,8 @@ Below are the processing steps that happen at every slot.
 
 If there is a block from the proposer for `state.slot`, we process that incoming block:
 * Let `block` be that associated incoming block.
-* Verify that `block.slot == state.slot`
-* Verify that `block.ancestor_hashes` equals `get_updated_ancestor_hashes(latest_block, latest_hash)`.
+* Verify that `block.header.slot == state.slot`
+* Verify that `block.header.ancestor_hashes` equals `get_updated_ancestor_hashes(latest_block, latest_hash)`.
 
 If there is no block from the proposer at state.slot:
 * Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
@@ -1221,15 +1233,15 @@ If there is no block from the proposer at state.slot:
 
 ### Proposer signature
 
-* Let `block_hash_without_sig` be the hash of `block` where `proposer_signature` is set to `[0, 0]`.
+* Let `block_hash_without_sig` be the hash of `block` where `block.header.signature` is set to `[0, 0]`.
 * Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
-* Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.proposer_signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
+* Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.header.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
 ### Attestations
 
-* Verify that `len(block.attestations) <= MAX_ATTESTATIONS_PER_BLOCK`.
+* Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS_PER_BLOCK`.
 
-For each `attestation` in `block.attestations`:
+For each `attestation` in `block.body.attestations`:
 
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
 * Verify that `attestation.data.slot >= max(state.slot - EPOCH_LENGTH, 0)`.
@@ -1247,22 +1259,22 @@ For each `attestation` in `block.attestations`:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`.
-* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`.
-* Set `proposer.randao_commitment = block.randao_reveal`.
+* Verify that `repeat_hash(block.header.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`.
+* Set `state.randao_mix = xor(state.randao_mix, block.header.randao_reveal)`.
+* Set `proposer.randao_commitment = block.header.randao_reveal`.
 * Set `proposer.randao_skips = 0`.
 
 ### PoW receipt root
 
-* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
-* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
+* If `block.header.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
+* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.header.candidate_pow_receipt_root, votes=1)`.
 
 ### Special objects
 
-* Verify that the quantity of each type of object in `block.specials` is less than or equal to its maximum (see table at the top).
-* Verify that objects are sorted in order of `kind`. That is, `block.specials[i+1].kind >= block.specials[i].kind` for `0 <= i < len(block.specials-1)`.
+* Verify that the quantity of each type of object in `block.body.specials` is less than or equal to its maximum (see table at the top).
+* Verify that objects are sorted in order of `kind`. That is, `block.body.specials[i+1].kind >= block.body.specials[i].kind` for `0 <= i < len(block.body.specials-1)`.
 
-For each `special` in `block.specials`:
+For each `special` in `block.body.specials`:
 
 * Verify that `special.kind` is a valid value.
 * Verify that `special.data` deserializes according to the format for the given `kind` (see format definitions in "Data structures" above).
@@ -1592,7 +1604,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 ## State root processing
 
-Verify `block.state_root == hash(state)` if there exists a `block` for the slot being processed.
+Verify `block.header.state_root == hash(state)` if there exists a `block` for the slot being processed.
 
 # Appendix
 ## Appendix A - Hash function
