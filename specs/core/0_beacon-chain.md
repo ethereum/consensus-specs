@@ -87,7 +87,6 @@
         - [Balance recalculations related to crosslink rewards](#balance-recalculations-related-to-crosslink-rewards)
         - [Ethereum 1.0 chain related rules](#ethereum-10-chain-related-rules)
         - [Validator registry](#validator-registry)
-        - [If a validator registry change does NOT happen](#if-a-validator-registry-change-does-not-happen)
         - [Proposer reshuffling](#proposer-reshuffling)
         - [Finally...](#finally)
 - [Appendix](#appendix)
@@ -1502,7 +1501,7 @@ def get_updated_validator_registry(validator_registry: List[ValidatorRecord],
 
     # Exit validators within the allowable balance churn 
     balance_churn = 0
-    for i, validator in enumerate(validators):
+    for i, validator in enumerate(validator_registry):
         if validator.status == ACTIVE_PENDING_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validator)
