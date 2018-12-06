@@ -256,7 +256,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'ancestor_hashes': ['hash32'],
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
-    'deposit_receipt_root': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
     'signature': ['uint384'],
 }
