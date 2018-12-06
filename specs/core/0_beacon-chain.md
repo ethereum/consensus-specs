@@ -1362,8 +1362,8 @@ All [validators](#dfn-validator):
 
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the previous epoch:
 
-* Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2*EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
-* Let `previous_epoch_boundary_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, state.slot - 2*EPOCH_LENGTH) and a.justified_slot == state.previous_justified_slot]`.
+* Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
+* Let `previous_epoch_boundary_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, state.slot - 2 * EPOCH_LENGTH) and a.justified_slot == state.previous_justified_slot]`.
 * Let `previous_epoch_boundary_attesters` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
 * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_boundary_attesters])`.
 
