@@ -1273,11 +1273,12 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
-* Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`
+* Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
 * Verify that `BLSVerify(pubkey=proposer.pubkey, msg=hash(proposer_slashing.proposal_data_1), sig=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
 * Verify that `BLSVerify(pubkey=proposer.pubkey, msg=hash(proposer_slashing.proposal_data_2), sig=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
-* Verify that `proposer_slashing.proposal_data_1 != proposer_slashing.proposal_data_2`.
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
+* Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
+* Verify that `proposer_slashing.proposal_data_1.block_hash != proposer_slashing.proposal_data_2.block_hash`.
 * Verify that `proposer.status != EXITED_WITH_PENALTY`.
 * Run `exit_validator(proposer_slashing.proposer_index, state, penalize=True, current_slot=state.slot)`.
 
