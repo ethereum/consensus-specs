@@ -65,6 +65,7 @@
             - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
             - [`get_block_hash`](#get_block_hash)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+            - [`get_updated_ancestor_hashes`](#get_updated_ancestor_hashes)
             - [`get_attestation_participants`](#get_attestation_participants)
             - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
