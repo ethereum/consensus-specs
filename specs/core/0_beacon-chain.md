@@ -17,11 +17,11 @@
         - [Time parameters](#time-parameters)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Status codes](#status-codes)
-        - [Max block objects](#max-block-objects)
+        - [Max operations](#max-operations)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
-        - [Beacon chain objects](#beacon-chain-objects)
+        - [Beacon chain operations](#beacon-chain-operations)
             - [Proposer slashings](#proposer-slashings)
                 - [`ProposerSlashingRecord`](#proposerslashingrecord)
             - [Casper slashings](#casper-slashings)
@@ -80,7 +80,7 @@
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
-        - [Block objects](#block-objects)
+        - [Operations](#operations)
             - [Proposer slashings](#proposer-slashings-1)
             - [Casper slashings](#casper-slashings-1)
             - [Attestations](#attestations-1)
@@ -203,7 +203,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
 
-### Max block objects
+### Max operations
 
 | Name | Value |
 | - | - |
@@ -231,7 +231,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Data structures
 
-### Beacon chain objects
+### Beacon chain operations
 
 #### Proposer slashings
 
@@ -565,7 +565,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositParametersRecord` object. One of the `DepositParametersRecord` fields is `withdrawal_credentials` which must satisfy:
+The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositParametersRecord`. One of the `DepositParametersRecord` fields is `withdrawal_credentials` which must satisfy:
 
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_CREDENTIALS`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
@@ -1265,7 +1265,7 @@ If there is no block from the proposer at state.slot:
 * If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
 * Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
-### Block objects
+### Operations
 
 #### Proposer slashings
 
