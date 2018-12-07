@@ -17,20 +17,25 @@
         - [Time parameters](#time-parameters)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Status codes](#status-codes)
-        - [Special record types](#special-record-types)
+        - [Max transactions](#max-transactions)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [Deposits](#deposits)
             - [`DepositParametersRecord`](#depositparametersrecord)
+        - [Beacon chain transactions](#beacon-chain-transactions)
+            - [`AttestationRecord`](#attestationrecord)
+            - [`AttestationData`](#attestationdata)
+            - [`ProposerSlashingRecord`](#proposerslashingrecord)
+            - [`CasperSlashingRecord`](#casperslashingrecord)
+            - [`SpecialAttestationData`](#specialattestationdata)
+            - [`DepositRecord`](#depositproofrecord)
+            - [`ExitRecord`](#voluntaryexitrecord)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`BeaconBlockBody`](#beaconblockbody)
             - [`BeaconBlock`](#beaconblock)
-            - [`AttestationRecord`](#attestationrecord)
-            - [`AttestationData`](#attestationdata)
             - [`ProposalSignedData`](#proposalsigneddata)
-            - [`SpecialRecord`](#specialrecord)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
             - [`ValidatorRecord`](#validatorrecord)
@@ -40,12 +45,6 @@
             - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
-        - [Specials](#specials)
-            - [`VoluntaryExitSpecial`](#voluntaryexitspecial)
-            - [`CasperSlashingSpecial`](#casperslashingspecial)
-            - [`SpecialAttestationData`](#specialattestationdata)
-            - [`ProposerSlashingSpecial`](#proposerslashingspecial)
-            - [`DepositProofSpecial`](#depositproofspecial)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [`Deposit` logs](#deposit-logs)
@@ -68,20 +67,21 @@
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
             - [`get_domain`](#get_domain)
+            - [`verify_special_attestation_data`](#verify_special_attestation_data)
             - [`integer_squareroot`](#integer_squareroot)
         - [On startup](#on-startup)
         - [Routine for activating a validator](#routine-for-activating-a-validator)
         - [Routine for exiting a validator](#routine-for-exiting-a-validator)
     - [Per-slot processing](#per-slot-processing)
         - [Proposer signature](#proposer-signature)
-        - [Attestations](#attestations)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
-        - [Special objects](#special-objects)
-            - [`VOLUNTARY_EXIT`](#voluntary_exit)
-            - [`CASPER_SLASHING`](#casper_slashing)
-            - [`PROPOSER_SLASHING`](#proposer_slashing)
-            - [`DEPOSIT_PROOF`](#deposit_proof)
+        - [Transactions](#transactions)
+            - [Proposer slashings](#proposer-slashing)
+            - [Casper slashings](#casper-slashing)
+            - [Attestations](#attestations)
+            - [Deposits](#deposits)
+            - [Exits](#exits)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -200,14 +200,15 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
 
-### Special record types
+### Max transactions
 
-| Name | Value | Maximum count |
+| Name | Value |
 | - | - | :-: |
-| `VOLUNTARY_EXIT` | `0` | `16` |
-| `CASPER_SLASHING` | `1` | `16` |
-| `PROPOSER_SLASHING` | `2` | `16` |
-| `DEPOSIT_PROOF` | `3` | `16` |
+| `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
+| `MAX_CASPER_SLASHINGS` | `2**4` (= 16) |
+| `MAX_ATTESTATIONS` | `2**7` (= 128) |
+| `MAX_DEPOSITS` | `2**4` (= 16) |
+| `MAX_EXITS` | `2**4` (= 16) |
 
 ### Validator registry delta flags
 
@@ -244,40 +245,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-### Beacon chain blocks
-
-#### `BeaconBlockHeader`
-
-```python
-{
-    'slot': 'uint64',
-    # Skip list of ancestor beacon block hashes
-    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
-    'ancestor_hashes': ['hash32'],
-    'state_root': 'hash32',
-    'randao_reveal': 'hash32',
-    'candidate_pow_receipt_root': 'hash32',
-    'signature': ['uint384'],
-}
-```
-
-#### `BeaconBlockBody`
-
-```python
-{
-    'attestations': [AttestationRecord],
-    'specials': [SpecialRecord],
-}
-```
-
-#### `BeaconBlock`
-
-```python
-{
-    'header': BeaconBlockHeader,
-    'body': BeaconBlockBody,
-}
-```
+### Beacon chain transactions
 
 #### `AttestationRecord`
 
@@ -317,6 +285,120 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
+#### `ProposerSlashingRecord`
+
+```python
+{
+    # Proposer index
+    'proposer_index': 'uint24',
+    # First proposal data
+    'proposal_data_1': ProposalSignedData,
+    # First proposal signature
+    'proposal_signature_1': '[uint384]',
+    # Second proposal data
+    'proposal_data_2': ProposalSignedData,
+    # Second proposal signature
+    'proposal_signature_2': '[uint384]',
+}
+```
+
+#### `CasperSlashingRecord`
+
+```python
+{
+    # First vote
+    vote_1: SpecialAttestationData,
+    # Second vote
+    vote_2: SpecialAttestationData,
+}
+```
+
+#### `SpecialAttestationData`
+
+ ```python
+{
+    # Proof-of-custody indices (0 bits)
+    'aggregate_signature_poc_0_indices': '[uint24]',
+    # Proof-of-custody indices (1 bits)
+    'aggregate_signature_poc_1_indices': '[uint24]',
+    # Attestation data
+    'data': AttestationData,
+    # Aggregate signature
+    'aggregate_signature': '[uint384]',
+}
+```
+
+#### `DepositRecord`
+
+```python
+{
+    # Receipt Merkle branch
+    'merkle_branch': '[hash32]',
+    # Merkle tree index
+    'merkle_tree_index': 'uint64',
+    # Deposit data
+    'deposit_data': {
+        # Deposit parameters
+        'deposit_parameters': DepositParametersRecord,
+        # Value in Gwei
+        'value': 'uint64',
+        # Timestamp from deposit contract
+        'timestamp': 'uint64',
+    },
+}
+```
+
+#### `ExitRecord`
+
+```python
+{
+    # Minimum slot for processing exit
+    'slot': 'unit64',
+    # Index of the exiting validator
+    'validator_index': 'uint64',
+    # Validator signature
+    'signature': '[uint384]',
+}
+```
+
+### Beacon chain blocks
+
+#### `BeaconBlockHeader`
+
+```python
+{
+    'slot': 'uint64',
+    # Skip list of ancestor beacon block hashes
+    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
+    'ancestor_hashes': ['hash32'],
+    'state_root': 'hash32',
+    'randao_reveal': 'hash32',
+    'candidate_pow_receipt_root': 'hash32',
+    'signature': ['uint384'],
+}
+```
+
+#### `BeaconBlockBody`
+
+```python
+{
+    'attestations': [AttestationRecord],
+    'proposer_slashings': [ProposerSlashingRecord],
+    'casper_slashings': [CasperSlashingRecord],
+    'deposits': [DepositRecord],
+    'exits': [ExitRecord],
+}
+```
+
+#### `BeaconBlock`
+
+```python
+{
+    'header': BeaconBlockHeader,
+    'body': BeaconBlockBody,
+}
+```
+
 #### `ProposalSignedData`
 
 ```python
@@ -327,17 +409,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'shard': 'uint64',
     # Block hash
     'block_hash': 'hash32',
-}
-```
-
-#### `SpecialRecord`
-
-```python
-{
-    # Kind
-    'kind': 'uint64',
-    # Data
-    'data': 'bytes',
 }
 ```
 
@@ -479,84 +550,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'post_fork_version': 'uint64',
     # Fork slot number
     'fork_slot': 'uint64',
-}
-```
-
-### Specials
-
-#### `VoluntaryExitSpecial`
-
-```python
-{
-    # Minimum slot for processing exit
-    'slot': 'unit64',
-    # Index of the exiting validator
-    'validator_index': 'uint64',
-    # Validator signature
-    'signature': '[uint384]',
-}
-```
-
-#### `CasperSlashingSpecial`
-
-```python
-{
-    # First vote
-    vote_1: SpecialAttestationData,
-    # Second vote
-    vote_2: SpecialAttestationData,
-}
-```
-
-#### `SpecialAttestationData`
-
- ```python
-{
-    # Proof-of-custody indices (0 bits)
-    'aggregate_signature_poc_0_indices': '[uint24]',
-    # Proof-of-custody indices (1 bits)
-    'aggregate_signature_poc_1_indices': '[uint24]',
-    # Attestation data
-    'data': AttestationData,
-    # Aggregate signature
-    'aggregate_signature': '[uint384]',
-}
-```
-
-#### `ProposerSlashingSpecial`
-
-```python
-{
-    # Proposer index
-    'proposer_index': 'uint24',
-    # First proposal data
-    'proposal_data_1': ProposalSignedData,
-    # First proposal signature
-    'proposal_signature_1': '[uint384]',
-    # Second proposal data
-    'proposal_data_2': ProposalSignedData,
-    # Second proposal signature
-    'proposal_signature_2': '[uint384]',
-}
-```
-
-#### `DepositProofSpecial`
-
-```python
-{
-    # Receipt Merkle branch
-    'merkle_branch': '[hash32]',
-    # Merkle tree index
-    'merkle_tree_index': 'uint64',
-    # Deposit data
-    'deposit_data': {
-        # Deposit parameters
-        'deposit_parameters': DepositParametersRecord,
-        # Value in Gwei 
-        'value': 'uint64',
-        # Timestamp from deposit contract
-        'timestamp': 'uint64',
-    },
 }
 ```
 
@@ -960,6 +953,15 @@ def get_domain(fork_data: ForkData,
     ) * 2**32 + domain_type
 ```
 
+#### `verify_special_attestation_data`
+
+```python
+def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
+    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_0_indices]),
+            aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_1_indices])]
+    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_signature)
+```
+
 #### `integer_squareroot`
 
 ```python
@@ -981,14 +983,21 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 
 ```python
 {
-    'slot': INITIAL_SLOT_NUMBER,
-    'randao_reveal': ZERO_HASH,
-    'candidate_pow_receipt_root': ZERO_HASH,
-    'ancestor_hashes': [ZERO_HASH for i in range(32)],
-    'state_root': STARTUP_STATE_ROOT,
-    'attestations': [],
-    'specials': [],
-    'proposer_signature': [0, 0],
+    'header': BeaconBlockHeader(
+        slot=INITIAL_SLOT_NUMBER,
+        ancestor_hashes=[ZERO_HASH for i in range(32)],
+        state_root=STARTUP_STATE_ROOT,
+        randao_reveal=ZERO_HASH,
+        candidate_pow_receipt_root=ZERO_HASH,
+        proposer_signature=[0, 0]
+    ),
+    'body': BeaconBlockBody(
+        proposer_slashings=[],
+        casper_slashings=[],
+        attestations=[],
+        deposits=[],
+        exits=[]
+    ),
 }
 ```
 
@@ -1236,9 +1245,54 @@ If there is no block from the proposer at state.slot:
 * Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
 * Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.header.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
-### Attestations
+### RANDAO
 
-* Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS_PER_BLOCK`.
+* Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
+* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
+* Verify that `repeat_hash(block.header.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`.
+* Set `state.randao_mix = xor(state.randao_mix, block.header.randao_reveal)`.
+* Set `proposer.randao_commitment = block.header.randao_reveal`.
+* Set `proposer.randao_skips = 0`.
+
+### PoW receipt root
+
+* If `block.header.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
+* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.header.candidate_pow_receipt_root, votes=1)`.
+
+### Transactions
+
+#### Proposer slashings
+
+Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
+
+For each `proposer_slashing` in `block.body.proposer_slashings`:
+
+* Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`
+* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=hash(proposer_slashing.proposal_data_1), sig=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=hash(proposer_slashing.proposal_data_2), sig=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
+* Verify that `proposer_slashing.proposal_data_1 != proposer_slashing.proposal_data_2`.
+* Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
+* Verify that `proposer.status != EXITED_WITH_PENALTY`.
+* Run `exit_validator(proposer_slashing.proposer_index, state, penalize=True, current_slot=state.slot)`.
+
+#### Casper slashings
+
+Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
+
+For each `casper_slashing` in `block.body.casper_slashings`:
+
+* Verify that `verify_special_attestation_data(casper_slashing.vote_1)`.
+* Verify that `verify_special_attestation_data(casper_slashing.vote_2)`.
+* Verify that `casper_slashing.vote_1.data != casper_slashing.vote_2.data`.
+* Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
+* Let `intersection = [x for x in indices(casper_slashing.vote_1) if x in indices(casper_slashing.vote_2)]`.
+* Verify that `len(intersection) >= 1`.
+* Verify that `casper_slashing.vote_1.data.justified_slot + 1 < casper_slashing.vote_2.data.justified_slot + 1 == casper_slashing.vote_2.data.slot < casper_slashing.vote_1.data.slot` or `casper_slashing.vote_1.data.slot == casper_slashing.vote_2.data.slot`.
+* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, current_slot=state.slot)`
+
+#### Attestations
+
+Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
@@ -1254,75 +1308,14 @@ For each `attestation` in `block.body.attestations`:
 * [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
-### RANDAO
+#### Deposits
 
-* Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `repeat_hash(block.header.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`.
-* Set `state.randao_mix = xor(state.randao_mix, block.header.randao_reveal)`.
-* Set `proposer.randao_commitment = block.header.randao_reveal`.
-* Set `proposer.randao_skips = 0`.
+Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
-### PoW receipt root
+For each `deposit` in `block.body.deposits`:
 
-* If `block.header.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
-* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.header.candidate_pow_receipt_root, votes=1)`.
-
-### Special objects
-
-* Verify that the quantity of each type of object in `block.body.specials` is less than or equal to its maximum (see table at the top).
-* Verify that objects are sorted in order of `kind`. That is, `block.body.specials[i+1].kind >= block.body.specials[i].kind` for `0 <= i < len(block.body.specials-1)`.
-
-For each `special` in `block.body.specials`:
-
-* Verify that `special.kind` is a valid value.
-* Verify that `special.data` deserializes according to the format for the given `kind` (see format definitions in "Data structures" above).
-* Process `special.data` as specified below for each kind.
-
-#### `VOLUNTARY_EXIT`
-
-* Let `validator = state.validator_registry[validator_index]`.
-* Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=signature, domain=get_domain(state.fork_data, slot, DOMAIN_EXIT))`.
-* Verify that `validator.status == ACTIVE`.
-* Verify that `state.slot >= slot`.
-* Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `exit_validator(validator_index, state, penalize=False, current_slot=state.slot)`.
-
-#### `CASPER_SLASHING`
-
-Let `verify_special_attestation_data` be the following helper:
-
- ```python
-def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
-    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_0_indices]),
-            aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_1_indices])]
-    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_signature)
-```
-
-* Verify that `verify_special_attestation_data(vote_1)`.
-* Verify that `verify_special_attestation_data(vote_2)`.
-* Verify that `vote_1.data != vote_2.data`.
-* Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
-* Let `intersection = [x for x in indices(vote_1) if x in indices(vote_2)]`.
-* Verify that `len(intersection) >= 1`.
-* Verify that `vote_1.data.justified_slot + 1 < vote_2.data.justified_slot + 1 == vote_2.data.slot < vote_1.data.slot` or `vote_1.data.slot == vote_2.data.slot`.
-
-For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, current_slot=state.slot)`
-
-#### `PROPOSER_SLASHING`
-
-* Verify that `BLSVerify(pubkey=state.validator_registry[proposer_index].pubkey, msg=hash(proposal_data_1), sig=proposal_signature_1, domain=get_domain(state.fork_data, proposal_data_1.slot, DOMAIN_PROPOSAL))`.
-* Verify that `BLSVerify(pubkey=state.validator_registry[proposer_index].pubkey, msg=hash(proposal_data_2), sig=proposal_signature_2, domain=get_domain(state.fork_data, proposal_data_2.slot, DOMAIN_PROPOSAL))`.
-* Verify that `proposal_data_1 != proposal_data_2`.
-* Verify that `proposal_data_1.slot == proposal_data_2.slot`.
-* Verify that `state.validator_registry[proposer_index].status != EXITED_WITH_PENALTY`.
-* Run `exit_validator(proposer_index, state, penalize=True, current_slot=state.slot)`.
-
-#### `DEPOSIT_PROOF`
-
-Let `serialized_deposit_data` be the serialized form of `deposit_data. It should be the `DepositParametersRecord` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
-
-Use the following procedure to verify the `merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
+* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositParametersRecord` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
+* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
@@ -1335,21 +1328,34 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-* Verify that `state.slot - (deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < ZERO_BALANCE_VALIDATOR_TTL`.
+* Verify that `state.slot - (deposit.deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < ZERO_BALANCE_VALIDATOR_TTL`.
 * Run the following:
 
 ```python
 process_deposit(
     state=state,
-    pubkey=deposit_data.deposit_parameters.pubkey,
-    deposit=deposit_data.value,
-    proof_of_possession=deposit_data.deposit_parameters.proof_of_possession,
-    withdrawal_credentials=deposit_data.deposit_parameters.withdrawal_credentials,
-    randao_commitment=deposit_data.deposit_parameters.randao_commitment,
+    pubkey=deposit.deposit_data.deposit_parameters.pubkey,
+    deposit=deposit.deposit_data.value,
+    proof_of_possession=deposit.deposit_data.deposit_parameters.proof_of_possession,
+    withdrawal_credentials=deposit.deposit_data.deposit_parameters.withdrawal_credentials,
+    randao_commitment=deposit.deposit_data.deposit_parameters.randao_commitment,
     status=PENDING_ACTIVATION,
     current_slot=state.slot
 )
 ```
+
+#### Exits
+
+Verify that `len(block.body.exits) <= MAX_EXITS`.
+
+For each `exit` in `block.body.exits`:
+
+* Let `validator = state.validator_registry[exit.validator_index]`.
+* Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
+* Verify that `validator.status == ACTIVE`.
+* Verify that `state.slot >= exit.slot`.
+* Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
+* Run `exit_validator(validator_index, state, penalize=False, current_slot=state.slot)`.
 
 ## Per-epoch processing
 
