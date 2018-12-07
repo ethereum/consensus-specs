@@ -55,6 +55,7 @@
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [Helper functions](#helper-functions)
+            - [`is_active_validator`](#is_active_validator)
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
             - [`split`](#split)
@@ -82,6 +83,7 @@
             - [`CASPER_SLASHING`](#casper_slashing)
             - [`PROPOSER_SLASHING`](#proposer_slashing)
             - [`DEPOSIT_PROOF`](#deposit_proof)
+        - [Ejections](#ejections)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -140,7 +142,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `SHARD_COUNT` | `2**10` (= 1,024) | shards |
 | `TARGET_COMMITTEE_SIZE` | `2**8` (= 256) | [validators](#dfn-validator) |
 | `MAX_ATTESTATIONS_PER_BLOCK` | `2**7` (= 128) | attestations |
-| `MIN_BALANCE` | `2**4` (= 16) | ETH |
+| `EJECTION_BALANCE` | `2**4` (= 16) | ETH |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
@@ -701,6 +703,16 @@ The per-slot transitions generally focus on verifying aggregate signatures and s
 
 Note: The definitions below are for specification purposes and are not necessarily optimal implementations.
 
+#### `is_active_validator`
+
+```python
+def is_active_validator(validator: ValidatorRecord) -> bool:
+    """
+    Checks if ``validator`` is active.
+    """
+    return validator.status in [ACTIVE, ACTIVE_PENDING_EXIT]
+```
+
 #### `get_active_validator_indices`
 
 ```python
@@ -708,7 +720,7 @@ def get_active_validator_indices(validators: [ValidatorRecord]) -> List[int]:
     """
     Gets indices of active validators from ``validators``.
     """
-    return [i for i, v in enumerate(validators) if v.status in [ACTIVE, ACTIVE_PENDING_EXIT]]
+    return [i for i, v in enumerate(validators) if is_active_validator(v)]
 ```
 
 #### `shuffle`
@@ -895,7 +907,7 @@ def get_updated_ancestor_hashes(latest_block: BeaconBlock,
 #### `get_attestation_participants`
 
 ```python
-def get_attestation_participants(state: State,
+def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
                                  participation_bitfield: bytes) -> List[int]:
     """
@@ -1174,8 +1186,7 @@ def process_deposit(state: BeaconState,
 ```python
 def exit_validator(index: int,
                    state: BeaconState,
-                   penalize: bool,
-                   current_slot: int) -> None:
+                   new_status: int) -> None:
     """
     Exit the validator with the given ``index``.
     Note that this function mutates ``state``.
@@ -1183,7 +1194,8 @@ def exit_validator(index: int,
     state.validator_registry_exit_count += 1
 
     validator = state.validator_registry[index]
-    validator.latest_status_change_slot = current_slot
+    validator.status = new_status
+    validator.latest_status_change_slot = state.slot
     validator.exit_count = state.validator_registry_exit_count
 
     # Remove validator from persistent committees
@@ -1193,16 +1205,13 @@ def exit_validator(index: int,
                 committee.pop(i)
                 break
 
-    if penalize:
-        validator.status = EXITED_WITH_PENALTY
-        state.latest_penalized_exit_balances[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(validator)
+    if new_status == EXITED_WITH_PENALTY:
+        state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(validator)
         
-        whistleblower = state.validator_registry[get_beacon_proposer_index(state, current_slot)]
+        whistleblower = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
         whistleblower_reward = validator.balance // WHISTLEBLOWER_REWARD_QUOTIENT
         whistleblower.balance += whistleblower_reward
         validator.balance -= whistleblower_reward
-    else:
-        validator.status = ACTIVE_PENDING_EXIT
 
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
@@ -1286,14 +1295,14 @@ For each `special` in `block.body.specials`:
 * Verify that `validator.status == ACTIVE`.
 * Verify that `state.slot >= slot`.
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `exit_validator(validator_index, state, penalize=False, current_slot=state.slot)`.
+* Run `exit_validator(validator_index, state, new_status=ACTIVE_PENDING_EXIT)`.
 
 #### `CASPER_SLASHING`
 
 Let `verify_special_attestation_data` be the following helper:
 
  ```python
-def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
+def verify_special_attestation_data(state: BeaconState, obj: SpecialAttestationData) -> bool:
     pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_0_indices]),
             aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_1_indices])]
     return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_signature)
@@ -1307,7 +1316,7 @@ def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -
 * Verify that `len(intersection) >= 1`.
 * Verify that `vote_1.data.justified_slot + 1 < vote_2.data.justified_slot + 1 == vote_2.data.slot < vote_1.data.slot` or `vote_1.data.slot == vote_2.data.slot`.
 
-For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, current_slot=state.slot)`
+For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, new_status=EXITED_WITH_PENALTY)`
 
 #### `PROPOSER_SLASHING`
 
@@ -1316,7 +1325,7 @@ For each [validator](#dfn-validator) index `i` in `intersection`, if `state.vali
 * Verify that `proposal_data_1 != proposal_data_2`.
 * Verify that `proposal_data_1.slot == proposal_data_2.slot`.
 * Verify that `state.validator_registry[proposer_index].status != EXITED_WITH_PENALTY`.
-* Run `exit_validator(proposer_index, state, penalize=True, current_slot=state.slot)`.
+* Run `exit_validator(proposer_index, state, new_status=EXITED_WITH_PENALTY)`.
 
 #### `DEPOSIT_PROOF`
 
@@ -1349,6 +1358,21 @@ process_deposit(
     status=PENDING_ACTIVATION,
     current_slot=state.slot
 )
+```
+
+### Ejections
+
+* Run `process_ejections(state)`.
+
+```python
+def process_ejections(state: BeaconState) -> None:
+    """
+    Iterate through the validator registry
+    and eject active validators with balance below ``EJECTION_BALANCE``.
+    """
+    for i, v in enumerate(state.validator_registry):
+        if is_active_validator(v) and v.balance < EJECTION_BALANCE:
+            exit_validator(i, state, new_status=EXITED_WITHOUT_PENALTY)
 ```
 
 ## Per-epoch processing
@@ -1598,7 +1622,6 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ### Final updates
 
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
-* Run `exit_validator(i, state, penalize=False, current_slot=state.slot)` for indices `i` such that `state.validator_registry[i].status == ACTIVE and state.validator_registry[i].balance < MIN_BALANCE`.
 * Set `state.latest_block_hashes = state.latest_block_hashes[EPOCH_LENGTH:]`.
 
 ## State root processing
