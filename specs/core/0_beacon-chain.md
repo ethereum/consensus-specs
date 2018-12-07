@@ -17,11 +17,11 @@
         - [Time parameters](#time-parameters)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Status codes](#status-codes)
-        - [Max transactions](#max-transactions)
+        - [Max block objects](#max-block-objects)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
-        - [Beacon chain transactions](#beacon-chain-transactions)
+        - [Beacon chain objects](#beacon-chain-objects)
             - [Proposer slashings](#proposer-slashings)
                 - [`ProposerSlashingRecord`](#proposerslashingrecord)
             - [Casper slashings](#casper-slashings)
@@ -79,7 +79,7 @@
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
-        - [Transactions](#transactions)
+        - [Block objects](#block-objects)
             - [Proposer slashings](#proposer-slashings-1)
             - [Casper slashings](#casper-slashings-1)
             - [Attestations](#attestations-1)
@@ -142,7 +142,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | - | - | :-: |
 | `SHARD_COUNT` | `2**10` (= 1,024) | shards |
 | `TARGET_COMMITTEE_SIZE` | `2**8` (= 256) | [validators](#dfn-validator) |
-| `MAX_ATTESTATIONS_PER_BLOCK` | `2**7` (= 128) | attestations |
 | `MIN_BALANCE` | `2**4` (= 16) | ETH |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
@@ -203,7 +202,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
 
-### Max transactions
+### Max block objects
 
 | Name | Value |
 | - | - |
@@ -231,7 +230,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Data structures
 
-### Beacon chain transactions
+### Beacon chain objects
 
 #### Proposer slashings
 
@@ -1265,7 +1264,7 @@ If there is no block from the proposer at state.slot:
 * If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
 * Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
-### Transactions
+### Block objects
 
 #### Proposer slashings
 
