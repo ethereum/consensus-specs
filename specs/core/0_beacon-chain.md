@@ -1013,6 +1013,9 @@ def on_startup(initial_validator_entries: List[Any],
 
     # Setup state
     initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
+    validator_indices = list(range(len(initial_validator_registry)))
+    initial_persistent_committees = split(shuffle(validator_indices, ZERO_HASH), SHARD_COUNT)
+
     state = BeaconState(
         # Misc
         slot=INITIAL_SLOT_NUMBER,
@@ -1033,7 +1036,7 @@ def on_startup(initial_validator_entries: List[Any],
         randao_mix=ZERO_HASH,
         next_seed=ZERO_HASH,
         shard_committees_at_slots=initial_shuffling + initial_shuffling,
-        persistent_committees=split(shuffle(initial_validator_registry, ZERO_HASH), SHARD_COUNT),
+        persistent_committees=initial_persistent_committees,
         persistent_committee_reassignments=[],
 
         # Finality
