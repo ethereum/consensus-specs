@@ -23,18 +23,18 @@
     - [Data structures](#data-structures)
         - [Beacon chain operations](#beacon-chain-operations)
             - [Proposer slashings](#proposer-slashings)
-                - [`ProposerSlashingRecord`](#proposerslashingrecord)
+                - [`ProposerSlashing`](#proposerslashing)
             - [Casper slashings](#casper-slashings)
-                - [`CasperSlashingRecord`](#casperslashingrecord)
+                - [`CasperSlashing`](#casperslashing)
                 - [`SpecialAttestationData`](#specialattestationdata)
             - [Attestations](#attestations)
-                - [`AttestationRecord`](#attestationrecord)
+                - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
             - [Deposits](#deposits)
-                - [`DepositRecord`](#depositrecord)
-                - [`DepositParametersRecord`](#depositparametersrecord)
+                - [`Deposit`](#deposit)
+                - [`DepositParameters`](#depositparameters)
             - [Exits](#exits)
-                - [`ExitRecord`](#exitrecord)
+                - [`Exit`](#exit)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
             - [`BeaconBlockBody`](#beaconblockbody)
@@ -80,7 +80,7 @@
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
-        - [Operations](#operations)
+        - [Block operations](#block-operations)
             - [Proposer slashings](#proposer-slashings-1)
             - [Casper slashings](#casper-slashings-1)
             - [Attestations](#attestations-1)
@@ -235,7 +235,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### Proposer slashings
 
-##### `ProposerSlashingRecord`
+##### `ProposerSlashing`
 
 ```python
 {
@@ -254,7 +254,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### Casper slashings
 
-##### `CasperSlashingRecord`
+##### `CasperSlashing`
 
 ```python
 {
@@ -282,7 +282,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### Attestations
 
-##### `AttestationRecord`
+##### `Attestation`
 
 ```python
 {
@@ -322,7 +322,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### Deposits
 
-##### `DepositRecord`
+##### `Deposit`
 
 ```python
 {
@@ -333,7 +333,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Deposit data
     'deposit_data': {
         # Deposit parameters
-        'deposit_parameters': DepositParametersRecord,
+        'deposit_parameters': DepositParameters,
         # Value in Gwei
         'value': 'uint64',
         # Timestamp from deposit contract
@@ -342,7 +342,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-##### `DepositParametersRecord`
+##### `DepositParameters`
 
 ```python
 {
@@ -359,7 +359,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### Exits
 
-##### `ExitRecord`
+##### `Exit`
 
 ```python
 {
@@ -397,11 +397,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    'attestations': [AttestationRecord],
-    'proposer_slashings': [ProposerSlashingRecord],
-    'casper_slashings': [CasperSlashingRecord],
-    'deposits': [DepositRecord],
-    'exits': [ExitRecord],
+    'attestations': [Attestation],
+    'proposer_slashings': [ProposerSlashing],
+    'casper_slashings': [CasperSlashing],
+    'deposits': [Deposit],
+    'exits': [Exit],
 }
 ```
 
@@ -565,7 +565,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositParametersRecord`. One of the `DepositParametersRecord` fields is `withdrawal_credentials` which must satisfy:
+The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositParameters`. One of the `DepositParameters` fields is `withdrawal_credentials` which must satisfy:
 
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_CREDENTIALS`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
@@ -1265,7 +1265,7 @@ If there is no block from the proposer at state.slot:
 * If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
 * Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
-### Operations
+### Block operations
 
 #### Proposer slashings
 
@@ -1321,7 +1321,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
 For each `deposit` in `block.body.deposits`:
 
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositParametersRecord` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
+* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositParameters` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
 * Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
 ```python
