@@ -21,16 +21,20 @@
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
-        - [Deposits](#deposits)
-            - [`DepositParametersRecord`](#depositparametersrecord)
         - [Beacon chain transactions](#beacon-chain-transactions)
-            - [`AttestationRecord`](#attestationrecord)
-            - [`AttestationData`](#attestationdata)
-            - [`ProposerSlashingRecord`](#proposerslashingrecord)
-            - [`CasperSlashingRecord`](#casperslashingrecord)
-            - [`SpecialAttestationData`](#specialattestationdata)
-            - [`DepositRecord`](#depositproofrecord)
-            - [`ExitRecord`](#voluntaryexitrecord)
+            - [Proposer slashings](#proposer-slashings)
+                - [`ProposerSlashingRecord`](#proposerslashingrecord)
+            - [Casper slashings](#casper-slashings)
+                - [`CasperSlashingRecord`](#casperslashingrecord)
+                - [`SpecialAttestationData`](#specialattestationdata)
+            - [Attestations](#attestations)
+                - [`AttestationRecord`](#attestationrecord)
+                - [`AttestationData`](#attestationdata)
+            - [Deposits](#deposits)
+                - [`DepositRecord`](#depositproofrecord)
+                - [`DepositParametersRecord`](#depositparametersrecord)
+            - [Exits](#exits)
+                - [`ExitRecord`](#voluntaryexitrecord)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`BeaconBlockBody`](#beaconblockbody)
@@ -228,26 +232,58 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Data structures
 
-### Deposits
+### Beacon chain transactions
 
-#### `DepositParametersRecord`
+#### Proposer slashings
+
+##### `ProposerSlashingRecord`
 
 ```python
 {
-    # BLS pubkey
-    'pubkey': 'uint384',
-    # BLS proof of possession (a BLS signature)
-    'proof_of_possession': ['uint384'],
-    # Withdrawal credentials
-    'withdrawal_credentials': 'hash32',
-    # Initial RANDAO commitment
-    'randao_commitment': 'hash32',
+    # Proposer index
+    'proposer_index': 'uint24',
+    # First proposal data
+    'proposal_data_1': ProposalSignedData,
+    # First proposal signature
+    'proposal_signature_1': '[uint384]',
+    # Second proposal data
+    'proposal_data_2': ProposalSignedData,
+    # Second proposal signature
+    'proposal_signature_2': '[uint384]',
 }
 ```
 
-### Beacon chain transactions
+#### Casper slashings
 
-#### `AttestationRecord`
+##### `CasperSlashingRecord`
+
+```python
+{
+    # First vote
+    vote_1: SpecialAttestationData,
+    # Second vote
+    vote_2: SpecialAttestationData,
+}
+```
+
+##### `SpecialAttestationData`
+
+ ```python
+{
+    # Proof-of-custody indices (0 bits)
+    'aggregate_signature_poc_0_indices': '[uint24]',
+    # Proof-of-custody indices (1 bits)
+    'aggregate_signature_poc_1_indices': '[uint24]',
+    # Attestation data
+    'data': AttestationData,
+    # Aggregate signature
+    'aggregate_signature': '[uint384]',
+}
+```
+
+#### Attestations
+
+##### `AttestationRecord`
 
 ```python
 {
@@ -262,7 +298,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `AttestationData`
+##### `AttestationData`
 
 ```python
 {
@@ -285,50 +321,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `ProposerSlashingRecord`
+#### Deposits
 
-```python
-{
-    # Proposer index
-    'proposer_index': 'uint24',
-    # First proposal data
-    'proposal_data_1': ProposalSignedData,
-    # First proposal signature
-    'proposal_signature_1': '[uint384]',
-    # Second proposal data
-    'proposal_data_2': ProposalSignedData,
-    # Second proposal signature
-    'proposal_signature_2': '[uint384]',
-}
-```
-
-#### `CasperSlashingRecord`
-
-```python
-{
-    # First vote
-    vote_1: SpecialAttestationData,
-    # Second vote
-    vote_2: SpecialAttestationData,
-}
-```
-
-#### `SpecialAttestationData`
-
- ```python
-{
-    # Proof-of-custody indices (0 bits)
-    'aggregate_signature_poc_0_indices': '[uint24]',
-    # Proof-of-custody indices (1 bits)
-    'aggregate_signature_poc_1_indices': '[uint24]',
-    # Attestation data
-    'data': AttestationData,
-    # Aggregate signature
-    'aggregate_signature': '[uint384]',
-}
-```
-
-#### `DepositRecord`
+##### `DepositRecord`
 
 ```python
 {
@@ -348,7 +343,24 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `ExitRecord`
+#### `DepositParametersRecord`
+
+```python
+{
+    # BLS pubkey
+    'pubkey': 'uint384',
+    # BLS proof of possession (a BLS signature)
+    'proof_of_possession': ['uint384'],
+    # Withdrawal credentials
+    'withdrawal_credentials': 'hash32',
+    # Initial RANDAO commitment
+    'randao_commitment': 'hash32',
+}
+```
+
+#### Exits
+
+##### `ExitRecord`
 
 ```python
 {
