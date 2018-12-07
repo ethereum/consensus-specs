@@ -203,7 +203,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ### Max transactions
 
 | Name | Value |
-| - | - | :-: |
+| - | - |
 | `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
 | `MAX_CASPER_SLASHINGS` | `2**4` (= 16) |
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
