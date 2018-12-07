@@ -26,7 +26,7 @@
                 - [`ProposerSlashing`](#proposerslashing)
             - [Casper slashings](#casper-slashings)
                 - [`CasperSlashing`](#casperslashing)
-                - [`SpecialAttestationData`](#specialattestationdata)
+                - [`CasperVotes`](#caspervotes)
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
@@ -71,7 +71,7 @@
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
             - [`get_domain`](#get_domain)
-            - [`verify_special_attestation_data`](#verify_special_attestation_data)
+            - [`verify_casper_votes`](#verify_casper_votes)
             - [`integer_squareroot`](#integer_squareroot)
         - [On startup](#on-startup)
         - [Routine for activating a validator](#routine-for-activating-a-validator)
@@ -148,6 +148,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `BLS_WITHDRAWAL_CREDENTIALS` | `0x00` | - |
+| `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -258,14 +259,14 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # First vote
-    vote_1: SpecialAttestationData,
-    # Second vote
-    vote_2: SpecialAttestationData,
+    # First batch of votes
+    'votes_1': CasperVotes,
+    # Second batch of votes
+    'votes_2': CasperVotes,
 }
 ```
 
-##### `SpecialAttestationData`
+##### `CasperVotes`
 
  ```python
 {
@@ -959,13 +960,16 @@ def get_domain(fork_data: ForkData,
     ) * 2**32 + domain_type
 ```
 
-#### `verify_special_attestation_data`
+#### `verify_casper_votes`
 
 ```python
-def verify_special_attestation_data(state: State, obj: SpecialAttestationData) -> bool:
-    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_0_indices]),
-            aggregate_pubkey([state.validators[i].pubkey for i in obj.aggregate_signature_poc_1_indices])]
-    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(obj)+bytes1(0), SSZTreeHash(obj)+bytes1(1), sig=aggregate_signature)
+def verify_casper_votes(state: State, votes: CasperVotes) -> bool:
+    if len(votes.aggregate_signature_poc_0_indices) + len(votes.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
+        return False
+
+    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_0_indices]),
+            aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_1_indices])]
+    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(votes)+bytes1(0), SSZTreeHash(votes)+bytes1(1), sig=aggregate_signature)
 ```
 
 #### `integer_squareroot`
@@ -1288,13 +1292,13 @@ Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
 
 For each `casper_slashing` in `block.body.casper_slashings`:
 
-* Verify that `verify_special_attestation_data(casper_slashing.vote_1)`.
-* Verify that `verify_special_attestation_data(casper_slashing.vote_2)`.
-* Verify that `casper_slashing.vote_1.data != casper_slashing.vote_2.data`.
+* Verify that `verify_casper_votes(state, casper_slashing.votes_1)`.
+* Verify that `verify_casper_votes(state, casper_slashing.votes_2)`.
+* Verify that `casper_slashing.votes_1.data != casper_slashing.votes_2.data`.
 * Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
-* Let `intersection = [x for x in indices(casper_slashing.vote_1) if x in indices(casper_slashing.vote_2)]`.
+* Let `intersection = [x for x in indices(casper_slashing.votes_1) if x in indices(casper_slashing.votes_2)]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `casper_slashing.vote_1.data.justified_slot + 1 < casper_slashing.vote_2.data.justified_slot + 1 == casper_slashing.vote_2.data.slot < casper_slashing.vote_1.data.slot` or `casper_slashing.vote_1.data.slot == casper_slashing.vote_2.data.slot`.
+* Verify that `casper_slashing.votes_1.data.justified_slot + 1 < casper_slashing.votes_2.data.justified_slot + 1 == casper_slashing.votes_2.data.slot < casper_slashing.votes_1.data.slot` or `casper_slashing.votes_1.data.slot == casper_slashing.votes_2.data.slot`.
 * For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, current_slot=state.slot)`
 
 #### Attestations
