@@ -17,7 +17,7 @@
         - [Time parameters](#time-parameters)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Status codes](#status-codes)
-        - [Max operations](#max-operations)
+        - [Max operations per block](#max-operations-per-block)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
@@ -203,7 +203,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
 
-### Max operations
+### Max operations per block
 
 | Name | Value |
 | - | - |
