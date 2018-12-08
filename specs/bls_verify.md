@@ -2,19 +2,19 @@
 
 **Warning: This document is pending academic review and should not yet be considered secure.**
 
-See https://z.cash/blog/new-snark-curve/ for BLS-12-381 parameters.
+See https://z.cash/blog/new-snark-curve/ for BLS-12-381 parameters. `q` is the field modulus.
 
 We represent coordinates as defined in https://github.com/zkcrypto/pairing/tree/master/src/bls12_381/.
 
 Specifically, a point in G1 as a 384-bit integer `z`, which we decompose into:
 
-* `x = z % 2**381`
+* `x = z % 2**381` (must be `< q`)
 * `highflag = z // 2**382`
 * `lowflag = (z % 2**382) // 2**381`
 
 If `highflag == 3`, the point is the point at infinity and we require `lowflag = x = 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x, y)` where `y` is the valid coordinate such that `(y * 2) // q == lowflag`.
 
-We represent a point in G2 as a pair of 384-bit integers `(z1, z2)` that are each decomposed into `x1`, `highflag1`, `lowflag1`, `x2`, `highflag2`, `lowflag2` as above. We require `lowflag2 == highflag2 == 0`. If `highflag1 == 3`, the point is the point at infinity and we require `lowflag1 == x1 == x2 == 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part of `y` satisfies `(y_im * 2) // q == lowflag1`.
+We represent a point in G2 as a pair of 384-bit integers `(z1, z2)` that are each decomposed into `x1`, `highflag1`, `lowflag1`, `x2`, `highflag2`, `lowflag2` as above, where `x1` and `x2` must both be `< q`. We require `lowflag2 == highflag2 == 0`. If `highflag1 == 3`, the point is the point at infinity and we require `lowflag1 == x1 == x2 == 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part of `y` satisfies `(y_im * 2) // q == lowflag1`.
 
 `BLSVerify(pubkey: uint384, msg: bytes32, sig: [uint384], domain: uint64)` is done as follows:
 
