@@ -12,7 +12,7 @@ Specifically, a point in G1 as a 384-bit integer `z`, which we decompose into:
 * `highflag = z // 2**382`
 * `lowflag = (z % 2**382) // 2**381`
 
-If `highflag == 3`, the point is the point at infinity and we require `lowflag = x = 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x, y)` where `y` is the valid coordinate such that `(y * 2) // q == lowflag`.
+For uniqueness of representation we require `x < q`. If `highflag == 3`, the point is the point at infinity and we require `lowflag == x == 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x, y)` where `y` is the valid coordinate such that `(y * 2) // q == lowflag`.
 
 We represent a point in G2 as a pair of 384-bit integers `(z1, z2)` that are each decomposed into `x1`, `highflag1`, `lowflag1`, `x2`, `highflag2`, `lowflag2` as above. We require `lowflag2 == highflag2 == 0`. If `highflag1 == 3`, the point is the point at infinity and we require `lowflag1 == x1 == x2 == 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part of `y` satisfies `(y_im * 2) // q == lowflag1`.
 
