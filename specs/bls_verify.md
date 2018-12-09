@@ -66,7 +66,7 @@ def hash_to_G2(message, domain):
     x2 = hash(bytes8(domain) + b'\x02' + message)
     x_coordinate = FQ2([x1, x2]) # x1 + x2 * i
     while 1:
-        x_cubed_plus_b2 = x_coordinate ** 3 + FQ2([4,4])
+        x_cubed_plus_b2 = x_coordinate ** 3 + FQ2([4, 4])
         y_coordinate = modular_square_root(x_cubed_plus_b2)
         if y_coordinate is not None:
             break
@@ -91,7 +91,7 @@ def modular_square_root(value):
 
 ## Signature verification
 
-In the following `e` is the pairing function and `id_G1` the identity in G1.
+In the following `e` is the pairing function and `g` is the generator in G1.
 
 ### `bls_verify`
 
@@ -99,7 +99,7 @@ In the following `e` is the pairing function and `id_G1` the identity in G1.
 
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
-* Verify `e(pubkey, hash_to_G2(message, domain)) == e(id_G1, sig)`.
+* Verify `e(pubkey, hash_to_G2(message, domain)) == e(g, sig)`.
 
 ### `bls_verify_multiple`
 
@@ -108,4 +108,4 @@ In the following `e` is the pairing function and `id_G1` the identity in G1.
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
 * Verify that `len(pubkeys)` equals `len(messages)` and denote the length `L`.
-* Verify that `e(pubkeys[0], hash_to_G2(messages[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(messages[L-1], domain)) == e(id_G1, sig)`.
+* Verify that `e(pubkeys[0], hash_to_G2(messages[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(messages[L-1], domain)) == e(g, sig)`.
