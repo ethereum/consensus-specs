@@ -105,7 +105,7 @@ Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain:
 
 ### `bls_verify_multiple`
 
-Let `BLSMultiVerify(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64) -> bool`:
+Let `bls_verify_multiple(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64) -> bool`:
 
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
