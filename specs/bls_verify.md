@@ -101,7 +101,7 @@ Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain:
 
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
-* Verify `e(pubkey, hash_to_G2(message, domain)) == e(g, signature)`.
+* Verify that `e(pubkey, hash_to_G2(message, domain)) == e(g, signature)`.
 
 ### `bls_verify_multiple`
 
