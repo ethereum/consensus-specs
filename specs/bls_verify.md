@@ -1,64 +1,111 @@
-### BLS Verification
+# BLS signature verification
 
 **Warning: This document is pending academic review and should not yet be considered secure.**
 
-See https://z.cash/blog/new-snark-curve/ for BLS-12-381 parameters. `q` is the field modulus.
+## Table of contents
+<!-- TOC -->
 
-We represent coordinates as defined in https://github.com/zkcrypto/pairing/tree/master/src/bls12_381/.
+- [BLS signature verification](#bls-signature-verification)
+    - [Table of contents](#table-of-contents)
+    - [Point representations](#point-representations)
+        - [G1 points](#g1-points)
+        - [G2 points](#g2-points)
+    - [Helpers](#helpers)
+        - [`hash_to_G2`](#hash_to_g2)
+        - [`modular_square_root`](#modular_square_root)
+    - [Signature verification](#signature-verification)
+        - [`bls_verify`](#bls_verify)
+        - [`bls_verify_multiple`](#bls_verify_multiple)
 
-Specifically, a point in G1 as a 384-bit integer `z`, which we decompose into:
+<!-- /TOC -->
 
-* `x = z % 2**381` (must be `< q`)
-* `highflag = z // 2**382`
-* `lowflag = (z % 2**382) // 2**381`
+The BLS12-381 curve parameters are defined [here](https://z.cash/blog/new-snark-curve).
 
-If `highflag == 3`, the point is the point at infinity and we require `lowflag = x = 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x, y)` where `y` is the valid coordinate such that `(y * 2) // q == lowflag`.
+## Point representations
 
-We represent a point in G2 as a pair of 384-bit integers `(z1, z2)` that are each decomposed into `x1`, `highflag1`, `lowflag1`, `x2`, `highflag2`, `lowflag2` as above, where `x1` and `x2` must both be `< q`. We require `lowflag2 == highflag2 == 0`. If `highflag1 == 3`, the point is the point at infinity and we require `lowflag1 == x1 == x2 == 0`. Otherwise, we require `highflag == 2`, in which case the point is `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part of `y` satisfies `(y_im * 2) // q == lowflag1`.
+We represent points in the groups G1 and G2 following [zkcrypto/pairing](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381). We denote by `q` the field modulus and by `i` the imaginary unit.
 
-`BLSVerify(pubkey: uint384, msg: bytes32, sig: [uint384], domain: uint64)` is done as follows:
+### G1 points
 
-* Verify that `pubkey` is a valid G1 point and `sig` is a valid G2 point.
-* Convert `msg` to a G2 point using `hash_to_G2` defined below.
-* Do the pairing check: verify `e(pubkey, hash_to_G2(msg, domain)) == e(G1, sig)` (where `e` is the BLS pairing function)
+A point in G1 is represented as a 384-bit integer `z` decomposed as a 381-bit integer and three 1-bit flags:
 
-Here is the `hash_to_G2` definition:
+* `x = z % 2**381`
+* `a_flag = (z % 2**382) // 2**381`
+* `b_flag = (z % 2**383) // 2**382`
+* `c_flag = (z % 2**384) // 2**383`
+
+We require:
+
+* `x < q`
+* `c_flag == 1`
+* if `b_flag == 1` then `a_flag == x == 0` and `z` is the point at infinity
+* if `b_flag == 0` then `z` is the point `(x, y)` where `y` is the valid coordinate such that `(y * 2) // q == a_flag`
+
+### G2 points
+
+A point in G2 is represented as a pair of 384-bit integers `(z1, z2)`. We decompose `z1` and `z2` as above into `x1`, `a_flag1`, `b_flag1`, `c_flag1` and `x2`, `a_flag2`, `b_flag2`, `c_flag2`.
+
+We require:
+
+* `x1 < q` and `x2 < q`
+* `a_flag2 == b_flag2 == c_flag2 == 0`
+* `c_flag1 == 1`
+* if `b_flag1 == 1` then `a_flag1 == x1 == x2 == 0` and `(z1, z2)` is the point at infinity
+* if `b_flag1 == 0` then `(z1, z2)` is the point `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part `y_im` of `y` satisfies `(y_im * 2) // q == a_flag1`.
+
+## Helpers
+
+### `hash_to_G2`
 
 ```python
 G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
-field_modulus = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
+q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
 
-def hash_to_G2(m, domain):
-    x1 = hash(bytes8(domain) + b'\x01' + m)
-    x2 = hash(bytes8(domain) + b'\x02' + m)
-    x_coord = FQ2([x1, x2]) # x1 + x2 * i
+def hash_to_G2(message, domain):
+    x1 = hash(bytes8(domain) + b'\x01' + message)
+    x2 = hash(bytes8(domain) + b'\x02' + message)
+    x_coordinate = FQ2([x1, x2]) # x1 + x2 * i
     while 1:
-        x_cubed_plus_b2 = x_coord ** 3 + FQ2([4,4])
-        y_coord = mod_sqrt(x_cubed_plus_b2)
-        if y_coord is not None:
+        x_cubed_plus_b2 = x_coordinate ** 3 + FQ2([4,4])
+        y_coordinate = modular_square_root(x_cubed_plus_b2)
+        if y_coordinate is not None:
             break
-        x_coord += FQ2([1, 0]) # Add one until we get a quadratic residue
-    assert is_on_curve((x_coord, y_coord))
-    return multiply((x_coord, y_coord), G2_cofactor)
+        x_coordinate += FQ2([1, 0]) # Add one until we get a quadratic residue
+    assert is_on_curve((x_coordinate, y_coordinate))
+    return multiply((x_coordinate, y_coordinate), G2_cofactor)
 ```
 
-Here is a sample implementation of `mod_sqrt`:
+### `modular_square_root`
 
 ```python
-qmod = field_modulus ** 2 - 1
+qmod = q ** 2 - 1
 eighth_roots_of_unity = [FQ2([1,1]) ** ((qmod * k) // 8) for k in range(8)]
 
-def mod_sqrt(val):
-    candidate_sqrt = val ** ((qmod + 8) // 16)
-    check = candidate_sqrt ** 2 / val
+def modular_square_root(value):
+    candidate_square_root = value ** ((qmod + 8) // 16)
+    check = candidate_square_root ** 2 / value
     if check in eighth_roots_of_unity[::2]:
-        return candidate_sqrt / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
+        return candidate_square_root / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
     return None
 ```
 
-`BLSMultiVerify(pubkeys: [uint384], msgs: [bytes32], sig: [uint384], domain: uint64)` is done as follows:
+## Signature verification
 
-* Verify that each element of `pubkeys` is a valid G1 point and `sig` is a valid G2 point.
-* Convert each element of `msg` to a G2 point using `hash_to_G2` defined above, using the specified `domain`.
-* Check that the length of `pubkeys` and `msgs` is the same, call the length `L`
-* Do the pairing check: verify `e(pubkeys[0], hash_to_G2(msgs[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(msgs[L-1], domain)) == e(G1, sig)`
+In the following `e` is the pairing function and `id_G1` the identity in G1.
+
+### `bls_verify`
+
+`bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain: uint64)` is done as follows:
+
+* Verify that `pubkey` is a valid G1 point.
+* Verify that `signature` is a valid G2 point.
+* Verify `e(pubkey, hash_to_G2(message, domain)) == e(id_G1, sig)`.
+
+### `bls_verify_multiple`
+
+`BLSMultiVerify(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64)` is done as follows:
+
+* Verify that each `pubkey` in `pubkeys` is a valid G1 point.
+* Verify that `signature` is a valid G2 point.
+* Verify that `len(pubkeys)` equals `len(messages)` and denote the length `L`.
+* Verify that `e(pubkeys[0], hash_to_G2(messages[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(messages[L-1], domain)) == e(id_G1, sig)`.
