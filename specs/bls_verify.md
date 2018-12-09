@@ -53,7 +53,7 @@ We require:
 * `a_flag2 == b_flag2 == c_flag2 == 0`
 * `c_flag1 == 1`
 * if `b_flag1 == 1` then `a_flag1 == x1 == x2 == 0` and `(z1, z2)` is the point at infinity
-* if `b_flag1 == 0` then `(z1, z2)` is the point `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part `y_im` of `y` satisfies `(y_im * 2) // q == a_flag1`.
+* if `b_flag1 == 0` then `(z1, z2)` is the point `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part `y_im` of `y` satisfies `(y_im * 2) // q == a_flag1`
 
 ## Helpers
 
