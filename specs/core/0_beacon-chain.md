@@ -1038,8 +1038,8 @@ def on_startup(initial_validator_entries: List[Any],
 
     # Setup state
     initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
-    validator_indices = list(range(len(initial_validator_registry)))
-    initial_persistent_committees = split(shuffle(validator_indices, ZERO_HASH), SHARD_COUNT)
+    active_validator_indices = get_active_validator_indices(initial_validator_registry)
+    initial_persistent_committees = split(shuffle(active_validator_indices, ZERO_HASH), SHARD_COUNT)
 
     state = BeaconState(
         # Misc
