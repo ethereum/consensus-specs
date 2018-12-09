@@ -268,7 +268,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ##### `CasperVotes`
 
- ```python
+```python
 {
     # Proof-of-custody indices (0 bits)
     'aggregate_signature_poc_0_indices': '[uint24]',
