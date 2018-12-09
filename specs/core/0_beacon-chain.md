@@ -26,7 +26,7 @@
                 - [`ProposerSlashing`](#proposerslashing)
             - [Casper slashings](#casper-slashings)
                 - [`CasperSlashing`](#casperslashing)
-                - [`CasperVotes`](#caspervotes)
+                - [`SlashableVoteData`](#slashablevotedata)
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
@@ -147,7 +147,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
-| `BLS_WITHDRAWAL_CREDENTIALS` | `0x00` | - |
+| `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
@@ -260,13 +260,13 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # First batch of votes
-    'votes_1': CasperVotes,
+    'votes_1': SlashableVoteData,
     # Second batch of votes
-    'votes_2': CasperVotes,
+    'votes_2': SlashableVoteData,
 }
 ```
 
-##### `CasperVotes`
+##### `SlashableVoteData`
 
 ```python
 {
@@ -568,7 +568,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositParameters`. One of the `DepositParameters` fields is `withdrawal_credentials` which must satisfy:
 
-* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_CREDENTIALS`
+* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
 
 We recommend the private key corresponding to `withdrawal_pubkey` be stored in cold storage until a withdrawal is required.
@@ -963,7 +963,7 @@ def get_domain(fork_data: ForkData,
 #### `verify_casper_votes`
 
 ```python
-def verify_casper_votes(state: State, votes: CasperVotes) -> bool:
+def verify_casper_votes(state: State, votes: SlashableVoteData) -> bool:
     if len(votes.aggregate_signature_poc_0_indices) + len(votes.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
         return False
 
