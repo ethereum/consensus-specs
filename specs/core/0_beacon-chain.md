@@ -938,7 +938,7 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
         current_validator_registry_delta_chain_tip +
         bytes1(flag) +
         bytes3(index) +
-        bytes32(pubkey)
+        bytes48(pubkey)
     )
 ```
 
