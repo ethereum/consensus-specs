@@ -186,8 +186,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**34` (= 17,179,869,184) |
 
-* The `BASE_REWARD_QUOTIENT` constant dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `SQRT_E_DROP_TIME**2` where `SQRT_E_DROP_TIME := 2**17 slots` (~9 days) is the amount of time it takes for the inactivity penalty to cut deposits of non-participating [validators](#dfn-validator) by ~39.4%. The balance retained by offline [validators](#dfn-validator) after `D` epochs is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(D**2/2)` or `(1-1/SQRT_E_DROP_TIME**2)**(D**2/2)`; hence, after `SQRT_E_DROP_TIME` epochs it's roughly `(1-1/SQRT_E_DROP_TIME**2)**(SQRT_E_DROP_TIME**2/2)`, or `1/sqrt(e) ~= 0.606`.
+* The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**17 slots` (~9 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` slots is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` slots it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Status codes
 
