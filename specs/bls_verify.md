@@ -12,12 +12,14 @@
         - [G2 points](#g2-points)
     - [Helpers](#helpers)
         - [`hash_to_G2`](#hash_to_g2)
-        - [`modular_square_root`](#modular_square_root)
+        - [`modular_squareroot`](#modular_squareroot)
     - [Signature verification](#signature-verification)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
 
 <!-- /TOC -->
+
+## Curve 
 
 The BLS12-381 curve parameters are defined [here](https://z.cash/blog/new-snark-curve).
 
@@ -67,7 +69,7 @@ def hash_to_G2(message, domain):
     x_coordinate = FQ2([x1, x2]) # x1 + x2 * i
     while 1:
         x_cubed_plus_b2 = x_coordinate ** 3 + FQ2([4, 4])
-        y_coordinate = modular_square_root(x_cubed_plus_b2)
+        y_coordinate = modular_squareroot(x_cubed_plus_b2)
         if y_coordinate is not None:
             break
         x_coordinate += FQ2([1, 0]) # Add one until we get a quadratic residue
@@ -75,17 +77,17 @@ def hash_to_G2(message, domain):
     return multiply((x_coordinate, y_coordinate), G2_cofactor)
 ```
 
-### `modular_square_root`
+### `modular_squareroot`
 
 ```python
 qmod = q ** 2 - 1
 eighth_roots_of_unity = [FQ2([1,1]) ** ((qmod * k) // 8) for k in range(8)]
 
-def modular_square_root(value):
-    candidate_square_root = value ** ((qmod + 8) // 16)
-    check = candidate_square_root ** 2 / value
+def modular_squareroot(value):
+    candidate_squareroot = value ** ((qmod + 8) // 16)
+    check = candidate_squareroot ** 2 / value
     if check in eighth_roots_of_unity[::2]:
-        return candidate_square_root / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
+        return candidate_squareroot / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
     return None
 ```
 
@@ -95,17 +97,17 @@ In the following `e` is the pairing function and `g` is the generator in G1.
 
 ### `bls_verify`
 
-`bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain: uint64)` is done as follows:
+Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain: uint64) -> bool`:
 
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
-* Verify `e(pubkey, hash_to_G2(message, domain)) == e(g, sig)`.
+* Verify `e(pubkey, hash_to_G2(message, domain)) == e(g, signature)`.
 
 ### `bls_verify_multiple`
 
-`BLSMultiVerify(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64)` is done as follows:
+Let `BLSMultiVerify(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64) -> bool`:
 
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
 * Verify that `len(pubkeys)` equals `len(messages)` and denote the length `L`.
-* Verify that `e(pubkeys[0], hash_to_G2(messages[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(messages[L-1], domain)) == e(g, sig)`.
+* Verify that `e(pubkeys[0], hash_to_G2(messages[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(messages[L-1], domain)) == e(g, signature)`.
