@@ -40,20 +40,20 @@ We require:
 
 * `x < q`
 * `c_flag == 1`
-* if `b_flag == 1` then `a_flag == x == 0` and `z` is the point at infinity
-* if `b_flag == 0` then `z` is the point `(x, y)` where `y` is the valid coordinate such that `(y * 2) // q == a_flag`
+* if `b_flag == 1` then `a_flag == x == 0` and `z` represents the point at infinity
+* if `b_flag == 0` then `z` represents the point `(x, y)` where `y` is the valid coordinate such that `(y * 2) // q == a_flag`
 
 ### G2 points
 
-A point in G2 is represented as a pair of 384-bit integers `(z1, z2)`. We decompose `z1` and `z2` as above into `x1`, `a_flag1`, `b_flag1`, `c_flag1` and `x2`, `a_flag2`, `b_flag2`, `c_flag2`.
+A point in G2 is represented as a pair of 384-bit integers `(z1, z2)`. We decompose `z1` as above into `x1`, `a_flag1`, `b_flag1`, `c_flag1` and `z2` into `x2`, `a_flag2`, `b_flag2`, `c_flag2`.
 
 We require:
 
 * `x1 < q` and `x2 < q`
 * `a_flag2 == b_flag2 == c_flag2 == 0`
 * `c_flag1 == 1`
-* if `b_flag1 == 1` then `a_flag1 == x1 == x2 == 0` and `(z1, z2)` is the point at infinity
-* if `b_flag1 == 0` then `(z1, z2)` is the point `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part `y_im` of `y` satisfies `(y_im * 2) // q == a_flag1`
+* if `b_flag1 == 1` then `a_flag1 == x1 == x2 == 0` and `(z1, z2)` represents the point at infinity
+* if `b_flag1 == 0` then `(z1, z2)` represents the point `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part `y_im` of `y` satisfies `(y_im * 2) // q == a_flag1`
 
 ## Helpers
 
@@ -79,6 +79,8 @@ def hash_to_G2(message, domain):
 
 ### `modular_squareroot`
 
+`modular_squareroot(x)` returns the value `y` such that `y**2 % field_modulus == x`, and `None` if this is not possible. In cases where there are two solutions, the value with higher imaginary component is favored; if both solutions have equal imaginary component the value with higher real component is favored. Here is an implementation.
+
 ```python
 qmod = q ** 2 - 1
 eighth_roots_of_unity = [FQ2([1,1]) ** ((qmod * k) // 8) for k in range(8)]
@@ -87,7 +89,9 @@ def modular_squareroot(value):
     candidate_squareroot = value ** ((qmod + 8) // 16)
     check = candidate_squareroot ** 2 / value
     if check in eighth_roots_of_unity[::2]:
-        return candidate_squareroot / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
+        x1 = candidate_squareroot / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
+        x2 = -x1
+        return x1 if (x1.coeffs[1].n, x1.coeffs[0].n) > (x2.coeffs[1].n, x2.coeffs[0].n) else x2
     return None
 ```
 
