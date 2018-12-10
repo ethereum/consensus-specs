@@ -149,6 +149,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
+| `ANCESTOR_HASH_DEPTH` | 16 |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -383,7 +384,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'slot': 'uint64',
     # Skip list of ancestor beacon block hashes
     # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
-    'ancestor_hashes': ['hash32'],
+    'parent_hash': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
@@ -454,6 +455,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_block_hashes': ['hash32'],  # Needed to process attestations, older to newer
     'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
+    'ancestor_pow2_hashes': ['hash32'],
+    'ancestor_interval_hashes': ['hash32'],
 
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
@@ -648,7 +651,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with hash `block.ancestor_hashes[0]` has been processed and accepted.
+* The parent block with hash `block.parent_hash` has been processed and accepted.
 * The node has processed its `state` up to slot, `block.slot - 1`.
 * The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
@@ -883,13 +886,19 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `get_updated_ancestor_hashes`
 
 ```python
-def get_updated_ancestor_hashes(latest_block: BeaconBlock,
-                                latest_hash: Hash32) -> List[Hash32]:
-    new_ancestor_hashes = copy.deepcopy(latest_block.ancestor_hashes)
-    for i in range(32):
-        if latest_block.slot % 2**i == 0:
-            new_ancestor_hashes[i] = latest_hash
-    return new_ancestor_hashes
+def get_updated_ancestor_hashes(latest_ancestor_pow2_hashes: List[Hash32],
+                                latest_ancestor_interval_hashes: List[Hash32],,
+                                latest_slot: int,
+                                latest_hash: Hash32) -> (List[Hash32], List[Hash32]):
+    new_ancestor_pow2_hashes = copy.deepcopy(latest_ancestor_pow2_hashes)
+    for i in range(ANCESTOR_HASH_DEPTH):
+        if latest_slot % 2**i == 0:
+            new_ancestor_pow2_hashes[i] = latest_hash
+    if latest_slot % 2**ANCESTOR_HASH_DEPTH == 0:
+        new_ancestor_interval_hashes = latest_ancestor_interval_hashes + [latest_hash]
+    else:
+        new_ancestor_interval_hashes = latest_ancestor_interval_hashes
+    return new_ancestor_pow2_hashes, new_ancestor_interval_hashes
 ```
 
 #### `get_attestation_participants`
@@ -995,7 +1004,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 {
     'header': BeaconBlockHeader(
         slot=INITIAL_SLOT_NUMBER,
-        ancestor_hashes=[ZERO_HASH for i in range(32)],
+        parent_hash=ZERO_HASH,
         state_root=STARTUP_STATE_ROOT,
         randao_reveal=ZERO_HASH,
         candidate_pow_receipt_root=ZERO_HASH,
@@ -1075,6 +1084,8 @@ def on_startup(initial_validator_entries: List[Any],
         latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
+        ancestor_pow2_hashes=[ZERO_HASH for _ in range(ANCESTOR_HASH_DEPTH)],
+        ancestor_interval_hashes=[ZERO_HASH for _ in range((INITIAL_SLOT_NUMBER-1) // 2**ANCESTOR_HASH_DEPTH + 1)]
 
         # PoW receipt root
         processed_pow_receipt_root=processed_pow_receipt_root,
@@ -1240,13 +1251,12 @@ Below are the processing steps that happen at every slot.
 
 * Let `latest_block` be the latest `BeaconBlock` that was processed in the chain.
 * Let `latest_hash` be the hash of `latest_block`.
-* Set `state.slot += 1`
+* Set `state.slot += 1` (NOTE: after this line, `latest_hash` will be the hash in the chain at slot `state.slot - 1`)
 * Set `state.latest_block_hashes = state.latest_block_hashes + [latest_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
 
 If there is a block from the proposer for `state.slot`, we process that incoming block:
 * Let `block` be that associated incoming block.
 * Verify that `block.slot == state.slot`
-* Verify that `block.ancestor_hashes` equals `get_updated_ancestor_hashes(latest_block, latest_hash)`.
 
 If there is no block from the proposer at state.slot:
 * Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
@@ -1257,6 +1267,10 @@ If there is no block from the proposer at state.slot:
 * Let `block_hash_without_sig` be the hash of `block` where `block.signature` is set to `[0, 0]`.
 * Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
 * Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
+
+### Ancestor hashes
+
+* Set `state.ancestor_pow2_hashes, state.ancestor_interval_hashes` to the output of `get_updated_ancestor_hashes(state.ancestor_pow2_hashes, state.ancestor_interval_hashes, state.slot - 1, latest_hash)`
 
 ### RANDAO
 
