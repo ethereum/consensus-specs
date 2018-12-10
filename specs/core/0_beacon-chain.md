@@ -1225,7 +1225,7 @@ def exit_validator(index: int,
                 committee.pop(i)
                 break
 
-    if penalize:
+    if new_status == EXITED_WITH_PENALTY:
         state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(validator)
         
         whistleblower = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
@@ -1311,7 +1311,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 * Let `intersection = [x for x in indices(casper_slashing.votes_1) if x in indices(casper_slashing.votes_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `casper_slashing.votes_1.data.justified_slot + 1 < casper_slashing.votes_2.data.justified_slot + 1 == casper_slashing.votes_2.data.slot < casper_slashing.votes_1.data.slot` or `casper_slashing.votes_1.data.slot == casper_slashing.votes_2.data.slot`.
-* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, penalize=True, new_status=EXITED_WITH_PENALTY)`
+* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
 
