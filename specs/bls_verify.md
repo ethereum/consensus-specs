@@ -7,6 +7,7 @@
 
 - [BLS signature verification](#bls-signature-verification)
     - [Table of contents](#table-of-contents)
+    - [Curve parameters](#curve-parameters)
     - [Point representations](#point-representations)
         - [G1 points](#g1-points)
         - [G2 points](#g2-points)
@@ -19,7 +20,7 @@
 
 <!-- /TOC -->
 
-## Curve 
+## Curve parameters
 
 The BLS12-381 curve parameters are defined [here](https://z.cash/blog/new-snark-curve).
 
