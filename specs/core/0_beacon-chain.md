@@ -225,7 +225,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ### Signature domains
 
-| Name | Value | 
+| Name | Value |
 | - | - |
 | `DOMAIN_DEPOSIT` | `0` |
 | `DOMAIN_ATTESTATION` | `1` |
@@ -1136,7 +1136,7 @@ def get_new_validators(validators: List[ValidatorRecord],
     )
     validators_copy = copy.deepcopy(validators)
     validator_pubkeys = [v.pubkey for v in validators_copy]
-    
+
     if pubkey not in validator_pubkeys:
         # Add new validator
         validator = ValidatorRecord(
@@ -1167,7 +1167,7 @@ def get_new_validators(validators: List[ValidatorRecord],
     return validators_copy, index
 ```
 
-`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).  
+`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).
 Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance:
 
 ```python
@@ -1227,7 +1227,7 @@ def exit_validator(index: int,
 
     if new_status == EXITED_WITH_PENALTY:
         state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(validator)
-        
+
         whistleblower = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
         whistleblower_reward = validator.balance // WHISTLEBLOWER_REWARD_QUOTIENT
         whistleblower.balance += whistleblower_reward
@@ -1432,7 +1432,7 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 * Let `total_balance(shard_committee) = sum([get_effective_balance(v) for v in shard_committee.committee])`.
 * Let `inclusion_slot(v) = a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(v) = a.slot_included - a.data.slot` where `a` is the above attestation.
-* Let `adjust_for_inclusion_distance(magnitude, distance)` be the function below. 
+* Let `adjust_for_inclusion_distance(magnitude, distance)` be the function below.
 
 ```python
 def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
@@ -1537,7 +1537,7 @@ def get_updated_validator_registry(validator_registry: List[ValidatorRecord],
     active_validator_indices = get_active_validator_indices(validator_registry)
     # The total effective balance of active validators
     total_balance = sum([get_effective_balance(v) for i, v in enumerate(validator_registry) if i in active_validator_indices])
-    
+
     # The maximum balance churn in Gwei (for deposits and exits separately)
     max_balance_churn = max(
         MAX_DEPOSIT * GWEI_PER_ETH,
@@ -1563,7 +1563,7 @@ def get_updated_validator_registry(validator_registry: List[ValidatorRecord],
                 flag=ACTIVATION,
             )
 
-    # Exit validators within the allowable balance churn 
+    # Exit validators within the allowable balance churn
     balance_churn = 0
     for i, validator in enumerate(validator_registry):
         if validator.status == ACTIVE_PENDING_EXIT:
@@ -1662,7 +1662,7 @@ This section is divided into Normative and Informative references.  Normative re
 ## Normative
 
 ## Informative
-<a id="ref-python-poc"></a> _**python-poc**_  
+<a id="ref-python-poc"></a> _**python-poc**_
  &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
 
 # Copyright
