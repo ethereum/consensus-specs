@@ -392,7 +392,7 @@ return typ(**values), item_index
 
 The below `SSZTreeHash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
 
-We define `hash(x)` as `BLAKE2b-512(x)[0:32]`.
+Refer to [Appendix A](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#appendix-a---hash-function) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
 #### `uint8`..`uint256`, `bool`, `address`, `hash1`..`hash32`
 
