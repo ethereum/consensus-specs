@@ -71,9 +71,11 @@
             - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
+            - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
             - [`verify_casper_votes`](#verify_casper_votes)
             - [`integer_squareroot`](#integer_squareroot)
+            - [`BLSVerify`](#blsverify)
         - [On startup](#on-startup)
         - [Routine for activating a validator](#routine-for-activating-a-validator)
         - [Routine for exiting a validator](#routine-for-exiting-a-validator)
@@ -959,6 +961,17 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     )
 ```
 
+#### `get_fork_version`
+
+```python
+def get_fork_version(fork_data: ForkData,
+                     slot: int) -> int:
+    if slot < fork_data.fork_slot:
+        return fork_data.pre_fork_version
+    else:
+        return fork_data.post_fork_version
+```
+
 #### `get_domain`
 
 ```python
@@ -997,6 +1010,10 @@ def integer_squareroot(n: int) -> int:
         y = (x + n // x) // 2
     return x
 ```
+
+#### `BLSVerify`
+
+`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).
 
 ### On startup
 
@@ -1094,9 +1111,7 @@ def on_startup(initial_validator_entries: List[Any],
 
 ### Routine for processing deposits
 
-These logs should be processed in the order in which they are emitted by Ethereum 1.0.
-
-First, some helper functions:
+First, a helper function:
 
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int) -> int:
@@ -1104,17 +1119,9 @@ def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: i
         if v.balance == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
             return i
     return None
-
-def get_fork_version(fork_data: ForkData,
-                     slot: int) -> int:
-    if slot < fork_data.fork_slot:
-        return fork_data.pre_fork_version
-    else:
-        return fork_data.post_fork_version
 ```
 
-`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).
-Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance:
+Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance by some `deposit` amount:
 
 ```python
 def process_deposit(state: BeaconState,
@@ -1352,6 +1359,8 @@ For each `attestation` in `block.body.attestations`:
 #### Deposits
 
 Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
+
+[TODO: add logic to ensure that deposits from 1.0 chain are processed in order:]
 
 For each `deposit` in `block.body.deposits`:
 
