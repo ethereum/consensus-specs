@@ -1238,10 +1238,10 @@ def exit_validator(index: int,
         whistleblower.balance += whistleblower_reward
         validator.balance -= whistleblower_reward
 
-    if prev_status != ACTIVE:
+    if prev_status in [EXITED_WITH_PENALTY, EXITED_WITHOUT_PENALTY]
         return
 
-    # The following updates only occur if previously ACTIVE
+    # The following updates only occur if not previous exited
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
