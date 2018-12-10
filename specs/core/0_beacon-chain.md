@@ -651,7 +651,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with hash `block.ancestor_hashes[0]` has been processed and accepted.
+* The parent block with `SSZTreeHash` `block.ancestor_hashes[0]` has been processed and accepted.
 * The node has processed its `state` up to slot, `block.slot - 1`.
 * The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
@@ -878,7 +878,7 @@ def get_block_hash(state: BeaconState,
     return state.latest_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
+`get_block_hash(_, s)` should always return `SSZTreeHash` of the block in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
 #### `get_beacon_proposer_index`
 
@@ -1653,7 +1653,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 ## State root processing
 
-Verify `block.state_root == hash(state)` if there exists a `block` for the slot being processed.
+Verify `block.state_root == SSZTreeHash(state)` if there exists a `block` for the slot being processed.
 
 # Appendix
 ## Appendix A - Hash function
