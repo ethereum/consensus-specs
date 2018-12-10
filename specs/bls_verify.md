@@ -67,17 +67,18 @@ G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982
 q = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
 
 def hash_to_G2(message, domain):
-    x1 = int.from_bytes(hash(bytes8(domain) + b'\x01' + message), 'big')
-    x2 = int.from_bytes(hash(bytes8(domain) + b'\x02' + message), 'big')
-    x_coordinate = FQ2([x1, x2]) # x1 + x2 * i
+    # Initial candidate x coordinate
+    x_re = int.from_bytes(hash(bytes8(domain) + b'\x01' + message), 'big')
+    x_im = int.from_bytes(hash(bytes8(domain) + b'\x02' + message), 'big')
+    x_coordinate = FQ2([x_re, x_im])  # x = x_re + i * x_im
+    
+    # Test candidate y coordinates until a one is found
     while 1:
-        x_cubed_plus_b2 = x_coordinate ** 3 + FQ2([4, 4])
-        y_coordinate = modular_squareroot(x_cubed_plus_b2)
-        if y_coordinate is not None:
-            break
-        x_coordinate += FQ2([1, 0]) # Add one until we get a quadratic residue
-    assert is_on_G2((x_coordinate, y_coordinate))
-    return multiply_in_G2((x_coordinate, y_coordinate), G2_cofactor)
+        y_coordinate_squared = x_coordinate ** 3 + FQ2([4, 4])  # The curve is y^2 = x^3 + 4(i + 1)
+        y_coordinate = modular_squareroot(y_coordinate_squared)
+        if y_coordinate is not None:  # Check if quadratic residue found
+            return multiply_in_G2((x_coordinate, y_coordinate), G2_cofactor)
+        x_coordinate += FQ2([1, 0])  # Add 1 and try again
 ```
 
 ### `modular_squareroot`
