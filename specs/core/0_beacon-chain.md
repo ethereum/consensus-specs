@@ -1210,7 +1210,7 @@ def activate_validator(index: int,
     validator.latest_status_change_slot = state.slot
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
-        index=i,
+        index=index,
         pubkey=validator.pubkey,
         flag=ACTIVATION,
     )
@@ -1360,7 +1360,7 @@ For each `attestation` in `block.body.attestations`:
 
 Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
-[TODO: add logic to ensure that deposits from 1.0 chain are processed in order:]
+[TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
 
 For each `deposit` in `block.body.deposits`:
 
