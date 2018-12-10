@@ -1091,8 +1091,8 @@ def on_startup(initial_validator_entries: List[Any],
         latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
-        ancestor_pow2_hashes=[ZERO_HASH for _ in range(ANCESTOR_HASH_DEPTH)],
-        ancestor_interval_hashes=[ZERO_HASH for _ in range((INITIAL_SLOT_NUMBER-1) // 2**ANCESTOR_HASH_DEPTH + 1)]
+        next_interval_merkle_partial=[ZERO_HASH for _ in range(ANCESTOR_HASH_DEPTH)],
+        ancestor_interval_merkle_roots=[ZERO_HASH for _ in range(INITIAL_SLOT_NUMBER // 2**ANCESTOR_HASH_DEPTH)]
 
         # PoW receipt root
         processed_pow_receipt_root=processed_pow_receipt_root,
