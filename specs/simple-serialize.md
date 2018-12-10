@@ -56,7 +56,7 @@ overhead.
 | Constant          | Value | Definition                                                                            |
 |:------------------|:-----:|:--------------------------------------------------------------------------------------|
 | `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
-| `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chuck size of the Merkle tree leaf.                           |
+| `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chunk size of the Merkle tree leaf.                           |
 
 
 ## Overview
@@ -394,11 +394,11 @@ The below `SSZTreeHash` algorithm is defined recursively in the case of lists an
 
 We define `hash(x)` as `BLAKE2b-512(x)[0:32]`.
 
-#### `uintN`, `bool`, `address`, `hash32`
+#### `uint8`..`uint256`, `bool`, `address`, `hash1`..`hash32`
 
 Return the serialization of the value.
 
-#### `bytes`, `hashN`
+#### `uint264`..`uintN`, `bytes`, `hash33`..`hashN`
 
 Return the hash of the serialization of the value.
 
