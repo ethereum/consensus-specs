@@ -29,12 +29,14 @@ We represent points in the groups G1 and G2 following [zkcrypto/pairing](https:/
 
 ### G1 points
 
-A point in G1 is represented as a 384-bit integer `z` decomposed as a 381-bit integer and three 1-bit flags:
+A point in G1 is represented as a 384-bit integer `z` decomposed as a 381-bit integer `x` and three 1-bit flags in the top bits:
 
 * `x = z % 2**381`
 * `a_flag = (z % 2**382) // 2**381`
 * `b_flag = (z % 2**383) // 2**382`
 * `c_flag = (z % 2**384) // 2**383`
+
+Respecting bit ordering, `z` is decomposed as `(c_flag, b_flag, a_flag, x)`.
 
 We require:
 
@@ -61,11 +63,11 @@ We require:
 
 ```python
 G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
-q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
+q = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
 
 def hash_to_G2(message, domain):
-    x1 = hash(bytes8(domain) + b'\x01' + message)
-    x2 = hash(bytes8(domain) + b'\x02' + message)
+    x1 = int.from_bytes(hash(bytes8(domain) + b'\x01' + message), 'big')
+    x2 = int.from_bytes(hash(bytes8(domain) + b'\x02' + message), 'big')
     x_coordinate = FQ2([x1, x2]) # x1 + x2 * i
     while 1:
         x_cubed_plus_b2 = x_coordinate ** 3 + FQ2([4, 4])
@@ -73,13 +75,13 @@ def hash_to_G2(message, domain):
         if y_coordinate is not None:
             break
         x_coordinate += FQ2([1, 0]) # Add one until we get a quadratic residue
-    assert is_on_curve((x_coordinate, y_coordinate))
-    return multiply((x_coordinate, y_coordinate), G2_cofactor)
+    assert is_on_G2((x_coordinate, y_coordinate))
+    return multiply_in_G2((x_coordinate, y_coordinate), G2_cofactor)
 ```
 
 ### `modular_squareroot`
 
-`modular_squareroot(x)` returns the value `y` such that `y**2 % field_modulus == x`, and `None` if this is not possible. In cases where there are two solutions, the value with higher imaginary component is favored; if both solutions have equal imaginary component the value with higher real component is favored. Here is an implementation.
+`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored.
 
 ```python
 qmod = q ** 2 - 1
