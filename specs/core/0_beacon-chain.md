@@ -1195,6 +1195,8 @@ def update_validator_status(index: int,
         exit_validator(index, state, new_status)
 ```
 
+The following are helpers and should only be called via `update_validator_status`:
+
 ```python
 def activate_validator(index: int,
                        state: BeaconState) -> None:
@@ -1321,7 +1323,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_hash != proposer_slashing.proposal_data_2.block_hash`.
 * Verify that `proposer.status != EXITED_WITH_PENALTY`.
-* Run `exit_validator(proposer_slashing.proposer_index, state, new_status=EXITED_WITH_PENALTY)`.
+* Run `update_validator_status(proposer_slashing.proposer_index, state, new_status=EXITED_WITH_PENALTY)`.
 
 #### Casper slashings
 
@@ -1336,7 +1338,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 * Let `intersection = [x for x in indices(casper_slashing.votes_1) if x in indices(casper_slashing.votes_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `casper_slashing.votes_1.data.justified_slot + 1 < casper_slashing.votes_2.data.justified_slot + 1 == casper_slashing.votes_2.data.slot < casper_slashing.votes_1.data.slot` or `casper_slashing.votes_1.data.slot == casper_slashing.votes_2.data.slot`.
-* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `exit_validator(i, state, new_status=EXITED_WITH_PENALTY)`
+* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(i, state, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
 
@@ -1403,7 +1405,7 @@ For each `exit` in `block.body.exits`:
 * Verify that `validator.status == ACTIVE`.
 * Verify that `state.slot >= exit.slot`.
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `exit_validator(validator_index, state, new_status=ACTIVE_PENDING_EXIT)`.
+* Run `update_validator_status(validator_index, state, new_status=ACTIVE_PENDING_EXIT)`.
 
 ### Ejections
 
@@ -1415,9 +1417,9 @@ def process_ejections(state: BeaconState) -> None:
     Iterate through the validator registry
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
-    for i, v in enumerate(state.validator_registry):
-        if is_active_validator(v) and v.balance < EJECTION_BALANCE:
-            exit_validator(i, state, new_status=EXITED_WITHOUT_PENALTY)
+    for index, validator in enumerate(state.validator_registry):
+        if is_active_validator(validor) and validator.balance < EJECTION_BALANCE:
+            update_validator_status(index, state, new_status=EXITED_WITHOUT_PENALTY)
 ```
 
 ## Per-epoch processing
