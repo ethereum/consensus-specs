@@ -77,8 +77,8 @@
             - [`integer_squareroot`](#integer_squareroot)
             - [`BLSVerify`](#blsverify)
         - [On startup](#on-startup)
-        - [Routine for activating a validator](#routine-for-activating-a-validator)
-        - [Routine for exiting a validator](#routine-for-exiting-a-validator)
+        - [Routine for processing deposits](#routine-for-processing-deposits)
+        - [Routine for updating validator status](#routine-for-updating-validator-status)
     - [Per-slot processing](#per-slot-processing)
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
@@ -1177,7 +1177,7 @@ def process_deposit(state: BeaconState,
     return index
 ```
 
-### Routines for updating validator status
+### Routine for updating validator status
 
 ```python
 def update_validator_status(index: int,
@@ -1550,7 +1550,7 @@ def update_validator_registry(state: BeaconState) -> None:
 
     # Activate validators within the allowable balance churn
     balance_churn = 0
-    for i, validator in enumerate(state.validator_registry):
+    for index, validator in enumerate(state.validator_registry):
         if validator.status == PENDING_ACTIVATION and validator.balance >= MAX_DEPOSIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validator)
@@ -1558,11 +1558,11 @@ def update_validator_registry(state: BeaconState) -> None:
                 break
 
             # Activate validator
-            update_validator_status(i, state, new_status=ACTIVE)
+            update_validator_status(index, state, new_status=ACTIVE)
 
     # Exit validators within the allowable balance churn 
     balance_churn = 0
-    for i, validator in enumerate(state.validator_registry):
+    for index, validator in enumerate(state.validator_registry):
         if validator.status == ACTIVE_PENDING_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validator)
@@ -1570,7 +1570,7 @@ def update_validator_registry(state: BeaconState) -> None:
                 break
 
             # Exit validator
-            update_validator_status(i, state, new_status=EXITED_WITHOUT_PENALTY)
+            update_validator_status(index, state, new_status=EXITED_WITHOUT_PENALTY)
 
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
