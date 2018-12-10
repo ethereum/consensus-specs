@@ -1319,16 +1319,16 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
-* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
-* Verify that `attestation.data.slot >= max(state.slot - EPOCH_LENGTH, 0)`.
+* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
+* Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_hash` is equal to `get_block_hash(state, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_hash` or `attestation.data.shard_block_hash` equals `state.latest_crosslinks[shard].shard_block_hash`.
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `BLSVerify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=aggregate_signature, domain=get_domain(state.fork_data, slot, DOMAIN_ATTESTATION))`.
-* [TO BE REMOVED IN PHASE 1] Verify that `shard_block_hash == ZERO_HASH`.
+    * Verify that `BLSVerify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
+* [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_hash == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
 #### Deposits
