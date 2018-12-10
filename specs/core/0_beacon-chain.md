@@ -65,7 +65,7 @@
             - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
             - [`get_block_hash`](#get_block_hash)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            - [`get_updated_ancestor_hashes`](#get_updated_ancestor_hashes)
+            - [`get_updated_ancestor_accumulator`](#get_updated_ancestor_accumulator)
             - [`get_attestation_participants`](#get_attestation_participants)
             - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
@@ -455,8 +455,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_block_hashes': ['hash32'],  # Needed to process attestations, older to newer
     'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
-    'ancestor_pow2_hashes': ['hash32'],
-    'ancestor_interval_hashes': ['hash32'],
+    'next_interval_merkle_partial': ['hash32'],
+    'ancestor_interval_merkle_roots': ['hash32'],
 
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
@@ -883,22 +883,29 @@ def get_beacon_proposer_index(state: BeaconState,
     return first_committee[slot % len(first_committee)]
 ```
 
-#### `get_updated_ancestor_hashes`
+#### `get_updated_ancestor_accumulator`
 
 ```python
-def get_updated_ancestor_hashes(latest_ancestor_pow2_hashes: List[Hash32],
-                                latest_ancestor_interval_hashes: List[Hash32],,
-                                latest_slot: int,
-                                latest_hash: Hash32) -> (List[Hash32], List[Hash32]):
-    new_ancestor_pow2_hashes = copy.deepcopy(latest_ancestor_pow2_hashes)
-    for i in range(ANCESTOR_HASH_DEPTH):
-        if latest_slot % 2**i == 0:
-            new_ancestor_pow2_hashes[i] = latest_hash
-    if latest_slot % 2**ANCESTOR_HASH_DEPTH == 0:
-        new_ancestor_interval_hashes = latest_ancestor_interval_hashes + [latest_hash]
+def get_updated_ancestor_accumulator(next_interval_merkle_partial,
+                                ancestor_interval_merkle_roots,
+                                latest_slot,
+                                latest_hash):
+    new_next_interval_merkle_partial = copy.deepcopy(next_interval_merkle_partial)
+    i = 0
+    while (latest_slot+1) % 2**(i+1) == 0 and i < ANCESTOR_HASH_DEPTH:
+        i += 1
+    h = latest_hash
+    for j in range(i):
+        h = hash(new_next_interval_merkle_partial[j] + h)
+        new_next_interval_merkle_partial[j] = ZERO_HASH
+    if i < ANCESTOR_HASH_DEPTH:
+        new_next_interval_merkle_partial[i] = h
+        new_ancestor_interval_merkle_roots = ancestor_interval_merkle_roots
     else:
-        new_ancestor_interval_hashes = latest_ancestor_interval_hashes
-    return new_ancestor_pow2_hashes, new_ancestor_interval_hashes
+        new_ancestor_interval_merkle_roots = ancestor_interval_merkle_roots + [h]
+        
+    return new_next_interval_merkle_partial, new_ancestor_interval_merkle_roots
+
 ```
 
 #### `get_attestation_participants`
@@ -1268,9 +1275,9 @@ If there is no block from the proposer at state.slot:
 * Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
 * Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
-### Ancestor hashes
+### Ancestor accumulator
 
-* Set `state.ancestor_pow2_hashes, state.ancestor_interval_hashes` to the output of `get_updated_ancestor_hashes(state.ancestor_pow2_hashes, state.ancestor_interval_hashes, state.slot - 1, latest_hash)`
+* Set `state.next_interval_merkle_partial, state.ancestor_interval_merkle_roots` to the output of `get_updated_ancestor_accumulator(state.next_interval_merkle_partial, state.ancestor_interval_merkle_roots, state.slot - 1, latest_hash)`
 
 ### RANDAO
 
