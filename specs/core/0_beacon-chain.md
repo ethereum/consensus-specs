@@ -1096,7 +1096,7 @@ def on_startup(initial_validator_entries: List[Any],
             randao_commitment=randao_commitment
         )
         if state.validator_registry[index].balance >= MAX_DEPOSIT:
-            update_validator_status(index, state, ACTIVE)
+            update_validator_status(state, index, ACTIVE)
 
     # set initial committee shuffling
     initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
@@ -1180,26 +1180,27 @@ def process_deposit(state: BeaconState,
 ### Routine for updating validator status
 
 ```python
-def update_validator_status(index: int,
-                            state: BeaconState,
+def update_validator_status(state: BeaconState,
+                            index: int,
                             new_status: int) -> None:
     """
     Update the validator status with the given ``index`` to ``new_status``.
+    Handle other general accounting related to this status update.
     Note that this function mutates ``state``.
     """
     if new_status == ACTIVE:
-        activate_validator(index, state)
+        activate_validator(state, index)
     if new_status == ACTIVE_PENDING_EXIT:
-        initiate_validator_exit(index, state)
+        initiate_validator_exit(state, index)
     if new_status in [EXITED_WITH_PENALTY, EXITED_WITHOUT_PENALTY]:
-        exit_validator(index, state, new_status)
+        exit_validator(state, index, new_status)
 ```
 
 The following are helpers and should only be called via `update_validator_status`:
 
 ```python
-def activate_validator(index: int,
-                       state: BeaconState) -> None:
+def activate_validator(state: BeaconState,
+                       index: int) -> None:
     """
     Activate the validator with the given ``index``.
     Note that this function mutates ``state``.
@@ -1219,16 +1220,23 @@ def activate_validator(index: int,
 ```
 
 ```python
-def initiate_validator_exit(index: int,
-                            state: BeaconState) -> None:
+def initiate_validator_exit(state: BeaconState,
+                            index: int) -> None:
+    """
+    Initiate exit for the validator with the given ``index``.
+    Note that this function mutates ``state``.
+    """
+    if validator.status != ACTIVE:
+        return
+
     validator = state.validator_registry[index]
     validator.status = ACTIVE_PENDING_EXIT
     validator.latest_status_change_slot = state.slot
 ```
 
 ```python
-def exit_validator(index: int,
-                   state: BeaconState,
+def exit_validator(state: BeaconState,
+                   index: int,
                    new_status: int) -> None:
     """
     Exit the validator with the given ``index``.
@@ -1236,6 +1244,10 @@ def exit_validator(index: int,
     """
     validator = state.validator_registry[index]
     prev_status = validator.status
+
+    if prev_status == EXITED_WITH_PENALTY:
+        return 
+
     validator.status = new_status
     validator.latest_status_change_slot = state.slot
 
@@ -1247,7 +1259,7 @@ def exit_validator(index: int,
         whistleblower.balance += whistleblower_reward
         validator.balance -= whistleblower_reward
 
-    if prev_status in [EXITED_WITH_PENALTY, EXITED_WITHOUT_PENALTY]
+    if prev_status == EXITED_WITHOUT_PENALTY
         return
 
     # The following updates only occur if not previous exited
@@ -1323,7 +1335,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_hash != proposer_slashing.proposal_data_2.block_hash`.
 * Verify that `proposer.status != EXITED_WITH_PENALTY`.
-* Run `update_validator_status(proposer_slashing.proposer_index, state, new_status=EXITED_WITH_PENALTY)`.
+* Run `update_validator_status(state, proposer_slashing.proposer_index, new_status=EXITED_WITH_PENALTY)`.
 
 #### Casper slashings
 
@@ -1338,7 +1350,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 * Let `intersection = [x for x in indices(casper_slashing.votes_1) if x in indices(casper_slashing.votes_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `casper_slashing.votes_1.data.justified_slot + 1 < casper_slashing.votes_2.data.justified_slot + 1 == casper_slashing.votes_2.data.slot < casper_slashing.votes_1.data.slot` or `casper_slashing.votes_1.data.slot == casper_slashing.votes_2.data.slot`.
-* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(i, state, new_status=EXITED_WITH_PENALTY)`
+* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
 
@@ -1405,7 +1417,7 @@ For each `exit` in `block.body.exits`:
 * Verify that `validator.status == ACTIVE`.
 * Verify that `state.slot >= exit.slot`.
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
-* Run `update_validator_status(validator_index, state, new_status=ACTIVE_PENDING_EXIT)`.
+* Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
 
 ### Ejections
 
@@ -1419,7 +1431,7 @@ def process_ejections(state: BeaconState) -> None:
     """
     for index, validator in enumerate(state.validator_registry):
         if is_active_validator(validor) and validator.balance < EJECTION_BALANCE:
-            update_validator_status(index, state, new_status=EXITED_WITHOUT_PENALTY)
+            update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
 ```
 
 ## Per-epoch processing
@@ -1560,7 +1572,7 @@ def update_validator_registry(state: BeaconState) -> None:
                 break
 
             # Activate validator
-            update_validator_status(index, state, new_status=ACTIVE)
+            update_validator_status(state, index, new_status=ACTIVE)
 
     # Exit validators within the allowable balance churn
     balance_churn = 0
@@ -1572,7 +1584,7 @@ def update_validator_registry(state: BeaconState) -> None:
                 break
 
             # Exit validator
-            update_validator_status(index, state, new_status=EXITED_WITHOUT_PENALTY)
+            update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
 
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
