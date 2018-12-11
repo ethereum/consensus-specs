@@ -57,6 +57,7 @@
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [Helper functions](#helper-functions)
+            - [`hash`](#hash)
             - [`is_active_validator`](#is_active_validator)
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
@@ -76,7 +77,7 @@
             - [`SSZTreeHash`](#ssztreehash)
             - [`verify_casper_votes`](#verify_casper_votes)
             - [`integer_squareroot`](#integer_squareroot)
-            - [`BLSVerify`](#blsverify)
+            - [`bls_verify`](#blsverify)
         - [On startup](#on-startup)
         - [Routine for processing deposits](#routine-for-processing-deposits)
         - [Routine for updating validator status](#routine-for-updating-validator-status)
@@ -103,8 +104,6 @@
         - [Proposer reshuffling](#proposer-reshuffling)
         - [Final updates](#final-updates)
     - [State root processing](#state-root-processing)
-- [Appendix](#appendix)
-    - [Appendix A - Hash function](#appendix-a---hash-function)
 - [References](#references)
     - [Normative](#normative)
     - [Informative](#informative)
@@ -708,6 +707,12 @@ The per-slot transitions generally focus on verifying aggregate signatures and s
 
 Note: The definitions below are for specification purposes and are not necessarily optimal implementations.
 
+#### `hash`
+
+The hash function is denoted by `hash`. In Phase 0 the beacon chain is deployed with the same hash function as Ethereum 1.0, i.e. Keccak-256 (also incorrectly known as SHA3).
+
+Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
+
 #### `is_active_validator`
  ```python
 def is_active_validator(validator: ValidatorRecord) -> bool:
@@ -1000,7 +1005,7 @@ def verify_casper_votes(state: BeaconState, votes: SlashableVoteData) -> bool:
 
     pubs = [aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_0_indices]),
             aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_1_indices])]
-    return BLSMultiVerify(pubkeys=pubs, msgs=[SSZTreeHash(votes)+bytes1(0), SSZTreeHash(votes)+bytes1(1), sig=aggregate_signature)
+    return bls_verify_multiple(pubkeys=pubs, msgs=[SSZTreeHash(votes)+bytes1(0), SSZTreeHash(votes)+bytes1(1), sig=aggregate_signature)
 ```
 
 #### `integer_squareroot`
@@ -1018,9 +1023,9 @@ def integer_squareroot(n: int) -> int:
     return x
 ```
 
-#### `BLSVerify`
+#### `bls_verify`
 
-`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS Verification spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).
+`bls_verify` is a function for verifying a BLS12-381 signature, defined in the [BLS Verification spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).
 
 ### On startup
 
@@ -1142,7 +1147,7 @@ def process_deposit(state: BeaconState,
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
-    assert BLSVerify(
+    assert bls_verify(
         pub=pubkey,
         msg=hash(bytes32(pubkey) + withdrawal_credentials + randao_commitment),
         sig=proof_of_possession,
@@ -1311,7 +1316,7 @@ If there is no block from the proposer at state.slot:
 
 * Let `block_hash_without_sig` be the `SSZTreeHash` of `block` where `block.signature` is set to `[0, 0]`.
 * Let `proposal_hash = SSZTreeHash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
-* Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
 ### RANDAO
 
@@ -1336,8 +1341,8 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=SSZTreeHash(proposer_slashing.proposal_data_1), sig=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
-* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=SSZTreeHash(proposer_slashing.proposal_data_2), sig=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, msg=SSZTreeHash(proposer_slashing.proposal_data_1), sig=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, msg=SSZTreeHash(proposer_slashing.proposal_data_2), sig=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_hash != proposer_slashing.proposal_data_2.block_hash`.
@@ -1373,7 +1378,7 @@ For each `attestation` in `block.body.attestations`:
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `BLSVerify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
+    * Verify that `bls_verify(pubkey=group_public_key, msg=SSZTreeHash(attestation.data) + bytes1(0), sig=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_hash == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
@@ -1420,7 +1425,7 @@ Verify that `len(block.body.exits) <= MAX_EXITS`.
 For each `exit` in `block.body.exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `BLSVerify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Verify that `validator.status == ACTIVE`.
 * Verify that `state.slot >= exit.slot`.
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
@@ -1661,11 +1666,6 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 ## State root processing
 
 Verify `block.state_root == SSZTreeHash(state)` if there exists a `block` for the slot being processed.
-
-# Appendix
-## Appendix A - Hash function
-
-In Phase 0 the beacon chain is deployed with the same hash function as Ethereum 1.0, i.e. Keccak-256 (also incorrectly known as SHA3). We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
 # References
 
