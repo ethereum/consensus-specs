@@ -1453,6 +1453,7 @@ All [validators](#dfn-validator):
 * Let `total_balance = sum([get_effective_balance(v) for v in active_validators])`.
 * Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
 * Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient` for any validator `v`.
+* Let `base_inactivity_penalty(v, slots_since_finality) = base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator `v`.
 
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the current epoch:
 
@@ -1465,10 +1466,24 @@ All [validators](#dfn-validator):
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the previous epoch:
 
 * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
-* Let `previous_epoch_boundary_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.epoch_boundary_hash == get_block_hash(state, state.slot - 2 * EPOCH_LENGTH) and a.justified_slot == state.previous_justified_slot]`.
+* Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_attestations]`.
+* Let `previous_epoch_attesters = [state.validator_registry[i] for indices in previous_epoch_attester_indices for i in indices]`.
+
+* Let `previous_epoch_justified_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.justified_slot == state.previous_justified_slot]`.
+* Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_justified_attestations]`.
+* Let `previous_epoch_justified_attesters = [state.validator_registry[i] for indices in previous_epoch_justified_attester_indices for i in indices]`.
+* Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_justified_attesters])`.
+
+* Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.epoch_boundary_hash == get_block_hash(state, state.slot - 2 * EPOCH_LENGTH)]`.
 * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
 * Let `previous_epoch_boundary_attesters = [state.validator_registry[i] for indices in previous_epoch_boundary_attester_indices for i in indices]`.
 * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_boundary_attesters])`.
+
+* Let `previous_epoch_head_attestations = [a for a in previous_epoch_attestations if a.beacon_block_hash == get_block_hash(state, a.slot)]`.
+* Let `previous_epoch_head_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_head_attestations]`.
+* Let `previous_epoch_head_attesters = [state.validator_registry[i] for indices in previous_epoch_head_attester_indices for i in indices]`.
+* Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_head_attesters])`.
+
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
@@ -1526,15 +1541,24 @@ Note: When applying penalties in the following balance recalculations implemente
 
 Case 1: `slots_since_finality <= 4 * EPOCH_LENGTH`:
 
-* Any [validator](#dfn-validator) `v` in `previous_epoch_boundary_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(v))`.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters` loses `base_reward(v)`.
+* Expected FFG source:
+  * Any [validator](#dfn-validator) `v` in `previous_epoch_justified_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_justified_attesting_balance // total_balance, inclusion_distance(v))`.
+  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attesters` loses `base_reward(v)`.
+* Expected FFG target:
+  * Any [validator](#dfn-validator) `v` in `previous_epoch_boundary_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(v))`.
+  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters` loses `base_reward(v)`.
+* Expected beacon chain head:
+  * Any [validator](#dfn-validator) `v` in `previous_epoch_head_attesters` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_head_attesting_balance // total_balance, inclusion_distance(v))`.
+  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_head_attesters` loses `base_reward(v)`.
 
 Case 2: `slots_since_finality > 4 * EPOCH_LENGTH`:
 
-* Any [validator](#dfn-validator) in `previous_epoch_boundary_attesters` sees their balance unchanged.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, and any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attesters`, loses `base_inactivity_penalty(v, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, loses `base_inactivity_penalty(v, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_head_attesters`, loses `base_inactivity_penalty(v, slots_since_finality)`.
+* Any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `3 * base_inactivity_penalty(v, slots_since_finality)`.
 
-For each `v` in `previous_epoch_boundary_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
+For each `v` in `previous_epoch_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
 ### Crosslink rewards and penalties
 
