@@ -50,7 +50,7 @@
             - [`ForkData`](#forkdata)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
-        - [`Deposit` logs](#deposit-logs)
+        - [`Eth1Deposit` logs](#eth1deposit-logs)
         - [`ChainStart` log](#chainstart-log)
         - [Vyper code](#vyper-code)
     - [Beacon chain processing](#beacon-chain-processing)
@@ -577,9 +577,9 @@ The deposit contract has a single `deposit` function which takes as argument a S
 
 We recommend the private key corresponding to `withdrawal_pubkey` be stored in cold storage until a withdrawal is required.
 
-### `Deposit` logs
+### `Eth1Deposit` logs
 
-Every deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+Every deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits an `Eth1Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `ChainStart` log
 
@@ -587,7 +587,7 @@ When sufficiently many full deposits have been made the deposit contract emits t
 
 * `genesis_time` equals `time` in the `ChainStart` log
 * `processed_pow_receipt_root` equals `receipt_root` in the `ChainStart` log
-* `initial_validator_entries` is built according to the `Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
+* `initial_validator_deposits` is a list of `Deposit` objects built according to the `Eth1Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
 
 ### Vyper code
 
@@ -599,7 +599,7 @@ CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Deposit: event({previous_receipt_root: bytes32, data: bytes[2064], deposit_count: uint256})
+Eth1Deposit: event({previous_receipt_root: bytes32, data: bytes[2064], deposit_count: uint256})
 ChainStart: event({receipt_root: bytes32, time: bytes[8]})
 
 receipt_tree: bytes32[uint256]
@@ -617,7 +617,7 @@ def deposit(deposit_parameters: bytes[2048]):
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
 
-    log.Deposit(self.receipt_tree[1], deposit_data, self.deposit_count)
+    log.Eth1Deposit(self.receipt_tree[1], deposit_data, self.deposit_count)
 
     # add deposit to merkle tree
     self.receipt_tree[index] = sha3(deposit_data)
@@ -1042,7 +1042,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 `STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
 
 ```python
-def on_startup(initial_validator_entries: List[Any],
+def on_startup(initial_validator_deposits: List[Deposit],
                genesis_time: int,
                processed_pow_receipt_root: Hash32) -> BeaconState:
     state = BeaconState(
@@ -1056,7 +1056,7 @@ def on_startup(initial_validator_entries: List[Any],
         ),
 
         # Validator registry
-        validator_registry=initial_validator_registry,
+        validator_registry=[],
         validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
         validator_registry_exit_count=0,
         validator_registry_delta_chain_tip=ZERO_HASH,
@@ -1086,14 +1086,14 @@ def on_startup(initial_validator_entries: List[Any],
     )
 
     # handle initial deposits and activations
-    for pubkey, deposit, proof_of_possession, withdrawal_credentials, randao_commitment in initial_validator_entries:
+    for deposit in initial_validator_deposits:
         validator_index = process_deposit(
             state=state,
-            pubkey=pubkey,
-            deposit=deposit,
-            proof_of_possession=proof_of_possession,
-            withdrawal_credentials=withdrawal_credentials,
-            randao_commitment=randao_commitment
+            pubkey=deposit.deposit_data.deposit_parameters.pubkey,
+            deposit=deposit.deposit_data.value,
+            proof_of_possession=deposit.deposit_data.deposit_parameters.proof_of_possession,
+            withdrawal_credentials=deposit.deposit_data.deposit_parameters.withdrawal_credentials,
+            randao_commitment=deposit.deposit_data.deposit_parameters.randao_commitment
         )
         if state.validator_registry[index].balance >= MAX_DEPOSIT:
             update_validator_status(state, index, ACTIVE)
