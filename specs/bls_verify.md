@@ -64,9 +64,9 @@ We require:
 
 ```python
 G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
-q = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab
+q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
 
-def hash_to_G2(message, domain):
+def hash_to_G2(message: bytes32, domain: uint64) -> [uint384]:
     # Initial candidate x coordinate
     x_re = int.from_bytes(hash(bytes8(domain) + b'\x01' + message), 'big')
     x_im = int.from_bytes(hash(bytes8(domain) + b'\x02' + message), 'big')
@@ -89,7 +89,7 @@ def hash_to_G2(message, domain):
 qmod = q ** 2 - 1
 eighth_roots_of_unity = [Fq2([1,1]) ** ((qmod * k) // 8) for k in range(8)]
 
-def modular_squareroot(value):
+def modular_squareroot(value: int) -> int:
     candidate_squareroot = value ** ((qmod + 8) // 16)
     check = candidate_squareroot ** 2 / value
     if check in eighth_roots_of_unity[::2]:
