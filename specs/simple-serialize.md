@@ -390,7 +390,7 @@ return typ(**values), item_index
 
 ### Tree Hash
 
-The below `SSZTreeHash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
+The below `hash_tree_root` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
 
 Refer to [Appendix A](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#appendix-a---hash-function) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
@@ -435,13 +435,13 @@ def merkle_hash(lst):
     return hash(chunkz[0] + datalen)
 ```
 
-To `SSZTreeHash` a list, we simply do:
+To `hash_tree_root` a list, we simply do:
 
 ```python
-return merkle_hash([SSZTreeHash(item) for item in value])
+return merkle_hash([hash_tree_root(item) for item in value])
 ```
 
-Where the inner `SSZTreeHash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+Where the inner `hash_tree_root` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
 
 
 #### Container
@@ -449,7 +449,7 @@ Where the inner `SSZTreeHash` is a recursive application of the tree-hashing fun
 Recursively tree hash the values in the container in order sorted by key, and return the hash of the concatenation of the results.
 
 ```python
-return hash(b''.join([SSZTreeHash(getattr(x, field)) for field in sorted(value.fields)))
+return hash(b''.join([hash_tree_root(getattr(x, field)) for field in sorted(value.fields)))
 ```
 
 
