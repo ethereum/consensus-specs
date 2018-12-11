@@ -593,6 +593,8 @@ When sufficiently many full deposits have been made the deposit contract emits t
 ### Vyper code
 
 ```python
+## compiled with v0.1.0-beta.4 ##
+
 MIN_DEPOSIT: constant(uint256) = 1  # ETH
 MAX_DEPOSIT: constant(uint256) = 32  # ETH
 GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
