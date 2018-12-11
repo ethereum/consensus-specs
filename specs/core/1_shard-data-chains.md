@@ -40,8 +40,8 @@ A `ShardBlock` object has the following fields:
     'slot': 'uint64',
     # What shard is it on
     'shard_id': 'uint64',
-    # Parent block hash
-    'parent_hash': 'hash32',
+    # Parent block's hash of root
+    'parent_root': 'hash32',
     # Beacon chain block
     'beacon_chain_ref': 'hash32',
     # Depth of the Merkle tree
@@ -62,16 +62,16 @@ A `ShardBlock` object has the following fields:
 
 For a block on a shard to be processed by a node, the following conditions must be met:
 
-* The `ShardBlock` pointed to by `parent_hash` has already been processed and accepted
+* The `ShardBlock` pointed to by `parent_root` has already been processed and accepted
 * The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
 
 To validate a block header on shard `shard_id`, compute as follows:
 
-* Verify that `beacon_chain_ref` is the hash of a block in the beacon chain with slot less than or equal to `slot`. Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_hash`.
+* Verify that `beacon_chain_ref` is the hash of a block in the beacon chain with slot less than or equal to `slot`. Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_root`.
 * Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
 * Assert `len(attester_bitfield) == ceil_div8(len(validators))`
 * Let `proposer_index = hash(state.randao_mix + bytes8(shard_id) + bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
-* Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_hash, sig=block.aggregate_sig, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
+* Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_root, sig=block.aggregate_sig, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
 
 ### Block Merklization helper
 
@@ -96,9 +96,9 @@ At network layer, we expect a shard block header to be broadcast along with its 
 
 A node should sign a crosslink only if the following conditions hold. **If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink for which these conditions do NOT hold has been included, or a sufficient number of signatures have been included that during the next state recalculation, a crosslink will be registered.**
 
-First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_hash` for the same shard (unless `last_crosslink_hash` equals zero, in which case we are at the genesis).
+First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_root` for the same shard (unless `last_crosslink_root` equals zero, in which case we are at the genesis).
 
-Second, we verify the `shard_block_combined_data_root`. Let `h` be the slot _immediately after_ the slot of the shard block included by the last crosslink, and `h+n-1` be the slot number of the block directly referenced by the current `shard_block_hash`. Let `B[i]` be the block at slot `h+i` in the shard chain. Let `bodies[0] .... bodies[n-1]` be the bodies of these blocks and `roots[0] ... roots[n-1]` the data roots. If there is a missing slot in the shard chain at position `h+i`, then `bodies[i] == b'\x00' * shard_block_maxbytes(state[i])` and `roots[i]` be the Merkle root of the empty data. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. We define the function for computing the combined data root as follows:
+Second, we verify the `shard_block_combined_data_root`. Let `h` be the slot _immediately after_ the slot of the shard block included by the last crosslink, and `h+n-1` be the slot number of the block directly referenced by the current `shard_block_root`. Let `B[i]` be the block at slot `h+i` in the shard chain. Let `bodies[0] .... bodies[n-1]` be the bodies of these blocks and `roots[0] ... roots[n-1]` the data roots. If there is a missing slot in the shard chain at position `h+i`, then `bodies[i] == b'\x00' * shard_block_maxbytes(state[i])` and `roots[i]` be the Merkle root of the empty data. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. We define the function for computing the combined data root as follows:
 
 ```python
 ZERO_ROOT = merkle_root(bytes([0] * SHARD_BLOCK_SIZE))
@@ -121,4 +121,4 @@ Verify that the `shard_block_combined_data_root` is the output of these function
 
 ### Shard block fork choice rule
 
-The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_hash`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
+The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
