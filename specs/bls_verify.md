@@ -70,15 +70,15 @@ def hash_to_G2(message, domain):
     # Initial candidate x coordinate
     x_re = int.from_bytes(hash(bytes8(domain) + b'\x01' + message), 'big')
     x_im = int.from_bytes(hash(bytes8(domain) + b'\x02' + message), 'big')
-    x_coordinate = FQ2([x_re, x_im])  # x = x_re + i * x_im
+    x_coordinate = Fq2([x_re, x_im])  # x = x_re + i * x_im
     
     # Test candidate y coordinates until a one is found
     while 1:
-        y_coordinate_squared = x_coordinate ** 3 + FQ2([4, 4])  # The curve is y^2 = x^3 + 4(i + 1)
+        y_coordinate_squared = x_coordinate ** 3 + Fq2([4, 4])  # The curve is y^2 = x^3 + 4(i + 1)
         y_coordinate = modular_squareroot(y_coordinate_squared)
         if y_coordinate is not None:  # Check if quadratic residue found
             return multiply_in_G2((x_coordinate, y_coordinate), G2_cofactor)
-        x_coordinate += FQ2([1, 0])  # Add 1 and try again
+        x_coordinate += Fq2([1, 0])  # Add 1 and try again
 ```
 
 ### `modular_squareroot`
@@ -87,7 +87,7 @@ def hash_to_G2(message, domain):
 
 ```python
 qmod = q ** 2 - 1
-eighth_roots_of_unity = [FQ2([1,1]) ** ((qmod * k) // 8) for k in range(8)]
+eighth_roots_of_unity = [Fq2([1,1]) ** ((qmod * k) // 8) for k in range(8)]
 
 def modular_squareroot(value):
     candidate_squareroot = value ** ((qmod + 8) // 16)
@@ -101,7 +101,13 @@ def modular_squareroot(value):
 
 ## Signature verification
 
-In the following `e` is the pairing function and `g` is the generator in G1.
+In the following `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
+
+```python
+g_x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
+g_y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
+g = Fq2(g_x, g_y)
+```
 
 ### `bls_verify`
 
