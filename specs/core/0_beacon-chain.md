@@ -1455,34 +1455,36 @@ All [validators](#dfn-validator):
 * Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient // 4` for any validator `v`.
 * Let `base_inactivity_penalty(v, slots_since_finality) = base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator `v`.
 
-[Validators](#dfn-Validator) justifying the epoch boundary block at the start of the current epoch:
+[Validators](#dfn-Validator) validators attesting during the current epoch:
 
 * Let `this_epoch_attestations = [a for a in state.latest_attestations if state.slot - EPOCH_LENGTH <= a.data.slot < state.slot]`. (Note: this is the set of attestations of slots in the epoch `state.slot-EPOCH_LENGTH...state.slot-1`, _not_ attestations that got included in the chain during the epoch `state.slot-EPOCH_LENGTH...state.slot-1`.)
-* Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_hash == get_block_hash(state, state.slot-EPOCH_LENGTH) and a.justified_slot == state.justified_slot]`.
-* Let `this_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_boundary_attestations]`.
-* Let `this_epoch_boundary_attesters = [state.validator_registry[i] for indices in this_epoch_boundary_attester_indices for i in indices]`.
-* Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in this_epoch_boundary_attesters])`.
+* Validators justifying the epoch boundary block at the start of the current epoch:
+  * Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_hash == get_block_hash(state, state.slot-EPOCH_LENGTH) and a.justified_slot == state.justified_slot]`.
+  * Let `this_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_boundary_attestations]`.
+  * Let `this_epoch_boundary_attesters = [state.validator_registry[i] for indices in this_epoch_boundary_attester_indices for i in indices]`.
+  * Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in this_epoch_boundary_attesters])`.
 
-[Validators](#dfn-Validator) justifying the epoch boundary block at the start of the previous epoch:
+[Validators](#dfn-Validator) attesting during the previous epoch:
 
-* Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
-* Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_attestations]`.
-* Let `previous_epoch_attesters = [state.validator_registry[i] for indices in previous_epoch_attester_indices for i in indices]`.
-
-* Let `previous_epoch_justified_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.justified_slot == state.previous_justified_slot]`.
-* Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_justified_attestations]`.
-* Let `previous_epoch_justified_attesters = [state.validator_registry[i] for indices in previous_epoch_justified_attester_indices for i in indices]`.
-* Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_justified_attesters])`.
-
-* Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.epoch_boundary_hash == get_block_hash(state, state.slot - 2 * EPOCH_LENGTH)]`.
-* Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
-* Let `previous_epoch_boundary_attesters = [state.validator_registry[i] for indices in previous_epoch_boundary_attester_indices for i in indices]`.
-* Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_boundary_attesters])`.
-
-* Let `previous_epoch_head_attestations = [a for a in previous_epoch_attestations if a.beacon_block_hash == get_block_hash(state, a.slot)]`.
-* Let `previous_epoch_head_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_head_attestations]`.
-* Let `previous_epoch_head_attesters = [state.validator_registry[i] for indices in previous_epoch_head_attester_indices for i in indices]`.
-* Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_head_attesters])`.
+* Validators that made an attestation during the previous epoch:
+  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
+  * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_attestations]`.
+  * Let `previous_epoch_attesters = [state.validator_registry[i] for indices in previous_epoch_attester_indices for i in indices]`.
+* Validators targeting the previous justified hash:
+  * Let `previous_epoch_justified_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.justified_slot == state.previous_justified_slot]`.
+  * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_justified_attestations]`.
+  * Let `previous_epoch_justified_attesters = [state.validator_registry[i] for indices in previous_epoch_justified_attester_indices for i in indices]`.
+  * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_justified_attesters])`.
+* Validators justifying the epoch boundary block at the start of the previous epoch:
+  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.epoch_boundary_hash == get_block_hash(state, state.slot - 2 * EPOCH_LENGTH)]`.
+  * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
+  * Let `previous_epoch_boundary_attesters = [state.validator_registry[i] for indices in previous_epoch_boundary_attester_indices for i in indices]`.
+  * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_boundary_attesters])`.
+* Validators attesting to the expected beacon chain head during the previous epoch:
+  * Let `previous_epoch_head_attestations = [a for a in previous_epoch_attestations if a.beacon_block_hash == get_block_hash(state, a.slot)]`.
+  * Let `previous_epoch_head_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_head_attestations]`.
+  * Let `previous_epoch_head_attesters = [state.validator_registry[i] for indices in previous_epoch_head_attester_indices for i in indices]`.
+  * Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_head_attesters])`.
 
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
