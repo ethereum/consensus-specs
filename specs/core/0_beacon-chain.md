@@ -78,6 +78,7 @@
             - [`verify_casper_votes`](#verify_casper_votes)
             - [`integer_squareroot`](#integer_squareroot)
             - [`bls_verify`](#blsverify)
+            - [`bls_verify_multiple`](#blsverifymultiple)
         - [On startup](#on-startup)
         - [Routine for processing deposits](#routine-for-processing-deposits)
         - [Routine for updating validator status](#routine-for-updating-validator-status)
@@ -1025,7 +1026,11 @@ def integer_squareroot(n: int) -> int:
 
 #### `bls_verify`
 
-`bls_verify` is a function for verifying a BLS12-381 signature, defined in the [BLS Verification spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).
+`bls_verify` is a function for verifying a BLS12-381 signature, defined in the [BLS Verification spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md#bls_verify).
+
+#### `bls_verify_multiple`
+
+`bls_verify_multiple` is a function for verifying a BLS12-381 signature constructed from multiple messages, defined in the [BLS Verification spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md#bls_verify_multiple).
 
 ### On startup
 
