@@ -898,7 +898,7 @@ def get_beacon_proposer_index(state: BeaconState,
 
 #### `get_updated_ancestor_hashes`
 
-```pythonproposal_root
+```python
 def get_updated_ancestor_hashes(latest_block: BeaconBlock,
                                 latest_root: Hash32) -> List[Hash32]:
     new_ancestor_hashes = copy.deepcopy(latest_block.ancestor_hashes)
@@ -1473,8 +1473,8 @@ All [validators](#dfn-validator):
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
 * Let `attesting_validators(shard_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == shard_committee.shard and a.shard_block_root == shard_block_root]`.
-* Let `winning_hash(shard_committee)` be equal to the value of `shard_block_root` such that `sum([get_effective_balance(v) for v in attesting_validators(shard_committee, shard_block_root)])` is maximized (ties broken by favoring lower `shard_block_root` values).
-* Let `attesting_validators(shard_committee)` be equal to `attesting_validators(shard_committee, winning_hash(shard_committee))` for convenience.
+* Let `winning_root(shard_committee)` be equal to the value of `shard_block_root` such that `sum([get_effective_balance(v) for v in attesting_validators(shard_committee, shard_block_root)])` is maximized (ties broken by favoring lower `shard_block_root` values).
+* Let `attesting_validators(shard_committee)` be equal to `attesting_validators(shard_committee, winning_root(shard_committee))` for convenience.
 * Let `total_attesting_balance(shard_committee)` be the sum of the balances-at-stake of `attesting_validators(shard_committee)`.
 * Let `total_balance(shard_committee) = sum([get_effective_balance(v) for v in shard_committee.committee])`.
 * Let `inclusion_slot(v) = a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
@@ -1516,7 +1516,7 @@ Set `state.finalized_slot = state.previous_justified_slot` if any of the followi
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
-* Set `state.latest_crosslinks[shard] = CrosslinkRecord(slot=state.slot, block_root=winning_hash(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
+* Set `state.latest_crosslinks[shard] = CrosslinkRecord(slot=state.slot, block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
 ### Justification and finalization rewards and penalties
 
