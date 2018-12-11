@@ -72,6 +72,7 @@
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
             - [`get_domain`](#get_domain)
+            - [`SSZTreeHash`](#ssztreehash)
             - [`verify_casper_votes`](#verify_casper_votes)
             - [`integer_squareroot`](#integer_squareroot)
         - [On startup](#on-startup)
@@ -650,7 +651,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with hash `block.ancestor_hashes[0]` has been processed and accepted.
+* The parent block with `SSZTreeHash` `block.ancestor_hashes[0]` has been processed and accepted.
 * The node has processed its `state` up to slot, `block.slot - 1`.
 * The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
@@ -877,7 +878,7 @@ def get_block_hash(state: BeaconState,
     return state.latest_block_hashes[slot - earliest_slot_in_array]
 ```
 
-`get_block_hash(_, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
+`get_block_hash(_, s)` should always return `SSZTreeHash` of the block in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
 #### `get_beacon_proposer_index`
 
@@ -970,6 +971,10 @@ def get_domain(fork_data: ForkData,
         slot
     ) * 2**32 + domain_type
 ```
+
+#### `SSZTreeHash`
+
+`SSZTreeHash` is a function for hashing objects into a single root utilizing a hash tree structure. `SSZTreeHash` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
 #### `verify_casper_votes`
 
@@ -1246,7 +1251,7 @@ def exit_validator(index: int,
 Below are the processing steps that happen at every slot.
 
 * Let `latest_block` be the latest `BeaconBlock` that was processed in the chain.
-* Let `latest_hash` be the hash of `latest_block`.
+* Let `latest_hash` be the `SSZTreeHash` of `latest_block`.
 * Set `state.slot += 1`
 * Set `state.latest_block_hashes = state.latest_block_hashes + [latest_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
 
@@ -1263,8 +1268,8 @@ If there is no block from the proposer at state.slot:
 
 ### Proposer signature
 
-* Let `block_hash_without_sig` be the hash of `block` where `block.signature` is set to `[0, 0]`.
-* Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
+* Let `block_hash_without_sig` be the `SSZTreeHash` of `block` where `block.signature` is set to `[0, 0]`.
+* Let `proposal_hash = SSZTreeHash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
 * Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
 ### RANDAO
@@ -1290,8 +1295,8 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=hash(proposer_slashing.proposal_data_1), sig=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
-* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=hash(proposer_slashing.proposal_data_2), sig=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
+* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=SSZTreeHash(proposer_slashing.proposal_data_1), sig=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `BLSVerify(pubkey=proposer.pubkey, msg=SSZTreeHash(proposer_slashing.proposal_data_2), sig=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_hash != proposer_slashing.proposal_data_2.block_hash`.
@@ -1648,7 +1653,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 ## State root processing
 
-Verify `block.state_root == hash(state)` if there exists a `block` for the slot being processed.
+Verify `block.state_root == SSZTreeHash(state)` if there exists a `block` for the slot being processed.
 
 # Appendix
 ## Appendix A - Hash function
