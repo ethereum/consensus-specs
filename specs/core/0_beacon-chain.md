@@ -191,7 +191,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_QUOTIENT` | `2**11` (= 2,048) |
+| `BASE_REWARD_QUOTIENT` | `2**10` (= 1,024) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**34` (= 17,179,869,184) |
@@ -1452,7 +1452,7 @@ All [validators](#dfn-validator):
 * Let `active_validators = [state.validator_registry[i] for i in get_active_validator_indices(state.validator_registry)]`.
 * Let `total_balance = sum([get_effective_balance(v) for v in active_validators])`.
 * Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
-* Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient` for any validator `v`.
+* Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient // 4` for any validator `v`.
 * Let `base_inactivity_penalty(v, slots_since_finality) = base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator `v`.
 
 [Validators](#dfn-Validator) justifying the epoch boundary block at the start of the current epoch:
