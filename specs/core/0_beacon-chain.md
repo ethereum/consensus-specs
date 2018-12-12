@@ -234,9 +234,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # First batch of votes
-    'votes_1': SlashableVoteData,
+    'slashable_vote_data_1': SlashableVoteData,
     # Second batch of votes
-    'votes_2': SlashableVoteData,
+    'slashable_vote_data_2': SlashableVoteData,
 }
 ```
 
@@ -965,16 +965,22 @@ def get_domain(fork_data: ForkData,
 
 `hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
-#### `verify_casper_votes`
+#### `verify_slashable_vote_data`
 
 ```python
-def verify_casper_votes(state: BeaconState, votes: SlashableVoteData) -> bool:
-    if len(votes.aggregate_signature_poc_0_indices) + len(votes.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
+def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData) -> bool:
+    if len(vote_data.aggregate_signature_poc_0_indices) + len(vote_data.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
         return False
 
-    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_0_indices]),
-            aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_1_indices])]
-    return bls_verify_multiple(pubkeys=pubs, messages=[hash_tree_root(votes)+bytes1(0), hash_tree_root(votes)+bytes1(1), signature=aggregate_signature)
+    pubs = [
+        aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_0_indices]),
+        aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_1_indices])
+    ]
+    return bls_verify_multiple(
+        pubkeys=pubs,
+        messages=[hash_tree_root(vote_data)+bytes1(0), hash_tree_root(vote_data)+bytes1(1)],signature=vote_data.aggregate_signature,
+        domain=DOMAIN_ATTESTATION,
+    )
 ```
 
 #### `integer_squareroot`
@@ -1331,13 +1337,13 @@ Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
 
 For each `casper_slashing` in `block.body.casper_slashings`:
 
-* Verify that `verify_casper_votes(state, casper_slashing.votes_1)`.
-* Verify that `verify_casper_votes(state, casper_slashing.votes_2)`.
-* Verify that `casper_slashing.votes_1.data != casper_slashing.votes_2.data`.
+* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_1)`.
+* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_2)`.
+* Verify that `casper_slashing.slashable_vote_data_1.data != casper_slashing.slashable_vote_data_2.data`.
 * Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
-* Let `intersection = [x for x in indices(casper_slashing.votes_1) if x in indices(casper_slashing.votes_2)]`.
+* Let `intersection = [x for x in indices(casper_slashing.slashable_vote_data_1) if x in indices(casper_slashing.slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `casper_slashing.votes_1.data.justified_slot + 1 < casper_slashing.votes_2.data.justified_slot + 1 == casper_slashing.votes_2.data.slot < casper_slashing.votes_1.data.slot` or `casper_slashing.votes_1.data.slot == casper_slashing.votes_2.data.slot`.
+* Verify that `casper_slashing.slashable_vote_data_1.data.justified_slot + 1 < casper_slashing.slashable_vote_data_2.data.justified_slot + 1 == casper_slashing.slashable_vote_data_2.data.slot < casper_slashing.slashable_vote_data_1.data.slot` or `casper_slashing.slashable_vote_data_1.data.slot == casper_slashing.slashable_vote_data_2.data.slot`.
 * For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
