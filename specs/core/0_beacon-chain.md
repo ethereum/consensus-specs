@@ -149,7 +149,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
-| `LATEST_BLOCK_ROOTS_DEPTH` | 13 |
+| `LATEST_BLOCK_ROOTS_COUNT` | `2**13` (= 8,192) | block roots |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -1072,10 +1072,10 @@ def on_startup(initial_validator_entries: List[Any],
 
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_block_roots=[],
-        latest_penalized_exit_balances=[0] * (INITIAL_SLOT_NUMBER // COLLECTIVE_PENALTY_CALCULATION_PERIOD),
+        latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_COUNT)],
+        latest_penalized_exit_balances=[],
         latest_attestations=[],
-        batched_block_roots=[merkle_root([ZERO_HASH] * (2**LATEST_BLOCK_ROOTS_DEPTH))] * (INITIAL_SLOT_NUMBER // (2**LATEST_BLOCK_ROOTS_DEPTH))
+        batched_block_roots=[]
         # PoW receipt root
         processed_pow_receipt_root=processed_pow_receipt_root,
         candidate_pow_receipt_roots=[],
@@ -1241,8 +1241,8 @@ Below are the processing steps that happen at every slot.
 * Let `latest_block` be the latest `BeaconBlock` that was processed in the chain.
 * Let `latest_hash` be the hash of `latest_block`.
 * Set `state.slot += 1` (NOTE: after this line, `latest_hash` will be the hash in the chain at slot `state.slot - 1`)
-* Set `state.latest_block_roots = state.latest_block_roots[-2**LATEST_BLOCK_ROOTS_DEPTH:] + [latest_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
-* If `state.slot % 2**LATEST_BLOCK_ROOTS_DEPTH == 0`, then run `state.batched_block_roots.append(merkle_root(state.latest_block_roots[2**LATEST_BLOCK_ROOTS_DEPTH]))`
+* Set `state.latest_block_roots = state.latest_block_roots[-LATEST_BLOCK_ROOTS_COUNT:] + [latest_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
+* If `state.slot % LATEST_BLOCK_ROOTS_COUNT == 0`, then run `state.batched_block_roots.append(merkle_root(state.latest_block_roots[LATEST_BLOCK_ROOTS_COUNT]))`
 
 If there is a block from the proposer for `state.slot`, we process that incoming block:
 * Let `block` be that associated incoming block.
