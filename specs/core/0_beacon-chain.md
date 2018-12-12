@@ -395,7 +395,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'slot': 'uint64',
     # Skip list of ancestor beacon block hashes
     # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
-    'parent_hash': 'hash32',
+    'parent_root': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
     'candidate_pow_receipt_root': 'hash32',
@@ -410,9 +410,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    'attestations': [Attestation],
     'proposer_slashings': [ProposerSlashing],
     'casper_slashings': [CasperSlashing],
+    'attestations': [Attestation],
     'deposits': [Deposit],
     'exits': [Exit],
 }
@@ -1044,14 +1044,12 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 
 ```python
 {
-    'header': BeaconBlockHeader(
-        slot=INITIAL_SLOT_NUMBER,
-        parent_hash=ZERO_HASH,
-        state_root=STARTUP_STATE_ROOT,
-        randao_reveal=ZERO_HASH,
-        candidate_pow_receipt_root=ZERO_HASH,
-        proposer_signature=[0, 0]
-    ),
+    slot=INITIAL_SLOT_NUMBER,
+    parent_root=ZERO_HASH,
+    state_root=STARTUP_STATE_ROOT,
+    randao_reveal=ZERO_HASH,
+    candidate_pow_receipt_root=ZERO_HASH,
+    proposer_signature=[0, 0],
     'body': BeaconBlockBody(
         proposer_slashings=[],
         casper_slashings=[],
