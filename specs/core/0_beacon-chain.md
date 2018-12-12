@@ -111,7 +111,7 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain storLATEST es and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when deposit transaction receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when deposit transaction receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
@@ -455,7 +455,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_block_roots': ['hash32'],  # Needed to process attestations, older to newer
     'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
-    'next_interval_merkle_partial': ['hash32'],
     'batched_block_roots': ['hash32'],
 
     # PoW receipt root
@@ -1074,7 +1073,7 @@ def on_startup(initial_validator_entries: List[Any],
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[],
-        latest_penalized_exit_balances=[],
+        latest_penalized_exit_balances=[0] * (INITIAL_SLOT_NUMBER // COLLECTIVE_PENALTY_CALCULATION_PERIOD),
         latest_attestations=[],
         batched_block_roots=[merkle_root([ZERO_HASH] * (2**LATEST_BLOCK_ROOTS_DEPTH))] * (INITIAL_SLOT_NUMBER // (2**LATEST_BLOCK_ROOTS_DEPTH))
         # PoW receipt root
