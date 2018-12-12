@@ -122,7 +122,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
-| `LATEST_BLOCK_ROOTS_COUNT` | `2**13` (= 8,192) | block roots |
+| `LATEST_BLOCK_ROOT_COUNT` | `2**13` (= 8,192) | block roots |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -1061,7 +1061,7 @@ def on_startup(initial_validator_deposits: List[Deposit],
 
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_COUNT)],
+        latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOT_COUNT)],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
         batched_block_roots=[]
@@ -1278,7 +1278,7 @@ Below are the processing steps that happen at every slot.
 
 * Let `previous_block_root` be the `tree_hash_root` of the previous beacon block processed in the chain.
 * Set `state.latest_block_roots = state.latest_block_roots[1:] + [previous_block_root]`.
-* If `state.slot % LATEST_BLOCK_ROOTS_COUNT == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
+* If `state.slot % LATEST_BLOCK_ROOT_COUNT == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
 ## Per-block processing
 
