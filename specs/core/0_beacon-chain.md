@@ -65,7 +65,7 @@
             - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
             - [`get_block_hash`](#get_block_hash)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            - [`get_updated_ancestor_accumulator`](#get_updated_ancestor_accumulator)
+            - [`merkle_root`](#merkle_root)
             - [`get_attestation_participants`](#get_attestation_participants)
             - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
@@ -111,7 +111,7 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when deposit transaction receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain storLATEST es and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when deposit transaction receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
@@ -149,7 +149,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
-| `ANCESTOR_HASH_DEPTH` | 16 |
+| `LATEST_BLOCK_ROOTS_DEPTH` | 13 |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -452,11 +452,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
     # Recent state
     'latest_crosslinks': [CrosslinkRecord],
-    'latest_block_hashes': ['hash32'],  # Needed to process attestations, older to newer
+    'latest_block_roots': ['hash32'],  # Needed to process attestations, older to newer
     'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
     'next_interval_merkle_partial': ['hash32'],
-    'ancestor_interval_merkle_roots': ['hash32'],
+    'batched_block_roots': ['hash32'],
 
     # PoW receipt root
     'processed_pow_receipt_root': 'hash32',
@@ -864,9 +864,9 @@ def get_block_hash(state: BeaconState,
     """
     Returns the block hash at a recent ``slot``.
     """
-    earliest_slot_in_array = state.slot - len(state.latest_block_hashes)
+    earliest_slot_in_array = state.slot - len(state.latest_block_roots)
     assert earliest_slot_in_array <= slot < state.slot
-    return state.latest_block_hashes[slot - earliest_slot_in_array]
+    return state.latest_block_roots[slot - earliest_slot_in_array]
 ```
 
 `get_block_hash(_, s)` should always return the block hash in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
@@ -883,29 +883,14 @@ def get_beacon_proposer_index(state: BeaconState,
     return first_committee[slot % len(first_committee)]
 ```
 
-#### `get_updated_ancestor_accumulator`
+#### `merkle_root`
 
 ```python
-def get_updated_ancestor_accumulator(next_interval_merkle_partial,
-                                ancestor_interval_merkle_roots,
-                                latest_slot,
-                                latest_hash):
-    new_next_interval_merkle_partial = copy.deepcopy(next_interval_merkle_partial)
-    i = 0
-    while (latest_slot+1) % 2**(i+1) == 0 and i < ANCESTOR_HASH_DEPTH:
-        i += 1
-    h = latest_hash
-    for j in range(i):
-        h = hash(new_next_interval_merkle_partial[j] + h)
-        new_next_interval_merkle_partial[j] = ZERO_HASH
-    if i < ANCESTOR_HASH_DEPTH:
-        new_next_interval_merkle_partial[i] = h
-        new_ancestor_interval_merkle_roots = ancestor_interval_merkle_roots
-    else:
-        new_ancestor_interval_merkle_roots = ancestor_interval_merkle_roots + [h]
-        
-    return new_next_interval_merkle_partial, new_ancestor_interval_merkle_roots
-
+def merkle_root(values):
+    o = [0] * len(values) + values
+    for i in range(len(values)-1, 0, -1):
+        o[i] = hash(o[i*2] + o[i*2+1])
+    return o[1]
 ```
 
 #### `get_attestation_participants`
@@ -1088,12 +1073,10 @@ def on_startup(initial_validator_entries: List[Any],
 
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_hash=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_block_hashes=[ZERO_HASH for _ in range(EPOCH_LENGTH * 2)],
+        latest_block_roots=[],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
-        next_interval_merkle_partial=[ZERO_HASH for _ in range(ANCESTOR_HASH_DEPTH)],
-        ancestor_interval_merkle_roots=[ZERO_HASH for _ in range(INITIAL_SLOT_NUMBER // 2**ANCESTOR_HASH_DEPTH)]
-
+        batched_block_roots=[merkle_root([ZERO_HASH] * (2**LATEST_BLOCK_ROOTS_DEPTH))] * (INITIAL_SLOT_NUMBER // (2**LATEST_BLOCK_ROOTS_DEPTH))
         # PoW receipt root
         processed_pow_receipt_root=processed_pow_receipt_root,
         candidate_pow_receipt_roots=[],
@@ -1259,7 +1242,8 @@ Below are the processing steps that happen at every slot.
 * Let `latest_block` be the latest `BeaconBlock` that was processed in the chain.
 * Let `latest_hash` be the hash of `latest_block`.
 * Set `state.slot += 1` (NOTE: after this line, `latest_hash` will be the hash in the chain at slot `state.slot - 1`)
-* Set `state.latest_block_hashes = state.latest_block_hashes + [latest_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
+* Set `state.latest_block_roots = state.latest_block_roots[-2**LATEST_BLOCK_ROOTS_DEPTH:] + [latest_hash]`. (The output of `get_block_hash` should not change, except that it will no longer throw for `state.slot - 1`).
+* If `state.slot % 2**LATEST_BLOCK_ROOTS_DEPTH == 0`, then run `state.batched_block_roots.append(merkle_root(state.latest_block_roots[2**LATEST_BLOCK_ROOTS_DEPTH]))`
 
 If there is a block from the proposer for `state.slot`, we process that incoming block:
 * Let `block` be that associated incoming block.
@@ -1274,10 +1258,6 @@ If there is no block from the proposer at state.slot:
 * Let `block_hash_without_sig` be the hash of `block` where `block.signature` is set to `[0, 0]`.
 * Let `proposal_hash = hash(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_hash_without_sig))`.
 * Verify that `BLSVerify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_hash, sig=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
-
-### Ancestor accumulator
-
-* Set `state.next_interval_merkle_partial, state.ancestor_interval_merkle_roots` to the output of `get_updated_ancestor_accumulator(state.next_interval_merkle_partial, state.ancestor_interval_merkle_roots, state.slot - 1, latest_hash)`
 
 ### RANDAO
 
@@ -1642,7 +1622,6 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
 * Run `exit_validator(i, state, penalize=False, current_slot=state.slot)` for indices `i` such that `state.validator_registry[i].status == ACTIVE and state.validator_registry[i].balance < MIN_BALANCE`.
-* Set `state.latest_block_hashes = state.latest_block_hashes[EPOCH_LENGTH:]`.
 
 ## State root processing
 
