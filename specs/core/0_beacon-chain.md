@@ -955,7 +955,7 @@ def get_effective_balance(validator: ValidatorRecord) -> int:
     """
     Returns the effective balance (also known as "balance at stake") for the ``validator``.
     """
-    return min(validator.balance, MAX_DEPOSIT)
+    return min(validator.balance, MAX_DEPOSIT * GWEI_PER_ETH)
 ```
 
 #### `get_new_validator_registry_delta_chain_tip`
@@ -1118,7 +1118,7 @@ def on_startup(initial_validator_deposits: List[Deposit],
             withdrawal_credentials=deposit.deposit_data.deposit_parameters.withdrawal_credentials,
             randao_commitment=deposit.deposit_data.deposit_parameters.randao_commitment
         )
-        if state.validator_registry[index].balance >= MAX_DEPOSIT:
+        if state.validator_registry[index].balance >= MAX_DEPOSIT * GWEI_PER_ETH:
             update_validator_status(state, index, ACTIVE)
 
     # set initial committee shuffling
@@ -1625,7 +1625,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.status == PENDING_ACTIVATION and validator.balance >= MAX_DEPOSIT:
+        if validator.status == PENDING_ACTIVATION and validator.balance >= MAX_DEPOSIT * GWEI_PER_ETH:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(validator)
             if balance_churn > max_balance_churn:
