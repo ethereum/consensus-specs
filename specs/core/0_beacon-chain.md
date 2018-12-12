@@ -83,6 +83,11 @@
         - [Routine for processing deposits](#routine-for-processing-deposits)
         - [Routine for updating validator status](#routine-for-updating-validator-status)
     - [Per-slot processing](#per-slot-processing)
+        - [Slot](#slot)
+        - [Block roots](#block-roots)
+        - [RANDAO](#randao)
+    - [Per-block processing](#per-block-processing)  
+        - [Slot](#slot)  
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
@@ -1301,21 +1306,27 @@ def exit_validator(state: BeaconState,
 
 Below are the processing steps that happen at every slot.
 
-* Let `latest_block` be the latest `BeaconBlock` that was processed in the chain.
-* Let `latest_root` be `hash_tree_root(latest_block)`.
-* Set `state.slot += 1`. (NOTE: After this line `latest_root` will be the block root at slot `state.slot - 1`.)
-* Set `state.latest_block_roots = state.latest_block_roots[-LATEST_BLOCK_ROOTS_COUNT:] + [latest_root]`. (The output of `get_block_root` should not change, except that it will no longer throw for `state.slot - 1`).
-* If `state.slot % LATEST_BLOCK_ROOTS_COUNT == 0` run `state.batched_block_roots.append(merkle_root(state.latest_block_roots[LATEST_BLOCK_ROOTS_COUNT]))`
+### Slot
 
-If there is a block from the proposer for `state.slot`, we process that incoming block:
+* Set `state.slot += 1`.
 
-* Let `block` be that associated incoming block.
-* Verify that `block.slot == state.slot`
+### Block roots
 
-If there is no block from the proposer at state.slot:
+* Let `previous_block_root` be the `tree_hash_root` of the previous beacon block processed in the chain.
+* Set `state.latest_block_roots = state.latest_block_roots[1:] + [previous_block_root]`.
+* If `state.slot % LATEST_BLOCK_ROOTS_COUNT == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
+
+### RANDAO
 
 * Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
-* Skip all other per-slot processing. Move directly to [per-epoch processing](#per-epoch-processing).
+
+## Per-block processing
+
+Below are the processing steps that happen at every block, denoted `block`.
+
+### Slot
+
+* Verify that `block.slot == state.slot`.
 
 ### Proposer signature
 
@@ -1327,7 +1338,7 @@ If there is no block from the proposer at state.slot:
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips + 1) == proposer.randao_commitment`.
+* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips) == proposer.randao_commitment`.
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`.
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_skips = 0`.
