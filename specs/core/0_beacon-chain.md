@@ -59,6 +59,44 @@
         - [Helper functions](#helper-functions)
             - [`hash`](#hash)
             - [`is_active_validator`](#is_active_validator)
+            - [`get_active_validator_indices`](#get_active_validator_indices)
+            - [`shuffle`](#shuffle)
+            - [`split`](#split)
+            - [`clamp`](#clamp)
+            - [`get_new_shuffling`](#get_new_shuffling)
+            - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
+            - [`get_block_root`](#get_block_root)
+            - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+            - [`merkle_root`](#merkle_root)
+            - [`get_attestation_participants`](#get_attestation_participants)
+            - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
+            - [`get_effective_balance`](#get_effective_balance)
+            - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
+            - [`get_fork_version`](#get_fork_version)
+            - [`get_domain`](#get_domain)
+            - [`hash_tree_root`](#hash_tree_root)
+            - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
+            - [`integer_squareroot`](#integer_squareroot)
+            - [`bls_verify`](#bls_verify)
+            - [`bls_verify_multiple`](#bls_verify_multiple)
+        - [On startup](#on-startup)
+        - [Routine for processing deposits](#routine-for-processing-deposits)
+        - [Routine for updating validator status](#routine-for-updating-validator-status)
+    - [Per-slot processing](#per-slot-processing)
+        - [Misc counters](#misc-counters)
+        - [Block roots](#block-roots)
+    - [Per-block processing](#per-block-processing)
+        - [Slot](#slot)
+        - [Proposer signature](#proposer-signature)
+        - [RANDAO](#randao)
+        - [PoW receipt root](#pow-receipt-root)
+        - [Operations](#operations)
+            - [Proposer slashings](#proposer-slashings-1)
+            - [Casper slashings](#casper-slashings-1)
+            - [Attestations](#attestations-1)
+            - [Deposits](#deposits-1)
+            - [Exits](#exits-1)
+        - [Ejections](#ejections)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -685,7 +723,7 @@ The hash function is denoted by `hash`. In Phase 0 the beacon chain is deployed 
 Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
 #### `is_active_validator`
- ```python
+```python
 def is_active_validator(validator: ValidatorRecord) -> bool:
     """
     Checks if ``validator`` is active.
@@ -1417,7 +1455,7 @@ For each `exit` in `block.body.exits`:
 
 * Run `process_ejections(state)`.
 
- ```python
+```python
 def process_ejections(state: BeaconState) -> None:
     """
     Iterate through the validator registry
