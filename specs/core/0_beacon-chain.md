@@ -77,8 +77,8 @@
             - [`hash_tree_root`](#hash_tree_root)
             - [`verify_casper_votes`](#verify_casper_votes)
             - [`integer_squareroot`](#integer_squareroot)
-            - [`bls_verify`](#blsverify)
-            - [`bls_verify_multiple`](#blsverifymultiple)
+            - [`bls_verify`](#bls_verify)
+            - [`bls_verify_multiple`](#bls_verify_multiple)
         - [On startup](#on-startup)
         - [Routine for processing deposits](#routine-for-processing-deposits)
         - [Routine for updating validator status](#routine-for-updating-validator-status)
@@ -91,7 +91,7 @@
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
-        - [Block operations](#block-operations)
+        - [Operations](#operations)
             - [Proposer slashings](#proposer-slashings-1)
             - [Casper slashings](#casper-slashings-1)
             - [Attestations](#attestations-1)
@@ -484,7 +484,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # RANDAO commitment
     'randao_commitment': 'hash32',
     # Slots the proposer has skipped (i.e. layers of RANDAO expected)
-    'randao_skips': 'uint64',
+    'randao_layers': 'uint64',
     # Balance in Gwei
     'balance': 'uint64',
     # Status code
@@ -1011,7 +1011,7 @@ def verify_casper_votes(state: BeaconState, votes: SlashableVoteData) -> bool:
 
     pubs = [aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_0_indices]),
             aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_1_indices])]
-    return bls_verify_multiple(pubkeys=pubs, msgs=[hash_tree_root(votes)+bytes1(0), hash_tree_root(votes)+bytes1(1), sig=aggregate_signature)
+    return bls_verify_multiple(pubkeys=pubs, messages=[hash_tree_root(votes)+bytes1(0), hash_tree_root(votes)+bytes1(1), signature=aggregate_signature)
 ```
 
 #### `integer_squareroot`
@@ -1158,9 +1158,9 @@ def process_deposit(state: BeaconState,
     Note that this function mutates ``state``.
     """
     assert bls_verify(
-        pub=pubkey,
-        msg=hash(bytes32(pubkey) + withdrawal_credentials + randao_commitment),
-        sig=proof_of_possession,
+        pubkey=pubkey,
+        message=hash(bytes32(pubkey) + withdrawal_credentials + randao_commitment),
+        signature=proof_of_possession,
         domain=get_domain(
             state.fork_data,
             state.slot,
@@ -1175,7 +1175,7 @@ def process_deposit(state: BeaconState,
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
-            randao_skips=0,
+            randao_layers=0,
             balance=deposit,
             status=PENDING_ACTIVATION,
             latest_status_change_slot=state.slot,
@@ -1306,9 +1306,10 @@ def exit_validator(state: BeaconState,
 
 Below are the processing steps that happen at every slot.
 
-### Slot
+### Misc counters
 
 * Set `state.slot += 1`.
+* Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_layers += 1`.
 
 ### Block roots
 
@@ -1316,13 +1317,9 @@ Below are the processing steps that happen at every slot.
 * Set `state.latest_block_roots = state.latest_block_roots[1:] + [previous_block_root]`.
 * If `state.slot % LATEST_BLOCK_ROOTS_COUNT == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
-### RANDAO
-
-* Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_skips += 1`.
-
 ## Per-block processing
 
-Below are the processing steps that happen at every block, denoted `block`.
+Below are the processing steps that happen at every `block`.
 
 ### Slot
 
@@ -1330,25 +1327,25 @@ Below are the processing steps that happen at every block, denoted `block`.
 
 ### Proposer signature
 
-* Let `block_root_without_sig` be the `hash_tree_root` of `block` where `block.signature` is set to `[0, 0]`.
-* Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_root_without_sig))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_root, sig=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
+* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `[0, 0]`.
+* Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_root, signature=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
 ### RANDAO
 
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_skips) == proposer.randao_commitment`.
+* Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
 * Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`.
 * Set `proposer.randao_commitment = block.randao_reveal`.
-* Set `proposer.randao_skips = 0`.
+* Set `proposer.randao_layers = 0`.
 
 ### PoW receipt root
 
 * If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
 * Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
 
-### Block operations
+### Operations
 
 #### Proposer slashings
 
@@ -1357,8 +1354,8 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, msg=hash_tree_root(proposer_slashing.proposal_data_1), sig=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, msg=hash_tree_root(proposer_slashing.proposal_data_2), sig=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
@@ -1394,7 +1391,7 @@ For each `attestation` in `block.body.attestations`:
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, msg=hash_tree_root(attestation.data) + bytes1(0), sig=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
+    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(attestation.data) + bytes1(0), signature=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_hash == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
@@ -1441,7 +1438,7 @@ Verify that `len(block.body.exits) <= MAX_EXITS`.
 For each `exit` in `block.body.exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `bls_verify(pubkey=validator.pubkey, msg=ZERO_HASH, sig=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Verify that `validator.status == ACTIVE`.
 * Verify that `state.slot >= exit.slot`.
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
