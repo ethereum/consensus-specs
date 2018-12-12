@@ -1502,7 +1502,7 @@ All [validators](#dfn-validator):
   * Let `previous_epoch_head_attesters = [state.validator_registry[i] for indices in previous_epoch_head_attester_indices for i in indices]`.
   * Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_head_attesters])`.
 
-_Note_: `previous_epoch_boundary_attesting_balance` balance might be marginally different than `this_epoch_boundary_attesting_balance` during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
+**Note**: `previous_epoch_boundary_attesting_balance` balance might be marginally different than `this_epoch_boundary_attesting_balance` during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
