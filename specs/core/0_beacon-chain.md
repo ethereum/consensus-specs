@@ -1558,7 +1558,7 @@ First, we define some additional helpers:
 
 * Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
 * Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient // 4` for any validator `v`.
-* Let `base_inactivity_penalty(v, slots_since_finality) = base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator `v`.
+* Let `inactivity_penalty(v, slots_since_finality) = base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator `v`.
 
 #### Justification and finalization
 
@@ -1580,10 +1580,10 @@ Case 1: `slots_since_finality <= 4 * EPOCH_LENGTH`:
 
 Case 2: `slots_since_finality > 4 * EPOCH_LENGTH`:
 
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attesters`, loses `base_inactivity_penalty(v, slots_since_finality)`.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, loses `base_inactivity_penalty(v, slots_since_finality)`.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_head_attesters`, loses `base_inactivity_penalty(v, slots_since_finality)`.
-* Any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `3 * base_inactivity_penalty(v, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attesters`, loses `inactivity_penalty(v, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attesters`, loses `inactivity_penalty(v, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_head_attesters`, loses `inactivity_penalty(v, slots_since_finality)`.
+* Any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `3 * inactivity_penalty(v, slots_since_finality)`.
 
 #### Attestation inclusion
 
