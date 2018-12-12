@@ -370,7 +370,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Minimum slot for processing exit
-    'slot': 'unit64',
+    'slot': 'uint64',
     # Index of the exiting validator
     'validator_index': 'uint64',
     # Validator signature
