@@ -85,8 +85,8 @@
     - [Per-slot processing](#per-slot-processing)
         - [Misc counters](#misc-counters)
         - [Block roots](#block-roots)
-    - [Per-block processing](#per-block-processing)  
-        - [Slot](#slot)  
+    - [Per-block processing](#per-block-processing)
+        - [Slot](#slot)
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
@@ -723,7 +723,7 @@ The hash function is denoted by `hash`. In Phase 0 the beacon chain is deployed 
 Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
 #### `is_active_validator`
- ```python
+```python
 def is_active_validator(validator: ValidatorRecord) -> bool:
     """
     Checks if ``validator`` is active.
@@ -1449,7 +1449,7 @@ For each `exit` in `block.body.exits`:
 
 * Run `process_ejections(state)`.
 
- ```python
+```python
 def process_ejections(state: BeaconState) -> None:
     """
     Iterate through the validator registry
