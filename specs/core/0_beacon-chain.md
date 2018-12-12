@@ -379,7 +379,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Minimum slot for processing exit
     'slot': 'uint64',
     # Index of the exiting validator
-    'validator_index': 'uint64',
+    'validator_index': 'uint24',
     # Validator signature
     'signature': '[uint384]',
 }
