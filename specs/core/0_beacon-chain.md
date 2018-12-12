@@ -1014,9 +1014,15 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
         aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_0_indices]),
         aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_1_indices])
     ]
+    vote_data_root = hash_tree_root(vote_data)
+    messages = [
+        vote_data_root + bytes1(0),
+        vote_data_root + bytes1(1)
+    ]
     return bls_verify_multiple(
         pubkeys=pubs,
-        messages=[hash_tree_root(vote_data)+bytes1(0), hash_tree_root(vote_data)+bytes1(1)],signature=vote_data.aggregate_signature,
+        messages=messages,
+        signature=vote_data.aggregate_signature,
         domain=DOMAIN_ATTESTATION,
     )
 ```
