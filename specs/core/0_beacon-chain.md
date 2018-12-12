@@ -103,8 +103,10 @@
         - [Justification](#justification)
         - [Finalization](#finalization)
         - [Crosslinks](#crosslinks)
-        - [Justification and finalization rewards and penalties](#justification-and-finalization-rewards-and-penalties)
-        - [Crosslink rewards and penalties](#crosslink-rewards-and-penalties)
+        - [Rewards and penalties](#rewards-and-penalties)
+            - [Justification and finalization](#justification-and-finalization)
+            - [Attestation inclusion](#attestation-inclusion)
+            - [Crosslinks](#crosslinks-1)
         - [Validator registry](#validator-registry)
         - [Proposer reshuffling](#proposer-reshuffling)
         - [Final updates](#final-updates)
@@ -1553,7 +1555,9 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 
 * Set `state.latest_crosslinks[shard] = CrosslinkRecord(slot=state.slot, block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
-### Justification and finalization rewards and penalties
+### Rewards and penalties
+
+#### Justification and finalization
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
@@ -1578,9 +1582,11 @@ Case 2: `slots_since_finality > 4 * EPOCH_LENGTH`:
 * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_head_attesters`, loses `base_inactivity_penalty(v, slots_since_finality)`.
 * Any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `3 * base_inactivity_penalty(v, slots_since_finality)`.
 
+#### Attestation inclusion
+
 For each `v` in `previous_epoch_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_registry[proposer_index].balance += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
 
-### Crosslink rewards and penalties
+#### Crosslinks
 
 For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `v` in `[state.validator_registry[index] for index in shard_committee.committee]`, adjust balances as follows:
 
