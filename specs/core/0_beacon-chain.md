@@ -1470,9 +1470,6 @@ All [validators](#dfn-validator):
 
 * Let `active_validators = [state.validator_registry[i] for i in get_active_validator_indices(state.validator_registry)]`.
 * Let `total_balance = sum([get_effective_balance(v) for v in active_validators])`.
-* Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
-* Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient // 4` for any validator `v`.
-* Let `base_inactivity_penalty(v, slots_since_finality) = base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator `v`.
 
 [Validators](#dfn-Validator) validators attesting during the current epoch:
 
@@ -1556,6 +1553,12 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 * Set `state.latest_crosslinks[shard] = CrosslinkRecord(slot=state.slot, block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
 ### Rewards and penalties
+
+First, we define some additional helpers:
+
+* Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
+* Let `base_reward(v) = get_effective_balance(v) // base_reward_quotient // 4` for any validator `v`.
+* Let `base_inactivity_penalty(v, slots_since_finality) = base_reward(v) + get_effective_balance(v) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator `v`.
 
 #### Justification and finalization
 
