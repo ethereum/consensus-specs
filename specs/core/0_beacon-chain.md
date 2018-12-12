@@ -153,7 +153,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 **Domains for BLS signatures**
 
-| Name | Value | 
+| Name | Value |
 | - | - |
 | `DOMAIN_DEPOSIT` | `0` |
 | `DOMAIN_ATTESTATION` | `1` |
@@ -224,7 +224,7 @@ def get_receipt_root() -> bytes32:
 
 The contract is at address `DEPOSIT_CONTRACT_ADDRESS`. When a user wishes to become a validator by moving their ETH from Ethereum 1.0 to the Ethereum 2.0 chain, they should call the `deposit` function, sending up to `MAX_DEPOSIT` ETH and providing as `deposit_parameters` a SimpleSerialize'd `DepositParametersRecord` object (defined in "Data structures" below). If the user wishes to deposit more than `MAX_DEPOSIT` ETH, they would need to make multiple calls.
 
-When the contract publishes a `ChainStart` log, this initializes the chain, calling `on_startup` with:
+When the contract publishes a `ChainStart` log, this initializes the chain, calling `get_initial_beacon_state` with:
 
 * `initial_validator_entries` equal to the list of data records published as HashChainValue logs so far, in the order in which they were published (oldest to newest).
 * `genesis_time` equal to the `time` value published in the log
@@ -522,7 +522,7 @@ def lmd_ghost(store, start):
     while 1:
         children = get_children(head)
         if len(children) == 0:
-            return head        
+            return head
         head = max(children, key=get_vote_count)
 ```
 
@@ -788,7 +788,7 @@ def integer_squareroot(n: int) -> int:
 
 ### On startup
 
-A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the following values. Other validity rules (eg. requiring a signature) do not apply.
+A valid block with slot INITIAL_SLOT_NUMBER (a "genesis block") has the following values. Other validity rules (e.g. requiring a signature) do not apply.
 
 ```python
 {
@@ -803,10 +803,10 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 }
 ```
 
-`STARTUP_STATE_ROOT` is the root of the initial state, computed by running the following code:
+`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `ssz_tree_hash` of `BeaconState`.
 
 ```python
-def on_startup(initial_validator_entries: List[Any],
+def get_initial_beacon_state(initial_validator_entries: List[Any],
                genesis_time: int,
                processed_pow_receipt_root: Hash32) -> BeaconState:
     # Activate validators
@@ -916,7 +916,7 @@ def get_new_validators(validators: List[ValidatorRecord],
     )
     validators_copy = copy.deepcopy(validators)
     validator_pubkeys = [v.pubkey for v in validators_copy]
-    
+
     if pubkey not in validator_pubkeys:
         # Add new validator
         validator = ValidatorRecord(
@@ -946,7 +946,7 @@ def get_new_validators(validators: List[ValidatorRecord],
 
     return validators_copy, index
 ```
-`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).  
+`BLSVerify` is a function for verifying a BLS12-381 signature, defined in the [BLS12-381 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md).
 Now, to add a validator or top up an existing validator's balance:
 
 ```python
@@ -1009,7 +1009,7 @@ def exit_validator(index: int,
     if penalize:
         validator.status = EXITED_WITH_PENALTY
         state.latest_penalized_exit_balances[current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(validator)
-        
+
         whistleblower = state.validator_registry[get_beacon_proposer_index(state, current_slot)]
         whistleblower_reward = validator.balance // WHISTLEBLOWER_REWARD_QUOTIENT
         whistleblower.balance += whistleblower_reward
@@ -1134,7 +1134,7 @@ For each `special` in `block.specials`:
 #### `CASPER_SLASHING`
 
 We define the following `SpecialAttestationData` object and the helper `verify_special_attestation_data`:
- 
+
  ```python
 {
     'aggregate_sig_poc_0_indices': '[uint24]',
@@ -1267,7 +1267,7 @@ For every `ShardAndCommittee` object `obj` in `state.shard_and_committee_for_slo
 * Let `total_attesting_balance(obj)` be the sum of the balances-at-stake of `attesting_validators(obj)`.
 * Let `winning_hash(obj)` be the winning `shard_block_hash` value.
 * Let `total_balance(obj) = sum([get_effective_balance(v) for v in obj.committee])`.
-    
+
 Let `inclusion_slot(v)` equal `a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`, and `inclusion_distance(v) = a.slot_included - a.data.slot` for the same attestation. We define a function `adjust_for_inclusion_distance(magnitude, distance)` which adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward). Returns a value between 0 and `magnitude`.
 
 ```python
