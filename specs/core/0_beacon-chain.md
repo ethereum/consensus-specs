@@ -1375,13 +1375,13 @@ Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
 
 For each `casper_slashing` in `block.body.casper_slashings`:
 
-* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_1)`.
-* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_2)`.
 * Verify that `casper_slashing.slashable_vote_data_1.data != casper_slashing.slashable_vote_data_2.data`.
 * Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
 * Let `intersection = [x for x in indices(casper_slashing.slashable_vote_data_1) if x in indices(casper_slashing.slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `casper_slashing.slashable_vote_data_1.data.justified_slot + 1 < casper_slashing.slashable_vote_data_2.data.justified_slot + 1 == casper_slashing.slashable_vote_data_2.data.slot < casper_slashing.slashable_vote_data_1.data.slot` or `casper_slashing.slashable_vote_data_1.data.slot == casper_slashing.slashable_vote_data_2.data.slot`.
+* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_1)`.
+* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_2)`.
 * For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
