@@ -59,44 +59,6 @@
         - [Helper functions](#helper-functions)
             - [`hash`](#hash)
             - [`is_active_validator`](#is_active_validator)
-            - [`get_active_validator_indices`](#get_active_validator_indices)
-            - [`shuffle`](#shuffle)
-            - [`split`](#split)
-            - [`clamp`](#clamp)
-            - [`get_new_shuffling`](#get_new_shuffling)
-            - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
-            - [`get_block_root`](#get_block_root)
-            - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            - [`merkle_root`](#merkle_root)
-            - [`get_attestation_participants`](#get_attestation_participants)
-            - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
-            - [`get_effective_balance`](#get_effective_balance)
-            - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
-            - [`get_fork_version`](#get_fork_version)
-            - [`get_domain`](#get_domain)
-            - [`hash_tree_root`](#hash_tree_root)
-            - [`verify_casper_votes`](#verify_casper_votes)
-            - [`integer_squareroot`](#integer_squareroot)
-            - [`bls_verify`](#bls_verify)
-            - [`bls_verify_multiple`](#bls_verify_multiple)
-        - [On startup](#on-startup)
-        - [Routine for processing deposits](#routine-for-processing-deposits)
-        - [Routine for updating validator status](#routine-for-updating-validator-status)
-    - [Per-slot processing](#per-slot-processing)
-        - [Misc counters](#misc-counters)
-        - [Block roots](#block-roots)
-    - [Per-block processing](#per-block-processing)  
-        - [Slot](#slot)  
-        - [Proposer signature](#proposer-signature)
-        - [RANDAO](#randao)
-        - [PoW receipt root](#pow-receipt-root)
-        - [Operations](#operations)
-            - [Proposer slashings](#proposer-slashings-1)
-            - [Casper slashings](#casper-slashings-1)
-            - [Attestations](#attestations-1)
-            - [Deposits](#deposits-1)
-            - [Exits](#exits-1)
-        - [Ejections](#ejections)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -541,7 +503,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Candidate PoW receipt root
     'candidate_pow_receipt_root': 'hash32',
     # Vote count
-    'votes': 'uint64',
+    'vote_count': 'uint64',
 }
 ```
 
@@ -1343,8 +1305,8 @@ Below are the processing steps that happen at every `block`.
 
 ### PoW receipt root
 
-* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
-* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
+* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.vote_count += 1`.
+* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, vote_count=1)`.
 
 ### Operations
 
@@ -1528,7 +1490,7 @@ def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
 
 If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 
-* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.votes * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
+* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.vote_count * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
 * Set `state.candidate_pow_receipt_roots = []`.
 
 ### Justification
