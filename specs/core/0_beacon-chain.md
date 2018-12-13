@@ -34,6 +34,7 @@
                 - [`Deposit`](#deposit)
                 - [`DepositData`](#depositdata)
                 - [`DepositInput`](#depositinput)
+                - [`ProofOfPossessionData`](#proofofpossessiondata)
             - [Exits](#exits)
                 - [`Exit`](#exit)
         - [Beacon chain blocks](#beacon-chain-blocks)
@@ -374,6 +375,16 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Withdrawal credentials
     'withdrawal_credentials': 'hash32',
     # Initial RANDAO commitment
+    'randao_commitment': 'hash32',
+}
+```
+
+#### `ProofOfPossessionData`
+
+```python
+{
+    'pubkey': 'uint384',
+    'withdrawal_credentials': 'hash32',
     'randao_commitment': 'hash32',
 }
 ```
@@ -985,7 +996,7 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     """
     Compute the next root in the validator registry delta hash chain.
     """
-    return tree_hash_root(
+    return hash_tree_root(
         ValidatorRegistryDeltaBlock(
             current_validator_registry_delta_chain_tip,
             validator_index=validator_index,
@@ -1095,7 +1106,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 }
 ```
 
-`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `tree_hash_root` of `BeaconState`.
+`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
 
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
@@ -1192,9 +1203,15 @@ def process_deposit(state: BeaconState,
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
+    proof_of_possession_data = ProofOfPossessionData(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        randao_commitment=randao_commitment,
+    )
+
     assert bls_verify(
         pubkey=pubkey,
-        message=hash(bytes32(pubkey) + withdrawal_credentials + randao_commitment),
+        message=hash_tree_root(proof_of_possession_data),
         signature=proof_of_possession,
         domain=get_domain(
             state.fork_data,
@@ -1348,7 +1365,7 @@ Below are the processing steps that happen at every slot.
 
 ### Block roots
 
-* Let `previous_block_root` be the `tree_hash_root` of the previous beacon block processed in the chain.
+* Let `previous_block_root` be the `hash_tree_root` of the previous beacon block processed in the chain.
 * Set `state.latest_block_roots = state.latest_block_roots[1:] + [previous_block_root]`.
 * If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
