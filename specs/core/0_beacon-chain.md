@@ -77,6 +77,8 @@
             - [`get_domain`](#get_domain)
             - [`hash_tree_root`](#hash_tree_root)
             - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
+            - [`is_double_vote`](#is_double_vote)
+            - [`is_surround_vote`](#is_surround_vote)
             - [`integer_squareroot`](#integer_squareroot)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
@@ -1036,6 +1038,26 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
     )
 ```
 
+#### `is_double_vote`
+
+```python
+def is_double_vote(attestation_data_1: AttestationData,
+                   attestation_data_2: AttestationData) -> bool
+    return attestation_data_1.slot == attestation_data_2.slot
+```
+
+#### `is_surround_vote`
+
+```python
+def is_surround_vote(attestation_data_1: AttestationData,
+                     attestation_data_2: AttestationData) -> bool
+    return (
+        (attestation_data_1.justified_slot < attestation_data_2.justified_slot) and
+        (attestat_data_2.justified_slot + 1 == attestation_data_2.slot) and
+        (attestation_data_2.slot < attestation_data_1.slot)
+    )
+```
+
 #### `integer_squareroot`
 
 ```python
@@ -1389,13 +1411,15 @@ Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
 
 For each `casper_slashing` in `block.body.casper_slashings`:
 
-* Verify that `casper_slashing.slashable_vote_data_1.data != casper_slashing.slashable_vote_data_2.data`.
-* Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
-* Let `intersection = [x for x in indices(casper_slashing.slashable_vote_data_1) if x in indices(casper_slashing.slashable_vote_data_2)]`.
+* Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
+* Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
+* Let `indices(slashable_vote_data) = slashable_vote_data.aggregate_signature_poc_0_indices + slashable_vote_data.aggregate_signature_poc_1_indices`.
+* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `casper_slashing.slashable_vote_data_1.data.justified_slot + 1 < casper_slashing.slashable_vote_data_2.data.justified_slot + 1 == casper_slashing.slashable_vote_data_2.data.slot < casper_slashing.slashable_vote_data_1.data.slot` or `casper_slashing.slashable_vote_data_1.data.slot == casper_slashing.slashable_vote_data_2.data.slot`.
-* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_1)`.
-* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_2)`.
+* Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
+* Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
+* Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
+* Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
 * For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
