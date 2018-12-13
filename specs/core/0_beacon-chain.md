@@ -400,8 +400,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     ## Header ##
     'slot': 'uint64',
-    # Skip list of ancestor beacon block hashes
-    # i'th item is the most recent ancestor whose slot is a multiple of 2**i for i = 0, ..., 31
     'parent_root': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
