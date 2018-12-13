@@ -592,7 +592,7 @@ Every deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits an `Eth1De
 
 ### `ChainStart` log
 
-When sufficiently many full deposits have been made the deposit contract emits the `ChainStart` log. The beacon chain may then be initialized by calling the `get_initial_beacon_state` function (defined below) where:
+When sufficiently many full deposits have been made the deposit contract emits the `ChainStart` log. The beacon chain state may then be initialized by calling the `get_initial_beacon_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `ChainStart` log
 * `processed_pow_receipt_root` equals `receipt_root` in the `ChainStart` log
@@ -1064,8 +1064,8 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
-               genesis_time: int,
-               processed_pow_receipt_root: Hash32) -> BeaconState:
+                             genesis_time: int,
+                             processed_pow_receipt_root: Hash32) -> BeaconState:
     state = BeaconState(
         # Misc
         slot=INITIAL_SLOT_NUMBER,
