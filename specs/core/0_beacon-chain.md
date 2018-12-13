@@ -1249,7 +1249,7 @@ def activate_validator(state: BeaconState,
     validator.status = ACTIVE
     validator.latest_status_change_slot = state.slot
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        validator_registry_delta_chain_tip=validator_registry_delta_chain_tip,
+        validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
         index=index,
         pubkey=validator.pubkey,
         flag=ACTIVATION,
