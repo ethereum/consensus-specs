@@ -75,7 +75,7 @@
             - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
             - [`hash_tree_root`](#hash_tree_root)
-            - [`verify_casper_votes`](#verify_casper_votes)
+            - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
             - [`integer_squareroot`](#integer_squareroot)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
@@ -85,8 +85,8 @@
     - [Per-slot processing](#per-slot-processing)
         - [Misc counters](#misc-counters)
         - [Block roots](#block-roots)
-    - [Per-block processing](#per-block-processing)  
-        - [Slot](#slot)  
+    - [Per-block processing](#per-block-processing)
+        - [Slot](#slot)
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
         - [PoW receipt root](#pow-receipt-root)
@@ -160,7 +160,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
-| `LATEST_BLOCK_ROOTS_COUNT` | `2**13` (= 8,192) | block roots |
+| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -272,9 +272,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # First batch of votes
-    'votes_1': SlashableVoteData,
+    'slashable_vote_data_1': SlashableVoteData,
     # Second batch of votes
-    'votes_2': SlashableVoteData,
+    'slashable_vote_data_2': SlashableVoteData,
 }
 ```
 
@@ -541,7 +541,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Candidate PoW receipt root
     'candidate_pow_receipt_root': 'hash32',
     # Vote count
-    'votes': 'uint64',
+    'vote_count': 'uint64',
 }
 ```
 
@@ -723,7 +723,7 @@ The hash function is denoted by `hash`. In Phase 0 the beacon chain is deployed 
 Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
 #### `is_active_validator`
- ```python
+```python
 def is_active_validator(validator: ValidatorRecord) -> bool:
     """
     Checks if ``validator`` is active.
@@ -1003,16 +1003,28 @@ def get_domain(fork_data: ForkData,
 
 `hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
-#### `verify_casper_votes`
+#### `verify_slashable_vote_data`
 
 ```python
-def verify_casper_votes(state: BeaconState, votes: SlashableVoteData) -> bool:
-    if len(votes.aggregate_signature_poc_0_indices) + len(votes.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
+def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData) -> bool:
+    if len(vote_data.aggregate_signature_poc_0_indices) + len(vote_data.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
         return False
 
-    pubs = [aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_0_indices]),
-            aggregate_pubkey([state.validators[i].pubkey for i in votes.aggregate_signature_poc_1_indices])]
-    return bls_verify_multiple(pubkeys=pubs, messages=[hash_tree_root(votes)+bytes1(0), hash_tree_root(votes)+bytes1(1), signature=aggregate_signature)
+    pubs = [
+        aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_0_indices]),
+        aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_1_indices])
+    ]
+    vote_data_root = hash_tree_root(vote_data)
+    messages = [
+        vote_data_root + bytes1(0),
+        vote_data_root + bytes1(1)
+    ]
+    return bls_verify_multiple(
+        pubkeys=pubs,
+        messages=messages,
+        signature=vote_data.aggregate_signature,
+        domain=DOMAIN_ATTESTATION,
+    )
 ```
 
 #### `integer_squareroot`
@@ -1097,7 +1109,7 @@ def on_startup(initial_validator_deposits: List[Deposit],
 
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_COUNT)],
+        latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
         batched_block_roots=[]
@@ -1314,7 +1326,7 @@ Below are the processing steps that happen at every slot.
 
 * Let `previous_block_root` be the `tree_hash_root` of the previous beacon block processed in the chain.
 * Set `state.latest_block_roots = state.latest_block_roots[1:] + [previous_block_root]`.
-* If `state.slot % LATEST_BLOCK_ROOTS_COUNT == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
+* If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
 ## Per-block processing
 
@@ -1341,8 +1353,8 @@ Below are the processing steps that happen at every `block`.
 
 ### PoW receipt root
 
-* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.votes += 1`.
-* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, votes=1)`.
+* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.vote_count += 1`.
+* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, vote_count=1)`.
 
 ### Operations
 
@@ -1353,12 +1365,12 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
 * Verify that `proposer.status != EXITED_WITH_PENALTY`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Run `update_validator_status(state, proposer_slashing.proposer_index, new_status=EXITED_WITH_PENALTY)`.
 
 #### Casper slashings
@@ -1367,13 +1379,13 @@ Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
 
 For each `casper_slashing` in `block.body.casper_slashings`:
 
-* Verify that `verify_casper_votes(state, casper_slashing.votes_1)`.
-* Verify that `verify_casper_votes(state, casper_slashing.votes_2)`.
-* Verify that `casper_slashing.votes_1.data != casper_slashing.votes_2.data`.
+* Verify that `casper_slashing.slashable_vote_data_1.data != casper_slashing.slashable_vote_data_2.data`.
 * Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
-* Let `intersection = [x for x in indices(casper_slashing.votes_1) if x in indices(casper_slashing.votes_2)]`.
+* Let `intersection = [x for x in indices(casper_slashing.slashable_vote_data_1) if x in indices(casper_slashing.slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `casper_slashing.votes_1.data.justified_slot + 1 < casper_slashing.votes_2.data.justified_slot + 1 == casper_slashing.votes_2.data.slot < casper_slashing.votes_1.data.slot` or `casper_slashing.votes_1.data.slot == casper_slashing.votes_2.data.slot`.
+* Verify that `casper_slashing.slashable_vote_data_1.data.justified_slot + 1 < casper_slashing.slashable_vote_data_2.data.justified_slot + 1 == casper_slashing.slashable_vote_data_2.data.slot < casper_slashing.slashable_vote_data_1.data.slot` or `casper_slashing.slashable_vote_data_1.data.slot == casper_slashing.slashable_vote_data_2.data.slot`.
+* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_1)`.
+* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_2)`.
 * For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
@@ -1437,17 +1449,17 @@ Verify that `len(block.body.exits) <= MAX_EXITS`.
 For each `exit` in `block.body.exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Verify that `validator.status == ACTIVE`.
 * Verify that `state.slot >= exit.slot`.
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
 
 ### Ejections
 
 * Run `process_ejections(state)`.
 
- ```python
+```python
 def process_ejections(state: BeaconState) -> None:
     """
     Iterate through the validator registry
@@ -1526,7 +1538,7 @@ def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
 
 If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 
-* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.votes * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
+* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.vote_count * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
 * Set `state.candidate_pow_receipt_roots = []`.
 
 ### Justification
