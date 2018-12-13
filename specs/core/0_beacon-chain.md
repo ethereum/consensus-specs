@@ -1026,7 +1026,7 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
         domain=get_domain(
             state.fork_data,
             state.slot,
-            DOMAIN_ATTESTATION
+            DOMAIN_ATTESTATION,
         ),
     )
 ```
