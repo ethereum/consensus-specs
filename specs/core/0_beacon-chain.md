@@ -1023,7 +1023,11 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
         pubkeys=pubs,
         messages=messages,
         signature=vote_data.aggregate_signature,
-        domain=DOMAIN_ATTESTATION,
+        domain=get_domain(
+            state.fork_data,
+            state.slot,
+            DOMAIN_ATTESTATION,
+        ),
     )
 ```
 
