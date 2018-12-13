@@ -32,6 +32,7 @@
                 - [`AttestationData`](#attestationdata)
             - [Deposits](#deposits)
                 - [`Deposit`](#deposit)
+                - [`DepositData`](#depositdata)
                 - [`DepositParameters`](#depositparameters)
             - [Exits](#exits)
                 - [`Exit`](#exit)
@@ -344,14 +345,20 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Merkle tree index
     'merkle_tree_index': 'uint64',
     # Deposit data
-    'deposit_data': {
-        # Deposit parameters
-        'deposit_parameters': DepositParameters,
-        # Value in Gwei
-        'value': 'uint64',
-        # Timestamp from deposit contract
-        'timestamp': 'uint64',
-    },
+    'deposit_data': DepositData,
+}
+```
+
+##### `DepositData`
+
+```python
+{
+    # Deposit parameters
+    'deposit_parameters': DepositParameters,
+    # Value in Gwei
+    'value': 'uint64',
+    # Timestamp from deposit contract
+    'timestamp': 'uint64',
 }
 ```
 
@@ -1116,7 +1123,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_penalized_exit_balances=[],
         latest_attestations=[],
-        batched_block_roots=[]
+        batched_block_roots=[],
+
         # PoW receipt root
         processed_pow_receipt_root=processed_pow_receipt_root,
         candidate_pow_receipt_roots=[],
