@@ -49,6 +49,7 @@
             - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
+            - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [`Eth1Deposit` logs](#eth1deposit-logs)
@@ -578,6 +579,17 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
+#### `ValidatorRegistryDeltaBlock`
+
+```python
+{
+    latest_registry_delta_root: 'hash32',
+    validator_index: 'uint24',
+    pubkey: 'uint384',
+    flag: 'uint64',
+}
+```
+
 ## Ethereum 1.0 deposit contract
 
 The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards when the EVM2.0 is deployed and the shards have state.
@@ -967,17 +979,19 @@ def get_effective_balance(validator: ValidatorRecord) -> int:
 
 ```python
 def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_chain_tip: Hash32,
-                                               index: int,
+                                               validator_index: int,
                                                pubkey: int,
                                                flag: int) -> Hash32:
     """
-    Compute the next hash in the validator registry delta hash chain.
+    Compute the next root in the validator registry delta hash chain.
     """
-    return hash(
-        current_validator_registry_delta_chain_tip +
-        bytes1(flag) +
-        bytes3(index) +
-        bytes48(pubkey)
+    return tree_hash_root(
+        ValidatorRegistryDeltaBlock(
+            current_validator_registry_delta_chain_tip,
+            validator_index=validator_index,
+            pubkey=pubkey,
+            flag=flag,
+        )
     )
 ```
 
@@ -1081,7 +1095,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 }
 ```
 
-`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `ssz_tree_hash` of `BeaconState`.
+`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `tree_hash_root` of `BeaconState`.
 
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
