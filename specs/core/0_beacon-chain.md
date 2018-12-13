@@ -97,7 +97,6 @@
             - [Attestations](#attestations-1)
             - [Deposits](#deposits-1)
             - [Exits](#exits-1)
-        - [Ejections](#ejections)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -108,6 +107,7 @@
             - [Justification and finalization](#justification-and-finalization)
             - [Attestation inclusion](#attestation-inclusion)
             - [Crosslinks](#crosslinks-1)
+        - [Ejections](#ejections)
         - [Validator registry](#validator-registry)
         - [Proposer reshuffling](#proposer-reshuffling)
         - [Final updates](#final-updates)
@@ -1248,6 +1248,7 @@ def activate_validator(state: BeaconState,
     Activate the validator with the given ``index``.
     Note that this function mutates ``state``.
     """
+    validator = state.validator_registry[index]
     if validator.status != PENDING_ACTIVATION:
         return
 
@@ -1269,6 +1270,7 @@ def initiate_validator_exit(state: BeaconState,
     Initiate exit for the validator with the given ``index``.
     Note that this function mutates ``state``.
     """
+    validator = state.validator_registry[index]
     if validator.status != ACTIVE:
         return
 
@@ -1465,21 +1467,6 @@ For each `exit` in `block.body.exits`:
 * Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
 
-### Ejections
-
-* Run `process_ejections(state)`.
-
-```python
-def process_ejections(state: BeaconState) -> None:
-    """
-    Iterate through the validator registry
-    and eject active validators with balance below ``EJECTION_BALANCE``.
-    """
-    for index, validator in enumerate(state.validator_registry):
-        if is_active_validator(validor) and validator.balance < EJECTION_BALANCE:
-            update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
-```
-
 ## Per-epoch processing
 
 The steps below happen when `state.slot % EPOCH_LENGTH == 0`.
@@ -1615,6 +1602,21 @@ For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` 
 
 * If `v in attesting_validators(shard_committee)`, `v.balance += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(shard_committee) // total_balance(shard_committee)), inclusion_distance(v))`.
 * If `v not in attesting_validators(shard_committee)`, `v.balance -= base_reward(v)`.
+
+### Ejections
+
+* Run `process_ejections(state)`.
+
+```python
+def process_ejections(state: BeaconState) -> None:
+    """
+    Iterate through the validator registry
+    and eject active validators with balance below ``EJECTION_BALANCE``.
+    """
+    for index in active_validator_indices(state.validator_registry):
+        if state.validator_registry[index].balance < EJECTION_BALANCE:
+            update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
+```
 
 ### Validator registry
 
