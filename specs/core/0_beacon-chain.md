@@ -1485,7 +1485,7 @@ All [validators](#dfn-validator):
 * Let `active_validators = [state.validator_registry[i] for i in get_active_validator_indices(state.validator_registry)]`.
 * Let `total_balance = sum([get_effective_balance(v) for v in active_validators])`.
 
-[Validators](#dfn-Validator) validators attesting during the current epoch:
+[Validators](#dfn-Validator) attesting during the current epoch:
 
 * Let `this_epoch_attestations = [a for a in state.latest_attestations if state.slot - EPOCH_LENGTH <= a.data.slot < state.slot]`. (Note: this is the set of attestations of slots in the epoch `state.slot-EPOCH_LENGTH...state.slot-1`, _not_ attestations that got included in the chain during the epoch `state.slot-EPOCH_LENGTH...state.slot-1`.)
 
