@@ -33,7 +33,7 @@
             - [Deposits](#deposits)
                 - [`Deposit`](#deposit)
                 - [`DepositData`](#depositdata)
-                - [`DepositParameters`](#depositparameters)
+                - [`DepositInput`](#depositinput)
             - [Exits](#exits)
                 - [`Exit`](#exit)
         - [Beacon chain blocks](#beacon-chain-blocks)
@@ -354,7 +354,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Deposit parameters
-    'deposit_parameters': DepositParameters,
+    'deposit_input': DepositInput,
     # Value in Gwei
     'value': 'uint64',
     # Timestamp from deposit contract
@@ -362,7 +362,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-##### `DepositParameters`
+##### `DepositInput`
 
 ```python
 {
@@ -586,7 +586,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositParameters`. One of the `DepositParameters` fields is `withdrawal_credentials` which must satisfy:
+The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositInput`. One of the `DepositInput` fields is `withdrawal_credentials` which must satisfy:
 
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
@@ -626,14 +626,14 @@ full_deposit_count: uint256
 
 @payable
 @public
-def deposit(deposit_parameters: bytes[2048]):
+def deposit(deposit_input: bytes[2048]):
     assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
     assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
 
     index: uint256 = self.deposit_count + 2**DEPOSIT_CONTRACT_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
-    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_parameters)
+    deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_input)
 
     log.Eth1Deposit(self.receipt_tree[1], deposit_data, self.deposit_count)
 
@@ -1134,11 +1134,11 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
     for deposit in initial_validator_deposits:
         validator_index = process_deposit(
             state=state,
-            pubkey=deposit.deposit_data.deposit_parameters.pubkey,
+            pubkey=deposit.deposit_data.deposit_input.pubkey,
             deposit=deposit.deposit_data.value,
-            proof_of_possession=deposit.deposit_data.deposit_parameters.proof_of_possession,
-            withdrawal_credentials=deposit.deposit_data.deposit_parameters.withdrawal_credentials,
-            randao_commitment=deposit.deposit_data.deposit_parameters.randao_commitment
+            proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
+            withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
+            randao_commitment=deposit.deposit_data.deposit_input.randao_commitment
         )
         if state.validator_registry[index].balance >= MAX_DEPOSIT * GWEI_PER_ETH:
             update_validator_status(state, index, ACTIVE)
@@ -1426,7 +1426,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
 For each `deposit` in `block.body.deposits`:
 
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositParameters` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-chain-deposit-contract) of which the hash was placed into the Merkle tree.
+* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositInput` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
 * Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
 ```python
@@ -1446,11 +1446,11 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
 ```python
 process_deposit(
     state=state,
-    pubkey=deposit.deposit_data.deposit_parameters.pubkey,
+    pubkey=deposit.deposit_data.deposit_input.pubkey,
     deposit=deposit.deposit_data.value,
-    proof_of_possession=deposit.deposit_data.deposit_parameters.proof_of_possession,
-    withdrawal_credentials=deposit.deposit_data.deposit_parameters.withdrawal_credentials,
-    randao_commitment=deposit.deposit_data.deposit_parameters.randao_commitment
+    proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
+    withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
+    randao_commitment=deposit.deposit_data.deposit_input.randao_commitment
 )
 ```
 
