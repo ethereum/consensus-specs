@@ -1222,8 +1222,7 @@ def process_deposit(state: BeaconState,
                     deposit: int,
                     proof_of_possession: bytes,
                     withdrawal_credentials: Hash32,
-                    randao_commitment: Hash32,
-                    status: int) -> int:
+                    randao_commitment: Hash32) -> int:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
