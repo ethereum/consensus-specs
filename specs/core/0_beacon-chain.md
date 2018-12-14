@@ -140,6 +140,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 * **Attester** - a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
 * **Beacon chain** - the central PoS chain that is the base of the sharding system.
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
+* **Block root** - a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
 * **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
 * **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation
@@ -508,7 +509,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # Slot number
     'slot': 'uint64',
-    # Shard block hash
+    # Shard block root
     'shard_block_root': 'hash32',
 }
 ```
@@ -894,7 +895,7 @@ def get_shard_committees_at_slot(state: BeaconState,
 def get_block_root(state: BeaconState,
                    slot: int) -> Hash32:
     """
-    Returns the block hash at a recent ``slot``.
+    Returns the block root at a recent ``slot``.
     """
     earliest_slot_in_array = state.slot - len(state.latest_block_roots)
     assert earliest_slot_in_array <= slot < state.slot
