@@ -34,7 +34,6 @@
                 - [`Deposit`](#deposit)
                 - [`DepositData`](#depositdata)
                 - [`DepositInput`](#depositinput)
-                - [`ProofOfPossessionData`](#proofofpossessiondata)
             - [Exits](#exits)
                 - [`Exit`](#exit)
         - [Beacon chain blocks](#beacon-chain-blocks)
