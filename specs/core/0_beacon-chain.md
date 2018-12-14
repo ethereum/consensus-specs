@@ -61,6 +61,7 @@
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [Helper functions](#helper-functions)
             - [`hash`](#hash)
+            - [`hash_tree_root`](#hash_tree_root)
             - [`is_active_validator`](#is_active_validator)
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
@@ -77,7 +78,6 @@
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
             - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
-            - [`hash_tree_root`](#hash_tree_root)
             - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
             - [`integer_squareroot`](#integer_squareroot)
             - [`bls_verify`](#bls_verify)
@@ -164,6 +164,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
+| `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` | - |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -370,22 +371,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # BLS pubkey
     'pubkey': 'uint384',
-    # BLS proof of possession (a BLS signature)
-    'proof_of_possession': ['uint384'],
     # Withdrawal credentials
     'withdrawal_credentials': 'hash32',
     # Initial RANDAO commitment
     'randao_commitment': 'hash32',
-}
-```
-
-#### `ProofOfPossessionData`
-
-```python
-{
-    'pubkey': 'uint384',
-    'withdrawal_credentials': 'hash32',
-    'randao_commitment': 'hash32',
+    # a BLS signature of this ``DepositInput``
+    'proof_of_possession': ['uint384'],
 }
 ```
 
@@ -750,6 +741,10 @@ The hash function is denoted by `hash`. In Phase 0 the beacon chain is deployed 
 
 Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
+#### `hash_tree_root`
+
+`hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
+
 #### `is_active_validator`
 ```python
 def is_active_validator(validator: ValidatorRecord) -> bool:
@@ -994,11 +989,11 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
                                                pubkey: int,
                                                flag: int) -> Hash32:
     """
-    Compute the next root in the validator registry delta hash chain.
+    Compute the next root in the validator registry delta chain.
     """
     return hash_tree_root(
         ValidatorRegistryDeltaBlock(
-            current_validator_registry_delta_chain_tip,
+            validator_registry_delta_chain_tip=current_validator_registry_delta_chain_tip,
             validator_index=validator_index,
             pubkey=pubkey,
             flag=flag,
@@ -1028,10 +1023,6 @@ def get_domain(fork_data: ForkData,
         slot
     ) * 2**32 + domain_type
 ```
-
-#### `hash_tree_root`
-
-`hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
 #### `verify_slashable_vote_data`
 
@@ -1095,7 +1086,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
     candidate_pow_receipt_root=ZERO_HASH,
-    proposer_signature=[0, 0],
+    proposer_signature=EMPTY_SIGNATURE,
     'body': BeaconBlockBody(
         proposer_slashings=[],
         casper_slashings=[],
@@ -1203,10 +1194,11 @@ def process_deposit(state: BeaconState,
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
-    proof_of_possession_data = ProofOfPossessionData(
+    proof_of_possession_data = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
+        proof_of_possession=EMPTY_SIGNATURE,
     )
 
     assert bls_verify(
@@ -1287,7 +1279,7 @@ def activate_validator(state: BeaconState,
     validator.latest_status_change_slot = state.slot
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        index=index,
+        validator_index=index,
         pubkey=validator.pubkey,
         flag=ACTIVATION,
     )
@@ -1341,7 +1333,7 @@ def exit_validator(state: BeaconState,
     validator.exit_count = state.validator_registry_exit_count
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        index=index,
+        validator_index=index,
         pubkey=validator.pubkey,
         flag=EXIT
     )
@@ -1379,7 +1371,7 @@ Below are the processing steps that happen at every `block`.
 
 ### Proposer signature
 
-* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `[0, 0]`.
+* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
 * Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
 * Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_root, signature=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
