@@ -84,6 +84,7 @@
             - [`integer_squareroot`](#integer_squareroot)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
+            - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [On startup](#on-startup)
         - [Routine for processing deposits](#routine-for-processing-deposits)
         - [Routine for updating validator status](#routine-for-updating-validator-status)
@@ -1104,11 +1105,15 @@ def integer_squareroot(n: int) -> int:
 
 #### `bls_verify`
 
-`bls_verify` is a function for verifying a BLS12-381 signature, defined in the [BLS Verification spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md#bls_verify).
+`bls_verify` is a function for verifying a BLS12-381 signature, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_verify).
 
 #### `bls_verify_multiple`
 
-`bls_verify_multiple` is a function for verifying a BLS12-381 signature constructed from multiple messages, defined in the [BLS Verification spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_verify.md#bls_verify_multiple).
+`bls_verify_multiple` is a function for verifying a BLS12-381 signature constructed from multiple messages, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_verify_multiple).
+
+#### `bls_aggregate_pubkeys`
+
+`bls_aggregate_pubkeys` is a function for aggregating a BLS12-381 public keys into a single aggregate key, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_aggregate_pubkeys).
 
 ### On startup
 
@@ -1473,7 +1478,7 @@ For each `attestation` in `block.body.attestations`:
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
-    * Let `group_public_key = BLSAddPubkeys([state.validator_registry[v].pubkey for v in participants])`.
+    * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
     * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(attestation.data) + bytes1(0), signature=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
