@@ -117,6 +117,16 @@ Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain:
 * Verify that `signature` is a valid G2 point.
 * Verify that `e(pubkey, hash_to_G2(message, domain)) == e(g, signature)`.
 
+## Operations involving aggregate signatures
+
+### `bls_aggregate_pubkeys`
+
+Let `bls_aggregate_pubkeys(pubkeys: [uint384]) -> uint384` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
+
+### `bls_aggregate_signatures`
+
+Let `bls_aggregate_signatures(signatures: [[uint384]]) -> [uint384]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
+
 ### `bls_verify_multiple`
 
 Let `bls_verify_multiple(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64) -> bool`:
