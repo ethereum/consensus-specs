@@ -1098,6 +1098,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
         # Validator registry
         validator_registry=[],
+        validator_balances=[],
         validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
         validator_registry_exit_count=0,
         validator_registry_delta_chain_tip=ZERO_HASH,
@@ -1196,18 +1197,19 @@ def process_deposit(state: BeaconState,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
             randao_layers=0,
-            balance=deposit,
             status=PENDING_ACTIVATION,
             latest_status_change_slot=state.slot,
             exit_count=0
         )
 
-        index = min_empty_validator_index(validators_copy)
+        index = min_empty_validator_index(state.validator_registry, state.validator_balances, state.slot)
         if index is None:
             state.validator_registry.append(validator)
-            index = len(validators_copy) - 1
+            state.validator_balances.append(deposit)
+            index = len(state.validator_registry) - 1
         else:
             state.validator_registry[index] = validator
+            state.validator_balances[index] = deposit
     else:
         # Increase balance by deposit
         index = validator_pubkeys.index(pubkey)
@@ -1295,7 +1297,7 @@ def exit_validator(state: BeaconState,
     validator.latest_status_change_slot = state.slot
 
     if new_status == EXITED_WITH_PENALTY:
-        state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(validator)
+        state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(state.validator_balances[index])
 
         whistleblower_index = get_beacon_proposer_index(state, state.slot)
         whistleblower_reward = state.validator_balances[index] // WHISTLEBLOWER_REWARD_QUOTIENT
@@ -1511,8 +1513,8 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 * Let `attesting_validators(shard_committee)` be equal to `attesting_validators(shard_committee, winning_root(shard_committee))` for convenience.
 * Let `total_attesting_balance(shard_committee)` be the sum of the balances-at-stake of `attesting_validators(shard_committee)`.
 * Let `total_balance(shard_committee) = sum([get_effective_balance(state.validator_balances[i]) for i in shard_committee.committee])`.
-* Let `inclusion_slot(v) = a.slot_included` for the attestation `a` where `v` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
-* Let `inclusion_distance(v) = a.slot_included - a.data.slot` where `a` is the above attestation.
+* Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
+* Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 * Let `adjust_for_inclusion_distance(magnitude, distance)` be the function below.
 
 ```python
@@ -1557,8 +1559,8 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 First, we define some additional helpers:
 
 * Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
-* Let `base_reward(index) = get_effective_balance(state.validator_balances[index]) // base_reward_quotient // 4` for any validator with the given `index`.
-* Let `inactivity_penalty(index, slots_since_finality) = base_reward(index) + get_effective_balance(state.validator_balances[index]) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator with the given `index`.
+* Let `base_reward(state, index) = get_effective_balance(state.validator_balances[index]) // base_reward_quotient // 4` for any validator with the given `index`.
+* Let `inactivity_penalty(state, index, slots_since_finality) = base_reward(state, index) + get_effective_balance(state.validator_balances[index]) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator with the given `index`.
 
 #### Justification and finalization
 
@@ -1569,32 +1571,32 @@ Note: When applying penalties in the following balance recalculations implemente
 Case 1: `slots_since_finality <= 4 * EPOCH_LENGTH`:
 
 * Expected FFG source:
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_justified_attesting_balance // total_balance, inclusion_distance(v))`.
-  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attester_indices` loses `base_reward(v)`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `adjust_for_inclusion_distance(base_reward(state, index) * previous_epoch_justified_attesting_balance // total_balance, inclusion_distance(state, index))`.
+  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
 * Expected FFG target:
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(v))`.
-  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attester_indices` loses `base_reward(v)`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `adjust_for_inclusion_distance(base_reward(state, index) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(state, index))`.
+  * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices` loses `base_reward(state, index)`.
 * Expected beacon chain head:
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_head_attester_indices` gains `adjust_for_inclusion_distance(base_reward(v) * previous_epoch_head_attesting_balance // total_balance, inclusion_distance(v))`.
-  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_head_attester_indices` loses `base_reward(v)`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_head_attester_indices` gains `adjust_for_inclusion_distance(base_reward(state, index) * previous_epoch_head_attesting_balance // total_balance, inclusion_distance(state, index))`.
+  * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices` loses `base_reward(state, index)`.
 
 Case 2: `slots_since_finality > 4 * EPOCH_LENGTH`:
 
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(v, slots_since_finality)`.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(v, slots_since_finality)`.
-* Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_head_attester_indices`, loses `inactivity_penalty(v, slots_since_finality)`.
-* Any [validator](#dfn-validator) with `status == EXITED_WITH_PENALTY`, loses `3 * inactivity_penalty(v, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `inactivity_penalty(state, index, slots_since_finality)`.
+* Any [validator](#dfn-validator) `index` with `status == EXITED_WITH_PENALTY`, loses `3 * inactivity_penalty(state, index, slots_since_finality)`.
 
 #### Attestation inclusion
 
-For each `v` in `previous_epoch_attesters`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(v))` and set `state.validator_balances[proposer_index] += base_reward(v) // INCLUDER_REWARD_QUOTIENT`.
+For each `index` in `previous_epoch_attester_indices`, we determine the proposer `proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))` and set `state.validator_balances[proposer_index] += base_reward(state, index) // INCLUDER_REWARD_QUOTIENT`.
 
 #### Crosslinks
 
-For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `vindex` in `shard_committee.committee`, adjust balances as follows:
+For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `index` in `shard_committee.committee`, adjust balances as follows:
 
-* If `vindex in attesting_validators(shard_committee)`, `state.validator_balances[vindex] += adjust_for_inclusion_distance(base_reward(v) * total_attesting_balance(shard_committee) // total_balance(shard_committee)), inclusion_distance(v))`.
-* If `vindex not in attesting_validators(shard_committee)`, `state.validator_balances[vindex] -= base_reward(v)`.
+* If `index in attesting_validators(shard_committee)`, `state.validator_balances[index] += adjust_for_inclusion_distance(base_reward(state, index) * total_attesting_balance(shard_committee) // total_balance(shard_committee)), inclusion_distance(state, index))`.
+* If `index not in attesting_validators(shard_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
 
 ### Ejections
 
@@ -1629,7 +1631,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # The active validators
     active_validator_indices = get_active_validator_indices(state.validator_registry)
     # The total effective balance of active validators
-    total_balance = sum([get_effective_balance(v) for i, v in enumerate(validator_registry) if i in active_validator_indices])
+    total_balance = sum([get_effective_balance(state.validator_blances[i]) for i in active_validator_indices])
 
     # The maximum balance churn in Gwei (for deposits and exits separately)
     max_balance_churn = max(
