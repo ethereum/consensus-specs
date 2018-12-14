@@ -34,6 +34,7 @@
                 - [`Deposit`](#deposit)
                 - [`DepositData`](#depositdata)
                 - [`DepositInput`](#depositinput)
+                - [`ProofOfPossessionData`](#proofofpossessiondata)
             - [Exits](#exits)
                 - [`Exit`](#exit)
         - [Beacon chain blocks](#beacon-chain-blocks)
@@ -49,6 +50,7 @@
             - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
+            - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [`Eth1Deposit` logs](#eth1deposit-logs)
@@ -59,6 +61,7 @@
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [Helper functions](#helper-functions)
             - [`hash`](#hash)
+            - [`hash_tree_root`](#hash_tree_root)
             - [`is_active_validator`](#is_active_validator)
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
@@ -75,8 +78,9 @@
             - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
             - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
-            - [`hash_tree_root`](#hash_tree_root)
             - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
+            - [`is_double_vote`](#is_double_vote)
+            - [`is_surround_vote`](#is_surround_vote)
             - [`integer_squareroot`](#integer_squareroot)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
@@ -140,6 +144,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 * **Attester** - a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
 * **Beacon chain** - the central PoS chain that is the base of the sharding system.
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
+* **Block root** - a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
 * **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
 * **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation
@@ -162,6 +167,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
+| `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` | - |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
 
@@ -368,12 +374,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # BLS pubkey
     'pubkey': 'uint384',
-    # BLS proof of possession (a BLS signature)
-    'proof_of_possession': ['uint384'],
     # Withdrawal credentials
     'withdrawal_credentials': 'hash32',
     # Initial RANDAO commitment
     'randao_commitment': 'hash32',
+    # a BLS signature of this ``DepositInput``
+    'proof_of_possession': ['uint384'],
 }
 ```
 
@@ -508,7 +514,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # Slot number
     'slot': 'uint64',
-    # Shard block hash
+    # Shard block root
     'shard_block_root': 'hash32',
 }
 ```
@@ -575,6 +581,17 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'post_fork_version': 'uint64',
     # Fork slot number
     'fork_slot': 'uint64',
+}
+```
+
+#### `ValidatorRegistryDeltaBlock`
+
+```python
+{
+    latest_registry_delta_root: 'hash32',
+    validator_index: 'uint24',
+    pubkey: 'uint384',
+    flag: 'uint64',
 }
 ```
 
@@ -726,6 +743,10 @@ Note: The definitions below are for specification purposes and are not necessari
 The hash function is denoted by `hash`. In Phase 0 the beacon chain is deployed with the same hash function as Ethereum 1.0, i.e. Keccak-256 (also incorrectly known as SHA3).
 
 Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
+
+#### `hash_tree_root`
+
+`hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
 #### `is_active_validator`
 ```python
@@ -894,7 +915,7 @@ def get_shard_committees_at_slot(state: BeaconState,
 def get_block_root(state: BeaconState,
                    slot: int) -> Hash32:
     """
-    Returns the block hash at a recent ``slot``.
+    Returns the block root at a recent ``slot``.
     """
     earliest_slot_in_array = state.slot - len(state.latest_block_roots)
     assert earliest_slot_in_array <= slot < state.slot
@@ -967,17 +988,19 @@ def get_effective_balance(validator: ValidatorRecord) -> int:
 
 ```python
 def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_chain_tip: Hash32,
-                                               index: int,
+                                               validator_index: int,
                                                pubkey: int,
                                                flag: int) -> Hash32:
     """
-    Compute the next hash in the validator registry delta hash chain.
+    Compute the next root in the validator registry delta chain.
     """
-    return hash(
-        current_validator_registry_delta_chain_tip +
-        bytes1(flag) +
-        bytes3(index) +
-        bytes48(pubkey)
+    return hash_tree_root(
+        ValidatorRegistryDeltaBlock(
+            validator_registry_delta_chain_tip=current_validator_registry_delta_chain_tip,
+            validator_index=validator_index,
+            pubkey=pubkey,
+            flag=flag,
+        )
     )
 ```
 
@@ -1004,10 +1027,6 @@ def get_domain(fork_data: ForkData,
     ) * 2**32 + domain_type
 ```
 
-#### `hash_tree_root`
-
-`hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
-
 #### `verify_slashable_vote_data`
 
 ```python
@@ -1033,6 +1052,38 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
             state.slot,
             DOMAIN_ATTESTATION,
         ),
+    )
+```
+
+#### `is_double_vote`
+
+```python
+def is_double_vote(attestation_data_1: AttestationData,
+                   attestation_data_2: AttestationData) -> bool
+    """
+    Assumes ``attestation_data_1`` is distinct from ``attestation_data_2``.
+    Returns True if the provided ``AttestationData`` are slashable
+    due to a 'double vote'.
+    """
+    return attestation_data_1.slot == attestation_data_2.slot
+```
+
+#### `is_surround_vote`
+
+```python
+def is_surround_vote(attestation_data_1: AttestationData,
+                     attestation_data_2: AttestationData) -> bool
+    """
+    Assumes ``attestation_data_1`` is distinct from ``attestation_data_2``.
+    Returns True if the provided ``AttestationData`` are slashable
+    due to a 'surround vote'.
+    Note: parameter order matters as this function only checks
+    that ``attestation_data_1`` surrounds ``attestation_data_2``.
+    """
+    return (
+        (attestation_data_1.justified_slot < attestation_data_2.justified_slot) and
+        (attestat_data_2.justified_slot + 1 == attestation_data_2.slot) and
+        (attestation_data_2.slot < attestation_data_1.slot)
     )
 ```
 
@@ -1070,7 +1121,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
     candidate_pow_receipt_root=ZERO_HASH,
-    proposer_signature=[0, 0],
+    proposer_signature=EMPTY_SIGNATURE,
     'body': BeaconBlockBody(
         proposer_slashings=[],
         casper_slashings=[],
@@ -1081,7 +1132,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 }
 ```
 
-`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `ssz_tree_hash` of `BeaconState`.
+`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
 
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
@@ -1178,9 +1229,16 @@ def process_deposit(state: BeaconState,
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
+    proof_of_possession_data = DepositInput(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        randao_commitment=randao_commitment,
+        proof_of_possession=EMPTY_SIGNATURE,
+    )
+
     assert bls_verify(
         pubkey=pubkey,
-        message=hash(bytes32(pubkey) + withdrawal_credentials + randao_commitment),
+        message=hash_tree_root(proof_of_possession_data),
         signature=proof_of_possession,
         domain=get_domain(
             state.fork_data,
@@ -1257,7 +1315,7 @@ def activate_validator(state: BeaconState,
     validator.latest_status_change_slot = state.slot
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        index=index,
+        validator_index=index,
         pubkey=validator.pubkey,
         flag=ACTIVATION,
     )
@@ -1312,7 +1370,7 @@ def exit_validator(state: BeaconState,
     validator.exit_count = state.validator_registry_exit_count
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
         validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        index=index,
+        validator_index=index,
         pubkey=validator.pubkey,
         flag=EXIT
     )
@@ -1336,7 +1394,7 @@ Below are the processing steps that happen at every slot.
 
 ### Block roots
 
-* Let `previous_block_root` be the `tree_hash_root` of the previous beacon block processed in the chain.
+* Let `previous_block_root` be the `hash_tree_root` of the previous beacon block processed in the chain.
 * Set `state.latest_block_roots = state.latest_block_roots[1:] + [previous_block_root]`.
 * If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
@@ -1350,7 +1408,7 @@ Below are the processing steps that happen at every `block`.
 
 ### Proposer signature
 
-* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `[0, 0]`.
+* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
 * Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
 * Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, data=proposal_root, signature=block.signature, domain=get_domain(state.fork_data, state.slot, DOMAIN_PROPOSAL))`.
 
@@ -1391,13 +1449,15 @@ Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
 
 For each `casper_slashing` in `block.body.casper_slashings`:
 
-* Verify that `casper_slashing.slashable_vote_data_1.data != casper_slashing.slashable_vote_data_2.data`.
-* Let `indices(vote) = vote.aggregate_signature_poc_0_indices + vote.aggregate_signature_poc_1_indices`.
-* Let `intersection = [x for x in indices(casper_slashing.slashable_vote_data_1) if x in indices(casper_slashing.slashable_vote_data_2)]`.
+* Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
+* Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
+* Let `indices(slashable_vote_data) = slashable_vote_data.aggregate_signature_poc_0_indices + slashable_vote_data.aggregate_signature_poc_1_indices`.
+* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `casper_slashing.slashable_vote_data_1.data.justified_slot + 1 < casper_slashing.slashable_vote_data_2.data.justified_slot + 1 == casper_slashing.slashable_vote_data_2.data.slot < casper_slashing.slashable_vote_data_1.data.slot` or `casper_slashing.slashable_vote_data_1.data.slot == casper_slashing.slashable_vote_data_2.data.slot`.
-* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_1)`.
-* Verify that `verify_slashable_vote_data(state, casper_slashing.slashable_vote_data_2)`.
+* Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
+* Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
+* Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
+* Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
 * For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
 
 #### Attestations
