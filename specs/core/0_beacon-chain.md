@@ -1111,8 +1111,8 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
     candidate_pow_receipt_root=ZERO_HASH,
-    proposer_signature=EMPTY_SIGNATURE,
-    'body': BeaconBlockBody(
+    signature=EMPTY_SIGNATURE,
+    body=BeaconBlockBody(
         proposer_slashings=[],
         casper_slashings=[],
         attestations=[],
@@ -1125,7 +1125,8 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 `STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
 
 ```python
-def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
+def get_initial_beacon_state(initial_validator_registry: List[ValidatorRecord],
+                             initial_validator_deposits: List[Deposit],
                              genesis_time: int,
                              processed_pow_receipt_root: Hash32) -> BeaconState:
     state = BeaconState(
@@ -1179,8 +1180,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
             randao_commitment=deposit.deposit_data.deposit_input.randao_commitment
         )
-        if state.validator_registry[index].balance >= MAX_DEPOSIT * GWEI_PER_ETH:
-            update_validator_status(state, index, ACTIVE)
+        if state.validator_registry[validator_index].balance >= MAX_DEPOSIT * GWEI_PER_ETH:
+            update_validator_status(state, validator_index, ACTIVE)
 
     # set initial committee shuffling
     initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
@@ -1218,7 +1219,7 @@ def process_deposit(state: BeaconState,
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
-    proof_of_possession_data = DepositInput(
+    deposit_input = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
@@ -1227,7 +1228,7 @@ def process_deposit(state: BeaconState,
 
     assert bls_verify(
         pubkey=pubkey,
-        message=hash_tree_root(proof_of_possession_data),
+        message=hash_tree_root(deposit_input),
         signature=proof_of_possession,
         domain=get_domain(
             state.fork_data,
@@ -1250,10 +1251,10 @@ def process_deposit(state: BeaconState,
             exit_count=0
         )
 
-        index = min_empty_validator_index(validators_copy)
+        index = min_empty_validator_index(state.validator_registry, state.slot)
         if index is None:
             state.validator_registry.append(validator)
-            index = len(validators_copy) - 1
+            index = len(state.validator_registry) - 1
         else:
             state.validator_registry[index] = validator
     else:
@@ -1303,7 +1304,7 @@ def activate_validator(state: BeaconState,
     validator.status = ACTIVE
     validator.latest_status_change_slot = state.slot
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
         validator_index=index,
         pubkey=validator.pubkey,
         flag=ACTIVATION,
@@ -1351,14 +1352,14 @@ def exit_validator(state: BeaconState,
         whistleblower.balance += whistleblower_reward
         validator.balance -= whistleblower_reward
 
-    if prev_status == EXITED_WITHOUT_PENALTY
+    if prev_status == EXITED_WITHOUT_PENALTY:
         return
 
     # The following updates only occur if not previous exited
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
         validator_index=index,
         pubkey=validator.pubkey,
         flag=EXIT
