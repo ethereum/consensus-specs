@@ -99,6 +99,16 @@ def modular_squareroot(value: int) -> int:
     return None
 ```
 
+## Operations involving asignature aggregation
+
+### `bls_aggregate_pubkeys`
+
+Let `bls_aggregate_pubkeys(pubkeys: [uint384]) -> uint384` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
+
+### `bls_aggregate_signatures`
+
+Let `bls_aggregate_signatures(signatures: [[uint384]]) -> [uint384]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
+
 ## Signature verification
 
 In the following `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
@@ -116,16 +126,6 @@ Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain:
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
 * Verify that `e(pubkey, hash_to_G2(message, domain)) == e(g, signature)`.
-
-## Operations involving aggregate signatures
-
-### `bls_aggregate_pubkeys`
-
-Let `bls_aggregate_pubkeys(pubkeys: [uint384]) -> uint384` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
-
-### `bls_aggregate_signatures`
-
-Let `bls_aggregate_signatures(signatures: [[uint384]]) -> [uint384]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
 
 ### `bls_verify_multiple`
 
