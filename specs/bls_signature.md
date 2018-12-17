@@ -14,6 +14,9 @@
     - [Helpers](#helpers)
         - [`hash_to_G2`](#hash_to_g2)
         - [`modular_squareroot`](#modular_squareroot)
+    - [Aggregation operations](#aggregation-operations)
+        - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+        - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
     - [Signature verification](#signature-verification)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
@@ -99,7 +102,7 @@ def modular_squareroot(value: int) -> int:
     return None
 ```
 
-## Operations involving asignature aggregation
+## Aggregation operations
 
 ### `bls_aggregate_pubkeys`
 
