@@ -1488,7 +1488,7 @@ All [validators](#dfn-validator):
 
   * Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot-EPOCH_LENGTH) and a.justified_slot == state.justified_slot]`.
   * Let `this_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_boundary_attestations]`.
-  * Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for v in this_epoch_boundary_attester_indices])`.
+  * Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in this_epoch_boundary_attester_indices])`.
 
 [Validators](#dfn-Validator) attesting during the previous epoch:
 
