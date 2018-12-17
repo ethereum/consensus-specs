@@ -1413,7 +1413,7 @@ Below are the processing steps that happen at every `block`.
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
-* Set `state.latest_randao_mixes = state.latest_randao_mixes[1:] + [xor(state.latest_randao_mixes[-1], block.randao_reveal)]
+* Set `state.latest_randao_mixes[block.slot % LATEST_BLOCK_ROOTS_LENGTH] = xor(state.latest_randao_mixes[(block.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH], block.randao_reveal)`
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
@@ -1747,14 +1747,14 @@ Also perform the following updates:
 
 * Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[-CYCLE_LENGTH-1], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(block.slot - CYCLE_LENGTH) % LATEST_BLOCK_ROOTS_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 
 If a validator registry update does _not_ happen do the following:
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
 * Let `slots_since_finality = state.slot - state.validator_registry_latest_change_slot`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[-CYCLE_LENGTH-1], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
+* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(block.slot - CYCLE_LENGTH) % LATEST_BLOCK_ROOTS_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
