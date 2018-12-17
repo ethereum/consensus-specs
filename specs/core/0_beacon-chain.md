@@ -1157,7 +1157,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 First, a helper function:
 
 ```python
-def min_empty_validator_index(validators: List[ValidatorRecord], validator_balances: List[int], current_slot: int) -> int:
+def min_empty_validator_index(validators: List[ValidatorRecord],
+                              validator_balances: List[int],
+                              current_slot: int) -> int:
     for i, (v, vbal) in enumerate(zip(validators, validator_balances)):
         if vbal == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
             return i
