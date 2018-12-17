@@ -1138,7 +1138,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
             randao_commitment=deposit.deposit_data.deposit_input.randao_commitment
         )
-        if state.validator_balances[index] >= MAX_DEPOSIT * GWEI_PER_ETH:
+        if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
             update_validator_status(state, index, ACTIVE)
 
     # set initial committee shuffling
