@@ -1349,7 +1349,7 @@ def exit_validator(state: BeaconState,
         state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(state, index)
 
         whistleblower_index = get_beacon_proposer_index(state, state.slot)
-        whistleblower_reward = state.validator_balances[index] // WHISTLEBLOWER_REWARD_QUOTIENT
+        whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
         state.validator_balances[whistleblower_index] += whistleblower_reward
         state.validator_balances[index] -= whistleblower_reward
 
