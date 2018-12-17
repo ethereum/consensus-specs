@@ -1502,7 +1502,7 @@ All [validators](#dfn-validator):
 * Validators justifying the epoch boundary block at the start of the previous epoch:
   * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.epoch_boundary_root == get_block_root(state, state.slot - 2 * EPOCH_LENGTH)]`.
   * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
-  * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for v in previous_epoch_boundary_attester_indices])`.
+  * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_boundary_attester_indices])`.
 * Validators attesting to the expected beacon chain head during the previous epoch:
   * Let `previous_epoch_head_attestations = [a for a in previous_epoch_attestations if a.beacon_block_root == get_block_root(state, a.slot)]`.
   * Let `previous_epoch_head_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_head_attestations]`.
