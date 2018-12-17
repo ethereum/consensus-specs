@@ -1754,7 +1754,7 @@ If a validator registry update does _not_ happen do the following:
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
 * Let `slots_since_finality = state.slot - state.validator_registry_latest_change_slot`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(block.slot - CYCLE_LENGTH) % LATEST_BLOCK_ROOTS_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
+* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - CYCLE_LENGTH) % LATEST_BLOCK_ROOTS_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
