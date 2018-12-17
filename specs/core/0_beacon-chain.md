@@ -955,11 +955,11 @@ def get_attestation_participants(state: BeaconState,
 #### `get_effective_balance`
 
 ```python
-def get_effective_balance(balance: int) -> int:
+def get_effective_balance(state: State, index: int) -> int:
     """
     Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given ``validator_index``.
     """
-    return min(balance, MAX_DEPOSIT * GWEI_PER_ETH)
+    return min(state.validator_balances[index], MAX_DEPOSIT * GWEI_PER_ETH)
 ```
 
 #### `get_new_validator_registry_delta_chain_tip`
@@ -1297,7 +1297,7 @@ def exit_validator(state: BeaconState,
     validator.latest_status_change_slot = state.slot
 
     if new_status == EXITED_WITH_PENALTY:
-        state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(state.validator_balances[index])
+        state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(state, index)
 
         whistleblower_index = get_beacon_proposer_index(state, state.slot)
         whistleblower_reward = state.validator_balances[index] // WHISTLEBLOWER_REWARD_QUOTIENT
@@ -1476,7 +1476,7 @@ The steps below happen when `state.slot % EPOCH_LENGTH == 0`.
 All [validators](#dfn-validator):
 
 * Let `active_validator_indices = get_active_validator_indices(state.validator_registry)`.
-* Let `total_balance = sum([get_effective_balance(state.validator_balances[i]) for i in active_validator_indices])`.
+* Let `total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])`.
 
 [Validators](#dfn-Validator) attesting during the current epoch:
 
@@ -1486,7 +1486,7 @@ All [validators](#dfn-validator):
 
   * Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot-EPOCH_LENGTH) and a.justified_slot == state.justified_slot]`.
   * Let `this_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_boundary_attestations]`.
-  * Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(state.validator_balances[i]) for v in this_epoch_boundary_attester_indices])`.
+  * Let `this_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for v in this_epoch_boundary_attester_indices])`.
 
 [Validators](#dfn-Validator) attesting during the previous epoch:
 
@@ -1496,23 +1496,23 @@ All [validators](#dfn-validator):
 * Validators targeting the previous justified hash:
   * Let `previous_epoch_justified_attestations = [a for a in this_epoch_attestations + previous_epoch_attestations if a.justified_slot == state.previous_justified_slot]`.
   * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_justified_attestations]`.
-  * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state.validator_balances[i]) for v in previous_epoch_justified_attester_indices])`.
+  * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state, i) for v in previous_epoch_justified_attester_indices])`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
   * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.epoch_boundary_root == get_block_root(state, state.slot - 2 * EPOCH_LENGTH)]`.
   * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
-  * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state.validator_balances[i]) for v in previous_epoch_boundary_attester_indices])`.
+  * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for v in previous_epoch_boundary_attester_indices])`.
 * Validators attesting to the expected beacon chain head during the previous epoch:
   * Let `previous_epoch_head_attestations = [a for a in previous_epoch_attestations if a.beacon_block_root == get_block_root(state, a.slot)]`.
   * Let `previous_epoch_head_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_head_attestations]`.
-  * Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(state.validator_balances[i]) for v in previous_epoch_head_attester_indices])`.
+  * Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(state, i) for v in previous_epoch_head_attester_indices])`.
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
 * Let `attesting_validator_indices(shard_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_attestations + previous_epoch_attestations if a.shard == shard_committee.shard and a.shard_block_root == shard_block_root]`.
-* Let `winning_root(shard_committee)` be equal to the value of `shard_block_root` such that `sum([get_effective_balance(state.validator_balances[i]) for i in attesting_validator_indices(shard_committee, shard_block_root)])` is maximized (ties broken by favoring lower `shard_block_root` values).
+* Let `winning_root(shard_committee)` be equal to the value of `shard_block_root` such that `sum([get_effective_balance(state, i) for i in attesting_validator_indices(shard_committee, shard_block_root)])` is maximized (ties broken by favoring lower `shard_block_root` values).
 * Let `attesting_validators(shard_committee)` be equal to `attesting_validators(shard_committee, winning_root(shard_committee))` for convenience.
 * Let `total_attesting_balance(shard_committee)` be the sum of the balances-at-stake of `attesting_validators(shard_committee)`.
-* Let `total_balance(shard_committee) = sum([get_effective_balance(state.validator_balances[i]) for i in shard_committee.committee])`.
+* Let `total_balance(shard_committee) = sum([get_effective_balance(state, i) for i in shard_committee.committee])`.
 * Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 * Let `adjust_for_inclusion_distance(magnitude, distance)` be the function below.
@@ -1559,8 +1559,8 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 First, we define some additional helpers:
 
 * Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
-* Let `base_reward(state, index) = get_effective_balance(state.validator_balances[index]) // base_reward_quotient // 4` for any validator with the given `index`.
-* Let `inactivity_penalty(state, index, slots_since_finality) = base_reward(state, index) + get_effective_balance(state.validator_balances[index]) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator with the given `index`.
+* Let `base_reward(state, index) = get_effective_balance(state, index) // base_reward_quotient // 4` for any validator with the given `index`.
+* Let `inactivity_penalty(state, index, slots_since_finality) = base_reward(state, index) + get_effective_balance(state, index) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator with the given `index`.
 
 #### Justification and finalization
 
@@ -1631,7 +1631,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # The active validators
     active_validator_indices = get_active_validator_indices(state.validator_registry)
     # The total effective balance of active validators
-    total_balance = sum([get_effective_balance(state.validator_blances[i]) for i in active_validator_indices])
+    total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
 
     # The maximum balance churn in Gwei (for deposits and exits separately)
     max_balance_churn = max(
@@ -1644,7 +1644,7 @@ def update_validator_registry(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         if validator.status == PENDING_ACTIVATION and state.validator_balances[index] >= MAX_DEPOSIT * GWEI_PER_ETH:
             # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(state.validator_balances[index])
+            balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
                 break
 
@@ -1656,7 +1656,7 @@ def update_validator_registry(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         if validator.status == ACTIVE_PENDING_EXIT:
             # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(state.validator_balances[index])
+            balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
                 break
 
@@ -1677,7 +1677,7 @@ def update_validator_registry(state: BeaconState) -> None:
         return state.validator_registry[index].status == EXITED_WITH_PENALTY
     validators_to_penalize = filter(to_penalize, range(len(validator_registry)))
     for index in validators_to_penalize:
-        state.validator_balances[index] -= get_effective_balance(state.validator_balances[index]) * min(total_penalties * 3, total_balance) // total_balance
+        state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
 
     return validator_registry, latest_penalized_exit_balances, validator_registry_delta_chain_tip
 ```
