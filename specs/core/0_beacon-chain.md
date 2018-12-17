@@ -147,7 +147,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
 * **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
 * **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation
-* **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
+* **Finalized**, **justified** - see Casper FFG finalization [[casper-ffg]](#ref-casper-ffg)
 * **Withdrawal period** - the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
 
@@ -1790,6 +1790,8 @@ Verify `block.state_root == hash_tree_root(state)` if there exists a `block` for
 This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely that, information.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
 
 ## Normative
+<a id="ref-casper-ffg"></a> _**casper-ffg**_
+ &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
 
 ## Informative
 <a id="ref-python-poc"></a> _**python-poc**_
