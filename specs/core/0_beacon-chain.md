@@ -1747,7 +1747,7 @@ Also perform the following updates:
 
 * Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(block.slot - CYCLE_LENGTH) % LATEST_BLOCK_ROOTS_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - CYCLE_LENGTH) % LATEST_BLOCK_ROOTS_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 
 If a validator registry update does _not_ happen do the following:
 
