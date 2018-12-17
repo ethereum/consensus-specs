@@ -1766,8 +1766,8 @@ num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_
 for i in range(num_validators_to_reshuffle):
     # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
     # and none of the hashes used for entropy in this loop will be the same
-    validator_index = active_validator_indices[hash(state.latest_randao_mixes[-1] + bytes8(i * 2)) % len(active_validator_indices)]
-    new_shard = hash(state.latest_randao_mixes[-1] + bytes8(i * 2 + 1)) % SHARD_COUNT
+    validator_index = active_validator_indices[hash(state.latest_randao_mixes[block.slot % LATEST_BLOCK_ROOTS_LENGTH] + bytes8(i * 2)) % len(active_validator_indices)]
+    new_shard = hash(state.latest_randao_mixes[block.slot % LATEST_BLOCK_ROOTS_LENGTH] + bytes8(i * 2 + 1)) % SHARD_COUNT
     shard_reassignment_record = ShardReassignmentRecord(
         validator_index=validator_index,
         shard=new_shard,
