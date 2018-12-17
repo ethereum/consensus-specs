@@ -65,7 +65,6 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
             - [`split`](#split)
-            - [`clamp`](#clamp)
             - [`get_new_shuffling`](#get_new_shuffling)
             - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
             - [`get_block_root`](#get_block_root)
@@ -834,21 +833,6 @@ def split(values: List[Any], split_count: int) -> List[Any]:
     ]
 ```
 
-#### `clamp`
-
-```python
-def clamp(minval: int, maxval: int, x: int) -> int:
-    """
-    Clamps ``x`` between ``minval`` and ``maxval``.
-    """
-    if x <= minval:
-        return minval
-    elif x >= maxval:
-        return maxval
-    else:
-        return x
-```
-
 #### `get_new_shuffling`
 
 ```python
@@ -860,10 +844,12 @@ def get_new_shuffling(seed: Hash32,
     """
     active_validator_indices = get_active_validator_indices(validators)
 
-    committees_per_slot = clamp(
+    committees_per_slot = max(
         1,
-        SHARD_COUNT // EPOCH_LENGTH,
-        len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
+        min(
+            SHARD_COUNT // EPOCH_LENGTH,
+            len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,   
+        )
     )
 
     # Shuffle with seed
