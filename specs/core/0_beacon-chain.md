@@ -957,7 +957,7 @@ def get_attestation_participants(state: BeaconState,
 ```python
 def get_effective_balance(balance: int) -> int:
     """
-    Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given balance.
+    Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given ``validator_index``.
     """
     return min(balance, MAX_DEPOSIT * GWEI_PER_ETH)
 ```
