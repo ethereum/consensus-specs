@@ -1790,10 +1790,11 @@ Verify `block.state_root == hash_tree_root(state)` if there exists a `block` for
 This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely that, information.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
 
 ## Normative
+
+## Informative
 <a id="ref-casper-ffg"></a> _**casper-ffg**_  
  &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
 
-## Informative
 <a id="ref-python-poc"></a> _**python-poc**_  
  &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
 
