@@ -982,7 +982,7 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     """
     return hash_tree_root(
         ValidatorRegistryDeltaBlock(
-            validator_registry_delta_chain_tip=current_validator_registry_delta_chain_tip,
+            latest_registry_delta_root=current_validator_registry_delta_chain_tip,
             validator_index=validator_index,
             pubkey=pubkey,
             flag=flag,
