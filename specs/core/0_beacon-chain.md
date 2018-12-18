@@ -1125,8 +1125,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 `STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
 
 ```python
-def get_initial_beacon_state(initial_validator_registry: List[ValidatorRecord],
-                             initial_validator_deposits: List[Deposit],
+def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              genesis_time: int,
                              processed_pow_receipt_root: Hash32) -> BeaconState:
     state = BeaconState(
@@ -1184,7 +1183,7 @@ def get_initial_beacon_state(initial_validator_registry: List[ValidatorRecord],
             update_validator_status(state, validator_index, ACTIVE)
 
     # set initial committee shuffling
-    initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
+    initial_shuffling = get_new_shuffling(ZERO_HASH, state.validator_registry, 0)
     state.shard_committees_at_slots = initial_shuffling + initial_shuffling
 
     # set initial persistent shuffling
@@ -1196,7 +1195,7 @@ def get_initial_beacon_state(initial_validator_registry: List[ValidatorRecord],
 
 ### Routine for processing deposits
 
-First, a helper function:
+First, two helper functions:
 
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: int) -> int:
@@ -1204,6 +1203,31 @@ def min_empty_validator_index(validators: List[ValidatorRecord], current_slot: i
         if v.balance == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
             return i
     return None
+```
+
+```python
+def validate_proof_of_possession(state: BeaconState,
+                                 pubkey: int,
+                                 proof_of_possession: bytes,
+                                 withdrawal_credentials: Hash32,
+                                 randao_commitment: Hash32) -> bool:
+    proof_of_possession_data = DepositInput(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        randao_commitment=randao_commitment,
+        proof_of_possession=EMPTY_SIGNATURE,
+    )
+
+    return bls_verify(
+        pubkey=pubkey,
+        message=hash_tree_root(proof_of_possession_data),
+        signature=proof_of_possession,
+        domain=get_domain(
+            state.fork_data,
+            state.slot,
+            DOMAIN_DEPOSIT,
+        )
+    )
 ```
 
 Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance by some `deposit` amount:
@@ -1219,23 +1243,15 @@ def process_deposit(state: BeaconState,
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
-    deposit_input = DepositInput(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        randao_commitment=randao_commitment,
-        proof_of_possession=EMPTY_SIGNATURE,
+    # Validate the given `proof_of_possession`
+    assert validate_proof_of_possession(
+        state,
+        pubkey,
+        proof_of_possession,
+        withdrawal_credentials,
+        randao_commitment,
     )
 
-    assert bls_verify(
-        pubkey=pubkey,
-        message=hash_tree_root(deposit_input),
-        signature=proof_of_possession,
-        domain=get_domain(
-            state.fork_data,
-            state.slot,
-            DOMAIN_DEPOSIT
-        )
-    )
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
 
     if pubkey not in validator_pubkeys:
