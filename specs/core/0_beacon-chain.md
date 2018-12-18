@@ -166,7 +166,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
-| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | block roots |
+| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
 | `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` | - |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
@@ -916,9 +916,8 @@ def get_block_root(state: BeaconState,
     """
     Returns the block root at a recent ``slot``.
     """
-    earliest_slot_in_array = state.slot - len(state.latest_block_roots)
-    assert earliest_slot_in_array <= slot < state.slot
-    return state.latest_block_roots[slot - earliest_slot_in_array]
+    assert slot > state.slot - LATEST_BLOCK_ROOTS_LENGTH
+    return state.latest_block_roots[slot % LATEST_BLOCK_ROOTS_LENGTH]
 ```
 
 `get_block_root(_, s)` should always return `hash_tree_root` of the block in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
@@ -1388,12 +1387,12 @@ Below are the processing steps that happen at every slot.
 
 * Set `state.slot += 1`.
 * Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_layers += 1`.
-* Set `state.latest_randao_mixes = state.latest_randao_mixes[(block.slot - 1) % LATEST_RANDAO_MIXES_LENGTH]`
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = state.latest_randao_mixes[(state.slot - 1) % LATEST_RANDAO_MIXES_LENGTH]`
 
 ### Block roots
 
 * Let `previous_block_root` be the `hash_tree_root` of the previous beacon block processed in the chain.
-* Set `state.latest_block_roots[(block.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH] = previous_block_root`.
+* Set `state.latest_block_roots[(state.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH] = previous_block_root`.
 * If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
 ## Per-block processing
@@ -1415,7 +1414,7 @@ Below are the processing steps that happen at every `block`.
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
-* Set `state.latest_randao_mixes[block.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(state.latest_randao_mixes[block.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal)`
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal)`
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
