@@ -1530,9 +1530,7 @@ All [validators](#dfn-validator):
 [Validators](#dfn-Validator) attesting during the current epoch:
 
 * Let `this_epoch_attestations = [a for a in state.latest_attestations if state.slot - EPOCH_LENGTH <= a.data.slot < state.slot]`. (Note: this is the set of attestations of slots in the epoch `state.slot-EPOCH_LENGTH...state.slot-1`, _not_ attestations that got included in the chain during the epoch `state.slot-EPOCH_LENGTH...state.slot-1`.)
-
 * Validators justifying the epoch boundary block at the start of the current epoch:
-
   * Let `this_epoch_boundary_attestations = [a for a in this_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot-EPOCH_LENGTH) and a.justified_slot == state.justified_slot]`.
   * Let `this_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in this_epoch_boundary_attestations]`.
   * Let `this_epoch_boundary_attesters = [state.validator_registry[i] for indices in this_epoch_boundary_attester_indices for i in indices]`.
@@ -1559,6 +1557,8 @@ All [validators](#dfn-validator):
   * Let `previous_epoch_head_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_head_attestations]`.
   * Let `previous_epoch_head_attesters = [state.validator_registry[i] for indices in previous_epoch_head_attester_indices for i in indices]`.
   * Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(v) for v in previous_epoch_head_attesters])`.
+
+**Note**: `previous_epoch_boundary_attesting_balance` balance might be marginally different than `this_epoch_boundary_attesting_balance` during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
