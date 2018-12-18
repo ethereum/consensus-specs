@@ -902,7 +902,8 @@ def get_block_root(state: BeaconState,
     """
     Returns the block root at a recent ``slot``.
     """
-    assert slot > state.slot - LATEST_BLOCK_ROOTS_LENGTH
+    assert state.slot <= slot + LATEST_BLOCK_ROOTS_LENGTH
+    assert slot < state.slot
     return state.latest_block_roots[slot % LATEST_BLOCK_ROOTS_LENGTH]
 ```
 
