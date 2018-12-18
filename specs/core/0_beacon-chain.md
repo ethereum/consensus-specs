@@ -147,7 +147,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
 * **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
 * **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation
-* **Finalized**, **justified** - see Casper FFG finalization here: https://arxiv.org/abs/1710.09437
+* **Finalized**, **justified** - see Casper FFG finalization [[casper-ffg]](#ref-casper-ffg)
 * **Withdrawal period** - the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
 
@@ -1792,7 +1792,10 @@ This section is divided into Normative and Informative references.  Normative re
 ## Normative
 
 ## Informative
-<a id="ref-python-poc"></a> _**python-poc**_
+<a id="ref-casper-ffg"></a> _**casper-ffg**_  
+ &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
+
+<a id="ref-python-poc"></a> _**python-poc**_  
  &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
 
 # Copyright
