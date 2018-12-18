@@ -981,7 +981,7 @@ def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_
     """
     return hash_tree_root(
         ValidatorRegistryDeltaBlock(
-            validator_registry_delta_chain_tip=current_validator_registry_delta_chain_tip,
+            latest_registry_delta_root=current_validator_registry_delta_chain_tip,
             validator_index=validator_index,
             pubkey=pubkey,
             flag=flag,
@@ -1110,8 +1110,8 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
     candidate_pow_receipt_root=ZERO_HASH,
-    proposer_signature=EMPTY_SIGNATURE,
-    'body': BeaconBlockBody(
+    signature=EMPTY_SIGNATURE,
+    body=BeaconBlockBody(
         proposer_slashings=[],
         casper_slashings=[],
         attestations=[],
@@ -1180,10 +1180,10 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             randao_commitment=deposit.deposit_data.deposit_input.randao_commitment
         )
         if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
-            update_validator_status(state, index, ACTIVE)
+            update_validator_status(state, validator_index, ACTIVE)
 
     # set initial committee shuffling
-    initial_shuffling = get_new_shuffling(ZERO_HASH, initial_validator_registry, 0)
+    initial_shuffling = get_new_shuffling(ZERO_HASH, state.validator_registry, 0)
     state.shard_committees_at_slots = initial_shuffling + initial_shuffling
 
     # set initial persistent shuffling
@@ -1195,7 +1195,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
 ### Routine for processing deposits
 
-First, a helper function:
+First, two helper functions:
 
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord],
@@ -1205,6 +1205,31 @@ def min_empty_validator_index(validators: List[ValidatorRecord],
         if vbal == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
             return i
     return None
+```
+
+```python
+def validate_proof_of_possession(state: BeaconState,
+                                 pubkey: int,
+                                 proof_of_possession: bytes,
+                                 withdrawal_credentials: Hash32,
+                                 randao_commitment: Hash32) -> bool:
+    proof_of_possession_data = DepositInput(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        randao_commitment=randao_commitment,
+        proof_of_possession=EMPTY_SIGNATURE,
+    )
+
+    return bls_verify(
+        pubkey=pubkey,
+        message=hash_tree_root(proof_of_possession_data),
+        signature=proof_of_possession,
+        domain=get_domain(
+            state.fork_data,
+            state.slot,
+            DOMAIN_DEPOSIT,
+        )
+    )
 ```
 
 Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance by some `deposit` amount:
@@ -1220,23 +1245,15 @@ def process_deposit(state: BeaconState,
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
-    proof_of_possession_data = DepositInput(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        randao_commitment=randao_commitment,
-        proof_of_possession=EMPTY_SIGNATURE,
+    # Validate the given `proof_of_possession`
+    assert validate_proof_of_possession(
+        state,
+        pubkey,
+        proof_of_possession,
+        withdrawal_credentials,
+        randao_commitment,
     )
 
-    assert bls_verify(
-        pubkey=pubkey,
-        message=hash_tree_root(proof_of_possession_data),
-        signature=proof_of_possession,
-        domain=get_domain(
-            state.fork_data,
-            state.slot,
-            DOMAIN_DEPOSIT
-        )
-    )
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
 
     if pubkey not in validator_pubkeys:
@@ -1305,7 +1322,7 @@ def activate_validator(state: BeaconState,
     validator.status = ACTIVE
     validator.latest_status_change_slot = state.slot
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
         validator_index=index,
         pubkey=validator.pubkey,
         flag=ACTIVATION,
@@ -1353,14 +1370,14 @@ def exit_validator(state: BeaconState,
         state.validator_balances[whistleblower_index] += whistleblower_reward
         state.validator_balances[index] -= whistleblower_reward
 
-    if prev_status == EXITED_WITHOUT_PENALTY
+    if prev_status == EXITED_WITHOUT_PENALTY:
         return
 
     # The following updates only occur if not previous exited
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
     state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
         validator_index=index,
         pubkey=validator.pubkey,
         flag=EXIT
