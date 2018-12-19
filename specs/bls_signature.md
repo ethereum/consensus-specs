@@ -14,6 +14,9 @@
     - [Helpers](#helpers)
         - [`hash_to_G2`](#hash_to_g2)
         - [`modular_squareroot`](#modular_squareroot)
+    - [Aggregation operations](#aggregation-operations)
+        - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+        - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
     - [Signature verification](#signature-verification)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
@@ -98,6 +101,16 @@ def modular_squareroot(value: int) -> int:
         return x1 if (x1.coeffs[1].n, x1.coeffs[0].n) > (x2.coeffs[1].n, x2.coeffs[0].n) else x2
     return None
 ```
+
+## Aggregation operations
+
+### `bls_aggregate_pubkeys`
+
+Let `bls_aggregate_pubkeys(pubkeys: [uint384]) -> uint384` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
+
+### `bls_aggregate_signatures`
+
+Let `bls_aggregate_signatures(signatures: [[uint384]]) -> [uint384]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
 
 ## Signature verification
 
