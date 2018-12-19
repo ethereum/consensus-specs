@@ -166,6 +166,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
+| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
 | `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` | - |
 
 * For the safety of crosslinks a minimum committee size of 111 is [recommended](https://vitalik.ca/files/Ithaca201807_Sharding.pdf). (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.) The shuffling algorithm generally ensures (assuming sufficient validators) committee sizes at least `TARGET_COMMITTEE_SIZE // 2`.
@@ -460,8 +461,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'validator_registry_delta_chain_tip': 'hash32',  # For light clients to track deltas
 
     # Randomness and committees
-    'randao_mix': 'hash32',
-    'next_seed': 'hash32',
+    'latest_randao_mixes': ['hash32'],
     'shard_committees_at_slots': [[ShardCommittee]],
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
@@ -902,9 +902,9 @@ def get_block_root(state: BeaconState,
     """
     Returns the block root at a recent ``slot``.
     """
-    earliest_slot_in_array = state.slot - len(state.latest_block_roots)
-    assert earliest_slot_in_array <= slot < state.slot
-    return state.latest_block_roots[slot - earliest_slot_in_array]
+    assert state.slot <= slot + LATEST_BLOCK_ROOTS_LENGTH
+    assert slot < state.slot
+    return state.latest_block_roots[slot % LATEST_BLOCK_ROOTS_LENGTH]
 ```
 
 `get_block_root(_, s)` should always return `hash_tree_root` of the block in the beacon chain at slot `s`, and `get_shard_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
@@ -1145,8 +1145,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         validator_registry_delta_chain_tip=ZERO_HASH,
 
         # Randomness and committees
-        randao_mix=ZERO_HASH,
-        next_seed=ZERO_HASH,
+        latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
         shard_committees_at_slots=[],
         persistent_committees=[],
         persistent_committee_reassignments=[],
@@ -1399,6 +1398,7 @@ Below are the processing steps that happen at every slot.
 
 * Set `state.slot += 1`.
 * Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_layers += 1`.
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = state.latest_randao_mixes[(state.slot - 1) % LATEST_RANDAO_MIXES_LENGTH]`
 
 ### Block roots
 
@@ -1425,7 +1425,7 @@ Below are the processing steps that happen at every `block`.
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
-* Set `state.randao_mix = xor(state.randao_mix, block.randao_reveal)`.
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal)`
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
@@ -1754,15 +1754,14 @@ Also perform the following updates:
 
 * Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
-* Set `state.next_seed = state.randao_mix`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 
 If a validator registry update does _not_ happen do the following:
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
 * Let `slots_since_finality = state.slot - state.validator_registry_latest_change_slot`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.next_seed, state.validator_registry, start_shard)` and set `state.next_seed = state.randao_mix`. Note that `start_shard` is not changed from the last epoch.
+* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - CYCLE_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
@@ -1774,8 +1773,8 @@ num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_
 for i in range(num_validators_to_reshuffle):
     # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
     # and none of the hashes used for entropy in this loop will be the same
-    validator_index = active_validator_indices[hash(state.randao_mix + bytes8(i * 2)) % len(active_validator_indices)]
-    new_shard = hash(state.randao_mix + bytes8(i * 2 + 1)) % SHARD_COUNT
+    validator_index = active_validator_indices[hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + bytes8(i * 2)) % len(active_validator_indices)]
+    new_shard = hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + bytes8(i * 2 + 1)) % SHARD_COUNT
     shard_reassignment_record = ShardReassignmentRecord(
         validator_index=validator_index,
         shard=new_shard,
