@@ -195,7 +195,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `SLOT_DURATION` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
-| `MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` | `2**8` (= 256) | slots | 25.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
@@ -1761,7 +1760,7 @@ If a validator registry update does _not_ happen do the following:
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
 * Let `slots_since_finality = state.slot - state.validator_registry_latest_change_slot`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `slots_since_finality * EPOCH_LENGTH <= MIN_VALIDATOR_REGISTRY_CHANGE_INTERVAL` or `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - CYCLE_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
+* If `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - CYCLE_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
