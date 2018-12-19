@@ -181,7 +181,7 @@ return serialized_len + serialized_list_string
 
 A container represents a heterogenous, associative collection of key-value pairs. Each pair is referred to as a `field`. To get the value for a given field, you supply the key which is a symbol unique to the container referred to as the field's `name`. The container data type is analogous to the `struct` type found in many languages like C or Go.
 
-To serialize a container, obtain the set of its field's names and sort them lexicographically. For each field name in this sorted list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the sorted field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **big endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
+To serialize a container, obtain the list of its field's names in the specified order. For each field name in this list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **big endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
 
 
 | Check to perform                            | Code                        |
@@ -190,9 +190,9 @@ To serialize a container, obtain the set of its field's names and sort them lexi
 
 To serialize:
 
-1. Get the names of the container's fields and sort them.
+1. Get the list of the container's fields.
 
-2. For each name in the sorted list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
+2. For each name in the list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
 
 3. Get the number of raw bytes in the serialized buffer. Encode that number as a `4-byte` **big endian** `uint32`.
 
@@ -213,7 +213,7 @@ def get_type_for_field_name(typ, field_name):
 serialized_buffer = b''
 
 typ = type(value)
-for field_name in sorted(get_field_names(typ)):
+for field_name in get_field_names(typ):
     field_value = get_value_for_field_name(value, field_name)
     field_type = get_type_for_field_name(typ, field_name)
     serialized_buffer += serialize(field_value, field_type)
@@ -350,8 +350,8 @@ Instantiate a container with the full set of deserialized data, matching each me
 
 To deserialize:
 
-1. Get the names of the container's fields and sort them.
-2. For each name in the sorted list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
+1. Get the list of the container's fields.
+2. For each name in the list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
 3. Construct a container instance after successfully consuming the entire subset of the stream for the serialized container.
 
 **Example in Python**
@@ -381,7 +381,7 @@ assert(len(rawbytes) >= new_index)
 item_index = current_index + LENGTH_BYTES
 
 values = {}
-for field_name in sorted(get_field_names(typ)):
+for field_name in get_field_names(typ):
     field_name_type = get_type_for_field_name(typ, field_name)
     values[field_name], item_index = deserialize(data, item_index, field_name_type)
 assert item_index == start + LENGTH_BYTES + length
@@ -446,10 +446,10 @@ Where the inner `hash_tree_root` is a recursive application of the tree-hashing 
 
 #### Container
 
-Recursively tree hash the values in the container in order sorted by key, and return the hash of the concatenation of the results.
+Recursively tree hash the values in the container in the same order as the fields, and return the hash of the concatenation of the results.
 
 ```python
-return hash(b''.join([hash_tree_root(getattr(x, field)) for field in sorted(value.fields)))
+return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.fields))
 ```
 
 
