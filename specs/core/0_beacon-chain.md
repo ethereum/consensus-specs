@@ -198,7 +198,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
-| `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 4,194,304) | slots | ~291 days |
+| `ZERO_BALANCE_VALIDATOR_TTL` | `2**24` (= 4,194,304) | slots | ~291 days |
 
 ### Reward and penalty quotients
 
@@ -207,10 +207,10 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BASE_REWARD_QUOTIENT` | `2**10` (= 1,024) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `2**22` (= 4,194,304) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 4,194,304) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**11 epochs` (~9 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` slots is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` slots it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` slots is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` slots it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Status codes
 
