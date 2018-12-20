@@ -418,11 +418,16 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### `BeaconBlockBody`
 
+`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, `ProofOfCustodyResponse` defined in phase 1; for now put dummy classes as these lists will remain empty throughout phase 0.
+
 ```python
 {
     'proposer_slashings': [ProposerSlashing],
     'casper_slashings': [CasperSlashing],
     'attestations': [Attestation],
+    'poc_seed_changes': [ProofOfCustodySeedChange],
+    'poc_challenges': [ProofOfCustodyChallenge],
+    'poc_responses': [ProofOfCustodyResponse],
     'deposits': [Deposit],
     'exits': [Exit],
 }
@@ -464,6 +469,16 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'shard_committees_at_slots': [[ShardCommittee]],
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
+
+    # Proof of custody
+    # Placeholders for now; ProofOfCustodyChallenge is defined in phase 1, implementers can
+    # put a dummy class in for now, as the list will remain empty throughout phase 0
+    'poc_challenges': [ProofOfCustodyChallenge],
+    # Proof of custody commitment
+    'poc_commitment': 'hash32',
+    # Slot the proof of custody seed was last changed
+    'last_poc_change_slot': 'uint64',
+    'second_last_poc_change_slot': 'uint64',
 
     # Finality
     'previous_justified_slot': 'uint64',
@@ -1532,6 +1547,10 @@ For each `exit` in `block.body.exits`:
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
+
+#### Miscellaneous
+
+[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.poc_seed_changes) == len(block.body.poc_challenges) == len(block.body.poc_responses) == 0`.
 
 ## Per-epoch processing
 
