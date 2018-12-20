@@ -18,7 +18,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 | Constant               | Value           | Unit  | Approximation |
 |------------------------|-----------------|-------|---------------|
-| `CHUNK_SIZE`           | 2**8 (= 256)    | bytes |               |
+| `SHARD_CHUNK_SIZE`     | 2**5 (= 32)     | bytes |               |
 | `SHARD_BLOCK_SIZE`     | 2**14 (= 16384) | bytes |               |
 
 ### Flags, domains, etc.
@@ -78,8 +78,8 @@ To validate a block header on shard `shard_id`, compute as follows:
 ```python
 def merkle_root(block_body):
     assert len(block_body) == SHARD_BLOCK_SIZE
-    chunks = SHARD_BLOCK_SIZE // CHUNK_SIZE
-    o = [0] * chunks + [block_body[i * CHUNK_SIZE: (i+1) * CHUNK_SIZE] for i in range(chunks)]
+    chunks = SHARD_BLOCK_SIZE // SHARD_CHUNK_SIZE
+    o = [0] * chunks + [block_body[i * SHARD_CHUNK_SIZE: (i+1) * SHARD_CHUNK_SIZE] for i in range(chunks)]
     for i in range(chunks-1, 0, -1):
         o[i] = hash(o[i*2] + o[i*2+1])
     return o[1]
@@ -114,7 +114,7 @@ This outputs the root of a tree of the data roots, with the data roots all adjus
 def mk_combined_data_root(depths, bodies):
     data = b''.join(bodies)
     data += bytes([0] * (next_power_of_2(len(data)) - len(data))
-    return compute_merkle_root([data[pos:pos+CHUNK_SIZE] for pos in range(0, len(data), CHUNK_SIZE)])
+    return compute_merkle_root([data[pos:pos+SHARD_CHUNK_SIZE] for pos in range(0, len(data), SHARD_CHUNK_SIZE)])
 ```
 
 Verify that the `shard_block_combined_data_root` is the output of these functions.
