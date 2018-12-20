@@ -871,7 +871,7 @@ def get_new_shuffling(seed: Hash32,
             )
             for shard_position, indices in enumerate(shard_indices)
         ]
-        output.append(shards_and_committees_for_slot)
+        output.append(shard_committees)
 
     return output
 ```
