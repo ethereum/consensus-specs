@@ -207,10 +207,10 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `BASE_REWARD_QUOTIENT` | `2**10` (= 1,024) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `2**34` (= 17,179,869,184) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `2**22` (= 4,194,304) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**17 slots` (~9 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` slots is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` slots it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**11 epochs` (~9 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` slots is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` slots it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Status codes
 
@@ -1581,16 +1581,6 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 * Let `total_balance(shard_committee) = sum([get_effective_balance(state, i) for i in shard_committee.committee])`.
 * Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
-* Let `adjust_for_inclusion_distance(magnitude, distance)` be the function below.
-
-```python
-def adjust_for_inclusion_distance(magnitude: int, distance: int) -> int:
-    """
-    Adjusts the reward of an attestation based on how long it took to get included (the longer, the lower the reward).
-    Returns a value between ``0`` and ``magnitude``.
-    ""
-    return magnitude // 2 + (magnitude // 2) * MIN_ATTESTATION_INCLUSION_DELAY // distance
-```
 
 ### Receipt roots
 
@@ -1606,7 +1596,6 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 * Set `state.justification_bitfield |= 2` and `state.justified_slot = state.slot - 2 * EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
 * Set `state.justification_bitfield |= 1` and `state.justified_slot = state.slot - 1 * EPOCH_LENGTH` if `3 * this_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
-### Finalization
 
 Set `state.finalized_slot = state.previous_justified_slot` if any of the following are true:
 
@@ -1625,33 +1614,36 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 First, we define some additional helpers:
 
 * Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
-* Let `base_reward(state, index) = get_effective_balance(state, index) // base_reward_quotient // 4` for any validator with the given `index`.
-* Let `inactivity_penalty(state, index, slots_since_finality) = base_reward(state, index) + get_effective_balance(state, index) * slots_since_finality // INACTIVITY_PENALTY_QUOTIENT` for any validator with the given `index`.
+* Let `base_reward(state, index) = get_effective_balance(state, index) // base_reward_quotient // 5` for any validator with the given `index`.
+* Let `inactivity_penalty(state, index, epochs_since_finality) = base_reward(state, index) + get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2` for any validator with the given `index`.
 
 #### Justification and finalization
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `slots_since_finality = state.slot - state.finalized_slot`.
+* Let `epochs_since_finality = (state.slot - state.finalized_slot) // EPOCH_LENGTH`.
 
-Case 1: `slots_since_finality <= 4 * EPOCH_LENGTH`:
+Case 1: `epochs_since_finality <= 4`:
 
 * Expected FFG source:
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `adjust_for_inclusion_distance(base_reward(state, index) * previous_epoch_justified_attesting_balance // total_balance, inclusion_distance(state, index))`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `base_reward(state, index) * previous_epoch_justified_attesting_balance // total_balance`.
   * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
 * Expected FFG target:
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `adjust_for_inclusion_distance(base_reward(state, index) * previous_epoch_boundary_attesting_balance // total_balance, inclusion_distance(state, index))`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `base_reward(state, index) * previous_epoch_boundary_attesting_balance // total_balance`.
   * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices` loses `base_reward(state, index)`.
 * Expected beacon chain head:
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_head_attester_indices` gains `adjust_for_inclusion_distance(base_reward(state, index) * previous_epoch_head_attesting_balance // total_balance, inclusion_distance(state, index))`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_head_attester_indices` gains `base_reward(state, index) * previous_epoch_head_attesting_balance // total_balance)`.
   * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices` loses `base_reward(state, index)`.
+* Inclusion distance:
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` gains `base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
-Case 2: `slots_since_finality > 4 * EPOCH_LENGTH`:
+Case 2: `epochs_since_finality > 4`:
 
-* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, slots_since_finality)`.
-* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, slots_since_finality)`.
-* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `inactivity_penalty(state, index, slots_since_finality)`.
-* Any [validator](#dfn-validator) `index` with `status == EXITED_WITH_PENALTY`, loses `3 * inactivity_penalty(state, index, slots_since_finality)`.
+* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
+* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
+* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
+* Any [validator](#dfn-validator) `index` with `status == EXITED_WITH_PENALTY`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 #### Attestation inclusion
 
@@ -1661,7 +1653,7 @@ For each `index` in `previous_epoch_attester_indices`, we determine the proposer
 
 For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `index` in `shard_committee.committee`, adjust balances as follows:
 
-* If `index in attesting_validators(shard_committee)`, `state.validator_balances[index] += adjust_for_inclusion_distance(base_reward(state, index) * total_attesting_balance(shard_committee) // total_balance(shard_committee)), inclusion_distance(state, index))`.
+* If `index in attesting_validators(shard_committee)`, `state.validator_balances[index] += base_reward(state, index) * total_attesting_balance(shard_committee) // total_balance(shard_committee))`.
 * If `index not in attesting_validators(shard_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
 
 ### Ejections
@@ -1757,9 +1749,9 @@ Also perform the following updates:
 If a validator registry update does _not_ happen do the following:
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Let `slots_since_finality = state.slot - state.validator_registry_latest_change_slot`.
+* Let `epochs_since_finality = (state.slot - state.validator_registry_latest_change_slot) // EPOCH_LENGTH`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `slots_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
+* If `epochs_since_finality` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
