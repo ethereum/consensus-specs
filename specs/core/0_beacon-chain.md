@@ -100,6 +100,7 @@
             - [Attestations](#attestations-1)
             - [Deposits](#deposits-1)
             - [Exits](#exits-1)
+            - [Miscellaneous](#miscellaneous)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -418,7 +419,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### `BeaconBlockBody`
 
-`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, `ProofOfCustodyResponse` defined in phase 1; for now put dummy classes as these lists will remain empty throughout phase 0.
+`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, and `ProofOfCustodyResponse` will be defined in phase 1; for now put dummy classes as these lists will remain empty throughout phase 0.
 
 ```python
 {
@@ -1130,6 +1131,9 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
         proposer_slashings=[],
         casper_slashings=[],
         attestations=[],
+        poc_seed_changes=[],
+        poc_challenges=[],
+        poc_responses=[],
         deposits=[],
         exits=[]
     ),
@@ -1164,6 +1168,12 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         shard_committees_at_slots=[],
         persistent_committees=[],
         persistent_committee_reassignments=[],
+
+        # Proof of custody
+        poc_challenges=[],
+        poc_commitment=ZERO_HASH,
+        last_poc_change_slot=0,
+        second_last_poc_change_slot=0,
 
         # Finality
         previous_justified_slot=INITIAL_SLOT_NUMBER,
