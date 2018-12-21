@@ -421,8 +421,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### `BeaconBlockBody`
 
-`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, and `ProofOfCustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
-
 ```python
 {
     'proposer_slashings': [ProposerSlashing],
@@ -435,6 +433,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'exits': [Exit],
 }
 ```
+
+`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, and `ProofOfCustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
 
 #### `ProposalSignedData`
 
