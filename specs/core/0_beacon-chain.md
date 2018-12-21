@@ -419,7 +419,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 #### `BeaconBlockBody`
 
-`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, and `ProofOfCustodyResponse` will be defined in phase 1; for now put dummy classes as these lists will remain empty throughout phase 0.
+`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, and `ProofOfCustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
 
 ```python
 {
