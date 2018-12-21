@@ -218,7 +218,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | - | - |
 | `PENDING_ACTIVATION` | `0` |
 | `ACTIVE` | `1` |
-| `ACTIVE_PENDING_EXIT` | `2` |
+| `ACTIVE_PENDING_NO_PENALTY_EXIT` | `2` |
+| `ACTIVE_PENDING_PENALTY_EXIT` | `2` |
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
 
@@ -753,7 +754,7 @@ def is_active_validator(validator: ValidatorRecord) -> bool:
     """
     Checks if ``validator`` is active.
     """
-    return validator.status in [ACTIVE, ACTIVE_PENDING_EXIT]
+    return validator.status in [ACTIVE, ACTIVE_PENDING_NO_PENALTY_EXIT, ACTIVE_PENDING_PENALTY_EXIT]
 ```
 
 #### `get_active_validator_indices`
@@ -1300,8 +1301,8 @@ def update_validator_status(state: BeaconState,
     """
     if new_status == ACTIVE:
         activate_validator(state, index)
-    if new_status == ACTIVE_PENDING_EXIT:
-        initiate_validator_exit(state, index)
+    if new_status in (ACTIVE_PENDING_NO_PENALTY_EXIT, ACTIVE_PENDING_PENALTY_EXIT):
+        initiate_validator_exit(state, index, new_status)
     if new_status in [EXITED_WITH_PENALTY, EXITED_WITHOUT_PENALTY]:
         exit_validator(state, index, new_status)
 ```
@@ -1331,7 +1332,8 @@ def activate_validator(state: BeaconState,
 
 ```python
 def initiate_validator_exit(state: BeaconState,
-                            index: int) -> None:
+                            index: int,
+                            exit_type: int) -> None:
     """
     Initiate exit for the validator with the given ``index``.
     Note that this function mutates ``state``.
@@ -1340,7 +1342,7 @@ def initiate_validator_exit(state: BeaconState,
     if validator.status != ACTIVE:
         return
 
-    validator.status = ACTIVE_PENDING_EXIT
+    validator.status = exit_type
     validator.latest_status_change_slot = state.slot
 ```
 
@@ -1446,10 +1448,10 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
-* Verify that `proposer.status != EXITED_WITH_PENALTY`.
+* Verify that `proposer.status not in (ACTIVE_PENDING_PENALTY_EXIT, EXITED_WITH_PENALTY)`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
-* Run `update_validator_status(state, proposer_slashing.proposer_index, new_status=EXITED_WITH_PENALTY)`.
+* Run `update_validator_status(state, proposer_slashing.proposer_index, new_status=ACTIVE_PENDING_PENALTY_EXIT)`.
 
 #### Casper slashings
 
@@ -1466,7 +1468,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 * Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
 * Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
 * Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
-* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
+* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status not in (ACTIVE_PENDING_PENALTY_EXIT, EXITED_WITH_PENALTY)`, then run `update_validator_status(state, i, new_status=ACTIVE_PENDING_PENALTY_EXIT)`
 
 #### Attestations
 
@@ -1533,7 +1535,7 @@ For each `exit` in `block.body.exits`:
 * Verify that `state.slot >= exit.slot`.
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
-* Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
+* Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_NO_PENALTY_EXIT)`.
 
 ## Per-epoch processing
 
@@ -1722,7 +1724,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.status == ACTIVE_PENDING_EXIT:
+        if validator.status == ACTIVE_PENDING_NO_PENALTY_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1730,7 +1732,11 @@ def update_validator_registry(state: BeaconState) -> None:
 
             # Exit validator
             update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
-
+            
+    # Exit penalized validators, more than one epoch after they were penalized
+    for index, validator in enumerate(state.validator_registry):
+        if validator.status == ACTIVE_PENDING_PENALTY_ EXIT and state.slot > validator.latest_status_change_slot + EPOCH_LENGTH:
+            update_validator_status(state, index, new_status=EXITED_WITH_PENALTY)
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
     period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
