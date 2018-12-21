@@ -461,6 +461,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
     # Randomness and committees
     'latest_randao_mixes': ['hash32'],
+    'latest_vdf_outputs': ['hash32'],
     'shard_committees_at_slots': [[ShardCommittee]],
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
@@ -1146,6 +1147,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
+        latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         shard_committees_at_slots=[],
         persistent_committees=[],
         persistent_committee_reassignments=[],
