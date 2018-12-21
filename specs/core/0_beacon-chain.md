@@ -1643,7 +1643,7 @@ Case 2: `epochs_since_finality > 4`:
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
 * Any [validator](#dfn-validator) `index` with `status == EXITED_WITH_PENALTY`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
+* Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 #### Attestation inclusion
 
