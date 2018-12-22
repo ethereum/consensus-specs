@@ -172,7 +172,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` | - |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
-* 4 withdrawals per cycle means that eg. if a 1/3 subset of 10 million ETH equivocate to cause a safety failure and all withdraw immediately, they will be able to leave in `3333333 / 32 / 4 = 26042` epochs, or 10 million seconds ~= 4 months.
+* 4 withdrawals per epoch means that eg. if a 1/3 subset of 10 million ETH equivocate to cause a safety failure and all withdraw immediately, they will be able to leave in `3333333 / 32 / 4 = 26042` epochs, or 10 million seconds ~= 4 months.
 
 ### Deposit contract
 
@@ -409,11 +409,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Withdrawal credentials
-    'withdrawal_credentials': 'hash32',
+    'credentials': 'hash32',
     # Slot created
-    'slot_created': 'uint64',
+    'slot': 'uint64',
     # ETH to withdraw
-    'value': 'uint64'
+    'value': 'uint64',
 }
 ```
 
@@ -483,8 +483,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'validator_registry_latest_change_slot': 'uint64',
     'validator_registry_exit_count': 'uint64',
     'validator_registry_delta_chain_tip': 'hash32',  # For light clients to track deltas
-    'validator_withdrawal_accumulator': 'hash32',
-    'validator_registry_withdrawal_count': 'uint64'
+    'validator_withdrawal_accumulator': ['hash32'],
+    'validator_registry_withdrawal_count': 'uint64',
 
 
     # Randomness and committees
@@ -1462,11 +1462,11 @@ def exit_validator(state: BeaconState,
 def withdraw_validator(state: BeaconState,
                        index: int):
     new_accumulator_object = WithdrawalData(
-        withdrawal_credentials=validator.withdrawal_credentials,
-        slot_created=state.slot,
-        value=state.validator_balances[index]
+        credentials=validator.withdrawal_credentials,
+        slot=state.slot,
+        value=state.validator_balances[index],
     )
-    state.validator_withdrawal_accumulator = update_accumulator(
+    state.validator_withdrawal_accumulator = update_merkle_accumulator(
         state.validator_withdrawal_accumulator, state.validator_registry_withdrawal_count, new_accumulator_object
     )
     state.validator_registry_withdrawal_count += 1
@@ -1819,7 +1819,7 @@ def update_validator_registry(state: BeaconState) -> None:
             state.slot >= state.validator_registry[x].latest_status_change_slot >= MIN_VALIDATOR_WITHDRAWAL_TIME
     eligible_indices = filter(eligible, all_indices)
     sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
-    removed = 0
+    withdrawn_so_far = 0
     for index in sorted_indices:
         validator = state.validator_registry[index]
         if validator.status == EXITED_WITH_PENALTY:
@@ -1829,8 +1829,8 @@ def update_validator_registry(state: BeaconState) -> None:
             total_penalties = state.total_penalty_history[current_period] - state.total_penalty_history[start_period]
             state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
         update_validator_status(state, index, new_status=WITHDRAWN)
-        removed += 1
-        if removed >= MAX_WITHDRAWALS_PER_EPOCH:
+        withdrawn_so_far += 1
+        if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
             break
 ```
 
