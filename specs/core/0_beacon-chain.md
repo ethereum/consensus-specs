@@ -100,6 +100,7 @@
             - [Attestations](#attestations-1)
             - [Deposits](#deposits-1)
             - [Exits](#exits-1)
+            - [Miscellaneous](#miscellaneous)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -377,6 +378,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'withdrawal_credentials': 'hash32',
     # Initial RANDAO commitment
     'randao_commitment': 'hash32',
+    # Initial proof of custody commitment
+    'poc_commitment': 'hash32',
     # a BLS signature of this ``DepositInput``
     'proof_of_possession': ['uint384'],
 }
@@ -423,10 +426,15 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'proposer_slashings': [ProposerSlashing],
     'casper_slashings': [CasperSlashing],
     'attestations': [Attestation],
+    'poc_seed_changes': [ProofOfCustodySeedChange],
+    'poc_challenges': [ProofOfCustodyChallenge],
+    'poc_responses': [ProofOfCustodyResponse],
     'deposits': [Deposit],
     'exits': [Exit],
 }
 ```
+
+`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, and `ProofOfCustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
 
 #### `ProposalSignedData`
 
@@ -466,6 +474,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'persistent_committees': [['uint24']],
     'persistent_committee_reassignments': [ShardReassignmentRecord],
 
+    # Proof of custody
+    # Placeholders for now; ProofOfCustodyChallenge is defined in phase 1, implementers can
+    # put a dummy class in for now, as the list will remain empty throughout phase 0
+    'poc_challenges': [ProofOfCustodyChallenge],
+
     # Finality
     'previous_justified_slot': 'uint64',
     'justified_slot': 'uint64',
@@ -503,6 +516,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_status_change_slot': 'uint64',
     # Exit counter when validator exited (or 0)
     'exit_count': 'uint64',
+    # Proof of custody commitment
+    'poc_commitment': 'hash32',
+    # Slot the proof of custody seed was last changed
+    'last_poc_change_slot': 'uint64',
+    'second_last_poc_change_slot': 'uint64',
 }
 ```
 
@@ -1116,6 +1134,9 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
         proposer_slashings=[],
         casper_slashings=[],
         attestations=[],
+        poc_seed_changes=[],
+        poc_challenges=[],
+        poc_responses=[],
         deposits=[],
         exits=[]
     ),
@@ -1151,6 +1172,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         shard_committees_at_slots=[],
         persistent_committees=[],
         persistent_committee_reassignments=[],
+
+        # Proof of custody
+        poc_challenges=[],
 
         # Finality
         previous_justified_slot=INITIAL_SLOT_NUMBER,
@@ -1241,6 +1265,7 @@ def process_deposit(state: BeaconState,
                     deposit: int,
                     proof_of_possession: bytes,
                     withdrawal_credentials: Hash32,
+                    poc_commitment: Hash32,
                     randao_commitment: Hash32) -> int:
     """
     Process a deposit from Ethereum 1.0.
@@ -1266,7 +1291,10 @@ def process_deposit(state: BeaconState,
             randao_layers=0,
             status=PENDING_ACTIVATION,
             latest_status_change_slot=state.slot,
-            exit_count=0
+            exit_count=0,
+            poc_commitment=poc_commitment,
+            last_poc_change_slot=0,
+            second_last_poc_change_slot=0,
         )
 
         index = min_empty_validator_index(state.validator_registry, state.validator_balances, state.slot)
@@ -1518,7 +1546,9 @@ process_deposit(
     deposit=deposit.deposit_data.value,
     proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-    randao_commitment=deposit.deposit_data.deposit_input.randao_commitment
+    poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
+    randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
+    
 )
 ```
 
@@ -1534,6 +1564,10 @@ For each `exit` in `block.body.exits`:
 * Verify that `state.slot >= validator.latest_status_change_slot + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
+
+#### Miscellaneous
+
+[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.poc_seed_changes) == len(block.body.poc_challenges) == len(block.body.poc_responses) == 0`.
 
 ## Per-epoch processing
 
