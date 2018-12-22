@@ -984,6 +984,8 @@ def update_merkle_accumulator(acc, position, value):
 
 **INVARIANT**: if `len(values) = 2**k` for integer `k < len(acc)`, then if you apply `for i, v in enumerate(values): acc = update_merkle_accumulator(acc, i, v)`, at the end `acc[k] == merkle_root(values)`.
 
+**INVARIANT**: in the above case but where `len(values)` is not an exact power of 2, any value in `values` will be a leaf of at least one Merkle tree whose root is in `acc`. For example, if `len(values) = 329` (note: 333 = 256 + 64 + 8 + 1), then `acc[8] == merkle_root(values[0:256])`, `acc[6] == merkle_root(values[256:320])`, `acc[3] == merkle_root(values[320:328])` and `acc[0] == merkle_root(values[328:329])`.
+
 #### `get_attestation_participants`
 
 ```python
