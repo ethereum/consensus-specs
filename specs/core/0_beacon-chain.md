@@ -340,6 +340,17 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
+##### `AttestationDataAndBit
+
+```python
+{
+    # Attestation data
+    data: AttestationData,
+    # Proof of custody bit
+    poc_bit: bool
+}
+```
+
 #### Deposits
 
 ##### `Deposit`
@@ -1043,9 +1054,9 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
         aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_1_indices])
     ]
     vote_data_root = hash_tree_root(vote_data)
-    messages = [
-        vote_data_root + bytes1(0),
-        vote_data_root + bytes1(1)
+    message_hashes = [
+        hash_tree_root(AttestationDataAndBit(vote_data, False)),
+        hash_tree_root(AttestationDataAndBit(vote_data, True))
     ]
     return bls_verify_multiple(
         pubkeys=pubs,
@@ -1510,7 +1521,7 @@ For each `attestation` in `block.body.attestations`:
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.participation_bitfield)`.
     * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(attestation.data) + bytes1(0), signature=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
+    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndBit(attestation.data, False)), signature=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
 * Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
