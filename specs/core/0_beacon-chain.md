@@ -1049,18 +1049,15 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
     if len(vote_data.aggregate_signature_poc_0_indices) + len(vote_data.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
         return False
 
-    pubs = [
-        aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_0_indices]),
-        aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_1_indices])
-    ]
-    vote_data_root = hash_tree_root(vote_data)
-    message_hashes = [
-        hash_tree_root(AttestationDataAndBit(vote_data, False)),
-        hash_tree_root(AttestationDataAndBit(vote_data, True)),
-    ]
     return bls_verify_multiple(
-        pubkeys=pubs,
-        messages=messages,
+        pubkeys=[
+            aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_0_indices]),
+            aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_1_indices]),
+        ],
+        messages=[
+            hash_tree_root(AttestationDataAndBit(vote_data, False)),
+            hash_tree_root(AttestationDataAndBit(vote_data, True)),
+        ],
         signature=vote_data.aggregate_signature,
         domain=get_domain(
             state.fork_data,
