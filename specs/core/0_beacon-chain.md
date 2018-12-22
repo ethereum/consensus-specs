@@ -195,6 +195,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `SLOT_DURATION` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `2**6` (= 64) | slots | 6.4 minutes |
+| `MAX_SEED_LOOKAHEAD` | `2**8` (= 256) | slots | 26.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
@@ -1737,7 +1739,7 @@ def update_validator_registry(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         is_delaying_exit = (
             validator.status == ACTIVE_PENDING_PENALTY_EXIT and
-            state.slot > validator.latest_status_change_slot + EPOCH_LENGTH
+            state.slot > validator.latest_status_change_slot + MAX_SEED_LOOKAHEAD
         )
         if is_delaying_exit:
             update_validator_status(state, index, new_status=EXITED_WITH_PENALTY)
@@ -1764,7 +1766,7 @@ Also perform the following updates:
 
 * Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - MIN_SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 
 If a validator registry update does _not_ happen do the following:
 
