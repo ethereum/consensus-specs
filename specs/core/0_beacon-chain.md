@@ -347,7 +347,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Attestation data
     data: AttestationData,
     # Proof of custody bit
-    poc_bit: bool
+    poc_bit: bool,
 }
 ```
 
@@ -1056,7 +1056,7 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
     vote_data_root = hash_tree_root(vote_data)
     message_hashes = [
         hash_tree_root(AttestationDataAndBit(vote_data, False)),
-        hash_tree_root(AttestationDataAndBit(vote_data, True))
+        hash_tree_root(AttestationDataAndBit(vote_data, True)),
     ]
     return bls_verify_multiple(
         pubkeys=pubs,
@@ -1149,7 +1149,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
         poc_challenges=[],
         poc_responses=[],
         deposits=[],
-        exits=[]
+        exits=[],
     ),
 }
 ```
@@ -1213,7 +1213,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             deposit=deposit.deposit_data.value,
             proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-            randao_commitment=deposit.deposit_data.deposit_input.randao_commitment
+            randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
         )
         if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
             update_validator_status(state, validator_index, ACTIVE)
@@ -1418,7 +1418,7 @@ def exit_validator(state: BeaconState,
         current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
         validator_index=index,
         pubkey=validator.pubkey,
-        flag=EXIT
+        flag=EXIT,
     )
 
     # Remove validator from persistent committees
@@ -1559,7 +1559,6 @@ process_deposit(
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
     poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
     randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-    
 )
 ```
 
