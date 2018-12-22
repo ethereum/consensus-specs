@@ -219,9 +219,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `PENDING_ACTIVATION` | `0` |
 | `ACTIVE` | `1` |
 | `ACTIVE_PENDING_NO_PENALTY_EXIT` | `2` |
-| `ACTIVE_PENDING_PENALTY_EXIT` | `2` |
-| `EXITED_WITHOUT_PENALTY` | `3` |
-| `EXITED_WITH_PENALTY` | `4` |
+| `ACTIVE_PENDING_PENALTY_EXIT` | `3` |
+| `EXITED_WITHOUT_PENALTY` | `4` |
+| `EXITED_WITH_PENALTY` | `5` |
 
 ### Max operations per block
 
@@ -1735,7 +1735,11 @@ def update_validator_registry(state: BeaconState) -> None:
             
     # Exit penalized validators, more than one epoch after they were penalized
     for index, validator in enumerate(state.validator_registry):
-        if validator.status == ACTIVE_PENDING_PENALTY_ EXIT and state.slot > validator.latest_status_change_slot + EPOCH_LENGTH:
+        is_delaying_exit = (
+            validator.status == ACTIVE_PENDING_PENALTY_EXIT and
+            state.slot > validator.latest_status_change_slot + EPOCH_LENGTH
+        )
+        if is_delaying_exit:
             update_validator_status(state, index, new_status=EXITED_WITH_PENALTY)
 
     # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
