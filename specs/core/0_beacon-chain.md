@@ -1813,7 +1813,8 @@ def update_validator_registry(state: BeaconState) -> None:
     # Withdraw validators
     all_indices = range(len(state.validator_registry))
     def eligible(index):
-        return state.validator_registry[x].status in (EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY)
+        return state.validator_registry[x].status in (EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY) and \
+            state.slot >= state.validator_registry[x].latest_status_change_slot >= MIN_VALIDATOR_WITHDRAWAL_TIME
     eligible_indices = filter(eligible, all_indices)
     sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
     removed = 0
