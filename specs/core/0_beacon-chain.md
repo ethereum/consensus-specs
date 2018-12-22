@@ -168,9 +168,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
+| `MAX_WITHDRAWALS_PER_EPOCH` | 4 | [validators](#dfn-validator) |
 | `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` | - |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+* 4 withdrawals per cycle means that eg. if a 1/3 subset of 10 million ETH equivocate to cause a safety failure and all withdraw immediately, they will be able to leave in `3333333 / 32 / 4 = 26042` epochs, or 10 million seconds ~= 4 months.
 
 ### Deposit contract
 
@@ -197,6 +199,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `MIN_VALIDATOR_WITHDRAWAL_TIME` | `2**14` (= 16,384) | slots | ~27 hours |
 | `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
 | `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 4,194,304) | slots | ~291 days |
@@ -222,6 +225,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `ACTIVE_PENDING_EXIT` | `2` |
 | `EXITED_WITHOUT_PENALTY` | `3` |
 | `EXITED_WITH_PENALTY` | `4` |
+| `WITHDRAWN` | `6` |
 
 ### Max operations per block
 
@@ -400,6 +404,19 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
+#### `WithdrawalData`
+
+```python
+{
+    # Withdrawal credentials
+    'withdrawal_credentials': 'hash32',
+    # Slot created
+    'slot_created': 'uint64',
+    # ETH to withdraw
+    'value': 'uint64'
+}
+```
+
 ### Beacon chain blocks
 
 #### `BeaconBlock`
@@ -466,6 +483,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'validator_registry_latest_change_slot': 'uint64',
     'validator_registry_exit_count': 'uint64',
     'validator_registry_delta_chain_tip': 'hash32',  # For light clients to track deltas
+    'validator_withdrawal_accumulator': 'hash32',
+    'validator_registry_withdrawal_count': 'uint64'
+
 
     # Randomness and committees
     'latest_randao_mixes': ['hash32'],
@@ -488,7 +508,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Recent state
     'latest_crosslinks': [CrosslinkRecord],
     'latest_block_roots': ['hash32'],  # Needed to process attestations, older to newer
-    'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
+    'total_penalty_history': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
     'batched_block_roots': ['hash32'],
 
@@ -950,6 +970,20 @@ def merkle_root(values):
     return o[1]
 ```
 
+#### `update_merkle_accumulator`
+
+```python
+def update_merkle_accumulator(acc, position, value):
+    h = value
+    j = 0
+    while (acc+1) % 2**(j+1) == 0:
+        h = hash(acc[j] + h)
+        j += 1
+    return acc[:j] + [h] + acc[j+1:]
+```
+
+**INVARIANT**: if `len(values) = 2**k` for integer `k < len(acc)`, then if you apply `for i, v in enumerate(values): acc = update_merkle_accumulator(acc, i, v)`, at the end `acc[k] == merkle_root(values)`.
+
 #### `get_attestation_participants`
 
 ```python
@@ -1165,6 +1199,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
         validator_registry_exit_count=0,
         validator_registry_delta_chain_tip=ZERO_HASH,
+        validator_withdrawal_accumulator=[ZERO_HASH for _ in range(64)], # Max capacity 2**64 to match size of uint64
+        validator_registry_withdrawal_count=0,
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
@@ -1185,7 +1221,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
-        latest_penalized_exit_balances=[],
+        total_penalty_history=[],
         latest_attestations=[],
         batched_block_roots=[],
 
@@ -1332,6 +1368,8 @@ def update_validator_status(state: BeaconState,
         initiate_validator_exit(state, index)
     if new_status in [EXITED_WITH_PENALTY, EXITED_WITHOUT_PENALTY]:
         exit_validator(state, index, new_status)
+    if new_status == WITHDRAWN:
+        withdraw_validator(state, index)
 ```
 
 The following are helpers and should only be called via `update_validator_status`:
@@ -1390,7 +1428,7 @@ def exit_validator(state: BeaconState,
     validator.latest_status_change_slot = state.slot
 
     if new_status == EXITED_WITH_PENALTY:
-        state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(state, index)
+        state.total_penalty_history[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(state, index)
 
         whistleblower_index = get_beacon_proposer_index(state, state.slot)
         whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
@@ -1416,6 +1454,20 @@ def exit_validator(state: BeaconState,
             if validator_index == index:
                 committee.pop(i)
                 break
+```
+
+```python
+def withdraw_validator(state: BeaconState,
+                       index: int):
+    new_accumulator_object = WithdrawalData(
+        withdrawal_credentials=validator.withdrawal_credentials,
+        slot_created=state.slot,
+        value=state.validator_balances[index]
+    )
+    state.validator_withdrawal_accumulator = update_accumulator(
+        state.validator_withdrawal_accumulator, state.validator_registry_withdrawal_count, new_accumulator_object
+    )
+    state.validator_registry_withdrawal_count += 1
 ```
 
 ## Per-slot processing
@@ -1758,22 +1810,25 @@ def update_validator_registry(state: BeaconState) -> None:
             update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
 
 
-    # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
-    period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
-    total_penalties = (
-        (latest_penalized_exit_balances[period_index]) +
-        (latest_penalized_exit_balances[period_index - 1] if period_index >= 1 else 0) +
-        (latest_penalized_exit_balances[period_index - 2] if period_index >= 2 else 0)
-    )
-
-    # Calculate penalties for slashed validators
-    def to_penalize(index):
-        return state.validator_registry[index].status == EXITED_WITH_PENALTY
-    validators_to_penalize = filter(to_penalize, range(len(validator_registry)))
-    for index in validators_to_penalize:
-        state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
-
-    return validator_registry, latest_penalized_exit_balances, validator_registry_delta_chain_tip
+    # Withdraw validators
+    all_indices = range(len(state.validator_registry))
+    def eligible(index):
+        return state.validator_registry[x].status in (EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY)
+    eligible_indices = filter(eligible, all_indices)
+    sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
+    removed = 0
+    for index in sorted_indices:
+        validator = state.validator_registry[index]
+        if validator.status == EXITED_WITH_PENALTY:
+            # Calculate and apply penalties for slashed validators
+            start_period = max(validator.latest_status_change_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD - 1, 0)
+            current_period = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
+            total_penalties = state.total_penalty_history[current_period] - state.total_penalty_history[start_period]
+            state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
+        update_validator_status(state, index, new_status=WITHDRAWN)
+        removed += 1
+        if removed >= MAX_WITHDRAWALS_PER_EPOCH:
+            break
 ```
 
 Also perform the following updates:
