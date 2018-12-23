@@ -964,23 +964,25 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `merkle_root`
 
 ```python
-def merkle_root(values):
+def merkle_root(values: List[Hash32]) -> Hash32:
     o = [0] * len(values) + values
-    for i in range(len(values)-1, 0, -1):
-        o[i] = hash(o[i*2] + o[i*2+1])
+    for i in range(len(values) - 1, 0, -1):
+        o[i] = hash(o[i * 2] + o[i * 2 + 1])
     return o[1]
 ```
 
 #### `update_merkle_accumulator`
 
 ```python
-def update_merkle_accumulator(accumulator, position, value):
-    h = value
-    j = 0
-    while (accumulator+1) % 2**(j+1) == 0:
-        h = hash(accumulator[j] + h)
-        j += 1
-    return accumulator[:j] + [h] + accumulator[j+1:]
+def update_merkle_accumulator(accumulator: List[Hash32],
+                              position: int,
+                              value: Hash32) -> List[Hash32]:
+    new_hash = value
+    layer = 0
+    while (accumulator + 1) % 2**(layer + 1) == 0:
+        new_hash = hash(accumulator[layer] + new_hash)
+        layer += 1
+    return accumulator[:layer] + [new_hash] + accumulator[layer + 1:]
 ```
 
 **INVARIANT**: if `len(values) = 2**k` for integer `k < len(accumulator)`, then if you apply `for i, v in enumerate(values): accumulator = update_merkle_accumulator(accumulator, i, v)`, at the end `accumulator[k] == merkle_root(values)`.
@@ -1461,14 +1463,20 @@ def exit_validator(state: BeaconState,
 
 ```python
 def withdraw_validator(state: BeaconState,
-                       index: int):
+                       index: int) -> None:
+    """
+    Withdraw the validator with the given ``index``.
+    Note that this function mutates ``state``.
+    """
     new_accumulator_object = WithdrawalData(
         credentials=validator.withdrawal_credentials,
         slot=state.slot,
         value=state.validator_balances[index],
     )
     state.validator_withdrawal_accumulator = update_merkle_accumulator(
-        state.validator_withdrawal_accumulator, state.validator_registry_withdrawal_count, new_accumulator_object
+        state.validator_withdrawal_accumulator,
+        state.validator_registry_withdrawal_count,
+        new_accumulator_object,
     )
     state.validator_registry_withdrawal_count += 1
 ```
@@ -1815,9 +1823,15 @@ def update_validator_registry(state: BeaconState) -> None:
 
     # Withdraw validators
     all_indices = range(len(state.validator_registry))
+
     def eligible(index):
-        return state.validator_registry[x].status in (EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY) and \
-            state.slot >= state.validator_registry[x].latest_status_change_slot >= MIN_VALIDATOR_WITHDRAWAL_TIME
+        is_exited = state.validator_registry[x].status in {EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY}
+        is_greater_than_or_equal_to_min_validator_withdrawal_time = (
+            state.slot >= state.validator_registry[x].latest_status_change_slot >=
+            MIN_VALIDATOR_WITHDRAWAL_TIME
+        )
+        return is_exited and is_greater_than_or_equal_to_min_validator_withdrawal_time
+
     eligible_indices = filter(eligible, all_indices)
     sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
     withdrawn_so_far = 0
@@ -1828,7 +1842,8 @@ def update_validator_registry(state: BeaconState) -> None:
             start_period = max(validator.latest_status_change_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD - 1, 0)
             current_period = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
             total_penalties = state.total_penalty_history[current_period] - state.total_penalty_history[start_period]
-            state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
+            penalty = get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
+            state.validator_balances[index] -= penalty
         update_validator_status(state, index, new_status=WITHDRAWN)
         withdrawn_so_far += 1
         if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
