@@ -979,7 +979,7 @@ def update_merkle_accumulator(accumulator: List[Hash32],
                               value: Hash32) -> List[Hash32]:
     new_hash = value
     layer = 0
-    while (accumulator + 1) % 2**(layer + 1) == 0:
+    while (position + 1) % 2**(layer + 1) == 0:
         new_hash = hash(accumulator[layer] + new_hash)
         layer += 1
     return accumulator[:layer] + [new_hash] + accumulator[layer + 1:]
