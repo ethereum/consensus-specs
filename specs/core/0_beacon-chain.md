@@ -1827,8 +1827,8 @@ def update_validator_registry(state: BeaconState) -> None:
     def eligible(index):
         is_exited = state.validator_registry[x].status in {EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY}
         is_greater_than_or_equal_to_min_validator_withdrawal_time = (
-            state.slot >= state.validator_registry[x].latest_status_change_slot >=
-            MIN_VALIDATOR_WITHDRAWAL_TIME
+            state.slot >=
+            state.validator_registry[x].latest_status_change_slot + MIN_VALIDATOR_WITHDRAWAL_TIME
         )
         return is_exited and is_greater_than_or_equal_to_min_validator_withdrawal_time
 
