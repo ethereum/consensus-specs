@@ -1265,10 +1265,9 @@ First, two helper functions:
 
 ```python
 def min_empty_validator_index(validators: List[ValidatorRecord],
-                              validator_balances: List[int],
                               current_slot: int) -> int:
-    for i, (v, vbal) in enumerate(zip(validators, validator_balances)):
-        if vbal == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
+    for i, v in enumerate(validators):
+        if v.status == WITHDRAWN and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
             return i
     return None
 ```
@@ -1338,7 +1337,7 @@ def process_deposit(state: BeaconState,
             second_last_poc_change_slot=0,
         )
 
-        index = min_empty_validator_index(state.validator_registry, state.validator_balances, state.slot)
+        index = min_empty_validator_index(state.validator_registry, state.slot)
         if index is None:
             state.validator_registry.append(validator)
             state.validator_balances.append(deposit)
