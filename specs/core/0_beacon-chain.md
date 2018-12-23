@@ -1478,6 +1478,7 @@ def withdraw_validator(state: BeaconState,
         new_accumulator_object,
     )
     state.validator_registry_withdrawal_count += 1
+    state.validator_balances[index] = 0
 ```
 
 ## Per-slot processing
@@ -1824,12 +1825,13 @@ def update_validator_registry(state: BeaconState) -> None:
     all_indices = range(len(state.validator_registry))
 
     def eligible(index):
-        is_exited = state.validator_registry[x].status in {EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY}
-        is_greater_than_or_equal_to_min_validator_withdrawal_time = (
+        validator = state.validator_registry[index]
+        is_exited = validator.status in {EXITED_WITHOUT_PENALTY, EXITED_WITH_PENALTY}
+        is_at_least_min_validator_withdrawal_time = (
             state.slot >=
-            state.validator_registry[x].latest_status_change_slot + MIN_VALIDATOR_WITHDRAWAL_TIME
+            validator.latest_status_change_slot + MIN_VALIDATOR_WITHDRAWAL_TIME
         )
-        return is_exited and is_greater_than_or_equal_to_min_validator_withdrawal_time
+        return is_exited and is_at_least_min_validator_withdrawal_time
 
     eligible_indices = filter(eligible, all_indices)
     sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
@@ -1839,7 +1841,7 @@ def update_validator_registry(state: BeaconState) -> None:
         if validator.status == EXITED_WITH_PENALTY:
             # Calculate and apply penalties for slashed validators
             start_period = max(validator.latest_status_change_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD - 1, 0)
-            current_period = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
+            current_period = state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
             total_penalties = state.total_penalty_history[current_period] - state.total_penalty_history[start_period]
             penalty = get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
             state.validator_balances[index] -= penalty
