@@ -1648,9 +1648,9 @@ Set `state.finalized_slot = state.previous_justified_slot` if any of the followi
 
 ### Crosslinks
 
-For every `shard_committee` in `state.shard_committees_at_slots`:
+For every `shard_committee_at_slot` in `state.shard_committees_at_slots` and for every `shard_committee`in `shard_committee_at_slot`:
 
-* Set `state.latest_crosslinks[shard] = CrosslinkRecord(slot=state.slot, block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
+* Set `state.latest_crosslinks[shard_committee.shard] = CrosslinkRecord(slot=state.slot, block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
 ### Rewards and penalties
 
