@@ -974,18 +974,18 @@ def merkle_root(values):
 #### `update_merkle_accumulator`
 
 ```python
-def update_merkle_accumulator(acc, position, value):
+def update_merkle_accumulator(accumulator, position, value):
     h = value
     j = 0
-    while (acc+1) % 2**(j+1) == 0:
-        h = hash(acc[j] + h)
+    while (accumulator+1) % 2**(j+1) == 0:
+        h = hash(accumulator[j] + h)
         j += 1
-    return acc[:j] + [h] + acc[j+1:]
+    return accumulator[:j] + [h] + accumulator[j+1:]
 ```
 
-**INVARIANT**: if `len(values) = 2**k` for integer `k < len(acc)`, then if you apply `for i, v in enumerate(values): acc = update_merkle_accumulator(acc, i, v)`, at the end `acc[k] == merkle_root(values)`.
+**INVARIANT**: if `len(values) = 2**k` for integer `k < len(accumulator)`, then if you apply `for i, v in enumerate(values): accumulator = update_merkle_accumulator(accumulator, i, v)`, at the end `accumulator[k] == merkle_root(values)`.
 
-**INVARIANT**: in the above case but where `len(values)` is not an exact power of 2, any value in `values` will be a leaf of at least one Merkle tree whose root is in `acc`. For example, if `len(values) = 329` (note: 333 = 256 + 64 + 8 + 1), then `acc[8] == merkle_root(values[0:256])`, `acc[6] == merkle_root(values[256:320])`, `acc[3] == merkle_root(values[320:328])` and `acc[0] == merkle_root(values[328:329])`.
+**INVARIANT**: in the above case but where `len(values)` is not an exact power of 2, any value in `values` will be a leaf of at least one Merkle tree whose root is in `accumulator`. For example, if `len(values) = 329` (note: 333 = 256 + 64 + 8 + 1), then `accumulator[8] == merkle_root(values[0:256])`, `accumulator[6] == merkle_root(values[256:320])`, `accumulator[3] == merkle_root(values[320:328])` and `accumulator[0] == merkle_root(values[328:329])`.
 
 #### `get_attestation_participants`
 
