@@ -1578,9 +1578,12 @@ For each `exit` in `block.body.exits`:
 
 ## Per-epoch processing
 
-The steps below happen when `state.slot % EPOCH_LENGTH == 0`.
+The steps below happen when `state.slot % EPOCH_LENGTH == EPOCH_LENGTH - 1`.
 
 ### Helpers
+
+* Let `current_epoch_start_slot = state.slot - EPOCH_LENGTH + 1`.
+* Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1`.
 
 All [validators](#dfn-validator):
 
@@ -1589,23 +1592,23 @@ All [validators](#dfn-validator):
 
 [Validators](#dfn-Validator) attesting during the current epoch:
 
-* Let `current_epoch_attestations = [a for a in state.latest_attestations if state.slot - EPOCH_LENGTH <= a.data.slot < state.slot]`. (Note: this is the set of attestations of slots in the epoch `state.slot-EPOCH_LENGTH...state.slot-1`, _not_ attestations that got included in the chain during the epoch `state.slot-EPOCH_LENGTH...state.slot-1`.)
+* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch_start_slot <= a.data.slot < state.slot + 1]`. (Note: this is the set of attestations of slots in the epoch `current_epoch_start_slot...state.slot`, _not_ attestations that got included in the chain during the epoch `current_epoch_start_slot...state.slot`.)
 * Validators justifying the epoch boundary block at the start of the current epoch:
-  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot-EPOCH_LENGTH) and a.justified_slot == state.justified_slot]`.
+  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, current_epoch_start_slot) and a.justified_slot == state.justified_slot]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in current_epoch_boundary_attestations]`.
   * Let `current_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in current_epoch_boundary_attester_indices])`.
 
 [Validators](#dfn-Validator) attesting during the previous epoch:
 
 * Validators that made an attestation during the previous epoch:
-  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
+  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch_start_slot <= a.slot < current_epoch_start_slot]`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_attestations]`.
 * Validators targeting the previous justified hash:
   * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.justified_slot == state.previous_justified_slot]`.
   * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_justified_attestations]`.
   * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_justified_attester_indices])`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
-  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.epoch_boundary_root == get_block_root(state, state.slot - 2 * EPOCH_LENGTH)]`.
+  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.epoch_boundary_root == get_block_root(state, previous_epoch_start_slot)]`.
   * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_boundary_attestations]`.
   * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_boundary_attester_indices])`.
 * Validators attesting to the expected beacon chain head during the previous epoch:
@@ -1627,7 +1630,7 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 
 ### Receipt roots
 
-If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
+If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == POW_RECEIPT_ROOT_VOTING_PERIOD - 1`:
 
 * Set `state.processed_pow_receipt_root = x.receipt_root` if `x.vote_count * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
 * Set `state.candidate_pow_receipt_roots = []`.
@@ -1636,15 +1639,15 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 
 * Set `state.previous_justified_slot = state.justified_slot`.
 * Set `state.justification_bitfield = (state.justification_bitfield * 2) % 2**64`.
-* Set `state.justification_bitfield |= 2` and `state.justified_slot = state.slot - 2 * EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
-* Set `state.justification_bitfield |= 1` and `state.justified_slot = state.slot - 1 * EPOCH_LENGTH` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 2` and `state.justified_slot = previous_epoch_start_slot` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 1` and `state.justified_slot = current_epoch_start_slot` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
 
 Set `state.finalized_slot = state.previous_justified_slot` if any of the following are true:
 
-* `state.previous_justified_slot == state.slot - 2 * EPOCH_LENGTH and state.justification_bitfield % 4 == 3`
-* `state.previous_justified_slot == state.slot - 3 * EPOCH_LENGTH and state.justification_bitfield % 8 == 7`
-* `state.previous_justified_slot == state.slot - 4 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`
+* `state.previous_justified_slot == previous_epoch_start_slot and state.justification_bitfield % 4 == 3`
+* `state.previous_justified_slot == previous_epoch_start_slot - 1 * EPOCH_LENGTH and state.justification_bitfield % 8 == 7`
+* `state.previous_justified_slot == previous_epoch_start_slot - 2 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`
 
 ### Crosslinks
 
@@ -1787,14 +1790,14 @@ Also perform the following updates:
 
 * Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[current_epoch_start_slot % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 
 If a validator registry update does _not_ happen do the following:
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_latest_change_slot) // EPOCH_LENGTH`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `epochs_since_last_registry_change` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
+* If `epochs_since_last_registry_change` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[current_epoch_start_slot % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
 
 ### Proposer reshuffling
 
@@ -1825,7 +1828,7 @@ while len(state.persistent_committee_reassignments) > 0 and state.persistent_com
 
 ### Final updates
 
-* Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
+* Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < current_epoch_start_slot`.
 
 ## State root processing
 
