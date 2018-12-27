@@ -1697,7 +1697,7 @@ For each `index` in `previous_epoch_attester_indices`, we determine the proposer
 
 #### Crosslinks
 
-For every `shard_committee` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `index` in `shard_committee.committee`, adjust balances as follows:
+For every `shard_committee_at_slot` in `state.shard_committees_at_slots[:EPOCH_LENGTH]` (i.e. the objects corresponding to the epoch before the current one), for each `shard_committee` in `shard_committee_at_slot`, and for each `index` in `shard_committee.committee`, adjust balances as follows:
 
 * If `index in attesting_validators(shard_committee)`, `state.validator_balances[index] += base_reward(state, index) * total_attesting_balance(shard_committee) // total_balance(shard_committee))`.
 * If `index not in attesting_validators(shard_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
