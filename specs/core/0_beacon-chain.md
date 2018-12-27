@@ -956,7 +956,7 @@ def get_beacon_proposer_index(state: BeaconState,
 ```python
 def merkle_root(values):  
     """
-    This helper is only valid if `len(values) % 2**n == 0` , where `n` is any non-negative integer.
+    This helper is only valid if ``len(values) % 2**n == 0`` , where ``n`` is any non-negative integer.
     """
     o = [0] * len(values) + values
     for i in range(len(values)-1, 0, -1):
