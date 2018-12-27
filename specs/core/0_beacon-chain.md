@@ -1214,6 +1214,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
             randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
+            poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
         )
         if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
             update_validator_status(state, validator_index, ACTIVE)
@@ -1248,11 +1249,13 @@ def validate_proof_of_possession(state: BeaconState,
                                  pubkey: int,
                                  proof_of_possession: bytes,
                                  withdrawal_credentials: Hash32,
-                                 randao_commitment: Hash32) -> bool:
+                                 randao_commitment: Hash32,
+                                 poc_commitment: Hash32) -> bool:
     proof_of_possession_data = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
+        poc_commitment=poc_commitment,
         proof_of_possession=EMPTY_SIGNATURE,
     )
 
@@ -1276,8 +1279,8 @@ def process_deposit(state: BeaconState,
                     deposit: int,
                     proof_of_possession: bytes,
                     withdrawal_credentials: Hash32,
-                    poc_commitment: Hash32,
-                    randao_commitment: Hash32) -> int:
+                    randao_commitment: Hash32,
+                    poc_commitment: Hash32) -> int:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1289,6 +1292,7 @@ def process_deposit(state: BeaconState,
         proof_of_possession,
         withdrawal_credentials,
         randao_commitment,
+        poc_commitment,
     )
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
@@ -1557,8 +1561,8 @@ process_deposit(
     deposit=deposit.deposit_data.value,
     proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-    poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
     randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
+    poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
 )
 ```
 
