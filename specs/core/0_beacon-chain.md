@@ -1739,7 +1739,7 @@ def update_validator_registry(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         is_delaying_exit = (
             validator.status == ACTIVE_PENDING_PENALTY_EXIT and
-            state.slot > validator.latest_status_change_slot + MAX_SEED_LOOKAHEAD
+            state.slot >= validator.latest_status_change_slot + MAX_SEED_LOOKAHEAD
         )
         if is_delaying_exit:
             update_validator_status(state, index, new_status=EXITED_WITH_PENALTY)
