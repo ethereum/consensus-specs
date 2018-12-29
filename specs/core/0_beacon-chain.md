@@ -482,8 +482,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_randao_mixes': ['hash32'],
     'latest_vdf_outputs': ['hash32'],
     'shard_committees_at_slots': [[ShardCommittee]],
-    'persistent_committees': [['uint24']],
-    'persistent_committee_reassignments': [ShardReassignmentRecord],
 
     # Proof of custody
     # Placeholders for now; ProofOfCustodyChallenge is defined in phase 1, implementers can
@@ -1181,8 +1179,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
         latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         shard_committees_at_slots=[],
-        persistent_committees=[],
-        persistent_committee_reassignments=[],
 
         # Proof of custody
         poc_challenges=[],
@@ -1222,10 +1218,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
     # set initial committee shuffling
     initial_shuffling = get_new_shuffling(ZERO_HASH, state.validator_registry, 0)
     state.shard_committees_at_slots = initial_shuffling + initial_shuffling
-
-    # set initial persistent shuffling
-    active_validator_indices = get_active_validator_indices(state.validator_registry)
-    state.persistent_committees = split(shuffle(active_validator_indices, ZERO_HASH), SHARD_COUNT)
 
     return state
 ```
@@ -1424,13 +1416,6 @@ def exit_validator(state: BeaconState,
         pubkey=validator.pubkey,
         flag=EXIT,
     )
-
-    # Remove validator from persistent committees
-    for committee in state.persistent_committees:
-        for i, validator_index in committee:
-            if validator_index == index:
-                committee.pop(i)
-                break
 ```
 
 ## Per-slot processing
@@ -1802,33 +1787,6 @@ If a validator registry update does _not_ happen do the following:
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_latest_change_slot) // EPOCH_LENGTH`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
 * If `epochs_since_last_registry_change` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
-
-### Proposer reshuffling
-
-Run the following code to update the shard proposer set:
-
-```python
-active_validator_indices = get_active_validator_indices(state.validator_registry)
-num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-for i in range(num_validators_to_reshuffle):
-    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
-    # and none of the hashes used for entropy in this loop will be the same
-    validator_index = active_validator_indices[hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + bytes8(i * 2)) % len(active_validator_indices)]
-    new_shard = hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + bytes8(i * 2 + 1)) % SHARD_COUNT
-    shard_reassignment_record = ShardReassignmentRecord(
-        validator_index=validator_index,
-        shard=new_shard,
-        slot=s + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-    )
-    state.persistent_committee_reassignments.append(shard_reassignment_record)
-
-while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= s:
-    reassignment = state.persistent_committee_reassignments.pop(0)
-    for committee in state.persistent_committees:
-        if reassignment.validator_index in committee:
-            committee.pop(committee.index(reassignment.validator_index))
-    state.persistent_committees[reassignment.shard].append(reassignment.validator_index)
-```
 
 ### Final updates
 
