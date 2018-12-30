@@ -186,8 +186,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 | Name | Value |
 | - | - |
-| `INITIAL_FORK_VERSION` | `0` |
-| `INITIAL_SLOT_NUMBER` | `0` |
+| `GENESIS_FORK_VERSION` | `0` |
+| `GENESIS_SLOT` | `0` |
 | `ZERO_HASH` | `bytes([0] * 32)` |
 | `FAR_FUTURE_SLOT` | `2**63` |
 
@@ -1013,28 +1013,6 @@ def get_effective_balance(state: State, index: int) -> int:
     return min(state.validator_balances[index], MAX_DEPOSIT * GWEI_PER_ETH)
 ```
 
-#### `get_new_validator_registry_delta_chain_tip`
-
-```python
-def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_chain_tip: Hash32,
-                                               validator_index: int,
-                                               pubkey: int,
-                                               slot: int,
-                                               flag: int) -> Hash32:
-    """
-    Compute the next root in the validator registry delta chain.
-    """
-    return hash_tree_root(
-        ValidatorRegistryDeltaBlock(
-            latest_registry_delta_root=current_validator_registry_delta_chain_tip,
-            validator_index=validator_index,
-            pubkey=pubkey,
-            slot=slot,
-            flag=flag,
-        )
-    )
-```
-
 #### `get_fork_version`
 
 ```python
@@ -1144,11 +1122,11 @@ def integer_squareroot(n: int) -> int:
 
 ### On startup
 
-A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the following values. Other validity rules (e.g. requiring a signature) do not apply.
+A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following values. Other validity rules (e.g. requiring a signature) do not apply.
 
 ```python
 {
-    slot=INITIAL_SLOT_NUMBER,
+    slot=GENESIS_SLOT,
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
@@ -1175,18 +1153,18 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              processed_pow_receipt_root: Hash32) -> BeaconState:
     state = BeaconState(
         # Misc
-        slot=INITIAL_SLOT_NUMBER,
+        slot=GENESIS_SLOT,
         genesis_time=genesis_time,
         fork_data=ForkData(
-            pre_fork_version=INITIAL_FORK_VERSION,
-            post_fork_version=INITIAL_FORK_VERSION,
-            fork_slot=INITIAL_SLOT_NUMBER,
+            pre_fork_version=GENESIS_FORK_VERSION,
+            post_fork_version=GENESIS_FORK_VERSION,
+            fork_slot=GENESIS_SLOT,
         ),
 
         # Validator registry
         validator_registry=[],
         validator_balances=[],
-        validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
+        validator_registry_latest_change_slot=GENESIS_SLOT,
         validator_registry_exit_count=0,
         validator_registry_delta_chain_tip=ZERO_HASH,
 
@@ -1201,13 +1179,13 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         poc_challenges=[],
 
         # Finality
-        previous_justified_slot=INITIAL_SLOT_NUMBER,
-        justified_slot=INITIAL_SLOT_NUMBER,
+        previous_justified_slot=GENESIS_SLOT,
+        justified_slot=GENESIS_SLOT,
         justification_bitfield=0,
-        finalized_slot=INITIAL_SLOT_NUMBER,
+        finalized_slot=GENESIS_SLOT,
 
         # Recent state
-        latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
+        latest_crosslinks=[CrosslinkRecord(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_penalized_exit_balances=[0 for _ in LATEST_PENALIZED_EXIT_LENGTH],
         latest_attestations=[],
@@ -1230,10 +1208,10 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
         )
         if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
-            activate_validator(state, validator_index)
+            activate_validator(state, validator_index, True)
 
     # set initial committee shuffling
-    initial_shuffling = get_shuffling(ZERO_HASH, state.validator_registry, 0, INITIAL_SLOT_NUMBER)
+    initial_shuffling = get_shuffling(ZERO_HASH, state.validator_registry, 0, GENESIS_SLOT)
     state.shard_committees_at_slots = initial_shuffling + initial_shuffling
 
     # set initial persistent shuffling
@@ -1348,45 +1326,34 @@ def process_deposit(state: BeaconState,
 
 ### Routines for updating validator status
 
+_Note that all functions in this section mutate `state`_.
+
 ```python
-def activate_validator(state: BeaconState,
-                       index: int) -> None:
-    """
-    Activate the validator with the given ``index``.
-    Note that this function mutates ``state``.
-    """
+def activate_validator(state: BeaconState, index: int, immediate: bool) -> None:
     validator = state.validator_registry[index]
     if validator.activation_slot <= state.slot:
         return
 
-    validator.activation_slot = state.slot + ENTRY_EXIT_DELAY
-    state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        validator_index=index,
-        pubkey=validator.pubkey,
-        slot=validator.activation_slot,
-        flag=ACTIVATION,
+    validator.activation_slot = state.slot + (0 if immediate else ENTRY_EXIT_DELAY)
+    state.validator_registry_delta_chain_tip = hash_tree_root(
+        ValidatorRegistryDeltaBlock(
+            current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+            validator_index=index,
+            pubkey=validator.pubkey,
+            slot=validator.activation_slot,
+            flag=ACTIVATION,
+        )
     )
 ```
 
 ```python
-def initiate_validator_exit(state: BeaconState,
-                            index: int) -> None:
-    """
-    Initiate exit for the validator with the given ``index``.
-    Note that this function mutates ``state``.
-    """
+def initiate_validator_exit(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
     validator.status_flags |= INITIATED_EXIT
 ```
 
 ```python
-def exit_validator(state: BeaconState,
-                   index: int) -> None:
-    """
-    Exit the validator with the given ``index``.
-    Note that this function mutates ``state``.
-    """
+def exit_validator(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
 
     if validator.exit_slot < state.slot + ENTRY_EXIT_DELAY:
@@ -1415,9 +1382,7 @@ def exit_validator(state: BeaconState,
 ```
 
 ```python
-def penalize_validator(state: BeaconState,
-                       index: int) -> None:
-
+def penalize_validator(state: BeaconState, index: int) -> None:
     exit_validator(state, index)
     state.latest_penalized_exit_balances[(state.slot // EPOCH_LENGTH) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
 
@@ -1429,9 +1394,7 @@ def penalize_validator(state: BeaconState,
 ```
 
 ```python
-def set_validator_withdrawable(state: BeaconState,
-                               index: int) -> None:
-
+def prepare_validator_for_withdrawal(state: BeaconState, index: int) -> None:
     state.validator_registry[index].status_flags |= WITHDRAWABLE
 ```
 
@@ -1758,7 +1721,7 @@ def update_validator_registry(state: BeaconState) -> None:
                 break
 
             # Activate validator
-            activate_validator(state, index)
+            activate_validator(state, index, False)
 
     # Exit validators within the allowable balance churn
     balance_churn = 0
@@ -1809,7 +1772,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
             # TODO: calculate and apply penalties for slashed validators
             penalty = 1
             state.validator_balances[index] -= penalty
-        set_validator_withdrawable(state, index)
+        prepare_validator_for_withdrawal(state, index)
         withdrawn_so_far += 1
         if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
             break
