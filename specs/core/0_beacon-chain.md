@@ -200,7 +200,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `SEED_LOOKAHEAD` | `2**6` (= 64) | slots | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**8` (= 256) | slots | 25.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
-| `SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD` | `2**17` (= 131,072) | slots | ~9 days |
 
 ### Reward and penalty quotients
 
@@ -481,8 +480,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_randao_mixes': ['hash32'],
     'latest_vdf_outputs': ['hash32'],
     'shard_committees_at_slots': [[ShardCommittee]],
-    'persistent_committees': [['uint24']],
-    'persistent_committee_reassignments': [ShardReassignmentRecord],
 
     # Proof of custody
     # Placeholders for now; ProofOfCustodyChallenge is defined in phase 1, implementers can
@@ -1069,7 +1066,9 @@ def is_double_vote(attestation_data_1: AttestationData,
     Returns True if the provided ``AttestationData`` are slashable
     due to a 'double vote'.
     """
-    return attestation_data_1.slot == attestation_data_2.slot
+    target_epoch_1 = attestation_data_1.slot // EPOCH_LENGTH
+    target_epoch_2 = attestation_data_2.slot // EPOCH_LENGTH
+    return target_epoch_1 == target_epoch_2
 ```
 
 #### `is_surround_vote`
@@ -1084,10 +1083,14 @@ def is_surround_vote(attestation_data_1: AttestationData,
     Note: parameter order matters as this function only checks
     that ``attestation_data_1`` surrounds ``attestation_data_2``.
     """
+    source_epoch_1 = attestation_data_1.justified_slot // EPOCH_LENGTH
+    source_epoch_2 = attestation_data_2.justified_slot // EPOCH_LENGTH
+    target_epoch_1 = attestation_data_1.slot // EPOCH_LENGTH
+    target_epoch_2 = attestation_data_2.slot // EPOCH_LENGTH
     return (
-        (attestation_data_1.justified_slot < attestation_data_2.justified_slot) and
-        (attestation_data_2.justified_slot + 1 == attestation_data_2.slot) and
-        (attestation_data_2.slot < attestation_data_1.slot)
+        (source_epoch_1 < source_epoch_2) and
+        (source_epoch_2 + 1 == target_epoch_2) and
+        (target_epoch_2 < target_epoch_1)
     )
 ```
 
@@ -1170,8 +1173,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
         latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         shard_committees_at_slots=[],
-        persistent_committees=[],
-        persistent_committee_reassignments=[],
 
         # Proof of custody
         poc_challenges=[],
@@ -1214,10 +1215,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
     # Set initial committee shuffling
     initial_shuffling = get_shuffling(ZERO_HASH, state.validator_registry, 0, GENESIS_SLOT)
     state.shard_committees_at_slots = initial_shuffling + initial_shuffling
-
-    # Set initial persistent shuffling
-    active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)
-    state.persistent_committees = split(shuffle(active_validator_indices, ZERO_HASH), SHARD_COUNT)
 
     return state
 ```
@@ -1358,14 +1355,6 @@ def exit_validator(state: BeaconState, index: int) -> None:
             flag=EXIT,
         )
     )
-    state.validator_registry_exit_count += 1
-
-    # Remove validator from persistent committees
-    for committee in state.persistent_committees:
-        for i, validator_index in committee:
-            if validator_index == index:
-                committee.pop(i)
-                break
 ```
 
 ```python
@@ -1499,9 +1488,9 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     value = leaf
     for i in range(depth):
         if index % 2:
-            value = hash(branch[i], value)
+            value = hash(branch[i] + value)
         else:
-            value = hash(value, branch[i])
+            value = hash(value + branch[i])
     return value == root
 ```
 
@@ -1779,33 +1768,6 @@ If a validator registry update does _not_ happen do the following:
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_latest_change_slot) // EPOCH_LENGTH`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
 * If `epochs_since_last_registry_change` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_shuffling(state.latest_randao_mixes[(state.slot - SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard, state.slot)`. Note that `start_shard` is not changed from the last epoch.
-
-### Proposer reshuffling
-
-Run the following code to update the shard proposer set:
-
-```python
-active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)
-num_validators_to_reshuffle = len(active_validator_indices) // SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-for i in range(num_validators_to_reshuffle):
-    # Multiplying i to 2 to ensure we have different input to all the required hashes in the shuffling
-    # and none of the hashes used for entropy in this loop will be the same
-    validator_index = active_validator_indices[hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + bytes8(i * 2)) % len(active_validator_indices)]
-    new_shard = hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + bytes8(i * 2 + 1)) % SHARD_COUNT
-    shard_reassignment_record = ShardReassignmentRecord(
-        validator_index=validator_index,
-        shard=new_shard,
-        slot=s + SHARD_PERSISTENT_COMMITTEE_CHANGE_PERIOD
-    )
-    state.persistent_committee_reassignments.append(shard_reassignment_record)
-
-while len(state.persistent_committee_reassignments) > 0 and state.persistent_committee_reassignments[0].slot <= s:
-    reassignment = state.persistent_committee_reassignments.pop(0)
-    for committee in state.persistent_committees:
-        if reassignment.validator_index in committee:
-            committee.pop(committee.index(reassignment.validator_index))
-    state.persistent_committees[reassignment.shard].append(reassignment.validator_index)
-```
 
 ### Final updates
 
