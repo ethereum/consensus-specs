@@ -1529,9 +1529,9 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     value = leaf
     for i in range(depth):
         if index % 2:
-            value = hash(branch[i], value)
+            value = hash(branch[i] + value)
         else:
-            value = hash(value, branch[i])
+            value = hash(value + branch[i])
     return value == root
 ```
 
