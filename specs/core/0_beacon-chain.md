@@ -1197,7 +1197,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
     # Process initial deposits
     for deposit in initial_validator_deposits:
-        validator_index = process_deposit(
+        process_deposit(
             state=state,
             pubkey=deposit.deposit_data.deposit_input.pubkey,
             amount=deposit.deposit_data.amount,
