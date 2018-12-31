@@ -916,7 +916,7 @@ def get_shuffling(seed: Hash32,
     return output
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, shard, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `shard` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 1 and in the future.
+**Invariant**: if `get_shuffling(seed, validators, shard, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `shard` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 Here's a diagram of what is going on:
 
@@ -1207,7 +1207,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
             poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
         )
-        if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
+        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT * GWEI_PER_ETH:
             activate_validator(state, validator_index, True)
 
     # set initial committee shuffling
@@ -1229,9 +1229,8 @@ First, two helper functions:
 def min_empty_validator_index(validators: List[ValidatorRecord],
                               validator_balances: List[int],
                               current_slot: int) -> int:
-    for i, v in enumerate(validators):
-        if v.withdrawal_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
-            return i
+    # In phase 2, add logic that seeks the lowest-index validator that
+    # has been withdrawn for more than ~1 year
     return None
 ```
 
@@ -1329,12 +1328,10 @@ def process_deposit(state: BeaconState,
 _Note that all functions in this section mutate `state`_.
 
 ```python
-def activate_validator(state: BeaconState, index: int, immediate: bool) -> None:
+def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
     validator = state.validator_registry[index]
-    if validator.activation_slot <= state.slot:
-        return
 
-    validator.activation_slot = state.slot + (0 if immediate else ENTRY_EXIT_DELAY)
+    validator.activation_slot = GENESIS_SLOT if genesis else (state.slot + ENTRY_EXIT_DELAY)
     state.validator_registry_delta_chain_tip = hash_tree_root(
         ValidatorRegistryDeltaBlock(
             current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
@@ -1364,12 +1361,14 @@ def exit_validator(state: BeaconState, index: int) -> None:
     # The following updates only occur if not previous exited
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
-    state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        validator_index=index,
-        pubkey=validator.pubkey,
-        slot=validator.exit_slot,
-        flag=EXIT,
+    state.validator_registry_delta_chain_tip = hash_tree_root(
+        ValidatorRegistryDeltaBlock(
+            current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+            validator_index=index,
+            pubkey=validator.pubkey,
+            slot=validator.exit_slot,
+            flag=EXIT,
+        )
     )
     state.validator_registry_exit_count += 1
 
@@ -1384,18 +1383,20 @@ def exit_validator(state: BeaconState, index: int) -> None:
 ```python
 def penalize_validator(state: BeaconState, index: int) -> None:
     exit_validator(state, index)
+    validator = state.validator_registry[index]
     state.latest_penalized_exit_balances[(state.slot // EPOCH_LENGTH) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
 
     whistleblower_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
-    state.validator_registry[index].penalized_slot = state.slot
+    validator.penalized_slot = state.slot
 ```
 
 ```python
 def prepare_validator_for_withdrawal(state: BeaconState, index: int) -> None:
-    state.validator_registry[index].status_flags |= WITHDRAWABLE
+    validator = state.validator_registry[index]
+    validator.status_flags |= WITHDRAWABLE
 ```
 
 ## Per-slot processing
@@ -1749,7 +1750,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     for i, validator in enumerate(validators):
         if (state.slot // EPOCH_LENGTH) - (validator.penalized_slot // EPOCH_LENGTH) == LATEST_PENALIZED_EXIT_LENGTH // 2:
             e = (state.slot // EPOCH_LENGTH) % LATEST_PENALIZED_EXIT_LENGTH
-            total_at_start = state.latest_penalized_exit_balances[(e+1)%LATEST_PENALIZED_EXIT_LENGTH]
+            total_at_start = state.latest_penalized_exit_balances[(e + 1) % LATEST_PENALIZED_EXIT_LENGTH]
             total_at_end = state.latest_penalized_exit_balances[e]
             total_penalties = total_at_end - total_at_start
             penalty = get_effective_balance(state, i) * min(total_penalties * 3, total_balance) // total_balance
