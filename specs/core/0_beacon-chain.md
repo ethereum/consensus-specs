@@ -221,7 +221,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `INITIATED_EXIT` | `2**0` (= 1) |
 | `WITHDRAWABLE` | `2**1` (= 2) |
 
-
 ### Max operations per block
 
 | Name | Value |
@@ -876,17 +875,17 @@ def get_shuffling(seed: Hash32,
     """
     Shuffles ``validators`` into shard committees using ``seed`` as entropy.
     """
-    
+
     # Normalizes slot to start of epoch boundary
     slot -= slot % EPOCH_LENGTH
-    
+
     active_validator_indices = get_active_validator_indices(validators, slot)
 
     committees_per_slot = max(
         1,
         min(
             SHARD_COUNT // EPOCH_LENGTH,
-            len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,   
+            len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
         )
     )
 
@@ -965,7 +964,7 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `merkle_root`
 
 ```python
-def merkle_root(values):  
+def merkle_root(values):
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
     """
@@ -1264,7 +1263,7 @@ def process_deposit(state: BeaconState,
                     proof_of_possession: bytes,
                     withdrawal_credentials: Hash32,
                     randao_commitment: Hash32,
-                    poc_commitment: Hash32) -> int:
+                    poc_commitment: Hash32) -> None:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1309,8 +1308,6 @@ def process_deposit(state: BeaconState,
         assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
 
         state.validator_balances[index] += amount
-
-    return index
 ```
 
 ### Routines for updating validator status
@@ -1345,7 +1342,7 @@ def exit_validator(state: BeaconState, index: int) -> None:
 
     if validator.exit_slot < state.slot + ENTRY_EXIT_DELAY:
         return
-    
+
     validator.exit_slot = state.slot + ENTRY_EXIT_DELAY
 
     # The following updates only occur if not previous exited
@@ -1592,7 +1589,6 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 * Set `state.justification_bitfield |= 2` and `state.justified_slot = state.slot - 2 * EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
 * Set `state.justification_bitfield |= 1` and `state.justified_slot = state.slot - 1 * EPOCH_LENGTH` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
-
 Set `state.finalized_slot = state.previous_justified_slot` if any of the following are true:
 
 * `state.previous_justified_slot == state.slot - 2 * EPOCH_LENGTH and state.justification_bitfield % 4 == 3`
@@ -1716,8 +1712,7 @@ def update_validator_registry(state: BeaconState) -> None:
 
             # Exit validator
             exit_validator(state, index)
-            
-            
+
     state.validator_registry_latest_change_slot = state.slot
 ```
 
@@ -1787,10 +1782,10 @@ This section is divided into Normative and Informative references.  Normative re
 ## Normative
 
 ## Informative
-<a id="ref-casper-ffg"></a> _**casper-ffg**_  
+<a id="ref-casper-ffg"></a> _**casper-ffg**_
  &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
 
-<a id="ref-python-poc"></a> _**python-poc**_  
+<a id="ref-python-poc"></a> _**python-poc**_
  &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
 
 # Copyright
