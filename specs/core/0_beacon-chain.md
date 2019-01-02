@@ -200,6 +200,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `SEED_LOOKAHEAD` | `2**6` (= 64) | slots | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**8` (= 256) | slots | 25.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `MIN_VALIDATOR_WITHDRAWAL_TIME` | `2**14` (= 16,384) | slots | ~27 hours |
 
 ### Reward and penalty quotients
 
@@ -875,6 +876,10 @@ def get_shuffling(seed: Hash32,
     """
     Shuffles ``validators`` into shard committees using ``seed`` as entropy.
     """
+    
+    # Normalizes slot to start of epoch boundary
+    slot -= slot % EPOCH_LENGTH
+    
     active_validator_indices = get_active_validator_indices(validators, slot)
 
     committees_per_slot = max(
@@ -1725,8 +1730,8 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     # The total effective balance of active validators
     total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
 
-    for i, validator in enumerate(validators):
-        if (state.slot // EPOCH_LENGTH) - (validator.penalized_slot // EPOCH_LENGTH) == LATEST_PENALIZED_EXIT_LENGTH // 2:
+    for index, validator in enumerate(state.validator_registry):
+        if (state.slot // EPOCH_LENGTH) == (validator.penalized_slot // EPOCH_LENGTH) + LATEST_PENALIZED_EXIT_LENGTH // 2:
             e = (state.slot // EPOCH_LENGTH) % LATEST_PENALIZED_EXIT_LENGTH
             total_at_start = state.latest_penalized_exit_balances[(e + 1) % LATEST_PENALIZED_EXIT_LENGTH]
             total_at_end = state.latest_penalized_exit_balances[e]
@@ -1742,15 +1747,12 @@ def process_penalties_and_exits(state: BeaconState) -> None:
         else:
             return state.slot >= validator.exit_slot + MIN_VALIDATOR_WITHDRAWAL_TIME
 
+    all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
     sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
     withdrawn_so_far = 0
     for index in sorted_indices:
         validator = state.validator_registry[index]
-        if validator.penalized_slot <= state.slot:
-            # TODO: calculate and apply penalties for slashed validators
-            penalty = 1
-            state.validator_balances[index] -= penalty
         prepare_validator_for_withdrawal(state, index)
         withdrawn_so_far += 1
         if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
