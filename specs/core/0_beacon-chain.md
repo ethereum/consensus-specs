@@ -47,7 +47,7 @@
             - [`CrosslinkRecord`](#crosslinkrecord)
             - [`ShardCommittee`](#shardcommittee)
             - [`ShardReassignmentRecord`](#shardreassignmentrecord)
-            - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
+            - [`DepositRootVote`](#depositrootvote)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
@@ -94,7 +94,7 @@
         - [Slot](#slot)
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
-        - [PoW receipt root](#pow-receipt-root)
+        - [Deposit root](#deposit-root)
         - [Operations](#operations)
             - [Proposer slashings](#proposer-slashings-1)
             - [Casper slashings](#casper-slashings-1)
@@ -104,7 +104,7 @@
             - [Miscellaneous](#miscellaneous)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
-        - [Receipt roots](#receipt-roots)
+        - [Deposit roots](#deposit-roots)
         - [Justification](#justification)
         - [Crosslinks](#crosslinks)
         - [Rewards and penalties](#rewards-and-penalties)
@@ -113,7 +113,6 @@
             - [Crosslinks](#crosslinks-1)
         - [Ejections](#ejections)
         - [Validator registry](#validator-registry)
-        - [Proposer reshuffling](#proposer-reshuffling)
         - [Final updates](#final-updates)
     - [State root processing](#state-root-processing)
 - [References](#references)
@@ -196,7 +195,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `SLOT_DURATION` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
-| `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `DEPOSIT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
 | `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 4,194,304) | slots | ~291 days |
 
@@ -421,7 +420,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'parent_root': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
-    'candidate_pow_receipt_root': 'hash32',
+    'deposit_root_vote': 'hash32',
     'signature': ['uint384'],
 
     ## Body ##
@@ -500,9 +499,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_attestations': [PendingAttestationRecord],
     'batched_block_roots': ['hash32'],
 
-    # PoW receipt root
-    'processed_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
+    # Deposit root
+    'processed_deposit_root': 'hash32',
+    'deposit_root_votes': [DepositRootVote],
 }
 ```
 
@@ -569,12 +568,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `CandidatePoWReceiptRootRecord`
+#### `DepositRootVote`
 
 ```python
 {
-    # Candidate PoW receipt root
-    'candidate_pow_receipt_root': 'hash32',
+    # Deposit root
+    'deposit_root_vote': 'hash32',
     # Vote count
     'vote_count': 'uint64',
 }
@@ -641,7 +640,7 @@ Every deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits an `Eth1De
 When sufficiently many full deposits have been made the deposit contract emits the `ChainStart` log. The beacon chain state may then be initialized by calling the `get_initial_beacon_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `ChainStart` log
-* `processed_pow_receipt_root` equals `receipt_root` in the `ChainStart` log
+* `processed_deposit_root` equals `receipt_root` in the `ChainStart` log
 * `initial_validator_deposits` is a list of `Deposit` objects built according to the `Eth1Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
 
 ### Vyper code
@@ -712,7 +711,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.parent_root` has been processed and accepted.
 * The node has processed its `state` up to slot, `block.slot - 1`.
-* The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
+* The Ethereum 1.0 block pointed to by the `state.processed_deposit_root` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
@@ -1142,7 +1141,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
-    candidate_pow_receipt_root=ZERO_HASH,
+    deposit_root_vote=ZERO_HASH,
     signature=EMPTY_SIGNATURE,
     body=BeaconBlockBody(
         proposer_slashings=[],
@@ -1162,7 +1161,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             processed_pow_receipt_root: Hash32) -> BeaconState:
+                             processed_deposit_root: Hash32) -> BeaconState:
     state = BeaconState(
         # Misc
         slot=INITIAL_SLOT_NUMBER,
@@ -1201,9 +1200,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_attestations=[],
         batched_block_roots=[],
 
-        # PoW receipt root
-        processed_pow_receipt_root=processed_pow_receipt_root,
-        candidate_pow_receipt_roots=[],
+        # Deposit root
+        processed_deposit_root=processed_deposit_root,
+        deposit_root_votes=[],
     )
 
     # handle initial deposits and activations
@@ -1462,10 +1461,10 @@ Below are the processing steps that happen at every `block`.
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
-### PoW receipt root
+### Deposit root
 
-* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.vote_count += 1`.
-* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, vote_count=1)`.
+* If `block.deposit_root_vote` is `x.deposit_root_vote` for some `x` in `state.deposit_root_votes`, set `x.vote_count += 1`.
+* Otherwise, append to `state.deposit_root_votes` a new `DepositRootVote(deposit_root_vote=block.deposit_root_vote, vote_count=1)`.
 
 ### Operations
 
@@ -1528,7 +1527,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositInput` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
+* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_deposit_root`:
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
@@ -1621,12 +1620,12 @@ For every `shard_committee` in `state.shard_committees_at_slots`:
 * Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 
-### Receipt roots
+### Deposit roots
 
-If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
+If `state.slot % DEPOSIT_ROOT_VOTING_PERIOD == 0`:
 
-* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.vote_count * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
-* Set `state.candidate_pow_receipt_roots = []`.
+* Set `state.processed_deposit_root = deposit_root_vote.receipt_root` if `deposit_root_vote.vote_count * 2 > DEPOSIT_ROOT_VOTING_PERIOD` for some `deposit_root_vote` in `state.deposit_root_votes`.
+* Set `state.deposit_root_votes = []`.
 
 ### Justification
 
