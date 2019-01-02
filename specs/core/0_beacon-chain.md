@@ -46,7 +46,6 @@
             - [`ValidatorRecord`](#validatorrecord)
             - [`CrosslinkRecord`](#crosslinkrecord)
             - [`ShardCommittee`](#shardcommittee)
-            - [`ShardReassignmentRecord`](#shardreassignmentrecord)
             - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
@@ -113,7 +112,6 @@
             - [Crosslinks](#crosslinks-1)
         - [Ejections](#ejections)
         - [Validator registry](#validator-registry)
-        - [Proposer reshuffling](#proposer-reshuffling)
         - [Final updates](#final-updates)
     - [State root processing](#state-root-processing)
 - [References](#references)
@@ -553,19 +551,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'committee': ['uint24'],
     # Total validator count (for proofs of custody)
     'total_validator_count': 'uint64',
-}
-```
-
-#### `ShardReassignmentRecord`
-
-```python
-{
-    # Which validator to reassign
-    'validator_index': 'uint24',
-    # To which shard
-    'shard': 'uint64',
-    # When
-    'slot': 'uint64',
 }
 ```
 
