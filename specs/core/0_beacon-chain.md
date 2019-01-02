@@ -863,12 +863,12 @@ def split(values: List[Any], split_count: int) -> List[Any]:
 #### `get_new_shuffling`
 
 ```python
-def get_new_shuffling(seed: Hash32,
+def get_new_shuffling(randao_mix: Hash32,
                       slot: int,
                       validators: List[ValidatorRecord],
                       crosslinking_start_shard: int) -> List[List[ShardCommittee]]:
     """
-    Shuffles ``validators`` into shard committees using ``seed`` and ``slot`` as entropy.
+    Shuffles ``validators`` into shard committees seeded by ``randao_mix`` and ``slot``.
     """
     active_validator_indices = get_active_validator_indices(validators)
 
@@ -880,8 +880,9 @@ def get_new_shuffling(seed: Hash32,
         )
     )
 
-    # Shuffle with seed
-    shuffled_active_validator_indices = shuffle(active_validator_indices, xor(seed, Hash32(slot))
+    # Shuffle
+    seed = xor(randao_mix, Hash32(slot))
+    shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length pieces
     validators_per_slot = split(shuffled_active_validator_indices, EPOCH_LENGTH)
