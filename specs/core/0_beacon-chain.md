@@ -1731,7 +1731,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
             total_at_start = state.latest_penalized_exit_balances[(e + 1) % LATEST_PENALIZED_EXIT_LENGTH]
             total_at_end = state.latest_penalized_exit_balances[e]
             total_penalties = total_at_end - total_at_start
-            penalty = get_effective_balance(state, i) * min(total_penalties * 3, total_balance) // total_balance
+            penalty = get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
             state.validator_balances[index] -= penalty
 
     def eligible(index):
