@@ -101,7 +101,7 @@
             - [Attestations](#attestations-1)
             - [Deposits](#deposits-1)
             - [Exits](#exits-1)
-            - [Miscellaneous](#miscellaneous)
+            - [Custody](#custody)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -287,9 +287,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # Proof-of-custody indices (0 bits)
+    # Validator indices with custody bit equal to 0
     'custody_bit_0_indices': ['uint24'],
-    # Proof-of-custody indices (1 bits)
+    # Validator indices with custody bit equal to 1
     'custody_bit_1_indices': ['uint24'],
     # Attestation data
     'data': AttestationData,
@@ -308,7 +308,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'data': AttestationData,
     # Attester participation bitfield
     'participation_bitfield': 'bytes',
-    # Proof of custody bitfield
+    # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
     'aggregate_signature': ['uint384'],
@@ -344,7 +344,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # Attestation data
     data: AttestationData,
-    # Proof of custody bit
+    # Custody bit
     custody_bit: bool,
 }
 ```
@@ -387,7 +387,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'withdrawal_credentials': 'hash32',
     # Initial RANDAO commitment
     'randao_commitment': 'hash32',
-    # Initial proof of custody commitment
+    # Initial custody commitment
     'custody_commitment': 'hash32',
     # a BLS signature of this ``DepositInput``
     'proof_of_possession': ['uint384'],
@@ -481,9 +481,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_vdf_outputs': ['hash32'],
     'shard_committees_at_slots': [[ShardCommittee]],
 
-    # Proof of custody
-    # Placeholders for now; CustodyChallenge is defined in phase 1, implementers can
-    # put a dummy class in for now, as the list will remain empty throughout phase 0
+    # Custody challenges
     'custody_challenges': [CustodyChallenge],
 
     # Finality
@@ -523,10 +521,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_status_change_slot': 'uint64',
     # Exit counter when validator exited (or 0)
     'exit_count': 'uint64',
-    # Proof of custody commitment
+    # Custody commitment
     'custody_commitment': 'hash32',
-    # Slot the proof of custody seed was last changed
+    # Slot of latest custody reseed
     'latest_custody_reseed_slot': 'uint64',
+    # Slot of second-latest custody reseed
     'penultimate_custody_reseed_slot': 'uint64',
 }
 ```
@@ -550,7 +549,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'shard': 'uint64',
     # Validator indices
     'committee': ['uint24'],
-    # Total validator count (for proofs of custody)
+    # Total validator count (for custody challenges)
     'total_validator_count': 'uint64',
 }
 ```
@@ -587,9 +586,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'data': AttestationData,
     # Attester participation bitfield
     'participation_bitfield': 'bytes',
-    # Proof of custody bitfield
+    # Custody bitfield
     'custody_bitfield': 'bytes',
-    # Slot in which it was included
+    # Slot the attestation was included
     'slot_included': 'uint64',
 }
 ```
@@ -1184,7 +1183,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         shard_committees_at_slots=[],
 
-        # Proof of custody
+        # Custody challenges
         custody_challenges=[],
 
         # Finality
@@ -1304,8 +1303,8 @@ def process_deposit(state: BeaconState,
             latest_status_change_slot=state.slot,
             exit_count=0,
             custody_commitment=custody_commitment,
-            latest_custody_reseed_slot=0,
-            second_latest_custody_reseed_slot=0,
+            latest_custody_reseed_slot=INITIAL_SLOT_NUMBER,
+            penultimate_custody_reseed_slot=INITIAL_SLOT_NUMBER,
         )
 
         index = min_empty_validator_index(state.validator_registry, state.validator_balances, state.slot)
@@ -1567,7 +1566,7 @@ For each `exit` in `block.body.exits`:
 * Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
 
-#### Miscellaneous
+#### Custody
 
 [TO BE REMOVED IN PHASE 1] Verify that `len(block.body.custody_reseeds) == len(block.body.custody_challenges) == len(block.body.custody_responses) == 0`.
 
