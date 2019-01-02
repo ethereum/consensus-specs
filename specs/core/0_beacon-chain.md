@@ -101,7 +101,7 @@
             - [Attestations](#attestations-1)
             - [Deposits](#deposits-1)
             - [Exits](#exits-1)
-            - [Miscellaneous](#miscellaneous)
+            - [Custody](#custody)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Receipt roots](#receipt-roots)
@@ -113,7 +113,6 @@
             - [Crosslinks](#crosslinks-1)
         - [Ejections](#ejections)
         - [Validator registry](#validator-registry)
-        - [Proposer reshuffling](#proposer-reshuffling)
         - [Final updates](#final-updates)
     - [State root processing](#state-root-processing)
 - [References](#references)
@@ -288,14 +287,14 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # Proof-of-custody indices (0 bits)
-    'aggregate_signature_poc_0_indices': '[uint24]',
-    # Proof-of-custody indices (1 bits)
-    'aggregate_signature_poc_1_indices': '[uint24]',
+    # Validator indices with custody bit equal to 0
+    'custody_bit_0_indices': ['uint24'],
+    # Validator indices with custody bit equal to 1
+    'custody_bit_1_indices': ['uint24'],
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
-    'aggregate_signature': '[uint384]',
+    'aggregate_signature': ['uint384'],
 }
 ```
 
@@ -309,7 +308,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'data': AttestationData,
     # Attester participation bitfield
     'participation_bitfield': 'bytes',
-    # Proof of custody bitfield
+    # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
     'aggregate_signature': ['uint384'],
@@ -345,8 +344,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # Attestation data
     data: AttestationData,
-    # Proof of custody bit
-    poc_bit: bool,
+    # Custody bit
+    custody_bit: bool,
 }
 ```
 
@@ -388,8 +387,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'withdrawal_credentials': 'hash32',
     # Initial RANDAO commitment
     'randao_commitment': 'hash32',
-    # Initial proof of custody commitment
-    'poc_commitment': 'hash32',
+    # Initial custody commitment
+    'custody_commitment': 'hash32',
     # a BLS signature of this ``DepositInput``
     'proof_of_possession': ['uint384'],
 }
@@ -436,15 +435,15 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'proposer_slashings': [ProposerSlashing],
     'casper_slashings': [CasperSlashing],
     'attestations': [Attestation],
-    'poc_seed_changes': [ProofOfCustodySeedChange],
-    'poc_challenges': [ProofOfCustodyChallenge],
-    'poc_responses': [ProofOfCustodyResponse],
+    'custody_reseeds': [CustodyReseed],
+    'custody_challenges': [CustodyChallenge],
+    'custody_responses': [CustodyResponse],
     'deposits': [Deposit],
     'exits': [Exit],
 }
 ```
 
-`ProofOfCustodySeedChange`, `ProofOfCustodyChallenge`, and `ProofOfCustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
+`CustodyReseed`, `CustodyChallenge`, and `CustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
 
 #### `ProposalSignedData`
 
@@ -482,10 +481,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_vdf_outputs': ['hash32'],
     'shard_committees_at_slots': [[ShardCommittee]],
 
-    # Proof of custody
-    # Placeholders for now; ProofOfCustodyChallenge is defined in phase 1, implementers can
-    # put a dummy class in for now, as the list will remain empty throughout phase 0
-    'poc_challenges': [ProofOfCustodyChallenge],
+    # Custody challenges
+    'custody_challenges': [CustodyChallenge],
 
     # Finality
     'previous_justified_slot': 'uint64',
@@ -524,11 +521,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_status_change_slot': 'uint64',
     # Exit counter when validator exited (or 0)
     'exit_count': 'uint64',
-    # Proof of custody commitment
-    'poc_commitment': 'hash32',
-    # Slot the proof of custody seed was last changed
-    'last_poc_change_slot': 'uint64',
-    'second_last_poc_change_slot': 'uint64',
+    # Custody commitment
+    'custody_commitment': 'hash32',
+    # Slot of latest custody reseed
+    'latest_custody_reseed_slot': 'uint64',
+    # Slot of second-latest custody reseed
+    'penultimate_custody_reseed_slot': 'uint64',
 }
 ```
 
@@ -551,7 +549,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'shard': 'uint64',
     # Validator indices
     'committee': ['uint24'],
-    # Total validator count (for proofs of custody)
+    # Total validator count (for custody challenges)
     'total_validator_count': 'uint64',
 }
 ```
@@ -588,9 +586,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'data': AttestationData,
     # Attester participation bitfield
     'participation_bitfield': 'bytes',
-    # Proof of custody bitfield
+    # Custody bitfield
     'custody_bitfield': 'bytes',
-    # Slot in which it was included
+    # Slot the attestation was included
     'slot_included': 'uint64',
 }
 ```
@@ -1046,13 +1044,13 @@ def get_domain(fork_data: ForkData,
 
 ```python
 def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData) -> bool:
-    if len(vote_data.aggregate_signature_poc_0_indices) + len(vote_data.aggregate_signature_poc_1_indices) > MAX_CASPER_VOTES:
+    if len(vote_data.custody_bit_0_indices) + len(vote_data.custody_bit_1_indices) > MAX_CASPER_VOTES:
         return False
 
     return bls_verify_multiple(
         pubkeys=[
-            aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_0_indices]),
-            aggregate_pubkey([state.validators[i].pubkey for i in vote_data.aggregate_signature_poc_1_indices]),
+            aggregate_pubkey([state.validators[i].pubkey for i in vote_data.custody_bit_0_indices]),
+            aggregate_pubkey([state.validators[i].pubkey for i in vote_data.custody_bit_1_indices]),
         ],
         messages=[
             hash_tree_root(AttestationDataAndCustodyBit(vote_data, False)),
@@ -1148,9 +1146,9 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
         proposer_slashings=[],
         casper_slashings=[],
         attestations=[],
-        poc_seed_changes=[],
-        poc_challenges=[],
-        poc_responses=[],
+        custody_reseeds=[],
+        custody_challenges=[],
+        custody_responses=[],
         deposits=[],
         exits=[],
     ),
@@ -1185,8 +1183,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         shard_committees_at_slots=[],
 
-        # Proof of custody
-        poc_challenges=[],
+        # Custody challenges
+        custody_challenges=[],
 
         # Finality
         previous_justified_slot=INITIAL_SLOT_NUMBER,
@@ -1215,7 +1213,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
             randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-            poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
+            custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
         )
         if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
             update_validator_status(state, validator_index, ACTIVE)
@@ -1247,12 +1245,12 @@ def validate_proof_of_possession(state: BeaconState,
                                  proof_of_possession: bytes,
                                  withdrawal_credentials: Hash32,
                                  randao_commitment: Hash32,
-                                 poc_commitment: Hash32) -> bool:
+                                 custody_commitment: Hash32) -> bool:
     proof_of_possession_data = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         randao_commitment=randao_commitment,
-        poc_commitment=poc_commitment,
+        custody_commitment=custody_commitment,
         proof_of_possession=EMPTY_SIGNATURE,
     )
 
@@ -1277,7 +1275,7 @@ def process_deposit(state: BeaconState,
                     proof_of_possession: bytes,
                     withdrawal_credentials: Hash32,
                     randao_commitment: Hash32,
-                    poc_commitment: Hash32) -> int:
+                    custody_commitment: Hash32) -> int:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1289,7 +1287,7 @@ def process_deposit(state: BeaconState,
         proof_of_possession,
         withdrawal_credentials,
         randao_commitment,
-        poc_commitment,
+        custody_commitment,
     )
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
@@ -1304,9 +1302,9 @@ def process_deposit(state: BeaconState,
             status=PENDING_ACTIVATION,
             latest_status_change_slot=state.slot,
             exit_count=0,
-            poc_commitment=poc_commitment,
-            last_poc_change_slot=0,
-            second_last_poc_change_slot=0,
+            custody_commitment=custody_commitment,
+            latest_custody_reseed_slot=INITIAL_SLOT_NUMBER,
+            penultimate_custody_reseed_slot=INITIAL_SLOT_NUMBER,
         )
 
         index = min_empty_validator_index(state.validator_registry, state.validator_balances, state.slot)
@@ -1492,7 +1490,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 
 * Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
 * Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
-* Let `indices(slashable_vote_data) = slashable_vote_data.aggregate_signature_poc_0_indices + slashable_vote_data.aggregate_signature_poc_1_indices`.
+* Let `indices(slashable_vote_data) = slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices`.
 * Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
@@ -1552,7 +1550,7 @@ process_deposit(
     proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
     randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-    poc_commitment=deposit.deposit_data.deposit_input.poc_commitment,
+    custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
 )
 ```
 
@@ -1568,9 +1566,9 @@ For each `exit` in `block.body.exits`:
 * Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
 * Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
 
-#### Miscellaneous
+#### Custody
 
-[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.poc_seed_changes) == len(block.body.poc_challenges) == len(block.body.poc_responses) == 0`.
+[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.custody_reseeds) == len(block.body.custody_challenges) == len(block.body.custody_responses) == 0`.
 
 ## Per-epoch processing
 
