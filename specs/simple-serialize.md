@@ -449,7 +449,7 @@ Where the inner `hash_tree_root` is a recursive application of the tree-hashing 
 Recursively tree hash the values in the container in the same order as the fields, and return the hash of the concatenation of the results.
 
 ```python
-return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.fields))
+return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.fields]))
 ```
 
 
