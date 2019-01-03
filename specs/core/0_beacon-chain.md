@@ -358,6 +358,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Receipt Merkle branch
     'merkle_branch': '[hash32]',
     # Merkle tree index
+    # referred to as `deposit_count` in the Ethereum 1.0 deposit contract
     'merkle_tree_index': 'uint64',
     # Deposit data
     'deposit_data': DepositData,
