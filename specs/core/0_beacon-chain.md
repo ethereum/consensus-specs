@@ -1690,7 +1690,7 @@ def process_ejections(state: BeaconState) -> None:
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
     for index in active_validator_indices(state.validator_registry):
-        if state.validator_balances[index] < EJECTION_BALANCE:
+        if state.validator_balances[index] < EJECTION_BALANCE * GWEI_PER_ETH:
             update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
 ```
 
