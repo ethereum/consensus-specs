@@ -1039,8 +1039,8 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
             aggregate_pubkey([state.validators[i].pubkey for i in vote_data.custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data, False)),
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data, True)),
+            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, False)),
+            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, True)),
         ],
         signature=vote_data.aggregate_signature,
         domain=get_domain(
