@@ -1474,8 +1474,8 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
 For each `deposit` in `block.body.deposits`:
 
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositInput` followed by 8 bytes for `deposit_data.amount` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.latest_deposit_root`:
+* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.value` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
+* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=hash(serialized_deposit_data)`, `branch=deposit.merkle_branch`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH`, `index=deposit.merkle_tree_index`,  and `root=state.processed_pow_receipt_root`:
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
