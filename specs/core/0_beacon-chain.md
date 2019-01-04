@@ -420,7 +420,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'parent_root': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
-    'deposit_root_vote': 'hash32',
+    'deposit_root': 'hash32',
     'signature': ['uint384'],
 
     ## Body ##
@@ -559,7 +559,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Deposit root
-    'deposit_root_vote': 'hash32',
+    'deposit_root': 'hash32',
     # Vote count
     'vote_count': 'uint64',
 }
@@ -1131,7 +1131,7 @@ A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the follow
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
-    deposit_root_vote=ZERO_HASH,
+    deposit_root=ZERO_HASH,
     signature=EMPTY_SIGNATURE,
     body=BeaconBlockBody(
         proposer_slashings=[],
@@ -1453,8 +1453,8 @@ Below are the processing steps that happen at every `block`.
 
 ### Deposit root
 
-* If `block.deposit_root_vote` is `x.deposit_root_vote` for some `x` in `state.deposit_root_votes`, set `x.vote_count += 1`.
-* Otherwise, append to `state.deposit_root_votes` a new `DepositRootVote(deposit_root_vote=block.deposit_root_vote, vote_count=1)`.
+* If `block.deposit_root` is `deposit_root_vote.deposit_root` for some `deposit_root_vote` in `state.deposit_root_votes`, set `deposit_root_vote.vote_count += 1`.
+* Otherwise, append to `state.deposit_root_votes` a new `DepositRootVote(deposit_root=block.deposit_root, vote_count=1)`.
 
 ### Operations
 
