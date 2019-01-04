@@ -1597,6 +1597,7 @@ All [validators](#dfn-validator):
 
 For every `shard_committee` in `state.shard_committees_at_slots`:
 
+* Let `shard_block_root` be `state.latest_crosslinks[shard_committee.shard].shard_block_root`
 * Let `attesting_validator_indices(shard_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in current_epoch_attestations + previous_epoch_attestations if a.shard == shard_committee.shard and a.shard_block_root == shard_block_root]`.
 * Let `winning_root(shard_committee)` be equal to the value of `shard_block_root` such that `sum([get_effective_balance(state, i) for i in attesting_validator_indices(shard_committee, shard_block_root)])` is maximized (ties broken by favoring lower `shard_block_root` values).
 * Let `attesting_validators(shard_committee)` be equal to `attesting_validator_indices(shard_committee, winning_root(shard_committee))` for convenience.
@@ -1630,7 +1631,7 @@ Set `state.finalized_slot = state.previous_justified_slot` if any of the followi
 
 For every `shard_committee_at_slot` in `state.shard_committees_at_slots` and for every `shard_committee`in `shard_committee_at_slot`:
 
-* Set `state.latest_crosslinks[shard_committee.shard] = CrosslinkRecord(slot=state.slot, block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
+* Set `state.latest_crosslinks[shard_committee.shard] = CrosslinkRecord(slot=state.slot, shard_block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
 ### Rewards and penalties
 
