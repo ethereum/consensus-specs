@@ -1044,8 +1044,8 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
             aggregate_pubkey([state.validators[i].pubkey for i in vote_data.custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data, False)),
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data, True)),
+            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, False)),
+            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, True)),
         ],
         signature=vote_data.aggregate_signature,
         domain=get_domain(
@@ -1585,7 +1585,7 @@ All [validators](#dfn-validator):
 * Validators that made an attestation during the previous epoch:
   * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_attestations]`.
-* Validators targeting the previous justified hash:
+* Validators targeting the previous justified slot:
   * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.justified_slot == state.previous_justified_slot]`.
   * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.participation_bitfield) for a in previous_epoch_justified_attestations]`.
   * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_justified_attester_indices])`.
@@ -1695,7 +1695,7 @@ def process_ejections(state: BeaconState) -> None:
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
     for index in active_validator_indices(state.validator_registry):
-        if state.validator_balances[index] < EJECTION_BALANCE:
+        if state.validator_balances[index] < EJECTION_BALANCE * GWEI_PER_ETH:
             update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
 ```
 
@@ -1764,8 +1764,6 @@ def update_validator_registry(state: BeaconState) -> None:
     validators_to_penalize = filter(to_penalize, range(len(validator_registry)))
     for index in validators_to_penalize:
         state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
-
-    return validator_registry, latest_penalized_exit_balances, validator_registry_delta_chain_tip
 ```
 
 Also perform the following updates:
