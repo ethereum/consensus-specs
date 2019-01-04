@@ -1518,7 +1518,7 @@ For each `deposit` in `block.body.deposits`:
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
     value = leaf
     for i in range(depth):
-        if index % 2:
+        if index // (2**i) % 2:
             value = hash(branch[i] + value)
         else:
             value = hash(value + branch[i])
