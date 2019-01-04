@@ -1759,8 +1759,6 @@ def update_validator_registry(state: BeaconState) -> None:
     validators_to_penalize = filter(to_penalize, range(len(validator_registry)))
     for index in validators_to_penalize:
         state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
-
-    return validator_registry, latest_penalized_exit_balances, validator_registry_delta_chain_tip
 ```
 
 Also perform the following updates:
