@@ -355,12 +355,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # Receipt Merkle branch
-    'merkle_branch': '[hash32]',
-    # Merkle tree index
-    # referred to as `deposit_count` in the Ethereum 1.0 deposit contract
-    'merkle_tree_index': 'uint64',
-    # Deposit data
+    # Branch in the deposit tree
+    'branch': '[hash32]',
+    # Index in the deposit tree
+    'index': 'uint64',
+    # Data
     'deposit_data': DepositData,
 }
 ```
@@ -667,7 +666,7 @@ def deposit(deposit_input: bytes[2048]):
     assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
     assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
 
-    index: uint256 = self.deposit_count + TWO_TO_POWER_OF_TREE_DEPTH
+    index: uint256 = self.deposit_tree_index + TWO_TO_POWER_OF_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_input)
@@ -680,7 +679,7 @@ def deposit(deposit_input: bytes[2048]):
         index /= 2
         self.deposit_tree[index] = sha3(concat(self.deposit_tree[index * 2], self.deposit_tree[index * 2 + 1]))
 
-    self.deposit_count += 1
+    self.deposit_tree_index += 1
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
         self.full_deposit_count += 1
         if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
@@ -1475,7 +1474,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.value` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=hash(serialized_deposit_data)`, `branch=deposit.merkle_branch`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH`, `index=deposit.merkle_tree_index`,  and `root=state.processed_pow_receipt_root`:
+* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index)` is `True`.
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
