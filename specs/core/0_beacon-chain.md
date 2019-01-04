@@ -1324,12 +1324,12 @@ def initiate_validator_exit(state: BeaconState, index: int) -> None:
 def exit_validator(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
 
-    if validator.exit_slot < state.slot + ENTRY_EXIT_DELAY:
+    # The following updates only occur if not previous exited
+    if validator.exit_slot <= state.slot + ENTRY_EXIT_DELAY:
         return
 
     validator.exit_slot = state.slot + ENTRY_EXIT_DELAY
 
-    # The following updates only occur if not previous exited
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
     state.validator_registry_delta_chain_tip = hash_tree_root(
