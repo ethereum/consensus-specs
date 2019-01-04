@@ -248,10 +248,10 @@ size as the integer length. (e.g. ``uint16 == 2 bytes``)
 All integers are interpreted as **big endian**.
 
 ```python
-assert(len(rawbytes) >= current_index + int_size)
 byte_length = int_size / 8
-new_index = current_index + int_size
-return int.from_bytes(rawbytes[current_index:current_index+int_size], 'big'), new_index
+new_index = current_index + byte_length
+assert(len(rawbytes) >= new_index)
+return int.from_bytes(rawbytes[current_index:new_index], 'big'), new_index
 ```
 
 #### Bool
