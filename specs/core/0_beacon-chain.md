@@ -1729,7 +1729,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
     all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
-    sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
+    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_count)
     withdrawn_so_far = 0
     for index in sorted_indices:
         validator = state.validator_registry[index]
