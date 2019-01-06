@@ -384,7 +384,7 @@ values = {}
 for field_name in get_field_names(typ):
     field_name_type = get_type_for_field_name(typ, field_name)
     values[field_name], item_index = deserialize(data, item_index, field_name_type)
-assert item_index == start + LENGTH_BYTES + length
+assert item_index == new_index
 return typ(**values), item_index
 ```
 
