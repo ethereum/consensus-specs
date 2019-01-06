@@ -16,7 +16,7 @@
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Status codes](#status-codes)
+        - [Status flags](#status-flags)
         - [Max operations per block](#max-operations-per-block)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
@@ -65,7 +65,7 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
             - [`split`](#split)
-            - [`get_new_shuffling`](#get_new_shuffling)
+            - [`get_shuffling`](#get_shuffling)
             - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
             - [`get_block_root`](#get_block_root)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
@@ -73,7 +73,6 @@
             - [`get_attestation_participants`](#get_attestation_participants)
             - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
-            - [`get_new_validator_registry_delta_chain_tip`](#get_new_validator_registry_delta_chain_tip)
             - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
             - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
@@ -85,7 +84,7 @@
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [On startup](#on-startup)
         - [Routine for processing deposits](#routine-for-processing-deposits)
-        - [Routine for updating validator status](#routine-for-updating-validator-status)
+        - [Routines for updating validator status](#routines-for-updating-validator-status)
     - [Per-slot processing](#per-slot-processing)
         - [Misc counters](#misc-counters)
         - [Block roots](#block-roots)
@@ -162,11 +161,10 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
-| `BLS_WITHDRAWAL_PREFIX_BYTE` | `0x00` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
-| `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` | - |
+| `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -183,9 +181,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 | Name | Value |
 | - | - |
-| `INITIAL_FORK_VERSION` | `0` |
-| `INITIAL_SLOT_NUMBER` | `0` |
-| `ZERO_HASH` | `bytes([0] * 32)` |
+| `GENESIS_FORK_VERSION` | `0` |
+| `GENESIS_SLOT` | `0` |
+| `FAR_FUTURE_SLOT` | `2**64 - 1` |
+| `ZERO_HASH` | `bytes32(0)` |
+| `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` |
+| `BLS_WITHDRAWAL_PREFIX_BYTE` | `bytes1(0)` |
 
 ### Time parameters
 
@@ -194,9 +195,10 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `SLOT_DURATION` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
+| `SEED_LOOKAHEAD` | `2**6` (= 64) | slots | 6.4 minutes |
+| `ENTRY_EXIT_DELAY` | `2**8` (= 256) | slots | 25.6 minutes |
 | `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
-| `COLLECTIVE_PENALTY_CALCULATION_PERIOD` | `2**20` (= 1,048,576) | slots | ~73 days |
-| `ZERO_BALANCE_VALIDATOR_TTL` | `2**22` (= 4,194,304) | slots | ~291 days |
+| `MIN_VALIDATOR_WITHDRAWAL_TIME` | `2**14` (= 16,384) | slots | ~27 hours |
 
 ### Reward and penalty quotients
 
@@ -210,15 +212,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
-### Status codes
+### Status flags
 
 | Name | Value |
 | - | - |
-| `PENDING_ACTIVATION` | `0` |
-| `ACTIVE` | `1` |
-| `ACTIVE_PENDING_EXIT` | `2` |
-| `EXITED_WITHOUT_PENALTY` | `3` |
-| `EXITED_WITH_PENALTY` | `4` |
+| `INITIATED_EXIT` | `2**0` (= 1) |
+| `WITHDRAWABLE` | `2**1` (= 2) |
 
 ### Max operations per block
 
@@ -369,8 +368,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     # Deposit parameters
     'deposit_input': DepositInput,
-    # Value in Gwei
-    'value': 'uint64',
+    # Amount in Gwei
+    'amount': 'uint64',
     # Timestamp from deposit contract
     'timestamp': 'uint64',
 }
@@ -514,12 +513,18 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'randao_commitment': 'hash32',
     # Slots the proposer has skipped (i.e. layers of RANDAO expected)
     'randao_layers': 'uint64',
-    # Status code
-    'status': 'uint64',
-    # Slot when validator last changed status (or 0)
-    'latest_status_change_slot': 'uint64',
-    # Exit counter when validator exited (or 0)
+    # Slot when validator activated
+    'activation_slot': 'uint64',
+    # Slot when validator exited
+    'exit_slot': 'uint64',
+    # Slot when validator withdrew
+    'withdrawal_slot': 'uint64',
+    # Slot when validator was penalized
+    'penalized_slot': 'uint64',
+    # Exit counter when validator exited
     'exit_count': 'uint64',
+    # Status flags
+    'status_flags': 'uint64',
     # Custody commitment
     'custody_commitment': 'hash32',
     # Slot of latest custody reseed
@@ -599,6 +604,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     latest_registry_delta_root: 'hash32',
     validator_index: 'uint24',
     pubkey: 'uint384',
+    slot: 'uint64',
     flag: 'uint64',
 }
 ```
@@ -719,7 +725,7 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 def lmd_ghost(store, start):
     validators = start.state.validator_registry
     active_validators = [validators[i] for i in
-                         get_active_validator_indices(validators)]
+                         get_active_validator_indices(validators, start.state.slot)]
     attestation_targets = [get_latest_attestation_target(store, validator)
                            for validator in active_validators]
     def get_vote_count(block):
@@ -759,21 +765,21 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 #### `is_active_validator`
 ```python
-def is_active_validator(validator: ValidatorRecord) -> bool:
+def is_active_validator(validator: ValidatorRecord, slot: int) -> bool:
     """
     Checks if ``validator`` is active.
     """
-    return validator.status in [ACTIVE, ACTIVE_PENDING_EXIT]
+    return validator.activation_slot <= slot < validator.exit_slot
 ```
 
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: [ValidatorRecord]) -> List[int]:
+def get_active_validator_indices(validators: [ValidatorRecord], slot: int) -> List[int]:
     """
     Gets indices of active validators from ``validators``.
     """
-    return [i for i, v in enumerate(validators) if is_active_validator(v)]
+    return [i for i, v in enumerate(validators) if is_active_validator(v, slot)]
 ```
 
 #### `shuffle`
@@ -843,22 +849,27 @@ def split(values: List[Any], split_count: int) -> List[Any]:
     ]
 ```
 
-#### `get_new_shuffling`
+#### `get_shuffling`
 
 ```python
-def get_new_shuffling(seed: Hash32,
-                      validators: List[ValidatorRecord],
-                      crosslinking_start_shard: int) -> List[List[ShardCommittee]]:
+def get_shuffling(seed: Hash32,
+                  validators: List[ValidatorRecord],
+                  crosslinking_start_shard: int,
+                  slot: int) -> List[List[ShardCommittee]]:
     """
     Shuffles ``validators`` into shard committees using ``seed`` as entropy.
     """
-    active_validator_indices = get_active_validator_indices(validators)
+
+    # Normalizes slot to start of epoch boundary
+    slot -= slot % EPOCH_LENGTH
+
+    active_validator_indices = get_active_validator_indices(validators, slot)
 
     committees_per_slot = max(
         1,
         min(
             SHARD_COUNT // EPOCH_LENGTH,
-            len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,   
+            len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
         )
     )
 
@@ -887,6 +898,8 @@ def get_new_shuffling(seed: Hash32,
 
     return output
 ```
+
+**Invariant**: if `get_shuffling(seed, validators, shard, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `shard` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 Here's a diagram of what is going on:
 
@@ -935,7 +948,7 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `merkle_root`
 
 ```python
-def merkle_root(values):  
+def merkle_root(values):
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
     """
@@ -981,26 +994,6 @@ def get_effective_balance(state: State, index: int) -> int:
     Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
     """
     return min(state.validator_balances[index], MAX_DEPOSIT * GWEI_PER_ETH)
-```
-
-#### `get_new_validator_registry_delta_chain_tip`
-
-```python
-def get_new_validator_registry_delta_chain_tip(current_validator_registry_delta_chain_tip: Hash32,
-                                               validator_index: int,
-                                               pubkey: int,
-                                               flag: int) -> Hash32:
-    """
-    Compute the next root in the validator registry delta chain.
-    """
-    return hash_tree_root(
-        ValidatorRegistryDeltaBlock(
-            latest_registry_delta_root=current_validator_registry_delta_chain_tip,
-            validator_index=validator_index,
-            pubkey=pubkey,
-            flag=flag,
-        )
-    )
 ```
 
 #### `get_fork_version`
@@ -1118,11 +1111,11 @@ def integer_squareroot(n: int) -> int:
 
 ### On startup
 
-A valid block with slot `INITIAL_SLOT_NUMBER` (a "genesis block") has the following values. Other validity rules (e.g. requiring a signature) do not apply.
+A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following values. Other validity rules (e.g. requiring a signature) do not apply.
 
 ```python
 {
-    slot=INITIAL_SLOT_NUMBER,
+    slot=GENESIS_SLOT,
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
@@ -1149,18 +1142,18 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              processed_pow_receipt_root: Hash32) -> BeaconState:
     state = BeaconState(
         # Misc
-        slot=INITIAL_SLOT_NUMBER,
+        slot=GENESIS_SLOT,
         genesis_time=genesis_time,
         fork_data=ForkData(
-            pre_fork_version=INITIAL_FORK_VERSION,
-            post_fork_version=INITIAL_FORK_VERSION,
-            fork_slot=INITIAL_SLOT_NUMBER,
+            pre_fork_version=GENESIS_FORK_VERSION,
+            post_fork_version=GENESIS_FORK_VERSION,
+            fork_slot=GENESIS_SLOT,
         ),
 
         # Validator registry
         validator_registry=[],
         validator_balances=[],
-        validator_registry_latest_change_slot=INITIAL_SLOT_NUMBER,
+        validator_registry_latest_change_slot=GENESIS_SLOT,
         validator_registry_exit_count=0,
         validator_registry_delta_chain_tip=ZERO_HASH,
 
@@ -1173,15 +1166,15 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         custody_challenges=[],
 
         # Finality
-        previous_justified_slot=INITIAL_SLOT_NUMBER,
-        justified_slot=INITIAL_SLOT_NUMBER,
+        previous_justified_slot=GENESIS_SLOT,
+        justified_slot=GENESIS_SLOT,
         justification_bitfield=0,
-        finalized_slot=INITIAL_SLOT_NUMBER,
+        finalized_slot=GENESIS_SLOT,
 
         # Recent state
-        latest_crosslinks=[CrosslinkRecord(slot=INITIAL_SLOT_NUMBER, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
+        latest_crosslinks=[CrosslinkRecord(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
-        latest_penalized_exit_balances=[],
+        latest_penalized_exit_balances=[0 for _ in LATEST_PENALIZED_EXIT_LENGTH],
         latest_attestations=[],
         batched_block_roots=[],
 
@@ -1190,22 +1183,25 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         candidate_pow_receipt_roots=[],
     )
 
-    # handle initial deposits and activations
+    # Process initial deposits
     for deposit in initial_validator_deposits:
-        validator_index = process_deposit(
+        process_deposit(
             state=state,
             pubkey=deposit.deposit_data.deposit_input.pubkey,
-            deposit=deposit.deposit_data.value,
+            amount=deposit.deposit_data.amount,
             proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
             randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
             custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
         )
-        if get_effective_balance(state, validator_index) == MAX_DEPOSIT * GWEI_PER_ETH:
-            update_validator_status(state, validator_index, ACTIVE)
 
-    # set initial committee shuffling
-    initial_shuffling = get_new_shuffling(ZERO_HASH, state.validator_registry, 0)
+    # Process initial activations
+    for validator_index, _ in enumerate(state.validator_registry):
+        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT * GWEI_PER_ETH:
+            activate_validator(state, validator_index, True)
+
+    # Set initial committee shuffling
+    initial_shuffling = get_shuffling(ZERO_HASH, state.validator_registry, 0, GENESIS_SLOT)
     state.shard_committees_at_slots = initial_shuffling + initial_shuffling
 
     return state
@@ -1213,17 +1209,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
 ### Routine for processing deposits
 
-First, two helper functions:
-
-```python
-def min_empty_validator_index(validators: List[ValidatorRecord],
-                              validator_balances: List[int],
-                              current_slot: int) -> int:
-    for i, (v, vbal) in enumerate(zip(validators, validator_balances)):
-        if vbal == 0 and v.latest_status_change_slot + ZERO_BALANCE_VALIDATOR_TTL <= current_slot:
-            return i
-    return None
-```
+First, a helper function:
 
 ```python
 def validate_proof_of_possession(state: BeaconState,
@@ -1257,11 +1243,11 @@ Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn
 ```python
 def process_deposit(state: BeaconState,
                     pubkey: int,
-                    deposit: int,
+                    amount: int,
                     proof_of_possession: bytes,
                     withdrawal_credentials: Hash32,
                     randao_commitment: Hash32,
-                    custody_commitment: Hash32) -> int:
+                    custody_commitment: Hash32) -> None:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1285,126 +1271,95 @@ def process_deposit(state: BeaconState,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
             randao_layers=0,
-            status=PENDING_ACTIVATION,
-            latest_status_change_slot=state.slot,
+            activation_slot=FAR_FUTURE_SLOT,
+            exit_slot=FAR_FUTURE_SLOT,
+            withdrawal_slot=FAR_FUTURE_SLOT,
+            penalized_slot=FAR_FUTURE_SLOT,
             exit_count=0,
+            status_flags=0,
             custody_commitment=custody_commitment,
-            latest_custody_reseed_slot=INITIAL_SLOT_NUMBER,
-            penultimate_custody_reseed_slot=INITIAL_SLOT_NUMBER,
+            latest_custody_reseed_slot=GENESIS_SLOT,
+            penultimate_custody_reseed_slot=GENESIS_SLOT,
         )
 
-        index = min_empty_validator_index(state.validator_registry, state.validator_balances, state.slot)
-        if index is None:
-            state.validator_registry.append(validator)
-            state.validator_balances.append(deposit)
-            index = len(state.validator_registry) - 1
-        else:
-            state.validator_registry[index] = validator
-            state.validator_balances[index] = deposit
+        # Note: In phase 2 registry indices that has been withdrawn for a long time will be recycled.
+        index = len(state.validator_registry)
+        state.validator_registry.append(validator)
+        state.validator_balances.append(amount)
     else:
-        # Increase balance by deposit
+        # Increase balance by deposit amount
         index = validator_pubkeys.index(pubkey)
         assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
 
-        state.validator_balances[index] += deposit
-
-    return index
+        state.validator_balances[index] += amount
 ```
 
-### Routine for updating validator status
+### Routines for updating validator status
+
+Note: All functions in this section mutate `state`.
 
 ```python
-def update_validator_status(state: BeaconState,
-                            index: int,
-                            new_status: int) -> None:
-    """
-    Update the validator status with the given ``index`` to ``new_status``.
-    Handle other general accounting related to this status update.
-    Note that this function mutates ``state``.
-    """
-    if new_status == ACTIVE:
-        activate_validator(state, index)
-    if new_status == ACTIVE_PENDING_EXIT:
-        initiate_validator_exit(state, index)
-    if new_status in [EXITED_WITH_PENALTY, EXITED_WITHOUT_PENALTY]:
-        exit_validator(state, index, new_status)
-```
-
-The following are helpers and should only be called via `update_validator_status`:
-
-```python
-def activate_validator(state: BeaconState,
-                       index: int) -> None:
-    """
-    Activate the validator with the given ``index``.
-    Note that this function mutates ``state``.
-    """
+def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
     validator = state.validator_registry[index]
-    if validator.status != PENDING_ACTIVATION:
-        return
 
-    validator.status = ACTIVE
-    validator.latest_status_change_slot = state.slot
-    state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        validator_index=index,
-        pubkey=validator.pubkey,
-        flag=ACTIVATION,
+    validator.activation_slot = GENESIS_SLOT if genesis else (state.slot + ENTRY_EXIT_DELAY)
+    state.validator_registry_delta_chain_tip = hash_tree_root(
+        ValidatorRegistryDeltaBlock(
+            current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+            validator_index=index,
+            pubkey=validator.pubkey,
+            slot=validator.activation_slot,
+            flag=ACTIVATION,
+        )
     )
 ```
 
 ```python
-def initiate_validator_exit(state: BeaconState,
-                            index: int) -> None:
-    """
-    Initiate exit for the validator with the given ``index``.
-    Note that this function mutates ``state``.
-    """
+def initiate_validator_exit(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
-    if validator.status != ACTIVE:
-        return
-
-    validator.status = ACTIVE_PENDING_EXIT
-    validator.latest_status_change_slot = state.slot
+    validator.status_flags |= INITIATED_EXIT
 ```
 
 ```python
-def exit_validator(state: BeaconState,
-                   index: int,
-                   new_status: int) -> None:
-    """
-    Exit the validator with the given ``index``.
-    Note that this function mutates ``state``.
-    """
+def exit_validator(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
-    prev_status = validator.status
-
-    if prev_status == EXITED_WITH_PENALTY:
-        return
-
-    validator.status = new_status
-    validator.latest_status_change_slot = state.slot
-
-    if new_status == EXITED_WITH_PENALTY:
-        state.latest_penalized_exit_balances[state.slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD] += get_effective_balance(state, index)
-
-        whistleblower_index = get_beacon_proposer_index(state, state.slot)
-        whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
-        state.validator_balances[whistleblower_index] += whistleblower_reward
-        state.validator_balances[index] -= whistleblower_reward
-
-    if prev_status == EXITED_WITHOUT_PENALTY:
-        return
 
     # The following updates only occur if not previous exited
+    if validator.exit_slot <= state.slot + ENTRY_EXIT_DELAY:
+        return
+
+    validator.exit_slot = state.slot + ENTRY_EXIT_DELAY
+
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
-    state.validator_registry_delta_chain_tip = get_new_validator_registry_delta_chain_tip(
-        current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
-        validator_index=index,
-        pubkey=validator.pubkey,
-        flag=EXIT,
+    state.validator_registry_delta_chain_tip = hash_tree_root(
+        ValidatorRegistryDeltaBlock(
+            current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+            validator_index=index,
+            pubkey=validator.pubkey,
+            slot=validator.exit_slot,
+            flag=EXIT,
+        )
     )
+```
+
+```python
+def penalize_validator(state: BeaconState, index: int) -> None:
+    exit_validator(state, index)
+    validator = state.validator_registry[index]
+    state.latest_penalized_exit_balances[(state.slot // EPOCH_LENGTH) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
+
+    whistleblower_index = get_beacon_proposer_index(state, state.slot)
+    whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
+    state.validator_balances[whistleblower_index] += whistleblower_reward
+    state.validator_balances[index] -= whistleblower_reward
+    validator.penalized_slot = state.slot
+```
+
+```python
+def prepare_validator_for_withdrawal(state: BeaconState, index: int) -> None:
+    validator = state.validator_registry[index]
+    validator.status_flags |= WITHDRAWABLE
 ```
 
 ## Per-slot processing
@@ -1463,10 +1418,10 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
-* Verify that `proposer.status != EXITED_WITH_PENALTY`.
+* Verify that `validator.penalized_slot > state.slot`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork_data, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
-* Run `update_validator_status(state, proposer_slashing.proposer_index, new_status=EXITED_WITH_PENALTY)`.
+* Run `penalize_validator(state, proposer_slashing.proposer_index)`.
 
 #### Casper slashings
 
@@ -1483,7 +1438,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 * Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
 * Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
 * Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
-* For each [validator](#dfn-validator) index `i` in `intersection`, if `state.validator_registry[i].status` does not equal `EXITED_WITH_PENALTY`, then run `update_validator_status(state, i, new_status=EXITED_WITH_PENALTY)`
+* For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_slot > state.slot`.
 
 #### Attestations
 
@@ -1511,7 +1466,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
 For each `deposit` in `block.body.deposits`:
 
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositInput` followed by 8 bytes for `deposit_data.value` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
+* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositInput` followed by 8 bytes for `deposit_data.amount` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
 * Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
 
 ```python
@@ -1525,14 +1480,13 @@ def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int,
     return value == root
 ```
 
-* Verify that `state.slot - (deposit.deposit_data.timestamp - state.genesis_time) // SLOT_DURATION < ZERO_BALANCE_VALIDATOR_TTL`.
 * Run the following:
 
 ```python
 process_deposit(
     state=state,
     pubkey=deposit.deposit_data.deposit_input.pubkey,
-    deposit=deposit.deposit_data.value,
+    amount=deposit.deposit_data.amount,
     proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
     randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
@@ -1547,10 +1501,10 @@ Verify that `len(block.body.exits) <= MAX_EXITS`.
 For each `exit` in `block.body.exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `validator.status == ACTIVE`.
+* Verify that `validator.exit_slot > state.slot + ENTRY_EXIT_DELAY`.
 * Verify that `state.slot >= exit.slot`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork_data, exit.slot, DOMAIN_EXIT))`.
-* Run `update_validator_status(state, validator_index, new_status=ACTIVE_PENDING_EXIT)`.
+* Run `initiate_validator_exit(state, exit.validator_index)`.
 
 #### Custody
 
@@ -1564,7 +1518,7 @@ The steps below happen when `state.slot % EPOCH_LENGTH == 0`.
 
 All [validators](#dfn-validator):
 
-* Let `active_validator_indices = get_active_validator_indices(state.validator_registry)`.
+* Let `active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)`.
 * Let `total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])`.
 
 [Validators](#dfn-Validator) attesting during the current epoch:
@@ -1620,7 +1574,6 @@ If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
 * Set `state.justification_bitfield |= 2` and `state.justified_slot = state.slot - 2 * EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
 * Set `state.justification_bitfield |= 1` and `state.justified_slot = state.slot - 1 * EPOCH_LENGTH` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
-
 Set `state.finalized_slot = state.previous_justified_slot` if any of the following are true:
 
 * `state.previous_justified_slot == state.slot - 2 * EPOCH_LENGTH and state.justification_bitfield % 4 == 3`
@@ -1666,7 +1619,7 @@ Case 2: `epochs_since_finality > 4`:
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
-* Any [validator](#dfn-validator) `index` with `status == EXITED_WITH_PENALTY`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
+* Any [active_validator](#dfn-active-validator) `index` with `validator.penalized_slot <= state.slot`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
 * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 #### Attestation inclusion
@@ -1692,7 +1645,7 @@ def process_ejections(state: BeaconState) -> None:
     """
     for index in active_validator_indices(state.validator_registry):
         if state.validator_balances[index] < EJECTION_BALANCE * GWEI_PER_ETH:
-            update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
+            exit_validator(state, index)
 ```
 
 ### Validator registry
@@ -1711,7 +1664,7 @@ def update_validator_registry(state: BeaconState) -> None:
     Note that this function mutates ``state``.
     """
     # The active validators
-    active_validator_indices = get_active_validator_indices(state.validator_registry)
+    active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)
     # The total effective balance of active validators
     total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
 
@@ -1724,59 +1677,83 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.status == PENDING_ACTIVATION and state.validator_balances[index] >= MAX_DEPOSIT * GWEI_PER_ETH:
+        if validator.activation_slot > state.slot + ENTRY_EXIT_DELAY and state.validator_balances[index] >= MAX_DEPOSIT * GWEI_PER_ETH:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
                 break
 
             # Activate validator
-            update_validator_status(state, index, new_status=ACTIVE)
+            activate_validator(state, index, False)
 
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.status == ACTIVE_PENDING_EXIT:
+        if validator.exit_slot > state.slot + ENTRY_EXIT_DELAY and validator.status_flags & INITIATED_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
                 break
 
             # Exit validator
-            update_validator_status(state, index, new_status=EXITED_WITHOUT_PENALTY)
+            exit_validator(state, index)
 
+    state.validator_registry_latest_change_slot = state.slot
+```
 
-    # Calculate the total ETH that has been penalized in the last ~2-3 withdrawal periods
-    period_index = current_slot // COLLECTIVE_PENALTY_CALCULATION_PERIOD
-    total_penalties = (
-        (latest_penalized_exit_balances[period_index]) +
-        (latest_penalized_exit_balances[period_index - 1] if period_index >= 1 else 0) +
-        (latest_penalized_exit_balances[period_index - 2] if period_index >= 2 else 0)
-    )
+Regardless of whether the above conditions are satisfied, run the following:
 
-    # Calculate penalties for slashed validators
-    def to_penalize(index):
-        return state.validator_registry[index].status == EXITED_WITH_PENALTY
-    validators_to_penalize = filter(to_penalize, range(len(validator_registry)))
-    for index in validators_to_penalize:
-        state.validator_balances[index] -= get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
+```python
+def process_penalties_and_exits(state: BeaconState) -> None:
+    # The active validators
+    active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)
+    # The total effective balance of active validators
+    total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
+
+    for index, validator in enumerate(state.validator_registry):
+        if (state.slot // EPOCH_LENGTH) == (validator.penalized_slot // EPOCH_LENGTH) + LATEST_PENALIZED_EXIT_LENGTH // 2:
+            e = (state.slot // EPOCH_LENGTH) % LATEST_PENALIZED_EXIT_LENGTH
+            total_at_start = state.latest_penalized_exit_balances[(e + 1) % LATEST_PENALIZED_EXIT_LENGTH]
+            total_at_end = state.latest_penalized_exit_balances[e]
+            total_penalties = total_at_end - total_at_start
+            penalty = get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
+            state.validator_balances[index] -= penalty
+
+    def eligible(index):
+        validator = state.validator_registry[index]
+        if validator.penalized_slot <= state.slot:
+            PENALIZED_WITHDRAWAL_TIME = LATEST_PENALIZED_EXIT_LENGTH * EPOCH_LENGTH // 2
+            return state.slot >= validator.penalized_slot + PENALIZED_WITHDRAWAL_TIME
+        else:
+            return state.slot >= validator.exit_slot + MIN_VALIDATOR_WITHDRAWAL_TIME
+
+    all_indices = list(range(len(state.validator_registry)))
+    eligible_indices = filter(eligible, all_indices)
+    sorted_indices = sorted(eligible_indices, filter=lambda index: state.validator_registry[index].exit_count)
+    withdrawn_so_far = 0
+    for index in sorted_indices:
+        validator = state.validator_registry[index]
+        prepare_validator_for_withdrawal(state, index)
+        withdrawn_so_far += 1
+        if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
+            break
 ```
 
 Also perform the following updates:
 
-* Set `state.validator_registry_latest_change_slot = state.slot`.
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
-* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, next_start_shard)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
+* Set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_shuffling(state.latest_randao_mixes[(state.slot - SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, next_start_shard, state.slot)` where `next_start_shard = (state.shard_committees_at_slots[-1][-1].shard + 1) % SHARD_COUNT`.
 
 If a validator registry update does _not_ happen do the following:
 
 * Set `state.shard_committees_at_slots[:EPOCH_LENGTH] = state.shard_committees_at_slots[EPOCH_LENGTH:]`.
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_latest_change_slot) // EPOCH_LENGTH`.
 * Let `start_shard = state.shard_committees_at_slots[0][0].shard`.
-* If `epochs_since_last_registry_change` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_new_shuffling(state.latest_randao_mixes[(state.slot - EPOCH_LENGTH) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard)`. Note that `start_shard` is not changed from the last epoch.
+* If `epochs_since_last_registry_change` is an exact power of 2, set `state.shard_committees_at_slots[EPOCH_LENGTH:] = get_shuffling(state.latest_randao_mixes[(state.slot - SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH], state.validator_registry, start_shard, state.slot)`. Note that `start_shard` is not changed from the last epoch.
 
 ### Final updates
 
+* Let `e = state.slot // EPOCH_LENGTH`. Set `state.latest_penalized_exit_balances[(e+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_exit_balances[e % LATEST_PENALIZED_EXIT_LENGTH]`
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
 
 ## State root processing
