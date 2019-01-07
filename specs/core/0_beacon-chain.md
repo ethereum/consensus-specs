@@ -46,13 +46,14 @@
             - [`ValidatorRecord`](#validatorrecord)
             - [`CrosslinkRecord`](#crosslinkrecord)
             - [`ShardCommittee`](#shardcommittee)
-            - [`CandidatePoWReceiptRootRecord`](#candidatepowreceiptrootrecord)
+            - [`DepositRootVote`](#depositrootvote)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
-        - [`Eth1Deposit` logs](#eth1deposit-logs)
+        - [Withdrawal credentials](#withdrawal-credentials)
+        - [`Deposit` logs](#deposit-logs)
         - [`ChainStart` log](#chainstart-log)
         - [Vyper code](#vyper-code)
     - [Beacon chain processing](#beacon-chain-processing)
@@ -92,7 +93,7 @@
         - [Slot](#slot)
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
-        - [PoW receipt root](#pow-receipt-root)
+        - [Deposit root](#deposit-root)
         - [Operations](#operations)
             - [Proposer slashings](#proposer-slashings-1)
             - [Casper slashings](#casper-slashings-1)
@@ -102,7 +103,7 @@
             - [Custody](#custody)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
-        - [Receipt roots](#receipt-roots)
+        - [Deposit roots](#deposit-roots)
         - [Justification](#justification)
         - [Crosslinks](#crosslinks)
         - [Rewards and penalties](#rewards-and-penalties)
@@ -124,7 +125,7 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when deposit transaction receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
 The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
@@ -197,7 +198,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `SEED_LOOKAHEAD` | `2**6` (= 64) | slots | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**8` (= 256) | slots | 25.6 minutes |
-| `POW_RECEIPT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `DEPOSIT_ROOT_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_TIME` | `2**14` (= 16,384) | slots | ~27 hours |
 
 ### Reward and penalty quotients
@@ -366,7 +367,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # Deposit parameters
+    # Deposit input
     'deposit_input': DepositInput,
     # Amount in Gwei
     'amount': 'uint64',
@@ -387,7 +388,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'randao_commitment': 'hash32',
     # Initial custody commitment
     'custody_commitment': 'hash32',
-    # a BLS signature of this ``DepositInput``
+    # A BLS signature of this `DepositInput`
     'proof_of_possession': ['uint384'],
 }
 ```
@@ -418,7 +419,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'parent_root': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
-    'candidate_pow_receipt_root': 'hash32',
+    'deposit_root': 'hash32',
     'signature': ['uint384'],
 
     ## Body ##
@@ -495,9 +496,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'latest_attestations': [PendingAttestationRecord],
     'batched_block_roots': ['hash32'],
 
-    # PoW receipt root
-    'processed_pow_receipt_root': 'hash32',
-    'candidate_pow_receipt_roots': [CandidatePoWReceiptRootRecord],
+    # Ethereum 1.0 deposit root
+    'latest_deposit_root': 'hash32',
+    'deposit_root_votes': [DepositRootVote],
 }
 ```
 
@@ -558,12 +559,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `CandidatePoWReceiptRootRecord`
+#### `DepositRootVote`
 
 ```python
 {
-    # Candidate PoW receipt root
-    'candidate_pow_receipt_root': 'hash32',
+    # Deposit root
+    'deposit_root': 'hash32',
     # Vote count
     'vote_count': 'uint64',
 }
@@ -611,28 +612,32 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards when the EVM2.0 is deployed and the shards have state.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositInput`. One of the `DepositInput` fields is `withdrawal_credentials` which must satisfy:
+The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositInput`.
+
+### Withdrawal credentials
+
+One of the `DepositInput` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawals to shards. The first byte of `withdrawal_credentials` is a version number. As of now the only expected format is as follows:
 
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
 
-We recommend the private key corresponding to `withdrawal_pubkey` be stored in cold storage until a withdrawal is required.
+The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
 
-### `Eth1Deposit` logs
+### `Deposit` logs
 
-Every deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits an `Eth1Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `ChainStart` log
 
 When sufficiently many full deposits have been made the deposit contract emits the `ChainStart` log. The beacon chain state may then be initialized by calling the `get_initial_beacon_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `ChainStart` log
-* `processed_pow_receipt_root` equals `receipt_root` in the `ChainStart` log
-* `initial_validator_deposits` is a list of `Deposit` objects built according to the `Eth1Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
+* `latest_deposit_root` equals `deposit_root` in the `ChainStart` log
+* `initial_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
 
 ### Vyper code
 
@@ -647,10 +652,10 @@ DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Eth1Deposit: event({previous_receipt_root: bytes32, data: bytes[2064], deposit_count: uint256})
-ChainStart: event({receipt_root: bytes32, time: bytes[8]})
+Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], deposit_count: uint256})
+ChainStart: event({deposit_root: bytes32, time: bytes[8]})
 
-receipt_tree: map(uint256, bytes32)
+deposit_tree: map(uint256, bytes32)
 deposit_count: uint256
 full_deposit_count: uint256
 
@@ -665,13 +670,13 @@ def deposit(deposit_input: bytes[2048]):
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_input)
 
-    log.Eth1Deposit(self.receipt_tree[1], deposit_data, self.deposit_count)
+    log.Deposit(self.deposit_tree[1], deposit_data, self.deposit_count)
 
     # add deposit to merkle tree
-    self.receipt_tree[index] = sha3(deposit_data)
+    self.deposit_tree[index] = sha3(deposit_data)
     for i in range(32):  # DEPOSIT_CONTRACT_TREE_DEPTH (range of constant var not yet supported)
         index /= 2
-        self.receipt_tree[index] = sha3(concat(self.receipt_tree[index * 2], self.receipt_tree[index * 2 + 1]))
+        self.deposit_tree[index] = sha3(concat(self.deposit_tree[index * 2], self.deposit_tree[index * 2 + 1]))
 
     self.deposit_count += 1
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
@@ -679,12 +684,12 @@ def deposit(deposit_input: bytes[2048]):
         if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
             timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
             timestamp_day_boundary_bytes8: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
-            log.ChainStart(self.receipt_tree[1], timestamp_day_boundary_bytes8)
+            log.ChainStart(self.deposit_tree[1], timestamp_day_boundary_bytes8)
 
 @public
 @constant
-def get_receipt_root() -> bytes32:
-    return self.receipt_tree[1]
+def get_deposit_root() -> bytes32:
+    return self.deposit_tree[1]
 
 ```
 
@@ -702,7 +707,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.parent_root` has been processed and accepted.
 * The node has processed its `state` up to slot, `block.slot - 1`.
-* The Ethereum 1.0 block pointed to by the `state.processed_pow_receipt_root` has been processed and accepted.
+* An Ethereum 1.0 block pointed to by the `state.latest_deposit_root` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
@@ -1119,7 +1124,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
-    candidate_pow_receipt_root=ZERO_HASH,
+    deposit_root=ZERO_HASH,
     signature=EMPTY_SIGNATURE,
     body=BeaconBlockBody(
         proposer_slashings=[],
@@ -1139,7 +1144,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             processed_pow_receipt_root: Hash32) -> BeaconState:
+                             latest_deposit_root: Hash32) -> BeaconState:
     state = BeaconState(
         # Misc
         slot=GENESIS_SLOT,
@@ -1178,9 +1183,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_attestations=[],
         batched_block_roots=[],
 
-        # PoW receipt root
-        processed_pow_receipt_root=processed_pow_receipt_root,
-        candidate_pow_receipt_roots=[],
+        # Deposit root
+        latest_deposit_root=latest_deposit_root,
+        deposit_root_votes=[],
     )
 
     # Process initial deposits
@@ -1401,10 +1406,10 @@ Below are the processing steps that happen at every `block`.
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
-### PoW receipt root
+### Deposit root
 
-* If `block.candidate_pow_receipt_root` is `x.candidate_pow_receipt_root` for some `x` in `state.candidate_pow_receipt_roots`, set `x.vote_count += 1`.
-* Otherwise, append to `state.candidate_pow_receipt_roots` a new `CandidatePoWReceiptRootRecord(candidate_pow_receipt_root=block.candidate_pow_receipt_root, vote_count=1)`.
+* If `block.deposit_root` is `deposit_root_vote.deposit_root` for some `deposit_root_vote` in `state.deposit_root_votes`, set `deposit_root_vote.vote_count += 1`.
+* Otherwise, append to `state.deposit_root_votes` a new `DepositRootVote(deposit_root=block.deposit_root, vote_count=1)`.
 
 ### Operations
 
@@ -1467,7 +1472,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositInput` followed by 8 bytes for `deposit_data.amount` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.processed_pow_receipt_root`:
+* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.latest_deposit_root`:
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
@@ -1560,12 +1565,12 @@ For every `shard_committee_at_slot` in `state.shard_committees_at_slots` and for
 * Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 
-### Receipt roots
+### Deposit roots
 
-If `state.slot % POW_RECEIPT_ROOT_VOTING_PERIOD == 0`:
+If `state.slot % DEPOSIT_ROOT_VOTING_PERIOD == 0`:
 
-* Set `state.processed_pow_receipt_root = x.receipt_root` if `x.vote_count * 2 > POW_RECEIPT_ROOT_VOTING_PERIOD` for some `x` in `state.candidate_pow_receipt_root`.
-* Set `state.candidate_pow_receipt_roots = []`.
+* Set `state.latest_deposit_root = deposit_root_vote.deposit_root` if `deposit_root_vote.vote_count * 2 > DEPOSIT_ROOT_VOTING_PERIOD` for some `deposit_root_vote` in `state.deposit_root_votes`.
+* Set `state.deposit_root_votes = []`.
 
 ### Justification
 
