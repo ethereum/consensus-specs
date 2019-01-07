@@ -251,7 +251,7 @@ All integers are interpreted as **big endian**.
 byte_length = int_size / 8
 new_index = current_index + byte_length
 assert(len(rawbytes) >= new_index)
-return int.from_bytes(rawbytes[current_index:new_index], 'big'), new_index
+return int.from_bytes(rawbytes[current_index:current_index+byte_length], 'big'), new_index
 ```
 
 #### Bool
