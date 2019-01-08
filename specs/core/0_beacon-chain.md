@@ -880,7 +880,7 @@ def get_shuffling(seed: Hash32,
     )
 
     # Shuffle
-    seed = xor(randao_mix, hash(slot))
+    seed = xor(randao_mix, bytes32(slot))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length pieces
