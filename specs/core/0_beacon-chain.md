@@ -692,6 +692,18 @@ def deposit(deposit_input: bytes[2048]):
 def get_deposit_root() -> bytes32:
     return self.deposit_tree[1]
 
+@public
+@constant
+def get_merkle_branch(index: uint256) -> bytes32[32]: # size is DEPOSIT_CONTRACT_TREE_DEPTH (symbolic const not supported)
+    idx: uint256 = index + TWO_TO_POWER_OF_TREE_DEPTH
+    ret: bytes32[32] # size is DEPOSIT_CONTRACT_TREE_DEPTH
+    for i in range(DEPOSIT_CONTRACT_TREE_DEPTH):
+        if idx % 2 == 1:
+            ret[i] = self.deposit_tree[idx - 1]
+        else:
+            ret[i] = self.deposit_tree[idx + 1]
+        idx /= 2
+    return ret
 ```
 
 ## Beacon chain processing
