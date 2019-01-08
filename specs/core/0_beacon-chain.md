@@ -184,6 +184,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | - | - |
 | `GENESIS_FORK_VERSION` | `0` |
 | `GENESIS_SLOT` | `0` |
+| `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_SLOT` | `2**64 - 1` |
 | `ZERO_HASH` | `bytes32(0)` |
 | `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` |
@@ -862,7 +863,7 @@ def get_shuffling(seed: Hash32,
                   crosslinking_start_shard: int,
                   slot: int) -> List[List[ShardCommittee]]:
     """
-    Shuffles ``validators`` into shard committees using ``seed`` as entropy.
+    Shuffles ``validators`` into shard committees seeded by ``randao_mix`` and ``slot``.
     """
 
     # Normalizes slot to start of epoch boundary
@@ -878,7 +879,8 @@ def get_shuffling(seed: Hash32,
         )
     )
 
-    # Shuffle with seed
+    # Shuffle
+    seed = xor(randao_mix, bytes32(slot))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length pieces
@@ -1206,7 +1208,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             activate_validator(state, validator_index, True)
 
     # Set initial committee shuffling
-    initial_shuffling = get_shuffling(ZERO_HASH, state.validator_registry, 0, GENESIS_SLOT)
+    initial_shuffling = get_shuffling(ZERO_HASH, state.validator_registry, GENESIS_START_SHARD, GENESIS_SLOT)
     state.shard_committees_at_slots = initial_shuffling + initial_shuffling
 
     return state
@@ -1402,7 +1404,7 @@ Below are the processing steps that happen at every `block`.
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal)`
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal))`
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
