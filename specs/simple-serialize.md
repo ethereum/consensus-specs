@@ -248,10 +248,10 @@ size as the integer length. (e.g. ``uint16 == 2 bytes``)
 All integers are interpreted as **big endian**.
 
 ```python
-assert(len(rawbytes) >= current_index + int_size)
 byte_length = int_size / 8
-new_index = current_index + int_size
-return int.from_bytes(rawbytes[current_index:current_index+int_size], 'big'), new_index
+new_index = current_index + byte_length
+assert(len(rawbytes) >= new_index)
+return int.from_bytes(rawbytes[current_index:current_index+byte_length], 'big'), new_index
 ```
 
 #### Bool
@@ -384,7 +384,7 @@ values = {}
 for field_name in get_field_names(typ):
     field_name_type = get_type_for_field_name(typ, field_name)
     values[field_name], item_index = deserialize(data, item_index, field_name_type)
-assert item_index == start + LENGTH_BYTES + length
+assert item_index == new_index
 return typ(**values), item_index
 ```
 
@@ -392,7 +392,7 @@ return typ(**values), item_index
 
 The below `hash_tree_root` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
 
-Refer to [Appendix A](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#appendix-a---hash-function) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
+Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
 #### `uint8`..`uint256`, `bool`, `address`, `hash1`..`hash32`
 
