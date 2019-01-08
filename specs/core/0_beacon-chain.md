@@ -1658,7 +1658,7 @@ def process_ejections(state: BeaconState) -> None:
 If the following are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* `state.latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `state.shard_committees_at_slots`
+* `state.latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `shard_committee` from `shard_committee_at_slot` in `state.shard_committees_at_slots`
 
 update the validator registry and associated fields by running
 
