@@ -887,11 +887,11 @@ def get_shuffling(seed: Hash32,
     validators_per_slot = split(shuffled_active_validator_indices, EPOCH_LENGTH)
 
     output = []
-    for slot, slot_indices in enumerate(validators_per_slot):
+    for slot_position, slot_indices in enumerate(validators_per_slot):
         # Split the shuffled list into committees_per_slot pieces
         shard_indices = split(slot_indices, committees_per_slot)
 
-        shard_id_start = crosslinking_start_shard + slot * committees_per_slot
+        shard_id_start = crosslinking_start_shard + slot_position * committees_per_slot
 
         shard_committees = [
             ShardCommittee(
