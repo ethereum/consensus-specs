@@ -368,12 +368,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # Deposit input
-    'deposit_input': DepositInput,
     # Amount in Gwei
     'amount': 'uint64',
     # Timestamp from deposit contract
     'timestamp': 'uint64',
+    # Deposit input
+    'deposit_input': DepositInput,
 }
 ```
 
