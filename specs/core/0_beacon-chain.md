@@ -911,7 +911,7 @@ def get_cur_epoch_committees_per_slot(state: BeaconState):
 
 ```python
 def get_shard_committees_at_slot(state: BeaconState,
-                                 slot: int) -> (List[List[int]], int):
+                                 slot: int) -> Tuple[List[List[int]], int]:
     """
     Returns (i) the list of committees and (ii) the shard associated with the first committee for the ``slot``.
     """
