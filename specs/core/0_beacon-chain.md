@@ -851,7 +851,7 @@ def split(values: List[Any], split_count: int) -> List[Any]:
 #### `get_committees_per_slot`
 
 ```python
-def get_committees_per_slot(active_validator_count: int):
+def get_committees_per_slot(active_validator_count: int) -> int:
     return max(
         1,
         min(
