@@ -887,7 +887,7 @@ def get_shuffling(seed: Hash32,
 
 **Invariant**: if `get_shuffling(seed, validators, shard, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `shard` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
-**Note**: this definition and the next few definitions will make heavy use of repetitive computing. Real life implementations are expected to appropriately use caching/memoization to avoid redoing work.
+**Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
 #### `get_prev_epoch_committees_per_slot`
 
