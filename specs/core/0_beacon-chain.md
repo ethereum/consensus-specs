@@ -158,9 +158,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | - | - | :-: |
 | `SHARD_COUNT` | `2**10` (= 1,024) | shards |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | [validators](#dfn-validator) |
-| `EJECTION_BALANCE` | `2**4` (= 16) | ETH |
+| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
-| `GWEI_PER_ETH` | `10**9` | Gwei/ETH |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
@@ -175,8 +174,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | - | - | :-: |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) | - |
-| `MIN_DEPOSIT` | `2**0` (= 1) | ETH |
-| `MAX_DEPOSIT` | `2**5` (= 32) | ETH |
+| `MIN_DEPOSIT_AMOUNT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
+| `MAX_DEPOSIT_AMOUNT` | `2**5 * 1e9` (= 32,000,000,000) | Gwei |
 
 ### Initial values
 
@@ -630,7 +629,7 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 ### `Deposit` logs
 
-Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `ChainStart` log
 
@@ -645,9 +644,8 @@ When sufficiently many full deposits have been made the deposit contract emits t
 ```python
 ## compiled with v0.1.0-beta.6 ##
 
-MIN_DEPOSIT: constant(uint256) = 1  # ETH
-MAX_DEPOSIT: constant(uint256) = 32  # ETH
-GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
+MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
+MAX_DEPOSIT_AMOUNT: constant(uint256) = 32000000000  # Gwei
 CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
@@ -663,11 +661,11 @@ full_deposit_count: uint256
 @payable
 @public
 def deposit(deposit_input: bytes[2048]):
-    assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
-    assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
+    assert msg.value >= MIN_DEPOSIT_AMOUNT
+    assert msg.value <= MAX_DEPOSIT_AMOUNT
 
     index: uint256 = self.deposit_count + TWO_TO_POWER_OF_TREE_DEPTH
-    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
+    msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_input)
 
@@ -680,7 +678,7 @@ def deposit(deposit_input: bytes[2048]):
         self.deposit_tree[index] = sha3(concat(self.deposit_tree[index * 2], self.deposit_tree[index * 2 + 1]))
 
     self.deposit_count += 1
-    if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
+    if msg.value == MAX_DEPOSIT_AMOUNT:
         self.full_deposit_count += 1
         if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
             timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
@@ -1000,7 +998,7 @@ def get_effective_balance(state: State, index: int) -> int:
     """
     Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
     """
-    return min(state.validator_balances[index], MAX_DEPOSIT * GWEI_PER_ETH)
+    return min(state.validator_balances[index], MAX_DEPOSIT_AMOUNT)
 ```
 
 #### `get_fork_version`
@@ -1204,7 +1202,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
     # Process initial activations
     for validator_index, _ in enumerate(state.validator_registry):
-        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT * GWEI_PER_ETH:
+        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, True)
 
     # Set initial committee shuffling
@@ -1600,7 +1598,7 @@ For every `shard_committee_at_slot` in `state.shard_committees_at_slots` and for
 
 First, we define some additional helpers:
 
-* Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance // GWEI_PER_ETH)`.
+* Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance)`.
 * Let `base_reward(state, index) = get_effective_balance(state, index) // base_reward_quotient // 5` for any validator with the given `index`.
 * Let `inactivity_penalty(state, index, epochs_since_finality) = base_reward(state, index) + get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2` for any validator with the given `index`.
 
@@ -1654,7 +1652,7 @@ def process_ejections(state: BeaconState) -> None:
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
     for index in active_validator_indices(state.validator_registry):
-        if state.validator_balances[index] < EJECTION_BALANCE * GWEI_PER_ETH:
+        if state.validator_balances[index] < EJECTION_BALANCE:
             exit_validator(state, index)
 ```
 
@@ -1680,14 +1678,14 @@ def update_validator_registry(state: BeaconState) -> None:
 
     # The maximum balance churn in Gwei (for deposits and exits separately)
     max_balance_churn = max(
-        MAX_DEPOSIT * GWEI_PER_ETH,
+        MAX_DEPOSIT_AMOUNT,
         total_balance // (2 * MAX_BALANCE_CHURN_QUOTIENT)
     )
 
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_slot > state.slot + ENTRY_EXIT_DELAY and state.validator_balances[index] >= MAX_DEPOSIT * GWEI_PER_ETH:
+        if validator.activation_slot > state.slot + ENTRY_EXIT_DELAY and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
