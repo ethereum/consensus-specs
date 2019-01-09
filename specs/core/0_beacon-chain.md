@@ -653,7 +653,7 @@ DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], deposit_count: uint256})
+Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], merkle_tree_index: uint256})
 ChainStart: event({deposit_root: bytes32, time: bytes[8]})
 
 deposit_tree: map(uint256, bytes32)
@@ -666,18 +666,18 @@ def deposit(deposit_input: bytes[2048]):
     assert msg.value >= as_wei_value(MIN_DEPOSIT, "ether")
     assert msg.value <= as_wei_value(MAX_DEPOSIT, "ether")
 
-    index: uint256 = self.deposit_count + TWO_TO_POWER_OF_TREE_DEPTH
+    merkle_tree_index: uint256 = self.deposit_count + TWO_TO_POWER_OF_TREE_DEPTH
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_input)
 
-    log.Deposit(self.deposit_tree[1], deposit_data, self.deposit_count)
+    log.Deposit(self.deposit_tree[1], deposit_data, merkle_tree_index)
 
     # add deposit to merkle tree
-    self.deposit_tree[index] = sha3(deposit_data)
+    self.deposit_tree[merkle_tree_index] = sha3(deposit_data)
     for i in range(DEPOSIT_CONTRACT_TREE_DEPTH):
-        index /= 2
-        self.deposit_tree[index] = sha3(concat(self.deposit_tree[index * 2], self.deposit_tree[index * 2 + 1]))
+        merkle_tree_index /= 2
+        self.deposit_tree[merkle_tree_index] = sha3(concat(self.deposit_tree[merkle_tree_index * 2], self.deposit_tree[merkle_tree_index * 2 + 1]))
 
     self.deposit_count += 1
     if msg.value == as_wei_value(MAX_DEPOSIT, "ether"):
