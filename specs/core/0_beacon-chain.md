@@ -484,6 +484,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'cur_epoch_start_shard': 'uint64',
     'prev_epoch_calculation_slot': 'uint64',
     'cur_epoch_calculation_slot': 'uint64',
+    'prev_epoch_randao_mix': 'hash32',
+    'cur_epoch_randao_mix': 'hash32',
 
     # Custody challenges
     'custody_challenges': [CustodyChallenge],
@@ -917,22 +919,23 @@ def get_shard_committees_at_slot(state: BeaconState,
     assert earliest_slot <= slot < earliest_slot + EPOCH_LENGTH * 2
     offset = slot % EPOCH_LENGTH
 
-
     if slot < earliest_slot + EPOCH_LENGTH:
         committees_per_slot = get_prev_epoch_committees_per_slot(state)
-        shuffling = get_shuffling(state.latest_randao_mixes[state.prev_epoch_calculation_slot % LATEST_RANDAO_MIXES_LENGTH],
+        shuffling = get_shuffling(state.prev_epoch_randao_mix,
                                   state.validator_registry,
-                                  state.slot - (state.slot % EPOCH_LENGTH) - EPOCH_LENGTH)
+                                  state.prev_epoch_calculation_slot)
         start_shard = state.prev_epoch_start_shard
     else:
         committees_per_slot = get_cur_epoch_committees_per_slot(state)
-        shuffling = get_shuffling(state.latest_randao_mixes[state.cur_epoch_calculation_slot % LATEST_RANDAO_MIXES_LENGTH],
+        shuffling = get_shuffling(state.cur_epoch_randao_mix,
                                   state.validator_registry,
-                                  state.slot - (state.slot % EPOCH_LENGTH))
+                                  state.cur_epoch_calculation_slot)
         start_shard = state.cur_epoch_start_shard
 
-    return shuffling[committees_per_slot * offset: committees_per_slot * (offset + 1)], \
+    return (
+        shuffling[committees_per_slot * offset: committees_per_slot * (offset + 1)],
         (start_shard + committees_per_slot * offset) % SHARD_COUNT
+    )
 ```
 
 **Note**: we plan to replace the shuffling algorithm with a pointwise-evaluable shuffle (see https://github.com/ethereum/eth2.0-specs/issues/323), which will allow calculation of the committees for each slot individually.
@@ -1183,6 +1186,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         cur_epoch_start_shard=0,
         prev_epoch_calculation_slot=GENESIS_SLOT,
         cur_epoch_calculation_slot=GENESIS_SLOT,
+        prev_epoch_randao_mix=ZERO_HASH,
+        cur_epoch_randao_mix=ZERO_HASH,
 
         # Custody challenges
         custody_challenges=[],
@@ -1723,15 +1728,17 @@ and perform the following updates:
 
 * Set `state.prev_epoch_calculation_slot = state.cur_epoch_calculation_slot`
 * Set `state.prev_epoch_start_shard = state.cur_epoch_start_shard`
+* Set `state.prev_epoch_randao_mix = state.cur_epoch_randao_mix`
 * Set `state.cur_epoch_calculation_slot = state.slot`
 * Set `state.cur_epoch_start_shard = (state.cur_epoch_start_shard + get_cur_epoch_committees_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
+* Set `state.cur_epoch_randao_mix = state.latest_randao_mixes[(state.cur_epoch_calculation_slot - SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH]`
 
 If a validator registry update does _not_ happen do the following:
 
 * Set `state.prev_epoch_calculation_slot = state.cur_epoch_calculation_slot`
 * Set `state.prev_epoch_start_shard = state.cur_epoch_start_shard`
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_latest_change_slot) // EPOCH_LENGTH`.
-* If `epochs_since_last_registry_change` is an exact power of 2, set `state.cur_epoch_calculation_slot = state.slot`. Note that `state.cur_epoch_start_shard` is left unchanged.
+* If `epochs_since_last_registry_change` is an exact power of 2, set `state.cur_epoch_calculation_slot = state.slot` and `state.cur_epoch_randao_mix = state.latest_randao_mixes[(state.cur_epoch_calculation_slot - SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH]`. Note that `state.cur_epoch_start_shard` is left unchanged.
 
 Regardless of whether or not a validator set change happens, run the following:
 
