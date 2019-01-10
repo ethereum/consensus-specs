@@ -1742,7 +1742,6 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_count)
     withdrawn_so_far = 0
     for index in sorted_indices:
-        validator = state.validator_registry[index]
         prepare_validator_for_withdrawal(state, index)
         withdrawn_so_far += 1
         if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
