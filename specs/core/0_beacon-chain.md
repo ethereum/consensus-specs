@@ -187,6 +187,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | - | - |
 | `GENESIS_FORK_VERSION` | `0` |
 | `GENESIS_SLOT` | `0` |
+| `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_SLOT` | `2**64 - 1` |
 | `ZERO_HASH` | `bytes32(0)` |
 | `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` |
@@ -669,7 +670,7 @@ def deposit(deposit_input: bytes[2048]):
 
     # add deposit to merkle tree
     self.deposit_tree[index] = sha3(deposit_data)
-    for i in range(32):  # DEPOSIT_CONTRACT_TREE_DEPTH (range of constant var not yet supported)
+    for i in range(DEPOSIT_CONTRACT_TREE_DEPTH):
         index /= 2
         self.deposit_tree[index] = sha3(concat(self.deposit_tree[index * 2], self.deposit_tree[index * 2 + 1]))
 
@@ -869,9 +870,9 @@ def get_shuffling(seed: Hash32,
                   validators: List[ValidatorRecord],
                   slot: int) -> List[List[int]]
     """
-    Shuffles ``validators`` into shard committees using ``seed`` as entropy. Returns a list of
-    ``EPOCH_LENGTH * committees_per_slot`` committees where each committee is itself a list of
-    validator indices.
+    Shuffles ``validators`` into shard committees seeded by ``seed`` and ``slot``.
+    Returns a list of ``EPOCH_LENGTH * committees_per_slot`` committees where each
+    committee is itself a list of validator indices.
     """
 
     # Normalizes slot to start of epoch boundary
@@ -881,14 +882,15 @@ def get_shuffling(seed: Hash32,
 
     committees_per_slot = get_committees_per_slot(len(active_validator_indices))
 
-    # Shuffle with seed
+    # Shuffle
+    seed = xor(randao_mix, bytes32(slot))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length * committees_per_slot pieces
     return split(shuffled_active_validator_indices, committees_per_slot * EPOCH_LENGTH)
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, shard, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `shard` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
+**Invariant**: if `get_shuffling(seed, validators, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `slot` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
@@ -1434,7 +1436,7 @@ Below are the processing steps that happen at every `block`.
 * Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal)`
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal))`
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
@@ -1510,7 +1512,7 @@ For each `deposit` in `block.body.deposits`:
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
     value = leaf
     for i in range(depth):
-        if index % 2:
+        if index // (2**i) % 2:
             value = hash(branch[i] + value)
         else:
             value = hash(value + branch[i])
@@ -1594,6 +1596,9 @@ For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `shard
 * Let `attesting_validators(shard_committee)` be equal to `attesting_validator_indices(shard_committee, winning_root(shard_committee))` for convenience.
 * Let `total_attesting_balance(shard_committee) = sum([get_effective_balance(state, i) for i in attesting_validators(shard_committee)])`.
 * Let `total_balance(shard_committee) = sum([get_effective_balance(state, i) for i in shard_committee])`.
+
+Define the following helpers to process attestation inclusion rewards and inclusion distance reward/penalty. For every attestation `a` in `previous_epoch_attestations`:
+
 * Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 
@@ -1785,7 +1790,6 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_count)
     withdrawn_so_far = 0
     for index in sorted_indices:
-        validator = state.validator_registry[index]
         prepare_validator_for_withdrawal(state, index)
         withdrawn_so_far += 1
         if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
