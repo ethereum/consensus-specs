@@ -1182,7 +1182,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
-        latest_penalized_exit_balances=[0 for _ in LATEST_PENALIZED_EXIT_LENGTH],
+        latest_penalized_exit_balances=[0 for _ in range(LATEST_PENALIZED_EXIT_LENGTH)],
         latest_attestations=[],
         batched_block_roots=[],
 
