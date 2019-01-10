@@ -71,8 +71,8 @@ q = 4002409555221667393417789825735904156556882819939007885332058136124031650490
 
 def hash_to_G2(message: bytes32, domain: uint64) -> [uint384]:
     # Initial candidate x coordinate
-    x_re = int.from_bytes(hash(bytes8(domain) + b'\x01' + message), 'big')
-    x_im = int.from_bytes(hash(bytes8(domain) + b'\x02' + message), 'big')
+    x_re = int.from_bytes(hash(message + bytes8(domain) + b'\x01'), 'big')
+    x_im = int.from_bytes(hash(message + bytes8(domain) + b'\x02'), 'big')
     x_coordinate = Fq2([x_re, x_im])  # x = x_re + i * x_im
     
     # Test candidate y coordinates until a one is found
