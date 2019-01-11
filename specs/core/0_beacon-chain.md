@@ -969,7 +969,7 @@ def get_randao_mix(state: BeaconState,
     """
     assert state.slot < slot + LATEST_RANDAO_MIXES_LENGTH
     assert slot <= state.slot
-    return state.latest_block_roots[slot % LATEST_RANDAO_MIXES_LENGTH]
+    return state.latest_randao_mixes[slot % LATEST_RANDAO_MIXES_LENGTH]
 ```
 
 #### `get_beacon_proposer_index`
@@ -1202,7 +1202,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
         latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
-        previous_epoch_start_shard=0,
+        previous_epoch_start_shard=GENESIS_START_SHARD,
         current_epoch_start_shard=GENESIS_START_SHARD,
         previous_epoch_calculation_slot=GENESIS_SLOT,
         current_epoch_calculation_slot=GENESIS_SLOT,
