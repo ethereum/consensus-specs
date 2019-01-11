@@ -695,8 +695,8 @@ def get_deposit_root() -> bytes32:
 @public
 @constant
 def get_merkle_branch(index: uint256) -> bytes32[32]: # size is DEPOSIT_CONTRACT_TREE_DEPTH (symbolic const not supported)
-    index = index + TWO_TO_POWER_OF_TREE_DEPTH
     branch: bytes32[32] # size is DEPOSIT_CONTRACT_TREE_DEPTH
+    index = index + TWO_TO_POWER_OF_TREE_DEPTH
     for i in range(DEPOSIT_CONTRACT_TREE_DEPTH):
         branch[i] = self.deposit_tree[bitwise_xor(index, 1)]
         index /= 2
