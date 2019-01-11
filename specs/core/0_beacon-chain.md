@@ -358,11 +358,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # Receipt Merkle branch
-    'merkle_branch': '[hash32]',
-    # Merkle tree index
-    'merkle_tree_index': 'uint64',
-    # Deposit data
+    # Branch in the deposit tree
+    'branch': '[hash32]',
+    # Index in the deposit tree
+    'index': 'uint64',
+    # Data
     'deposit_data': DepositData,
 }
 ```
@@ -371,12 +371,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # Deposit input
-    'deposit_input': DepositInput,
     # Amount in Gwei
     'amount': 'uint64',
     # Timestamp from deposit contract
     'timestamp': 'uint64',
+    # Deposit input
+    'deposit_input': DepositInput,
 }
 ```
 
@@ -648,7 +648,7 @@ DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], deposit_count: uint256})
+Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], merkle_tree_index: bytes[8]})
 ChainStart: event({deposit_root: bytes32, time: bytes[8]})
 
 deposit_tree: map(uint256, bytes32)
@@ -665,8 +665,9 @@ def deposit(deposit_input: bytes[2048]):
     msg_gwei_bytes8: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     timestamp_bytes8: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(msg_gwei_bytes8, timestamp_bytes8, deposit_input)
+    merkle_tree_index: bytes[8] = slice(concat("", convert(index, bytes32)), start=24, len=8)
 
-    log.Deposit(self.deposit_tree[1], deposit_data, self.deposit_count)
+    log.Deposit(self.deposit_tree[1], deposit_data, merkle_tree_index)
 
     # add deposit to merkle tree
     self.deposit_tree[index] = sha3(deposit_data)
@@ -866,7 +867,7 @@ def get_committee_count_per_slot(active_validator_count: int) -> int:
 #### `get_shuffling`
 
 ```python
-def get_shuffling(seed: Hash32,
+def get_shuffling(randao_mix: Hash32,
                   validators: List[ValidatorRecord],
                   slot: int) -> List[List[int]]
     """
@@ -1011,8 +1012,7 @@ def get_attestation_participants(state: BeaconState,
     
     assert attestation.shard in [shard for _, shard in shard_committees]
     shard_committee = [committee for committee, shard in shard_committees if shard == attestation_data.shard][0]
-    
-    assert len(participation_bitfield) == ceil_div8(len(shard_committee))
+    assert len(participation_bitfield) == (len(committee) + 7) // 8
 
     # Find the participating attesters in the committee
     participants = []
@@ -1130,6 +1130,7 @@ def integer_squareroot(n: int) -> int:
     """
     The largest integer ``x`` such that ``x**2`` is less than ``n``.
     """
+    assert n >= 0
     x = n
     y = (x + 1) // 2
     while y < x:
@@ -1220,7 +1221,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Recent state
         latest_crosslinks=[CrosslinkRecord(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
-        latest_penalized_exit_balances=[0 for _ in LATEST_PENALIZED_EXIT_LENGTH],
+        latest_penalized_exit_balances=[0 for _ in range(LATEST_PENALIZED_EXIT_LENGTH)],
         latest_attestations=[],
         batched_block_roots=[],
 
@@ -1505,11 +1506,12 @@ For each `attestation` in `block.body.attestations`:
 Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
 [TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
+[TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
 
 For each `deposit` in `block.body.deposits`:
 
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be the `DepositInput` followed by 8 bytes for `deposit_data.amount` and 8 bytes for `deposit_data.timestamp`. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Use the following procedure to verify `deposit.merkle_branch`, setting `leaf=serialized_deposit_data`, `depth=DEPOSIT_CONTRACT_TREE_DEPTH` and `root=state.latest_deposit_root`:
+* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
+* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_deposit_root)` is `True`.
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
