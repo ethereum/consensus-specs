@@ -966,8 +966,8 @@ def get_randao_mix(state: BeaconState,
     """
     Returns the randao mix at a recent ``slot``.
     """
-    assert state.slot <= slot + LATEST_RANDAO_MIXES_LENGTH
-    assert slot < state.slot
+    assert state.slot < slot + LATEST_RANDAO_MIXES_LENGTH
+    assert slot <= state.slot
     return state.latest_block_roots[slot % LATEST_RANDAO_MIXES_LENGTH]
 ```
 
