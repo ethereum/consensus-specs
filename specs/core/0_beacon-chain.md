@@ -897,7 +897,7 @@ def get_shuffling(seed: Hash32,
 #### `get_previous_epoch_committees_per_slot`
 
 ```python
-def get_previous_epoch_committees_per_slot(state: BeaconState) -> int:
+def get_previous_epoch_committee_count_per_slot(state: BeaconState) -> int:
     previous_active_validators = get_active_validator_indices(validators, state.previous_epoch_calculation_slot)
     return get_committees_per_slot(len(previous_active_validators))
 ```
