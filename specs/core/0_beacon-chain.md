@@ -859,7 +859,7 @@ def split(values: List[Any], split_count: int) -> List[Any]:
 #### `get_shuffling`
 
 ```python
-def get_shuffling(seed: Hash32,
+def get_shuffling(randao_mix: Hash32,
                   validators: List[ValidatorRecord],
                   crosslinking_start_shard: int,
                   slot: int) -> List[List[ShardCommittee]]:
