@@ -1097,6 +1097,7 @@ def integer_squareroot(n: int) -> int:
     """
     The largest integer ``x`` such that ``x**2`` is less than ``n``.
     """
+    assert n >= 0
     x = n
     y = (x + 1) // 2
     while y < x:
