@@ -916,7 +916,7 @@ def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
 def get_shard_committees_at_slot(state: BeaconState,
                                  slot: int) -> List[Tuple[List[int], int]]:
     """
-    Returns (i) the list of committees and (ii) the shard associated with the first committee for the ``slot``.
+    Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
     earliest_slot = state.slot - (state.slot % EPOCH_LENGTH) - EPOCH_LENGTH
     assert earliest_slot <= slot < earliest_slot + EPOCH_LENGTH * 2
