@@ -858,7 +858,7 @@ def get_committee_count_per_slot(active_validator_count: int) -> int:
         1,
         min(
             SHARD_COUNT // EPOCH_LENGTH,
-            len(active_validator_indices) // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
+            active_validator_count // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
         )
     )
 ```
@@ -883,7 +883,7 @@ def get_shuffling(seed: Hash32,
     committees_per_slot = get_committees_per_slot(len(active_validator_indices))
 
     # Shuffle
-    seed = xor(randao_mix, bytes32(slot))
+    seed = xor(seed, bytes32(slot))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length * committees_per_slot pieces
@@ -898,7 +898,7 @@ def get_shuffling(seed: Hash32,
 
 ```python
 def get_previous_epoch_committee_count_per_slot(state: BeaconState) -> int:
-    previous_active_validators = get_active_validator_indices(validators, state.previous_epoch_calculation_slot)
+    previous_active_validators = get_active_validator_indices(state.validator_registry, state.previous_epoch_calculation_slot)
     return get_committees_per_slot(len(previous_active_validators))
 ```
 
@@ -1008,7 +1008,10 @@ def get_attestation_participants(state: BeaconState,
 
     # Find the committee in the list with the desired shard
     shard_committees = get_shard_committees_at_slot(state, attestation_data.slot)
+    
+    assert attestation.shard in [shard for _, shard in shard_committees]
     shard_committee = [committee for committee, shard in shard_committees if shard == attestation_data.shard][0]
+    
     assert len(participation_bitfield) == ceil_div8(len(shard_committee))
 
     # Find the participating attesters in the committee
