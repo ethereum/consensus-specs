@@ -921,9 +921,10 @@ def get_shard_committees_at_slot(state: BeaconState,
     """
     Returns the ``ShardCommittee`` for the ``slot``.
     """
-    earliest_slot_in_array = state.slot - (state.slot % EPOCH_LENGTH) - EPOCH_LENGTH
-    assert earliest_slot_in_array <= slot < earliest_slot_in_array + EPOCH_LENGTH * 2
-    return state.shard_committees_at_slots[slot - earliest_slot_in_array]
+    state_epoch_slot = state.slot - (state.slot % EPOCH_LENGTH) 
+    assert state_epoch_slot <= slot + EPOCH_LENGTH
+    assert slot < state_epoch_slot + EPOCH_LENGTH
+    return state.shard_committees_at_slots[slot - state_epoch_slot + EPOCH_LENGTH]
 ```
 
 #### `get_block_root`
