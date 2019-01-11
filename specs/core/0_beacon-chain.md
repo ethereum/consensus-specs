@@ -979,7 +979,7 @@ def get_attestation_participants(state: BeaconState,
     # Find the relevant committee
     shard_committees = get_shard_committees_at_slot(state, attestation_data.slot)
     shard_committee = [x for x in shard_committees if x.shard == attestation_data.shard][0]
-    assert len(participation_bitfield) == ceil_div8(len(shard_committee.committee))
+    assert len(participation_bitfield) == (len(shard_committee.committee) + 7) // 8
 
     # Find the participating attesters in the committee
     participants = []
