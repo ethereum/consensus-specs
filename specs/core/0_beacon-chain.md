@@ -905,7 +905,7 @@ def get_previous_epoch_committees_per_slot(state: BeaconState) -> int:
 #### `get_current_epoch_committees_per_slot`
 
 ```python
-def get_current_epoch_committees_per_slot(state: BeaconState) -> int:
+def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
     current_active_validators = get_active_validator_indices(validators, state.current_epoch_calculation_slot)
     return get_committees_per_slot(len(current_active_validators))
 ```
