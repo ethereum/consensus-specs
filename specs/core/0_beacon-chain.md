@@ -166,6 +166,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
 | `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
