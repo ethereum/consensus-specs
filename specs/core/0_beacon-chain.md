@@ -47,7 +47,7 @@
             - [`Crosslink`](#Crosslink)
             - [`ShardCommittee`](#shardcommittee)
             - [`DepositRootVote`](#depositrootvote)
-            - [`PendingAttestation`](#PendingAttestation)
+            - [`PendingAttestation`](#Pendingattestation)
             - [`ForkData`](#forkdata)
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
