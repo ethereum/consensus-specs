@@ -631,7 +631,7 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 ### `Deposit` logs
 
-Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS signature) is not verified by the deposit contract.
 
 ### `ChainStart` log
 
@@ -1109,15 +1109,15 @@ def integer_squareroot(n: int) -> int:
 
 #### `bls_verify`
 
-`bls_verify` is a function for verifying a BLS12-381 signature, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_verify).
+`bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_verify).
 
 #### `bls_verify_multiple`
 
-`bls_verify_multiple` is a function for verifying a BLS12-381 signature constructed from multiple messages, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_verify_multiple).
+`bls_verify_multiple` is a function for verifying a BLS signature constructed from multiple messages, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_verify_multiple).
 
 #### `bls_aggregate_pubkeys`
 
-`bls_aggregate_pubkeys` is a function for aggregating a BLS12-381 public keys into a single aggregate key, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_aggregate_pubkeys).
+`bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_aggregate_pubkeys).
 
 ### On startup
 
