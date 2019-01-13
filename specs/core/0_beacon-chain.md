@@ -43,11 +43,11 @@
             - [`ProposalSignedData`](#proposalsigneddata)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
-            - [`ValidatorRecord`](#validatorrecord)
-            - [`CrosslinkRecord`](#crosslinkrecord)
+            - [`Validator`](#Validator)
+            - [`Crosslink`](#Crosslink)
             - [`ShardCommittee`](#shardcommittee)
             - [`DepositRootVote`](#depositrootvote)
-            - [`PendingAttestationRecord`](#pendingattestationrecord)
+            - [`PendingAttestation`](#PendingAttestation)
             - [`ForkData`](#forkdata)
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
@@ -470,7 +470,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'fork_data': ForkData,  # For versioning hard forks
 
     # Validator registry
-    'validator_registry': [ValidatorRecord],
+    'validator_registry': [Validator],
     'validator_balances': ['uint64'],
     'validator_registry_latest_change_slot': 'uint64',
     'validator_registry_exit_count': 'uint64',
@@ -491,10 +491,10 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'finalized_slot': 'uint64',
 
     # Recent state
-    'latest_crosslinks': [CrosslinkRecord],
+    'latest_crosslinks': [Crosslink],
     'latest_block_roots': ['hash32'],  # Needed to process attestations, older to newer
     'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
-    'latest_attestations': [PendingAttestationRecord],
+    'latest_attestations': [PendingAttestation],
     'batched_block_roots': ['hash32'],
 
     # Ethereum 1.0 deposit root
@@ -503,7 +503,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `ValidatorRecord`
+#### `Validator`
 
 ```python
 {
@@ -536,7 +536,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `CrosslinkRecord`
+#### `Crosslink`
 
 ```python
 {
@@ -571,7 +571,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `PendingAttestationRecord`
+#### `PendingAttestation`
 
 ```python
 {
@@ -772,7 +772,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 #### `is_active_validator`
 ```python
-def is_active_validator(validator: ValidatorRecord, slot: int) -> bool:
+def is_active_validator(validator: Validator, slot: int) -> bool:
     """
     Checks if ``validator`` is active.
     """
@@ -782,7 +782,7 @@ def is_active_validator(validator: ValidatorRecord, slot: int) -> bool:
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: [ValidatorRecord], slot: int) -> List[int]:
+def get_active_validator_indices(validators: [Validator], slot: int) -> List[int]:
     """
     Gets indices of active validators from ``validators``.
     """
@@ -860,7 +860,7 @@ def split(values: List[Any], split_count: int) -> List[Any]:
 
 ```python
 def get_shuffling(randao_mix: Hash32,
-                  validators: List[ValidatorRecord],
+                  validators: List[Validator],
                   crosslinking_start_shard: int,
                   slot: int) -> List[List[ShardCommittee]]:
     """
@@ -1181,7 +1181,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         finalized_slot=GENESIS_SLOT,
 
         # Recent state
-        latest_crosslinks=[CrosslinkRecord(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
+        latest_crosslinks=[Crosslink(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_penalized_exit_balances=[0 for _ in range(LATEST_PENALIZED_EXIT_LENGTH)],
         latest_attestations=[],
@@ -1275,7 +1275,7 @@ def process_deposit(state: BeaconState,
 
     if pubkey not in validator_pubkeys:
         # Add new validator
-        validator = ValidatorRecord(
+        validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
             randao_commitment=randao_commitment,
@@ -1465,7 +1465,7 @@ For each `attestation` in `block.body.attestations`:
     * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
     * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndCustodyBit(attestation.data, False)), signature=attestation.aggregate_signature, domain=get_domain(state.fork_data, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
-* Append `PendingAttestationRecord(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
+* Append `PendingAttestation(data=attestation.data, participation_bitfield=attestation.participation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
 #### Deposits
 
@@ -1597,7 +1597,7 @@ Set `state.finalized_slot = state.previous_justified_slot` if any of the followi
 
 For every `shard_committee_at_slot` in `state.shard_committees_at_slots` and for every `shard_committee`in `shard_committee_at_slot`:
 
-* Set `state.latest_crosslinks[shard_committee.shard] = CrosslinkRecord(slot=state.slot, shard_block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
+* Set `state.latest_crosslinks[shard_committee.shard] = Crosslink(slot=state.slot, shard_block_root=winning_root(shard_committee))` if `3 * total_attesting_balance(shard_committee) >= 2 * total_balance(shard_committee)`.
 
 ### Rewards and penalties
 
