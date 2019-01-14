@@ -689,6 +689,15 @@ def deposit(deposit_input: bytes[2048]):
 def get_deposit_root() -> bytes32:
     return self.deposit_tree[1]
 
+@public
+@constant
+def get_branch(leaf: uint256) -> bytes32[32]: # size is DEPOSIT_CONTRACT_TREE_DEPTH (symbolic const not supported)
+    branch: bytes32[32] # size is DEPOSIT_CONTRACT_TREE_DEPTH
+    index: uint256 = leaf + TWO_TO_POWER_OF_TREE_DEPTH
+    for i in range(DEPOSIT_CONTRACT_TREE_DEPTH):
+        branch[i] = self.deposit_tree[bitwise_xor(index, 1)]
+        index /= 2
+    return branch
 ```
 
 ## Beacon chain processing
