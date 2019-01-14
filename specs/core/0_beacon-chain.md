@@ -840,9 +840,6 @@ def shuffle(values: List[Any], seed: Hash32) -> List[Any]:
                 # Swap the current index with the replacement index.
                 output[index], output[replacement_position] = output[replacement_position], output[index]
                 index += 1
-            else:
-                # The sample causes modulo bias. A new sample should be read.
-                pass
 
     return output
 ```
