@@ -1,6 +1,6 @@
 # [WIP] SimpleSerialize (SSZ) Spec
 
-This is the **work in progress** document to describe `simpleserialize`, the
+This is the **work in progress** document to describe `SimpleSerialize`, the
 current selected serialization method for Ethereum 2.0 using the Beacon Chain.
 
 This document specifies the general information for serializing and
@@ -13,19 +13,22 @@ deserializing objects and data types.
 * [Constants](#constants)
 * [Overview](#overview)
    + [Serialize/Encode](#serializeencode)
-      - [uint: 8/16/24/32/64/256](#uint-816243264256)
+      - [uint](#uint)
+      - [Bool](#bool)
       - [Address](#address)
       - [Hash](#hash)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
       - [Container](#container)
    + [Deserialize/Decode](#deserializedecode)
-      - [uint: 8/16/24/32/64/256](#uint-816243264256-1)
+      - [uint](#uint-1)
+      - [Bool](#bool-1)
       - [Address](#address-1)
       - [Hash](#hash-1)
       - [Bytes](#bytes-1)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
+    + [Tree Hash](#tree-hash)
 * [Implementations](#implementations)
 
 ## About
@@ -40,9 +43,9 @@ overhead.
 
 | Term         | Definition                                                                                     |
 |:-------------|:-----------------------------------------------------------------------------------------------|
-| `little`     | Little Endian                                                                                  |
-| `byte_order` | Specifies [endianness:](https://en.wikipedia.org/wiki/Endianness) Big Endian or Little Endian. |
-| `len`        | Length/Number of Bytes.                                                                        |
+| `little`     | Little endian.                                                                                 |
+| `byte_order` | Specifies [endianness](https://en.wikipedia.org/wiki/Endianness): big endian or little endian. |
+| `len`        | Length/number of bytes.                                                                        |
 | `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byte_order``.                          |
 | `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byte_order``.                        |
 | `value`      | The value to serialize.                                                                        |
@@ -50,16 +53,22 @@ overhead.
 
 ## Constants
 
-| Constant       | Value | Definition                                                                            |
-|:---------------|:-----:|:--------------------------------------------------------------------------------------|
-| `LENGTH_BYTES` |   4   | Number of bytes used for the length added before a variable-length serialized object. |
+| Constant          | Value | Definition                                                                            |
+|:------------------|:-----:|:--------------------------------------------------------------------------------------|
+| `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
+| `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chunk size of the Merkle tree leaf.                           |
 
 
 ## Overview
 
 ### Serialize/Encode
 
-#### uint: 8/16/24/32/64/256
+#### uint
+
+| uint Type | Usage                                                      |
+|:---------:|:-----------------------------------------------------------|
+|  `uintN`  | Type of `N` bits unsigned integer, where ``N % 8 == 0``.   |
+
 
 Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
 
@@ -75,7 +84,7 @@ buffer_size = int_size / 8
 return value.to_bytes(buffer_size, 'little')
 ```
 
-#### bool
+#### Bool
 
 Convert directly to a single 0x00 or 0x01 byte.
 
@@ -91,8 +100,7 @@ return b'\x01' if value is True else b'\x00'
 
 #### Address
 
-The `address` should already come as a hash/byte format. Ensure that length is
-**20**.
+The `address` should already come as a hash/byte format. Ensure that length is **20**.
 
 | Check to perform       | Code                 |
 |:-----------------------|:---------------------|
@@ -126,8 +134,7 @@ return value
 
 For general `bytes` type:
 1. Get the length/number of bytes; Encode into a `4-byte` integer.
-2. Append the value to the length and return: ``[ length_bytes ] + [
-   value_bytes ]``
+2. Append the value to the length and return: ``[ length_bytes ] + [ value_bytes ]``
 
 | Check to perform                     | Code                   |
 |:-------------------------------------|:-----------------------|
@@ -174,7 +181,7 @@ return serialized_len + serialized_list_string
 
 A container represents a heterogenous, associative collection of key-value pairs. Each pair is referred to as a `field`. To get the value for a given field, you supply the key which is a symbol unique to the container referred to as the field's `name`. The container data type is analogous to the `struct` type found in many languages like C or Go.
 
-To serialize a container, obtain the set of its field's names and sort them lexicographically. For each field name in this sorted list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the sorted field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **little endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
+To serialize a container, obtain the list of its field's names in the specified order. For each field name in this list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **little endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
 
 
 | Check to perform                            | Code                        |
@@ -183,9 +190,9 @@ To serialize a container, obtain the set of its field's names and sort them lexi
 
 To serialize:
 
-1. Get the names of the container's fields and sort them.
+1. Get the list of the container's fields.
 
-2. For each name in the sorted list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
+2. For each name in the list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
 
 3. Get the number of raw bytes in the serialized buffer. Encode that number as a `4-byte` **little endian** `uint32`.
 
@@ -206,7 +213,7 @@ def get_type_for_field_name(typ, field_name):
 serialized_buffer = b''
 
 typ = type(value)
-for field_name in sorted(get_field_names(typ)):
+for field_name in get_field_names(typ):
     field_value = get_value_for_field_name(value, field_name)
     field_type = get_type_for_field_name(typ, field_name)
     serialized_buffer += serialize(field_value, field_type)
@@ -233,7 +240,7 @@ At each step, the following checks should be made:
 |:-------------------------|:-----------------------------------------------------------|
 | Ensure sufficient length | ``length(rawbytes) >= current_index + deserialize_length`` |
 
-#### uint: 8/16/24/32/64/256
+#### uint
 
 Convert directly from bytes into integer utilising the number of bytes the same
 size as the integer length. (e.g. ``uint16 == 2 bytes``)
@@ -241,10 +248,10 @@ size as the integer length. (e.g. ``uint16 == 2 bytes``)
 All integers are interpreted as **little endian**.
 
 ```python
-assert(len(rawbytes) >= current_index + int_size)
 byte_length = int_size / 8
-new_index = current_index + int_size
-return int.from_bytes(rawbytes[current_index:current_index+int_size], 'little'), new_index
+new_index = current_index + byte_length
+assert(len(rawbytes) >= new_index)
+return int.from_bytes(rawbytes[current_index:current_index+byte_length], 'little'), new_index
 ```
 
 #### Bool
@@ -258,7 +265,7 @@ return True if rawbytes == b'\x01' else False
 
 #### Address
 
-Return the 20 bytes.
+Return the 20-byte deserialized address.
 
 ```python
 assert(len(rawbytes) >= current_index + 20)
@@ -343,10 +350,8 @@ Instantiate a container with the full set of deserialized data, matching each me
 
 To deserialize:
 
-1. Get the names of the container's fields and sort them.
-
-2. For each name in the sorted list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
-
+1. Get the list of the container's fields.
+2. For each name in the list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
 3. Construct a container instance after successfully consuming the entire subset of the stream for the serialized container.
 
 **Example in Python**
@@ -376,30 +381,30 @@ assert(len(rawbytes) >= new_index)
 item_index = current_index + LENGTH_BYTES
 
 values = {}
-for field_name in sorted(get_field_names(typ)):
+for field_name in get_field_names(typ):
     field_name_type = get_type_for_field_name(typ, field_name)
     values[field_name], item_index = deserialize(data, item_index, field_name_type)
-assert item_index == start + LENGTH_BYTES + length
+assert item_index == new_index
 return typ(**values), item_index
 ```
 
-### Tree_hash
+### Tree Hash
 
-The below `tree_hash` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
+The below `hash_tree_root` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
 
-We define `hash(x)` as `BLAKE2b-512(x)[0:32]`.
+Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
-#### uint: 8/16/24/32/64/256, bool, address, hash32
+#### `uint8`..`uint256`, `bool`, `address`, `hash1`..`hash32`
 
 Return the serialization of the value.
 
-#### bytes, hash96
+#### `uint264`..`uintN`, `bytes`, `hash33`..`hashN`
 
 Return the hash of the serialization of the value.
 
 #### List/Vectors
 
-First, we define some helpers and then the Merkle tree function. The constant `CHUNK_SIZE` is set to 128.
+First, we define some helpers and then the Merkle tree function.
 
 ```python
 # Merkle tree hash of a list of homogenous, non-empty items
@@ -409,10 +414,10 @@ def merkle_hash(lst):
 
     if len(lst) == 0:
         # Handle empty list case
-        chunkz = [b'\x00' * CHUNKSIZE]
-    elif len(lst[0]) < CHUNKSIZE:
+        chunkz = [b'\x00' * SSZ_CHUNK_SIZE]
+    elif len(lst[0]) < SSZ_CHUNK_SIZE:
         # See how many items fit in a chunk
-        items_per_chunk = CHUNKSIZE // len(lst[0])
+        items_per_chunk = SSZ_CHUNK_SIZE // len(lst[0])
 
         # Build a list of chunks based on the number of items in the chunk
         chunkz = [b''.join(lst[i:i+items_per_chunk]) for i in range(0, len(lst), items_per_chunk)]
@@ -423,28 +428,28 @@ def merkle_hash(lst):
     # Tree-hash
     while len(chunkz) > 1:
         if len(chunkz) % 2 == 1:
-            chunkz.append(b'\x00' * CHUNKSIZE)
+            chunkz.append(b'\x00' * SSZ_CHUNK_SIZE)
         chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
 
     # Return hash of root and length data
     return hash(chunkz[0] + datalen)
 ```
 
-To `tree_hash` a list, we simply do:
+To `hash_tree_root` a list, we simply do:
 
 ```python
-return merkle_hash([tree_hash(item) for item in value])
+return merkle_hash([hash_tree_root(item) for item in value])
 ```
 
-Where the inner `tree_hash` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+Where the inner `hash_tree_root` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
 
 
 #### Container
 
-Recursively tree hash the values in the container in order sorted by key, and return the hash of the concatenation of the results.
+Recursively tree hash the values in the container in the same order as the fields, and return the hash of the concatenation of the results.
 
 ```python
-return hash(b''.join([tree_hash(getattr(x, field)) for field in sorted(value.fields)))
+return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.fields]))
 ```
 
 
@@ -457,3 +462,9 @@ return hash(b''.join([tree_hash(getattr(x, field)) for field in sorted(value.fie
 |    Nim   | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implementation maintained SSZ.                       |
 |   Rust   | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz)                                         | Shasper implementation of SSZ maintained by ParityTech.  |
 |   Javascript   | [ https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js ](https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js)                                         | Javascript Implementation maintained SSZ |
+|   Java   | [ https://www.github.com/ConsenSys/cava/tree/master/ssz ](https://www.github.com/ConsenSys/cava/tree/master/ssz) | SSZ Java library part of the Cava suite |
+|   Go   | [ https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz ](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) | Go implementation of SSZ mantained by Prysmatic Labs |
+
+
+## Copyright
+Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
