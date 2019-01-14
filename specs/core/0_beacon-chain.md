@@ -67,8 +67,8 @@
             - [`split`](#split)
             - [`get_committee_count_per_slot`](#get_committee_count_per_slot)
             - [`get_shuffling`](#get_shuffling)
-            - [`get_previous_epoch_committees_per_slot`](#get_previous_epoch_committees_per_slot)
-            - [`get_current_epoch_committees_per_slot`](#get_current_epoch_committees_per_slot)
+            - [`get_previous_epoch_committee_count_per_slot`](#get_previous_epoch_committee_count_per_slot)
+            - [`get_current_epoch_committee_count_per_slot`](#get_current_epoch_committee_count_per_slot)
             - [`get_shard_committees_at_slot`](#get_shard_committees_at_slot)
             - [`get_block_root`](#get_block_root)
             - [`get_randao_mix`](#get_randao_mix)
@@ -877,7 +877,7 @@ def get_committee_count_per_slot(active_validator_count: int) -> int:
 #### `get_shuffling`
 
 ```python
-def get_shuffling(randao_mix: Hash32,
+def get_shuffling(seed: Hash32,
                   validators: List[ValidatorRecord],
                   slot: int) -> List[List[int]]
     """
@@ -905,19 +905,25 @@ def get_shuffling(randao_mix: Hash32,
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
-#### `get_previous_epoch_committees_per_slot`
+#### `get_previous_epoch_committee_count_per_slot`
 
 ```python
 def get_previous_epoch_committee_count_per_slot(state: BeaconState) -> int:
-    previous_active_validators = get_active_validator_indices(state.validator_registry, state.previous_epoch_calculation_slot)
+    previous_active_validators = get_active_validator_indices(
+        state.validator_registry,
+        state.previous_epoch_calculation_slot,
+    )
     return get_committee_count_per_slot(len(previous_active_validators))
 ```
 
-#### `get_current_epoch_committees_per_slot`
+#### `get_current_epoch_committee_count_per_slot`
 
 ```python
 def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
-    current_active_validators = get_active_validator_indices(validators, state.current_epoch_calculation_slot)
+    current_active_validators = get_active_validator_indices(
+        state.validator_registry,
+        state.current_epoch_calculation_slot,
+    )
     return get_committee_count_per_slot(len(current_active_validators))
 ```
 
@@ -934,20 +940,27 @@ def get_shard_committees_at_slot(state: BeaconState,
     offset = slot % EPOCH_LENGTH
 
     if slot < earliest_slot + EPOCH_LENGTH:
-        committees_per_slot = get_previous_epoch_committees_per_slot(state)
-        shuffling = get_shuffling(state.previous_epoch_randao_mix,
-                                  state.validator_registry,
-                                  state.previous_epoch_calculation_slot)
+        committees_per_slot = get_previous_epoch_committee_count_per_slot(state)
+        shuffling = get_shuffling(
+            state.previous_epoch_randao_mix,
+            state.validator_registry,
+            state.previous_epoch_calculation_slot,
+        )
         slot_start_shard = (state.previous_epoch_start_shard + committees_per_slot * offset) % SHARD_COUNT
     else:
-        committees_per_slot = get_current_epoch_committees_per_slot(state)
-        shuffling = get_shuffling(state.current_epoch_randao_mix,
-                                  state.validator_registry,
-                                  state.current_epoch_calculation_slot)
+        committees_per_slot = get_current_epoch_committee_count_per_slot(state)
+        shuffling = get_shuffling(
+            state.current_epoch_randao_mix,
+            state.validator_registry,
+            state.current_epoch_calculation_slot,
+        )
         slot_start_shard = (state.current_epoch_start_shard + committees_per_slot * offset) % SHARD_COUNT
 
     return [
-        (shuffling[committees_per_slot * offset + i], (slot_start_shard + i) % SHARD_COUNT)
+        (
+            shuffling[committees_per_slot * offset + i],
+            (slot_start_shard + i) % SHARD_COUNT,
+        )
         for i in range(committees_per_slot)
     ]
 ```
@@ -1710,7 +1723,7 @@ def process_ejections(state: BeaconState) -> None:
 If the following are satisfied:
 
 * `state.finalized_slot > state.validator_registry_latest_change_slot`
-* `state.latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `[(state.current_epoch_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committees_per_slot(state) * EPOCH_LENGTH)]` (that is, for every shard in the current committees)
+* `state.latest_crosslinks[shard].slot > state.validator_registry_latest_change_slot` for every shard number `shard` in `[(state.current_epoch_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH)]` (that is, for every shard in the current committees)
 
 update the validator registry and associated fields by running
 
@@ -1764,7 +1777,7 @@ and perform the following updates:
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
 * Set `state.previous_epoch_randao_mix = state.current_epoch_randao_mix`
 * Set `state.current_epoch_calculation_slot = state.slot`
-* Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committees_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
+* Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
 * Set `state.current_epoch_randao_mix = get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD)`
 
 If a validator registry update does _not_ happen do the following:
