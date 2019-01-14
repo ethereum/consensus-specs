@@ -65,7 +65,7 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
             - [`split`](#split)
-            - [`get_committees_per_slot`](#get_committees_per_slot)
+            - [`get_committee_count_per_slot`](#get_committee_count_per_slot)
             - [`get_shuffling`](#get_shuffling)
             - [`get_previous_epoch_committees_per_slot`](#get_previous_epoch_committees_per_slot)
             - [`get_current_epoch_committees_per_slot`](#get_current_epoch_committees_per_slot)
@@ -852,7 +852,7 @@ def split(values: List[Any], split_count: int) -> List[Any]:
     ]
 ```
 
-#### `get_committees_per_slot`
+#### `get_committee_count_per_slot`
 
 ```python
 def get_committee_count_per_slot(active_validator_count: int) -> int:
@@ -882,7 +882,7 @@ def get_shuffling(randao_mix: Hash32,
 
     active_validator_indices = get_active_validator_indices(validators, slot)
 
-    committees_per_slot = get_committees_per_slot(len(active_validator_indices))
+    committees_per_slot = get_committee_count_per_slot(len(active_validator_indices))
 
     # Shuffle
     seed = xor(seed, bytes32(slot))
@@ -901,7 +901,7 @@ def get_shuffling(randao_mix: Hash32,
 ```python
 def get_previous_epoch_committee_count_per_slot(state: BeaconState) -> int:
     previous_active_validators = get_active_validator_indices(state.validator_registry, state.previous_epoch_calculation_slot)
-    return get_committees_per_slot(len(previous_active_validators))
+    return get_committee_count_per_slot(len(previous_active_validators))
 ```
 
 #### `get_current_epoch_committees_per_slot`
@@ -909,7 +909,7 @@ def get_previous_epoch_committee_count_per_slot(state: BeaconState) -> int:
 ```python
 def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
     current_active_validators = get_active_validator_indices(validators, state.current_epoch_calculation_slot)
-    return get_committees_per_slot(len(current_active_validators))
+    return get_committee_count_per_slot(len(current_active_validators))
 ```
 
 #### `get_shard_committees_at_slot`
