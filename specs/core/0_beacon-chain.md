@@ -205,7 +205,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_QUOTIENT` | `2**10` (= 1,024) |
+| `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
@@ -666,10 +666,11 @@ def deposit(deposit_input: bytes[2048]):
     assert msg.value <= as_wei_value(MAX_DEPOSIT_AMOUNT, "gwei")
 
     index: uint256 = self.deposit_count + TWO_TO_POWER_OF_TREE_DEPTH
-    amount: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
-    timestamp: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
-    deposit_data: bytes[2064] = concat(amount, timestamp, deposit_input)
-
+    deposit_amount: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
+    deposit_timestamp: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
+    deposit_data: bytes[2064] = concat(deposit_amount, deposit_timestamp, deposit_input)
+    merkle_tree_index: bytes[8] = slice(concat("", convert(index, bytes32)), start=24, len=8)
+    
     log.Deposit(self.deposit_tree[1], deposit_data, merkle_tree_index)
 
     # add deposit to merkle tree
@@ -1600,7 +1601,7 @@ For every `shard_committee_at_slot` in `state.shard_committees_at_slots` and for
 
 First, we define some additional helpers:
 
-* Let `base_reward_quotient = BASE_REWARD_QUOTIENT * integer_squareroot(total_balance)`.
+* Let `base_reward_quotient = integer_squareroot(total_balance) // BASE_REWARD_QUOTIENT`.
 * Let `base_reward(state, index) = get_effective_balance(state, index) // base_reward_quotient // 5` for any validator with the given `index`.
 * Let `inactivity_penalty(state, index, epochs_since_finality) = base_reward(state, index) + get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2` for any validator with the given `index`.
 
