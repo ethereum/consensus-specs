@@ -881,7 +881,7 @@ def get_shuffling(seed: Hash32,
                   validators: List[ValidatorRecord],
                   slot: int) -> List[List[int]]
     """
-    Shuffles ``validators`` into shard committees seeded by ``seed`` and ``slot``.
+    Shuffles ``validators`` into crosslink committees seeded by ``seed`` and ``slot``.
     Returns a list of ``EPOCH_LENGTH * committees_per_slot`` committees where each
     committee is itself a list of validator indices.
     """
