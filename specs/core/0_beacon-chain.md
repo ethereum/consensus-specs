@@ -931,7 +931,7 @@ def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                 slot: int) -> List[Tuple[List[int], int]]:
+                                     slot: int) -> List[Tuple[List[int], int]]:
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
