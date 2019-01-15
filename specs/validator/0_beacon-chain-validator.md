@@ -170,6 +170,12 @@ Set `block.randao_reveal` to the `n`th layer deep reveal from the validator's cu
 
 ##### Deposit root
 
+`block.deposit_root` is a mechanism used by block proposers to vote on a recent deposit root found in the Ethereum 1.0 PoW deposit contract. When consensus is formed `state.latest_deposit_root` is updated, and validator deposits up to this root can be processed.
+
+* Let `D` be the set of `DepositRootVote` objects `obj` in `state.deposit_root_votes` where `obj.deposit_root` is the deposit root of an eth1.0 block that is (i) part of the canonical chain, (ii) >= 1000 blocks behind the head, and (iii) newer than `state.latest_deposit_root`.
+* If `D` is empty, set `block.deposit root` to the deposit root of the 1000th ancestor of the head of the canonical eth1.0 chain.
+* If `D` is nonempty, set `block.deposit_root = best_vote.deposit_root` where `best_vote` is the member of `D` that has the highest `vote_count`, breaking ties by favoring newer deposit roots.
+
 ##### Signature
 
 Set `block.signature = signed_proposal_data` where `signed_proposal_data` is defined as:
