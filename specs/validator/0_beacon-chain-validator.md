@@ -105,7 +105,7 @@ A validator's custody commitment is the outermost layer of a 32-byte hash-onion.
 
 Assuming a validator changes their `custody_seed` with frequency `>= 1 week`, the validator changes their seed approximately `<= 50 times per year`. At this estimate, `n == 5000` would last a century. To be conservative, we recommend `n >= 100k`.
 
-See above note on hash-onion caching strategies in [RANDAO commitment]().
+See above note on hash-onion caching strategies in [RANDAO commitment](#randao-commitment).
 
 _Note_: although this commitment is being committed to and stored in phase 0, it will not be used until phase 1.
 
@@ -115,15 +115,18 @@ In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW 
 
 To submit a deposit:
 
-* Pack the validator's [initialization parameters]() into `deposit_input`, a [`DepositInput`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#depositinput) object.
+* Pack the validator's [initialization parameters](#initialization) into `deposit_input`, a [`DepositInput`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#depositinput) object.
 * Set `deposit_input.proof_of_possession = EMPTY_SIGNATURE`.
 * Let `proof_of_possession` be the result of `bls_sign` of the `hash_tree_root(deposit_input)` with `domain=DOMAIN_DEPOSIT`.
 * Set `deposit_input.proof_of_possession = proof_of_possession`.
+* Let `amount` be the amount of eth to be deposited by the validator where `MIN_DEPOSIT <= amount <= MAX_DEPOSIT`.
 * Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `deposit` along with `deposit_input` as the singular `bytes` input along with a deposit `amount` in ETH.
+
+_Note_: Multiple deposits can be made by the same validator (same initialization params). A singular `Validator` will be added to `state.validator_registry` with each deposit amount being added to the validator's balance. A validator can only be activated when total deposits meet or exceed 
 
 ### Validator index
 
-Once a validator has been added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`]() contains the `pubkey` specified in the validator's deposit. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
+Once a validator has been added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
 
 ### Activation
 
@@ -136,11 +139,11 @@ validator = state.validator_registry[validator_index]
 is_active_validator(validator, slot)
 ```
 
-Once a validator is active, the validator is assigned [responsibilities]() until exited.
+Once a validator is active, the validator is assigned [responsibilities](#beacon-chain-responsibilities) until exited.
 
 ## Beacon chain responsibilities
 
-A validator has two primary responsibilities to the beacon chain -- [proposing blocks]() and [creating attestations](). Proposals happen infrequently, whereas attestations should be created once per epoch.
+A validator has two primary responsibilities to the beacon chain -- [proposing blocks](block-proposal) and [creating attestations](attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
 
 ### Block proposal
 
@@ -267,7 +270,7 @@ Next the validator creates `attestation`, an [`Attestation`](https://github.com/
 
 ##### Data
 
-Set `attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object defined in the [previous section]().
+Set `attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object defined in the previous section, [attestation data](#attestation-data).
 
 ##### Participation bitfield
 
@@ -309,13 +312,13 @@ signed_attestation_data = bls_sign(
 
 ## How to avoid slashing
 
-"Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed -- [proposal slashing]() and [attestation slashing](). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages you have previously signed.
+"Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed -- [proposal slashing](#proposal-slashing) and [attestation slashing](#casper-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages you have previously signed.
 
 _Note_: signed data must be within the same `ForkData` context to conflict. Messages cannot be slashed across forks.
 
 ### Proposal slashing
 
-To avoid "proposal slashings", a validator must not sign two conflicting [`ProposalSignedData`]() (suggest renaming `ProposalData`) where conflicting is defined as having the same `slot` and `shard` but a different `block_root`.
+To avoid "proposal slashings", a validator must not sign two conflicting [`ProposalSignedData`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#proposalsigneddata) (suggest renaming `ProposalData`) where conflicting is defined as having the same `slot` and `shard` but a different `block_root`.
 
 The following helper can be run to check if two proposal messages conflict:
 
@@ -332,4 +335,4 @@ def proposal_data_is_slashable(proposal_data_1: ProposalSignedData,
 
 ### Casper slashing
 
-To avoid "Casper slashings", a validator must not sign two conflicting [`AttestationData`]() objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`]() or [`is_surround_vote`]().
+To avoid "Casper slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#is_surround_vote).
