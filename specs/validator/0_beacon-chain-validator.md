@@ -4,6 +4,57 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 ## Table of Contents
 
+<!-- TOC -->
+
+- [Ethereum 2.0 Phase 0 -- Honest Validator](#ethereum-20-phase-0----honest-validator)
+    - [Table of Contents](#table-of-contents)
+    - [Introduction](#introduction)
+    - [Prerequisites](#prerequisites)
+    - [Becoming a validator](#becoming-a-validator)
+        - [Initialization](#initialization)
+            - [BLS public key](#bls-public-key)
+            - [BLS withdrawal key](#bls-withdrawal-key)
+            - [RANDAO commitment](#randao-commitment)
+            - [Custody commitment](#custody-commitment)
+        - [Deposit](#deposit)
+        - [Validator index](#validator-index)
+        - [Activation](#activation)
+    - [Beacon chain responsibilities](#beacon-chain-responsibilities)
+        - [Block proposal](#block-proposal)
+            - [Block header](#block-header)
+                - [Slot](#slot)
+                - [Parent root](#parent-root)
+                - [State root](#state-root)
+                - [Randao reveal](#randao-reveal)
+                - [Deposit root](#deposit-root)
+                - [Signature](#signature)
+            - [Block body](#block-body)
+                - [Proposer slashings](#proposer-slashings)
+                - [Casper slashings](#casper-slashings)
+                - [Attestations](#attestations)
+                - [Deposits](#deposits)
+                - [Exits](#exits)
+        - [Attestations](#attestations-1)
+            - [Attestation data](#attestation-data)
+                - [Slot](#slot-1)
+                - [Shard](#shard)
+                - [Beacon block root](#beacon-block-root)
+                - [Epoch boundary root](#epoch-boundary-root)
+                - [Shard block root](#shard-block-root)
+                - [Latest crosslink root](#latest-crosslink-root)
+                - [Justified slot](#justified-slot)
+                - [Justified block root](#justified-block-root)
+            - [Construct attestation](#construct-attestation)
+                - [Data](#data)
+                - [Participation bitfield](#participation-bitfield)
+                - [Custody bitfield](#custody-bitfield)
+                - [Aggregate signature](#aggregate-signature)
+    - [How to avoid slashing](#how-to-avoid-slashing)
+        - [Proposal slashing](#proposal-slashing)
+        - [Casper slashing](#casper-slashing)
+
+<!-- /TOC -->
+
 ## Introduction
 
 This document represents the expected behavior of an "honest validator" with respect to Phase 0 of the Ethereum 2.0 protocol. This document does not distinguish between a "node" and a "validator client". The separation of concerns between these (potentially) two pieces of software is left as a design decision that is outside of scope.
