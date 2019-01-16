@@ -587,7 +587,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Previous fork version
-    'pre_version': 'uint64',
+    'previous_version': 'uint64',
     # Post fork version
     'post_version': 'uint64',
     # Fork slot number
@@ -1066,7 +1066,7 @@ def get_effective_balance(state: State, index: int) -> int:
 def get_fork_version(fork: ForkData,
                      slot: int) -> int:
     if slot < fork.slot:
-        return fork.pre_version
+        return fork.previous_version
     else:
         return fork.post_version
 ```
@@ -1210,7 +1210,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
         fork=ForkData(
-            pre_version=GENESIS_FORK_VERSION,
+            previous_version=GENESIS_FORK_VERSION,
             post_version=GENESIS_FORK_VERSION,
             slot=GENESIS_SLOT,
         ),
