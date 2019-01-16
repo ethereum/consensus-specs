@@ -429,7 +429,7 @@ return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.field
 
 | Language | Implementation                                                                                                                                                     | Description                                              |
 |:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
-|  Python  | [ https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py ](https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py)                               | Beacon chain reference implementation written in Python. |
+|  Python  | [ https://github.com/ethereum/py-ssz ](https://github.com/ethereum/py-ssz) | Python implementation of SSZ |
 |   Rust   | [ https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz ](https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz)                                                         | Lighthouse (Rust Ethereum 2.0 Node) maintained SSZ.      |
 |    Nim   | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implementation maintained SSZ.                       |
 |   Rust   | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz)                                         | Shasper implementation of SSZ maintained by ParityTech.  |
