@@ -1371,7 +1371,7 @@ def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
     validator.activation_slot = GENESIS_SLOT if genesis else (state.slot + ENTRY_EXIT_DELAY)
     state.validator_registry_delta_chain_tip = hash_tree_root(
         ValidatorRegistryDeltaBlock(
-            current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+            latest_registry_delta_root=state.validator_registry_delta_chain_tip,
             validator_index=index,
             pubkey=validator.pubkey,
             slot=validator.activation_slot,
@@ -1400,7 +1400,7 @@ def exit_validator(state: BeaconState, index: int) -> None:
     validator.exit_count = state.validator_registry_exit_count
     state.validator_registry_delta_chain_tip = hash_tree_root(
         ValidatorRegistryDeltaBlock(
-            current_validator_registry_delta_chain_tip=state.validator_registry_delta_chain_tip,
+            latest_registry_delta_root=state.validator_registry_delta_chain_tip,
             validator_index=index,
             pubkey=validator.pubkey,
             slot=validator.exit_slot,
