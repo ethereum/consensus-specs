@@ -25,6 +25,10 @@ deserializing objects and data types.
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
     + [Tree Hash](#tree-hash)
+      - [`uint8`..`uint256`, `bool`, `bytes1`..`bytes32`](#uint8uint256-bool-bytes1bytes32)
+      - [`uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`](#uint264uintn-bytes-bytes33bytesn)
+      - [List/Vectors](#listvectors-2)
+      - [Container](#container-2)
 * [Implementations](#implementations)
 
 ## About
@@ -53,7 +57,6 @@ overhead.
 |:------------------|:-----:|:--------------------------------------------------------------------------------------|
 | `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
 | `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chunk size of the Merkle tree leaf.                           |
-
 
 ## Overview
 
@@ -414,7 +417,6 @@ return merkle_hash([hash_tree_root(item) for item in value])
 
 Where the inner `hash_tree_root` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
 
-
 #### Container
 
 Recursively tree hash the values in the container in the same order as the fields, and return the hash of the concatenation of the results.
@@ -422,7 +424,6 @@ Recursively tree hash the values in the container in the same order as the field
 ```python
 return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.fields]))
 ```
-
 
 ## Implementations
 
