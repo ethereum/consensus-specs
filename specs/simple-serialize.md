@@ -16,7 +16,6 @@ deserializing objects and data types.
       - [uint](#uint)
       - [Bool](#bool)
       - [Address](#address)
-      - [Hash](#hash)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
       - [Container](#container)
@@ -24,8 +23,7 @@ deserializing objects and data types.
       - [uint](#uint-1)
       - [Bool](#bool-1)
       - [Address](#address-1)
-      - [Hash](#hash-1)
-      - [Bytes](#bytes-1)
+      - [Bytes](#bytes-2)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
     + [Tree Hash](#tree-hash)
@@ -111,18 +109,18 @@ assert( len(value) == 20 )
 return value
 ```
 
-#### Hash
+#### Bytes
 
-| Hash Type | Usage                                           |
-|:---------:|:------------------------------------------------|
-|  `hashN`  | Hash of arbitrary byte length `N`.              |
+| Bytes Type | Usage                              |
+|:---------:|:------------------------------------|
+|  `bytesN`  | Explicit length `N` bytes data.    |
+|  `bytes`   | Bytes data with arbitrary length.  |
 
+##### bytesN
 
 | Checks to perform                      | Code                 |
 |:---------------------------------------|:---------------------|
-| Length in bytes is correct for `hashN` | ``len(value) == N``  |
-
-##### hashN
+| Length in bytes is correct for `bytesN` | ``len(value) == N``  |
 
 ```python
 assert(len(value) == N)
@@ -130,8 +128,7 @@ assert(len(value) == N)
 return value
 ```
 
-#### Bytes
-
+##### bytes
 For general `bytes` type:
 1. Get the length/number of bytes; Encode into a `4-byte` integer.
 2. Append the value to the length and return: ``[ length_bytes ] + [ value_bytes ]``
@@ -273,9 +270,9 @@ new_index = current_index + 20
 return rawbytes[current_index:current_index+20], new_index
 ```
 
-#### Hash
+#### Bytes
 
-##### hashN
+##### bytesN
 
 Return the `N` bytes.
 
@@ -285,7 +282,7 @@ new_index = current_index + N
 return rawbytes[current_index:current_index+N], new_index
 ```
 
-#### Bytes
+##### bytes
 
 Get the length of the bytes, return the bytes.
 
@@ -394,11 +391,11 @@ The below `hash_tree_root` algorithm is defined recursively in the case of lists
 
 Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
-#### `uint8`..`uint256`, `bool`, `address`, `hash1`..`hash32`
+#### `uint8`..`uint256`, `bool`, `address`, `bytes1`..`bytes32`
 
 Return the serialization of the value.
 
-#### `uint264`..`uintN`, `bytes`, `hash33`..`hashN`
+#### `uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`
 
 Return the hash of the serialization of the value.
 
