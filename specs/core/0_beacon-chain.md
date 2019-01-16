@@ -425,7 +425,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'parent_root': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
-    'deposit_root': 'hash32',
+    'pow_chain_data': PoWChainData,
     'signature': ['uint384'],
 
     ## Body ##
@@ -1196,7 +1196,10 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
-    deposit_root=ZERO_HASH,
+    pow_chain_data=PoWChainData(
+        deposit_root=ZERO_HASH,
+        block_hash=ZERO_HASH
+    ),
     signature=EMPTY_SIGNATURE,
     body=BeaconBlockBody(
         proposer_slashings=[],
@@ -1260,9 +1263,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_attestations=[],
         batched_block_roots=[],
 
-        # Deposit root
+        # PoW chain data
         latest_pow_chain_data=latest_pow_chain_data,
-        deposit_root_votes=[],
+        pow_chain_data_votes=[],
     )
 
     # Process initial deposits
@@ -1482,7 +1485,7 @@ Below are the processing steps that happen at every `block`.
 ### Deposit root
 
 * If `block.deposit_root` is `deposit_root_vote.deposit_root` for some `deposit_root_vote` in `state.deposit_root_votes`, set `deposit_root_vote.vote_count += 1`.
-* Otherwise, append to `state.deposit_root_votes` a new `DepositRootVote(deposit_root=block.deposit_root, vote_count=1)`.
+* Otherwise, append to `state.deposit_root_votes` a new `PoWChainDataVote(pow_chain_data=block.pow_chain_data, vote_count=1)`.
 
 ### Operations
 
