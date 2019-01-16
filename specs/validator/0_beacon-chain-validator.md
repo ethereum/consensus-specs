@@ -206,15 +206,23 @@ signed_proposal_data = bls_sign(
 
 ##### Proposer slashings
 
+Up to `MAX_PROPOSER_SLASHINGS` [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposerslashing) objects can be included in the `block`. The proposer slashings must satisfy the verification conditions found in [proposer slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposer-slashings-1). The validator receives a small "whistleblower" reward for each proposer slashing found and included.
+
 ##### Casper slashings
+
+Up to `MAX_CASPER_SLASHINGS` [`CasperSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#casperslashing) objects can be included in the `block`. The casper slashings must satisfy the verification conditions found in [casper slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#casper-slashings-1). The validator receives a small "whistleblower" reward for each casper slashing found and included.
 
 ##### Attestations
 
-Up to `MAX_ATTESTATIONS` aggregate attestations can be added to the `block`. The attestations added must satify the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to add aggregate attestations that include the most available that have not previously been added on chain.
+Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to add aggregate attestations that include the most available that have not previously been added on chain.
 
 ##### Deposits
 
+Up to `MAX_DEPOSITS` [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) objects can be included in the `block`. These deposits are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposits-1).
+
 ##### Exits
+
+Up to `MAX_EXITS` [`Exit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#exit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#exits-1).
 
 ### Attestations
 
