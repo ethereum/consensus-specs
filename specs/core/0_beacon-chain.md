@@ -1010,7 +1010,7 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `merkle_root`
 
 ```python
-def merkle_root(values: [hash32]) -> hash32:
+def merkle_root(values: List[Hash32]) -> Hash32:
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
     """
