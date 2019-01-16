@@ -1010,7 +1010,7 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `merkle_root`
 
 ```python
-def merkle_root(values):
+def merkle_root(values: [hash32]) -> hash32:
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
     """
@@ -1032,8 +1032,8 @@ def get_attestation_participants(state: BeaconState,
 
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
-    
-    assert attestation.shard in [shard for _, shard in crosslink_committees]
+
+    assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
     assert len(participation_bitfield) == (len(committee) + 7) // 8
 
