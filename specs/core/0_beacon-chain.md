@@ -48,8 +48,8 @@
             - [`PendingAttestationRecord`](#pendingattestationrecord)
             - [`ForkData`](#forkdata)
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
-            - [`PoWChainData`](#powchaindata)
-            - [`PoWChainDataVote`](#powchaindatavote)
+            - [`Eth1Data`](#powchaindata)
+            - [`Eth1DataVote`](#powchaindatavote)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
@@ -425,7 +425,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'parent_root': 'hash32',
     'state_root': 'hash32',
     'randao_reveal': 'hash32',
-    'pow_chain_data': PoWChainData,
+    'eth1_data': Eth1Data,
     'signature': ['uint384'],
 
     ## Body ##
@@ -508,8 +508,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'batched_block_roots': ['hash32'],
 
     # Ethereum 1.0 chain data
-    'latest_pow_chain_data': PoWChainData,
-    'pow_chain_data_votes': [PoWChainDataVote],
+    'latest_eth1_data': Eth1Data,
+    'eth1_data_votes': [Eth1DataVote],
 }
 ```
 
@@ -597,7 +597,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `PoWChainData`
+#### `Eth1Data`
 
 ```python
 {
@@ -608,12 +608,12 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `PoWChainDataVote`
+#### `Eth1DataVote`
 
 ```python
 {
     # What is being voted for
-    'data': PoWChainData,
+    'data': Eth1Data,
     # Vote count
     'vote_count': 'uint64',
 }
@@ -645,7 +645,7 @@ Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT` and `MAX_DEPOSIT`, emi
 When sufficiently many full deposits have been made the deposit contract emits the `ChainStart` log. The beacon chain state may then be initialized by calling the `get_initial_beacon_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `ChainStart` log
-* `latest_pow_chain_data.deposit_root` equals `deposit_root` in the `ChainStart` log, and `latest_pow_chain_data.block_hash` equals the hash of the block that included the log
+* `latest_eth1_data.deposit_root` equals `deposit_root` in the `ChainStart` log, and `latest_eth1_data.block_hash` equals the hash of the block that included the log
 * `initial_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
 
 ### Vyper code
@@ -726,7 +726,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.parent_root` has been processed and accepted.
 * The node has processed its `state` up to slot, `block.slot - 1`.
-* An Ethereum 1.0 block pointed to by the `state.latest_pow_chain_data.block_hash` has been processed and accepted.
+* An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
 * The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
@@ -1196,7 +1196,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
     randao_reveal=ZERO_HASH,
-    pow_chain_data=PoWChainData(
+    eth1_data=Eth1Data(
         deposit_root=ZERO_HASH,
         block_hash=ZERO_HASH
     ),
@@ -1219,7 +1219,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             latest_pow_chain_data: PoWChainData) -> BeaconState:
+                             latest_eth1_data: Eth1Data) -> BeaconState:
     state = BeaconState(
         # Misc
         slot=GENESIS_SLOT,
@@ -1264,8 +1264,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         batched_block_roots=[],
 
         # PoW chain data
-        latest_pow_chain_data=latest_pow_chain_data,
-        pow_chain_data_votes=[],
+        latest_eth1_data=latest_eth1_data,
+        eth1_data_votes=[],
     )
 
     # Process initial deposits
@@ -1485,7 +1485,7 @@ Below are the processing steps that happen at every `block`.
 ### Deposit root
 
 * If `block.deposit_root` is `deposit_root_vote.deposit_root` for some `deposit_root_vote` in `state.deposit_root_votes`, set `deposit_root_vote.vote_count += 1`.
-* Otherwise, append to `state.deposit_root_votes` a new `PoWChainDataVote(pow_chain_data=block.pow_chain_data, vote_count=1)`.
+* Otherwise, append to `state.deposit_root_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
 
 ### Operations
 
@@ -1549,7 +1549,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_pow_chain_data.deposit_root)` is `True`.
+* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
@@ -1649,8 +1649,8 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 If `state.slot % POW_CHAIN_DATA_VOTING_PERIOD == 0`:
 
-* Set `state.latest_pow_chain_data = pow_chain_data_vote.data` if `pow_chain_data_vote.vote_count * 2 > POW_CHAIN_DATA_VOTING_PERIOD` for some `pow_chain_data_vote` in `state.pow_chain_data_votes`.
-* Set `state.pow_chain_data_votes = []`.
+* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > POW_CHAIN_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
+* Set `state.eth1_data_votes = []`.
 
 ### Justification
 
