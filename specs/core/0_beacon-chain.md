@@ -1713,7 +1713,7 @@ def process_ejections(state: BeaconState) -> None:
     Iterate through the validator registry
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
-    for index in active_validator_indices(state.validator_registry):
+    for index in get_active_validator_indices(state.validator_registry, state.slot):
         if state.validator_balances[index] < EJECTION_BALANCE * GWEI_PER_ETH:
             exit_validator(state, index)
 ```
