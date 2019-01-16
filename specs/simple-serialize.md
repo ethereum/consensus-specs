@@ -15,14 +15,12 @@ deserializing objects and data types.
    + [Serialize/Encode](#serializeencode)
       - [uint](#uint)
       - [Bool](#bool)
-      - [Address](#address)
       - [Bytes](#bytes)
       - [List/Vectors](#listvectors)
       - [Container](#container)
    + [Deserialize/Decode](#deserializedecode)
       - [uint](#uint-1)
       - [Bool](#bool-1)
-      - [Address](#address-1)
       - [Bytes](#bytes-2)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
@@ -93,20 +91,6 @@ Convert directly to a single 0x00 or 0x01 byte.
 ```python
 assert(value in (True, False))
 return b'\x01' if value is True else b'\x00'
-```
-
-
-#### Address
-
-The `address` should already come as a hash/byte format. Ensure that length is **20**.
-
-| Check to perform       | Code                 |
-|:-----------------------|:---------------------|
-| Length is correct (20) | ``len(value) == 20`` |
-
-```python
-assert( len(value) == 20 )
-return value
 ```
 
 #### Bytes
@@ -260,16 +244,6 @@ assert rawbytes in (b'\x00', b'\x01')
 return True if rawbytes == b'\x01' else False
 ```
 
-#### Address
-
-Return the 20-byte deserialized address.
-
-```python
-assert(len(rawbytes) >= current_index + 20)
-new_index = current_index + 20
-return rawbytes[current_index:current_index+20], new_index
-```
-
 #### Bytes
 
 ##### bytesN
@@ -391,7 +365,7 @@ The below `hash_tree_root` algorithm is defined recursively in the case of lists
 
 Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
-#### `uint8`..`uint256`, `bool`, `address`, `bytes1`..`bytes32`
+#### `uint8`..`uint256`, `bool`, `bytes1`..`bytes32`
 
 Return the serialization of the value.
 
