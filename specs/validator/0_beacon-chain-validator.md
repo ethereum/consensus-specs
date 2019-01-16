@@ -69,7 +69,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 ### Initialization
 
-A validator must initial many parameters locally before submitting a deposit and joining the validator registry.
+A validator must initialize many parameters locally before submitting a deposit and joining the validator registry.
 
 #### BLS public key
 
@@ -91,7 +91,7 @@ A validator's RANDAO commitment is the outermost layer of a 32-byte hash-onion. 
 * Store this `randao_seed` in a secure location.
 * Calculate `randao_commitment = repeat_hash(randao_seed, n)` where `n` is large enough such that within the lifetime of the validator, the validator will not propose more than `n` beacon chain blocks.
 
-Assuming `>= 100k validators`, on average a validator will have an opportunity to reveal once every `>= 600k seconds`, so `<= 50 times per year`. At this estimate, `n == 5000` would last a century. To be conservative, we recommend `n >= 100k`.
+Assuming `>= 100k validators`, on average a validator will have an opportunity to reveal once every `>= 600k seconds`, so `<= 50 times per year`. At this estimate, `n == 5000` would last a century. If this value is poorly configured and a validator runs out of layers of to reveal, the validator can no longer propose beacon blocks and should exit.
 
 _Note_: A validator must be able to reveal the next layer deep from their current commitment at any time. There are many strategies that trade off space and computation to be able to provide this reveal. At one end of this trade-off, a validator might only store their `randao_seed` and repeat the `repeat_hash` calculation on the fly to re-calculate the layer `n-1` for the reveal. On the other end of this trade-off, a validator might store _all_ layers of the hash-onion and not have to perform any calculations to retrieve the layer `n-1`. A more sensible strategy might be to store every `m`th layer as cached references to recalculate the intermittent layers as needed.
 
@@ -100,10 +100,10 @@ _Note_: A validator must be able to reveal the next layer deep from their curren
 A validator's custody commitment is the outermost layer of a 32-byte hash-onion. To create this commitment, perform the following steps:
 
 * Randomly generate a 32-byte `custody_seed`.
-* Store this `custody_seed` in a secutre location.
+* Store this `custody_seed` in a secure location.
 * Calculate `custody_commitment = repeat_hash(custody_seed, n)` where `n` is large enough such that within the lifetime of the validator, the validator will not attest to more than `n` beacon chain blocks.
 
-Assuming a validator changes their `custody_seed` with frequency `>= 1 week`, the validator changes their seed approximately `<= 50 times per year`. At this estimate, `n == 5000` would last a century. To be conservative, we recommend `n >= 100k`.
+Assuming a validator changes their `custody_seed` with frequency `>= 1 week`, the validator changes their seed approximately `<= 50 times per year`. At this estimate, `n == 5000` would last a century. If this value is poorly configured and a validator runs out of layers of to reveal, the validator can no longer update their `custody_commitment` and should exit.
 
 See above note on hash-onion caching strategies in [RANDAO commitment](#randao-commitment).
 
@@ -218,7 +218,7 @@ Up to `MAX_ATTESTATIONS` aggregate attestations can be added to the `block`. The
 
 ### Attestations
 
-A validator is expected to create, sign, and broadcast an attestion during each epoch. The slot during which the validator performs this roal is any slot at which `get_shard_committees_at_slot(state, slot)` contains a committee that contains `validator_index`.
+A validator is expected to create, sign, and broadcast an attestation during each epoch. The slot during which the validator performs this role is any slot at which `get_shard_committees_at_slot(state, slot)` contains a committee that contains `validator_index`.
 
 A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned -- that is `SLOT_DURATION * 0.5` seconds after the start of `slot`.
 
@@ -314,7 +314,7 @@ signed_attestation_data = bls_sign(
 
 "Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed -- [proposal slashing](#proposal-slashing) and [attestation slashing](#casper-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages you have previously signed.
 
-_Note_: signed data must be within the same `ForkData` context to conflict. Messages cannot be slashed across forks.
+_Note_: Signed data must be within the same `Fork` context to conflict. Messages cannot be slashed across forks.
 
 ### Proposal slashing
 
@@ -333,6 +333,18 @@ def proposal_data_is_slashable(proposal_data_1: ProposalSignedData,
     return proposal_data_1.block_root != proposal_data_2.block_root
 ```
 
+Specifically, when signing an `BeaconBlock`, a validator should perform the following steps in the following order:
+1. Save a record to hard disk that an beacon block has been signed for the `slot` and `shard`.
+2. Generate and broadcast the block.
+
+If the software crashes at some point within this routine, then when the validator comes back online the hard disk has the record of the _potentially_ signed/broadcast block and can effectively avoid slashing.
+
 ### Casper slashing
 
 To avoid "Casper slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#is_surround_vote).
+
+Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
+1. Save a record to hard disk that an attestation has been signed for source -- `attestation_data.justified_slot // EPOCH_LENGTH` -- and target -- `attestation_data.slot // EPOCH_LENGTH`.
+2. Generate and broadcast attestation.
+
+If the software crashes at some point within this routine, then when the validator comes back online the hard disk has the record of the _potentially_ signed/broadcast attestation and can effectively avoid slashing.
