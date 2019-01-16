@@ -1092,8 +1092,8 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
 
     return bls_verify_multiple(
         pubkeys=[
-            bls_aggregate_pubkey([state.validator_registry[i].pubkey for i in vote_data.custody_bit_0_indices]),
-            bls_aggregate_pubkey([state.validator_registry[i].pubkey for i in vote_data.custody_bit_1_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.custody_bit_0_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.custody_bit_1_indices]),
         ],
         messages=[
             hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, False)),
