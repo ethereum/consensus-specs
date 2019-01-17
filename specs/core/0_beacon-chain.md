@@ -373,7 +373,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Branch in the deposit tree
-    'branch': '[bytes32]',
+    'branch': ['bytes32'],
     # Index in the deposit tree
     'index': 'uint64',
     # Data
