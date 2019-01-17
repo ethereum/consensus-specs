@@ -670,7 +670,7 @@ def deposit(deposit_input: bytes[2048]):
     deposit_timestamp: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(deposit_amount, deposit_timestamp, deposit_input)
     merkle_tree_index: bytes[8] = slice(concat("", convert(index, bytes32)), start=24, len=8)
-    
+
     log.Deposit(self.deposit_tree[1], deposit_data, merkle_tree_index)
 
     # add deposit to merkle tree
