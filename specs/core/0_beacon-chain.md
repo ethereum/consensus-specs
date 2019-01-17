@@ -204,7 +204,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `SEED_LOOKAHEAD` | `2**6` (= 64) | slots | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**8` (= 256) | slots | 25.6 minutes |
-| `POW_CHAIN_DATA_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `ETH1_CHAIN_DATA_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_TIME` | `2**14` (= 16,384) | slots | ~27 hours |
 
 ### Reward and penalty quotients
@@ -1263,7 +1263,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_attestations=[],
         batched_block_roots=[],
 
-        # PoW chain data
+        # Ethereum 1.0 chain data
         latest_eth1_data=latest_eth1_data,
         eth1_data_votes=[],
     )
@@ -1647,9 +1647,9 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 ### PoW chain data
 
-If `state.slot % POW_CHAIN_DATA_VOTING_PERIOD == 0`:
+If `state.slot % ETH1_CHAIN_DATA_VOTING_PERIOD == 0`:
 
-* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > POW_CHAIN_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
+* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_CHAIN_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
 * Set `state.eth1_data_votes = []`.
 
 ### Justification
