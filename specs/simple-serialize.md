@@ -47,9 +47,9 @@ overhead.
 
 | Term         | Definition                                                                                     |
 |:-------------|:-----------------------------------------------------------------------------------------------|
-| `big`        | Big Endian                                                                                     |
-| `byte_order` | Specifies [endianness:](https://en.wikipedia.org/wiki/Endianness) Big Endian or Little Endian. |
-| `len`        | Length/Number of Bytes.                                                                        |
+| `little`     | Little endian.                                                                                 |
+| `byte_order` | Specifies [endianness](https://en.wikipedia.org/wiki/Endianness): big endian or little endian. |
+| `len`        | Length/number of bytes.                                                                        |
 | `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byte_order``.                          |
 | `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byte_order``.                        |
 | `value`      | The value to serialize.                                                                        |
@@ -75,7 +75,7 @@ overhead.
 
 Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
 
-All integers are serialized as **big endian**.
+All integers are serialized as **little endian**.
 
 | Check to perform       | Code                  |
 |:-----------------------|:----------------------|
@@ -84,7 +84,7 @@ All integers are serialized as **big endian**.
 ```python
 assert(int_size % 8 == 0)
 buffer_size = int_size / 8
-return value.to_bytes(buffer_size, 'big')
+return value.to_bytes(buffer_size, 'little')
 ```
 
 #### Bool
@@ -130,7 +130,7 @@ For general `bytes` type:
 
 ```python
 assert(len(value) < 2**32)
-byte_length = (len(value)).to_bytes(LENGTH_BYTES, 'big')
+byte_length = (len(value)).to_bytes(LENGTH_BYTES, 'little')
 return byte_length + value
 ```
 
@@ -144,7 +144,7 @@ Lists are a collection of elements of the same homogeneous type.
 
 
 1. Get the number of raw bytes to serialize: it is ``len(list) * sizeof(element)``.
-   * Encode that as a `4-byte` **big endian** `uint32`.
+   * Encode that as a `4-byte` **little endian** `uint32`.
 2. Append the elements in a packed manner.
 
 * *Note on efficiency*: consider using a container that does not need to iterate over all elements to get its length. For example Python lists, C++ vectors or Rust Vec.
@@ -160,7 +160,7 @@ for item in value:
 
 assert(len(serialized_list_string) < 2**32)
 
-serialized_len = (len(serialized_list_string).to_bytes(LENGTH_BYTES, 'big'))
+serialized_len = (len(serialized_list_string).to_bytes(LENGTH_BYTES, 'little'))
 
 return serialized_len + serialized_list_string
 ```
@@ -169,7 +169,7 @@ return serialized_len + serialized_list_string
 
 A container represents a heterogenous, associative collection of key-value pairs. Each pair is referred to as a `field`. To get the value for a given field, you supply the key which is a symbol unique to the container referred to as the field's `name`. The container data type is analogous to the `struct` type found in many languages like C or Go.
 
-To serialize a container, obtain the list of its field's names in the specified order. For each field name in this list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **big endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
+To serialize a container, obtain the list of its field's names in the specified order. For each field name in this list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **little endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
 
 
 | Check to perform                            | Code                        |
@@ -182,7 +182,7 @@ To serialize:
 
 2. For each name in the list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
 
-3. Get the number of raw bytes in the serialized buffer. Encode that number as a `4-byte` **big endian** `uint32`.
+3. Get the number of raw bytes in the serialized buffer. Encode that number as a `4-byte` **little endian** `uint32`.
 
 4. Prepend the length to the serialized buffer.
 
@@ -208,7 +208,7 @@ for field_name in get_field_names(typ):
 
 assert(len(serialized_buffer) < 2**32)
 
-serialized_len = (len(serialized_buffer).to_bytes(LENGTH_BYTES, 'big'))
+serialized_len = (len(serialized_buffer).to_bytes(LENGTH_BYTES, 'little'))
 
 return serialized_len + serialized_buffer
 ```
@@ -233,13 +233,13 @@ At each step, the following checks should be made:
 Convert directly from bytes into integer utilising the number of bytes the same
 size as the integer length. (e.g. ``uint16 == 2 bytes``)
 
-All integers are interpreted as **big endian**.
+All integers are interpreted as **little endian**.
 
 ```python
 byte_length = int_size / 8
 new_index = current_index + byte_length
 assert(len(rawbytes) >= new_index)
-return int.from_bytes(rawbytes[current_index:current_index+byte_length], 'big'), new_index
+return int.from_bytes(rawbytes[current_index:current_index+byte_length], 'little'), new_index
 ```
 
 #### Bool
@@ -274,7 +274,7 @@ Get the length of the bytes, return the bytes.
 
 ```python
 assert(len(rawbytes) > current_index + LENGTH_BYTES)
-bytes_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
+bytes_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'little')
 
 bytes_start = current_index + LENGTH_BYTES
 bytes_end = bytes_start + bytes_length
@@ -300,7 +300,7 @@ entire length of the list.
 
 ```python
 assert(len(rawbytes) > current_index + LENGTH_BYTES)
-total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
+total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'little')
 new_index = current_index + LENGTH_BYTES + total_length
 assert(len(rawbytes) >= new_index)
 item_index = current_index + LENGTH_BYTES
@@ -353,7 +353,7 @@ container = Container()
 typ = type(container)
 
 assert(len(rawbytes) > current_index + LENGTH_BYTES)
-total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'big')
+total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'little')
 new_index = current_index + LENGTH_BYTES + total_length
 assert(len(rawbytes) >= new_index)
 item_index = current_index + LENGTH_BYTES
@@ -388,7 +388,7 @@ First, we define some helpers and then the Merkle tree function.
 # Merkle tree hash of a list of homogenous, non-empty items
 def merkle_hash(lst):
     # Store length of list (to compensate for non-bijectiveness of padding)
-    datalen = len(lst).to_bytes(32, 'big')
+    datalen = len(lst).to_bytes(32, 'little')
 
     if len(lst) == 0:
         # Handle empty list case
