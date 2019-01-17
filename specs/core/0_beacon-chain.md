@@ -193,7 +193,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_SLOT` | `2**64 - 1` |
 | `ZERO_HASH` | `int_to_bytes32(0)` |
-| `EMPTY_SIGNATURE` | `[int_to_bytes48(0), int_to_bytes48(0)]` |
+| `EMPTY_SIGNATURE` | `Signature(int_to_bytes48(0), int_to_bytes48(0))` |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
 
 ### Time parameters
