@@ -311,7 +311,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
-    'aggregate_signature': ['uint384'],
+    'aggregate_signature': Signature,
 }
 ```
 
@@ -328,7 +328,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
-    'aggregate_signature': ['uint384'],
+    'aggregate_signature': Signature,
 }
 ```
 
@@ -407,7 +407,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Initial custody commitment
     'custody_commitment': 'bytes32',
     # A BLS signature of this `DepositInput`
-    'proof_of_possession': ['uint384'],
+    'proof_of_possession': Signature,
 }
 ```
 
@@ -438,7 +438,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'state_root': 'bytes32',
     'randao_reveal': 'bytes32',
     'deposit_root': 'bytes32',
-    'signature': ['uint384'],
+    'signature': Signature,
 
     ## Body ##
     'body': BeaconBlockBody,
