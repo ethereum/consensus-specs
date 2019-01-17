@@ -26,7 +26,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Parent root](#parent-root)
                 - [State root](#state-root)
                 - [Randao reveal](#randao-reveal)
-                - [Deposit root](#deposit-root)
+                - [Eth1 Data](#eth1-data)
                 - [Signature](#signature)
             - [Block body](#block-body)
                 - [Proposer slashings](#proposer-slashings)
@@ -171,13 +171,21 @@ _Note_: To calculate `state_root`, the validator should first run the state tran
 
 Set `block.randao_reveal` to the `n`th layer deep reveal from the validator's current `randao_commitment` where `n = validator.randao_layers + 1`. `block.randao_reveal` should satisfy `repeat_hash(block.randao_reveal, validator.randao_layers + 1) == validator.randao_commitment`.
 
-##### Deposit root
+##### Eth1 Data
 
-`block.deposit_root` is a mechanism used by block proposers to vote on a recent deposit root found in the Ethereum 1.0 PoW deposit contract. When consensus is formed `state.latest_deposit_root` is updated, and validator deposits up to this root can be processed.
+`block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.latest_eth1_data` is updated, and validator deposits up to this root can be processed.
 
-* Let `D` be the set of `DepositRootVote` objects `obj` in `state.deposit_root_votes` where `obj.deposit_root` is the deposit root of an eth1.0 block that is (i) part of the canonical chain, (ii) >= 1000 blocks behind the head, and (iii) newer than `state.latest_deposit_root`.
-* If `D` is empty, set `block.deposit root` to the deposit root of the 1000th ancestor of the head of the canonical eth1.0 chain.
-* If `D` is nonempty, set `block.deposit_root = best_vote.deposit_root` where `best_vote` is the member of `D` that has the highest `vote_count`, breaking ties by favoring newer deposit roots.
+* Let `D` be the set of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
+    * `vote.eth1_data.block_hash` is the hash of an eth1.0 block that is (i) part of the canonical chain, (ii) >= 1000 blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_data`.
+    * `vote.eth1_data.deposit_root` is the deposit root of the eth1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
+* If `D` is empty:
+    * Let `block_hash` be the block hash of the 1000th ancestory of the head of the canonical eth1.0 chain.to the deposit root of the 1000th ancestor of the head of the canonical eth1.0 chain.
+    * Let `deposit_root` be the the deposit root of the eth1.0 deposit contract at the block defined by `block_hash`.
+* If `D` is nonempty:
+    * Let `best_vote` be the member of `D` that has the highest `vote.eth1_data.vote_count`, breaking ties by favoring block hashes with higher associated block height.
+    * Let `block_hash = best_vote.eth1_data.block_hash`.
+    * Let `deposit_root = best_vote.eth1_data.deposit_root`.
+* Set `block.eth1_data = Eth1Data(deposit_root=deposit_root, block_hash=block_hash)`.
 
 ##### Signature
 
