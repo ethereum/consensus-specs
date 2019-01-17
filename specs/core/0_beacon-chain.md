@@ -1113,7 +1113,7 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
         signature=vote_data.aggregate_signature,
         domain=get_domain(
             state.fork,
-            state.slot,
+            vote_data.data.slot,
             DOMAIN_ATTESTATION,
         ),
     )
