@@ -110,7 +110,7 @@ Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0
 
 ### `bls_aggregate_signatures`
 
-Let `bls_aggregate_signatures(signatures: Tuple[Bytes48, Bytes48]) -> Tuple[Bytes48, Bytes48]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
+Let `bls_aggregate_signatures(signatures: List[Tuple[Bytes48, Bytes48]]) -> Tuple[Bytes48, Bytes48]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
 
 ## Signature verification
 
