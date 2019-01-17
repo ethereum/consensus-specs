@@ -15,20 +15,24 @@ deserializing objects and data types.
    + [Serialize/Encode](#serializeencode)
       - [uint](#uint)
       - [Bool](#bool)
-      - [Address](#address)
-      - [Hash](#hash)
       - [Bytes](#bytes)
+         - [bytesN](#bytesn)
+         - [bytes](#bytes-1)
       - [List/Vectors](#listvectors)
       - [Container](#container)
    + [Deserialize/Decode](#deserializedecode)
       - [uint](#uint-1)
       - [Bool](#bool-1)
-      - [Address](#address-1)
-      - [Hash](#hash-1)
-      - [Bytes](#bytes-1)
+      - [Bytes](#bytes-2)
+         - [bytesN](#bytesn-1)
+         - [bytes](#bytes-1)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
     + [Tree Hash](#tree-hash)
+      - [`uint8`..`uint256`, `bool`, `bytes1`..`bytes32`](#uint8uint256-bool-bytes1bytes32)
+      - [`uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`](#uint264uintn-bytes-bytes33bytesn)
+      - [List/Vectors](#listvectors-2)
+      - [Container](#container-2)
 * [Implementations](#implementations)
 
 ## About
@@ -57,7 +61,6 @@ overhead.
 |:------------------|:-----:|:--------------------------------------------------------------------------------------|
 | `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
 | `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chunk size of the Merkle tree leaf.                           |
-
 
 ## Overview
 
@@ -97,32 +100,18 @@ assert(value in (True, False))
 return b'\x01' if value is True else b'\x00'
 ```
 
+#### Bytes
 
-#### Address
+| Bytes Type | Usage                              |
+|:---------:|:------------------------------------|
+|  `bytesN`  | Explicit length `N` bytes data.    |
+|  `bytes`   | Bytes data with arbitrary length.  |
 
-The `address` should already come as a hash/byte format. Ensure that length is **20**.
-
-| Check to perform       | Code                 |
-|:-----------------------|:---------------------|
-| Length is correct (20) | ``len(value) == 20`` |
-
-```python
-assert( len(value) == 20 )
-return value
-```
-
-#### Hash
-
-| Hash Type | Usage                                           |
-|:---------:|:------------------------------------------------|
-|  `hashN`  | Hash of arbitrary byte length `N`.              |
-
+##### bytesN
 
 | Checks to perform                      | Code                 |
 |:---------------------------------------|:---------------------|
-| Length in bytes is correct for `hashN` | ``len(value) == N``  |
-
-##### hashN
+| Length in bytes is correct for `bytesN` | ``len(value) == N``  |
 
 ```python
 assert(len(value) == N)
@@ -130,8 +119,7 @@ assert(len(value) == N)
 return value
 ```
 
-#### Bytes
-
+##### bytes
 For general `bytes` type:
 1. Get the length/number of bytes; Encode into a `4-byte` integer.
 2. Append the value to the length and return: ``[ length_bytes ] + [ value_bytes ]``
@@ -263,19 +251,9 @@ assert rawbytes in (b'\x00', b'\x01')
 return True if rawbytes == b'\x01' else False
 ```
 
-#### Address
+#### Bytes
 
-Return the 20-byte deserialized address.
-
-```python
-assert(len(rawbytes) >= current_index + 20)
-new_index = current_index + 20
-return rawbytes[current_index:current_index+20], new_index
-```
-
-#### Hash
-
-##### hashN
+##### bytesN
 
 Return the `N` bytes.
 
@@ -285,7 +263,7 @@ new_index = current_index + N
 return rawbytes[current_index:current_index+N], new_index
 ```
 
-#### Bytes
+##### bytes
 
 Get the length of the bytes, return the bytes.
 
@@ -394,11 +372,11 @@ The below `hash_tree_root` algorithm is defined recursively in the case of lists
 
 Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
-#### `uint8`..`uint256`, `bool`, `address`, `hash1`..`hash32`
+#### `uint8`..`uint256`, `bool`, `bytes1`..`bytes32`
 
 Return the serialization of the value.
 
-#### `uint264`..`uintN`, `bytes`, `hash33`..`hashN`
+#### `uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`
 
 Return the hash of the serialization of the value.
 
@@ -443,7 +421,6 @@ return merkle_hash([hash_tree_root(item) for item in value])
 
 Where the inner `hash_tree_root` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
 
-
 #### Container
 
 Recursively tree hash the values in the container in the same order as the fields, and return the hash of the concatenation of the results.
@@ -452,12 +429,11 @@ Recursively tree hash the values in the container in the same order as the field
 return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.fields]))
 ```
 
-
 ## Implementations
 
 | Language | Implementation                                                                                                                                                     | Description                                              |
 |:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
-|  Python  | [ https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py ](https://github.com/ethereum/beacon_chain/blob/master/ssz/ssz.py)                               | Beacon chain reference implementation written in Python. |
+|  Python  | [ https://github.com/ethereum/py-ssz ](https://github.com/ethereum/py-ssz) | Python implementation of SSZ |
 |   Rust   | [ https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz ](https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz)                                                         | Lighthouse (Rust Ethereum 2.0 Node) maintained SSZ.      |
 |    Nim   | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implementation maintained SSZ.                       |
 |   Rust   | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz)                                         | Shasper implementation of SSZ maintained by ParityTech.  |
