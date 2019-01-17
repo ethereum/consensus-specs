@@ -75,7 +75,7 @@
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`merkle_root`](#merkle_root)
             - [`get_attestation_participants`](#get_attestation_participants)
-            - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
+            - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
@@ -190,9 +190,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `GENESIS_SLOT` | `0` |
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_SLOT` | `2**64 - 1` |
-| `ZERO_HASH` | `bytes32(0)` |
-| `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` |
-| `BLS_WITHDRAWAL_PREFIX_BYTE` | `bytes1(0)` |
+| `ZERO_HASH` | `int_to_bytes32(0)` |
+| `EMPTY_SIGNATURE` | `[int_to_bytes48(0), int_to_bytes48(0)]` |
+| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
 
 ### Time parameters
 
@@ -894,7 +894,7 @@ def get_shuffling(seed: Hash32,
     committees_per_slot = get_committee_count_per_slot(len(active_validator_indices))
 
     # Shuffle
-    seed = xor(seed, bytes32(slot))
+    seed = xor(seed, int_to_bytes32(slot))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length * committees_per_slot pieces
@@ -1046,9 +1046,9 @@ def get_attestation_participants(state: BeaconState,
     return participants
 ```
 
-#### `bytes1`, `bytes2`, ...
+#### `int_to_bytes1`, `int_to_bytes2`, ...
 
-`bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
+`int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
 
 #### `get_effective_balance`
 
