@@ -399,7 +399,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # BLS pubkey
-    'pubkey': 'uint384',
+    'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
     # Initial RANDAO commitment
@@ -530,7 +530,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # BLS public key
-    'pubkey': 'uint384',
+    'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
     # RANDAO commitment
@@ -614,7 +614,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     latest_registry_delta_root: 'bytes32',
     validator_index: 'uint24',
-    pubkey: 'uint384',
+    pubkey: 'bytes48',
     slot: 'uint64',
     flag: 'uint64',
 }
