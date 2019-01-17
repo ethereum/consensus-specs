@@ -47,7 +47,7 @@
             - [`CrosslinkRecord`](#crosslinkrecord)
             - [`DepositRootVote`](#depositrootvote)
             - [`PendingAttestationRecord`](#pendingattestationrecord)
-            - [`ForkData`](#forkdata)
+            - [`Fork`](#fork)
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
@@ -471,7 +471,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Misc
     'slot': 'uint64',
     'genesis_time': 'uint64',
-    'fork': ForkData,  # For versioning hard forks
+    'fork': Fork,  # For versioning hard forks
 
     # Validator registry
     'validator_registry': [ValidatorRecord],
@@ -582,14 +582,14 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
-#### `ForkData`
+#### `Fork`
 
 ```python
 {
     # Previous fork version
     'previous_version': 'uint64',
-    # Post fork version
-    'post_version': 'uint64',
+    # Current fork version
+    'current_version': 'uint64',
     # Fork slot number
     'slot': 'uint64',
 }
@@ -1063,18 +1063,18 @@ def get_effective_balance(state: State, index: int) -> int:
 #### `get_fork_version`
 
 ```python
-def get_fork_version(fork: ForkData,
+def get_fork_version(fork: Fork,
                      slot: int) -> int:
     if slot < fork.slot:
         return fork.previous_version
     else:
-        return fork.post_version
+        return fork.current_version
 ```
 
 #### `get_domain`
 
 ```python
-def get_domain(fork: ForkData,
+def get_domain(fork: Fork,
                slot: int,
                domain_type: int) -> int:
     return get_fork_version(
@@ -1209,9 +1209,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Misc
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
-        fork=ForkData(
+        fork=Fork(
             previous_version=GENESIS_FORK_VERSION,
-            post_version=GENESIS_FORK_VERSION,
+            current_version=GENESIS_FORK_VERSION,
             slot=GENESIS_SLOT,
         ),
 
