@@ -1293,7 +1293,7 @@ First, a helper function:
 ```python
 def validate_proof_of_possession(state: BeaconState,
                                  pubkey: bytes,
-                                 proof_of_possession: bytes,
+                                 proof_of_possession: Signature,
                                  withdrawal_credentials: Bytes32,
                                  randao_commitment: Bytes32,
                                  custody_commitment: Bytes32) -> bool:
@@ -1323,7 +1323,7 @@ Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn
 def process_deposit(state: BeaconState,
                     pubkey: bytes,
                     amount: int,
-                    proof_of_possession: bytes,
+                    proof_of_possession: Signature,
                     withdrawal_credentials: Bytes32,
                     randao_commitment: Bytes32,
                     custody_commitment: Bytes32) -> None:
