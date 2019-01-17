@@ -110,7 +110,7 @@ Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0
 
 ### `bls_aggregate_signatures`
 
-Let `bls_aggregate_signatures(signatures: List[Tuple[Bytes48, Bytes48]]) -> Tuple[Bytes48, Bytes48]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
+Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
 
 ## Signature verification
 
@@ -124,7 +124,7 @@ g = Fq2(g_x, g_y)
 
 ### `bls_verify`
 
-Let `bls_verify(pubkey: Bytes48, message: Bytes32, signature: Tuple[Bytes48, Bytes48], domain: uint64) -> bool`:
+Let `bls_verify(pubkey: Bytes48, message: Bytes32, signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
@@ -132,7 +132,7 @@ Let `bls_verify(pubkey: Bytes48, message: Bytes32, signature: Tuple[Bytes48, Byt
 
 ### `bls_verify_multiple`
 
-Let `bls_verify_multiple(pubkeys: List[Bytes48], messages: List[Bytes32], signature: Tuple[Bytes48, Bytes48], domain: uint64) -> bool`:
+Let `bls_verify_multiple(pubkeys: List[Bytes48], messages: List[Bytes32], signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.

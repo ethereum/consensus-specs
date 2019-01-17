@@ -21,8 +21,6 @@
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
-        - [Signatures](#signatures)
-            - [`Signature`](#signature)
         - [Beacon chain operations](#beacon-chain-operations)
             - [Proposer slashings](#proposer-slashings)
                 - [`ProposerSlashing`](#proposerslashing)
@@ -86,7 +84,6 @@
             - [`is_double_vote`](#is_double_vote)
             - [`is_surround_vote`](#is_surround_vote)
             - [`integer_squareroot`](#integer_squareroot)
-            - [`signature_to_tuple`](#signature_to_tuple)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
@@ -194,7 +191,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_SLOT` | `2**64 - 1` |
 | `ZERO_HASH` | `int_to_bytes32(0)` |
-| `EMPTY_SIGNATURE` | `Signature(int_to_bytes48(0), int_to_bytes48(0))` |
+| `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
 
 ### Time parameters
@@ -256,17 +253,6 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Data structures
 
-### Signatures
-
-#### `Signature`
-
-```python
-{
-    'z_1': 'bytes48',
-    'z_2': 'bytes48',
-}
-```
-
 ### Beacon chain operations
 
 #### Proposer slashings
@@ -280,11 +266,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # First proposal data
     'proposal_data_1': ProposalSignedData,
     # First proposal signature
-    'proposal_signature_1': Signature,
+    'proposal_signature_1': 'bytes96',
     # Second proposal data
     'proposal_data_2': ProposalSignedData,
     # Second proposal signature
-    'proposal_signature_2': Signature,
+    'proposal_signature_2': 'bytes96',
 }
 ```
 
@@ -312,7 +298,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
-    'aggregate_signature': Signature,
+    'aggregate_signature': 'bytes96',
 }
 ```
 
@@ -329,7 +315,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
-    'aggregate_signature': Signature,
+    'aggregate_signature': 'bytes96',
 }
 ```
 
@@ -408,7 +394,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Initial custody commitment
     'custody_commitment': 'bytes32',
     # A BLS signature of this `DepositInput`
-    'proof_of_possession': Signature,
+    'proof_of_possession': 'bytes96',
 }
 ```
 
@@ -423,7 +409,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Index of the exiting validator
     'validator_index': 'uint24',
     # Validator signature
-    'signature': Signature,
+    'signature': 'bytes96',
 }
 ```
 
@@ -439,7 +425,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'state_root': 'bytes32',
     'randao_reveal': 'bytes32',
     'eth1_data': Eth1Data,
-    'signature': Signature,
+    'signature': 'bytes96',
 
     ## Body ##
     'body': BeaconBlockBody,
@@ -1124,7 +1110,7 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
             hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, False)),
             hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, True)),
         ],
-        signature=signature_to_tuple(vote_data.aggregate_signature),
+        signature=vote_data.aggregate_signature,
         domain=get_domain(
             state.fork,
             state.slot,
@@ -1185,16 +1171,6 @@ def integer_squareroot(n: int) -> int:
         x = y
         y = (x + n // x) // 2
     return x
-```
-
-#### `signature_to_tuple`
-
-```python
-def signature_to_tuple(signature: Signature) -> Tuple[bytes, bytes]:
-    """
-    Convert SSZ object ``signature`` to ``tuple`` type for BLS APIs.
-    """
-    return (signature.z_1, signature.z_2)
 ```
 
 #### `bls_verify`
@@ -1318,7 +1294,7 @@ First, a helper function:
 ```python
 def validate_proof_of_possession(state: BeaconState,
                                  pubkey: Bytes48,
-                                 proof_of_possession: Signature,
+                                 proof_of_possession: Bytes96,
                                  withdrawal_credentials: Bytes32,
                                  randao_commitment: Bytes32,
                                  custody_commitment: Bytes32) -> bool:
@@ -1333,7 +1309,7 @@ def validate_proof_of_possession(state: BeaconState,
     return bls_verify(
         pubkey=pubkey,
         message=hash_tree_root(proof_of_possession_data),
-        signature=signature_to_tuple(proof_of_possession),
+        signature=proof_of_possession,
         domain=get_domain(
             state.fork,
             state.slot,
@@ -1348,7 +1324,7 @@ Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn
 def process_deposit(state: BeaconState,
                     pubkey: Bytes48,
                     amount: int,
-                    proof_of_possession: Signature,
+                    proof_of_possession: Bytes96,
                     withdrawal_credentials: Bytes32,
                     randao_commitment: Bytes32,
                     custody_commitment: Bytes32) -> None:
@@ -1494,7 +1470,7 @@ Below are the processing steps that happen at every `block`.
 
 * Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
 * Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message=proposal_root, signature=signature_to_tuple(block.signature), domain=get_domain(state.fork, state.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message=proposal_root, signature=block.signature, domain=get_domain(state.fork, state.slot, DOMAIN_PROPOSAL))`.
 
 ### RANDAO
 
@@ -1523,8 +1499,8 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
 * Verify that `proposer.penalized_slot > state.slot`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=signature_to_tuple(proposer_slashing.proposal_signature_1), domain=get_domain(state.fork, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=signature_to_tuple(proposer_slashing.proposal_signature_2), domain=get_domain(state.fork, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Run `penalize_validator(state, proposer_slashing.proposer_index)`.
 
 #### Casper slashings
@@ -1558,7 +1534,7 @@ For each `attestation` in `block.body.attestations`:
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
     * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndCustodyBit(attestation.data, False)), signature=signature_to_tuple(attestation.aggregate_signature), domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
+    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndCustodyBit(attestation.data, False)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
 * Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
@@ -1608,7 +1584,7 @@ For each `exit` in `block.body.exits`:
 * Let `validator = state.validator_registry[exit.validator_index]`.
 * Verify that `validator.exit_slot > state.slot + ENTRY_EXIT_DELAY`.
 * Verify that `state.slot >= exit.slot`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=signature_to_tuple(exit.signature), domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message=ZERO_HASH, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
 #### Custody
