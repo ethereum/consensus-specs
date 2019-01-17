@@ -13,7 +13,7 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 * [Phase 1 -- Shard Data Chains](specs/core/1_shard-data-chains.md)
 
 Accompanying documents can be found in [specs](specs) and include
-* [SimpleSerialize (SSZ) spec](specs/simple_serialize.md)
+* [SimpleSerialize (SSZ) spec](specs/simple-serialize.md)
 * [BLS signature verification](specs/bls_signature.md)
 * [General test format](specs/test-format.md)
 
