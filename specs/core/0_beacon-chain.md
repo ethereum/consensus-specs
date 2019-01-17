@@ -810,7 +810,7 @@ def get_active_validator_indices(validators: [ValidatorRecord], slot: int) -> Li
 #### `shuffle`
 
 ```python
-def shuffle(values: List[Any], seed: Hash32) -> List[Any]:
+def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
     """
     Returns the shuffled ``values`` with ``seed`` as entropy.
     """
@@ -890,7 +890,7 @@ def get_committee_count_per_slot(active_validator_count: int) -> int:
 #### `get_shuffling`
 
 ```python
-def get_shuffling(seed: Hash32,
+def get_shuffling(seed: Bytes32,
                   validators: List[ValidatorRecord],
                   slot: int) -> List[List[int]]
     """
@@ -984,7 +984,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
 ```python
 def get_block_root(state: BeaconState,
-                   slot: int) -> Hash32:
+                   slot: int) -> Bytes32:
     """
     Returns the block root at a recent ``slot``.
     """
@@ -999,7 +999,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   slot: int) -> Hash32:
+                   slot: int) -> Bytes32:
     """
     Returns the randao mix at a recent ``slot``.
     """
@@ -1023,7 +1023,7 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `merkle_root`
 
 ```python
-def merkle_root(values: List[Hash32]) -> Hash32:
+def merkle_root(values: List[Bytes32]) -> Bytes32:
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
     """
@@ -1217,7 +1217,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             latest_deposit_root: Hash32) -> BeaconState:
+                             latest_deposit_root: Bytes32) -> BeaconState:
     state = BeaconState(
         # Misc
         slot=GENESIS_SLOT,
@@ -1294,9 +1294,9 @@ First, a helper function:
 def validate_proof_of_possession(state: BeaconState,
                                  pubkey: int,
                                  proof_of_possession: bytes,
-                                 withdrawal_credentials: Hash32,
-                                 randao_commitment: Hash32,
-                                 custody_commitment: Hash32) -> bool:
+                                 withdrawal_credentials: Bytes32,
+                                 randao_commitment: Bytes32,
+                                 custody_commitment: Bytes32) -> bool:
     proof_of_possession_data = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -1324,9 +1324,9 @@ def process_deposit(state: BeaconState,
                     pubkey: int,
                     amount: int,
                     proof_of_possession: bytes,
-                    withdrawal_credentials: Hash32,
-                    randao_commitment: Hash32,
-                    custody_commitment: Hash32) -> None:
+                    withdrawal_credentials: Bytes32,
+                    randao_commitment: Bytes32,
+                    custody_commitment: Bytes32) -> None:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1550,7 +1550,7 @@ For each `deposit` in `block.body.deposits`:
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_deposit_root)` is `True`.
 
 ```python
-def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
+def verify_merkle_branch(leaf: Bytes32, branch: [Bytes32], depth: int, index: int, root: Bytes32) -> bool:
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
