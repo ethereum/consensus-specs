@@ -46,6 +46,7 @@
             - [`Validator`](#validator)
             - [`Crosslink`](#crosslink)
             - [`DepositRootVote`](#depositrootvote)
+            - [`PendingAttestation`](#pendingattestation)
             - [`ForkData`](#forkdata)
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
