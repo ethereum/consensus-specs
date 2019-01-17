@@ -21,6 +21,8 @@
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
+        - [Signatures](#signatures)
+            - [`Signature`](#signature)
         - [Beacon chain operations](#beacon-chain-operations)
             - [Proposer slashings](#proposer-slashings)
                 - [`ProposerSlashing`](#proposerslashing)
@@ -252,6 +254,17 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `DOMAIN_EXIT` | `3` |
 
 ## Data structures
+
+### Signatures
+
+#### `Signature`
+
+```python
+{
+    'z_1': 'bytes48',
+    'z_2': 'bytes48',
+}
+```
 
 ### Beacon chain operations
 
