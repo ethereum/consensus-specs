@@ -279,11 +279,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # First proposal data
     'proposal_data_1': ProposalSignedData,
     # First proposal signature
-    'proposal_signature_1': '[uint384]',
+    'proposal_signature_1': Signature,
     # Second proposal data
     'proposal_data_2': ProposalSignedData,
     # Second proposal signature
-    'proposal_signature_2': '[uint384]',
+    'proposal_signature_2': Signature,
 }
 ```
 
@@ -422,7 +422,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Index of the exiting validator
     'validator_index': 'uint24',
     # Validator signature
-    'signature': '[uint384]',
+    'signature': Signature,
 }
 ```
 
