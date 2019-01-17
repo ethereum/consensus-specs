@@ -850,7 +850,7 @@ def shuffle(values: List[Any], seed: Hash32) -> List[Any]:
 #### `split`
 
 ```python
-def split(values: List[Any], split_count: int) -> List[Any]:
+def split(values: List[Any], split_count: int) -> List[List[Any]]:
     """
     Splits ``values`` into ``split_count`` pieces.
     """
