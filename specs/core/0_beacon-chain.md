@@ -328,17 +328,17 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Shard number
     'shard': 'uint64',
     # Hash of root of the signed beacon block
-    'beacon_block_root': 'hash32',
+    'beacon_block_root': 'bytes32',
     # Hash of root of the ancestor at the epoch boundary
-    'epoch_boundary_root': 'hash32',
+    'epoch_boundary_root': 'bytes32',
     # Shard block's hash of root
-    'shard_block_root': 'hash32',
+    'shard_block_root': 'bytes32',
     # Last crosslink's hash of root
-    'latest_crosslink_root': 'hash32',
+    'latest_crosslink_root': 'bytes32',
     # Slot of the last justified beacon block
     'justified_slot': 'uint64',
     # Hash of the last justified beacon block
-    'justified_block_root': 'hash32',
+    'justified_block_root': 'bytes32',
 }
 ```
 
@@ -360,7 +360,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Branch in the deposit tree
-    'branch': '[hash32]',
+    'branch': '[bytes32]',
     # Index in the deposit tree
     'index': 'uint64',
     # Data
@@ -388,11 +388,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # BLS pubkey
     'pubkey': 'uint384',
     # Withdrawal credentials
-    'withdrawal_credentials': 'hash32',
+    'withdrawal_credentials': 'bytes32',
     # Initial RANDAO commitment
-    'randao_commitment': 'hash32',
+    'randao_commitment': 'bytes32',
     # Initial custody commitment
-    'custody_commitment': 'hash32',
+    'custody_commitment': 'bytes32',
     # A BLS signature of this `DepositInput`
     'proof_of_possession': ['uint384'],
 }
@@ -421,10 +421,10 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     ## Header ##
     'slot': 'uint64',
-    'parent_root': 'hash32',
-    'state_root': 'hash32',
-    'randao_reveal': 'hash32',
-    'deposit_root': 'hash32',
+    'parent_root': 'bytes32',
+    'state_root': 'bytes32',
+    'randao_reveal': 'bytes32',
+    'deposit_root': 'bytes32',
     'signature': ['uint384'],
 
     ## Body ##
@@ -458,7 +458,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Shard number (`BEACON_CHAIN_SHARD_NUMBER` for beacon chain)
     'shard': 'uint64',
     # Block's hash of root
-    'block_root': 'hash32',
+    'block_root': 'bytes32',
 }
 ```
 
@@ -478,17 +478,17 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'validator_balances': ['uint64'],
     'validator_registry_latest_change_slot': 'uint64',
     'validator_registry_exit_count': 'uint64',
-    'validator_registry_delta_chain_tip': 'hash32',  # For light clients to track deltas
+    'validator_registry_delta_chain_tip': 'bytes32',  # For light clients to track deltas
 
     # Randomness and committees
-    'latest_randao_mixes': ['hash32'],
-    'latest_vdf_outputs': ['hash32'],
+    'latest_randao_mixes': ['bytes32'],
+    'latest_vdf_outputs': ['bytes32'],
     'previous_epoch_start_shard': 'uint64',
     'current_epoch_start_shard': 'uint64',
     'previous_epoch_calculation_slot': 'uint64',
     'current_epoch_calculation_slot': 'uint64',
-    'previous_epoch_randao_mix': 'hash32',
-    'current_epoch_randao_mix': 'hash32',
+    'previous_epoch_randao_mix': 'bytes32',
+    'current_epoch_randao_mix': 'bytes32',
 
     # Custody challenges
     'custody_challenges': [CustodyChallenge],
@@ -501,13 +501,13 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
     # Recent state
     'latest_crosslinks': [CrosslinkRecord],
-    'latest_block_roots': ['hash32'],  # Needed to process attestations, older to newer
+    'latest_block_roots': ['bytes32'],  # Needed to process attestations, older to newer
     'latest_penalized_exit_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestationRecord],
-    'batched_block_roots': ['hash32'],
+    'batched_block_roots': ['bytes32'],
 
     # Ethereum 1.0 deposit root
-    'latest_deposit_root': 'hash32',
+    'latest_deposit_root': 'bytes32',
     'deposit_root_votes': [DepositRootVote],
 }
 ```
@@ -519,9 +519,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # BLS public key
     'pubkey': 'uint384',
     # Withdrawal credentials
-    'withdrawal_credentials': 'hash32',
+    'withdrawal_credentials': 'bytes32',
     # RANDAO commitment
-    'randao_commitment': 'hash32',
+    'randao_commitment': 'bytes32',
     # Slots the proposer has skipped (i.e. layers of RANDAO expected)
     'randao_layers': 'uint64',
     # Slot when validator activated
@@ -537,7 +537,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Status flags
     'status_flags': 'uint64',
     # Custody commitment
-    'custody_commitment': 'hash32',
+    'custody_commitment': 'bytes32',
     # Slot of latest custody reseed
     'latest_custody_reseed_slot': 'uint64',
     # Slot of second-latest custody reseed
@@ -552,7 +552,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Slot number
     'slot': 'uint64',
     # Shard block root
-    'shard_block_root': 'hash32',
+    'shard_block_root': 'bytes32',
 }
 ```
 
@@ -561,7 +561,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Deposit root
-    'deposit_root': 'hash32',
+    'deposit_root': 'bytes32',
     # Vote count
     'vote_count': 'uint64',
 }
@@ -599,7 +599,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    latest_registry_delta_root: 'hash32',
+    latest_registry_delta_root: 'bytes32',
     validator_index: 'uint24',
     pubkey: 'uint384',
     slot: 'uint64',
