@@ -12,6 +12,11 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 * [Phase 0 -- The Beacon Chain](specs/core/0_beacon-chain.md)
 * [Phase 1 -- Shard Data Chains](specs/core/1_shard-data-chains.md)
 
+Accompanying documents can be found in [specs](specs) and include
+* [SimpleSerialize (SSZ) spec](specs/simple-serialize.md)
+* [BLS signature verification](specs/bls_signature.md)
+* [General test format](specs/test-format.md)
+
 ## Design goals
 The following are the broad design goals for Ethereum 2.0:
 * to minimize complexity, even at the cost of some losses in efficiency
