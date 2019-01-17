@@ -97,7 +97,7 @@
         - [Slot](#slot)
         - [Proposer signature](#proposer-signature)
         - [RANDAO](#randao)
-        - [Deposit root](#deposit-root)
+        - [Eth1 data](#eth1-data)
         - [Operations](#operations)
             - [Proposer slashings](#proposer-slashings-1)
             - [Casper slashings](#casper-slashings-1)
@@ -107,7 +107,7 @@
             - [Custody](#custody)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
-        - [PoW chain data](#pow-chain-data)
+        - [Eth1 data](#eth1-data-1)
         - [Justification](#justification)
         - [Crosslinks](#crosslinks)
         - [Rewards and penalties](#rewards-and-penalties)
@@ -204,7 +204,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `SEED_LOOKAHEAD` | `2**6` (= 64) | slots | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**8` (= 256) | slots | 25.6 minutes |
-| `ETH1_CHAIN_DATA_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `ETH1_DATA_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_TIME` | `2**14` (= 16,384) | slots | ~27 hours |
 
 ### Reward and penalty quotients
@@ -612,8 +612,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ```python
 {
-    # What is being voted for
-    'data': Eth1Data,
+    # Data being voted for
+    'eth1_data': Eth1Data,
     # Vote count
     'vote_count': 'uint64',
 }
@@ -1482,10 +1482,10 @@ Below are the processing steps that happen at every `block`.
 * Set `proposer.randao_commitment = block.randao_reveal`.
 * Set `proposer.randao_layers = 0`.
 
-### Deposit root
+### Eth1 data
 
-* If `block.deposit_root` is `deposit_root_vote.deposit_root` for some `deposit_root_vote` in `state.deposit_root_votes`, set `deposit_root_vote.vote_count += 1`.
-* Otherwise, append to `state.deposit_root_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
+* If `block.eth1_data` equals `eth1_data_vote.eth1_data` for some `eth1_data_vote` in `state.eth1_data_votes`, set `eth1_data_vote.vote_count += 1`.
+* Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
 
 ### Operations
 
@@ -1645,11 +1645,11 @@ Define the following helpers to process attestation inclusion rewards and inclus
 * Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.participation_bitfield)`.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 
-### PoW chain data
+### Eth1 data
 
-If `state.slot % ETH1_CHAIN_DATA_VOTING_PERIOD == 0`:
+If `state.slot % ETH1_DATA_VOTING_PERIOD == 0`:
 
-* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_CHAIN_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
+* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
 * Set `state.eth1_data_votes = []`.
 
 ### Justification
