@@ -1584,16 +1584,7 @@ For each `exit` in `block.body.exits`:
 * Let `validator = state.validator_registry[exit.validator_index]`.
 * Verify that `validator.exit_slot > state.slot + ENTRY_EXIT_DELAY`.
 * Verify that `state.slot >= exit.slot`.
-* Let `exit_message` be the value returned by the following function, following a similar scheme to verifying the proposer signature:
-
-```python
-# NOTE: this function suggests mutation; in this case, the intention is that `exit` here is
-# a copy of the message that will ultimately be broadcast with all other fields set to the desired values.
-def message_to_sign_for_exit_operation(exit: Exit) -> bytes32:
-    exit.signature = EMPTY_SIGNATURE
-    return hash_tree_root(exit)
-```
-
+* Let `exit_message = hash_tree_root(Exit(slot=exit.slot, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
