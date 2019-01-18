@@ -1606,7 +1606,7 @@ All [validators](#dfn-validator):
 
 * Let `current_epoch_attestations = [a for a in state.latest_attestations if state.slot - EPOCH_LENGTH <= a.data.slot < state.slot]`. (Note: this is the set of attestations of slots in the epoch `state.slot-EPOCH_LENGTH...state.slot-1`, _not_ attestations that got included in the chain during the epoch `state.slot-EPOCH_LENGTH...state.slot-1`.)
 * Validators justifying the epoch boundary block at the start of the current epoch:
-  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot-EPOCH_LENGTH) and a.justified_slot == state.justified_slot]`.
+  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot-EPOCH_LENGTH) and a.data.justified_slot == state.justified_slot]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_boundary_attestations]`.
   * Let `current_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in current_epoch_boundary_attester_indices])`.
 
@@ -1616,7 +1616,7 @@ All [validators](#dfn-validator):
   * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_attestations]`.
 * Validators targeting the previous justified slot:
-  * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.justified_slot == state.previous_justified_slot]`.
+  * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.data.justified_slot == state.previous_justified_slot]`.
   * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_justified_attestations]`.
   * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_justified_attester_indices])`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
