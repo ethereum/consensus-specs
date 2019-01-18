@@ -53,8 +53,8 @@ A `ShardBlock` object has the following fields:
     # Block signature
     'signature': ['uint384'],
     # Attestation
-    'attester_bitfield': 'bytes',
-    'aggregate_sig': ['uint384'],
+    'participation_bitfield': 'bytes',
+    'aggregate_signature': ['uint384'],
 }
 ```
 
@@ -69,9 +69,9 @@ To validate a block header on shard `shard_id`, compute as follows:
 
 * Verify that `beacon_chain_ref` is the hash of a block in the beacon chain with slot less than or equal to `slot`. Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_root`.
 * Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
-* Assert `len(attester_bitfield) == ceil_div8(len(validators))`
+* Assert `len(participation_bitfield) == ceil_div8(len(validators))`
 * Let `proposer_index = hash(state.randao_mix + bytes8(shard_id) + bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
-* Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_root, sig=block.aggregate_sig, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
+* Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_root, sig=block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
 
 ### Block Merklization helper
 
