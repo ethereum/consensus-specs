@@ -137,8 +137,6 @@ The primary source of load on the beacon chain is "attestations". Attestations a
 
 Code snippets appearing in `this style` are to be interpreted as Python code. Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) are considered invalid.
 
-Implementations may implement such algorithms using any code and programming language desired as long as the behavior is identical to that of the algorithm provided.
-
 ## Terminology
 
 * **Validator** <a id="dfn-validator"></a> - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
