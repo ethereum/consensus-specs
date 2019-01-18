@@ -1598,8 +1598,8 @@ The steps below happen when `state.slot % EPOCH_LENGTH == EPOCH_LENGTH - 1`.
 
 ### Helpers
 
-* Let `current_epoch_start_slot = state.slot - EPOCH_LENGTH + 1`.
-* Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1`.
+* Let `current_epoch_start_slot = state.slot - (EPOCH_LENGTH + 1)`.
+* Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1` if `state.slot > EPOCH_LENGTH` else `current_epoch_start_slot`.
 
 All [validators](#dfn-validator):
 
