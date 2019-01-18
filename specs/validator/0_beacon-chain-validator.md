@@ -16,7 +16,8 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
             - [BLS withdrawal key](#bls-withdrawal-key)
             - [RANDAO commitment](#randao-commitment)
             - [Custody commitment](#custody-commitment)
-        - [Deposit](#deposit)
+        - [Submit deposit](#submit-deposit)
+        - [Process deposit](#process-deposit)
         - [Validator index](#validator-index)
         - [Activation](#activation)
     - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -65,6 +66,14 @@ A validator is an entity that participates in the consensus of the Ethereum 2.0 
 
 All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
+## Constants
+
+### Misc
+
+| Name | Value | Unit | Duration |
+| - | - | :-: |
+| `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
+
 ## Becoming a validator
 
 ### Initialization
@@ -109,7 +118,7 @@ See above note on hash-onion caching strategies in [RANDAO commitment](#randao-c
 
 _Note_: although this commitment is being committed to and stored in phase 0, it will not be used until phase 1.
 
-### Deposit
+### Submit deposit
 
 In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`. 
 
@@ -124,13 +133,17 @@ To submit a deposit:
 
 _Note_: Multiple deposits can be made by the same validator (same initialization params). A singular `Validator` will be added to `state.validator_registry` with each deposit amount being added to the validator's balance. A validator can only be activated when total deposits meet or exceed 
 
+### Process deposit
+
+Deposits cannot be processed into the beacon chain until the eth1.0 block in which they were deposited or any of its ancestors is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` eth1.0 blocks (~4 hours) plus `ETH1_DATA_VOTING_PERIOD` slots (~1.7 hours). Once the necessary eth1.0 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validator_registry` within an epoch or two. The validator is then in a queue to be activated.
+
 ### Validator index
 
-Once a validator has been added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
+Once a validator has been processed and added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
 
 ### Activation
 
-A validator is activated some amount of slots after being added to the registry. There is a maximum validator churn per finalized epoch so the delay until activation is variable depending upon finality, total active validator balance, and the number of validators in the queue to be activated.
+In normal operation, the validator is quickly activated at which point the validator is added to the shuffling and begins validation after an additional `ENTRY_EXIT_DELAY` slots.
 
 The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active at a given slot. Usage is as follows:
 
@@ -140,6 +153,8 @@ is_active_validator(validator, slot)
 ```
 
 Once a validator is active, the validator is assigned [responsibilities](#beacon-chain-responsibilities) until exited.
+
+_Note_: There is a maximum validator churn per finalized epoch so the delay until activation is variable depending upon finality, total active validator balance, and the number of validators in the queue to be activated.
 
 ## Beacon chain responsibilities
 
@@ -176,10 +191,10 @@ Set `block.randao_reveal` to the `n`th layer deep reveal from the validator's cu
 `block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.latest_eth1_data` is updated, and validator deposits up to this root can be processed.
 
 * Let `D` be the set of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
-    * `vote.eth1_data.block_hash` is the hash of an eth1.0 block that is (i) part of the canonical chain, (ii) >= 1000 blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_data`.
+    * `vote.eth1_data.block_hash` is the hash of an eth1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_data`.
     * `vote.eth1_data.deposit_root` is the deposit root of the eth1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
 * If `D` is empty:
-    * Let `block_hash` be the block hash of the 1000th ancestory of the head of the canonical eth1.0 chain.to the deposit root of the 1000th ancestor of the head of the canonical eth1.0 chain.
+    * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`th ancestory of the head of the canonical eth1.0 chain.
     * Let `deposit_root` be the the deposit root of the eth1.0 deposit contract at the block defined by `block_hash`.
 * If `D` is nonempty:
     * Let `best_vote` be the member of `D` that has the highest `vote.eth1_data.vote_count`, breaking ties by favoring block hashes with higher associated block height.
