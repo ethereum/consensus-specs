@@ -1632,7 +1632,7 @@ All [validators](#dfn-validator):
 
 **Note**: `previous_epoch_boundary_attesting_balance` balance might be marginally different than `current_epoch_boundary_attesting_balance` during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
-For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `crosslink_committee_at_slot = get_crosslink_committees_at_slot(slot)`. For every `(crosslink_committee, shard)` in `crosslink_committee_at_slot`, compute:
+For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * Let `shard_block_root` be `state.latest_crosslinks[shard].shard_block_root`
 * Let `attesting_validator_indices(crosslink_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_attestations + previous_epoch_attestations if a.shard == shard and a.shard_block_root == shard_block_root]`.
@@ -1668,7 +1668,7 @@ Set `state.finalized_slot = state.previous_justified_slot` if any of the followi
 
 ### Crosslinks
 
-For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `crosslink_committee_at_slot = get_crosslink_committees_at_slot(slot)`. For every `(crosslink_committee, shard)` in `crosslink_committee_at_slot`, compute:
+For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * Set `state.latest_crosslinks[shard] = Crosslink(slot=state.slot, shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * total_balance(crosslink_committee)`.
 
@@ -1714,7 +1714,7 @@ For each `index` in `previous_epoch_attester_indices`, we determine the proposer
 
 #### Crosslinks
 
-For every `i in range(state.slot - 2 * EPOCH_LENGTH, state.slot - EPOCH_LENGTH)`, let `crosslink_committee_at_slot, start_shard = get_crosslink_committees_at_slot(i)`. For every `j in range(len(crosslink_committee_at_slot))`, let `crosslink_committee = crosslink_committee_at_slot[j]`, `shard = (start_shard + j) % SHARD_COUNT`, and compute:
+For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot - EPOCH_LENGTH)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * If `index in attesting_validators(crosslink_committee)`, `state.validator_balances[index] += base_reward(state, index) * total_attesting_balance(crosslink_committee) // total_balance(crosslink_committee))`.
 * If `index not in attesting_validators(crosslink_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
