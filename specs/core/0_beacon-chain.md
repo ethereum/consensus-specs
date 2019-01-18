@@ -1059,7 +1059,7 @@ def get_attestation_participants(state: BeaconState,
 
 #### `int_to_bytes1`, `int_to_bytes2`, ...
 
-`int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
+`int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
 
 #### `get_effective_balance`
 
