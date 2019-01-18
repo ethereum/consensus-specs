@@ -135,7 +135,9 @@ The primary source of load on the beacon chain is "attestations". Attestations a
 
 ## Notation
 
-Unless otherwise indicated, code appearing in `this style` is to be interpreted as an algorithm defined in Python. Implementations may implement such algorithms using any code and programming language desired as long as the behavior is identical to that of the algorithm provided.
+Unless otherwise indicated, code appearing in `this style` is to be interpreted as an algorithm defined in Python. Hence, exceptional cases that are not explicitly handled by a logic in `this style` blocks are propagated to Python exception mechanism. In particular, out of range index access would turned into `IndexError: list index out of range` exception being thrown.
+
+Implementations may implement such algorithms using any code and programming language desired as long as the behavior is identical to that of the algorithm provided.
 
 ## Terminology
 
