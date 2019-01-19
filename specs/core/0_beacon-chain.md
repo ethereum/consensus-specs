@@ -601,9 +601,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Root of the deposit tree
-    'deposit_root': 'hash32',
+    'deposit_root': 'bytes32',
     # Block hash
-    'block_hash': 'hash32',
+    'block_hash': 'bytes32',
 }
 ```
 
