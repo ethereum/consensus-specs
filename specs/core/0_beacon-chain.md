@@ -75,7 +75,7 @@
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`merkle_root`](#merkle_root)
             - [`get_attestation_participants`](#get_attestation_participants)
-            - [`bytes1`, `bytes2`, ...](#bytes1-bytes2-)
+            - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
@@ -190,9 +190,9 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `GENESIS_SLOT` | `0` |
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_SLOT` | `2**64 - 1` |
-| `ZERO_HASH` | `bytes32(0)` |
-| `EMPTY_SIGNATURE` | `[bytes48(0), bytes48(0)]` |
-| `BLS_WITHDRAWAL_PREFIX_BYTE` | `bytes1(0)` |
+| `ZERO_HASH` | `int_to_bytes32(0)` |
+| `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
+| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
 
 ### Time parameters
 
@@ -259,11 +259,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # First proposal data
     'proposal_data_1': ProposalSignedData,
     # First proposal signature
-    'proposal_signature_1': '[uint384]',
+    'proposal_signature_1': 'bytes96',
     # Second proposal data
     'proposal_data_2': ProposalSignedData,
     # Second proposal signature
-    'proposal_signature_2': '[uint384]',
+    'proposal_signature_2': 'bytes96',
 }
 ```
 
@@ -291,7 +291,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
-    'aggregate_signature': ['uint384'],
+    'aggregate_signature': 'bytes96',
 }
 ```
 
@@ -308,7 +308,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
-    'aggregate_signature': ['uint384'],
+    'aggregate_signature': 'bytes96',
 }
 ```
 
@@ -321,17 +321,17 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Shard number
     'shard': 'uint64',
     # Hash of root of the signed beacon block
-    'beacon_block_root': 'hash32',
+    'beacon_block_root': 'bytes32',
     # Hash of root of the ancestor at the epoch boundary
-    'epoch_boundary_root': 'hash32',
+    'epoch_boundary_root': 'bytes32',
     # Shard block's hash of root
-    'shard_block_root': 'hash32',
+    'shard_block_root': 'bytes32',
     # Last crosslink's hash of root
-    'latest_crosslink_root': 'hash32',
+    'latest_crosslink_root': 'bytes32',
     # Slot of the last justified beacon block
     'justified_slot': 'uint64',
     # Hash of the last justified beacon block
-    'justified_block_root': 'hash32',
+    'justified_block_root': 'bytes32',
 }
 ```
 
@@ -353,7 +353,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # Branch in the deposit tree
-    'branch': '[hash32]',
+    'branch': ['bytes32'],
     # Index in the deposit tree
     'index': 'uint64',
     # Data
@@ -379,15 +379,15 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # BLS pubkey
-    'pubkey': 'uint384',
+    'pubkey': 'bytes48',
     # Withdrawal credentials
-    'withdrawal_credentials': 'hash32',
+    'withdrawal_credentials': 'bytes32',
     # Initial RANDAO commitment
-    'randao_commitment': 'hash32',
+    'randao_commitment': 'bytes32',
     # Initial custody commitment
-    'custody_commitment': 'hash32',
+    'custody_commitment': 'bytes32',
     # A BLS signature of this `DepositInput`
-    'proof_of_possession': ['uint384'],
+    'proof_of_possession': 'bytes96',
 }
 ```
 
@@ -402,7 +402,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Index of the exiting validator
     'validator_index': 'uint24',
     # Validator signature
-    'signature': '[uint384]',
+    'signature': 'bytes96',
 }
 ```
 
@@ -414,11 +414,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 {
     ## Header ##
     'slot': 'uint64',
-    'parent_root': 'hash32',
-    'state_root': 'hash32',
-    'randao_reveal': 'hash32',
+    'parent_root': 'bytes32',
+    'state_root': 'bytes32',
+    'randao_reveal': 'bytes32',
     'eth1_data': Eth1Data,
-    'signature': ['uint384'],
+    'signature': 'bytes96',
 
     ## Body ##
     'body': BeaconBlockBody,
@@ -451,7 +451,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Shard number (`BEACON_CHAIN_SHARD_NUMBER` for beacon chain)
     'shard': 'uint64',
     # Block's hash of root
-    'block_root': 'hash32',
+    'block_root': 'bytes32',
 }
 ```
 
@@ -473,14 +473,14 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     'validator_registry_exit_count': 'uint64',
 
     # Randomness and committees
-    'latest_randao_mixes': ['hash32'],
-    'latest_vdf_outputs': ['hash32'],
+    'latest_randao_mixes': ['bytes32'],
+    'latest_vdf_outputs': ['bytes32'],
     'previous_epoch_start_shard': 'uint64',
     'current_epoch_start_shard': 'uint64',
     'previous_epoch_calculation_slot': 'uint64',
     'current_epoch_calculation_slot': 'uint64',
-    'previous_epoch_seed': 'hash32',
-    'current_epoch_seed': 'hash32',
+    'previous_epoch_seed': 'bytes32',
+    'current_epoch_seed': 'bytes32',
 
     # Custody challenges
     'custody_challenges': [CustodyChallenge],
@@ -493,11 +493,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
     # Recent state
     'latest_crosslinks': [Crosslink],
-    'latest_block_roots': ['hash32'],  # Needed to process attestations, older to newer
-    'latest_index_roots': ['hash32'],
+    'latest_block_roots': ['bytes32'],  # Needed to process attestations, older to newer
+    'latest_index_roots': ['bytes32'],
     'latest_penalized_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestation],
-    'batched_block_roots': ['hash32'],
+    'batched_block_roots': ['bytes32'],
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
@@ -510,11 +510,11 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 ```python
 {
     # BLS public key
-    'pubkey': 'uint384',
+    'pubkey': 'bytes48',
     # Withdrawal credentials
-    'withdrawal_credentials': 'hash32',
+    'withdrawal_credentials': 'bytes32',
     # RANDAO commitment
-    'randao_commitment': 'hash32',
+    'randao_commitment': 'bytes32',
     # Slots the proposer has skipped (i.e. layers of RANDAO expected)
     'randao_layers': 'uint64',
     # Slot when validator activated
@@ -530,7 +530,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Status flags
     'status_flags': 'uint64',
     # Custody commitment
-    'custody_commitment': 'hash32',
+    'custody_commitment': 'bytes32',
     # Slot of latest custody reseed
     'latest_custody_reseed_slot': 'uint64',
     # Slot of second-latest custody reseed
@@ -545,7 +545,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
     # Slot number
     'slot': 'uint64',
     # Shard block root
-    'shard_block_root': 'hash32',
+    'shard_block_root': 'bytes32',
 }
 ```
 
@@ -789,7 +789,7 @@ def get_active_validator_indices(validators: [Validator], slot: int) -> List[int
 #### `shuffle`
 
 ```python
-def shuffle(values: List[Any], seed: Hash32) -> List[Any]:
+def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
     """
     Returns the shuffled ``values`` with ``seed`` as entropy.
     """
@@ -869,7 +869,7 @@ def get_committee_count_per_slot(active_validator_count: int) -> int:
 #### `get_shuffling`
 
 ```python
-def get_shuffling(seed: Hash32,
+def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
                   slot: int) -> List[List[int]]
     """
@@ -886,7 +886,7 @@ def get_shuffling(seed: Hash32,
     committees_per_slot = get_committee_count_per_slot(len(active_validator_indices))
 
     # Shuffle
-    seed = xor(seed, bytes32(slot))
+    seed = xor(seed, int_to_bytes32(slot))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into epoch_length * committees_per_slot pieces
@@ -964,7 +964,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
 ```python
 def get_block_root(state: BeaconState,
-                   slot: int) -> Hash32:
+                   slot: int) -> Bytes32:
     """
     Returns the block root at a recent ``slot``.
     """
@@ -979,7 +979,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   slot: int) -> Hash32:
+                   slot: int) -> Bytes32:
     """
     Returns the randao mix at a recent ``slot``.
     """
@@ -1016,7 +1016,7 @@ def get_beacon_proposer_index(state: BeaconState,
 #### `merkle_root`
 
 ```python
-def merkle_root(values: List[Hash32]) -> Hash32:
+def merkle_root(values: List[Bytes32]) -> Bytes32:
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
     """
@@ -1052,9 +1052,9 @@ def get_attestation_participants(state: BeaconState,
     return participants
 ```
 
-#### `bytes1`, `bytes2`, ...
+#### `int_to_bytes1`, `int_to_bytes2`, ...
 
-`bytes1(x): return x.to_bytes(1, 'big')`, `bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32.
+`int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
 
 #### `get_effective_balance`
 
@@ -1288,11 +1288,11 @@ First, a helper function:
 
 ```python
 def validate_proof_of_possession(state: BeaconState,
-                                 pubkey: int,
-                                 proof_of_possession: bytes,
-                                 withdrawal_credentials: Hash32,
-                                 randao_commitment: Hash32,
-                                 custody_commitment: Hash32) -> bool:
+                                 pubkey: Bytes48,
+                                 proof_of_possession: Bytes96,
+                                 withdrawal_credentials: Bytes32,
+                                 randao_commitment: Bytes32,
+                                 custody_commitment: Bytes32) -> bool:
     proof_of_possession_data = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -1317,12 +1317,12 @@ Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn
 
 ```python
 def process_deposit(state: BeaconState,
-                    pubkey: int,
+                    pubkey: Bytes48,
                     amount: int,
-                    proof_of_possession: bytes,
-                    withdrawal_credentials: Hash32,
-                    randao_commitment: Hash32,
-                    custody_commitment: Hash32) -> None:
+                    proof_of_possession: Bytes96,
+                    withdrawal_credentials: Bytes32,
+                    randao_commitment: Bytes32,
+                    custody_commitment: Bytes32) -> None:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1357,8 +1357,7 @@ def process_deposit(state: BeaconState,
             penultimate_custody_reseed_slot=GENESIS_SLOT,
         )
 
-        # Note: In phase 2 registry indices that has been withdrawn for a long time will be recycled.
-        index = len(state.validator_registry)
+        # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
         state.validator_registry.append(validator)
         state.validator_balances.append(amount)
     else:
@@ -1528,7 +1527,7 @@ For each `deposit` in `block.body.deposits`:
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
-def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
+def verify_merkle_branch(leaf: Bytes32, branch: [Bytes32], depth: int, index: int, root: Bytes32) -> bool:
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
@@ -1591,7 +1590,7 @@ All [validators](#dfn-validator):
 [Validators](#dfn-Validator) attesting during the previous epoch:
 
 * Validators that made an attestation during the previous epoch:
-  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.slot < state.slot - EPOCH_LENGTH]`.
+  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.data.slot < state.slot - EPOCH_LENGTH]`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_attestations]`.
 * Validators targeting the previous justified slot:
   * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.data.justified_slot == state.previous_justified_slot]`.
@@ -1602,7 +1601,7 @@ All [validators](#dfn-validator):
   * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_boundary_attestations]`.
   * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_boundary_attester_indices])`.
 * Validators attesting to the expected beacon chain head during the previous epoch:
-  * Let `previous_epoch_head_attestations = [a for a in previous_epoch_attestations if a.data.beacon_block_root == get_block_root(state, a.slot)]`.
+  * Let `previous_epoch_head_attestations = [a for a in previous_epoch_attestations if a.data.beacon_block_root == get_block_root(state, a.data.slot)]`.
   * Let `previous_epoch_head_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_head_attestations]`.
   * Let `previous_epoch_head_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_head_attester_indices])`.
 
@@ -1611,7 +1610,7 @@ All [validators](#dfn-validator):
 For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * Let `shard_block_root` be `state.latest_crosslinks[shard].shard_block_root`
-* Let `attesting_validator_indices(crosslink_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_attestations + previous_epoch_attestations if a.shard == shard and a.shard_block_root == shard_block_root]`.
+* Let `attesting_validator_indices(crosslink_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_attestations + previous_epoch_attestations if a.data.shard == shard and a.data.shard_block_root == shard_block_root]`.
 * Let `winning_root(crosslink_committee)` be equal to the value of `shard_block_root` such that `sum([get_effective_balance(state, i) for i in attesting_validator_indices(crosslink_committee, shard_block_root)])` is maximized (ties broken by favoring lower `shard_block_root` values).
 * Let `attesting_validators(crosslink_committee)` be equal to `attesting_validator_indices(crosslink_committee, winning_root(crosslink_committee))` for convenience.
 * Let `total_attesting_balance(crosslink_committee) = sum([get_effective_balance(state, i) for i in attesting_validators(crosslink_committee)])`.
