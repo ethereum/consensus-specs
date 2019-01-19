@@ -1735,6 +1735,11 @@ def process_ejections(state: BeaconState) -> None:
 
 ### Validator registry
 
+First, update `previous_epoch_calculation_slot` and `previous_epoch_start_shard`:
+
+* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
+* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
+
 If the following are satisfied:
 
 * `state.finalized_slot > state.validator_registry_update_slot`
@@ -1788,8 +1793,6 @@ def update_validator_registry(state: BeaconState) -> None:
 
 and perform the following updates:
 
-* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
-* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
 * Set `state.previous_epoch_randao_mix = state.current_epoch_randao_mix`
 * Set `state.current_epoch_calculation_slot = state.slot`
 * Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
@@ -1797,8 +1800,6 @@ and perform the following updates:
 
 If a validator registry update does _not_ happen do the following:
 
-* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
-* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_update_slot) // EPOCH_LENGTH`.
 * If `epochs_since_last_registry_change` is an exact power of 2, set `state.current_epoch_calculation_slot = state.slot` and `state.current_epoch_randao_mix = state.latest_randao_mixes[(state.current_epoch_calculation_slot - SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH]`. Note that `state.current_epoch_start_shard` is left unchanged.
 
