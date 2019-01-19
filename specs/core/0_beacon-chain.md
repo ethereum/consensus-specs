@@ -652,8 +652,8 @@ When sufficiently many full deposits have been made the deposit contract emits t
 ```python
 ## compiled with v0.1.0-beta.6 ##
 
-MIN_DEPOSIT: constant(uint256(wei)) = as_wei_value(1, "ether")
-MAX_DEPOSIT: constant(uint256(wei)) = as_wei_value(32, "ether")
+MIN_DEPOSIT: constant(uint256(wei)) = as_wei_value(1000000000 , "gwei")
+MAX_DEPOSIT: constant(uint256(wei)) = as_wei_value(32000000000, "gwei")
 GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
 CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
