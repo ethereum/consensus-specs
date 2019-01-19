@@ -50,6 +50,7 @@
             - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
             - [`Eth1Data`](#eth1data)
             - [`Eth1DataVote`](#eth1datavote)
+    - [Custom Types](#custom-types)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
@@ -252,6 +253,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `DOMAIN_EXIT` | `3` |
 
 ## Data structures
+
+The following data structures are [SimpleSerialize (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md) objects.
 
 ### Beacon chain operations
 
@@ -618,6 +621,20 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 }
 ```
 
+## Custom Types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | Type | Description |
+| - | - | - |
+| `SlotNumber` | unsigned 64-bit integer | the number of a slot |
+| `ShardNumber` | unsigned 64-bit integer | the number of a shard |
+| `ValidatorIndex` | unsigned 24-bit integer | the index number of validator in the registry |
+| `Gwei` | unsigned 64-bit integer | the amount in Gwei |
+| `Bytes32` | 32-byte data | the binary data in 32-byte length |
+| `BLSPubkey` | 48-byte data | the public key in BLS signature scheme |
+| `BLSSignature` | 96-byte data | the signature in BLS signature scheme |
+
 ## Ethereum 1.0 deposit contract
 
 The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
@@ -788,7 +805,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 #### `is_active_validator`
 ```python
-def is_active_validator(validator: Validator, slot: int) -> bool:
+def is_active_validator(validator: Validator, slot: SlotNumber) -> bool:
     """
     Checks if ``validator`` is active.
     """
@@ -798,7 +815,7 @@ def is_active_validator(validator: Validator, slot: int) -> bool:
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: [Validator], slot: int) -> List[int]:
+def get_active_validator_indices(validators: [Validator], slot: SlotNumber) -> List[ValidatorIndex]:
     """
     Gets indices of active validators from ``validators``.
     """
@@ -890,7 +907,7 @@ def get_committee_count_per_slot(active_validator_count: int) -> int:
 ```python
 def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
-                  slot: int) -> List[List[int]]
+                  slot: SlotNumber) -> List[List[ValidatorIndex]]
     """
     Shuffles ``validators`` into crosslink committees seeded by ``seed`` and ``slot``.
     Returns a list of ``EPOCH_LENGTH * committees_per_slot`` committees where each
@@ -942,7 +959,7 @@ def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                     slot: int) -> List[Tuple[List[int], int]]:
+                                     slot: SlotNumber) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
@@ -983,7 +1000,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
 ```python
 def get_block_root(state: BeaconState,
-                   slot: int) -> Bytes32:
+                   slot: SlotNumber) -> Bytes32:
     """
     Returns the block root at a recent ``slot``.
     """
@@ -998,7 +1015,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   slot: int) -> Bytes32:
+                   slot: SlotNumber) -> Bytes32:
     """
     Returns the randao mix at a recent ``slot``.
     """
@@ -1011,7 +1028,7 @@ def get_randao_mix(state: BeaconState,
 
 ```python
 def get_beacon_proposer_index(state: BeaconState,
-                              slot: int) -> int:
+                              slot: SlotNumber) -> ValidatorIndex:
     """
     Returns the beacon proposer index for the ``slot``.
     """
@@ -1037,7 +1054,7 @@ def merkle_root(values: List[Bytes32]) -> Bytes32:
 ```python
 def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
-                                 aggregation_bitfield: bytes) -> List[int]:
+                                 aggregation_bitfield: bytes) -> List[ValidatorIndex]:
     """
     Returns the participant indices at for the ``attestation_data`` and ``aggregation_bitfield``.
     """
@@ -1065,7 +1082,7 @@ def get_attestation_participants(state: BeaconState,
 #### `get_effective_balance`
 
 ```python
-def get_effective_balance(state: State, index: int) -> int:
+def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
     """
     Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
     """
@@ -1076,7 +1093,7 @@ def get_effective_balance(state: State, index: int) -> int:
 
 ```python
 def get_fork_version(fork: Fork,
-                     slot: int) -> int:
+                     slot: SlotNumber) -> int:
     if slot < fork.slot:
         return fork.previous_version
     else:
@@ -1087,7 +1104,7 @@ def get_fork_version(fork: Fork,
 
 ```python
 def get_domain(fork: Fork,
-               slot: int,
+               slot: SlotNumber,
                domain_type: int) -> int:
     return get_fork_version(
         fork,
@@ -1294,8 +1311,8 @@ First, a helper function:
 
 ```python
 def validate_proof_of_possession(state: BeaconState,
-                                 pubkey: Bytes48,
-                                 proof_of_possession: Bytes96,
+                                 pubkey: BLSPubkey,
+                                 proof_of_possession: BLSSignature,
                                  withdrawal_credentials: Bytes32,
                                  randao_commitment: Bytes32,
                                  custody_commitment: Bytes32) -> bool:
@@ -1323,9 +1340,9 @@ Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn
 
 ```python
 def process_deposit(state: BeaconState,
-                    pubkey: Bytes48,
-                    amount: int,
-                    proof_of_possession: Bytes96,
+                    pubkey: BLSPubkey,
+                    amount: Gwei,
+                    proof_of_possession: BLSSignature,
                     withdrawal_credentials: Bytes32,
                     randao_commitment: Bytes32,
                     custody_commitment: Bytes32) -> None:
@@ -1379,7 +1396,7 @@ def process_deposit(state: BeaconState,
 Note: All functions in this section mutate `state`.
 
 ```python
-def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
+def activate_validator(state: BeaconState, index: ValidatorIndex, genesis: bool) -> None:
     validator = state.validator_registry[index]
 
     validator.activation_slot = GENESIS_SLOT if genesis else (state.slot + ENTRY_EXIT_DELAY)
@@ -1395,13 +1412,13 @@ def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
 ```
 
 ```python
-def initiate_validator_exit(state: BeaconState, index: int) -> None:
+def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validator_registry[index]
     validator.status_flags |= INITIATED_EXIT
 ```
 
 ```python
-def exit_validator(state: BeaconState, index: int) -> None:
+def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validator_registry[index]
 
     # The following updates only occur if not previous exited
@@ -1424,7 +1441,7 @@ def exit_validator(state: BeaconState, index: int) -> None:
 ```
 
 ```python
-def penalize_validator(state: BeaconState, index: int) -> None:
+def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
     exit_validator(state, index)
     validator = state.validator_registry[index]
     state.latest_penalized_balances[(state.slot // EPOCH_LENGTH) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
@@ -1437,7 +1454,7 @@ def penalize_validator(state: BeaconState, index: int) -> None:
 ```
 
 ```python
-def prepare_validator_for_withdrawal(state: BeaconState, index: int) -> None:
+def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validator_registry[index]
     validator.status_flags |= WITHDRAWABLE
 ```
