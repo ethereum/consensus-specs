@@ -650,7 +650,7 @@ When sufficiently many full deposits have been made the deposit contract emits t
 ### Vyper code
 
 ```python
-## compiled with v0.1.0-beta.6 ##
+## compiled with v0.1.0-beta.7 ##
 
 MIN_DEPOSIT: constant(uint256(wei)) = as_wei_value(1000000000 , "gwei")
 MAX_DEPOSIT: constant(uint256(wei)) = as_wei_value(32000000000, "gwei")
