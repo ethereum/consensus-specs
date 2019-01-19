@@ -254,7 +254,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Data structures
 
-The following data structures are [SimpleSerialize (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md) objects.
+The following data structures are defined as [SimpleSerialize (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md) objects.
 
 ### Beacon chain operations
 
@@ -801,7 +801,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 #### `hash_tree_root`
 
-`hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
+`def hash_tree_root(object: SSZSerializable) -> Bytes32` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
 #### `is_active_validator`
 ```python
@@ -815,7 +815,7 @@ def is_active_validator(validator: Validator, slot: SlotNumber) -> bool:
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: [Validator], slot: SlotNumber) -> List[ValidatorIndex]:
+def get_active_validator_indices(validators: List[Validator], slot: SlotNumber) -> List[ValidatorIndex]:
     """
     Gets indices of active validators from ``validators``.
     """
@@ -1568,7 +1568,7 @@ For each `deposit` in `block.body.deposits`:
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
-def verify_merkle_branch(leaf: Bytes32, branch: [Bytes32], depth: int, index: int, root: Bytes32) -> bool:
+def verify_merkle_branch(leaf: Bytes32, branch: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
