@@ -1363,8 +1363,7 @@ def process_deposit(state: BeaconState,
             penultimate_custody_reseed_slot=GENESIS_SLOT,
         )
 
-        # Note: In phase 2 registry indices that has been withdrawn for a long time will be recycled.
-        index = len(state.validator_registry)
+        # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
         state.validator_registry.append(validator)
         state.validator_balances.append(amount)
     else:
