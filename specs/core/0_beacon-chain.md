@@ -652,8 +652,8 @@ When sufficiently many full deposits have been made the deposit contract emits t
 ```python
 ## compiled with v0.1.0-beta.7 ##
 
-MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # In Gwei
-MAX_DEPOSIT_AMOUNT: constant(uint256) = 32000000000  # In Gwei
+MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
+MAX_DEPOSIT_AMOUNT: constant(uint256) = 32000000000  # Gwei
 CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
