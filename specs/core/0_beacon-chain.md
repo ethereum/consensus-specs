@@ -992,7 +992,7 @@ def get_randao_mix(state: BeaconState,
 
 ```python
 def get_active_index_root(state: BeaconState,
-                          slot: int) -> Hash32:
+                          slot: int) -> Bytes32:
     """
     Returns the index root at a recent ``slot``.
     """
