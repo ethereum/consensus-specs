@@ -996,9 +996,11 @@ def get_active_index_root(state: BeaconState,
     """
     Returns the index root at a recent ``slot``.
     """
-    assert state.slot // EPOCH_LENGTH < slot // EPOCH_LENGTH + LATEST_INDEX_ROOTS_LENGTH
-    assert slot // EPOCH_LENGTH <= state.slot // EPOCH_LENGTH
-    return state.latest_index_roots[(slot // EPOCH_LENGTH) % LATEST_INDEX_ROOTS_LENGTH]
+    state_epoch = state.slot // EPOCH_LENGTH
+    given_epoch = slot // EPOCH_LENGTH 
+    assert state_epoch < given_epoch + LATEST_INDEX_ROOTS_LENGTH
+    assert given_epoch <= state_epoch
+    return state.latest_index_roots[given_epoch % LATEST_INDEX_ROOTS_LENGTH]
 ```
 
 #### `get_beacon_proposer_index`
@@ -1819,9 +1821,10 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 ### Final updates
 
-* Let `e = state.slot // EPOCH_LENGTH`. Set `state.latest_penalized_balances[(e+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[e % LATEST_PENALIZED_EXIT_LENGTH]`
+* Let `epoch = state.slot // EPOCH_LENGTH`.
+* Set `state.latest_penalized_balances[(epoch+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[epoch % LATEST_PENALIZED_EXIT_LENGTH]`
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
-* Let `epoch = state.slot // EPOCH_LENGTH`. Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
+* Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
 
 ## State root processing
 
