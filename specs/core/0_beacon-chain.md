@@ -652,9 +652,9 @@ When sufficiently many full deposits have been made the deposit contract emits t
 ```python
 ## compiled with v0.1.0-beta.7 ##
 
-MIN_DEPOSIT: constant(uint256(wei)) = as_wei_value(1000000000 , "gwei")
-MAX_DEPOSIT: constant(uint256(wei)) = as_wei_value(32000000000, "gwei")
-GWEI_PER_ETH: constant(uint256) = 1000000000  # 10**9
+MIN_DEPOSIT: constant(uint256) = 1000000000 # In terms of gwei
+MAX_DEPOSIT: constant(uint256) = 32000000000 # In terms of gwei
+WEI_PER_GWEI: constant(uint256(wei)) = as_wei_value(1,"gwei") # 10**9
 CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
@@ -670,11 +670,13 @@ full_deposit_count: uint256
 @payable
 @public
 def deposit(deposit_input: bytes[2048]):
-    assert msg.value >= MIN_DEPOSIT
-    assert msg.value <= MAX_DEPOSIT
+    deposit_in_gwei: uint256  = msg.value / WEI_PER_GWEI
+    
+    assert deposit_in_gwei >= MIN_DEPOSIT
+    assert deposit_in_gwei <= MAX_DEPOSIT
 
     index: uint256 = self.deposit_count + TWO_TO_POWER_OF_TREE_DEPTH
-    deposit_amount: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
+    deposit_amount: bytes[8] = slice(concat("", convert(deposit_in_gwei, bytes32)), start=24, len=8)
     deposit_timestamp: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
     deposit_data: bytes[2064] = concat(deposit_amount, deposit_timestamp, deposit_input)
     merkle_tree_index: bytes[8] = slice(concat("", convert(index, bytes32)), start=24, len=8)
@@ -688,7 +690,7 @@ def deposit(deposit_input: bytes[2048]):
         self.deposit_tree[index] = sha3(concat(self.deposit_tree[index * 2], self.deposit_tree[index * 2 + 1]))
 
     self.deposit_count += 1
-    if msg.value == MAX_DEPOSIT:
+    if deposit_in_gwei == MAX_DEPOSIT:
         self.full_deposit_count += 1
         if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
             timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
