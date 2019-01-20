@@ -711,7 +711,6 @@ def get_branch(leaf: uint256) -> bytes32[DEPOSIT_CONTRACT_TREE_DEPTH]:
         branch[i] = self.deposit_tree[bitwise_xor(index, 1)]
         index /= 2
     return branch
-
 ```
 
 ## Beacon chain processing
