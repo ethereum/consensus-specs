@@ -994,7 +994,7 @@ def get_randao_mix(state: BeaconState,
 def get_active_index_root(state: BeaconState,
                           slot: int) -> Hash32:
     """
-    Returns the randao mix at a recent ``slot``.
+    Returns the index root at a recent ``slot``.
     """
     assert state.slot // EPOCH_LENGTH < slot // EPOCH_LENGTH + LATEST_INDEX_ROOTS_LENGTH
     assert slot // EPOCH_LENGTH <= state.slot // EPOCH_LENGTH
