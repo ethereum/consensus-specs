@@ -93,18 +93,6 @@
     - [Per-slot processing](#per-slot-processing)
         - [Misc counters](#misc-counters)
         - [Block roots](#block-roots)
-    - [Per-block processing](#per-block-processing)
-        - [Slot](#slot)
-        - [Proposer signature](#proposer-signature)
-        - [RANDAO](#randao)
-        - [Eth1 data](#eth1-data)
-        - [Operations](#operations)
-            - [Proposer slashings](#proposer-slashings-1)
-            - [Casper slashings](#casper-slashings-1)
-            - [Attestations](#attestations-1)
-            - [Deposits](#deposits-1)
-            - [Exits](#exits-1)
-            - [Custody](#custody)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Eth1 data](#eth1-data-1)
@@ -117,6 +105,18 @@
         - [Ejections](#ejections)
         - [Validator registry](#validator-registry)
         - [Final updates](#final-updates)
+    - [Per-block processing](#per-block-processing)
+        - [Slot](#slot)
+        - [Proposer signature](#proposer-signature)
+        - [RANDAO](#randao)
+        - [Eth1 data](#eth1-data)
+        - [Operations](#operations)
+            - [Proposer slashings](#proposer-slashings-1)
+            - [Casper slashings](#casper-slashings-1)
+            - [Attestations](#attestations-1)
+            - [Deposits](#deposits-1)
+            - [Exits](#exits-1)
+            - [Custody](#custody)
     - [State root processing](#state-root-processing)
 - [References](#references)
     - [Normative](#normative)
@@ -1458,140 +1458,6 @@ Below are the processing steps that happen at every slot.
 * Set `state.latest_block_roots[(state.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH] = previous_block_root`.
 * If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
-## Per-block processing
-
-Below are the processing steps that happen at every `block`.
-
-### Slot
-
-* Verify that `block.slot == state.slot`.
-
-### Proposer signature
-
-* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
-* Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message=proposal_root, signature=block.signature, domain=get_domain(state.fork, state.slot, DOMAIN_PROPOSAL))`.
-
-### RANDAO
-
-* Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
-* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal))`
-* Set `proposer.randao_commitment = block.randao_reveal`.
-* Set `proposer.randao_layers = 0`.
-
-### Eth1 data
-
-* If `block.eth1_data` equals `eth1_data_vote.eth1_data` for some `eth1_data_vote` in `state.eth1_data_votes`, set `eth1_data_vote.vote_count += 1`.
-* Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
-
-### Operations
-
-#### Proposer slashings
-
-Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
-
-For each `proposer_slashing` in `block.body.proposer_slashings`:
-
-* Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
-* Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
-* Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
-* Verify that `proposer.penalized_slot > state.slot`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
-* Run `penalize_validator(state, proposer_slashing.proposer_index)`.
-
-#### Casper slashings
-
-Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
-
-For each `casper_slashing` in `block.body.casper_slashings`:
-
-* Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
-* Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
-* Let `indices(slashable_vote_data) = slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices`.
-* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
-* Verify that `len(intersection) >= 1`.
-* Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
-* Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
-* Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
-* Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
-* For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_slot > state.slot`.
-
-#### Attestations
-
-Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
-
-For each `attestation` in `block.body.attestations`:
-
-* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
-* Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
-* Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
-* Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, attestation.data.justified_slot)`.
-* Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
-* `aggregate_signature` verification:
-    * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
-    * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndCustodyBit(attestation.data, False)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
-* [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
-* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
-
-#### Deposits
-
-Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
-
-[TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
-[TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
-
-For each `deposit` in `block.body.deposits`:
-
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
-
-```python
-def verify_merkle_branch(leaf: Bytes32, branch: [Bytes32], depth: int, index: int, root: Bytes32) -> bool:
-    value = leaf
-    for i in range(depth):
-        if index // (2**i) % 2:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    return value == root
-```
-
-* Run the following:
-
-```python
-process_deposit(
-    state=state,
-    pubkey=deposit.deposit_data.deposit_input.pubkey,
-    amount=deposit.deposit_data.amount,
-    proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
-    withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-    randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-    custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
-)
-```
-
-#### Exits
-
-Verify that `len(block.body.exits) <= MAX_EXITS`.
-
-For each `exit` in `block.body.exits`:
-
-* Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `validator.exit_slot > state.slot + ENTRY_EXIT_DELAY`.
-* Verify that `state.slot >= exit.slot`.
-* Let `exit_message = hash_tree_root(Exit(slot=exit.slot, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
-* Run `initiate_validator_exit(state, exit.validator_index)`.
-
-#### Custody
-
-[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.custody_reseeds) == len(block.body.custody_challenges) == len(block.body.custody_responses) == 0`.
-
 ## Per-epoch processing
 
 The steps below happen when `state.slot % EPOCH_LENGTH == 0`.
@@ -1844,6 +1710,140 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 * Let `e = state.slot // EPOCH_LENGTH`. Set `state.latest_penalized_balances[(e+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[e % LATEST_PENALIZED_EXIT_LENGTH]`
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
+
+## Per-block processing
+
+Below are the processing steps that happen at every `block`.
+
+### Slot
+
+* Verify that `block.slot == state.slot`.
+
+### Proposer signature
+
+* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
+* Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message=proposal_root, signature=block.signature, domain=get_domain(state.fork, state.slot, DOMAIN_PROPOSAL))`.
+
+### RANDAO
+
+* Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
+* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
+* Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal))`
+* Set `proposer.randao_commitment = block.randao_reveal`.
+* Set `proposer.randao_layers = 0`.
+
+### Eth1 data
+
+* If `block.eth1_data` equals `eth1_data_vote.eth1_data` for some `eth1_data_vote` in `state.eth1_data_votes`, set `eth1_data_vote.vote_count += 1`.
+* Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
+
+### Operations
+
+#### Proposer slashings
+
+Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
+
+For each `proposer_slashing` in `block.body.proposer_slashings`:
+
+* Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
+* Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
+* Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
+* Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
+* Verify that `proposer.penalized_slot > state.slot`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
+* Run `penalize_validator(state, proposer_slashing.proposer_index)`.
+
+#### Casper slashings
+
+Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
+
+For each `casper_slashing` in `block.body.casper_slashings`:
+
+* Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
+* Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
+* Let `indices(slashable_vote_data) = slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices`.
+* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
+* Verify that `len(intersection) >= 1`.
+* Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
+* Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
+* Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
+* Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
+* For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_slot > state.slot`.
+
+#### Attestations
+
+Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
+
+For each `attestation` in `block.body.attestations`:
+
+* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
+* Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
+* Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
+* Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, attestation.data.justified_slot)`.
+* Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
+* `aggregate_signature` verification:
+    * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
+    * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
+    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndCustodyBit(attestation.data, False)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
+* [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
+* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
+
+#### Deposits
+
+Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
+
+[TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
+[TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
+
+For each `deposit` in `block.body.deposits`:
+
+* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
+* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
+
+```python
+def verify_merkle_branch(leaf: Bytes32, branch: [Bytes32], depth: int, index: int, root: Bytes32) -> bool:
+    value = leaf
+    for i in range(depth):
+        if index // (2**i) % 2:
+            value = hash(branch[i] + value)
+        else:
+            value = hash(value + branch[i])
+    return value == root
+```
+
+* Run the following:
+
+```python
+process_deposit(
+    state=state,
+    pubkey=deposit.deposit_data.deposit_input.pubkey,
+    amount=deposit.deposit_data.amount,
+    proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
+    withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
+    randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
+    custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
+)
+```
+
+#### Exits
+
+Verify that `len(block.body.exits) <= MAX_EXITS`.
+
+For each `exit` in `block.body.exits`:
+
+* Let `validator = state.validator_registry[exit.validator_index]`.
+* Verify that `validator.exit_slot > state.slot + ENTRY_EXIT_DELAY`.
+* Verify that `state.slot >= exit.slot`.
+* Let `exit_message = hash_tree_root(Exit(slot=exit.slot, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
+* Run `initiate_validator_exit(state, exit.validator_index)`.
+
+#### Custody
+
+[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.custody_reseeds) == len(block.body.custody_challenges) == len(block.body.custody_responses) == 0`.
 
 ## State root processing
 
