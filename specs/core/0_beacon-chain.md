@@ -135,7 +135,7 @@ The primary source of load on the beacon chain is "attestations". Attestations a
 
 ## Notation
 
-Code snippets appearing in `this style` are to be interpreted as Python code. Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) are considered invalid.
+Code snippets appearing in `this style` are to be interpreted as Python code. Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed asserts are considered invalid.
 
 ## Terminology
 
