@@ -106,11 +106,11 @@ def modular_squareroot(value: int) -> int:
 
 ### `bls_aggregate_pubkeys`
 
-Let `bls_aggregate_pubkeys(pubkeys: [uint384]) -> uint384` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
+Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
 
 ### `bls_aggregate_signatures`
 
-Let `bls_aggregate_signatures(signatures: [[uint384]]) -> [uint384]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
+Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
 
 ## Signature verification
 
@@ -119,12 +119,12 @@ In the following `e` is the pairing function and `g` is the G1 generator with th
 ```python
 g_x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
 g_y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
-g = Fq2(g_x, g_y)
+g = Fq2([g_x, g_y])
 ```
 
 ### `bls_verify`
 
-Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain: uint64) -> bool`:
+Let `bls_verify(pubkey: Bytes48, message: Bytes32, signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
@@ -132,7 +132,7 @@ Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain:
 
 ### `bls_verify_multiple`
 
-Let `bls_verify_multiple(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64) -> bool`:
+Let `bls_verify_multiple(pubkeys: List[Bytes48], messages: List[Bytes32], signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
