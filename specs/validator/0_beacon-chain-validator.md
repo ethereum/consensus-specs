@@ -10,6 +10,8 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
     - [Table of Contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Prerequisites](#prerequisites)
+    - [Constants](#constants)
+        - [Misc](#misc)
     - [Becoming a validator](#becoming-a-validator)
         - [Initialization](#initialization)
             - [BLS public key](#bls-public-key)
@@ -71,7 +73,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 ### Misc
 
 | Name | Value | Unit | Duration |
-| - | - | :-: |
+| - | - | :-: | :-: |
 | `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
 
 ## Becoming a validator
