@@ -946,27 +946,26 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
-    state_epoch_slot = state.slot - (state.slot % EPOCH_LENGTH) 
-    assert state_epoch_slot <= slot + EPOCH_LENGTH
-    assert slot < state_epoch_slot + EPOCH_LENGTH
-    offset = slot % EPOCH_LENGTH
+    assert slot >= state.previous_epoch_calculation_slot
 
-    if slot < state_epoch_slot:
+    if slot < state.current_epoch_calculation_slot:
         committees_per_slot = get_previous_epoch_committee_count_per_slot(state)
-        shuffling = get_shuffling(
-            state.previous_epoch_randao_mix,
-            state.validator_registry,
-            state.previous_epoch_calculation_slot,
-        )
-        slot_start_shard = (state.previous_epoch_start_shard + committees_per_slot * offset) % SHARD_COUNT
+        seed = state.previous_epoch_randao_mix
+        shuffling_slot = state.previous_epoch_calculation_slot
+        shuffling_start_shard = state.previous_epoch_start_shard
     else:
         committees_per_slot = get_current_epoch_committee_count_per_slot(state)
-        shuffling = get_shuffling(
-            state.current_epoch_randao_mix,
-            state.validator_registry,
-            state.current_epoch_calculation_slot,
-        )
-        slot_start_shard = (state.current_epoch_start_shard + committees_per_slot * offset) % SHARD_COUNT
+        seed = state.current_epoch_randao_mix
+        shuffling_slot = state.current_epoch_calculation_slot
+        shuffling_start_shard = state.current_epoch_start_shard
+
+    offset = slot % EPOCH_LENGTH
+    shuffling = get_shuffling(
+        seed,
+        state.validator_registry,
+        shuffling_slot,
+    )
+    slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
 
     return [
         (
