@@ -250,6 +250,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `DOMAIN_ATTESTATION` | `1` |
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_EXIT` | `3` |
+| `DOMAIN_RANDAO` | `4` |
 
 ## Data structures
 
@@ -389,10 +390,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # Initial RANDAO commitment
-    'randao_commitment': 'bytes32',
-    # Initial custody commitment
-    'custody_commitment': 'bytes32',
     # A BLS signature of this `DepositInput`
     'proof_of_possession': 'bytes96',
 }
@@ -423,7 +420,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'slot': 'uint64',
     'parent_root': 'bytes32',
     'state_root': 'bytes32',
-    'randao_reveal': 'bytes32',
+    'randao_reveal': 'bytes96',
     'eth1_data': Eth1Data,
     'signature': 'bytes96',
 
@@ -520,8 +517,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # RANDAO commitment
-    'randao_commitment': 'bytes32',
     # Slots the proposer has skipped (i.e. layers of RANDAO expected)
     'randao_layers': 'uint64',
     # Slot when validator activated
@@ -536,8 +531,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'exit_count': 'uint64',
     # Status flags
     'status_flags': 'uint64',
-    # Custody commitment
-    'custody_commitment': 'bytes32',
     # Slot of latest custody reseed
     'latest_custody_reseed_slot': 'uint64',
     # Slot of second-latest custody reseed
@@ -946,7 +939,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
-    state_epoch_slot = state.slot - (state.slot % EPOCH_LENGTH) 
+    state_epoch_slot = state.slot - (state.slot % EPOCH_LENGTH)
     assert state_epoch_slot <= slot + EPOCH_LENGTH
     assert slot < state_epoch_slot + EPOCH_LENGTH
     offset = slot % EPOCH_LENGTH
@@ -1195,7 +1188,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
     slot=GENESIS_SLOT,
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
-    randao_reveal=ZERO_HASH,
+    randao_reveal=EMPTY_SIGNATURE,
     eth1_data=Eth1Data(
         deposit_root=ZERO_HASH,
         block_hash=ZERO_HASH
@@ -1276,8 +1269,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             amount=deposit.deposit_data.amount,
             proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-            randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-            custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
         )
 
     # Process initial activations
@@ -1296,14 +1287,10 @@ First, a helper function:
 def validate_proof_of_possession(state: BeaconState,
                                  pubkey: Bytes48,
                                  proof_of_possession: Bytes96,
-                                 withdrawal_credentials: Bytes32,
-                                 randao_commitment: Bytes32,
-                                 custody_commitment: Bytes32) -> bool:
+                                 withdrawal_credentials: Bytes32) -> bool:
     proof_of_possession_data = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
-        randao_commitment=randao_commitment,
-        custody_commitment=custody_commitment,
         proof_of_possession=EMPTY_SIGNATURE,
     )
 
@@ -1326,9 +1313,7 @@ def process_deposit(state: BeaconState,
                     pubkey: Bytes48,
                     amount: int,
                     proof_of_possession: Bytes96,
-                    withdrawal_credentials: Bytes32,
-                    randao_commitment: Bytes32,
-                    custody_commitment: Bytes32) -> None:
+                    withdrawal_credentials: Bytes32) -> None:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1339,8 +1324,6 @@ def process_deposit(state: BeaconState,
         pubkey,
         proof_of_possession,
         withdrawal_credentials,
-        randao_commitment,
-        custody_commitment,
     )
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
@@ -1350,7 +1333,6 @@ def process_deposit(state: BeaconState,
         validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
-            randao_commitment=randao_commitment,
             randao_layers=0,
             activation_slot=FAR_FUTURE_SLOT,
             exit_slot=FAR_FUTURE_SLOT,
@@ -1358,7 +1340,6 @@ def process_deposit(state: BeaconState,
             penalized_slot=FAR_FUTURE_SLOT,
             exit_count=0,
             status_flags=0,
-            custody_commitment=custody_commitment,
             latest_custody_reseed_slot=GENESIS_SLOT,
             penultimate_custody_reseed_slot=GENESIS_SLOT,
         )
@@ -1474,12 +1455,9 @@ Below are the processing steps that happen at every `block`.
 
 ### RANDAO
 
-* Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=proposer.randao_layers, signature=block.randao_reveal, domain=get_domain(state.fork, state.slot, DOMAIN_RANDAO))`.
 * Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal))`
-* Set `proposer.randao_commitment = block.randao_reveal`.
-* Set `proposer.randao_layers = 0`.
 
 ### Eth1 data
 
@@ -1570,8 +1548,6 @@ process_deposit(
     amount=deposit.deposit_data.amount,
     proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-    randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-    custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
 )
 ```
 
@@ -1856,10 +1832,10 @@ This section is divided into Normative and Informative references.  Normative re
 ## Normative
 
 ## Informative
-<a id="ref-casper-ffg"></a> _**casper-ffg**_  
+<a id="ref-casper-ffg"></a> _**casper-ffg**_
  &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
 
-<a id="ref-python-poc"></a> _**python-poc**_  
+<a id="ref-python-poc"></a> _**python-poc**_
  &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
 
 # Copyright
