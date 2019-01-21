@@ -141,7 +141,7 @@ Deposits cannot be processed into the beacon chain until the eth1.0 block in whi
 
 ### Validator index
 
-Once a validator has been processed and added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
+Once a validator has been processed and added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
 
 ### Activation
 
@@ -374,7 +374,7 @@ If the software crashes at some point within this routine, then when the validat
 
 ### Casper slashing
 
-To avoid "Casper slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/bd506e12227850888df167926b52f8fd2db31915/specs/core/0_beacon-chain.md#is_surround_vote).
+To avoid "Casper slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_surround_vote).
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
 1. Save a record to hard disk that an attestation has been signed for source -- `attestation_data.justified_slot // EPOCH_LENGTH` -- and target -- `attestation_data.slot // EPOCH_LENGTH`.
