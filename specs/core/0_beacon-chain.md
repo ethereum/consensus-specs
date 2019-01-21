@@ -177,8 +177,8 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) | - |
+| `DEPOSIT_ADDRESS` | **TBD** |
+| `DEPOSIT_TREE_DEPTH` | `2**5` (= 32) | - |
 | `MIN_DEPOSIT_AMOUNT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 1e9` (= 32,000,000,000) | Gwei |
 
@@ -620,7 +620,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
 
 ### Deposit arguments
 
@@ -655,7 +655,7 @@ When sufficiently many full deposits have been made the deposit contract emits t
 MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
 MAX_DEPOSIT_AMOUNT: constant(uint256) = 32000000000  # Gwei
 CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
-DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
+DEPOSIT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
@@ -691,7 +691,7 @@ def deposit(deposit_input: bytes[2048]):
 
     # Add deposit to merkle tree
     self.deposit_tree[index] = sha3(deposit_data)
-    for i in range(DEPOSIT_CONTRACT_TREE_DEPTH):
+    for i in range(DEPOSIT_TREE_DEPTH):
         index /= 2
         self.deposit_tree[index] = sha3(concat(self.deposit_tree[index * 2], self.deposit_tree[index * 2 + 1]))
 
@@ -704,10 +704,10 @@ def deposit(deposit_input: bytes[2048]):
 
 @public
 @constant
-def get_branch(leaf: uint256) -> bytes32[DEPOSIT_CONTRACT_TREE_DEPTH]:
-    branch: bytes32[32] # size is DEPOSIT_CONTRACT_TREE_DEPTH
+def get_branch(leaf: uint256) -> bytes32[DEPOSIT_TREE_DEPTH]:
+    branch: bytes32[DEPOSIT_TREE_DEPTH]
     index: uint256 = leaf + TWO_TO_POWER_OF_TREE_DEPTH
-    for i in range(DEPOSIT_CONTRACT_TREE_DEPTH):
+    for i in range(DEPOSIT_TREE_DEPTH):
         branch[i] = self.deposit_tree[bitwise_xor(index, 1)]
         index /= 2
     return branch
@@ -1550,7 +1550,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
+* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
 def verify_merkle_branch(leaf: Hash32, branch: [Hash32], depth: int, index: int, root: Hash32) -> bool:
