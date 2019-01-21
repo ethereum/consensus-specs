@@ -219,14 +219,22 @@ The decoding requires knowledge of the type of the item to be decoded. When
 performing decoding on an entire serialized string, it also requires knowledge
 of the order in which the objects have been serialized.
 
-Note: Each return will provide ``deserialized_object, new_index`` keeping track
-of the new index.
+Note: Each return will provide:
+- `deserialized_object`
+- `new_index`
 
 At each step, the following checks should be made:
 
 | Check to perform         | Check                                                      |
 |:-------------------------|:-----------------------------------------------------------|
-| Ensure sufficient length | ``length(rawbytes) >= current_index + deserialize_length`` |
+| Ensure sufficient length | ``len(rawbytes) >= current_index + deserialize_length``    |
+
+At the final step, the following checks should be made:
+
+| Check to perform         | Check                                |
+|:-------------------------|:-------------------------------------|
+| Ensure no extra length   | `new_index == len(rawbytes)`         |
+
 
 #### uint
 
@@ -325,6 +333,7 @@ Instantiate a container with the full set of deserialized data, matching each me
 |:------------------------------------------|:----------------------------------------------------------------|
 | rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
 | list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
+
 
 To deserialize:
 
