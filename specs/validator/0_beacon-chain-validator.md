@@ -196,7 +196,7 @@ Set `block.randao_reveal` to the `n`th layer deep reveal from the validator's cu
     * `vote.eth1_data.block_hash` is the hash of an eth1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_data`.
     * `vote.eth1_data.deposit_root` is the deposit root of the eth1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
 * If `D` is empty:
-    * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`th ancestory of the head of the canonical eth1.0 chain.
+    * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`th ancestor of the head of the canonical eth1.0 chain.
     * Let `deposit_root` be the the deposit root of the eth1.0 deposit contract at the block defined by `block_hash`.
 * If `D` is nonempty:
     * Let `best_vote` be the member of `D` that has the highest `vote.eth1_data.vote_count`, breaking ties by favoring block hashes with higher associated block height.
