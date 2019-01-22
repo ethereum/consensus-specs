@@ -143,9 +143,9 @@ Lists are a collection of elements of the same homogeneous type.
 | Length of serialized list fits into 4 bytes | ``len(serialized) < 2**32`` |
 
 
-1. Get the number of raw bytes to serialize: it is ``len(list) * sizeof(element)``.
-   * Encode that as a `4-byte` **little endian** `uint32`.
-2. Append the elements in a packed manner.
+1. Serialize all list elements individually and concatenate them.
+
+2. Prefix the concatenation with its length encoded as a `4-byte` **little-endian** unsigned integer.
 
 * *Note on efficiency*: consider using a container that does not need to iterate over all elements to get its length. For example Python lists, C++ vectors or Rust Vec.
 
