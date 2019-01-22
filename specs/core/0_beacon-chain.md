@@ -1040,7 +1040,7 @@ def get_attestation_participants(state: BeaconState,
 
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
-    assert len(aggregation_bitfield) == (len(crosslink_committee[0]) + 7) // 8
+    assert len(aggregation_bitfield) == (len(crosslink_committee) + 7) // 8
 
     # Find the participating attesters in the committee
     participants = []
