@@ -235,7 +235,7 @@ Up to `MAX_PROPOSER_SLASHINGS` [`ProposerSlashing`](https://github.com/ethereum/
 
 ##### Casper slashings
 
-Up to `MAX_CASPER_SLASHINGS` [`CasperSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#casperslashing) objects can be included in the `block`. The casper slashings must satisfy the verification conditions found in [casper slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#casper-slashings-1). The validator receives a small "whistleblower" reward for each casper slashing found and included.
+Up to `MAX_CASPER_SLASHINGS` [`CasperSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#casperslashing) objects can be included in the `block`. The Casper slashings must satisfy the verification conditions found in [Casper slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#casper-slashings-1). The validator receives a small "whistleblower" reward for each Casper slashing found and included.
 
 ##### Attestations
 
