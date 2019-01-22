@@ -307,7 +307,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Participation bitfield
 
-* Let `participation_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
+* Let `aggregation_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
 * Let `index_into_committee` be the index into the validator's `committee` at which `validator_index` is located.
 * Set `participation_bitfield[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
 * Set `attestation.participation_bitfield = participation_bitfield`.
