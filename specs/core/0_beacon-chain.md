@@ -1715,6 +1715,7 @@ First, update `previous_epoch_calculation_slot` and `previous_epoch_start_shard`
 
 * Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
+* Set `state.previous_epoch_randao_mix = state.current_epoch_randao_mix`
 
 If the following are satisfied:
 
@@ -1769,7 +1770,6 @@ def update_validator_registry(state: BeaconState) -> None:
 
 and perform the following updates:
 
-* Set `state.previous_epoch_randao_mix = state.current_epoch_randao_mix`
 * Set `state.current_epoch_calculation_slot = state.slot`
 * Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
 * Set `state.current_epoch_randao_mix = get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD)`
