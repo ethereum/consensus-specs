@@ -30,7 +30,6 @@
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
-                - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [Deposits](#deposits)
                 - [`Deposit`](#deposit)
                 - [`DepositData`](#depositdata)
@@ -104,7 +103,6 @@
             - [Attestations](#attestations-1)
             - [Deposits](#deposits-1)
             - [Exits](#exits-1)
-            - [Custody](#custody)
     - [Per-epoch processing](#per-epoch-processing)
         - [Helpers](#helpers)
         - [Eth1 data](#eth1-data-1)
@@ -292,10 +290,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ```python
 {
-    # Validator indices with custody bit equal to 0
-    'custody_bit_0_indices': ['uint24'],
-    # Validator indices with custody bit equal to 1
-    'custody_bit_1_indices': ['uint24'],
+    # Validator indices
+    'validator_indices': ['uint24'],
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
@@ -313,8 +309,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'data': AttestationData,
     # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
-    # Custody bitfield
-    'custody_bitfield': 'bytes',
     # BLS aggregate signature
     'aggregate_signature': 'bytes96',
 }
@@ -340,17 +334,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'justified_slot': 'uint64',
     # Hash of the last justified beacon block
     'justified_block_root': 'bytes32',
-}
-```
-
-##### `AttestationDataAndCustodyBit`
-
-```python
-{
-    # Attestation data
-    data: AttestationData,
-    # Custody bit
-    custody_bit: bool,
 }
 ```
 
@@ -436,15 +419,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'proposer_slashings': [ProposerSlashing],
     'casper_slashings': [CasperSlashing],
     'attestations': [Attestation],
-    'custody_reseeds': [CustodyReseed],
-    'custody_challenges': [CustodyChallenge],
-    'custody_responses': [CustodyResponse],
     'deposits': [Deposit],
     'exits': [Exit],
 }
 ```
-
-`CustodyReseed`, `CustodyChallenge`, and `CustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
 
 #### `ProposalSignedData`
 
@@ -479,16 +457,12 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32'],
-    'latest_vdf_outputs': ['bytes32'],
     'previous_epoch_start_shard': 'uint64',
     'current_epoch_start_shard': 'uint64',
     'previous_epoch_calculation_slot': 'uint64',
     'current_epoch_calculation_slot': 'uint64',
     'previous_epoch_randao_mix': 'bytes32',
     'current_epoch_randao_mix': 'bytes32',
-
-    # Custody challenges
-    'custody_challenges': [CustodyChallenge],
 
     # Finality
     'previous_justified_slot': 'uint64',
@@ -531,10 +505,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'exit_count': 'uint64',
     # Status flags
     'status_flags': 'uint64',
-    # Slot of latest custody reseed
-    'latest_custody_reseed_slot': 'uint64',
-    # Slot of second-latest custody reseed
-    'penultimate_custody_reseed_slot': 'uint64',
 }
 ```
 
@@ -557,8 +527,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'data': AttestationData,
     # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
-    # Custody bitfield
-    'custody_bitfield': 'bytes',
     # Slot the attestation was included
     'slot_included': 'uint64',
 }
@@ -1092,24 +1060,14 @@ def get_domain(fork: Fork,
 
 ```python
 def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData) -> bool:
-    if len(vote_data.custody_bit_0_indices) + len(vote_data.custody_bit_1_indices) > MAX_CASPER_VOTES:
+    if len(vote_data.validator_indices) > MAX_CASPER_VOTES:
         return False
 
-    return bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.custody_bit_0_indices]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.custody_bit_1_indices]),
-        ],
-        messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, False)),
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, True)),
-        ],
+    return bls_verify(
+        pubkey=bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.validator_indices]),
+        message=hash_tree_root(AttestationData(vote_data.data)),
         signature=vote_data.aggregate_signature,
-        domain=get_domain(
-            state.fork,
-            vote_data.data.slot,
-            DOMAIN_ATTESTATION,
-        ),
+        domain=get_domain(state.fork, vote_data.data.slot, DOMAIN_ATTESTATION),
     )
 ```
 
@@ -1198,9 +1156,6 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
         proposer_slashings=[],
         casper_slashings=[],
         attestations=[],
-        custody_reseeds=[],
-        custody_challenges=[],
-        custody_responses=[],
         deposits=[],
         exits=[],
     ),
@@ -1232,16 +1187,12 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
-        latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         previous_epoch_start_shard=GENESIS_START_SHARD,
         current_epoch_start_shard=GENESIS_START_SHARD,
         previous_epoch_calculation_slot=GENESIS_SLOT,
         current_epoch_calculation_slot=GENESIS_SLOT,
         previous_epoch_randao_mix=ZERO_HASH,
         current_epoch_randao_mix=ZERO_HASH,
-
-        # Custody challenges
-        custody_challenges=[],
 
         # Finality
         previous_justified_slot=GENESIS_SLOT,
@@ -1340,8 +1291,6 @@ def process_deposit(state: BeaconState,
             penalized_slot=FAR_FUTURE_SLOT,
             exit_count=0,
             status_flags=0,
-            latest_custody_reseed_slot=GENESIS_SLOT,
-            penultimate_custody_reseed_slot=GENESIS_SLOT,
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
@@ -1489,8 +1438,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 
 * Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
 * Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
-* Let `indices(slashable_vote_data) = slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices`.
-* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
+* Let `intersection = [x for x in slashable_vote_data_1.validator_indices if x in slashable_vote_data_2.validator_indices]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
 * Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
@@ -1512,9 +1460,9 @@ For each `attestation` in `block.body.attestations`:
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
     * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndCustodyBit(attestation.data, False)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
+    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationData(attestation.data)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
-* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
+* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
 #### Deposits
 
@@ -1563,10 +1511,6 @@ For each `exit` in `block.body.exits`:
 * Let `exit_message = hash_tree_root(Exit(slot=exit.slot, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
-
-#### Custody
-
-[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.custody_reseeds) == len(block.body.custody_challenges) == len(block.body.custody_responses) == 0`.
 
 ## Per-epoch processing
 
