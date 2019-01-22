@@ -147,8 +147,6 @@ Lists are a collection of elements of the same homogeneous type.
 
 2. Prefix the concatenation with its length encoded as a `4-byte` **little-endian** unsigned integer.
 
-* *Note on efficiency*: consider using a container that does not need to iterate over all elements to get its length. For example Python lists, C++ vectors or Rust Vec.
-
 **Example in Python**
 
 ```python
