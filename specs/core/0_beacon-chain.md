@@ -1457,7 +1457,7 @@ Below are the processing steps that happen at every `block`.
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(proposer.randao_layers), signature=block.randao_reveal, domain=get_domain(state.fork, state.slot, DOMAIN_RANDAO))`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal))`
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + block.randao_reveal)`.
 
 ### Eth1 data
 
