@@ -130,11 +130,11 @@ This document represents the specification for Phase 0 of Ethereum 2.0 -- The Be
 
 At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
-The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
+The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
 ## Notation
 
-Unless otherwise indicated, code appearing in `this style` is to be interpreted as an algorithm defined in Python. Implementations may implement such algorithms using any code and programming language desired as long as the behavior is identical to that of the algorithm provided.
+Code snippets appearing in `this style` are to be interpreted as Python code. Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed asserts are considered invalid.
 
 ## Terminology
 
@@ -1620,7 +1620,7 @@ For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `cross
 
 Define the following helpers to process attestation inclusion rewards and inclusion distance reward/penalty. For every attestation `a` in `previous_epoch_attestations`:
 
-* Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.aggregation_bitfield)`.
+* Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.aggregation_bitfield)`. If multiple attestations are applicable, the attestation with lowest `slot_included` is considered.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 
 ### Eth1 data
@@ -1713,6 +1713,11 @@ def process_ejections(state: BeaconState) -> None:
 
 ### Validator registry
 
+First, update `previous_epoch_calculation_slot` and `previous_epoch_start_shard`:
+
+* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
+* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
+
 If the following are satisfied:
 
 * `state.finalized_slot > state.validator_registry_update_slot`
@@ -1766,8 +1771,6 @@ def update_validator_registry(state: BeaconState) -> None:
 
 and perform the following updates:
 
-* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
-* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
 * Set `state.previous_epoch_seed = state.current_epoch_seed`
 * Set `state.current_epoch_calculation_slot = state.slot`
 * Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
@@ -1775,8 +1778,6 @@ and perform the following updates:
 
 If a validator registry update does _not_ happen do the following:
 
-* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
-* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_update_slot) // EPOCH_LENGTH`.
 * If `epochs_since_last_registry_change` is an exact power of 2, set `state.current_epoch_calculation_slot = state.slot` and `state.current_epoch_seed = hash(get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD) + get_active_index_root(state, state.current_epoch_calculation_slot))`. Note that `state.current_epoch_start_shard` is left unchanged.
 
