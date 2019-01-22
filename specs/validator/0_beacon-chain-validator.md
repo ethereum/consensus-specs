@@ -131,7 +131,7 @@ To submit a deposit:
 * Let `proof_of_possession` be the result of `bls_sign` of the `hash_tree_root(deposit_input)` with `domain=DOMAIN_DEPOSIT`.
 * Set `deposit_input.proof_of_possession = proof_of_possession`.
 * Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_DEPOSIT_AMOUNT`.
-* Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `deposit` along with `deposit_input` as the singular `bytes` input along with a deposit `amount` in ETH.
+* Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `deposit` along with `deposit_input` as the singular `bytes` input along with a deposit `amount` in Gwei.
 
 _Note_: Multiple deposits can be made by the same validator (same initialization params). A singular `Validator` will be added to `state.validator_registry` with each deposit amount being added to the validator's balance. A validator can only be activated when total deposits meet or exceed 
 
