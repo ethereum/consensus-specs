@@ -1643,10 +1643,10 @@ First, update the justification bitfield:
 
 Next, update last finalized slot if possible:
 
-* Set `state.finalized_slot = state.justified_slot` if `(state.justification_bitfield >> 0) % 4 == 0b11 and state.justified_slot == previous_epoch_start_slot`.
+* Set `state.finalized_slot = state.previous_justified_slot` if `(state.justification_bitfield >> 1) % 8 == 0b111 and state.previous_justified_slot == previous_epoch_start_slot - 2 * EPOCH_LENGTH`.
 * Set `state.finalized_slot = state.previous_justified_slot` if `(state.justification_bitfield >> 1) % 4 == 0b11 and state.previous_justified_slot == previous_epoch_start_slot - EPOCH_LENGTH`.
 * Set `state.finalized_slot = state.justified_slot` if `(state.justification_bitfield >> 0) % 8 == 0b111 and state.justified_slot == previous_epoch_start_slot - EPOCH_LENGTH`.
-* Set `state.finalized_slot = state.previous_justified_slot` if `(state.justification_bitfield >> 1) % 8 == 0b111 and state.previous_justified_slot == previous_epoch_start_slot - 2 * EPOCH_LENGTH`.
+* Set `state.finalized_slot = state.justified_slot` if `(state.justification_bitfield >> 0) % 4 == 0b11 and state.justified_slot == previous_epoch_start_slot`.
 
 Finally, update the following:
 
