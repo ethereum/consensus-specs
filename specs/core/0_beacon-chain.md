@@ -20,6 +20,7 @@
         - [Max operations per block](#max-operations-per-block)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
+        - [Custody bits](#custody-bits)
     - [Data structures](#data-structures)
         - [Beacon chain operations](#beacon-chain-operations)
             - [Proposer slashings](#proposer-slashings)
