@@ -1570,9 +1570,12 @@ For each `exit` in `block.body.exits`:
 
 ## Per-epoch processing
 
-The steps below happen when `state.slot % EPOCH_LENGTH == 0`.
+The steps below happen when `state.slot % EPOCH_LENGTH == EPOCH_LENGTH - 1`.
 
 ### Helpers
+
+* Let `current_epoch_start_slot = state.slot - (EPOCH_LENGTH + 1)`.
+* Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1` if `state.slot > EPOCH_LENGTH` else `current_epoch_start_slot`.
 
 All [validators](#dfn-validator):
 
@@ -1581,23 +1584,23 @@ All [validators](#dfn-validator):
 
 [Validators](#dfn-Validator) attesting during the current epoch:
 
-* Let `current_epoch_attestations = [a for a in state.latest_attestations if state.slot - EPOCH_LENGTH <= a.data.slot < state.slot]`. (Note: this is the set of attestations of slots in the epoch `state.slot-EPOCH_LENGTH...state.slot-1`, _not_ attestations that got included in the chain during the epoch `state.slot-EPOCH_LENGTH...state.slot-1`.)
+* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch_start_slot <= a.data.slot <= state.slot]`. (Note: this is the set of attestations of slots in the epoch `current_epoch_start_slot...state.slot`, _not_ attestations that got included in the chain during the epoch `current_epoch_start_slot...state.slot`.)
 * Validators justifying the epoch boundary block at the start of the current epoch:
-  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot-EPOCH_LENGTH) and a.data.justified_slot == state.justified_slot]`.
+  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, current_epoch_start_slot) and a.data.justified_slot == state.justified_slot]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_boundary_attestations]`.
   * Let `current_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in current_epoch_boundary_attester_indices])`.
 
 [Validators](#dfn-Validator) attesting during the previous epoch:
 
 * Validators that made an attestation during the previous epoch:
-  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if state.slot - 2 * EPOCH_LENGTH <= a.data.slot < state.slot - EPOCH_LENGTH]`.
+  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch_start_slot <= a.data.slot < current_epoch_start_slot]`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_attestations]`.
 * Validators targeting the previous justified slot:
   * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.data.justified_slot == state.previous_justified_slot]`.
   * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_justified_attestations]`.
   * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_justified_attester_indices])`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
-  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.data.epoch_boundary_root == get_block_root(state, state.slot - 2 * EPOCH_LENGTH)]`.
+  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.data.epoch_boundary_root == get_block_root(state, previous_epoch_start_slot)]`.
   * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_boundary_attestations]`.
   * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_boundary_attester_indices])`.
 * Validators attesting to the expected beacon chain head during the previous epoch:
@@ -1623,23 +1626,31 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 ### Eth1 data
 
-If `state.slot % ETH1_DATA_VOTING_PERIOD == 0`:
+If `state.slot % ETH1_DATA_VOTING_PERIOD == ETH1_DATA_VOTING_PERIOD - 1`:
 
 * Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
 * Set `state.eth1_data_votes = []`.
 
 ### Justification
 
-* Set `state.previous_justified_slot = state.justified_slot`.
+First, update the justification bitfield:
+
+* Let `new_justified_slot = state.justified_slot`.
 * Set `state.justification_bitfield = (state.justification_bitfield * 2) % 2**64`.
-* Set `state.justification_bitfield |= 2` and `state.justified_slot = state.slot - 2 * EPOCH_LENGTH` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
-* Set `state.justification_bitfield |= 1` and `state.justified_slot = state.slot - 1 * EPOCH_LENGTH` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 2` and `new_justified_slot = previous_epoch_start_slot` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 1` and `new_justified_slot = current_epoch_start_slot` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
-Set `state.finalized_slot = state.previous_justified_slot` if any of the following are true:
+Next, update last finalized slot if possible:
 
-* `state.previous_justified_slot == state.slot - 2 * EPOCH_LENGTH and state.justification_bitfield % 4 == 3`
-* `state.previous_justified_slot == state.slot - 3 * EPOCH_LENGTH and state.justification_bitfield % 8 == 7`
-* `state.previous_justified_slot == state.slot - 4 * EPOCH_LENGTH and state.justification_bitfield % 16 in (15, 14)`
+* Set `state.finalized_slot = state.justified_slot` if `(state.justification_bitfield >> 0) % 4 == 0b11 and state.justified_slot == previous_epoch_start_slot`.
+* Set `state.finalized_slot = state.previous_justified_slot` if `(state.justification_bitfield >> 1) % 4 == 0b11 and state.previous_justified_slot == previous_epoch_start_slot - EPOCH_LENGTH`.
+* Set `state.finalized_slot = state.justified_slot` if `(state.justification_bitfield >> 0) % 8 == 0b111 and state.justified_slot == previous_epoch_start_slot - EPOCH_LENGTH`.
+* Set `state.finalized_slot = state.previous_justified_slot` if `(state.justification_bitfield >> 1) % 8 == 0b111 and state.previous_justified_slot == previous_epoch_start_slot - 2 * EPOCH_LENGTH`.
+
+Finally, update the following:
+
+* Set `state.previous_justified_slot = state.justified_slot`.
+* Set `state.justified_slot = justified_slot`.
 
 ### Crosslinks
 
@@ -1819,7 +1830,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 ### Final updates
 
 * Let `e = state.slot // EPOCH_LENGTH`. Set `state.latest_penalized_balances[(e+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[e % LATEST_PENALIZED_EXIT_LENGTH]`
-* Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
+* Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < current_epoch_start_slot`.
 
 ## State root processing
 
