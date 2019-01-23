@@ -310,7 +310,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 * Let `aggregation_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
 * Let `index_into_committee` be the index into the validator's `committee` at which `validator_index` is located.
 * Set `aggregation_bitfield[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
-* Set `attestation.participation_bitfield = participation_bitfield`.
+* Set `attestation.aggregation_bitfield = aggregation_bitfield`.
 
 _Note_: Calling `get_attestation_participants(state, attestation.data, attestation.participation_bitfield)` should return `[validator_index]`.
 
