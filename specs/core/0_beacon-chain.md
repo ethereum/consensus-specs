@@ -20,7 +20,6 @@
         - [Max operations per block](#max-operations-per-block)
         - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
-        - [Custody bits](#custody-bits)
     - [Data structures](#data-structures)
         - [Beacon chain operations](#beacon-chain-operations)
             - [Proposer slashings](#proposer-slashings)
@@ -1080,6 +1079,9 @@ def get_domain(fork: Fork,
 
 ```python
 def get_bitfield_bit(bitfield: bytes, i: int) -> int:
+    """
+    Extract the bit in ``bitfield`` at position ``i``.
+    """
     return (bitfield[i // 8] >> (7 - (i % 8))) % 2
 ```
 
@@ -1087,12 +1089,13 @@ def get_bitfield_bit(bitfield: bytes, i: int) -> int:
 
 ```python
 def verify_bitfield(bitfield: bytes, size: int) -> bool:
-    ```
+    """
     Verify ``bitfield`` against the ``size``.
+    """
     if len(bitfield) != (size + 7) // 8:
         return False
 
-    for i in range(size + 1, size + size % 8 + 8):
+    for i in range(size + 1, size - size % 8 + 8):
         if get_bitfield_bit(bitfield, i) != 0:
             return False
 
@@ -1103,6 +1106,9 @@ def verify_bitfield(bitfield: bytes, size: int) -> bool:
 
 ```python
 def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: SlashableVoteData) -> bool:
+    """
+    Verify validity of ``slashable_vote_data`` fields.
+    """
     if slashable_vote_data.custody_bitfield != 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
