@@ -1561,8 +1561,7 @@ For each `attestation` in `block.body.attestations`:
         ],
         signature=attestation.aggregate_signature,
         domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION),
-    )
-    
+    ) 
 ```
 
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
