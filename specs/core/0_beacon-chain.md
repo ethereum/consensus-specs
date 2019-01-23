@@ -83,6 +83,7 @@
             - [`is_double_vote`](#is_double_vote)
             - [`is_surround_vote`](#is_surround_vote)
             - [`integer_squareroot`](#integer_squareroot)
+            - [`entry_exit_effect_slot`](#entry_exit_effect_slot)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
@@ -1159,7 +1160,7 @@ def is_surround_vote(attestation_data_1: AttestationData,
 ```python
 def integer_squareroot(n: int) -> int:
     """
-    The largest integer ``x`` such that ``x**2`` is less than ``n``.
+    The largest integer ``x`` such that ``x**2`` is less than or equal to ``n``.
     """
     assert n >= 0
     x = n
@@ -1168,6 +1169,17 @@ def integer_squareroot(n: int) -> int:
         x = y
         y = (x + n // x) // 2
     return x
+```
+
+#### `entry_exit_effect_slot`
+
+```python
+def entry_exit_effect_slot(n: int) -> int:
+    """
+    An entry or exit triggered in the slot given by the input takes effect at
+    the slot given by the output.
+    """
+    return (n - n % EPOCH_LENGTH) + EPOCH_LENGTH + ENTRY_EXIT_DELAY
 ```
 
 #### `bls_verify`
@@ -1372,13 +1384,13 @@ def process_deposit(state: BeaconState,
 
 ### Routines for updating validator status
 
-Note: All functions in this section mutate `state`.
+Note: All functions in this section mutate `state`. 
 
 ```python
 def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
     validator = state.validator_registry[index]
 
-    validator.activation_slot = GENESIS_SLOT if genesis else (state.slot - state.slot % EPOCH_LENGTH + ENTRY_EXIT_DELAY)
+    validator.activation_slot = GENESIS_SLOT if genesis else entry_exit_effect_slot(state.slot)
 ```
 
 ```python
@@ -1392,10 +1404,10 @@ def exit_validator(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
 
     # The following updates only occur if not previous exited
-    if validator.exit_slot <= state.slot - state.slot % EPOCH_LENGTH + ENTRY_EXIT_DELAY:
+    if validator.exit_slot <= entry_exit_effect_slot(state.slot):
         return
 
-    validator.exit_slot = state.slot - state.slot % EPOCH_LENGTH + ENTRY_EXIT_DELAY
+    validator.exit_slot = entry_exit_effect_slot(state.slot)
 
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
@@ -1560,7 +1572,7 @@ Verify that `len(block.body.exits) <= MAX_EXITS`.
 For each `exit` in `block.body.exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `validator.exit_slot > state.slot - state.slot % EPOCH_LENGTH + ENTRY_EXIT_DELAY`.
+* Verify that `validator.exit_slot > entry_exit_effect_slot(state.slot)`.
 * Verify that `state.slot >= exit.slot`.
 * Let `exit_message = hash_tree_root(Exit(slot=exit.slot, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
@@ -1711,12 +1723,13 @@ def process_ejections(state: BeaconState) -> None:
             exit_validator(state, index)
 ```
 
-### Validator registry
+### Validator registry and shuffling seed data
 
-First, update `previous_epoch_calculation_slot` and `previous_epoch_start_shard`:
+First, update `previous_epoch_calculation_slot`, `previous_epoch_start_shard` and `latest_index_roots`:
 
 * Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
+* Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
 
 If the following are satisfied:
 
@@ -1745,7 +1758,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_slot > state.slot - state.slot % EPOCH_LENGTH + ENTRY_EXIT_DELAY and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_slot > entry_exit_effect_slot(state.slot) and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1757,7 +1770,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.exit_slot > state.slot - state.slot % EPOCH_LENGTH + ENTRY_EXIT_DELAY and validator.status_flags & INITIATED_EXIT:
+        if validator.exit_slot > entry_exit_effect_slot(state.slot) and validator.status_flags & INITIATED_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1825,7 +1838,6 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 * Let `epoch = state.slot // EPOCH_LENGTH`.
 * Set `state.latest_penalized_balances[(epoch+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[epoch % LATEST_PENALIZED_EXIT_LENGTH]`
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < state.slot - EPOCH_LENGTH`.
-* Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
 
 ## State root processing
 
