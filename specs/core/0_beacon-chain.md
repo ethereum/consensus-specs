@@ -1109,8 +1109,7 @@ def verify_bitfield(bitfield: bytes, size: int) -> bool:
 
 ```python
 def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: SlashableVoteData) -> bool:
-    # [TO BE REMOVED IN PHASE 1]
-    if len(slashable_vote_data.custody_bit_1_indices) > 0:
+    if len(slashable_vote_data.custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
     if len(indices(slashable_vote_data)) > MAX_CASPER_VOTES:
@@ -1532,6 +1531,7 @@ For each `attestation` in `block.body.attestations`:
     assert verify_bitfield(attestation.aggregation_bitfield)
     assert verify_bitfield(attestation.custody_bitfield)
     assert attestation.custody_bitfield & attestation.aggregation_bitfield == attestation.custody_bitfield
+    assert attestation.custody_bitfield == 0 # [TO BE REMOVED IN PHASE 1]
 ```
 
 * Verify aggregate signature:
