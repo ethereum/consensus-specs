@@ -653,7 +653,7 @@ DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], merkle_tree_index: bytes[8]})
+Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], merkle_tree_index: bytes[8], branch: bytes32[32]})
 ChainStart: event({deposit_root: bytes32, time: bytes[8]})
 
 zerohashes: bytes32[32]
@@ -676,7 +676,7 @@ def get_deposit_root() -> bytes32:
         if size % 2 == 1:
             root = sha3(concat(self.branch[h], root))
         else:
-            root = sha3(concat(root, self.branch[h]))
+            root = sha3(concat(root, self.zerohashes[h]))
         size /= 2
     return root
 
@@ -704,12 +704,11 @@ def deposit(deposit_input: bytes[2048]):
     for j in range(32):
         if j < i:
             value = sha3(concat(self.branch[j], value))
-            self.branch[j] = self.zerohashes[j]
     self.branch[i] = value
 
     self.deposit_count += 1
 
-    log.Deposit(self.get_deposit_root(), deposit_data, merkle_tree_index)
+    log.Deposit(self.get_deposit_root(), deposit_data, merkle_tree_index, self.branch)
 
     if msg.value == as_wei_value(MAX_DEPOSIT_AMOUNT, "gwei"):
         self.full_deposit_count += 1
