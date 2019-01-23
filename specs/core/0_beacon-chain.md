@@ -30,6 +30,7 @@
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
+                - [`AttestationDataWrapped`](#attestationdatawrapped)
             - [Deposits](#deposits)
                 - [`Deposit`](#deposit)
                 - [`DepositData`](#depositdata)
@@ -290,12 +291,12 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ```python
 {
-    # Validator indices
-    'validator_indices': ['uint24'],
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
     'aggregate_signature': 'bytes96',
+    # Validator indices
+    'validator_indices': ['uint24'],
 }
 ```
 
@@ -334,6 +335,15 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'justified_slot': 'uint64',
     # Hash of the last justified beacon block
     'justified_block_root': 'bytes32',
+}
+```
+
+#### `AttestationDataWrapped`
+
+```python
+{
+    # Attestation data
+    'data': AttestationData,
 }
 ```
 
@@ -1065,7 +1075,7 @@ def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData)
 
     return bls_verify(
         pubkey=bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.validator_indices]),
-        message=hash_tree_root(AttestationData(vote_data.data)),
+        message=hash_tree_root(AttestationDataWrapped(data=vote_data.data)),
         signature=vote_data.aggregate_signature,
         domain=get_domain(state.fork, vote_data.data.slot, DOMAIN_ATTESTATION),
     )
@@ -1460,7 +1470,7 @@ For each `attestation` in `block.body.attestations`:
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
     * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationData(attestation.data)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
+    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataWrapped(data=attestation.data)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
 * Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
