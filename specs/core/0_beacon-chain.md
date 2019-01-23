@@ -30,7 +30,7 @@
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
-                - [`AttestationDataWrapped`](#attestationdatawrapped)
+                - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [Deposits](#deposits)
                 - [`Deposit`](#deposit)
                 - [`DepositData`](#depositdata)
@@ -80,10 +80,13 @@
             - [`get_effective_balance`](#get_effective_balance)
             - [`get_fork_version`](#get_fork_version)
             - [`get_domain`](#get_domain)
+            - [`get_bitfield_bit`](#get_bitfield_bit)
+            - [`verify_bitfield`](#verify_bitfield)
             - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
             - [`is_double_vote`](#is_double_vote)
             - [`is_surround_vote`](#is_surround_vote)
             - [`integer_squareroot`](#integer_squareroot)
+            - [`indices`](#indices)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
@@ -251,6 +254,13 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `DOMAIN_EXIT` | `3` |
 | `DOMAIN_RANDAO` | `4` |
 
+### Custody bits
+
+| Name | Value |
+| - | - |
+| `CUSTODY_BIT_ZERO` | `False` |
+| `CUSTODY_BIT_ONE` | `True` |
+
 ## Data structures
 
 ### Beacon chain operations
@@ -291,12 +301,14 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ```python
 {
+    # Validator indices with custody bit equal to 0
+    'custody_bit_0_indices': ['uint24'],
+    # Validator indices with custody bit equal to 1
+    'custody_bit_1_indices': ['uint24'],
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
     'aggregate_signature': 'bytes96',
-    # Validator indices
-    'validator_indices': ['uint24'],
 }
 ```
 
@@ -310,6 +322,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'data': AttestationData,
     # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
+    # Custody bitfield
+    'custody_bitfield': 'bytes',
     # BLS aggregate signature
     'aggregate_signature': 'bytes96',
 }
@@ -338,12 +352,14 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 }
 ```
 
-#### `AttestationDataWrapped`
+##### `AttestationDataAndCustodyBit`
 
 ```python
 {
     # Attestation data
     'data': AttestationData,
+    # Custody bit
+    'custody_bit': bool,
 }
 ```
 
@@ -537,6 +553,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'data': AttestationData,
     # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
+    # Custody bitfield
+    'custody_bitfield': 'bytes',
     # Slot the attestation was included
     'slot_included': 'uint64',
 }
@@ -1008,22 +1026,20 @@ def merkle_root(values: List[Bytes32]) -> Bytes32:
 ```python
 def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
-                                 aggregation_bitfield: bytes) -> List[int]:
+                                 bitfield: bytes) -> List[int]:
     """
-    Returns the participant indices at for the ``attestation_data`` and ``aggregation_bitfield``.
+    Returns the participant indices at for the ``attestation_data`` and ``bitfield``.
     """
-
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
 
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
-    assert len(aggregation_bitfield) == (len(committee) + 7) // 8
 
     # Find the participating attesters in the committee
     participants = []
     for i, validator_index in enumerate(crosslink_committee):
-        aggregation_bit = (aggregation_bitfield[i // 8] >> (7 - (i % 8))) % 2
+        aggregation_bit = get_bitfield_bit(bitfield, i)
         if aggregation_bit == 1:
             participants.append(validator_index)
     return participants
@@ -1066,18 +1082,51 @@ def get_domain(fork: Fork,
     ) * 2**32 + domain_type
 ```
 
+#### `get_bitfield_bit`
+
+```python
+def get_bitfield_bit(bitfield: bytes, i: int) -> int:
+    return (bitfield[i // 8] >> (7 - (i % 8))) % 2
+```
+
+#### `verify_bitfield`
+
+```python
+def verify_bitfield(bitfield: bytes, size: int) -> bool:
+    ```
+    Verify ``bitfield`` against the ``size``.
+    if len(bitfield) != (size + 7) // 8:
+        return False
+
+    for i in range(size + 1, size + size % 8 + 8):
+        if get_bitfield_bit(bitfield, i) != 0:
+            return False
+
+    return True
+```
+
 #### `verify_slashable_vote_data`
 
 ```python
-def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData) -> bool:
-    if len(vote_data.validator_indices) > MAX_CASPER_VOTES:
+def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: SlashableVoteData) -> bool:
+    # [TO BE REMOVED IN PHASE 1]
+    if len(slashable_vote_data.custody_bit_1_indices) > 0:
+        return False
+
+    if len(indices(slashable_vote_data)) > MAX_CASPER_VOTES:
         return False
 
     return bls_verify(
-        pubkey=bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.validator_indices]),
-        message=hash_tree_root(AttestationDataWrapped(data=vote_data.data)),
-        signature=vote_data.aggregate_signature,
-        domain=get_domain(state.fork, vote_data.data.slot, DOMAIN_ATTESTATION),
+        pubkeys=[
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in slashable_vote_data.custody_bit_0_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in slashable_vote_data.custody_bit_1_indices]),
+        ],
+        messages=[
+            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, CUSTODY_BIT_ZERO)),
+            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, CUSTODY_BIT_ONE)),
+        ],
+        signature=slashable_vote_data.aggregate_signature,
+        domain=get_domain(state.fork, slashable_vote_data.data.slot, DOMAIN_ATTESTATION),
     )
 ```
 
@@ -1133,6 +1182,16 @@ def integer_squareroot(n: int) -> int:
         x = y
         y = (x + n // x) // 2
     return x
+```
+
+#### `indices`
+
+```python
+def indices(slashable_vote_data: SlashableVoteData) -> List[int]:
+    """
+    Return all indicies in ``slashable_vote_data``.
+    """
+    return slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices
 ```
 
 #### `bls_verify`
@@ -1448,7 +1507,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 
 * Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
 * Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
-* Let `intersection = [x for x in slashable_vote_data_1.validator_indices if x in slashable_vote_data_2.validator_indices]`.
+* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
 * Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
@@ -1467,10 +1526,32 @@ For each `attestation` in `block.body.attestations`:
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
-* `aggregate_signature` verification:
-    * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
-    * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataWrapped(data=attestation.data)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION))`.
+* `attestation.aggregate_signature` verification:
+
+```python
+    assert verify_bitfield(attestation.aggregation_bitfield)
+    assert verify_bitfield(attestation.custody_bitfield)
+    assert attestation.custody_bitfield & attestation.aggregation_bitfield == attestation.custody_bitfield
+
+    participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    custody_bit_0_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
+    custody_bit_1_participants = [i in participants for i not in custody_bit_0_participants]
+
+    assert bls_verify_multiple(
+        pubkeys=[
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_participants]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
+        ],
+        messages=[
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=CUSTODY_BIT_ZERO)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=CUSTODY_BIT_ONE)),
+        ],
+        signature=attestation.aggregate_signature,
+        domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION),
+    )
+    
+```
+
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
 * Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
