@@ -255,13 +255,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `DOMAIN_EXIT` | `3` |
 | `DOMAIN_RANDAO` | `4` |
 
-### Custody bits
-
-| Name | Value |
-| - | - |
-| `CUSTODY_BIT_ZERO` | `False` |
-| `CUSTODY_BIT_ONE` | `True` |
-
 ## Data structures
 
 ### Beacon chain operations
@@ -1140,8 +1133,8 @@ def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: Slashabl
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, CUSTODY_BIT_ZERO)),
-            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, CUSTODY_BIT_ONE)),
+            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, 0)),
+            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, 1)),
         ],
         signature=slashable_vote_data.aggregate_signature,
         domain=get_domain(state.fork, slashable_vote_data.data.slot, DOMAIN_ATTESTATION),
@@ -1556,8 +1549,8 @@ For each `attestation` in `block.body.attestations`:
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=CUSTODY_BIT_ZERO)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=CUSTODY_BIT_ONE)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=1)),
         ],
         signature=attestation.aggregate_signature,
         domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION),
