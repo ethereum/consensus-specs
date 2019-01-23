@@ -312,7 +312,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 * Set `aggregation_bitfield[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
 * Set `attestation.aggregation_bitfield = aggregation_bitfield`.
 
-_Note_: Calling `get_attestation_participants(state, attestation.data, attestation.participation_bitfield)` should return `[validator_index]`.
+_Note_: Calling `get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)` should return a list of length equal to 1, containing `validator_index`.
 
 ##### Custody bitfield
 
