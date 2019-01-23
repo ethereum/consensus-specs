@@ -302,10 +302,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ```python
 {
-    # Validator indices with custody bit equal to 0
-    'custody_bit_0_indices': ['uint24'],
-    # Validator indices with custody bit equal to 1
-    'custody_bit_1_indices': ['uint24'],
+    # Validator indices
+    'validator_indices': '[uint24]',
+    # Custody bitfield
+    'custody_bitfield': 'bytes',
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
@@ -1110,16 +1110,34 @@ def verify_bitfield(bitfield: bytes, size: int) -> bool:
 
 ```python
 def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: SlashableVoteData) -> bool:
-    if len(slashable_vote_data.custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
+    if slashable_vote_data.custody_bitfield != 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    if len(indices(slashable_vote_data)) > MAX_CASPER_VOTES:
+    if len(slashable_vote_data.validator_indices) == 0:
         return False
+
+    for i in range(len(slashable_vote_data.validator_indices) - 1):
+        if slashable_vote_data.validator_indices[i] >= slashable_vote_data.validator_indices[i + 1]:
+        return False
+
+    if not verify_bitfield(slashable_vote_data.custody_bitfield, len(slashable_vote_data.validator_indices)):
+        return False
+
+    if len(slashable_vote_data.validator_indices) > MAX_CASPER_VOTES:
+        return False
+
+    custody_bit_0_indices = []
+    custody_bit_1_indices = []
+    for i, validator_index in enumerate(slashable_vote_data.validator_indices):
+        if get_bitfield_bit(slashable_vote_data.custody_bitfield, i) == 0:
+            custody_bit_0_indices.append(validator_index)
+        else:
+            custody_bit_1_indices.append(validator_index)
 
     return bls_verify(
         pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in slashable_vote_data.custody_bit_0_indices]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in slashable_vote_data.custody_bit_1_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         messages=[
             hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, CUSTODY_BIT_ZERO)),
@@ -1182,16 +1200,6 @@ def integer_squareroot(n: int) -> int:
         x = y
         y = (x + n // x) // 2
     return x
-```
-
-#### `indices`
-
-```python
-def indices(slashable_vote_data: SlashableVoteData) -> List[int]:
-    """
-    Return all indicies in ``slashable_vote_data``.
-    """
-    return slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices
 ```
 
 #### `bls_verify`
@@ -1507,7 +1515,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 
 * Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
 * Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
-* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
+* Let `intersection = [x for x in slashable_vote_data_1.validator_indices if x in slashable_vote_data_2.validator_indices]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
 * Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
