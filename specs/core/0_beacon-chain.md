@@ -1384,7 +1384,7 @@ def process_deposit(state: BeaconState,
 
 ### Routines for updating validator status
 
-Note: All functions in this section mutate `state`. 
+Note: All functions in this section mutate `state`.
 
 ```python
 def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
