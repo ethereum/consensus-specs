@@ -1557,7 +1557,7 @@ For each `attestation` in `block.body.attestations`:
 ```
 
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
-* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
+* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
 #### Deposits
 
