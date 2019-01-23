@@ -151,7 +151,7 @@ The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/bl
 
 ```python
 validator = state.validator_registry[validator_index]
-is_active_validator(validator, slot)
+is_active = is_active_validator(validator, slot)
 ```
 
 Once a validator is active, the validator is assigned [responsibilities](#beacon-chain-responsibilities) until exited.
