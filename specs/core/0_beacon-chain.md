@@ -1575,12 +1575,13 @@ The steps below happen when `state.slot % EPOCH_LENGTH == EPOCH_LENGTH - 1`.
 
 ### Helpers
 
+* Let `next_epoch_start_slot = state.slot + 1`.
 * Let `current_epoch_start_slot = state.slot - (EPOCH_LENGTH + 1)`.
 * Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1` if `state.slot > EPOCH_LENGTH` else `current_epoch_start_slot`.
 
 All [validators](#dfn-validator):
 
-* Let `active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)`.
+* Let `active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch_start_slot)`.
 * Let `total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])`.
 
 [Validators](#dfn-Validator) attesting during the current epoch:
@@ -1611,7 +1612,7 @@ All [validators](#dfn-validator):
 
 **Note**: `previous_epoch_boundary_attesting_balance` balance might be marginally different than `current_epoch_boundary_attesting_balance` during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
-For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
+For every `slot in range(previous_epoch_start_slot, next_epoch_start_slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * Let `shard_block_root` be `state.latest_crosslinks[shard].shard_block_root`
 * Let `attesting_validator_indices(crosslink_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_attestations + previous_epoch_attestations if a.data.shard == shard and a.data.shard_block_root == shard_block_root]`.
@@ -1655,9 +1656,9 @@ Finally, update the following:
 
 ### Crosslinks
 
-For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
+For every `slot in range(previous_epoch_start_slot, next_epoch_start_slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
-* Set `state.latest_crosslinks[shard] = Crosslink(slot=state.slot, shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * total_balance(crosslink_committee)`.
+* Set `state.latest_crosslinks[shard] = Crosslink(slot=current_epoch_start_slot, shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * total_balance(crosslink_committee)`.
 
 ### Rewards and penalties
 
@@ -1671,7 +1672,7 @@ First, we define some additional helpers:
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `epochs_since_finality = (state.slot - state.finalized_slot) // EPOCH_LENGTH`.
+* Let `epochs_since_finality = (next_epoch_start_slot - state.finalized_slot) // EPOCH_LENGTH`.
 
 Case 1: `epochs_since_finality <= 4`:
 
@@ -1692,7 +1693,7 @@ Case 2: `epochs_since_finality > 4`:
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
-* Any [active_validator](#dfn-active-validator) `index` with `validator.penalized_slot <= state.slot`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
+* Any [active_validator](#dfn-active-validator) `index` with `validator.penalized_slot <= current_epoch_start_slot`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
 * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 #### Attestation inclusion
@@ -1701,7 +1702,7 @@ For each `index` in `previous_epoch_attester_indices`, we determine the proposer
 
 #### Crosslinks
 
-For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot - EPOCH_LENGTH)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
+For every `slot in range(previous_epoch_start_slot, current_epoch_start_slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * If `index in attesting_validators(crosslink_committee)`, `state.validator_balances[index] += base_reward(state, index) * total_attesting_balance(crosslink_committee) // total_balance(crosslink_committee))`.
 * If `index not in attesting_validators(crosslink_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
@@ -1716,7 +1717,7 @@ def process_ejections(state: BeaconState) -> None:
     Iterate through the validator registry
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
-    for index in get_active_validator_indices(state.validator_registry, state.slot):
+    for index in get_active_validator_indices(state.validator_registry, current_epoch_start_slot):
         if state.validator_balances[index] < EJECTION_BALANCE:
             exit_validator(state, index)
 ```
@@ -1743,7 +1744,7 @@ def update_validator_registry(state: BeaconState) -> None:
     Note that this function mutates ``state``.
     """
     # The active validators
-    active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)
+    active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch_start_slot)
     # The total effective balance of active validators
     total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
 
