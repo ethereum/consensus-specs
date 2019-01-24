@@ -306,7 +306,7 @@ entire length of the list.
 
 | Check to perform                          | code                                                            |
 |:------------------------------------------|:----------------------------------------------------------------|
-| rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
+| ``rawbytes`` has enough left for length   | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
 | list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
 
 ```python
