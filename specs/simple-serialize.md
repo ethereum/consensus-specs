@@ -48,10 +48,10 @@ overhead.
 | Term         | Definition                                                                                     |
 |:-------------|:-----------------------------------------------------------------------------------------------|
 | `little`     | Little endian.                                                                                 |
-| `byte_order` | Specifies [endianness](https://en.wikipedia.org/wiki/Endianness): big endian or little endian. |
+| `byteorder`  | Specifies [endianness](https://en.wikipedia.org/wiki/Endianness): big endian or little endian. |
 | `len`        | Length/number of bytes.                                                                        |
-| `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byte_order``.                          |
-| `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byte_order``.                        |
+| `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byteorder``.                           |
+| `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byteorder``.                         |
 | `value`      | The value to serialize.                                                                        |
 | `rawbytes`   | Raw serialized bytes.                                                                          |
 | `deserialized_object` | The deserialized data in the data structure of your programming language.             |
