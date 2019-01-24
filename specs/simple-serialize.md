@@ -331,9 +331,8 @@ Instantiate a container with the full set of deserialized data, matching each me
 
 | Check to perform                          | code                                                            |
 |:------------------------------------------|:----------------------------------------------------------------|
-| ``rawbytes`` has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
+| ``rawbytes`` has enough left for length   | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
 | list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
-
 
 To deserialize:
 
