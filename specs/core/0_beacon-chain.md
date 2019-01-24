@@ -653,7 +653,7 @@ DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Deposit: event({previous_deposit_root: bytes32, data: bytes[2064], merkle_tree_index: bytes[8], branch: bytes32[32]})
+Deposit: event({deposit_root: bytes32, data: bytes[2064], merkle_tree_index: bytes[8], branch: bytes32[32]})
 ChainStart: event({deposit_root: bytes32, time: bytes[8]})
 
 zerohashes: bytes32[32]
