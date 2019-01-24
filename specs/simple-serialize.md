@@ -54,6 +54,9 @@ overhead.
 | `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byte_order``.                        |
 | `value`      | The value to serialize.                                                                        |
 | `rawbytes`   | Raw serialized bytes.                                                                          |
+| `deserialized_object` | The deserialized data in the data structure of your programming language.             |
+| `new_index`  | An index to keep track the latest position where the `rawbytes` have been deserialized.        |
+
 
 ## Constants
 
