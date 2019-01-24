@@ -43,7 +43,7 @@ protocol for use in the Ethereum 2.0 Beacon Chain.
 The core feature of `ssz` is the simplicity of the serialization with low
 overhead.
 
-## Terminology
+## Variables and Functions
 
 | Term         | Definition                                                                                     |
 |:-------------|:-----------------------------------------------------------------------------------------------|
