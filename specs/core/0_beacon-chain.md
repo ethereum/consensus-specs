@@ -132,11 +132,11 @@ This document represents the specification for Phase 0 of Ethereum 2.0 -- The Be
 
 At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
-The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon chain block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
+The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
 ## Notation
 
-Unless otherwise indicated, code appearing in `this style` is to be interpreted as an algorithm defined in Python. Implementations may implement such algorithms using any code and programming language desired as long as the behavior is identical to that of the algorithm provided.
+Code snippets appearing in `this style` are to be interpreted as Python code. Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed asserts are considered invalid.
 
 ## Terminology
 
@@ -251,6 +251,7 @@ Unless otherwise indicated, code appearing in `this style` is to be interpreted 
 | `DOMAIN_ATTESTATION` | `1` |
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_EXIT` | `3` |
+| `DOMAIN_RANDAO` | `4` |
 
 ## Data structures
 
@@ -392,10 +393,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # Initial RANDAO commitment
-    'randao_commitment': 'bytes32',
-    # Initial custody commitment
-    'custody_commitment': 'bytes32',
     # A BLS signature of this `DepositInput`
     'proof_of_possession': 'bytes96',
 }
@@ -426,7 +423,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'slot': 'uint64',
     'parent_root': 'bytes32',
     'state_root': 'bytes32',
-    'randao_reveal': 'bytes32',
+    'randao_reveal': 'bytes96',
     'eth1_data': Eth1Data,
     'signature': 'bytes96',
 
@@ -523,10 +520,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # RANDAO commitment
-    'randao_commitment': 'bytes32',
-    # Slots the proposer has skipped (i.e. layers of RANDAO expected)
-    'randao_layers': 'uint64',
+    # Number of proposer slots since genesis
+    'proposer_slots': 'uint64',
     # Slot when validator activated
     'activation_slot': 'uint64',
     # Slot when validator exited
@@ -539,8 +534,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'exit_count': 'uint64',
     # Status flags
     'status_flags': 'uint64',
-    # Custody commitment
-    'custody_commitment': 'bytes32',
     # Slot of latest custody reseed
     'latest_custody_reseed_slot': 'uint64',
     # Slot of second-latest custody reseed
@@ -929,7 +922,7 @@ def get_shuffling(seed: Bytes32,
     return split(shuffled_active_validator_indices, committees_per_slot * EPOCH_LENGTH)
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `slot` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
+**Invariant**: if `get_shuffling(seed, validators, slot)` returns some value `x` for some `slot <= state.slot + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `slot` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
@@ -963,7 +956,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
-    state_epoch_slot = state.slot - (state.slot % EPOCH_LENGTH) 
+    state_epoch_slot = state.slot - (state.slot % EPOCH_LENGTH)
     assert state_epoch_slot <= slot + EPOCH_LENGTH
     assert slot < state_epoch_slot + EPOCH_LENGTH
     offset = slot % EPOCH_LENGTH
@@ -1064,7 +1057,7 @@ def get_attestation_participants(state: BeaconState,
 
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
-    assert len(aggregation_bitfield) == (len(committee) + 7) // 8
+    assert len(aggregation_bitfield) == (len(crosslink_committee) + 7) // 8
 
     # Find the participating attesters in the committee
     participants = []
@@ -1212,7 +1205,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
     slot=GENESIS_SLOT,
     parent_root=ZERO_HASH,
     state_root=STARTUP_STATE_ROOT,
-    randao_reveal=ZERO_HASH,
+    randao_reveal=EMPTY_SIGNATURE,
     eth1_data=Eth1Data(
         deposit_root=ZERO_HASH,
         block_hash=ZERO_HASH
@@ -1293,8 +1286,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             amount=deposit.deposit_data.amount,
             proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
             withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-            randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-            custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
         )
 
     # Process initial activations
@@ -1313,14 +1304,10 @@ First, a helper function:
 def validate_proof_of_possession(state: BeaconState,
                                  pubkey: BLSPubkey,
                                  proof_of_possession: BLSSignature,
-                                 withdrawal_credentials: Bytes32,
-                                 randao_commitment: Bytes32,
-                                 custody_commitment: Bytes32) -> bool:
+                                 withdrawal_credentials: Bytes32) -> bool:
     proof_of_possession_data = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
-        randao_commitment=randao_commitment,
-        custody_commitment=custody_commitment,
         proof_of_possession=EMPTY_SIGNATURE,
     )
 
@@ -1343,9 +1330,7 @@ def process_deposit(state: BeaconState,
                     pubkey: BLSPubkey,
                     amount: Gwei,
                     proof_of_possession: BLSSignature,
-                    withdrawal_credentials: Bytes32,
-                    randao_commitment: Bytes32,
-                    custody_commitment: Bytes32) -> None:
+                    withdrawal_credentials: Bytes32) -> None:
     """
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
@@ -1356,8 +1341,6 @@ def process_deposit(state: BeaconState,
         pubkey,
         proof_of_possession,
         withdrawal_credentials,
-        randao_commitment,
-        custody_commitment,
     )
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
@@ -1367,15 +1350,13 @@ def process_deposit(state: BeaconState,
         validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
-            randao_commitment=randao_commitment,
-            randao_layers=0,
+            proposer_slots=0,
             activation_slot=FAR_FUTURE_SLOT,
             exit_slot=FAR_FUTURE_SLOT,
             withdrawal_slot=FAR_FUTURE_SLOT,
             penalized_slot=FAR_FUTURE_SLOT,
             exit_count=0,
             status_flags=0,
-            custody_commitment=custody_commitment,
             latest_custody_reseed_slot=GENESIS_SLOT,
             penultimate_custody_reseed_slot=GENESIS_SLOT,
         )
@@ -1466,7 +1447,7 @@ Below are the processing steps that happen at every slot.
 ### Misc counters
 
 * Set `state.slot += 1`.
-* Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].randao_layers += 1`.
+* Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].proposer_slots += 1`.
 * Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = state.latest_randao_mixes[(state.slot - 1) % LATEST_RANDAO_MIXES_LENGTH]`
 
 ### Block roots
@@ -1491,12 +1472,9 @@ Below are the processing steps that happen at every `block`.
 
 ### RANDAO
 
-* Let `repeat_hash(x, n) = x if n == 0 else repeat_hash(hash(x), n-1)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `repeat_hash(block.randao_reveal, proposer.randao_layers) == proposer.randao_commitment`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], block.randao_reveal))`
-* Set `proposer.randao_commitment = block.randao_reveal`.
-* Set `proposer.randao_layers = 0`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(proposer.proposer_slots), signature=block.randao_reveal, domain=get_domain(state.fork, state.slot, DOMAIN_RANDAO))`.
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + block.randao_reveal)`.
 
 ### Eth1 data
 
@@ -1587,8 +1565,6 @@ process_deposit(
     amount=deposit.deposit_data.amount,
     proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-    randao_commitment=deposit.deposit_data.deposit_input.randao_commitment,
-    custody_commitment=deposit.deposit_data.deposit_input.custody_commitment,
 )
 ```
 
@@ -1659,7 +1635,7 @@ For every `slot in range(state.slot - 2 * EPOCH_LENGTH, state.slot)`, let `cross
 
 Define the following helpers to process attestation inclusion rewards and inclusion distance reward/penalty. For every attestation `a` in `previous_epoch_attestations`:
 
-* Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.aggregation_bitfield)`.
+* Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.aggregation_bitfield)`. If multiple attestations are applicable, the attestation with lowest `slot_included` is considered.
 * Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
 
 ### Eth1 data
@@ -1752,6 +1728,12 @@ def process_ejections(state: BeaconState) -> None:
 
 ### Validator registry
 
+First, update `previous_epoch_calculation_slot` and `previous_epoch_start_shard`:
+
+* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
+* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
+* Set `state.previous_epoch_randao_mix = state.current_epoch_randao_mix`
+
 If the following are satisfied:
 
 * `state.finalized_slot > state.validator_registry_update_slot`
@@ -1805,19 +1787,14 @@ def update_validator_registry(state: BeaconState) -> None:
 
 and perform the following updates:
 
-* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
-* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
-* Set `state.previous_epoch_randao_mix = state.current_epoch_randao_mix`
 * Set `state.current_epoch_calculation_slot = state.slot`
 * Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
 * Set `state.current_epoch_randao_mix = get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD)`
 
 If a validator registry update does _not_ happen do the following:
 
-* Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
-* Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_update_slot) // EPOCH_LENGTH`.
-* If `epochs_since_last_registry_change` is an exact power of 2, set `state.current_epoch_calculation_slot = state.slot` and `state.current_epoch_randao_mix = state.latest_randao_mixes[(state.current_epoch_calculation_slot - SEED_LOOKAHEAD) % LATEST_RANDAO_MIXES_LENGTH]`. Note that `state.current_epoch_start_shard` is left unchanged.
+* If `epochs_since_last_registry_change` is an exact power of 2, set `state.current_epoch_calculation_slot = state.slot` and `state.current_epoch_randao_mix = get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD)`. Note that `state.current_epoch_start_shard` is left unchanged.
 
 Regardless of whether or not a validator set change happens, run the following:
 
@@ -1872,11 +1849,9 @@ This section is divided into Normative and Informative references.  Normative re
 ## Normative
 
 ## Informative
-<a id="ref-casper-ffg"></a> _**casper-ffg**_  
- &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
+<a id="ref-casper-ffg"></a> _**casper-ffg**_ </br> &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
 
-<a id="ref-python-poc"></a> _**python-poc**_  
- &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
+<a id="ref-python-poc"></a> _**python-poc**_ </br> &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/beacon_chain
 
 # Copyright
 Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
