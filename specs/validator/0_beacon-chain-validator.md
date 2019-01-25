@@ -331,27 +331,16 @@ signed_attestation_data = bls_sign(
 
 "Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed -- [proposal slashing](#proposal-slashing) and [attestation slashing](#casper-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages you have previously signed.
 
-_Note_: Signed data must be within the same `Fork` context to conflict. Messages cannot be slashed across forks.
+_Note_: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102 and vice versa.
 
 ### Proposal slashing
 
-To avoid "proposal slashings", a validator must not sign two conflicting [`ProposalSignedData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposalsigneddata) (suggest renaming `ProposalData`) where conflicting is defined as having the same `slot` and `shard` but a different `block_root`.
+To avoid "proposal slashings", a validator must not sign two conflicting [`ProposalSignedData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposalsigneddata) where conflicting is defined as having the same `slot` and `shard` but a different `block_root`. In phase 0, proposals are only made for the beacon chain (`shard == BEACON_CHAIN_SHARD_NUMBER`).
 
-The following helper can be run to check if two proposal messages conflict:
-
-```python
-def proposal_data_is_slashable(proposal_data_1: ProposalSignedData,
-                               proposal_data_2: ProposalSignedData) -> bool:
-    if (proposal_data_1.slot != proposal_data_2.slot):
-        return False
-    if (proposal_data_1.shard != proposal_data_2.shard):
-        return False
-        
-    return proposal_data_1.block_root != proposal_data_2.block_root
-```
+In phase 0, as long as the validator does not sign two different beacon chain proposals for the same slot, the validator is safe against proposal slashings.
 
 Specifically, when signing an `BeaconBlock`, a validator should perform the following steps in the following order:
-1. Save a record to hard disk that an beacon block has been signed for the `slot` and `shard`.
+1. Save a record to hard disk that an beacon block has been signed for the `slot=slot` and `shard=BEACON_CHAIN_SHARD_NUMBER`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online the hard disk has the record of the _potentially_ signed/broadcast block and can effectively avoid slashing.
