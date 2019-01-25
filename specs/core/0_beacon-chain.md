@@ -18,7 +18,6 @@
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Status flags](#status-flags)
         - [Max operations per block](#max-operations-per-block)
-        - [Validator registry delta flags](#validator-registry-delta-flags)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [Beacon chain operations](#beacon-chain-operations)
@@ -47,7 +46,6 @@
             - [`Crosslink`](#crosslink)
             - [`PendingAttestation`](#pendingattestation)
             - [`Fork`](#fork)
-            - [`ValidatorRegistryDeltaBlock`](#validatorregistrydeltablock)
             - [`Eth1Data`](#eth1data)
             - [`Eth1DataVote`](#eth1datavote)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
@@ -73,6 +71,7 @@
             - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
             - [`get_block_root`](#get_block_root)
             - [`get_randao_mix`](#get_randao_mix)
+            - [`get_active_index_root`](#get_active_index_root)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`merkle_root`](#merkle_root)
             - [`get_attestation_participants`](#get_attestation_participants)
@@ -84,6 +83,7 @@
             - [`is_double_vote`](#is_double_vote)
             - [`is_surround_vote`](#is_surround_vote)
             - [`integer_squareroot`](#integer_squareroot)
+            - [`entry_exit_effect_slot`](#entry_exit_effect_slot)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
@@ -168,6 +168,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
+| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | index roots |
 | `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
 
@@ -234,13 +235,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_EXITS` | `2**4` (= 16) |
-
-### Validator registry delta flags
-
-| Name | Value |
-| - | - |
-| `ACTIVATION` | `0` |
-| `EXIT` | `1` |
 
 ### Signature domains
 
@@ -475,7 +469,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'validator_balances': ['uint64'],
     'validator_registry_update_slot': 'uint64',
     'validator_registry_exit_count': 'uint64',
-    'validator_registry_delta_chain_tip': 'bytes32',  # For light clients to track deltas
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32'],
@@ -484,8 +477,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'current_epoch_start_shard': 'uint64',
     'previous_epoch_calculation_slot': 'uint64',
     'current_epoch_calculation_slot': 'uint64',
-    'previous_epoch_randao_mix': 'bytes32',
-    'current_epoch_randao_mix': 'bytes32',
+    'previous_epoch_seed': 'bytes32',
+    'current_epoch_seed': 'bytes32',
 
     # Custody challenges
     'custody_challenges': [CustodyChallenge],
@@ -499,6 +492,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     # Recent state
     'latest_crosslinks': [Crosslink],
     'latest_block_roots': ['bytes32'],  # Needed to process attestations, older to newer
+    'latest_index_roots': ['bytes32'],
     'latest_penalized_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestation],
     'batched_block_roots': ['bytes32'],
@@ -574,18 +568,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'current_version': 'uint64',
     # Fork slot number
     'slot': 'uint64',
-}
-```
-
-#### `ValidatorRegistryDeltaBlock`
-
-```python
-{
-    'latest_registry_delta_root': 'bytes32',
-    'validator_index': 'uint24',
-    'pubkey': 'bytes48',
-    'slot': 'uint64',
-    'flag': 'uint64',
 }
 ```
 
@@ -905,7 +887,7 @@ def get_shuffling(seed: Bytes32,
     return split(shuffled_active_validator_indices, committees_per_slot * EPOCH_LENGTH)
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, slot)` returns some value `x`, it should return the same value `x` for the same `seed` and `slot` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
+**Invariant**: if `get_shuffling(seed, validators, slot)` returns some value `x` for some `slot <= state.slot + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `slot` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
@@ -945,12 +927,12 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
     if slot < state_epoch_slot:
         committees_per_slot = get_previous_epoch_committee_count_per_slot(state)
-        seed = state.previous_epoch_randao_mix
+        seed = state.previous_epoch_seed
         shuffling_slot = state.previous_epoch_calculation_slot
         shuffling_start_shard = state.previous_epoch_start_shard
     else:
         committees_per_slot = get_current_epoch_committee_count_per_slot(state)
-        seed = state.current_epoch_randao_mix
+        seed = state.current_epoch_seed
         shuffling_slot = state.current_epoch_calculation_slot
         shuffling_start_shard = state.current_epoch_start_shard
 
@@ -999,6 +981,21 @@ def get_randao_mix(state: BeaconState,
     assert state.slot < slot + LATEST_RANDAO_MIXES_LENGTH
     assert slot <= state.slot
     return state.latest_randao_mixes[slot % LATEST_RANDAO_MIXES_LENGTH]
+```
+
+#### `get_active_index_root`
+
+```python
+def get_active_index_root(state: BeaconState,
+                          slot: int) -> Bytes32:
+    """
+    Returns the index root at a recent ``slot``.
+    """
+    state_epoch = state.slot // EPOCH_LENGTH
+    given_epoch = slot // EPOCH_LENGTH 
+    assert state_epoch < given_epoch + LATEST_INDEX_ROOTS_LENGTH
+    assert given_epoch <= state_epoch
+    return state.latest_index_roots[given_epoch % LATEST_INDEX_ROOTS_LENGTH]
 ```
 
 #### `get_beacon_proposer_index`
@@ -1157,7 +1154,7 @@ def is_surround_vote(attestation_data_1: AttestationData,
 ```python
 def integer_squareroot(n: int) -> int:
     """
-    The largest integer ``x`` such that ``x**2`` is less than ``n``.
+    The largest integer ``x`` such that ``x**2`` is less than or equal to ``n``.
     """
     assert n >= 0
     x = n
@@ -1166,6 +1163,17 @@ def integer_squareroot(n: int) -> int:
         x = y
         y = (x + n // x) // 2
     return x
+```
+
+#### `entry_exit_effect_slot`
+
+```python
+def entry_exit_effect_slot(n: int) -> int:
+    """
+    An entry or exit triggered in the slot given by the input takes effect at
+    the slot given by the output.
+    """
+    return (n - n % EPOCH_LENGTH) + EPOCH_LENGTH + ENTRY_EXIT_DELAY
 ```
 
 #### `bls_verify`
@@ -1229,7 +1237,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         validator_balances=[],
         validator_registry_update_slot=GENESIS_SLOT,
         validator_registry_exit_count=0,
-        validator_registry_delta_chain_tip=ZERO_HASH,
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
@@ -1238,8 +1245,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         current_epoch_start_shard=GENESIS_START_SHARD,
         previous_epoch_calculation_slot=GENESIS_SLOT,
         current_epoch_calculation_slot=GENESIS_SLOT,
-        previous_epoch_randao_mix=ZERO_HASH,
-        current_epoch_randao_mix=ZERO_HASH,
+        previous_epoch_seed=ZERO_HASH,
+        current_epoch_seed=ZERO_HASH,
 
         # Custody challenges
         custody_challenges=[],
@@ -1253,6 +1260,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Recent state
         latest_crosslinks=[Crosslink(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
+        latest_index_roots=[ZERO_HASH for _ in range(LATEST_INDEX_ROOTS_LENGTH)],
         latest_penalized_balances=[0 for _ in range(LATEST_PENALIZED_EXIT_LENGTH)],
         latest_attestations=[],
         batched_block_roots=[],
@@ -1364,16 +1372,7 @@ Note: All functions in this section mutate `state`.
 def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
     validator = state.validator_registry[index]
 
-    validator.activation_slot = GENESIS_SLOT if genesis else (state.slot + ENTRY_EXIT_DELAY)
-    state.validator_registry_delta_chain_tip = hash_tree_root(
-        ValidatorRegistryDeltaBlock(
-            latest_registry_delta_root=state.validator_registry_delta_chain_tip,
-            validator_index=index,
-            pubkey=validator.pubkey,
-            slot=validator.activation_slot,
-            flag=ACTIVATION,
-        )
-    )
+    validator.activation_slot = GENESIS_SLOT if genesis else entry_exit_effect_slot(state.slot)
 ```
 
 ```python
@@ -1387,22 +1386,13 @@ def exit_validator(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
 
     # The following updates only occur if not previous exited
-    if validator.exit_slot <= state.slot + ENTRY_EXIT_DELAY:
+    if validator.exit_slot <= entry_exit_effect_slot(state.slot):
         return
 
-    validator.exit_slot = state.slot + ENTRY_EXIT_DELAY
+    validator.exit_slot = entry_exit_effect_slot(state.slot)
 
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
-    state.validator_registry_delta_chain_tip = hash_tree_root(
-        ValidatorRegistryDeltaBlock(
-            latest_registry_delta_root=state.validator_registry_delta_chain_tip,
-            validator_index=index,
-            pubkey=validator.pubkey,
-            slot=validator.exit_slot,
-            flag=EXIT,
-        )
-    )
 ```
 
 ```python
@@ -1559,7 +1549,7 @@ Verify that `len(block.body.exits) <= MAX_EXITS`.
 For each `exit` in `block.body.exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `validator.exit_slot > state.slot + ENTRY_EXIT_DELAY`.
+* Verify that `validator.exit_slot > entry_exit_effect_slot(state.slot)`.
 * Verify that `state.slot >= exit.slot`.
 * Let `exit_message = hash_tree_root(Exit(slot=exit.slot, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
@@ -1722,13 +1712,14 @@ def process_ejections(state: BeaconState) -> None:
             exit_validator(state, index)
 ```
 
-### Validator registry
+### Validator registry and shuffling seed data
 
-First, update `previous_epoch_calculation_slot` and `previous_epoch_start_shard`:
+First, update the following:
 
 * Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
-* Set `state.previous_epoch_randao_mix = state.current_epoch_randao_mix`
+* Set `state.previous_epoch_seed = state.current_epoch_seed`
+* Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
 
 If the following are satisfied:
 
@@ -1757,7 +1748,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_slot > state.slot + ENTRY_EXIT_DELAY and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_slot > entry_exit_effect_slot(state.slot) and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1769,7 +1760,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.exit_slot > state.slot + ENTRY_EXIT_DELAY and validator.status_flags & INITIATED_EXIT:
+        if validator.exit_slot > entry_exit_effect_slot(state.slot) and validator.status_flags & INITIATED_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1785,12 +1776,17 @@ and perform the following updates:
 
 * Set `state.current_epoch_calculation_slot = state.slot`
 * Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
-* Set `state.current_epoch_randao_mix = get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD)`
+* Set `state.current_epoch_seed = hash(get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD) + get_active_index_root(state, state.current_epoch_calculation_slot))`
 
 If a validator registry update does _not_ happen do the following:
 
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_update_slot) // EPOCH_LENGTH`.
-* If `epochs_since_last_registry_change` is an exact power of 2, set `state.current_epoch_calculation_slot = state.slot` and `state.current_epoch_randao_mix = get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD)`. Note that `state.current_epoch_start_shard` is left unchanged.
+* If `epochs_since_last_registry_change` is an exact power of 2:
+    * Set `state.current_epoch_calculation_slot = state.slot`.
+    * Set `state.current_epoch_seed = hash(get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD) + get_active_index_root(state, state.current_epoch_calculation_slot))`.
+    * _Note_ that `state.current_epoch_start_shard` is left unchanged.
+
+**Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
 
 Regardless of whether or not a validator set change happens, run the following:
 
@@ -1831,7 +1827,8 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 ### Final updates
 
-* Let `e = state.slot // EPOCH_LENGTH`. Set `state.latest_penalized_balances[(e+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[e % LATEST_PENALIZED_EXIT_LENGTH]`
+* Let `epoch = state.slot // EPOCH_LENGTH`.
+* Set `state.latest_penalized_balances[(epoch+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < current_epoch_start_slot`.
 
 ## State root processing
