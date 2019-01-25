@@ -1701,7 +1701,7 @@ def process_ejections(state: BeaconState) -> None:
 
 ### Validator registry and shuffling seed data
 
-First, update `previous_epoch_calculation_slot`, `previous_epoch_start_shard` and `latest_index_roots`:
+First, update the following:
 
 * Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
