@@ -912,7 +912,7 @@ def get_shuffling(seed: Bytes32,
     return split(shuffled_active_validator_indices, committees_per_slot * EPOCH_LENGTH)
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, slot)` returns some value `x` and `slot <= state.slot + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `slot` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
+**Invariant**: if `get_shuffling(seed, validators, slot)` returns some value `x` for some `slot <= state.slot + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `slot` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
