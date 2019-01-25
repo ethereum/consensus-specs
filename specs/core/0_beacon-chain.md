@@ -1019,7 +1019,6 @@ def generate_seed(state: BeaconState,
 
 ```
 
-
 #### `get_beacon_proposer_index`
 
 ```python
