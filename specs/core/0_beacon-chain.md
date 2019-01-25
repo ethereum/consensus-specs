@@ -72,6 +72,7 @@
             - [`get_block_root`](#get_block_root)
             - [`get_randao_mix`](#get_randao_mix)
             - [`get_active_index_root`](#get_active_index_root)
+            - [`generate_seed`](#generate_seed)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`merkle_root`](#merkle_root)
             - [`get_attestation_participants`](#get_attestation_participants)
@@ -998,6 +999,27 @@ def get_active_index_root(state: BeaconState,
     return state.latest_index_roots[given_epoch % LATEST_INDEX_ROOTS_LENGTH]
 ```
 
+#### `generate_seed`
+
+```python
+def generate_seed(state: BeaconState,
+                  slot: int) -> Bytes32:
+    """
+    Generate a seed for the given ``slot``.
+    """
+    if slot < SEED_LOOKAHEAD:
+        randao_mix_slot = GENESIS_SLOT
+    else:
+        randao_mix_slot = slot - SEED_LOOKAHEAD
+
+    return hash(
+        get_randao_mix(state, randao_mix_slot) +
+        get_active_index_root(state, slot)
+    )
+
+```
+
+
 #### `get_beacon_proposer_index`
 
 ```python
@@ -1285,6 +1307,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, True)
 
+    state.latest_index_roots[GENESIS_SLOT // EPOCH_LENGTH % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, GENESIS_SLOT))
+    state.current_epoch_seed = generate_seed(state, GENESIS_SLOT)
+
     return state
 ```
 
@@ -1568,6 +1593,8 @@ The steps below happen when `state.slot % EPOCH_LENGTH == EPOCH_LENGTH - 1`.
 * Let `next_epoch_start_slot = state.slot + 1`.
 * Let `current_epoch_start_slot = state.slot - (EPOCH_LENGTH + 1)`.
 * Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1` if `state.slot > EPOCH_LENGTH` else `current_epoch_start_slot`.
+* Let `next_epoch = next_epoch_start_slot // EPOCH_LENGTH`.
+* Let `current_epoch = current_epoch_start_slot // EPOCH_LENGTH`.
 
 All [validators](#dfn-validator):
 
@@ -1576,7 +1603,7 @@ All [validators](#dfn-validator):
 
 [Validators](#dfn-Validator) attesting during the current epoch:
 
-* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch_start_slot <= a.data.slot <= state.slot]`. (Note: this is the set of attestations of slots in the epoch `current_epoch_start_slot...state.slot`, _not_ attestations that got included in the chain during the epoch `current_epoch_start_slot...state.slot`.)
+* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch_start_slot <= a.data.slot < next_epoch_start_slot]`. (Note: this is the set of attestations of slots in the epoch `current_epoch_start_slot...next_epoch_start_slot`, _not_ attestations that got included in the chain during the epoch `current_epoch_start_slot...next_epoch_start_slot`.)
 * Validators justifying the epoch boundary block at the start of the current epoch:
   * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, current_epoch_start_slot) and a.data.justified_slot == state.justified_slot]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_boundary_attestations]`.
@@ -1719,7 +1746,7 @@ First, update the following:
 * Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
 * Set `state.previous_epoch_seed = state.current_epoch_seed`
-* Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
+* Set `state.latest_index_roots[next_epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch_start_slot))`
 
 If the following are satisfied:
 
@@ -1769,21 +1796,21 @@ def update_validator_registry(state: BeaconState) -> None:
             # Exit validator
             exit_validator(state, index)
 
-    state.validator_registry_update_slot = state.slot
+    state.validator_registry_update_slot = state.slot - (state.slot % EPOCH_LENGTH)
 ```
 
 and perform the following updates:
 
-* Set `state.current_epoch_calculation_slot = state.slot`
+* Set `state.current_epoch_calculation_slot = next_epoch_start_slot`
 * Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
-* Set `state.current_epoch_seed = hash(get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD) + get_active_index_root(state, state.current_epoch_calculation_slot))`
+* Set `state.current_epoch_seed = generate_seed(state, state.current_epoch_calculation_slot)`
 
 If a validator registry update does _not_ happen do the following:
 
-* Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_update_slot) // EPOCH_LENGTH`.
+* Let `epochs_since_last_registry_change = (current_epoch_start_slot - state.validator_registry_update_slot) // EPOCH_LENGTH`.
 * If `epochs_since_last_registry_change` is an exact power of 2:
-    * Set `state.current_epoch_calculation_slot = state.slot`.
-    * Set `state.current_epoch_seed = hash(get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD) + get_active_index_root(state, state.current_epoch_calculation_slot))`.
+    * Set `state.current_epoch_calculation_slot = next_epoch_start_slot`.
+    * Set `state.current_epoch_seed = generate_seed(state, state.current_epoch_calculation_slot)`
     * _Note_ that `state.current_epoch_start_shard` is left unchanged.
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
@@ -1827,8 +1854,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 ### Final updates
 
-* Let `epoch = state.slot // EPOCH_LENGTH`.
-* Set `state.latest_penalized_balances[(epoch+1) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
+* Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < current_epoch_start_slot`.
 
 ## State root processing
