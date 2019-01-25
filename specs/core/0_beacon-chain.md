@@ -1705,8 +1705,8 @@ First, update the following:
 
 * Set `state.previous_epoch_calculation_slot = state.current_epoch_calculation_slot`
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`
-* Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
 * Set `state.previous_epoch_seed = state.current_epoch_seed`
+* Set `state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, state.slot))`
 
 If the following are satisfied:
 
