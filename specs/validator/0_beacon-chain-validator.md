@@ -16,8 +16,6 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
         - [Initialization](#initialization)
             - [BLS public key](#bls-public-key)
             - [BLS withdrawal key](#bls-withdrawal-key)
-            - [RANDAO commitment](#randao-commitment)
-            - [Custody commitment](#custody-commitment)
         - [Submit deposit](#submit-deposit)
         - [Process deposit](#process-deposit)
         - [Validator index](#validator-index)
@@ -60,9 +58,9 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 ## Introduction
 
-This document represents the expected behavior of an "honest validator" with respect to Phase 0 of the Ethereum 2.0 protocol. This document does not distinguish between a "node" and a "validator client". The separation of concerns between these (potentially) two pieces of software is left as a design decision that is outside of scope.
+This document represents the expected behavior of an "honest validator" with respect to Phase 0 of the Ethereum 2.0 protocol. This document does not distinguish between a "node" (ie. the functionality of following and reading the beacon chain) and a "validator client" (ie. the functionality of actively participating in consensus). The separation of concerns between these (potentially) two pieces of software is left as a design decision that is out of scope.
 
-A validator is an entity that participates in the consensus of the Ethereum 2.0 protocol. This is an optional role for users in which they can post ETH as collateral to seek financial returns in exchange for building and securing the protocol. This is similar to proof of work networks in which a miner provides collateral in the form of hardware/hash-power to seek returns in exchange for building and securing the protocol.
+A validator is an entity that participates in the consensus of the Ethereum 2.0 protocol. This is an optional role for users in which they can post ETH as collateral and verify and attest to the validity of blocks to seek financial returns in exchange for building and securing the protocol. This is similar to proof of work networks in which a miner provides collateral in the form of hardware/hash-power to seek returns in exchange for building and securing the protocol.
 
 ## Prerequisites
 
@@ -94,32 +92,6 @@ The validator constructs their `withdrawal_credentials` through the following:
 * Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`.
 * Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
 
-#### RANDAO commitment
-
-A validator's RANDAO commitment is the outermost layer of a 32-byte hash-onion. To create this commitment, perform the following steps:
-
-* Randomly generate a 32-byte `randao_seed`.
-* Store this `randao_seed` in a secure location.
-* Calculate `randao_commitment = repeat_hash(randao_seed, n)` where `n` is large enough such that within the lifetime of the validator, the validator will not propose more than `n` beacon chain blocks.
-
-Assuming `>= 100k validators`, on average a validator will have an opportunity to reveal once every `>= 600k seconds`, so `<= 50 times per year`. At this estimate, `n == 5000` would last a century. If this value is poorly configured and a validator runs out of layers of to reveal, the validator can no longer propose beacon blocks and should exit.
-
-_Note_: A validator must be able to reveal the next layer deep from their current commitment at any time. There are many strategies that trade off space and computation to be able to provide this reveal. At one end of this trade-off, a validator might only store their `randao_seed` and repeat the `repeat_hash` calculation on the fly to re-calculate the layer `n-1` for the reveal. On the other end of this trade-off, a validator might store _all_ layers of the hash-onion and not have to perform any calculations to retrieve the layer `n-1`. A more sensible strategy might be to store every `m`th layer as cached references to recalculate the intermittent layers as needed.
-
-#### Custody commitment
-
-A validator's custody commitment is the outermost layer of a 32-byte hash-onion. To create this commitment, perform the following steps:
-
-* Randomly generate a 32-byte `custody_seed`.
-* Store this `custody_seed` in a secure location.
-* Calculate `custody_commitment = repeat_hash(custody_seed, n)` where `n` is large enough such that within the lifetime of the validator, the validator will not attest to more than `n` beacon chain blocks.
-
-Assuming a validator changes their `custody_seed` with frequency `>= 1 week`, the validator changes their seed approximately `<= 50 times per year`. At this estimate, `n == 5000` would last a century. If this value is poorly configured and a validator runs out of layers of to reveal, the validator can no longer update their `custody_commitment` and should exit.
-
-See above note on hash-onion caching strategies in [RANDAO commitment](#randao-commitment).
-
-_Note_: although this commitment is being committed to and stored in phase 0, it will not be used until phase 1.
-
 ### Submit deposit
 
 In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`. 
@@ -133,7 +105,7 @@ To submit a deposit:
 * Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_DEPOSIT_AMOUNT`.
 * Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `deposit` along with `deposit_input` as the singular `bytes` input along with a deposit `amount` in Gwei.
 
-_Note_: Multiple deposits can be made by the same validator (same initialization params). A singular `Validator` will be added to `state.validator_registry` with each deposit amount being added to the validator's balance. A validator can only be activated when total deposits meet or exceed 
+_Note_: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validator_registry` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_DEPOSIT_AMOUNT`.
 
 ### Process deposit
 
@@ -141,7 +113,7 @@ Deposits cannot be processed into the beacon chain until the eth1.0 block in whi
 
 ### Validator index
 
-Once a validator has been processed and added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
+Once a validator has been processed and added to the state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. A validator's `validator_index` is guaranteed to not change from the time of initial deposit until the validator exists and fully withdraws. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
 
 ### Activation
 
@@ -186,7 +158,19 @@ _Note_: To calculate `state_root`, the validator should first run the state tran
 
 ##### Randao reveal
 
-Set `block.randao_reveal` to the `n`th layer deep reveal from the validator's current `randao_commitment` where `n = validator.randao_layers + 1`. `block.randao_reveal` should satisfy `repeat_hash(block.randao_reveal, validator.randao_layers + 1) == validator.randao_commitment`.
+Set `block.randao_reveal = reveal_signature` where `reveal_signature` is defined as:
+
+```python
+reveal_signature = bls_sign(
+    privkey=validator.privkey,  # privkey store locally, not in state
+    message=int_to_bytes32(validator.proposer_slots + 1),
+    domain=get_domain(
+        fork_data,  # `fork_data` is the fork_data at the slot `block.slot`
+        block.slot,
+        DOMAIN_RANDAO,
+    )
+)
+```
 
 ##### Eth1 Data
 
@@ -220,8 +204,8 @@ signed_proposal_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
     message=proposal_root,
     domain=get_domain(
-        state.fork_data,  # `state` is the resulting state of `block` transition
-        state.slot,
+        fork_data,  # `fork_data` is the fork_data at the slot `block.slot`
+        block.slot,
         DOMAIN_PROPOSAL,
     )
 )
@@ -239,7 +223,7 @@ Up to `MAX_CASPER_SLASHINGS` [`CasperSlashing`](https://github.com/ethereum/eth2
 
 ##### Attestations
 
-Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to add aggregate attestations that include the most available that have not previously been added on chain.
+Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to create aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
 
 ##### Deposits
 
