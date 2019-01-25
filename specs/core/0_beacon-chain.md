@@ -1769,7 +1769,7 @@ If a validator registry update does _not_ happen do the following:
 
 * Let `epochs_since_last_registry_change = (state.slot - state.validator_registry_update_slot) // EPOCH_LENGTH`.
 * If `epochs_since_last_registry_change` is an exact power of 2:
-    * Set `state.current_epoch_calculation_slot = state.slot`
+    * Set `state.current_epoch_calculation_slot = state.slot`.
     * Set `state.current_epoch_seed = hash(get_randao_mix(state, state.current_epoch_calculation_slot - SEED_LOOKAHEAD) + get_active_index_root(state, state.current_epoch_calculation_slot))`.
     * _Note_ that `state.current_epoch_start_shard` is left unchanged.
 
