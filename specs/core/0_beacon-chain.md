@@ -25,7 +25,7 @@
                 - [`ProposerSlashing`](#proposerslashing)
             - [Casper slashings](#casper-slashings)
                 - [`CasperSlashing`](#casperslashing)
-                - [`SlashableVoteData`](#slashablevotedata)
+                - [`SlashableVote`](#SlashableVote)
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
@@ -82,7 +82,7 @@
             - [`get_domain`](#get_domain)
             - [`get_bitfield_bit`](#get_bitfield_bit)
             - [`verify_bitfield`](#verify_bitfield)
-            - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
+            - [`verify_slashable_vote`](#verify_slashable_vote)
             - [`is_double_vote`](#is_double_vote)
             - [`is_surround_vote`](#is_surround_vote)
             - [`integer_squareroot`](#integer_squareroot)
@@ -280,13 +280,13 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # First batch of votes
-    'slashable_vote_data_1': SlashableVoteData,
+    'slashable_vote_1': SlashableVote,
     # Second batch of votes
-    'slashable_vote_data_2': SlashableVoteData,
+    'slashable_vote_2': SlashableVote,
 }
 ```
 
-##### `SlashableVoteData`
+##### `SlashableVote`
 
 ```python
 {
@@ -1127,33 +1127,33 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
     return True
 ```
 
-#### `verify_slashable_vote_data`
+#### `verify_slashable_vote`
 
 ```python
-def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: SlashableVoteData) -> bool:
+def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> bool:
     """
-    Verify validity of ``slashable_vote_data`` fields.
+    Verify validity of ``slashable_vote`` fields.
     """
-    if slashable_vote_data.custody_bitfield != b'\x00' * len(slashable_vote_data.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
+    if slashable_vote.custody_bitfield != b'\x00' * len(slashable_vote.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    if len(slashable_vote_data.validator_indices) == 0:
+    if len(slashable_vote.validator_indices) == 0:
         return False
 
-    for i in range(len(slashable_vote_data.validator_indices) - 1):
-        if slashable_vote_data.validator_indices[i] >= slashable_vote_data.validator_indices[i + 1]:
+    for i in range(len(slashable_vote.validator_indices) - 1):
+        if slashable_vote.validator_indices[i] >= slashable_vote.validator_indices[i + 1]:
         return False
 
-    if not verify_bitfield(slashable_vote_data.custody_bitfield, len(slashable_vote_data.validator_indices)):
+    if not verify_bitfield(slashable_vote.custody_bitfield, len(slashable_vote.validator_indices)):
         return False
 
-    if len(slashable_vote_data.validator_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
+    if len(slashable_vote.validator_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
         return False
 
     custody_bit_0_indices = []
     custody_bit_1_indices = []
-    for i, validator_index in enumerate(slashable_vote_data.validator_indices):
-        if get_bitfield_bit(slashable_vote_data.custody_bitfield, i) == 0:
+    for i, validator_index in enumerate(slashable_vote.validator_indices):
+        if get_bitfield_bit(slashable_vote.custody_bitfield, i) == 0:
             custody_bit_0_indices.append(validator_index)
         else:
             custody_bit_1_indices.append(validator_index)
@@ -1164,11 +1164,11 @@ def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: Slashabl
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, 0)),
-            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote_data.data, 1)),
+            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote.data, 0)),
+            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote.data, 1)),
         ],
-        signature=slashable_vote_data.aggregate_signature,
-        domain=get_domain(state.fork, slashable_vote_data.data.slot, DOMAIN_ATTESTATION),
+        signature=slashable_vote.aggregate_signature,
+        domain=get_domain(state.fork, slashable_vote.data.slot, DOMAIN_ATTESTATION),
     )
 ```
 
@@ -1530,14 +1530,14 @@ Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
 
 For each `casper_slashing` in `block.body.casper_slashings`:
 
-* Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
-* Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
-* Let `intersection = [x for x in slashable_vote_data_1.validator_indices if x in slashable_vote_data_2.validator_indices]`.
+* Let `slashable_vote_1 = casper_slashing.slashable_vote_1`.
+* Let `slashable_vote_2 = casper_slashing.slashable_vote_2`.
+* Let `intersection = [x for x in slashable_vote_1.validator_indices if x in slashable_vote_2.validator_indices]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
-* Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
-* Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
-* Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
+* Verify that `slashable_vote_1.data != slashable_vote_2.data`.
+* Verify that `is_double_vote(slashable_vote_1.data, slashable_vote_2.data)` or `is_surround_vote(slashable_vote_1.data, slashable_vote_2.data)`.
+* Verify that `verify_slashable_vote(state, slashable_vote_1)`.
+* Verify that `verify_slashable_vote(state, slashable_vote_2)`.
 * For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_slot > state.slot`.
 
 #### Attestations
