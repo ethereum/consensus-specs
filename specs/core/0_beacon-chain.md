@@ -1554,7 +1554,7 @@ For each `attestation` in `block.body.attestations`:
 * Verify bitfields and aggregate signature:
 
 ```python
-    assert attestation.custody_bitfield == 0 # [TO BE REMOVED IN PHASE 1]
+    assert attestation.custody_bitfield == 0  # [TO BE REMOVED IN PHASE 1]
 
     for i in range(len(crosslink_committee)):
         if get_bitfield_bit(attestation.aggregation_bitfield) == 0:
