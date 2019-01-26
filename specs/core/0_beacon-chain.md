@@ -61,6 +61,7 @@
             - [`hash`](#hash)
             - [`hash_tree_root`](#hash_tree_root)
             - [`slot_to_epoch`](#slot_to_epoch)
+            - [`current_epoch`](#current_epoch)
             - [`is_active_validator`](#is_active_validator)
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
@@ -770,6 +771,14 @@ def slot_to_epoch(slot: int) -> int:
     return slot // EPOCH_LENGTH
 ```
 
+#### `current_epoch`
+
+```python
+def current_epoch(state: BeaconState) -> int:
+    return slot_to_epoch(state.slot)
+```
+
+
 #### `is_active_validator`
 ```python
 def is_active_validator(validator: Validator, slot: int) -> bool:
@@ -893,7 +902,7 @@ def get_shuffling(seed: Bytes32,
     return split(shuffled_active_validator_indices, committees_per_slot * EPOCH_LENGTH)
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= slot_to_epoch(state.slot) + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
+**Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= current_epoch(state) + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
@@ -997,9 +1006,8 @@ def get_active_index_root(state: BeaconState,
     """
     Returns the index root at a recent ``slot``.
     """
-    state_epoch = slot_to_epoch(state.slot)
-    assert state_epoch < epoch + LATEST_INDEX_ROOTS_LENGTH
-    assert epoch <= state_epoch
+    assert current_epoch(state) < epoch + LATEST_INDEX_ROOTS_LENGTH
+    assert epoch <= current_epoch(state)
     return state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH]
 ```
 
@@ -1428,13 +1436,13 @@ def exit_validator(state: BeaconState, index: int) -> None:
 def penalize_validator(state: BeaconState, index: int) -> None:
     exit_validator(state, index)
     validator = state.validator_registry[index]
-    state.latest_penalized_balances[slot_to_epoch(state.slot) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
+    state.latest_penalized_balances[current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
 
     whistleblower_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
-    validator.penalized_epoch = slot_to_epoch(state.slot)
+    validator.penalized_epoch = current_epoch(state)
 ```
 
 ```python
@@ -1594,16 +1602,15 @@ The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
 
 ### Helpers
 
-* Let `current_epoch = slot_to_epoch(state.slot)`.
-* Let `current_epoch_start_slot = current_epoch * EPOCH_LENGTH`.
-* Let `next_epoch = slot_to_epoch(state.slot + 1)`.
+* Let `current_epoch_start_slot = current_epoch(state) * EPOCH_LENGTH`.
+* Let `next_epoch = current_epoch(state) + 1`.
 * Let `next_epoch_start_slot = next_epoch * EPOCH_LENGTH`.
-* Let `previous_epoch = current_epoch - 1 if current_epoch > slot_to_epoch(GENESIS_SLOT) else current_epoch`.
+* Let `previous_epoch = current_epoch(state) - 1 if current_epoch(state) > slot_to_epoch(GENESIS_SLOT) else current_epoch(state)`.
 * Let `previous_epoch_start_slot = previous_epoch * EPOCH_LENGTH`.
 
 All [validators](#dfn-validator):
 
-* Let `active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)`.
+* Let `active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch(state))`.
 * Let `total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])`.
 
 [Validators](#dfn-Validator) attesting during the current epoch:
@@ -1650,7 +1657,7 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 ### Eth1 data
 
-If `slot_to_epoch(state.slot) % ETH1_DATA_VOTING_PERIOD == 0`:
+If `current_epoch(state) % ETH1_DATA_VOTING_PERIOD == 0`:
 
 * Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD * EPOCH_LENGTH` for some `eth1_data_vote` in `state.eth1_data_votes`.
 * Set `state.eth1_data_votes = []`.
@@ -1715,7 +1722,7 @@ Case 2: `epochs_since_finality > 4`:
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
-* Any [active_validator](#dfn-active-validator) `index` with `validator.penalized_epoch <= current_epoch`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
+* Any [active_validator](#dfn-active-validator) `index` with `validator.penalized_epoch <= current_epoch(state)`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
 * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 #### Attestation inclusion
@@ -1739,7 +1746,7 @@ def process_ejections(state: BeaconState) -> None:
     Iterate through the validator registry
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
-    for index in get_active_validator_indices(state.validator_registry, current_epoch):
+    for index in get_active_validator_indices(state.validator_registry, current_epoch(state)):
         if state.validator_balances[index] < EJECTION_BALANCE:
             exit_validator(state, index)
 ```
@@ -1767,7 +1774,7 @@ def update_validator_registry(state: BeaconState) -> None:
     Note that this function mutates ``state``.
     """
     # The active validators
-    active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)
+    active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch(state))
     # The total effective balance of active validators
     total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
 
@@ -1801,7 +1808,7 @@ def update_validator_registry(state: BeaconState) -> None:
             # Exit validator
             exit_validator(state, index)
 
-    state.validator_registry_update_epoch = slot_to_epoch(state.slot)
+    state.validator_registry_update_epoch = current_epoch(state)
 ```
 
 and perform the following updates:
@@ -1812,7 +1819,7 @@ and perform the following updates:
 
 If a validator registry update does _not_ happen do the following:
 
-* Let `epochs_since_last_registry_change = current_epoch - state.validator_registry_update_epoch`.
+* Let `epochs_since_last_registry_change = current_epoch(state) - state.validator_registry_update_epoch`.
 * If `epochs_since_last_registry_change` is an exact power of 2:
     * Set `state.current_calculation_epoch = next_epoch`.
     * Set `state.current_epoch_seed = generate_seed(state, state.current_calculation_epoch)`
@@ -1830,8 +1837,8 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
 
     for index, validator in enumerate(state.validator_registry):
-        if slot_to_epoch(state.slot) == validator.penalized_epoch + LATEST_PENALIZED_EXIT_LENGTH // 2:
-            e = slot_to_epoch(state.slot) % LATEST_PENALIZED_EXIT_LENGTH
+        if current_epoch(state) == validator.penalized_epoch + LATEST_PENALIZED_EXIT_LENGTH // 2:
+            e = current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH
             total_at_start = state.latest_penalized_balances[(e + 1) % LATEST_PENALIZED_EXIT_LENGTH]
             total_at_end = state.latest_penalized_balances[e]
             total_penalties = total_at_end - total_at_start
@@ -1840,11 +1847,11 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
     def eligible(index):
         validator = state.validator_registry[index]
-        if validator.penalized_epoch <= slot_to_epoch(state.slot):
+        if validator.penalized_epoch <= current_epoch(state):
             PENALIZED_WITHDRAWAL_EPOCHS = LATEST_PENALIZED_EXIT_LENGTH // 2
-            return slot_to_epoch(state.slot) >= validator.penalized_epoch + PENALIZED_WITHDRAWAL_EPOCHS
+            return current_epoch(state) >= validator.penalized_epoch + PENALIZED_WITHDRAWAL_EPOCHS
         else:
-            return slot_to_epoch(state.slot) >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+            return current_epoch(state) >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 
     all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
@@ -1859,7 +1866,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 ### Final updates
 
-* Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
+* Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH]`.
 * Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < current_epoch_start_slot`.
 
 ## State root processing
