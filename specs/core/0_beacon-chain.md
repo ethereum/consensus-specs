@@ -1615,7 +1615,7 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 If `state.slot % ETH1_DATA_VOTING_PERIOD == 0`:
 
-* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
+* Set `state.latest_eth1_data = eth1_data_vote.eth1_data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
 * Set `state.eth1_data_votes = []`.
 
 ### Justification
