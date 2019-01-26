@@ -206,7 +206,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `ETH1_DATA_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
+| `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### Reward and penalty quotients
@@ -1590,7 +1590,7 @@ For each `exit` in `block.body.exits`:
 
 ## Per-epoch processing
 
-The steps below happen when `state.slot % EPOCH_LENGTH == EPOCH_LENGTH - 1`.
+The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
 
 ### Helpers
 
@@ -1650,9 +1650,9 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 ### Eth1 data
 
-If `state.slot % ETH1_DATA_VOTING_PERIOD == ETH1_DATA_VOTING_PERIOD - 1`:
+If `slot_to_epoch(state.slot) % ETH1_DATA_VOTING_PERIOD == 0`:
 
-* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD` for some `eth1_data_vote` in `state.eth1_data_votes`.
+* Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD * EPOCH_LENGTH` for some `eth1_data_vote` in `state.eth1_data_votes`.
 * Set `state.eth1_data_votes = []`.
 
 ### Justification
@@ -1812,7 +1812,7 @@ and perform the following updates:
 
 If a validator registry update does _not_ happen do the following:
 
-* Let `epochs_since_last_registry_change = (current_epoch - state.validator_registry_update_epoch)`.
+* Let `epochs_since_last_registry_change = current_epoch - state.validator_registry_update_epoch`.
 * If `epochs_since_last_registry_change` is an exact power of 2:
     * Set `state.current_calculation_epoch = next_epoch`.
     * Set `state.current_epoch_seed = generate_seed(state, state.current_calculation_epoch)`
