@@ -1551,19 +1551,15 @@ For each `attestation` in `block.body.attestations`:
 * Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, attestation.data.justified_slot)`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
-* Verify bitfields:
+* Verify bitfields and aggregate signature:
 
 ```python
+    assert attestation.custody_bitfield == 0 # [TO BE REMOVED IN PHASE 1]
+
     for i in range(len(crosslink_committee)):
         if get_bitfield_bit(attestation.aggregation_bitfield) == 0:
             assert get_bitfield_bit(attestation.custody_bitfield) == 0
 
-    assert attestation.custody_bitfield == 0 # [TO BE REMOVED IN PHASE 1]
-```
-
-* Verify aggregate signature:
-
-```python
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_0_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
     custody_bit_1_participants = [i in participants for i not in custody_bit_0_participants]
