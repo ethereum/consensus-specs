@@ -167,7 +167,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
-| `MAX_CASPER_VOTES` | `2**12` (= 4,096) | votes |
+| `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
 | `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | index roots |
@@ -1147,7 +1147,7 @@ def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: Slashabl
     if not verify_bitfield(slashable_vote_data.custody_bitfield, len(slashable_vote_data.validator_indices)):
         return False
 
-    if len(slashable_vote_data.validator_indices) > MAX_CASPER_VOTES:
+    if len(slashable_vote_data.validator_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
         return False
 
     custody_bit_0_indices = []
