@@ -937,11 +937,14 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
-    current_epoch_slot = get_current_epoch(state) * EPOCH_LENGTH
-    assert current_epoch_slot <= slot + EPOCH_LENGTH
-    assert slot < current_epoch_slot + EPOCH_LENGTH
+    epoch = slot_to_epoch(slot)
+    current_epoch = get_current_epoch(state)
+    previous_epoch = current_epoch - 1 if epoch > GENESIS_EPOCH else current_epoch
+    next_epoch = current_epoch + 1
 
-    if slot < current_epoch_slot:
+    assert previous_epoch <= epoch < next_epoch
+
+    if epoch < current_epoch:
         committees_per_slot = get_previous_epoch_committee_count_per_slot(state)
         seed = state.previous_epoch_seed
         shuffling_epoch = state.previous_calculation_epoch
