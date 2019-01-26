@@ -333,8 +333,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'shard_block_root': 'bytes32',
     # Last crosslink's hash of root
     'latest_crosslink_root': 'bytes32',
-    # Slot of the last justified beacon block
-    'justified_slot': 'uint64',
+    # Last justified epoch in the beacon state
+    'justified_epoch': 'uint64',
     # Hash of the last justified beacon block
     'justified_block_root': 'bytes32',
 }
@@ -487,10 +487,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'custody_challenges': [CustodyChallenge],
 
     # Finality
-    'previous_justified_slot': 'uint64',
-    'justified_slot': 'uint64',
+    'previous_justified_epoch': 'uint64',
+    'justified_epoch': 'uint64',
     'justification_bitfield': 'uint64',
-    'finalized_slot': 'uint64',
+    'finalized_epoch': 'uint64',
 
     # Recent state
     'latest_crosslinks': [Crosslink],
@@ -726,7 +726,7 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 def lmd_ghost(store, start):
     validators = start.state.validator_registry
     active_validators = [validators[i] for i in
-                         get_active_validator_indices(validators, start.state.slot)]
+                         get_active_validator_indices(validators, current_epoch(start.state))]
     attestation_targets = [get_latest_attestation_target(store, validator)
                            for validator in active_validators]
     def get_vote_count(block):
@@ -781,21 +781,21 @@ def current_epoch(state: BeaconState) -> int:
 
 #### `is_active_validator`
 ```python
-def is_active_validator(validator: Validator, slot: int) -> bool:
+def is_active_validator(validator: Validator, epoch: int) -> bool:
     """
     Checks if ``validator`` is active.
     """
-    return validator.activation_epoch <= slot_to_epoch(slot) < validator.exit_epoch
+    return validator.activation_epoch <= epoch < validator.exit_epoch
 ```
 
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: [Validator], slot: int) -> List[int]:
+def get_active_validator_indices(validators: [Validator], epoch: int) -> List[int]:
     """
     Gets indices of active validators from ``validators``.
     """
-    return [i for i, v in enumerate(validators) if is_active_validator(v, slot)]
+    return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
 ```
 
 #### `shuffle`
@@ -890,7 +890,7 @@ def get_shuffling(seed: Bytes32,
     committee is itself a list of validator indices.
     """
 
-    active_validator_indices = get_active_validator_indices(validators, slot)
+    active_validator_indices = get_active_validator_indices(validators, epoch)
 
     committees_per_slot = get_committee_count_per_slot(len(active_validator_indices))
 
@@ -936,11 +936,11 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
-    state_epoch_slot = state.slot - (state.slot % EPOCH_LENGTH)
-    assert state_epoch_slot <= slot + EPOCH_LENGTH
-    assert slot < state_epoch_slot + EPOCH_LENGTH
+    current_epoch_slot = current_epoch(state) * EPOCH_LENGTH
+    assert current_epoch_slot <= slot + EPOCH_LENGTH
+    assert slot < current_epoch_slot + EPOCH_LENGTH
 
-    if slot < state_epoch_slot:
+    if slot < current_epoch_slot:
         committees_per_slot = get_previous_epoch_committee_count_per_slot(state)
         seed = state.previous_epoch_seed
         shuffling_epoch = state.previous_calculation_epoch
@@ -1171,8 +1171,8 @@ def is_surround_vote(attestation_data_1: AttestationData,
     Note: parameter order matters as this function only checks
     that ``attestation_data_1`` surrounds ``attestation_data_2``.
     """
-    source_epoch_1 = slot_to_epoch(attestation_data_1.justified_slot)
-    source_epoch_2 = slot_to_epoch(attestation_data_2.justified_slot)
+    source_epoch_1 = attestation_data_1.justified_epoch
+    source_epoch_2 = attestation_data_2.justified_epoch
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
     target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
     return (
@@ -1201,12 +1201,12 @@ def integer_squareroot(n: int) -> int:
 #### `entry_exit_effect_epoch`
 
 ```python
-def entry_exit_effect_epoch(slot: int) -> int:
+def entry_exit_effect_epoch(epoch: int) -> int:
     """
-    An entry or exit triggered in the slot given by the input takes effect at
+    An entry or exit triggered in the ``epoch`` given by the input takes effect at
     the epoch given by the output.
     """
-    return slot_to_epoch(slot) + 1 + ENTRY_EXIT_DELAY
+    return epoch + 1 + ENTRY_EXIT_DELAY
 ```
 
 #### `bls_verify`
@@ -1255,6 +1255,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
                              genesis_time: int,
                              latest_eth1_data: Eth1Data) -> BeaconState:
+    genesis_epoch = slot_to_epoch(GENESIS_SLOT)
     state = BeaconState(
         # Misc
         slot=GENESIS_SLOT,
@@ -1268,7 +1269,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Validator registry
         validator_registry=[],
         validator_balances=[],
-        validator_registry_update_epoch=slot_to_epoch(GENESIS_SLOT),
+        validator_registry_update_epoch=genesis_epoch,
         validator_registry_exit_count=0,
 
         # Randomness and committees
@@ -1276,8 +1277,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         previous_epoch_start_shard=GENESIS_START_SHARD,
         current_epoch_start_shard=GENESIS_START_SHARD,
-        previous_calculation_epoch=slot_to_epoch(GENESIS_SLOT),
-        current_calculation_epoch=slot_to_epoch(GENESIS_SLOT),
+        previous_calculation_epoch=genesis_epoch,
+        current_calculation_epoch=genesis_epoch,
         previous_epoch_seed=ZERO_HASH,
         current_epoch_seed=ZERO_HASH,
 
@@ -1285,13 +1286,13 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         custody_challenges=[],
 
         # Finality
-        previous_justified_slot=GENESIS_SLOT,
-        justified_slot=GENESIS_SLOT,
+        previous_justified_epoch=genesis_epoch,
+        justified_epoch=genesis_epoch,
         justification_bitfield=0,
-        finalized_slot=GENESIS_SLOT,
+        finalized_epoch=genesis_epoch,
 
         # Recent state
-        latest_crosslinks=[Crosslink(epoch=slot_to_epoch(GENESIS_SLOT), shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
+        latest_crosslinks=[Crosslink(epoch=genesis_epoch, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_index_roots=[ZERO_HASH for _ in range(LATEST_INDEX_ROOTS_LENGTH)],
         latest_penalized_balances=[0 for _ in range(LATEST_PENALIZED_EXIT_LENGTH)],
@@ -1318,7 +1319,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, True)
 
-    genesis_epoch = current_epoch(state)
     state.latest_index_roots[genesis_epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, genesis_epoch))
     state.current_epoch_seed = generate_seed(state, genesis_epoch)
 
@@ -1409,7 +1409,7 @@ Note: All functions in this section mutate `state`.
 def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
     validator = state.validator_registry[index]
 
-    validator.activation_epoch = slot_to_epoch(GENESIS_SLOT) if genesis else entry_exit_effect_epoch(state.slot)
+    validator.activation_epoch = slot_to_epoch(GENESIS_SLOT) if genesis else entry_exit_effect_epoch(current_epoch(state))
 ```
 
 ```python
@@ -1423,10 +1423,10 @@ def exit_validator(state: BeaconState, index: int) -> None:
     validator = state.validator_registry[index]
 
     # The following updates only occur if not previous exited
-    if validator.exit_epoch <= entry_exit_effect_epoch(state.slot):
+    if validator.exit_epoch <= entry_exit_effect_epoch(current_epoch(state)):
         return
 
-    validator.exit_epoch = entry_exit_effect_epoch(state.slot)
+    validator.exit_epoch = entry_exit_effect_epoch(current_epoch(state))
 
     state.validator_registry_exit_count += 1
     validator.exit_count = state.validator_registry_exit_count
@@ -1504,7 +1504,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
-* Verify that `proposer.penalized_slot > state.slot`.
+* Verify that `proposer.penalized_epoch > current_epoch(state)`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, proposer_slashing.proposal_data_1.slot, DOMAIN_PROPOSAL))`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, proposer_slashing.proposal_data_2.slot, DOMAIN_PROPOSAL))`.
 * Run `penalize_validator(state, proposer_slashing.proposer_index)`.
@@ -1524,7 +1524,7 @@ For each `casper_slashing` in `block.body.casper_slashings`:
 * Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
 * Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
 * Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
-* For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_slot > state.slot`.
+* For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_epoch > current_epoch(state)`.
 
 #### Attestations
 
@@ -1534,8 +1534,8 @@ For each `attestation` in `block.body.attestations`:
 
 * Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
 * Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
-* Verify that `attestation.data.justified_slot` is equal to `state.justified_slot if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_slot`.
-* Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, attestation.data.justified_slot)`.
+* Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_epoch`.
+* Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, attestation.data.justified_epoch * EPOCH_LENGTH)`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
@@ -1586,7 +1586,7 @@ Verify that `len(block.body.exits) <= MAX_EXITS`.
 For each `exit` in `block.body.exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `validator.exit_epoch > entry_exit_effect_epoch(state.slot)`.
+* Verify that `validator.exit_epoch > entry_exit_effect_epoch(current_epoch(state))`.
 * Verify that `state.slot >= exit.slot`.
 * Let `exit_message = hash_tree_root(Exit(slot=exit.slot, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.slot, DOMAIN_EXIT))`.
@@ -1617,7 +1617,7 @@ All [validators](#dfn-validator):
 
 * Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch_start_slot <= a.data.slot < next_epoch_start_slot]`. (Note: this is the set of attestations of slots in the epoch `current_epoch_start_slot...next_epoch_start_slot`, _not_ attestations that got included in the chain during the epoch `current_epoch_start_slot...next_epoch_start_slot`.)
 * Validators justifying the epoch boundary block at the start of the current epoch:
-  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, current_epoch_start_slot) and a.data.justified_slot == state.justified_slot]`.
+  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, current_epoch_start_slot) and a.data.justified_epoch == state.justified_epoch]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_boundary_attestations]`.
   * Let `current_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in current_epoch_boundary_attester_indices])`.
 
@@ -1627,7 +1627,7 @@ All [validators](#dfn-validator):
   * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch_start_slot <= a.data.slot < current_epoch_start_slot]`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_attestations]`.
 * Validators targeting the previous justified slot:
-  * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.data.justified_slot == state.previous_justified_slot]`.
+  * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.data.justified_epoch == state.previous_justified_epoch]`.
   * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_justified_attestations]`.
   * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_justified_attester_indices])`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
@@ -1666,22 +1666,22 @@ If `current_epoch(state) % ETH1_DATA_VOTING_PERIOD == 0`:
 
 First, update the justification bitfield:
 
-* Let `new_justified_slot = state.justified_slot`.
+* Let `new_justified_epoch = state.justified_epoch`.
 * Set `state.justification_bitfield = (state.justification_bitfield * 2) % 2**64`.
-* Set `state.justification_bitfield |= 2` and `new_justified_slot = previous_epoch_start_slot` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
-* Set `state.justification_bitfield |= 1` and `new_justified_slot = current_epoch_start_slot` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 2` and `new_justified_epoch = previous_epoch` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
+* Set `state.justification_bitfield |= 1` and `new_justified_epoch = current_epoch(state)` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
 Next, update last finalized slot if possible:
 
-* Set `state.finalized_slot = state.previous_justified_slot` if `(state.justification_bitfield >> 1) % 8 == 0b111 and state.previous_justified_slot == previous_epoch_start_slot - 2 * EPOCH_LENGTH`.
-* Set `state.finalized_slot = state.previous_justified_slot` if `(state.justification_bitfield >> 1) % 4 == 0b11 and state.previous_justified_slot == previous_epoch_start_slot - EPOCH_LENGTH`.
-* Set `state.finalized_slot = state.justified_slot` if `(state.justification_bitfield >> 0) % 8 == 0b111 and state.justified_slot == previous_epoch_start_slot - EPOCH_LENGTH`.
-* Set `state.finalized_slot = state.justified_slot` if `(state.justification_bitfield >> 0) % 4 == 0b11 and state.justified_slot == previous_epoch_start_slot`.
+* Set `state.finalized_epoch = state.previous_justified_epoch` if `(state.justification_bitfield >> 1) % 8 == 0b111 and state.previous_justified_epoch == previous_epoch - 2`.
+* Set `state.finalized_epoch = state.previous_justified_epoch` if `(state.justification_bitfield >> 1) % 4 == 0b11 and state.previous_justified_epoch == previous_epoch - 1`.
+* Set `state.finalized_epoch = state.justified_epoch` if `(state.justification_bitfield >> 0) % 8 == 0b111 and state.justified_epoch == previous_epoch - 1`.
+* Set `state.finalized_epoch = state.justified_epoch` if `(state.justification_bitfield >> 0) % 4 == 0b11 and state.justified_epoch == previous_epoch`.
 
 Finally, update the following:
 
-* Set `state.previous_justified_slot = state.justified_slot`.
-* Set `state.justified_slot = justified_slot`.
+* Set `state.previous_justified_epoch = state.justified_epoch`.
+* Set `state.justified_epoch = new_justified_epoch`.
 
 ### Crosslinks
 
@@ -1701,7 +1701,7 @@ First, we define some additional helpers:
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
 
-* Let `epochs_since_finality = next_epoch - slot_to_epoch(state.finalized_slot)`.
+* Let `epochs_since_finality = next_epoch - state.finalized_epoch`.
 
 Case 1: `epochs_since_finality <= 4`:
 
@@ -1758,11 +1758,11 @@ First, update the following:
 * Set `state.previous_calculation_epoch = state.current_calculation_epoch`.
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`.
 * Set `state.previous_epoch_seed = state.current_epoch_seed`.
-* Set `state.latest_index_roots[next_epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch_start_slot))`.
+* Set `state.latest_index_roots[next_epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch))`.
 
 If the following are satisfied:
 
-* `slot_to_epoch(state.finalized_slot) > state.validator_registry_update_epoch`
+* `state.finalized_epoch > state.validator_registry_update_epoch`
 * `state.latest_crosslinks[shard].epoch > state.validator_registry_update_epoch` for every shard number `shard` in `[(state.current_epoch_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH)]` (that is, for every shard in the current committees)
 
 update the validator registry and associated fields by running
@@ -1787,7 +1787,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch > entry_exit_effect_epoch(state.slot) and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_epoch > entry_exit_effect_epoch(current_epoch(state)) and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1799,7 +1799,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.exit_epoch > entry_exit_effect_epoch(state.slot) and validator.status_flags & INITIATED_EXIT:
+        if validator.exit_epoch > entry_exit_effect_epoch(current_epoch(state)) and validator.status_flags & INITIATED_EXIT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1832,7 +1832,7 @@ Regardless of whether or not a validator set change happens, run the following:
 ```python
 def process_penalties_and_exits(state: BeaconState) -> None:
     # The active validators
-    active_validator_indices = get_active_validator_indices(state.validator_registry, state.slot)
+    active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch(state))
     # The total effective balance of active validators
     total_balance = sum([get_effective_balance(state, i) for i in active_validator_indices])
 
@@ -1867,7 +1867,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 ### Final updates
 
 * Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH]`.
-* Remove any `attestation` in `state.latest_attestations` such that `attestation.data.slot < current_epoch_start_slot`.
+* Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch(state)`.
 
 ## State root processing
 
