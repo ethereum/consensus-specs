@@ -1591,7 +1591,7 @@ The steps below happen when `state.slot % EPOCH_LENGTH == EPOCH_LENGTH - 1`.
 
 * Let `next_epoch_start_slot = state.slot + 1`.
 * Let `current_epoch_start_slot = state.slot - (EPOCH_LENGTH + 1)`.
-* Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1` if `state.slot > EPOCH_LENGTH` else `current_epoch_start_slot`.
+* Let `previous_epoch_start_slot = state.slot - 2 * EPOCH_LENGTH + 1` if `state.slot > GENESIS_SLOT + EPOCH_LENGTH` else `current_epoch_start_slot`.
 * Let `next_epoch = next_epoch_start_slot // EPOCH_LENGTH`.
 * Let `current_epoch = current_epoch_start_slot // EPOCH_LENGTH`.
 
