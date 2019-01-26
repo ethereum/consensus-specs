@@ -1823,8 +1823,8 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     def eligible(index):
         validator = state.validator_registry[index]
         if validator.penalized_slot <= state.slot:
-            PENALIZED_WITHDRAWAL_TIME = LATEST_PENALIZED_EXIT_LENGTH * EPOCH_LENGTH // 2
-            return state.slot >= validator.penalized_slot + PENALIZED_WITHDRAWAL_TIME
+            penalized_withdrawal_time = LATEST_PENALIZED_EXIT_LENGTH * EPOCH_LENGTH // 2
+            return state.slot >= validator.penalized_slot + penalized_withdrawal_time
         else:
             return state.slot >= validator.exit_slot + MIN_VALIDATOR_WITHDRAWAL_TIME
 
