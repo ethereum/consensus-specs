@@ -653,7 +653,7 @@ DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
-Deposit: event({deposit_root: bytes32, data: bytes[2064], merkle_tree_index: bytes[8], branch: bytes32[32]})
+Deposit: event({deposit_root: bytes32, data: bytes[528], merkle_tree_index: bytes[8], branch: bytes32[32]})
 ChainStart: event({deposit_root: bytes32, time: bytes[8]})
 
 zerohashes: bytes32[32]
@@ -682,14 +682,14 @@ def get_deposit_root() -> bytes32:
 
 @payable
 @public
-def deposit(deposit_input: bytes[2048]):
+def deposit(deposit_input: bytes[512]):
     assert msg.value >= as_wei_value(MIN_DEPOSIT_AMOUNT, "gwei")
     assert msg.value <= as_wei_value(MAX_DEPOSIT_AMOUNT, "gwei")
 
     index: uint256 = self.deposit_count
     deposit_amount: bytes[8] = slice(concat("", convert(msg.value / GWEI_PER_ETH, bytes32)), start=24, len=8)
     deposit_timestamp: bytes[8] = slice(concat("", convert(block.timestamp, bytes32)), start=24, len=8)
-    deposit_data: bytes[2064] = concat(deposit_amount, deposit_timestamp, deposit_input)
+    deposit_data: bytes[528] = concat(deposit_amount, deposit_timestamp, deposit_input)
     merkle_tree_index: bytes[8] = slice(concat("", convert(index, bytes32)), start=24, len=8)
 
     # add deposit to merkle tree
