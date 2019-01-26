@@ -622,11 +622,11 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `SlotNumber` | unsigned 64-bit integer | the number of a slot |
 | `ShardNumber` | unsigned 64-bit integer | the number of a shard |
-| `ValidatorIndex` | unsigned 24-bit integer | the index number of validator in the registry |
-| `Gwei` | unsigned 64-bit integer | the amount in Gwei |
-| `Bytes32` | 32-byte data | the binary data in 32-byte length |
-| `BLSPubkey` | 48-byte data | the public key in BLS signature scheme |
-| `BLSSignature` | 96-byte data | the signature in BLS signature scheme |
+| `ValidatorIndex` | unsigned 24-bit integer | the index number of a validator in the registry |
+| `Gwei` | unsigned 64-bit integer | an amount in Gwei |
+| `Bytes32` | 32-byte data | binary data with 32-byte length |
+| `BLSPubkey` | 48-byte data | a public key in BLS signature scheme |
+| `BLSSignature` | 96-byte data | a signature in BLS signature scheme |
 
 ## Ethereum 1.0 deposit contract
 
@@ -746,14 +746,14 @@ Beacon block production is significantly different because of the proof of stake
 
 The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a [validator](#dfn-validator) `v` subjectively calculates the beacon chain head as follows.
 
-* Abstractly define `Store` as the type of storage object for the chain data and `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not part of any chain are still included in `store`.
+* Abstractly define `Store` as the type of storage object for the chain data and `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
 * Let `finalized_head` be the finalized block with the highest slot number. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
 * Let `justified_head` be the descendant of `finalized_head` with the highest slot number that has been justified for at least `EPOCH_LENGTH` slots. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
 * Let `get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock: return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
 * Let `get_latest_attestation(store: Store, validator: Validator) -> Attestation` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
 * Let `get_latest_attestation_target(store: Store, validator: Validator) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator)`.
-* Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the children blocks of the given `block`.
-* Let `justified_head_state` be the `BeaconState` object after processing `justified_head`.
+* Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
+* Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
 * The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
 
 ```python
