@@ -116,7 +116,7 @@
             - [Attestation inclusion](#attestation-inclusion)
             - [Crosslinks](#crosslinks-1)
         - [Ejections](#ejections)
-        - [Validator registry](#validator-registry)
+        - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
         - [Final updates](#final-updates)
     - [State root processing](#state-root-processing)
 - [References](#references)
@@ -1013,7 +1013,7 @@ def get_randao_mix(state: BeaconState,
 
 ```python
 def get_active_index_root(state: BeaconState,
-                          slot: int) -> Bytes32:
+                          slot: SlotNumber) -> Bytes32:
     """
     Returns the index root at a recent ``slot``.
     """
