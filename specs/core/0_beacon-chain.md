@@ -539,8 +539,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ```python
 {
-    # Slot number
-    'slot': 'uint64',
+    # Epoch number
+    'epoch': 'uint64',
     # Shard block root
     'shard_block_root': 'bytes32',
 }
@@ -1291,7 +1291,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         finalized_slot=GENESIS_SLOT,
 
         # Recent state
-        latest_crosslinks=[Crosslink(slot=GENESIS_SLOT, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
+        latest_crosslinks=[Crosslink(epoch=slot_to_epoch(GENESIS_SLOT), shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_index_roots=[ZERO_HASH for _ in range(LATEST_INDEX_ROOTS_LENGTH)],
         latest_penalized_balances=[0 for _ in range(LATEST_PENALIZED_EXIT_LENGTH)],
@@ -1318,7 +1318,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, True)
 
-    genesis_epoch = slot_to_epoch(GENESIS_SLOT)
+    genesis_epoch = current_epoch(state)
     state.latest_index_roots[genesis_epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, genesis_epoch))
     state.current_epoch_seed = generate_seed(state, genesis_epoch)
 
@@ -1687,7 +1687,7 @@ Finally, update the following:
 
 For every `slot in range(previous_epoch_start_slot, next_epoch_start_slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
-* Set `state.latest_crosslinks[shard] = Crosslink(slot=current_epoch_start_slot, shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * total_balance(crosslink_committee)`.
+* Set `state.latest_crosslinks[shard] = Crosslink(epoch=current_epoch(state), shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * total_balance(crosslink_committee)`.
 
 ### Rewards and penalties
 
@@ -1763,7 +1763,7 @@ First, update the following:
 If the following are satisfied:
 
 * `slot_to_epoch(state.finalized_slot) > state.validator_registry_update_epoch`
-* `slot_to_epoch(state.latest_crosslinks[shard].slot) > state.validator_registry_update_epoch` for every shard number `shard` in `[(state.current_epoch_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH)]` (that is, for every shard in the current committees)
+* `state.latest_crosslinks[shard].epoch > state.validator_registry_update_epoch` for every shard number `shard` in `[(state.current_epoch_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH)]` (that is, for every shard in the current committees)
 
 update the validator registry and associated fields by running
 
