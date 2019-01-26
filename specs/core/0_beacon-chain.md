@@ -167,7 +167,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
-| `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
+| `MAX_CASPER_VOTES` | `2**12` (= 4,096) | votes |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
 | `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
@@ -232,7 +232,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | Name | Value |
 | - | - |
 | `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
-| `MAX_CASPER_SLASHINGS` | `2**4` (= 16) |
+| `MAX_CASPER_SLASHINGS` | `2**0` (= 1) |
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_EXITS` | `2**4` (= 16) |
@@ -1029,6 +1029,8 @@ def get_attestation_participants(state: BeaconState,
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
 
+    assert verify_bitfield(bitfield, len(crosslink_committee))
+
     # Find the participating attesters in the committee
     participants = []
     for i, validator_index in enumerate(crosslink_committee):
@@ -1088,14 +1090,14 @@ def get_bitfield_bit(bitfield: bytes, i: int) -> int:
 #### `verify_bitfield`
 
 ```python
-def verify_bitfield(bitfield: bytes, size: int) -> bool:
+def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
     """
-    Verify ``bitfield`` against the ``size``.
+    Verify ``bitfield`` against the ``committee_size``.
     """
-    if len(bitfield) != (size + 7) // 8:
+    if len(bitfield) != (committee_size + 7) // 8:
         return False
 
-    for i in range(size + 1, size - size % 8 + 8):
+    for i in range(committee_size + 1, committee_size - committee_size % 8 + 8):
         if get_bitfield_bit(bitfield, i) != 0:
             return False
 
@@ -1109,7 +1111,7 @@ def verify_slashable_vote_data(state: BeaconState, slashable_vote_data: Slashabl
     """
     Verify validity of ``slashable_vote_data`` fields.
     """
-    if slashable_vote_data.custody_bitfield != 0:  # [TO BE REMOVED IN PHASE 1]
+    if slashable_vote_data.custody_bitfield != b'\x00' * len(slashable_vote_data.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
         return False
 
     if len(slashable_vote_data.validator_indices) == 0:
@@ -1536,9 +1538,10 @@ For each `attestation` in `block.body.attestations`:
 * Verify bitfields:
 
 ```python
-    assert verify_bitfield(attestation.aggregation_bitfield)
-    assert verify_bitfield(attestation.custody_bitfield)
-    assert attestation.custody_bitfield & attestation.aggregation_bitfield == attestation.custody_bitfield
+    for i in range(len(crosslink_committee)):
+        if get_bitfield_bit(attestation.aggregation_bitfield) == 0:
+            assert get_bitfield_bit(attestation.custody_bitfield) == 0
+
     assert attestation.custody_bitfield == 0 # [TO BE REMOVED IN PHASE 1]
 ```
 
