@@ -25,7 +25,7 @@
                 - [`ProposerSlashing`](#proposerslashing)
             - [Casper slashings](#casper-slashings)
                 - [`CasperSlashing`](#casperslashing)
-                - [`SlashableVote`](#SlashableVote)
+                - [`SlashableVote`](#slashablevote)
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
