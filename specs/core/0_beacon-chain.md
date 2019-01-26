@@ -514,8 +514,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # Number of proposer slots since genesis
-    'proposer_slots': 'uint64',
     # Slot when validator activated
     'activation_slot': 'uint64',
     # Slot when validator exited
@@ -1368,7 +1366,6 @@ def process_deposit(state: BeaconState,
         validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
-            proposer_slots=0,
             activation_slot=FAR_FUTURE_SLOT,
             exit_slot=FAR_FUTURE_SLOT,
             withdrawal_slot=FAR_FUTURE_SLOT,
@@ -1447,7 +1444,6 @@ Below are the processing steps that happen at every slot.
 ### Misc counters
 
 * Set `state.slot += 1`.
-* Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].proposer_slots += 1`.
 * Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = state.latest_randao_mixes[(state.slot - 1) % LATEST_RANDAO_MIXES_LENGTH]`
 
 ### Block roots
@@ -1473,8 +1469,8 @@ Below are the processing steps that happen at every `block`.
 ### RANDAO
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(proposer.proposer_slots), signature=block.randao_reveal, domain=get_domain(state.fork, state.slot, DOMAIN_RANDAO))`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] + block.randao_reveal)`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(state.slot // EPOCH_LENGTH), signature=block.randao_reveal, domain=get_domain(state.fork, state.slot, DOMAIN_RANDAO))`.
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH], hash(block.randao_reveal))`.
 
 ### Eth1 data
 
