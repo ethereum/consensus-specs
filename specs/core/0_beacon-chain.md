@@ -1689,7 +1689,7 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 ### Eth1 data
 
-If `current_epoch % ETH1_DATA_VOTING_PERIOD == 0`:
+If `next_epoch % ETH1_DATA_VOTING_PERIOD == 0`:
 
 * Set `state.latest_eth1_data = eth1_data_vote.data` if `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD * EPOCH_LENGTH` for some `eth1_data_vote` in `state.eth1_data_votes`.
 * Set `state.eth1_data_votes = []`.
