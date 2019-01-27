@@ -1239,7 +1239,7 @@ def integer_squareroot(n: int) -> int:
 #### `get_entry_exit_effect_epoch`
 
 ```python
-def get_entry_exit_effect_epoch(epoch: int) -> int:
+def get_entry_exit_effect_epoch(epoch: EpochNumber) -> EpochNumber:
     """
     An entry or exit triggered in the ``epoch`` given by the input takes effect at
     the epoch given by the output.
