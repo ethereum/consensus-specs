@@ -48,6 +48,7 @@
             - [`Fork`](#fork)
             - [`Eth1Data`](#eth1data)
             - [`Eth1DataVote`](#eth1datavote)
+    - [Custom Types](#custom-types)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
@@ -118,7 +119,7 @@
             - [Attestation inclusion](#attestation-inclusion)
             - [Crosslinks](#crosslinks-1)
         - [Ejections](#ejections)
-        - [Validator registry](#validator-registry)
+        - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
         - [Final updates](#final-updates)
     - [State root processing](#state-root-processing)
 - [References](#references)
@@ -251,6 +252,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `DOMAIN_RANDAO` | `4` |
 
 ## Data structures
+
+The following data structures are defined as [SimpleSerialize (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md) objects.
 
 ### Beacon chain operations
 
@@ -515,8 +518,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # Number of proposer slots since genesis
-    'proposer_slots': 'uint64',
     # Epoch when validator activated
     'activation_epoch': 'uint64',
     # Epoch when validator exited
@@ -580,9 +581,9 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 ```python
 {
     # Root of the deposit tree
-    'deposit_root': 'hash32',
+    'deposit_root': 'bytes32',
     # Block hash
-    'block_hash': 'hash32',
+    'block_hash': 'bytes32',
 }
 ```
 
@@ -596,6 +597,21 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
     'vote_count': 'uint64',
 }
 ```
+
+## Custom Types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | Type | Description |
+| - | - | - |
+| `SlotNumber` | unsigned 64-bit integer | the number of a slot |
+| `EpochNumber` | unsigned 64-bit integer | the number of an epoch |
+| `ShardNumber` | unsigned 64-bit integer | the number of a shard |
+| `ValidatorIndex` | unsigned 24-bit integer | the index number of a validator in the registry |
+| `Gwei` | unsigned 64-bit integer | an amount in Gwei |
+| `Bytes32` | 32-byte data | binary data with 32-byte length |
+| `BLSPubkey` | 48-byte data | a public key in BLS signature scheme |
+| `BLSSignature` | 96-byte data | a signature in BLS signature scheme |
 
 ## Ethereum 1.0 deposit contract
 
@@ -715,28 +731,38 @@ Beacon block production is significantly different because of the proof of stake
 
 The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a [validator](#dfn-validator) `v` subjectively calculates the beacon chain head as follows.
 
-* Let `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not part of any chain are still included in `store`.
+* Abstractly define `Store` as the type of storage object for the chain data and `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
 * Let `finalized_head` be the finalized block with the highest epoch. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
 * Let `justified_head` be the descendant of `finalized_head` with the highest epoch that has been justified for at least 1 epoch. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
-* Let `get_ancestor(store, block, slot)` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store, block, slot): return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
-* Let `get_latest_attestation(store, validator)` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
-* Let `get_latest_attestation_target(store, validator)` be the target block in the attestation `get_latest_attestation(store, validator)`.
-* The head is `lmd_ghost(store, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
+* Let `get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock: return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
+* Let `get_latest_attestation(store: Store, validator: Validator) -> Attestation` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
+* Let `get_latest_attestation_target(store: Store, validator: Validator) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator)`.
+* Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
+* Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
+* The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
 
 ```python
-def lmd_ghost(store, start):
-    validators = start.state.validator_registry
-    active_validators = [validators[i] for i in
-                         get_active_validator_indices(validators, get_current_epoch(start.state))]
-    attestation_targets = [get_latest_attestation_target(store, validator)
-                           for validator in active_validators]
-    def get_vote_count(block):
-        return len([target for target in attestation_targets if
-                    get_ancestor(store, target, block.slot) == block])
+def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) -> BeaconBlock:
+    validators = start_state.validator_registry
+    active_validators = [
+        validators[i]
+        for i in get_active_validator_indices(validators, start_state.slot)
+    ]
+    attestation_targets = [
+        get_latest_attestation_target(store, validator)
+        for validator in active_validators
+    ]
 
-    head = start
+    def get_vote_count(block: BeaconBlock) -> int:
+        return len([
+            target
+            for target in attestation_targets
+            if get_ancestor(store, target, block.slot) == block
+        ])
+
+    head = start_block
     while 1:
-        children = get_children(head)
+        children = get_children(store, head)
         if len(children) == 0:
             return head
         head = max(children, key=get_vote_count)
@@ -763,7 +789,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 #### `hash_tree_root`
 
-`hash_tree_root` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
+`def hash_tree_root(object: SSZSerializable) -> Bytes32` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
 #### `slot_to_epoch`
 
@@ -782,7 +808,7 @@ def get_current_epoch(state: BeaconState) -> int:
 
 #### `is_active_validator`
 ```python
-def is_active_validator(validator: Validator, epoch: int) -> bool:
+def is_active_validator(validator: Validator, epoch: EpochNumber) -> bool:
     """
     Checks if ``validator`` is active.
     """
@@ -792,7 +818,7 @@ def is_active_validator(validator: Validator, epoch: int) -> bool:
 #### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: [Validator], epoch: int) -> List[int]:
+def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber) -> List[ValidatorIndex]:
     """
     Gets indices of active validators from ``validators``.
     """
@@ -884,7 +910,7 @@ def get_committee_count_per_slot(active_validator_count: int) -> int:
 ```python
 def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
-                  epoch: int) -> List[List[int]]
+                  epoch: EpochNumber) -> List[List[ValidatorIndex]]
     """
     Shuffles ``validators`` into crosslink committees seeded by ``seed`` and ``epoch``.
     Returns a list of ``EPOCH_LENGTH * committees_per_slot`` committees where each
@@ -933,7 +959,7 @@ def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                     slot: int) -> List[Tuple[List[int], int]]:
+                                     slot: SlotNumber) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
     """
@@ -978,7 +1004,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
 ```python
 def get_block_root(state: BeaconState,
-                   slot: int) -> Bytes32:
+                   slot: SlotNumber) -> Bytes32:
     """
     Returns the block root at a recent ``slot``.
     """
@@ -993,7 +1019,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   slot: int) -> Bytes32:
+                   slot: SlotNumber) -> Bytes32:
     """
     Returns the randao mix at a recent ``slot``.
     """
@@ -1006,7 +1032,7 @@ def get_randao_mix(state: BeaconState,
 
 ```python
 def get_active_index_root(state: BeaconState,
-                          epoch: int) -> Bytes32:
+                          epoch: EpochNumber) -> Bytes32:
     """
     Returns the index root at a recent ``epoch``.
     """
@@ -1039,7 +1065,7 @@ def generate_seed(state: BeaconState,
 
 ```python
 def get_beacon_proposer_index(state: BeaconState,
-                              slot: int) -> int:
+                              slot: SlotNumber) -> ValidatorIndex:
     """
     Returns the beacon proposer index for the ``slot``.
     """
@@ -1065,7 +1091,7 @@ def merkle_root(values: List[Bytes32]) -> Bytes32:
 ```python
 def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
-                                 aggregation_bitfield: bytes) -> List[int]:
+                                 aggregation_bitfield: bytes) -> List[ValidatorIndex]:
     """
     Returns the participant indices at for the ``attestation_data`` and ``aggregation_bitfield``.
     """
@@ -1093,7 +1119,7 @@ def get_attestation_participants(state: BeaconState,
 #### `get_effective_balance`
 
 ```python
-def get_effective_balance(state: State, index: int) -> int:
+def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
     """
     Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
     """
@@ -1104,7 +1130,7 @@ def get_effective_balance(state: State, index: int) -> int:
 
 ```python
 def get_fork_version(fork: Fork,
-                     epoch: int) -> int:
+                     epoch: EpochNumber) -> int:
     if epoch < fork.epoch:
         return fork.previous_version
     else:
@@ -1115,7 +1141,7 @@ def get_fork_version(fork: Fork,
 
 ```python
 def get_domain(fork: Fork,
-               epoch: int,
+               epoch: EpochNumber,
                domain_type: int) -> int:
     return get_fork_version(
         fork,
@@ -1334,8 +1360,8 @@ First, a helper function:
 
 ```python
 def validate_proof_of_possession(state: BeaconState,
-                                 pubkey: Bytes48,
-                                 proof_of_possession: Bytes96,
+                                 pubkey: BLSPubkey,
+                                 proof_of_possession: BLSSignature,
                                  withdrawal_credentials: Bytes32) -> bool:
     proof_of_possession_data = DepositInput(
         pubkey=pubkey,
@@ -1359,9 +1385,9 @@ Now, to add a [validator](#dfn-validator) or top up an existing [validator](#dfn
 
 ```python
 def process_deposit(state: BeaconState,
-                    pubkey: Bytes48,
-                    amount: int,
-                    proof_of_possession: Bytes96,
+                    pubkey: BLSPubkey,
+                    amount: Gwei,
+                    proof_of_possession: BLSSignature,
                     withdrawal_credentials: Bytes32) -> None:
     """
     Process a deposit from Ethereum 1.0.
@@ -1382,7 +1408,6 @@ def process_deposit(state: BeaconState,
         validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
-            proposer_slots=0,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawal_epoch=FAR_FUTURE_EPOCH,
@@ -1409,20 +1434,20 @@ def process_deposit(state: BeaconState,
 Note: All functions in this section mutate `state`.
 
 ```python
-def activate_validator(state: BeaconState, index: int, genesis: bool) -> None:
+def activate_validator(state: BeaconState, index: ValidatorIndex, genesis: bool) -> None:
     validator = state.validator_registry[index]
 
     validator.activation_epoch = slot_to_epoch(GENESIS_SLOT) if genesis else get_entry_exit_effect_epoch(get_current_epoch(state))
 ```
 
 ```python
-def initiate_validator_exit(state: BeaconState, index: int) -> None:
+def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validator_registry[index]
     validator.status_flags |= INITIATED_EXIT
 ```
 
 ```python
-def exit_validator(state: BeaconState, index: int) -> None:
+def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validator_registry[index]
 
     # The following updates only occur if not previous exited
@@ -1436,7 +1461,7 @@ def exit_validator(state: BeaconState, index: int) -> None:
 ```
 
 ```python
-def penalize_validator(state: BeaconState, index: int) -> None:
+def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
     exit_validator(state, index)
     validator = state.validator_registry[index]
     state.latest_penalized_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
@@ -1449,7 +1474,7 @@ def penalize_validator(state: BeaconState, index: int) -> None:
 ```
 
 ```python
-def prepare_validator_for_withdrawal(state: BeaconState, index: int) -> None:
+def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validator_registry[index]
     validator.status_flags |= WITHDRAWABLE
 ```
@@ -1461,7 +1486,6 @@ Below are the processing steps that happen at every slot.
 ### Misc counters
 
 * Set `state.slot += 1`.
-* Set `state.validator_registry[get_beacon_proposer_index(state, state.slot)].proposer_slots += 1`.
 * Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, state.slot - 1)`.
 
 ### Block roots
@@ -1487,8 +1511,8 @@ Below are the processing steps that happen at every `block`.
 ### RANDAO
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(proposer.proposer_slots), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = hash(get_randao_mix(state, state.slot) + block.randao_reveal)`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
+* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, state.slot), hash(block.randao_reveal))`.
 
 ### Eth1 data
 
@@ -1560,7 +1584,7 @@ For each `deposit` in `block.body.deposits`:
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
-def verify_merkle_branch(leaf: Bytes32, branch: [Bytes32], depth: int, index: int, root: Bytes32) -> bool:
+def verify_merkle_branch(leaf: Bytes32, branch: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
@@ -1854,8 +1878,8 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     def eligible(index):
         validator = state.validator_registry[index]
         if validator.penalized_epoch <= current_epoch:
-            PENALIZED_WITHDRAWAL_EPOCHS = LATEST_PENALIZED_EXIT_LENGTH // 2
-            return current_epoch >= validator.penalized_epoch + PENALIZED_WITHDRAWAL_EPOCHS
+            penalized_withdrawal_epochs = LATEST_PENALIZED_EXIT_LENGTH // 2
+            return current_epoch >= validator.penalized_epoch + penalized_withdrawal_epochs
         else:
             return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 
