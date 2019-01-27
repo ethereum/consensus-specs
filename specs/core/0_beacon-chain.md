@@ -261,7 +261,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Proposer index
-    'proposer_index': 'uint24',
+    'proposer_index': 'uint64',
     # First proposal data
     'proposal_data_1': ProposalSignedData,
     # First proposal signature
@@ -291,7 +291,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Validator indices
-    'validator_indices': '[uint24]',
+    'validator_indices': '[uint64]',
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # Attestation data
@@ -402,7 +402,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Minimum slot for processing exit
     'slot': 'uint64',
     # Index of the exiting validator
-    'validator_index': 'uint24',
+    'validator_index': 'uint64',
     # Validator signature
     'signature': 'bytes96',
 }
@@ -588,15 +588,15 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | Type | Description |
+| Name | SSZ equivalent | Description |
 | - | - | - |
-| `SlotNumber` | unsigned 64-bit integer | the number of a slot |
-| `ShardNumber` | unsigned 64-bit integer | the number of a shard |
-| `ValidatorIndex` | unsigned 24-bit integer | the index number of a validator in the registry |
-| `Gwei` | unsigned 64-bit integer | an amount in Gwei |
-| `Bytes32` | 32-byte data | binary data with 32-byte length |
-| `BLSPubkey` | 48-byte data | a public key in BLS signature scheme |
-| `BLSSignature` | 96-byte data | a signature in BLS signature scheme |
+| `SlotNumber` | `uint64` | a slot number |
+| `ShardNumber` | `uint64` | a shard number |
+| `ValidatorIndex` | `uint64` | an index in the validator registry |
+| `Gwei` | `uint64` | an amount in Gwei |
+| `Bytes32` | `bytes32` | 32 bytes of binary data |
+| `BLSPubkey` | `bytes48` | a BLS public key |
+| `BLSSignature` | `bytes96` | a BLS signature |
 
 ## Ethereum 1.0 deposit contract
 
@@ -1058,7 +1058,7 @@ def get_attestation_participants(state: BeaconState,
     participants = []
     for i, validator_index in enumerate(crosslink_committee):
         aggregation_bit = get_bitfield_bit(bitfield, i)
-        if aggregation_bit == 1:
+        if aggregation_bit == 0b1:
             participants.append(validator_index)
     return participants
 ```
@@ -1121,7 +1121,7 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
         return False
 
     for i in range(committee_size + 1, committee_size - committee_size % 8 + 8):
-        if get_bitfield_bit(bitfield, i) != 0:
+        if get_bitfield_bit(bitfield, i) == 0b1:
             return False
 
     return True
@@ -1142,7 +1142,7 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
 
     for i in range(len(slashable_vote.validator_indices) - 1):
         if slashable_vote.validator_indices[i] >= slashable_vote.validator_indices[i + 1]:
-        return False
+            return False
 
     if not verify_bitfield(slashable_vote.custody_bitfield, len(slashable_vote.validator_indices)):
         return False
@@ -1153,7 +1153,7 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
     custody_bit_0_indices = []
     custody_bit_1_indices = []
     for i, validator_index in enumerate(slashable_vote.validator_indices):
-        if get_bitfield_bit(slashable_vote.custody_bitfield, i) == 0:
+        if get_bitfield_bit(slashable_vote.custody_bitfield, i) == 0b0:
             custody_bit_0_indices.append(validator_index)
         else:
             custody_bit_1_indices.append(validator_index)
@@ -1164,8 +1164,8 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote.data, 0)),
-            hash_tree_root(AttestationDataAndCustodyBit(slashable_vote.data, 1)),
+            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=0b1)),
         ],
         signature=slashable_vote.aggregate_signature,
         domain=get_domain(state.fork, slashable_vote.data.slot, DOMAIN_ATTESTATION),
@@ -1554,15 +1554,15 @@ For each `attestation` in `block.body.attestations`:
 * Verify bitfields and aggregate signature:
 
 ```python
-    assert attestation.custody_bitfield == 0  # [TO BE REMOVED IN PHASE 1]
+    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
 
     for i in range(len(crosslink_committee)):
-        if get_bitfield_bit(attestation.aggregation_bitfield) == 0:
-            assert get_bitfield_bit(attestation.custody_bitfield) == 0
+        if get_bitfield_bit(attestation.aggregation_bitfield) == 0b0:
+            assert get_bitfield_bit(attestation.custody_bitfield) == 0b0
 
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
-    custody_bit_0_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
-    custody_bit_1_participants = [i in participants for i not in custody_bit_0_participants]
+    custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
+    custody_bit_0_participants = [i in participants for i not in custody_bit_1_participants]
 
     assert bls_verify_multiple(
         pubkeys=[
@@ -1570,8 +1570,8 @@ For each `attestation` in `block.body.attestations`:
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=1)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b1)),
         ],
         signature=attestation.aggregate_signature,
         domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION),
