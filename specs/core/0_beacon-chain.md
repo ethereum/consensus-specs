@@ -171,9 +171,9 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
-| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | block roots |
-| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | randao mixes |
-| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | index roots |
+| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots |
+| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs |
+| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs |
 | `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
 
@@ -1027,13 +1027,13 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   slot: SlotNumber) -> Bytes32:
+                   epoch: EpochNumber) -> Bytes32:
     """
     Returns the randao mix at a recent ``slot``.
     """
-    assert state.slot < slot + LATEST_RANDAO_MIXES_LENGTH
-    assert slot <= state.slot
-    return state.latest_randao_mixes[slot % LATEST_RANDAO_MIXES_LENGTH]
+    assert get_current_epoch(state) < epoch + LATEST_RANDAO_MIXES_LENGTH
+    assert epoch <= get_current_epoch(state)
+    return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
 ```
 
 #### `get_active_index_root`
@@ -1494,7 +1494,6 @@ Below are the processing steps that happen at every slot.
 ### Misc counters
 
 * Set `state.slot += 1`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, state.slot - 1)`.
 
 ### Block roots
 
@@ -1520,7 +1519,7 @@ Below are the processing steps that happen at every `block`.
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
-* Set `state.latest_randao_mixes[state.slot % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, state.slot), hash(block.randao_reveal))`.
+* Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
 
 ### Eth1 data
 
@@ -1902,6 +1901,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 ### Final updates
 
 * Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
+* Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
 
 ## State root processing
