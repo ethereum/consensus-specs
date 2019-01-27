@@ -63,6 +63,7 @@
             - [`hash_tree_root`](#hash_tree_root)
             - [`slot_to_epoch`](#slot_to_epoch)
             - [`get_current_epoch`](#get_current_epoch)
+            - [`get_epoch_start_slot`](#get_epoch_start_slot)
             - [`is_active_validator`](#is_active_validator)
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
@@ -794,17 +795,23 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 #### `slot_to_epoch`
 
 ```python
-def slot_to_epoch(slot: int) -> int:
+def slot_to_epoch(slot: SlotNumber) -> EpochNumber:
     return slot // EPOCH_LENGTH
 ```
 
 #### `get_current_epoch`
 
 ```python
-def get_current_epoch(state: BeaconState) -> int:
+def get_current_epoch(state: BeaconState) -> EpochNumber:
     return slot_to_epoch(state.slot)
 ```
 
+#### `get_epoch_start_slot`
+
+```python
+def get_epoch_start_slot(epoch: EpochNumber) -> SlotNumber:
+    return slot_to_epoch(state.slot)
+```
 
 #### `is_active_validator`
 ```python
@@ -1050,12 +1057,12 @@ def generate_seed(state: BeaconState,
     Generate a seed for the given ``epoch``.
     """
     if epoch < SEED_LOOKAHEAD:
-        randao_mix_epoch = slot_to_epoch(GENESIS_SLOT)
+        randao_mix_epoch = GENESIS_EPOCH
     else:
         randao_mix_epoch = epoch - SEED_LOOKAHEAD
 
     return hash(
-        get_randao_mix(state, randao_mix_epoch * EPOCH_LENGTH) +
+        get_randao_mix(state, get_epoch_start_slot(randao_mix_epoch)) +
         get_active_index_root(state, epoch)
     )
 
@@ -1437,7 +1444,7 @@ Note: All functions in this section mutate `state`.
 def activate_validator(state: BeaconState, index: ValidatorIndex, genesis: bool) -> None:
     validator = state.validator_registry[index]
 
-    validator.activation_epoch = slot_to_epoch(GENESIS_SLOT) if genesis else get_entry_exit_effect_epoch(get_current_epoch(state))
+    validator.activation_epoch = GENESIS_EPOCH if genesis else get_entry_exit_effect_epoch(get_current_epoch(state))
 ```
 
 ```python
@@ -1562,7 +1569,7 @@ For each `attestation` in `block.body.attestations`:
 * Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
 * Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_epoch`.
-* Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, attestation.data.justified_epoch * EPOCH_LENGTH)`.
+* Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
 * `aggregate_signature` verification:
     * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
@@ -1630,11 +1637,8 @@ The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
 ### Helpers
 
 * Let `current_epoch = get_current_epoch(state)`.
-* Let `current_epoch_start_slot = current_epoch * EPOCH_LENGTH`.
-* Let `previous_epoch = current_epoch - 1 if current_epoch > slot_to_epoch(GENESIS_SLOT) else current_epoch`.
-* Let `previous_epoch_start_slot = previous_epoch * EPOCH_LENGTH`.
+* Let `previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else current_epoch`.
 * Let `next_epoch = current_epoch + 1`.
-* Let `next_epoch_start_slot = next_epoch * EPOCH_LENGTH`.
 
 All [validators](#dfn-validator):
 
@@ -1643,23 +1647,23 @@ All [validators](#dfn-validator):
 
 [Validators](#dfn-Validator) attesting during the current epoch:
 
-* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch_start_slot <= a.data.slot < next_epoch_start_slot]`. (Note: this is the set of attestations of slots in the epoch `current_epoch_start_slot...next_epoch_start_slot`, _not_ attestations that got included in the chain during the epoch `current_epoch_start_slot...next_epoch_start_slot`.)
+* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch == slot_to_epoch(a.data.slot)]`. (Note: this is the set of attestations of slots in the epoch `current_epoch`, _not_ attestations that got included in the chain during the epoch `current_epoch`.)
 * Validators justifying the epoch boundary block at the start of the current epoch:
-  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, current_epoch_start_slot) and a.data.justified_epoch == state.justified_epoch]`.
+  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(current_epoch)) and a.data.justified_epoch == state.justified_epoch]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_boundary_attestations]`.
   * Let `current_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in current_epoch_boundary_attester_indices])`.
 
 [Validators](#dfn-Validator) attesting during the previous epoch:
 
 * Validators that made an attestation during the previous epoch:
-  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch_start_slot <= a.data.slot < current_epoch_start_slot]`.
+  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch == slot_to_epoch(a.data.slot)]`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_attestations]`.
 * Validators targeting the previous justified slot:
   * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.data.justified_epoch == state.previous_justified_epoch]`.
   * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_justified_attestations]`.
   * Let `previous_epoch_justified_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_justified_attester_indices])`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
-  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.data.epoch_boundary_root == get_block_root(state, previous_epoch_start_slot)]`.
+  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(previous_epoch))]`.
   * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_boundary_attestations]`.
   * Let `previous_epoch_boundary_attesting_balance = sum([get_effective_balance(state, i) for i in previous_epoch_boundary_attester_indices])`.
 * Validators attesting to the expected beacon chain head during the previous epoch:
@@ -1669,7 +1673,7 @@ All [validators](#dfn-validator):
 
 **Note**: `previous_epoch_boundary_attesting_balance` balance might be marginally different than `current_epoch_boundary_attesting_balance` during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
-For every `slot in range(previous_epoch_start_slot, next_epoch_start_slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
+For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch))`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * Let `shard_block_root` be `state.latest_crosslinks[shard].shard_block_root`
 * Let `attesting_validator_indices(crosslink_committee, shard_block_root)` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_attestations + previous_epoch_attestations if a.data.shard == shard and a.data.shard_block_root == shard_block_root]`.
@@ -1699,7 +1703,7 @@ First, update the justification bitfield:
 * Set `state.justification_bitfield |= 2` and `new_justified_epoch = previous_epoch` if `3 * previous_epoch_boundary_attesting_balance >= 2 * total_balance`.
 * Set `state.justification_bitfield |= 1` and `new_justified_epoch = current_epoch` if `3 * current_epoch_boundary_attesting_balance >= 2 * total_balance`.
 
-Next, update last finalized slot if possible:
+Next, update last finalized epoch if possible:
 
 * Set `state.finalized_epoch = state.previous_justified_epoch` if `(state.justification_bitfield >> 1) % 8 == 0b111 and state.previous_justified_epoch == previous_epoch - 2`.
 * Set `state.finalized_epoch = state.previous_justified_epoch` if `(state.justification_bitfield >> 1) % 4 == 0b11 and state.previous_justified_epoch == previous_epoch - 1`.
@@ -1713,7 +1717,7 @@ Finally, update the following:
 
 ### Crosslinks
 
-For every `slot in range(previous_epoch_start_slot, next_epoch_start_slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
+For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch))`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * Set `state.latest_crosslinks[shard] = Crosslink(epoch=current_epoch, shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * total_balance(crosslink_committee)`.
 
@@ -1759,7 +1763,7 @@ For each `index` in `previous_epoch_attester_indices`, we determine the proposer
 
 #### Crosslinks
 
-For every `slot in range(previous_epoch_start_slot, current_epoch_start_slot)`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
+For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(current_epoch))`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
 * If `index in attesting_validators(crosslink_committee)`, `state.validator_balances[index] += base_reward(state, index) * total_attesting_balance(crosslink_committee) // total_balance(crosslink_committee))`.
 * If `index not in attesting_validators(crosslink_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
