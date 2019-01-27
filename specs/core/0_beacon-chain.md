@@ -774,7 +774,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
 We now define the state transition function. At a high level the state transition is made up of two parts:
 
 1. The per-slot transitions, which happens every slot, and only affects a parts of the `state`.
-2. The per-epoch transitions, which happens at every epoch boundary (i.e. `state.slot % EPOCH_LENGTH == 0`), and affects the entire `state`.
+2. The per-epoch transitions, which happens in the last slot of every epoch (i.e. `(state.slot + 1) % EPOCH_LENGTH == 0`), and affects the entire `state`.
 
 The per-slot transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-slot activity in the `BeaconState`. The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
 
@@ -1057,13 +1057,10 @@ def generate_seed(state: BeaconState,
     """
     Generate a seed for the given ``epoch``.
     """
-    if epoch < SEED_LOOKAHEAD:
-        randao_mix_epoch = GENESIS_EPOCH
-    else:
-        randao_mix_epoch = epoch - SEED_LOOKAHEAD
+    randao_mix_epoch = epoch + LATEST_RANDAO_MIXES_LENGTH - SEED_LOOKAHEAD
 
     return hash(
-        get_randao_mix(state, get_epoch_start_slot(randao_mix_epoch)) +
+        get_randao_mix(state, randao_mix_epoch) +
         get_active_index_root(state, epoch)
     )
 
@@ -1568,7 +1565,7 @@ For each `attestation` in `block.body.attestations`:
 
 * Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
 * Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
-* Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= state.slot - (state.slot % EPOCH_LENGTH) else state.previous_justified_epoch`.
+* Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
 * `aggregate_signature` verification:
