@@ -68,10 +68,10 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`shuffle`](#shuffle)
             - [`split`](#split)
-            - [`get_committee_count_per_slot`](#get_committee_count_per_slot)
+            - [`get_epoch_committee_count`](#get_epoch_committee_count)
             - [`get_shuffling`](#get_shuffling)
-            - [`get_previous_epoch_committee_count_per_slot`](#get_previous_epoch_committee_count_per_slot)
-            - [`get_current_epoch_committee_count_per_slot`](#get_current_epoch_committee_count_per_slot)
+            - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
+            - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
             - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
             - [`get_block_root`](#get_block_root)
             - [`get_randao_mix`](#get_randao_mix)
@@ -899,17 +899,17 @@ def split(values: List[Any], split_count: int) -> List[List[Any]]:
     ]
 ```
 
-#### `get_committee_count_per_slot`
+#### `get_epoch_committee_count`
 
 ```python
-def get_committee_count_per_slot(active_validator_count: int) -> int:
+def get_epoch_committee_count(active_validator_count: int) -> int:
     return max(
         1,
         min(
             SHARD_COUNT // EPOCH_LENGTH,
             active_validator_count // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
         )
-    )
+    ) * EPOCH_LENGTH
 ```
 
 #### `get_shuffling`
@@ -926,40 +926,40 @@ def get_shuffling(seed: Bytes32,
 
     active_validator_indices = get_active_validator_indices(validators, epoch)
 
-    committees_per_slot = get_committee_count_per_slot(len(active_validator_indices))
+    committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
 
     # Shuffle
     seed = xor(seed, int_to_bytes32(epoch))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
-    # Split the shuffled list into epoch_length * committees_per_slot pieces
-    return split(shuffled_active_validator_indices, committees_per_slot * EPOCH_LENGTH)
+    # Split the shuffled list into committees_per_epoch pieces
+    return split(shuffled_active_validator_indices, committees_per_epoch)
 ```
 
 **Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= get_current_epoch(state) + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
-#### `get_previous_epoch_committee_count_per_slot`
+#### `get_previous_epoch_committee_count`
 
 ```python
-def get_previous_epoch_committee_count_per_slot(state: BeaconState) -> int:
+def get_previous_epoch_committee_count(state: BeaconState) -> int:
     previous_active_validators = get_active_validator_indices(
         state.validator_registry,
         state.previous_calculation_epoch,
     )
-    return get_committee_count_per_slot(len(previous_active_validators))
+    return get_epoch_committee_count(len(previous_active_validators))
 ```
 
-#### `get_current_epoch_committee_count_per_slot`
+#### `get_current_epoch_committee_count`
 
 ```python
-def get_current_epoch_committee_count_per_slot(state: BeaconState) -> int:
+def get_current_epoch_committee_count(state: BeaconState) -> int:
     current_active_validators = get_active_validator_indices(
         state.validator_registry,
         state.current_calculation_epoch,
     )
-    return get_committee_count_per_slot(len(current_active_validators))
+    return get_epoch_committee_count(len(current_active_validators))
 ```
 
 #### `get_crosslink_committees_at_slot`
@@ -978,12 +978,12 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     assert previous_epoch <= epoch < next_epoch
 
     if epoch < current_epoch:
-        committees_per_slot = get_previous_epoch_committee_count_per_slot(state)
+        committees_per_epoch = get_previous_epoch_committee_count(state)
         seed = state.previous_epoch_seed
         shuffling_epoch = state.previous_calculation_epoch
         shuffling_start_shard = state.previous_epoch_start_shard
     else:
-        committees_per_slot = get_current_epoch_committee_count_per_slot(state)
+        committees_per_epoch = get_current_epoch_committee_count(state)
         seed = state.current_epoch_seed
         shuffling_epoch = state.current_calculation_epoch
         shuffling_start_shard = state.current_epoch_start_shard
@@ -994,6 +994,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         shuffling_epoch,
     )
     offset = slot % EPOCH_LENGTH
+    committees_per_slot = committees_per_epoch // EPOCH_LENGTH
     slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
 
     return [
@@ -1795,7 +1796,7 @@ First, update the following:
 If the following are satisfied:
 
 * `state.finalized_epoch > state.validator_registry_update_epoch`
-* `state.latest_crosslinks[shard].epoch > state.validator_registry_update_epoch` for every shard number `shard` in `[(state.current_epoch_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH)]` (that is, for every shard in the current committees)
+* `state.latest_crosslinks[shard].epoch > state.validator_registry_update_epoch` for every shard number `shard` in `[(state.current_epoch_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committee_count(state))]` (that is, for every shard in the current committees)
 
 update the validator registry and associated fields by running
 
@@ -1847,7 +1848,7 @@ def update_validator_registry(state: BeaconState) -> None:
 and perform the following updates:
 
 * Set `state.current_calculation_epoch = next_epoch`
-* Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count_per_slot(state) * EPOCH_LENGTH) % SHARD_COUNT`
+* Set `state.current_epoch_start_shard = (state.current_epoch_start_shard + get_current_epoch_committee_count(state)) % SHARD_COUNT`
 * Set `state.current_epoch_seed = generate_seed(state, state.current_calculation_epoch)`
 
 If a validator registry update does _not_ happen do the following:
