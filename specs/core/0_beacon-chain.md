@@ -810,7 +810,7 @@ def get_current_epoch(state: BeaconState) -> EpochNumber:
 
 ```python
 def get_epoch_start_slot(epoch: EpochNumber) -> SlotNumber:
-    return slot_to_epoch(state.slot)
+    return epoch * EPOCH_LENGTH
 ```
 
 #### `is_active_validator`
@@ -920,7 +920,7 @@ def get_shuffling(seed: Bytes32,
                   epoch: EpochNumber) -> List[List[ValidatorIndex]]
     """
     Shuffles ``validators`` into crosslink committees seeded by ``seed`` and ``epoch``.
-    Returns a list of ``EPOCH_LENGTH * committees_per_slot`` committees where each
+    Returns a list of ``committees_per_epoch`` committees where each
     committee is itself a list of validator indices.
     """
 
@@ -1053,7 +1053,7 @@ def get_active_index_root(state: BeaconState,
 
 ```python
 def generate_seed(state: BeaconState,
-                  epoch: int) -> Bytes32:
+                  epoch: EpochNumber) -> Bytes32:
     """
     Generate a seed for the given ``epoch``.
     """
