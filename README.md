@@ -16,6 +16,7 @@ Accompanying documents can be found in [specs](specs) and include
 * [SimpleSerialize (SSZ) spec](specs/simple-serialize.md)
 * [BLS signature verification](specs/bls_signature.md)
 * [General test format](specs/test-format.md)
+* [Honest validator implementation doc](specs/validator/0_beacon-chain-validator.md)
 
 ## Design goals
 The following are the broad design goals for Ethereum 2.0:
