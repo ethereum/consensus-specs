@@ -43,17 +43,19 @@ protocol for use in the Ethereum 2.0 Beacon Chain.
 The core feature of `ssz` is the simplicity of the serialization with low
 overhead.
 
-## Terminology
+## Variables and Functions
 
 | Term         | Definition                                                                                     |
 |:-------------|:-----------------------------------------------------------------------------------------------|
 | `little`     | Little endian.                                                                                 |
-| `byte_order` | Specifies [endianness](https://en.wikipedia.org/wiki/Endianness): big endian or little endian. |
+| `byteorder`  | Specifies [endianness](https://en.wikipedia.org/wiki/Endianness): big endian or little endian. |
 | `len`        | Length/number of bytes.                                                                        |
-| `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byte_order``.                          |
-| `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byte_order``.                        |
+| `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byteorder``.                           |
+| `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byteorder``.                         |
 | `value`      | The value to serialize.                                                                        |
 | `rawbytes`   | Raw serialized bytes.                                                                          |
+| `deserialized_object` | The deserialized data in the data structure of your programming language.             |
+| `new_index`  | An index to keep track the latest position where the `rawbytes` have been deserialized.        |
 
 ## Constants
 
@@ -71,7 +73,6 @@ overhead.
 | uint Type | Usage                                                      |
 |:---------:|:-----------------------------------------------------------|
 |  `uintN`  | Type of `N` bits unsigned integer, where ``N % 8 == 0``.   |
-
 
 Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
 
@@ -142,9 +143,7 @@ Lists are a collection of elements of the same homogeneous type.
 |:--------------------------------------------|:----------------------------|
 | Length of serialized list fits into 4 bytes | ``len(serialized) < 2**32`` |
 
-
 1. Serialize all list elements individually and concatenate them.
-
 2. Prefix the concatenation with its length encoded as a `4-byte` **little-endian** unsigned integer.
 
 **Example in Python**
@@ -168,7 +167,6 @@ return serialized_len + serialized_list_string
 A container represents a heterogenous, associative collection of key-value pairs. Each pair is referred to as a `field`. To get the value for a given field, you supply the key which is a symbol unique to the container referred to as the field's `name`. The container data type is analogous to the `struct` type found in many languages like C or Go.
 
 To serialize a container, obtain the list of its field's names in the specified order. For each field name in this list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **little endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
-
 
 | Check to perform                            | Code                        |
 |:--------------------------------------------|:----------------------------|
@@ -217,14 +215,21 @@ The decoding requires knowledge of the type of the item to be decoded. When
 performing decoding on an entire serialized string, it also requires knowledge
 of the order in which the objects have been serialized.
 
-Note: Each return will provide ``deserialized_object, new_index`` keeping track
-of the new index.
+Note: Each return will provide:
+- `deserialized_object`
+- `new_index`
 
 At each step, the following checks should be made:
 
 | Check to perform         | Check                                                      |
 |:-------------------------|:-----------------------------------------------------------|
-| Ensure sufficient length | ``length(rawbytes) >= current_index + deserialize_length`` |
+| Ensure sufficient length | ``len(rawbytes) >= current_index + deserialize_length``    |
+
+At the final step, the following checks should be made:
+
+| Check to perform         | Check                                |
+|:-------------------------|:-------------------------------------|
+| Ensure no extra length   | `new_index == len(rawbytes)`         |
 
 #### uint
 
@@ -293,7 +298,7 @@ entire length of the list.
 
 | Check to perform                          | code                                                            |
 |:------------------------------------------|:----------------------------------------------------------------|
-| rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
+| ``rawbytes`` has enough left for length   | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
 | list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
 
 ```python
@@ -321,7 +326,7 @@ Instantiate a container with the full set of deserialized data, matching each me
 
 | Check to perform                          | code                                                            |
 |:------------------------------------------|:----------------------------------------------------------------|
-| rawbytes has enough left for length       | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
+| ``rawbytes`` has enough left for length   | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
 | list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
 
 To deserialize:
@@ -439,7 +444,6 @@ return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.field
 |   Java   | [ https://www.github.com/ConsenSys/cava/tree/master/ssz ](https://www.github.com/ConsenSys/cava/tree/master/ssz) | SSZ Java library part of the Cava suite |
 |   Go   | [ https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz ](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) | Go implementation of SSZ mantained by Prysmatic Labs |
 |  Swift | [ https://github.com/yeeth/SimpleSerialize.swift ](https://github.com/yeeth/SimpleSerialize.swift) | Swift implementation maintained SSZ |
-
 
 ## Copyright
 Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
