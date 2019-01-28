@@ -1606,6 +1606,7 @@ For each `attestation` in `block.body.attestations`:
 
 ```python
     assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
+    assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
 
     for i in range(len(crosslink_committee)):
         if get_bitfield_bit(attestation.aggregation_bitfield) == 0b0:
