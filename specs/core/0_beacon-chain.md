@@ -190,13 +190,15 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | Name | Value |
 | - | - |
 | `GENESIS_FORK_VERSION` | `0` |
-| `GENESIS_SLOT` | `0` |
+| `GENESIS_SLOT` | `2**19` |
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
 | `ZERO_HASH` | `int_to_bytes32(0)` |
 | `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
+
+* `GENESIS_SLOT` should be at least as large in terms of time as the largest of the time parameters or state list lengths below (ie. it should be at least as large as any value measured in slots, and at least `EPOCH_LENGTH` times as large as any value measured in epochs).
 
 ### Time parameters
 
@@ -212,11 +214,12 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ### State list lengths
 
-| Name | Value | Unit |
-| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots |
-| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs |
-| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs |
-| `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs |
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots | ~13 hours |
+| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### Reward and penalty quotients
 
@@ -1036,8 +1039,7 @@ def get_randao_mix(state: BeaconState,
     """
     Returns the randao mix at a recent ``slot``.
     """
-    assert get_current_epoch(state) < epoch + LATEST_RANDAO_MIXES_LENGTH
-    assert epoch <= get_current_epoch(state)
+    assert get_current_epoch(state) - LATEST_RANDAO_MIXES_LENGTH < epoch <= get_current_epoch(state)
     return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
 ```
 
@@ -1049,8 +1051,7 @@ def get_active_index_root(state: BeaconState,
     """
     Returns the index root at a recent ``epoch``.
     """
-    assert get_current_epoch(state) < epoch + LATEST_INDEX_ROOTS_LENGTH
-    assert epoch <= get_current_epoch(state)
+    assert get_current_epoch(state) - LATEST_INDEX_ROOTS_LENGTH < epoch <= get_current_epoch(state)
     return state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH]
 ```
 
@@ -1062,10 +1063,9 @@ def generate_seed(state: BeaconState,
     """
     Generate a seed for the given ``epoch``.
     """
-    randao_mix_epoch = epoch + LATEST_RANDAO_MIXES_LENGTH - SEED_LOOKAHEAD
 
     return hash(
-        get_randao_mix(state, randao_mix_epoch) +
+        get_randao_mix(state, epoch - SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch)
     )
 ```
