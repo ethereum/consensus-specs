@@ -1919,8 +1919,8 @@ and perform the following updates:
 
 If a validator registry update does _not_ happen do the following:
 
-* Let `epochs_since_last_registry_change = current_epoch - state.validator_registry_update_epoch`.
-* If `epochs_since_last_registry_change` is an exact power of 2:
+* Let `epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch`.
+* If `epochs_since_last_registry_update` is an exact power of 2:
     * Set `state.current_calculation_epoch = next_epoch`.
     * Set `state.current_epoch_seed = generate_seed(state, state.current_calculation_epoch)`
     * _Note_ that `state.current_epoch_start_shard` is left unchanged.
