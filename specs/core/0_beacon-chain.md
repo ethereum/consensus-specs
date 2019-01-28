@@ -1037,7 +1037,7 @@ def get_block_root(state: BeaconState,
 def get_randao_mix(state: BeaconState,
                    epoch: EpochNumber) -> Bytes32:
     """
-    Returns the randao mix at a recent ``slot``.
+    Returns the randao mix at a recent ``epoch``.
     """
     assert get_current_epoch(state) - LATEST_RANDAO_MIXES_LENGTH < epoch <= get_current_epoch(state)
     return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
