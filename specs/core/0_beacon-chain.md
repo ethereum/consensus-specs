@@ -1604,7 +1604,7 @@ For each `attestation` in `block.body.attestations`:
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
 * Verify bitfields and aggregate signature:
 
-```python    
+```python
     assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
 
