@@ -980,7 +980,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
-    previous_epoch = current_epoch - 1 if epoch > GENESIS_EPOCH else current_epoch
+    previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else current_epoch
     next_epoch = current_epoch + 1
 
     assert previous_epoch <= epoch < next_epoch
