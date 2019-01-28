@@ -86,13 +86,15 @@ def hash_to_G2(message: bytes32, domain: uint64) -> [uint384]:
 
 ### `modular_squareroot`
 
-`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored.
+`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
+
+The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`
 
 ```python
 Fq2_order = q ** 2 - 1
 eighth_roots_of_unity = [Fq2([1,1]) ** ((Fq2_order * k) // 8) for k in range(8)]
 
-def modular_squareroot(value: int) -> int:
+def modular_squareroot(value: Fq2) -> Fq2:
     candidate_squareroot = value ** ((Fq2_order + 8) // 16)
     check = candidate_squareroot ** 2 / value
     if check in eighth_roots_of_unity[::2]:
