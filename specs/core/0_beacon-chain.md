@@ -361,7 +361,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Attestation data
     'data': AttestationData,
     # Custody bit
-    'custody_bit': bool,
+    'custody_bit': 'bool',
 }
 ```
 
@@ -1624,7 +1624,7 @@ For each `attestation` in `block.body.attestations`:
             hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b1)),
         ],
         signature=attestation.aggregate_signature,
-        domain=get_domain(state.fork, attestation.data.slot, DOMAIN_ATTESTATION),
+        domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION),
     ) 
 ```
 
