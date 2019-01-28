@@ -145,8 +145,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ## Terminology
 
-* **Validator** <a id="dfn-validator"></a> - a participant in the Casper/sharding consensus system. You can become one by depositing 32 ETH into the Casper mechanism.
-* **Active validator** <a id="dfn-active-validator"></a> - a [validator](#dfn-validator) currently participating in the protocol which the Casper mechanism looks to produce and attest to blocks, crosslinks and other consensus objects.
+* **Validator** <a id="dfn-validator"></a> - a registered participant in the beacon chain. You can become one by sending Ether into the Ethereum 1.0 deposit contract.
+* **Active validator** <a id="dfn-active-validator"></a> - an active participant in the Ethereum 2.0 consensus invited to, among other things, propose and attest to blocks and vote for crosslinks.
 * **Committee** - a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
 * **Proposer** - the [validator](#dfn-validator) that creates a beacon chain block
 * **Attester** - a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
@@ -171,7 +171,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
-| `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
+| `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**10` (= 1,024) | votes |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -1163,7 +1163,7 @@ def get_domain(fork: Fork,
 
 ```python
 def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData) -> bool:
-    if len(vote_data.custody_bit_0_indices) + len(vote_data.custody_bit_1_indices) > MAX_CASPER_VOTES:
+    if len(vote_data.custody_bit_0_indices) + len(vote_data.custody_bit_1_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
         return False
 
     return bls_verify_multiple(
