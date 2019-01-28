@@ -15,6 +15,7 @@
         - [Deposit contract](#deposit-contract)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
+        - [State list lengths](#state-list-lengths)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Status flags](#status-flags)
         - [Max operations per block](#max-operations-per-block)
@@ -171,10 +172,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_CASPER_VOTES` | `2**10` (= 1,024) | votes |
-| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots |
-| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs |
-| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs |
-| `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -212,6 +209,14 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
+
+### State list lengths
+
+| Name | Value | Unit |
+| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots |
+| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs |
+| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs |
+| `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs |
 
 ### Reward and penalty quotients
 
@@ -1757,10 +1762,12 @@ For each `index` in `previous_epoch_attester_indices`, we determine the proposer
 
 #### Crosslinks
 
-For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(current_epoch))`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
+For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(current_epoch))`:
 
-* If `index in attesting_validators(crosslink_committee)`, `state.validator_balances[index] += base_reward(state, index) * total_attesting_balance(crosslink_committee) // total_balance(crosslink_committee))`.
-* If `index not in attesting_validators(crosslink_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
+* Let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`.
+* For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`:
+    * If `index in attesting_validators(crosslink_committee)`, `state.validator_balances[index] += base_reward(state, index) * total_attesting_balance(crosslink_committee) // total_balance(crosslink_committee))`.
+    * If `index not in attesting_validators(crosslink_committee)`, `state.validator_balances[index] -= base_reward(state, index)`.
 
 ### Ejections
 
