@@ -26,7 +26,7 @@
                 - [`ProposerSlashing`](#proposerslashing)
             - [Attester slashings](#attester-slashings)
                 - [`AttesterSlashing`](#attesterslashing)
-                - [`SlashableVoteData`](#slashablevotedata)
+                - [`SlashableVote`](#slashablevote)
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
@@ -76,7 +76,9 @@
         - [`get_effective_balance`](#get_effective_balance)
         - [`get_fork_version`](#get_fork_version)
         - [`get_domain`](#get_domain)
-        - [`verify_slashable_vote_data`](#verify_slashable_vote_data)
+        - [`get_bitfield_bit`](#get_bitfield_bit)
+        - [`verify_bitfield`](#verify_bitfield)
+        - [`verify_slashable_vote`](#verify_slashable_vote)
         - [`is_double_vote`](#is_double_vote)
         - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
@@ -116,7 +118,6 @@
               - [Attestations](#attestations-1)
               - [Deposits](#deposits-1)
               - [Exits](#exits-1)
-              - [Custody](#custody)
       - [Per-epoch processing](#per-epoch-processing)
           - [Helpers](#helpers)
           - [Eth1 data](#eth1-data-1)
@@ -177,7 +178,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
-| `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**10` (= 1,024) | votes |
+| `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -251,7 +252,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | Name | Value |
 | - | - |
 | `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
-| `MAX_ATTESTER_SLASHINGS` | `2**4` (= 16) |
+| `MAX_ATTESTER_SLASHINGS` | `2**0` (= 1) |
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_EXITS` | `2**4` (= 16) |
@@ -279,7 +280,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Proposer index
-    'proposer_index': 'uint24',
+    'proposer_index': 'uint64',
     # First proposal data
     'proposal_data_1': ProposalSignedData,
     # First proposal signature
@@ -298,20 +299,20 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # First batch of votes
-    'slashable_vote_data_1': SlashableVoteData,
+    'slashable_vote_1': SlashableVote,
     # Second batch of votes
-    'slashable_vote_data_2': SlashableVoteData,
+    'slashable_vote_2': SlashableVote,
 }
 ```
 
-##### `SlashableVoteData`
+##### `SlashableVote`
 
 ```python
 {
-    # Validator indices with custody bit equal to 0
-    'custody_bit_0_indices': ['uint24'],
-    # Validator indices with custody bit equal to 1
-    'custody_bit_1_indices': ['uint24'],
+    # Validator indices
+    'validator_indices': '[uint64]',
+    # Custody bitfield
+    'custody_bitfield': 'bytes',
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
@@ -364,9 +365,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Attestation data
-    data: AttestationData,
+    'data': AttestationData,
     # Custody bit
-    custody_bit: bool,
+    'custody_bit': 'bool',
 }
 ```
 
@@ -420,7 +421,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Minimum epoch for processing exit
     'epoch': 'uint64',
     # Index of the exiting validator
-    'validator_index': 'uint24',
+    'validator_index': 'uint64',
     # Validator signature
     'signature': 'bytes96',
 }
@@ -452,15 +453,10 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'proposer_slashings': [ProposerSlashing],
     'attester_slashings': [AttesterSlashing],
     'attestations': [Attestation],
-    'custody_reseeds': [CustodyReseed],
-    'custody_challenges': [CustodyChallenge],
-    'custody_responses': [CustodyResponse],
     'deposits': [Deposit],
     'exits': [Exit],
 }
 ```
-
-`CustodyReseed`, `CustodyChallenge`, and `CustodyResponse` will be defined in phase 1; for now, put dummy classes as these lists will remain empty throughout phase 0.
 
 #### `ProposalSignedData`
 
@@ -494,16 +490,12 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32'],
-    'latest_vdf_outputs': ['bytes32'],
     'previous_epoch_start_shard': 'uint64',
     'current_epoch_start_shard': 'uint64',
     'previous_calculation_epoch': 'uint64',
     'current_calculation_epoch': 'uint64',
     'previous_epoch_seed': 'bytes32',
     'current_epoch_seed': 'bytes32',
-
-    # Custody challenges
-    'custody_challenges': [CustodyChallenge],
 
     # Finality
     'previous_justified_epoch': 'uint64',
@@ -545,10 +537,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'exit_count': 'uint64',
     # Status flags
     'status_flags': 'uint64',
-    # Slot of latest custody reseed
-    'latest_custody_reseed_slot': 'uint64',
-    # Slot of second-latest custody reseed
-    'penultimate_custody_reseed_slot': 'uint64',
 }
 ```
 
@@ -617,16 +605,16 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | Type | Description |
+| Name | SSZ equivalent | Description |
 | - | - | - |
-| `SlotNumber` | unsigned 64-bit integer | the number of a slot |
-| `EpochNumber` | unsigned 64-bit integer | the number of an epoch |
-| `ShardNumber` | unsigned 64-bit integer | the number of a shard |
-| `ValidatorIndex` | unsigned 24-bit integer | the index number of a validator in the registry |
-| `Gwei` | unsigned 64-bit integer | an amount in Gwei |
-| `Bytes32` | 32-byte data | binary data with 32-byte length |
-| `BLSPubkey` | 48-byte data | a public key in BLS signature scheme |
-| `BLSSignature` | 96-byte data | a signature in BLS signature scheme |
+| `SlotNumber` | `uint64` | a slot number |
+| `EpochNumber` | `uint64` | an epoch number |
+| `ShardNumber` | `uint64` | a shard number |
+| `ValidatorIndex` | `uint64` | an index in the validator registry |
+| `Gwei` | `uint64` | an amount in Gwei |
+| `Bytes32` | `bytes32` | 32 bytes of binary data |
+| `BLSPubkey` | `bytes48` | a BLS public key |
+| `BLSSignature` | `bytes96` | a BLS signature |
 
 ## Helper functions
 
@@ -942,23 +930,23 @@ def merkle_root(values: List[Bytes32]) -> Bytes32:
 ```python
 def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
-                                 aggregation_bitfield: bytes) -> List[ValidatorIndex]:
+                                 bitfield: bytes) -> List[ValidatorIndex]:
     """
-    Returns the participant indices at for the ``attestation_data`` and ``aggregation_bitfield``.
+    Returns the participant indices at for the ``attestation_data`` and ``bitfield``.
     """
-
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
 
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
-    assert len(aggregation_bitfield) == (len(crosslink_committee) + 7) // 8
+
+    assert verify_bitfield(bitfield, len(crosslink_committee))
 
     # Find the participating attesters in the committee
     participants = []
     for i, validator_index in enumerate(crosslink_committee):
-        aggregation_bit = (aggregation_bitfield[i // 8] >> (7 - (i % 8))) % 2
-        if aggregation_bit == 1:
+        aggregation_bit = get_bitfield_bit(bitfield, i)
+        if aggregation_bit == 0b1:
             participants.append(validator_index)
     return participants
 ```
@@ -1000,23 +988,74 @@ def get_domain(fork: Fork,
     ) * 2**32 + domain_type
 ```
 
-### `verify_slashable_vote_data`
+### `get_bitfield_bit`
 
 ```python
-def verify_slashable_vote_data(state: BeaconState, vote_data: SlashableVoteData) -> bool:
-    if len(vote_data.custody_bit_0_indices) + len(vote_data.custody_bit_1_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
+def get_bitfield_bit(bitfield: bytes, i: int) -> int:
+    """
+    Extract the bit in ``bitfield`` at position ``i``.
+    """
+    return (bitfield[i // 8] >> (7 - (i % 8))) % 2
+```
+
+### `verify_bitfield`
+
+```python
+def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
+    """
+    Verify ``bitfield`` against the ``committee_size``.
+    """
+    if len(bitfield) != (committee_size + 7) // 8:
         return False
 
-    return bls_verify_multiple(
+    for i in range(committee_size + 1, committee_size - committee_size % 8 + 8):
+        if get_bitfield_bit(bitfield, i) == 0b1:
+            return False
+
+    return True
+```
+
+### `verify_slashable_vote`
+
+```python
+def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> bool:
+    """
+    Verify validity of ``slashable_vote`` fields.
+    """
+    if slashable_vote.custody_bitfield != b'\x00' * len(slashable_vote.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
+        return False
+
+    if len(slashable_vote.validator_indices) == 0:
+        return False
+
+    for i in range(len(slashable_vote.validator_indices) - 1):
+        if slashable_vote.validator_indices[i] >= slashable_vote.validator_indices[i + 1]:
+            return False
+
+    if not verify_bitfield(slashable_vote.custody_bitfield, len(slashable_vote.validator_indices)):
+        return False
+
+    if len(slashable_vote.validator_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
+        return False
+
+    custody_bit_0_indices = []
+    custody_bit_1_indices = []
+    for i, validator_index in enumerate(slashable_vote.validator_indices):
+        if get_bitfield_bit(slashable_vote.custody_bitfield, i) == 0b0:
+            custody_bit_0_indices.append(validator_index)
+        else:
+            custody_bit_1_indices.append(validator_index)
+
+    return bls_verify(
         pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.custody_bit_0_indices]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in vote_data.custody_bit_1_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, False)),
-            hash_tree_root(AttestationDataAndCustodyBit(vote_data.data, True)),
+            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=0b1)),
         ],
-        signature=vote_data.aggregate_signature,
+        signature=slashable_vote.aggregate_signature,
         domain=get_domain(
             state.fork,
             slot_to_epoch(vote_data.data.slot),
@@ -1102,7 +1141,6 @@ def get_entry_exit_effect_epoch(epoch: EpochNumber) -> EpochNumber:
 
 `bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_aggregate_pubkeys).
 
-
 ### `validate_proof_of_possession`
 
 ```python
@@ -1163,8 +1201,6 @@ def process_deposit(state: BeaconState,
             penalized_epoch=FAR_FUTURE_EPOCH,
             exit_count=0,
             status_flags=0,
-            latest_custody_reseed_slot=GENESIS_SLOT,
-            penultimate_custody_reseed_slot=GENESIS_SLOT,
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
@@ -1350,9 +1386,6 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
         proposer_slashings=[],
         attester_slashings=[],
         attestations=[],
-        custody_reseeds=[],
-        custody_challenges=[],
-        custody_responses=[],
         deposits=[],
         exits=[],
     ),
@@ -1390,9 +1423,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         current_calculation_epoch=GENESIS_EPOCH,
         previous_epoch_seed=ZERO_HASH,
         current_epoch_seed=ZERO_HASH,
-
-        # Custody challenges
-        custody_challenges=[],
 
         # Finality
         previous_justified_epoch=GENESIS_EPOCH,
@@ -1569,15 +1599,14 @@ Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 
 For each `attester_slashing` in `block.body.attester_slashings`:
 
-* Let `slashable_vote_data_1 = attester_slashing.slashable_vote_data_1`.
-* Let `slashable_vote_data_2 = attester_slashing.slashable_vote_data_2`.
-* Let `indices(slashable_vote_data) = slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices`.
-* Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
+* Let `slashable_vote_1 = casper_slashing.slashable_vote_1`.
+* Let `slashable_vote_2 = casper_slashing.slashable_vote_2`.
+* Let `intersection = [x for x in slashable_vote_1.validator_indices if x in slashable_vote_2.validator_indices]`.
 * Verify that `len(intersection) >= 1`.
-* Verify that `slashable_vote_data_1.data != slashable_vote_data_2.data`.
-* Verify that `is_double_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)` or `is_surround_vote(slashable_vote_data_1.data, slashable_vote_data_2.data)`.
-* Verify that `verify_slashable_vote_data(state, slashable_vote_data_1)`.
-* Verify that `verify_slashable_vote_data(state, slashable_vote_data_2)`.
+* Verify that `slashable_vote_1.data != slashable_vote_2.data`.
+* Verify that `is_double_vote(slashable_vote_1.data, slashable_vote_2.data)` or `is_surround_vote(slashable_vote_1.data, slashable_vote_2.data)`.
+* Verify that `verify_slashable_vote(state, slashable_vote_1)`.
+* Verify that `verify_slashable_vote(state, slashable_vote_2)`.
 * For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_epoch > get_current_epoch(state)`.
 
 ##### Attestations
@@ -1591,10 +1620,33 @@ For each `attestation` in `block.body.attestations`:
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
-* `aggregate_signature` verification:
-    * Let `participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)`.
-    * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[v].pubkey for v in participants])`.
-    * Verify that `bls_verify(pubkey=group_public_key, message=hash_tree_root(AttestationDataAndCustodyBit(attestation.data, False)), signature=attestation.aggregate_signature, domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION))`.
+* Verify bitfields and aggregate signature:
+
+```python
+    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
+
+    for i in range(len(crosslink_committee)):
+        if get_bitfield_bit(attestation.aggregation_bitfield) == 0b0:
+            assert get_bitfield_bit(attestation.custody_bitfield) == 0b0
+
+    participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
+    custody_bit_0_participants = [i in participants for i not in custody_bit_1_participants]
+
+    assert bls_verify_multiple(
+        pubkeys=[
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_participants]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
+        ],
+        messages=[
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b1)),
+        ],
+        signature=attestation.aggregate_signature,
+        domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION),
+    ) 
+```
+
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
 * Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
 
@@ -1645,10 +1697,6 @@ For each `exit` in `block.body.exits`:
 * Let `exit_message = hash_tree_root(Exit(epoch=exit.epoch, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
-
-##### Custody
-
-[TO BE REMOVED IN PHASE 1] Verify that `len(block.body.custody_reseeds) == len(block.body.custody_challenges) == len(block.body.custody_responses) == 0`.
 
 ### Per-epoch processing
 
