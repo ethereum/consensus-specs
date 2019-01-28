@@ -1068,7 +1068,6 @@ def generate_seed(state: BeaconState,
         get_randao_mix(state, randao_mix_epoch) +
         get_active_index_root(state, epoch)
     )
-
 ```
 
 #### `get_beacon_proposer_index`
