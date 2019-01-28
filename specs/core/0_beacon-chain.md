@@ -24,8 +24,8 @@
         - [Beacon chain operations](#beacon-chain-operations)
             - [Proposer slashings](#proposer-slashings)
                 - [`ProposerSlashing`](#proposerslashing)
-            - [Casper slashings](#casper-slashings)
-                - [`CasperSlashing`](#casperslashing)
+            - [Attester slashings](#attester-slashings)
+                - [`AttesterSlashing`](#attesterslashing)
                 - [`SlashableVoteData`](#slashablevotedata)
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
@@ -106,7 +106,7 @@
         - [Eth1 data](#eth1-data)
         - [Operations](#operations)
             - [Proposer slashings](#proposer-slashings-1)
-            - [Casper slashings](#casper-slashings-1)
+            - [Attester slashings](#attester-slashings-1)
             - [Attestations](#attestations-1)
             - [Deposits](#deposits-1)
             - [Exits](#exits-1)
@@ -245,7 +245,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | Name | Value |
 | - | - |
 | `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
-| `MAX_CASPER_SLASHINGS` | `2**4` (= 16) |
+| `MAX_ATTESTER_SLASHINGS` | `2**4` (= 16) |
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_EXITS` | `2**4` (= 16) |
@@ -285,9 +285,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
-#### Casper slashings
+#### Attester slashings
 
-##### `CasperSlashing`
+##### `AttesterSlashing`
 
 ```python
 {
@@ -444,7 +444,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     'proposer_slashings': [ProposerSlashing],
-    'casper_slashings': [CasperSlashing],
+    'attester_slashings': [AttesterSlashing],
     'attestations': [Attestation],
     'custody_reseeds': [CustodyReseed],
     'custody_challenges': [CustodyChallenge],
@@ -507,7 +507,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
     # Recent state
     'latest_crosslinks': [Crosslink],
-    'latest_block_roots': ['bytes32'],  # Needed to process attestations, older to newer
+    'latest_block_roots': ['bytes32'],
     'latest_index_roots': ['bytes32'],
     'latest_penalized_balances': ['uint64'],  # Balances penalized at every withdrawal period
     'latest_attestations': [PendingAttestation],
@@ -1278,7 +1278,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
     signature=EMPTY_SIGNATURE,
     body=BeaconBlockBody(
         proposer_slashings=[],
-        casper_slashings=[],
+        attester_slashings=[],
         attestations=[],
         custody_reseeds=[],
         custody_challenges=[],
@@ -1491,7 +1491,7 @@ def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) 
 
 ## Per-slot processing
 
-Below are the processing steps that happen at every slot.
+Below are the processing steps that happen at every slot. If there are skipped slots between a block and its parent block, run the steps in this section once for each skipped slot and then once for the slot containing the new block.
 
 ### Slot
 
@@ -1545,14 +1545,14 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
 * Run `penalize_validator(state, proposer_slashing.proposer_index)`.
 
-#### Casper slashings
+#### Attester slashings
 
-Verify that `len(block.body.casper_slashings) <= MAX_CASPER_SLASHINGS`.
+Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 
-For each `casper_slashing` in `block.body.casper_slashings`:
+For each `attester_slashing` in `block.body.attester_slashings`:
 
-* Let `slashable_vote_data_1 = casper_slashing.slashable_vote_data_1`.
-* Let `slashable_vote_data_2 = casper_slashing.slashable_vote_data_2`.
+* Let `slashable_vote_data_1 = attester_slashing.slashable_vote_data_1`.
+* Let `slashable_vote_data_2 = attester_slashing.slashable_vote_data_2`.
 * Let `indices(slashable_vote_data) = slashable_vote_data.custody_bit_0_indices + slashable_vote_data.custody_bit_1_indices`.
 * Let `intersection = [x for x in indices(slashable_vote_data_1) if x in indices(slashable_vote_data_2)]`.
 * Verify that `len(intersection) >= 1`.
