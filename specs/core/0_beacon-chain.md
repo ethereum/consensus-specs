@@ -1599,8 +1599,8 @@ Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 
 For each `attester_slashing` in `block.body.attester_slashings`:
 
-* Let `slashable_vote_1 = casper_slashing.slashable_vote_1`.
-* Let `slashable_vote_2 = casper_slashing.slashable_vote_2`.
+* Let `slashable_vote_1 = attester_slashing.slashable_vote_1`.
+* Let `slashable_vote_2 = attester_slashing.slashable_vote_2`.
 * Let `intersection = [x for x in slashable_vote_1.validator_indices if x in slashable_vote_2.validator_indices]`.
 * Verify that `len(intersection) >= 1`.
 * Verify that `slashable_vote_1.data != slashable_vote_2.data`.
