@@ -1757,7 +1757,7 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 If `next_epoch % ETH1_DATA_VOTING_PERIOD == 0`:
 
-* If `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD * EPOCH_LENGTH` for some `eth1_data_vote` in `state.eth1_data_votes` (ie. more than half the votes in this voting period were for that value), set `state.latest_eth1_data = eth1_data_vote.data`.
+* If `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD * EPOCH_LENGTH` for some `eth1_data_vote` in `state.eth1_data_votes` (ie. more than half the votes in this voting period were for that value), set `state.latest_eth1_data = eth1_data_vote.eth1_data`.
 * Set `state.eth1_data_votes = []`.
 
 #### Justification
