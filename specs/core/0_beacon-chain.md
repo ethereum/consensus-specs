@@ -104,33 +104,33 @@
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-      - [Per-slot processing](#per-slot-processing)
-          - [Slot](#slot)
-          - [Block roots](#block-roots)
-      - [Per-block processing](#per-block-processing)
-          - [Slot](#slot-1)
-          - [Proposer signature](#proposer-signature)
-          - [RANDAO](#randao)
-          - [Eth1 data](#eth1-data)
-          - [Operations](#operations)
-              - [Proposer slashings](#proposer-slashings-1)
-              - [Attester slashings](#attester-slashings-1)
-              - [Attestations](#attestations-1)
-              - [Deposits](#deposits-1)
-              - [Exits](#exits-1)
-      - [Per-epoch processing](#per-epoch-processing)
-          - [Helpers](#helpers)
-          - [Eth1 data](#eth1-data-1)
-          - [Justification](#justification)
-          - [Crosslinks](#crosslinks)
-          - [Rewards and penalties](#rewards-and-penalties)
-              - [Justification and finalization](#justification-and-finalization)
-              - [Attestation inclusion](#attestation-inclusion)
-              - [Crosslinks](#crosslinks-1)
-          - [Ejections](#ejections)
-          - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
-          - [Final updates](#final-updates)
-      - [State root verification](#state-root-verification)
+        - [Per-slot processing](#per-slot-processing)
+            - [Slot](#slot)
+            - [Block roots](#block-roots)
+        - [Per-block processing](#per-block-processing)
+            - [Slot](#slot-1)
+            - [Proposer signature](#proposer-signature)
+            - [RANDAO](#randao)
+            - [Eth1 data](#eth1-data)
+            - [Operations](#operations)
+                - [Proposer slashings](#proposer-slashings-1)
+                - [Attester slashings](#attester-slashings-1)
+                - [Attestations](#attestations-1)
+                - [Deposits](#deposits-1)
+                - [Exits](#exits-1)
+        - [Per-epoch processing](#per-epoch-processing)
+            - [Helpers](#helpers)
+            - [Eth1 data](#eth1-data-1)
+            - [Justification](#justification)
+            - [Crosslinks](#crosslinks)
+            - [Rewards and penalties](#rewards-and-penalties)
+                - [Justification and finalization](#justification-and-finalization)
+                - [Attestation inclusion](#attestation-inclusion)
+                - [Crosslinks](#crosslinks-1)
+            - [Ejections](#ejections)
+            - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
+            - [Final updates](#final-updates)
+        - [State root verification](#state-root-verification)
 - [References](#references)
     - [Normative](#normative)
     - [Informative](#informative)
@@ -778,7 +778,7 @@ def get_shuffling(seed: Bytes32,
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
-#### `get_previous_epoch_committee_count`
+### `get_previous_epoch_committee_count`
 
 ```python
 def get_previous_epoch_committee_count(state: BeaconState) -> int:
@@ -1491,7 +1491,18 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 * Abstractly define `Store` as the type of storage object for the chain data and `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
 * Let `finalized_head` be the finalized block with the highest epoch. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
 * Let `justified_head` be the descendant of `finalized_head` with the highest epoch that has been justified for at least 1 epoch. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
-* Let `get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as `def get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock: return block if block.slot == slot else get_ancestor(store, store.get_parent(block), slot)`.
+* Let `get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as:
+
+```python
+def get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock:
+    if block.slot == slot:
+        return block
+    elif block.slot < slot:
+        return None
+    else:
+        return get_ancestor(store, store.get_parent(block), slot)
+```
+
 * Let `get_latest_attestation(store: Store, validator: Validator) -> Attestation` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
 * Let `get_latest_attestation_target(store: Store, validator: Validator) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator)`.
 * Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
