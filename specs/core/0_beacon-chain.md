@@ -88,7 +88,7 @@
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [`validate_proof_of_possession`](#validate_proof_of_possession)
         - [`process_deposit`](#process_deposit)
-        - [`Routines for updating validator status`](#routines-for-updating-validator-status)
+        - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`activate_validator`](#activate_validator)
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`exit_validator`](#exit_validator)
