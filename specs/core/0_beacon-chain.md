@@ -666,7 +666,7 @@ deposit_tree: map(uint256, bytes32)
 deposit_count: uint256
 full_deposit_count: uint256
 
-@private
+@public
 @constant
 def to_bytes8(value: uint256) -> bytes[8]:
     return slice(concat("", convert(value, bytes32)), start=24, len=8)
