@@ -347,7 +347,7 @@ If the software crashes at some point within this routine, then when the validat
 
 ### Attester slashing
 
-To avoid "Casper slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_surround_vote).
+To avoid "attester slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_surround_vote).
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
 1. Save a record to hard disk that an attestation has been signed for source -- `attestation_data.justified_slot // EPOCH_LENGTH` -- and target -- `attestation_data.slot // EPOCH_LENGTH`.
