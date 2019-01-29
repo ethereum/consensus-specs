@@ -158,12 +158,12 @@ _Note_: To calculate `state_root`, the validator should first run the state tran
 
 ##### Randao reveal
 
-Set `block.randao_reveal = reveal_signature` where `reveal_signature` is defined as:
+Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined as:
 
 ```python
-reveal_signature = bls_sign(
+epoch_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=int_to_bytes32(validator.proposer_slots + 1),
+    message=int_to_bytes32(block.slot // EPOCH_LENGTH),
     domain=get_domain(
         fork_data,  # `fork_data` is the fork_data at the slot `block.slot`
         block.slot,
