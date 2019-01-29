@@ -119,7 +119,7 @@ Once a validator has been processed and added to the beacon state's `validator_r
 
 In normal operation, the validator is quickly activated at which point the validator is added to the shuffling and begins validation after an additional `ENTRY_EXIT_DELAY` epochs (25.6 minutes).
 
-The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during given epoch. Usage is as follows:
+The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
 ```python
 validator = state.validator_registry[validator_index]
