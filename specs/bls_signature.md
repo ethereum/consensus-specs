@@ -88,7 +88,7 @@ def hash_to_G2(message: bytes32, domain: uint64) -> [uint384]:
 
 `modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
 
-The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int` is a function that takes Fq elements (ie. integers mod q) and converts them to regular integers.
+The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (ie. integers `mod q`) and converts it to a regular integer.
 
 ```python
 Fq2_order = q ** 2 - 1
