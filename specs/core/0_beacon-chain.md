@@ -1527,11 +1527,11 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
 
 ## Beacon chain state transition function
 
-We now define the state transition function. This is a parent to child block transition. At a high level the state transition is made up of three parts:
+We now define the state transition function. At a high level the state transition is made up of three parts:
 
-1. The per-slot transitions, which happens every slot.
+1. The per-slot transitions, which happens at the start of every slot.
 2. The per-block transitions, which happens at every block.
-3. The per-epoch transitions, which happens at every epoch boundary (i.e. `(state.slot + 1) % EPOCH_LENGTH == 0`).
+3. The per-epoch transitions, which happens at the end of the last slot of every epoch (i.e. `(state.slot + 1) % EPOCH_LENGTH == 0`).
 
 The per-slot transitions focus on the slot counter and block roots records updates; the per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`; the per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
 
