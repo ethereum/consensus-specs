@@ -355,6 +355,7 @@ def get_next_epoch_crosslink_committees(state: BeaconState,
             selected_committees = [committee for committee in shard_committees if validator_index in committee[0]]
             if len(selected_committees) > 0:
                 potential_assignments.append(selected_committees)
+                break
 
     return potential_assignments
 ```
