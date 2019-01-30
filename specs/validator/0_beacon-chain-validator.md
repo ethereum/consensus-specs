@@ -314,7 +314,7 @@ Set `attestation.aggregate_signature = signed_attestation_data` where `signed_at
 ```python
 attestation_data_and_custody_bit = AttestationDataAndCustodyBit(
     data=attestation.data,
-    custody_bit=0,
+    custody_bit=0b0,
 )
 attestation_message_to_sign = hash_tree_root(attestation_data_and_custody_bit)
 

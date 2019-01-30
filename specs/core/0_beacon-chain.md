@@ -1009,7 +1009,7 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
         return False
 
     for i in range(committee_size + 1, committee_size - committee_size % 8 + 8):
-        if get_bitfield_bit(bitfield, i) == 1:
+        if get_bitfield_bit(bitfield, i) == 0b1:
             return False
 
     return True
@@ -1052,8 +1052,8 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=0)),
-            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=1)),
+            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(attestation_data=slashable_vote.data, custody_bit=0b1)),
         ],
         signature=slashable_vote.aggregate_signature,
         domain=get_domain(
@@ -1651,8 +1651,8 @@ For each `attestation` in `block.body.attestations`:
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=1)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b1)),
         ],
         signature=attestation.aggregate_signature,
         domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION),
