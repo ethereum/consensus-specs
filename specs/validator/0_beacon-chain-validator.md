@@ -344,7 +344,7 @@ Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is determi
 
 ```python
 get_next_epoch_crosslink_committees(state: BeaconState,
-                                    validator_index: ValidatorIndex) -> List[List[ValidatorIndex], ShardNumber]:
+                                    validator_index: ValidatorIndex) -> List[Tuple[ValidatorIndex], ShardNumber]:
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     next_epoch_start_slot = get_epoch_start_slot(next_epoch)

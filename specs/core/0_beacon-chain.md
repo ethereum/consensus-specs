@@ -941,7 +941,7 @@ def get_beacon_proposer_index(state: BeaconState,
     Returns the beacon proposer index for the ``slot``.
     """
     first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
-    return return first_committee[slot % len(first_committee)]
+    return first_committee[slot % len(first_committee)]
 
 ```
 
