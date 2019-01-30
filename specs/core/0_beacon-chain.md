@@ -486,7 +486,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'validator_registry': [Validator],
     'validator_balances': ['uint64'],
     'validator_registry_update_epoch': 'uint64',
-    'validator_registry_exit_count': 'uint64',
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32'],
@@ -533,8 +532,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'withdrawal_epoch': 'uint64',
     # Epoch when validator was penalized
     'penalized_epoch': 'uint64',
-    # Exit counter when validator exited
-    'exit_count': 'uint64',
     # Status flags
     'status_flags': 'uint64',
 }
@@ -1199,7 +1196,6 @@ def process_deposit(state: BeaconState,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawal_epoch=FAR_FUTURE_EPOCH,
             penalized_epoch=FAR_FUTURE_EPOCH,
-            exit_count=0,
             status_flags=0,
         )
 
@@ -1246,9 +1242,6 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
         return
 
     validator.exit_epoch = get_entry_exit_effect_epoch(get_current_epoch(state))
-
-    state.validator_registry_exit_count += 1
-    validator.exit_count = state.validator_registry_exit_count
 ```
 
 #### `penalize_validator`
@@ -1412,7 +1405,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         validator_registry=[],
         validator_balances=[],
         validator_registry_update_epoch=GENESIS_EPOCH,
-        validator_registry_exit_count=0,
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
@@ -1968,7 +1960,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
     all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
-    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_count)
+    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_epoch)
     withdrawn_so_far = 0
     for index in sorted_indices:
         prepare_validator_for_withdrawal(state, index)
