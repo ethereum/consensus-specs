@@ -1811,7 +1811,7 @@ Case 1: `epochs_since_finality <= 4`:
 
 * Expected FFG source:
   * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `base_reward(state, index) * previous_epoch_justified_attesting_balance // previous_total_balance`.
-  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
+  * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
 * Expected FFG target:
   * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `base_reward(state, index) * previous_epoch_boundary_attesting_balance // previous_total_balance`.
   * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices` loses `base_reward(state, index)`.
