@@ -31,7 +31,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Signature](#signature)
             - [Block body](#block-body)
                 - [Proposer slashings](#proposer-slashings)
-                - [Casper slashings](#casper-slashings)
+                - [Attester slashings](#attester-slashings)
                 - [Attestations](#attestations)
                 - [Deposits](#deposits)
                 - [Exits](#exits)
@@ -219,9 +219,9 @@ signed_proposal_data = bls_sign(
 
 Up to `MAX_PROPOSER_SLASHINGS` [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposerslashing) objects can be included in the `block`. The proposer slashings must satisfy the verification conditions found in [proposer slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposer-slashings-1). The validator receives a small "whistleblower" reward for each proposer slashing found and included.
 
-##### Casper slashings
+##### Attester slashings
 
-Up to `MAX_ATTESTER_SLASHINGS` [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attesterslashing) objects can be included in the `block`. The attester slashings must satisfy the verification conditions found in [Casper slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#casper-slashings-1). The validator receives a small "whistleblower" reward for each attester slashing found and included.
+Up to `MAX_ATTESTER_SLASHINGS` [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attesterslashing) objects can be included in the `block`. The attester slashings must satisfy the verification conditions found in [Attester slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attester-slashings-1). The validator receives a small "whistleblower" reward for each attester slashing found and included.
 
 ##### Attestations
 
