@@ -50,6 +50,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Participation bitfield](#participation-bitfield)
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
+    - [Responsibility lookahead](#responsibility-lookahead)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
