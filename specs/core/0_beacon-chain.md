@@ -72,6 +72,7 @@
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`merkle_root`](#merkle_root)
         - [`get_attestation_participants`](#get_attestation_participants)
+        - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
         - [`get_effective_balance`](#get_effective_balance)
         - [`get_fork_version`](#get_fork_version)
@@ -820,8 +821,8 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
 
-    Note: Crosslink committees for a ``slot`` in the next epoch are only valid
-    if a validator registry change occurs at the end of the current epoch.
+    Note: There are two possible shufflings for crosslink committees for a
+    ``slot`` in the next epoch -- with and without a `registry_change`
     """
     epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
@@ -855,7 +856,6 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         else:
             seed = state.current_epoch_seed
             shuffling_start_shard = state.current_epoch_start_shard
-
 
     shuffling = get_shuffling(
         seed,
@@ -981,6 +981,19 @@ def get_attestation_participants(state: BeaconState,
         if aggregation_bit == 0b1:
             participants.append(validator_index)
     return participants
+```
+
+### `is_power_of_two`
+
+```
+def is_power_of_two(value: int) -> bool:
+    """
+    Check if ``value`` is a power of two integer.
+    """
+    if value == 0:
+        return False
+    else:
+        return 2**int(math.log2(value)) == value
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
@@ -1965,7 +1978,7 @@ and perform the following updates:
 If a validator registry update does _not_ happen do the following:
 
 * Let `epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch`.
-* If `epochs_since_last_registry_update > 1` and `epochs_since_last_registry_update` is an exact power of 2:
+* If `epochs_since_last_registry_update > 1` and `is_power_of_two(epochs_since_last_registry_update)`:
     * Set `state.current_calculation_epoch = next_epoch`.
     * Set `state.current_epoch_seed = generate_seed(state, state.current_calculation_epoch)`
     * _Note_ that `state.current_epoch_start_shard` is left unchanged.
