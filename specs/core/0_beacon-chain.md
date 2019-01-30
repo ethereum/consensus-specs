@@ -1632,7 +1632,10 @@ For each `attestation` in `block.body.attestations`:
     assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
     
-    crosslink_committee = get_crosslink_committee_at_slot(state, attestation.data.slot)[0]
+    crosslink_committee = [
+        committee for committee, shard in get_crosslink_committees_at_slot(state, attestation.data.slot)
+        if shard == attestation.data.shard
+    ][0]
     verify_bitfield(attestation.aggregation_bitfield, len(crosslink_committee))
     verify_bitfield(attestation.custody_bitfield, len(crosslink_committee))
     
