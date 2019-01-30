@@ -251,7 +251,7 @@ Set `attestation_data.slot = slot` where `slot` is the current slot of which the
 
 ##### Shard
 
-Set `attestation_data.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_shard_committees_at_slot`.
+Set `attestation_data.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
 
 ##### Beacon block root
 
@@ -275,13 +275,13 @@ Set `attestation_data.latest_crosslink_root = state.latest_crosslinks[shard].sha
 
 ##### Justified slot
 
-Set `attestation_data.justified_slot = state.justified_slot` where `state` is the beacon state at `head`.
+Set `attestation_data.justified_epoch = state.justified_epoch` where `state` is the beacon state at `head`.
 
 ##### Justified block root
 
-Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at `state.justified_slot` in the chain defined by `head`.
+Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at `state.justified_epoch` in the chain defined by `head`.
 
-_Note:_ This can be looked up in the state using `get_block_root(state, justified_slot)`.
+_Note:_ This can be looked up in the state using `get_block_root(state, justified_epoch)`.
 
 #### Construct attestation
 
