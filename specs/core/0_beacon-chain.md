@@ -708,7 +708,8 @@ def deposit(deposit_input: bytes[512]):
 
     self.deposit_count += 1
 
-    log.Deposit(self.get_deposit_root(), deposit_data, merkle_tree_index, self.branch)
+    new_deposit_root:bytes32 = self.get_deposit_root()
+    log.Deposit(new_deposit_root, deposit_data, merkle_tree_index, self.branch)
 
     if msg.value == as_wei_value(MAX_DEPOSIT_AMOUNT, "gwei"):
         self.full_deposit_count += 1
