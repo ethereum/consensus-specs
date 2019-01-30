@@ -1995,7 +1995,7 @@ If a validator registry update does _not_ happen do the following:
     * _Note_ that `state.current_epoch_start_shard` is left unchanged.
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
-    
+
 Regardless of whether or not a validator set change happens, run the following:
 
 ```python
