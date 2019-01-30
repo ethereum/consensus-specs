@@ -47,7 +47,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Justified block root](#justified-block-root)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
-                - [Participation bitfield](#participation-bitfield)
+                - [Aggregation bitfield](#aggregation-bitfield)
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
     - [How to avoid slashing](#how-to-avoid-slashing)
@@ -291,7 +291,7 @@ Next the validator creates `attestation`, an [`Attestation`](https://github.com/
 
 Set `attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object defined in the previous section, [attestation data](#attestation-data).
 
-##### Participation bitfield
+##### Aggregation bitfield
 
 * Let `aggregation_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
 * Let `index_into_committee` be the index into the validator's `committee` at which `validator_index` is located.
