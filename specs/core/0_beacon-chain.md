@@ -957,7 +957,6 @@ def get_beacon_proposer_index(state: BeaconState,
     """
     first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
     return first_committee[slot % len(first_committee)]
-
 ```
 
 ### `merkle_root`
