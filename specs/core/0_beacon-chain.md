@@ -64,6 +64,7 @@
         - [`get_shuffling`](#get_shuffling)
         - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
+        - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_randao_mix`](#get_randao_mix)
