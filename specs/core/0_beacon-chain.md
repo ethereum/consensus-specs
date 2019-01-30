@@ -1140,11 +1140,8 @@ def is_surround_vote(attestation_data_1: AttestationData,
     source_epoch_2 = attestation_data_2.justified_epoch
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
     target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
-    return (
-        (source_epoch_1 < source_epoch_2) and
-        (source_epoch_2 + 1 == target_epoch_2) and
-        (target_epoch_2 < target_epoch_1)
-    )
+
+    return source_epoch_1 < source_epoch_2 and target_epoch_2 < target_epoch_1
 ```
 
 ### `integer_squareroot`
@@ -1461,7 +1458,6 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
-        latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         previous_epoch_start_shard=GENESIS_START_SHARD,
         current_epoch_start_shard=GENESIS_START_SHARD,
         previous_calculation_epoch=GENESIS_EPOCH,
@@ -1505,7 +1501,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
     for index in range(LATEST_INDEX_ROOTS_LENGTH):
-        state.latest_index_roots[index % LATEST_INDEX_ROOTS_LENGTH] = genesis_active_index_root
+        state.latest_index_roots[index] = genesis_active_index_root
     state.current_epoch_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
@@ -1673,8 +1669,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
-* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
-* Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
+* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + EPOCH_LENGTH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
@@ -1685,8 +1680,8 @@ For each `attestation` in `block.body.attestations`:
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
 
     for i in range(len(crosslink_committee)):
-        if get_bitfield_bit(attestation.aggregation_bitfield) == 0b0:
-            assert get_bitfield_bit(attestation.custody_bitfield) == 0b0
+        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
+            assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
 
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
