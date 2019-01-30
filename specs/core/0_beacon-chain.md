@@ -635,7 +635,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ```python
 def slot_to_epoch(slot: SlotNumber) -> EpochNumber:
     """
-    Returns the epoch number of the given ``slot``.
+    Return the epoch number of the given ``slot``.
     """
     return slot // EPOCH_LENGTH
 ```
@@ -645,7 +645,7 @@ def slot_to_epoch(slot: SlotNumber) -> EpochNumber:
 ```python
 def get_current_epoch(state: BeaconState) -> EpochNumber:
     """
-    Returns the current epoch of the given ``state``.
+    Return the current epoch of the given ``state``.
     """
     return slot_to_epoch(state.slot)
 ```
@@ -655,7 +655,7 @@ def get_current_epoch(state: BeaconState) -> EpochNumber:
 ```python
 def get_epoch_start_slot(epoch: EpochNumber) -> SlotNumber:
     """
-    Returns the starting slot of the given ``epoch``.
+    Return the starting slot of the given ``epoch``.
     """
     return epoch * EPOCH_LENGTH
 ```
@@ -664,7 +664,7 @@ def get_epoch_start_slot(epoch: EpochNumber) -> SlotNumber:
 ```python
 def is_active_validator(validator: Validator, epoch: EpochNumber) -> bool:
     """
-    Checks if ``validator`` is active.
+    Check if ``validator`` is active.
     """
     return validator.activation_epoch <= epoch < validator.exit_epoch
 ```
@@ -674,7 +674,7 @@ def is_active_validator(validator: Validator, epoch: EpochNumber) -> bool:
 ```python
 def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber) -> List[ValidatorIndex]:
     """
-    Gets indices of active validators from ``validators``.
+    Get indices of active validators from ``validators``.
     """
     return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
 ```
@@ -684,7 +684,7 @@ def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber
 ```python
 def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
     """
-    Returns the shuffled ``values`` with ``seed`` as entropy.
+    Return the shuffled ``values`` with ``seed`` as entropy.
     """
     values_count = len(values)
 
@@ -751,7 +751,7 @@ def split(values: List[Any], split_count: int) -> List[List[Any]]:
 ```python
 def get_epoch_committee_count(active_validator_count: int) -> int:
     """
-    Returns the number of committees in one epoch.
+    Return the number of committees in one epoch.
     """
     return max(
         1,
@@ -769,8 +769,8 @@ def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
                   epoch: EpochNumber) -> List[List[ValidatorIndex]]
     """
-    Shuffles ``validators`` into crosslink committees seeded by ``seed`` and ``epoch``.
-    Returns a list of ``committees_per_epoch`` committees where each
+    Shuffle ``validators`` into crosslink committees seeded by ``seed`` and ``epoch``.
+    Return a list of ``committees_per_epoch`` committees where each
     committee is itself a list of validator indices.
     """
 
@@ -795,7 +795,7 @@ def get_shuffling(seed: Bytes32,
 ```python
 def get_previous_epoch_committee_count(state: BeaconState) -> int:
     """
-    Returns the number of committees in the previous epoch of the given ``state``.
+    Return the number of committees in the previous epoch of the given ``state``.
     """
     previous_active_validators = get_active_validator_indices(
         state.validator_registry,
@@ -809,7 +809,7 @@ def get_previous_epoch_committee_count(state: BeaconState) -> int:
 ```python
 def get_current_epoch_committee_count(state: BeaconState) -> int:
     """
-    Returns the number of committees in the current epoch of the given ``state``.
+    Return the number of committees in the current epoch of the given ``state``.
     """
     current_active_validators = get_active_validator_indices(
         state.validator_registry,
@@ -824,7 +824,7 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
 def get_crosslink_committees_at_slot(state: BeaconState,
                                      slot: SlotNumber) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     """
-    Returns the list of ``(committee, shard)`` tuples for the ``slot``.
+    Return the list of ``(committee, shard)`` tuples for the ``slot``.
     """
     epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
@@ -870,7 +870,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 def get_block_root(state: BeaconState,
                    slot: SlotNumber) -> Bytes32:
     """
-    Returns the block root at a recent ``slot``.
+    Return the block root at a recent ``slot``.
     """
     assert state.slot <= slot + LATEST_BLOCK_ROOTS_LENGTH
     assert slot < state.slot
@@ -885,7 +885,7 @@ def get_block_root(state: BeaconState,
 def get_randao_mix(state: BeaconState,
                    epoch: EpochNumber) -> Bytes32:
     """
-    Returns the randao mix at a recent ``epoch``.
+    Return the randao mix at a recent ``epoch``.
     """
     assert get_current_epoch(state) - LATEST_RANDAO_MIXES_LENGTH < epoch <= get_current_epoch(state)
     return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
@@ -897,7 +897,7 @@ def get_randao_mix(state: BeaconState,
 def get_active_index_root(state: BeaconState,
                           epoch: EpochNumber) -> Bytes32:
     """
-    Returns the index root at a recent ``epoch``.
+    Return the index root at a recent ``epoch``.
     """
     assert get_current_epoch(state) - LATEST_INDEX_ROOTS_LENGTH < epoch <= get_current_epoch(state)
     return state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH]
@@ -924,7 +924,7 @@ def generate_seed(state: BeaconState,
 def get_beacon_proposer_index(state: BeaconState,
                               slot: SlotNumber) -> ValidatorIndex:
     """
-    Returns the beacon proposer index for the ``slot``.
+    Return the beacon proposer index for the ``slot``.
     """
     first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
     return first_committee[slot % len(first_committee)]
@@ -950,7 +950,7 @@ def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
                                  bitfield: bytes) -> List[ValidatorIndex]:
     """
-    Returns the participant indices at for the ``attestation_data`` and ``bitfield``.
+    Return the participant indices at for the ``attestation_data`` and ``bitfield``.
     """
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
@@ -978,7 +978,7 @@ def get_attestation_participants(state: BeaconState,
 ```python
 def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
     """
-    Returns the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
+    Return the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
     """
     return min(state.validator_balances[index], MAX_DEPOSIT_AMOUNT)
 ```
@@ -989,7 +989,7 @@ def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
 def get_fork_version(fork: Fork,
                      epoch: EpochNumber) -> int:
     """
-    Returns the fork version of the given ``epoch``.
+    Return the fork version of the given ``epoch``.
     """
     if epoch < fork.epoch:
         return fork.previous_version
@@ -1092,8 +1092,8 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
 def is_double_vote(attestation_data_1: AttestationData,
                    attestation_data_2: AttestationData) -> bool:
     """
-    Assumes ``attestation_data_1`` is distinct from ``attestation_data_2``.
-    Returns True if the provided ``AttestationData`` are slashable
+    Assume ``attestation_data_1`` is distinct from ``attestation_data_2``.
+    Return True if the provided ``AttestationData`` are slashable
     due to a 'double vote'.
     """
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
@@ -1107,8 +1107,8 @@ def is_double_vote(attestation_data_1: AttestationData,
 def is_surround_vote(attestation_data_1: AttestationData,
                      attestation_data_2: AttestationData) -> bool:
     """
-    Assumes ``attestation_data_1`` is distinct from ``attestation_data_2``.
-    Returns True if the provided ``AttestationData`` are slashable
+    Assume ``attestation_data_1`` is distinct from ``attestation_data_2``.
+    Return True if the provided ``AttestationData`` are slashable
     due to a 'surround vote'.
     Note: parameter order matters as this function only checks
     that ``attestation_data_1`` surrounds ``attestation_data_2``.
@@ -1995,7 +1995,7 @@ If a validator registry update does _not_ happen do the following:
     * _Note_ that `state.current_epoch_start_shard` is left unchanged.
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
-
+    
 Regardless of whether or not a validator set change happens, run the following:
 
 ```python
