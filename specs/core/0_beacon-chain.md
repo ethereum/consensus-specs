@@ -931,17 +931,6 @@ def generate_seed(state: BeaconState,
     )
 ```
 
-### `get_beacon_proposer_from_committee`
-
-```python
-def get_beacon_proposer_index(committee: List[ValidatorIndex],
-                              slot: SlotNumber) -> ValidatorIndex:
-    """
-    Returns the beacon proposer index of the ``committee`` at the ``slot``.
-    """
-    return first_committee[slot % len(committee)]
-```
-
 ### `get_beacon_proposer_index`
 
 ```python
@@ -951,7 +940,7 @@ def get_beacon_proposer_index(state: BeaconState,
     Returns the beacon proposer index for the ``slot``.
     """
     first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
-    return get_beacon_proposer_from_committee(first_committee, slot)
+    return return first_committee[slot % len(first_committee)]
 
 ```
 
