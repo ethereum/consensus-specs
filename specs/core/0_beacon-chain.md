@@ -946,7 +946,7 @@ def get_attestation_participants(state: BeaconState,
     participants = []
     for i, validator_index in enumerate(crosslink_committee):
         aggregation_bit = get_bitfield_bit(bitfield, i)
-        if aggregation_bit == 1:
+        if aggregation_bit == 0b1:
             participants.append(validator_index)
     return participants
 ```
@@ -1041,7 +1041,7 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
     custody_bit_0_indices = []
     custody_bit_1_indices = []
     for i, validator_index in enumerate(slashable_vote.validator_indices):
-        if get_bitfield_bit(slashable_vote.custody_bitfield, i) == 0:
+        if get_bitfield_bit(slashable_vote.custody_bitfield, i) == 0b0:
             custody_bit_0_indices.append(validator_index)
         else:
             custody_bit_1_indices.append(validator_index)
@@ -1638,8 +1638,8 @@ For each `attestation` in `block.body.attestations`:
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
 
     for i in range(len(crosslink_committee)):
-        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0:
-            assert get_bitfield_bit(attestation.custody_bitfield, i) == 0
+        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
+            assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
 
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
