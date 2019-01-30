@@ -486,7 +486,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'validator_registry': [Validator],
     'validator_balances': ['uint64'],
     'validator_registry_update_epoch': 'uint64',
-    'validator_registry_exit_count': 'uint64',
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32'],
@@ -533,8 +532,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'withdrawal_epoch': 'uint64',
     # Epoch when validator was penalized
     'penalized_epoch': 'uint64',
-    # Exit counter when validator exited
-    'exit_count': 'uint64',
     # Status flags
     'status_flags': 'uint64',
 }
@@ -1089,11 +1086,8 @@ def is_surround_vote(attestation_data_1: AttestationData,
     source_epoch_2 = attestation_data_2.justified_epoch
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
     target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
-    return (
-        (source_epoch_1 < source_epoch_2) and
-        (source_epoch_2 + 1 == target_epoch_2) and
-        (target_epoch_2 < target_epoch_1)
-    )
+
+    return source_epoch_1 < source_epoch_2 and target_epoch_2 < target_epoch_1
 ```
 
 ### `integer_squareroot`
@@ -1193,7 +1187,6 @@ def process_deposit(state: BeaconState,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawal_epoch=FAR_FUTURE_EPOCH,
             penalized_epoch=FAR_FUTURE_EPOCH,
-            exit_count=0,
             status_flags=0,
         )
 
@@ -1240,9 +1233,6 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
         return
 
     validator.exit_epoch = get_entry_exit_effect_epoch(get_current_epoch(state))
-
-    state.validator_registry_exit_count += 1
-    validator.exit_count = state.validator_registry_exit_count
 ```
 
 #### `penalize_validator`
@@ -1406,11 +1396,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         validator_registry=[],
         validator_balances=[],
         validator_registry_update_epoch=GENESIS_EPOCH,
-        validator_registry_exit_count=0,
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
-        latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         previous_epoch_start_shard=GENESIS_START_SHARD,
         current_epoch_start_shard=GENESIS_START_SHARD,
         previous_calculation_epoch=GENESIS_EPOCH,
@@ -1620,8 +1608,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
-* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
-* Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
+* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + EPOCH_LENGTH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
@@ -1632,8 +1619,8 @@ For each `attestation` in `block.body.attestations`:
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
 
     for i in range(len(crosslink_committee)):
-        if get_bitfield_bit(attestation.aggregation_bitfield) == 0b0:
-            assert get_bitfield_bit(attestation.custody_bitfield) == 0b0
+        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
+            assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
 
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
@@ -1810,7 +1797,7 @@ Case 1: `epochs_since_finality <= 4`:
 
 * Expected FFG source:
   * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `base_reward(state, index) * previous_epoch_justified_attesting_balance // previous_total_balance`.
-  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
+  * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
 * Expected FFG target:
   * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `base_reward(state, index) * previous_epoch_boundary_attesting_balance // previous_total_balance`.
   * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices` loses `base_reward(state, index)`.
@@ -1962,7 +1949,8 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
     all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
-    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_count)
+    # Sort in order of exit epoch, and validators that exit within the same epoch exit in order of validator index
+    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_epoch)
     withdrawn_so_far = 0
     for index in sorted_indices:
         prepare_validator_for_withdrawal(state, index)
