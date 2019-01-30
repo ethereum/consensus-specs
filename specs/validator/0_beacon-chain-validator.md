@@ -51,7 +51,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
     - [How to avoid slashing](#how-to-avoid-slashing)
-        - [Proposal slashing](#proposal-slashing)
+        - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
 
 <!-- /TOC -->
@@ -119,7 +119,7 @@ Once a validator has been processed and added to the beacon state's `validator_r
 
 In normal operation, the validator is quickly activated at which point the validator is added to the shuffling and begins validation after an additional `ENTRY_EXIT_DELAY` epochs (25.6 minutes).
 
-The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during given epoch. Usage is as follows:
+The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
 ```python
 validator = state.validator_registry[validator_index]
@@ -329,15 +329,15 @@ signed_attestation_data = bls_sign(
 
 ## How to avoid slashing
 
-"Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed -- [proposal slashing](#proposal-slashing) and [attester slashing](#attester-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages a validator has previously signed.
+"Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed -- [proposer slashing](#proposer-slashing) and [attester slashing](#attester-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages a validator has previously signed.
 
 _Note_: Signed data must be within a sequential `Fork` context to conflict. Messages cannot be slashed across diverging forks. If the previous fork version is 1 and the chain splits into fork 2 and 102, messages from 1 can slashable against messages in forks 1, 2, and 102. Messages in 2 cannot be slashable against messages in 102 and vice versa.
 
-### Proposal slashing
+### Proposer slashing
 
-To avoid "proposal slashings", a validator must not sign two conflicting [`ProposalSignedData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposalsigneddata) where conflicting is defined as having the same `slot` and `shard` but a different `block_root`. In phase 0, proposals are only made for the beacon chain (`shard == BEACON_CHAIN_SHARD_NUMBER`).
+To avoid "proposer slashings", a validator must not sign two conflicting [`ProposalSignedData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposalsigneddata) where conflicting is defined as having the same `slot` and `shard` but a different `block_root`. In phase 0, proposals are only made for the beacon chain (`shard == BEACON_CHAIN_SHARD_NUMBER`).
 
-_In phase 0, as long as the validator does not sign two different beacon chain proposals for the same slot, the validator is safe against proposal slashings._
+_In phase 0, as long as the validator does not sign two different beacon chain proposals for the same slot, the validator is safe against proposer slashings._
 
 Specifically, when signing an `BeaconBlock`, a validator should perform the following steps in the following order:
 1. Save a record to hard disk that an beacon block has been signed for the `slot=slot` and `shard=BEACON_CHAIN_SHARD_NUMBER`.
@@ -347,7 +347,7 @@ If the software crashes at some point within this routine, then when the validat
 
 ### Attester slashing
 
-To avoid "Casper slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_surround_vote).
+To avoid "attester slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_surround_vote).
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
 1. Save a record to hard disk that an attestation has been signed for source -- `attestation_data.justified_slot // EPOCH_LENGTH` -- and target -- `attestation_data.slot // EPOCH_LENGTH`.
