@@ -815,7 +815,8 @@ def get_next_epoch_committee_count(state: BeaconState) -> int:
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                     slot: SlotNumber) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
+                                     slot: SlotNumber,
+                                     registry_change=False: bool) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     """
     Returns the list of ``(committee, shard)`` tuples for the ``slot``.
 
@@ -842,9 +843,19 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     elif epoch == next_epoch:
         current_committees_per_epoch = get_current_epoch_committee_count(state)
         committees_per_epoch = get_next_epoch_committee_count(state)
-        seed = state.current_epoch_seed
-        shuffling_epoch = generate_seed(state, next_epoch)
-        shuffling_start_shard = (state.current_epoch_start_shard + current_committees_per_epoch) % SHARD_COUNT
+        shuffling_epoch = next_epoch
+
+        epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
+        if registry_change:
+            seed = generate_seed(state, next_epoch)
+            shuffling_start_shard = (state.current_epoch_start_shard + current_committees_per_epoch) % SHARD_COUNT
+        elif epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
+            seed = generate_seed(state, next_epoch)
+            shuffling_start_shard = state.current_epoch_start_shard
+        else:
+            seed = state.current_epoch_seed
+            shuffling_start_shard = state.current_epoch_start_shard
+
 
     shuffling = get_shuffling(
         seed,
@@ -901,7 +912,7 @@ def get_active_index_root(state: BeaconState,
     """
     Returns the index root at a recent ``epoch``.
     """
-    assert get_current_epoch(state) - LATEST_INDEX_ROOTS_LENGTH < epoch <= get_current_epoch(state) + ENTRY_EXIT_DELAY
+    assert get_current_epoch(state) - LATEST_INDEX_ROOTS_LENGTH + ENTRY_EXIT_DELAY < epoch <= get_current_epoch(state) + ENTRY_EXIT_DELAY
     return state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH]
 ```
 
@@ -1490,10 +1501,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, True)
 
-    for epoch in range(GENESIS_EPOCH, GENESIS_EPOCH + ENTRY_EXIT_DELAY):
-        state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(
-            get_active_validator_indices(state, epoch)
-        )
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
+    for index in range(LATEST_INDEX_ROOTS_LENGTH):
+        state.latest_index_roots[index % LATEST_INDEX_ROOTS_LENGTH] = genesis_active_index_root
     state.current_epoch_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
@@ -1904,7 +1914,6 @@ First, update the following:
 * Set `state.previous_calculation_epoch = state.current_calculation_epoch`.
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`.
 * Set `state.previous_epoch_seed = state.current_epoch_seed`.
-* Set `state.latest_index_roots[current_epoch + ENTRY_EXIT_DELAY % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, current_epoch + ENTRY_EXIT_DELAY))`.
 
 If the following are satisfied:
 
@@ -2014,6 +2023,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 #### Final updates
 
+* Set `state.latest_index_roots[(next_epoch + ENTRY_EXIT_DELAY) % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch + ENTRY_EXIT_DELAY))`.
 * Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
