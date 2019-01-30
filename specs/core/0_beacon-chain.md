@@ -1458,7 +1458,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, True)
 
-    state.latest_index_roots[GENESIS_EPOCH % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
+    state.latest_index_roots[GENESIS_EPOCH % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
     state.current_epoch_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
