@@ -113,7 +113,7 @@ Deposits cannot be processed into the beacon chain until the eth1.0 block in whi
 
 ### Validator index
 
-Once a validator has been processed and added to the beacon state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. A validator's `validator_index` is guaranteed to not change from the time of initial deposit until the validator exits and fully withdraws. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
+Once a validator has been processed and added to the beacon state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#validator) contains the `pubkey` specified in the validator's deposit. A validator's `validator_index` is guaranteed to not change from the time of initial deposit until the validator exits and fully withdraws. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
 
 ### Activation
 
@@ -165,11 +165,11 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined a
 ```python
 epoch_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=int_to_bytes32(slot_to_epoch(block.slot),
+    message=int_to_bytes32(slot_to_epoch(block.slot)),
     domain=get_domain(
-        fork_data,  # `fork_data` is the fork_data at the slot `block.slot`
-        slot_to_epoch(block.slot),
-        DOMAIN_RANDAO,
+        fork=fork,  # `fork` is the fork object at the slot `block.slot`
+        epoch=slot_to_epoch(block.slot),
+        domain_type=DOMAIN_RANDAO,
     )
 )
 ```
@@ -206,9 +206,9 @@ signed_proposal_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
     message=proposal_root,
     domain=get_domain(
-        fork_data,  # `fork_data` is the fork_data at the slot `block.slot`
-        slot_to_epoch(block.slot),
-        DOMAIN_PROPOSAL,
+        fork=fork,  # `fork` is the fork object at the slot `block.slot`
+        epoch=slot_to_epoch(block.slot),
+        domain_type=DOMAIN_PROPOSAL,
     )
 )
 ```
@@ -313,8 +313,8 @@ Set `attestation.aggregate_signature = signed_attestation_data` where `signed_at
 
 ```python
 attestation_data_and_custody_bit = AttestationDataAndCustodyBit(
-    attestation.data,
-    0,
+    data=attestation.data,
+    custody_bit=0,
 )
 attestation_message_to_sign = hash_tree_root(attestation_data_and_custody_bit)
 
@@ -322,9 +322,9 @@ signed_attestation_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
     message=attestation_message_to_sign,
     domain=get_domain(
-        fork_data,  # `fork_data` is the fork data at the slot, `attestation_data.slot`
-        slot_to_epoch(attestation_data.slot),
-        DOMAIN_ATTESTATION,
+        fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
+        epoch=slot_to_epoch(attestation_data.slot),
+        domain_type=DOMAIN_ATTESTATION,
     )
 )
 ```
