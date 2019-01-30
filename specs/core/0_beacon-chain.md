@@ -1089,7 +1089,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
 def is_double_vote(attestation_data_1: AttestationData,
                    attestation_data_2: AttestationData) -> bool:
     """
-    Check if the ``attestation_data_1`` and ``attestation_data_2`` have the same target.
+    Check if ``attestation_data_1`` and ``attestation_data_2`` have the same target.
     """
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
     target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
