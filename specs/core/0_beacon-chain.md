@@ -26,7 +26,7 @@
                 - [`ProposerSlashing`](#proposerslashing)
             - [Attester slashings](#attester-slashings)
                 - [`AttesterSlashing`](#attesterslashing)
-                - [`SlashableVote`](#slashablevote)
+                - [`SlashableAttestation`](#slashableattestation)
             - [Attestations](#attestations)
                 - [`Attestation`](#attestation)
                 - [`AttestationData`](#attestationdata)
@@ -78,7 +78,7 @@
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
-        - [`verify_slashable_vote`](#verify_slashable_vote)
+        - [`verify_slashable_attestation`](#verify_slashable_attestation)
         - [`is_double_vote`](#is_double_vote)
         - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
@@ -298,23 +298,24 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
-    # First batch of votes
-    'slashable_vote_1': SlashableVote,
-    # Second batch of votes
-    'slashable_vote_2': SlashableVote,
+    # First slashable attestation
+    'slashable_attestation_1': SlashableAttestation,
+    # Second slashable attestation
+    'slashable_attestation_2': SlashableAttestation,
 }
 ```
 
-##### `SlashableVote`
+##### `SlashableAttestation`
 
 ```python
 {
     # Validator indices
     'validator_indices': ['uint64'],
     # Custody bitfield
-    'custody_bitfield': 'bytes',
     # Attestation data
     'data': AttestationData,
+    # Custody bitfield
+    'custody_bitfield': 'bytes',
     # Aggregate signature
     'aggregate_signature': 'bytes96',
 }
@@ -326,10 +327,10 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
-    # Attestation data
-    'data': AttestationData,
     # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
+    # Attestation data
+    'data': AttestationData,
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
@@ -486,7 +487,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'validator_registry': [Validator],
     'validator_balances': ['uint64'],
     'validator_registry_update_epoch': 'uint64',
-    'validator_registry_exit_count': 'uint64',
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32'],
@@ -533,8 +533,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'withdrawal_epoch': 'uint64',
     # Epoch when validator was penalized
     'penalized_epoch': 'uint64',
-    # Exit counter when validator exited
-    'exit_count': 'uint64',
     # Status flags
     'status_flags': 'uint64',
 }
@@ -555,14 +553,14 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
-    # Signed data
-    'data': AttestationData,
     # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
+    # Attestation data
+    'data': AttestationData,
     # Custody bitfield
     'custody_bitfield': 'bytes',
-    # Slot the attestation was included
-    'slot_included': 'uint64',
+    # Inclusion slot
+    'inclusion_slot': 'uint64',
 }
 ```
 
@@ -1037,33 +1035,33 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
     return True
 ```
 
-### `verify_slashable_vote`
+### `verify_slashable_attestation`
 
 ```python
-def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> bool:
+def verify_slashable_attestation(state: BeaconState, slashable_attestation: SlashableAttestation) -> bool:
     """
-    Verify validity of ``slashable_vote`` fields.
+    Verify validity of ``slashable_attestation`` fields.
     """
-    if slashable_vote.custody_bitfield != b'\x00' * len(slashable_vote.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
+    if slashable_attestation.custody_bitfield != b'\x00' * len(slashable_attestation.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    if len(slashable_vote.validator_indices) == 0:
+    if len(slashable_attestation.validator_indices) == 0:
         return False
 
-    for i in range(len(slashable_vote.validator_indices) - 1):
-        if slashable_vote.validator_indices[i] >= slashable_vote.validator_indices[i + 1]:
+    for i in range(len(slashable_attestation.validator_indices) - 1):
+        if slashable_attestation.validator_indices[i] >= slashable_attestation.validator_indices[i + 1]:
             return False
 
-    if not verify_bitfield(slashable_vote.custody_bitfield, len(slashable_vote.validator_indices)):
+    if not verify_bitfield(slashable_attestation.custody_bitfield, len(slashable_attestation.validator_indices)):
         return False
 
-    if len(slashable_vote.validator_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
+    if len(slashable_attestation.validator_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
         return False
 
     custody_bit_0_indices = []
     custody_bit_1_indices = []
-    for i, validator_index in enumerate(slashable_vote.validator_indices):
-        if get_bitfield_bit(slashable_vote.custody_bitfield, i) == 0b0:
+    for i, validator_index in enumerate(slashable_attestation.validator_indices):
+        if get_bitfield_bit(slashable_attestation.custody_bitfield, i) == 0b0:
             custody_bit_0_indices.append(validator_index)
         else:
             custody_bit_1_indices.append(validator_index)
@@ -1074,10 +1072,10 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         messages=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=slashable_vote.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=slashable_vote.data, custody_bit=0b1)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
         ],
-        signature=slashable_vote.aggregate_signature,
+        signature=slashable_attestation.aggregate_signature,
         domain=get_domain(
             state.fork,
             slot_to_epoch(vote_data.data.slot),
@@ -1092,9 +1090,7 @@ def verify_slashable_vote(state: BeaconState, slashable_vote: SlashableVote) -> 
 def is_double_vote(attestation_data_1: AttestationData,
                    attestation_data_2: AttestationData) -> bool:
     """
-    Assume ``attestation_data_1`` is distinct from ``attestation_data_2``.
-    Return True if the provided ``AttestationData`` are slashable
-    due to a 'double vote'.
+    Check if the ``attestation_data_1`` and ``attestation_data_2`` have the same target.
     """
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
     target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
@@ -1107,21 +1103,14 @@ def is_double_vote(attestation_data_1: AttestationData,
 def is_surround_vote(attestation_data_1: AttestationData,
                      attestation_data_2: AttestationData) -> bool:
     """
-    Assume ``attestation_data_1`` is distinct from ``attestation_data_2``.
-    Return True if the provided ``AttestationData`` are slashable
-    due to a 'surround vote'.
-    Note: parameter order matters as this function only checks
-    that ``attestation_data_1`` surrounds ``attestation_data_2``.
+    Check if ``attestation_data_1`` surrounds ``attestation_data_2``.
     """
     source_epoch_1 = attestation_data_1.justified_epoch
     source_epoch_2 = attestation_data_2.justified_epoch
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
     target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
-    return (
-        (source_epoch_1 < source_epoch_2) and
-        (source_epoch_2 + 1 == target_epoch_2) and
-        (target_epoch_2 < target_epoch_1)
-    )
+
+    return source_epoch_1 < source_epoch_2 and target_epoch_2 < target_epoch_1
 ```
 
 ### `integer_squareroot`
@@ -1224,7 +1213,6 @@ def process_deposit(state: BeaconState,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawal_epoch=FAR_FUTURE_EPOCH,
             penalized_epoch=FAR_FUTURE_EPOCH,
-            exit_count=0,
             status_flags=0,
         )
 
@@ -1283,9 +1271,6 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
         return
 
     validator.exit_epoch = get_entry_exit_effect_epoch(get_current_epoch(state))
-
-    state.validator_registry_exit_count += 1
-    validator.exit_count = state.validator_registry_exit_count
 ```
 
 #### `penalize_validator`
@@ -1460,11 +1445,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         validator_registry=[],
         validator_balances=[],
         validator_registry_update_epoch=GENESIS_EPOCH,
-        validator_registry_exit_count=0,
 
         # Randomness and committees
         latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
-        latest_vdf_outputs=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH // EPOCH_LENGTH)],
         previous_epoch_start_shard=GENESIS_START_SHARD,
         current_epoch_start_shard=GENESIS_START_SHARD,
         previous_calculation_epoch=GENESIS_EPOCH,
@@ -1664,15 +1647,15 @@ Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 
 For each `attester_slashing` in `block.body.attester_slashings`:
 
-* Let `slashable_vote_1 = attester_slashing.slashable_vote_1`.
-* Let `slashable_vote_2 = attester_slashing.slashable_vote_2`.
-* Let `intersection = [x for x in slashable_vote_1.validator_indices if x in slashable_vote_2.validator_indices]`.
-* Verify that `len(intersection) >= 1`.
-* Verify that `slashable_vote_1.data != slashable_vote_2.data`.
-* Verify that `is_double_vote(slashable_vote_1.data, slashable_vote_2.data)` or `is_surround_vote(slashable_vote_1.data, slashable_vote_2.data)`.
-* Verify that `verify_slashable_vote(state, slashable_vote_1)`.
-* Verify that `verify_slashable_vote(state, slashable_vote_2)`.
-* For each [validator](#dfn-validator) index `i` in `intersection` run `penalize_validator(state, i)` if `state.validator_registry[i].penalized_epoch > get_current_epoch(state)`.
+* Let `slashable_attestation_1 = attester_slashing.slashable_attestation_1`.
+* Let `slashable_attestation_2 = attester_slashing.slashable_attestation_2`.
+* Verify that `slashable_attestation_1.data != slashable_attestation_2.data`.
+* Verify that `is_double_vote(slashable_attestation_1.data, slashable_attestation_2.data)` or `is_surround_vote(slashable_attestation_1.data, slashable_attestation_2.data)`.
+* Verify that `verify_slashable_attestation(state, slashable_attestation_1)`.
+* Verify that `verify_slashable_attestation(state, slashable_attestation_2)`.
+* Let `slashable_indices = [index for index in slashable_attestation_1.validator_indices if index in slashable_attestation_2.validator_indices and state.validator_registry[index].penalized_epoch > get_current_epoch(state)]`.
+* Verify that `len(slashable_indices) >= 1`.
+* Run `penalize_validator(state, index)` for each `index` in `slashable_indices`.
 
 ##### Attestations
 
@@ -1680,8 +1663,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
-* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
-* Verify that `attestation.data.slot + EPOCH_LENGTH >= state.slot`.
+* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + EPOCH_LENGTH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[shard].shard_block_root`.
@@ -1692,8 +1674,8 @@ For each `attestation` in `block.body.attestations`:
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
 
     for i in range(len(crosslink_committee)):
-        if get_bitfield_bit(attestation.aggregation_bitfield) == 0b0:
-            assert get_bitfield_bit(attestation.custody_bitfield) == 0b0
+        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
+            assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
 
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
@@ -1714,7 +1696,7 @@ For each `attestation` in `block.body.attestations`:
 ```
 
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.shard_block_root == ZERO_HASH`.
-* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, slot_included=state.slot)` to `state.latest_attestations`.
+* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, inclusion_slot=state.slot)` to `state.latest_attestations`.
 
 ##### Deposits
 
@@ -1818,8 +1800,8 @@ For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_s
 
 Define the following helpers to process attestation inclusion rewards and inclusion distance reward/penalty. For every attestation `a` in `previous_epoch_attestations`:
 
-* Let `inclusion_slot(state, index) = a.slot_included` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.aggregation_bitfield)`. If multiple attestations are applicable, the attestation with lowest `slot_included` is considered.
-* Let `inclusion_distance(state, index) = a.slot_included - a.data.slot` where `a` is the above attestation.
+* Let `inclusion_slot(state, index) = a.inclusion_slot` for the attestation `a` where `index` is in `get_attestation_participants(state, a.data, a.aggregation_bitfield)`. If multiple attestations are applicable, the attestation with lowest `inclusion_slot` is considered.
+* Let `inclusion_distance(state, index) = a.inclusion_slot - a.data.slot` where `a` is the above attestation.
 
 #### Eth1 data
 
@@ -1873,7 +1855,7 @@ Case 1: `epochs_since_finality <= 4`:
 
 * Expected FFG source:
   * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `base_reward(state, index) * previous_epoch_justified_attesting_balance // previous_total_balance`.
-  * Any [active validator](#dfn-active-validator) `v` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
+  * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
 * Expected FFG target:
   * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `base_reward(state, index) * previous_epoch_boundary_attesting_balance // previous_total_balance`.
   * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices` loses `base_reward(state, index)`.
@@ -2029,7 +2011,8 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
     all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
-    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_count)
+    # Sort in order of exit epoch, and validators that exit within the same epoch exit in order of validator index
+    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_epoch)
     withdrawn_so_far = 0
     for index in sorted_indices:
         prepare_validator_for_withdrawal(state, index)
