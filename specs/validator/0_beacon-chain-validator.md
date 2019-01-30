@@ -327,6 +327,50 @@ signed_attestation_data = bls_sign(
 )
 ```
 
+## Responsibility lookahead
+
+It is useful for a validator to have some amount of "lookahead" on the validator's upcoming responsibilities of proposing and attesting dictated by the shuffling and slot.
+The beacon chain shufflings are designed to given a minimum of 1 epoch lookahead.
+
+There are three possibilities for the shuffling at the next epoch:
+1. The shuffling remains the same (i.e. the validator is in the same shard committee).
+2. The shuffling changes due to a "validator registry change".
+3. The shuffling changes due to `epochs_since_last_registry_update` being an exact power of 2 greater than 1.
+
+(2) and (3) result in the same validator shuffling but with (potentially) different associated shards for each committee.o
+
+A validator should always plan for each as a possibility unless the validator
+can concretely eliminate one or two. Planning for a future shuffling involves noting
+at which slot one might have to attest and propose and also which shard
+one should begin syncing.
+
+### Shuffling remains the same
+
+Validator remains in the same crosslink committee for the same shard and same slot position (`slot + EPOCH_LENGTH`) and might be called upon as as proposer depending upon the committee position and slot in the next epoch. Validator can safely check using `get_beacon_proposer_index` for the slot in question at the start of the next epoch.
+
+In phase 1, the validator would continue syncing the committee's associated shard in case the shuffling remains the same.
+
+### Shuffling change due to validator registry
+
+A validator registry change occurs when a new block has been finalied and all expected shards have been crosslinked. _This can only occur_ when `epochs_since_last_registry_update > 1`.
+A validator can use `get_crosslink_committees_at_slot` for slots in the next epoch to find the expected new crosslink committee in the event of a validator registry change at the end of the current epoch.
+
+In phase 1, if the validator is uncertain as to whether a validator registry change will occur at the end of the current epoch, the validator should opportunistically begin to sync the potential new shard for the next epoch to be prepared in the event of a registry change. Re-checking `get_crosslink_committees_at_slot` at the start of the next epoch will affirm or deny whether the committee did in fact update.
+
+### Shuffling change due to power of 2 since last change
+
+In the event that a validator registry change does not occur at the end of the current epoch and `epochs_since_last_registry_update > 1` and `epochs_since_last_registry_update` is an exact power of two, a reshuffling occurs but the shards remain the same.
+
+In phase 1, if a power of 2 since last registry update is coming up and the validator is uncertain if a registry change will occur, the validator should opportunistically begin to sync the potential new shard for the new shuffling.
+
+To find what the shard to attempt to sync:
+* Find the new `committee` using `get_crosslink_committees_at_slot` for slots in the next epoch.
+* Let `slot` the be the future slot in which the validator is a committee.
+* Let `committee_slot_position` be the position of the committee within the list of committees at that slot.
+* Let `shard = get_crosslink_committees_at_slot(state, slot - EPOCH_LENGTH)[committee_slot_position][1]`
+
+Opportunistically sync `shard` during the current epoch. The validator can check `get_crosslink_committees_at_slot` at the start of the next committee to affirm or deny whether the power of 2 committee update did occur.
+ 
 ## How to avoid slashing
 
 "Slashing" is the burning of some amount of validator funds and immediate ejection from the active validator set. In Phase 0, there are two ways in which funds can be slashed -- [proposal slashing](#proposal-slashing) and [attestation slashing](#casper-slashing). Although being slashed has serious repercussions, it is simple enough to avoid being slashed all together by remaining _consistent_ with respect to the messages you have previously signed.
