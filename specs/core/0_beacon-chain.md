@@ -1960,6 +1960,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
     all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
+    # Sort in order of exit epoch, and validators that exit within the same epoch exit in order of validator index
     sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_epoch)
     withdrawn_so_far = 0
     for index in sorted_indices:
