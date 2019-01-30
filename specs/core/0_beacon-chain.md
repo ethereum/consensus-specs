@@ -660,6 +660,7 @@ zerohashes: bytes32[32]
 branch: bytes32[32]
 deposit_count: uint256
 full_deposit_count: uint256
+chainStarted: public(bool)
 
 @public
 def __init__():
@@ -716,7 +717,8 @@ def deposit(deposit_input: bytes[512]):
         if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
             timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
             chainstart_time: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
-            log.ChainStart(self.get_deposit_root(), chainstart_time)
+            log.ChainStart(new_deposit_root, chainstart_time)
+            self.chainStarted = True
 ```
 
 Note: to save ~10x on gas this contract uses a somewhat unintuitive progressive Merkle root calculation algo that requires only O(log(n)) storage. See https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py for an implementation of the same algo in python tested for correctness.
