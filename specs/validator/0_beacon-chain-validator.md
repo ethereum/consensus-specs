@@ -343,8 +343,8 @@ Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is determi
 `get_crosslink_committees_at_slot` is designed to be able to query slots in the next epoch. When querying slots in the next epoch there are two options -- with and without a `registry_change` -- which is the optional third parameter of the function. The following helper can be used to get the potential crosslink committees in the next epoch for a given `validator_index`. This function returns a list of 2 shard committee tuples.
 
 ```python
-get_next_epoch_crosslink_committees(state: BeaconState,
-                                    validator_index: ValidatorIndex) -> List[Tuple[ValidatorIndex], ShardNumber]:
+def get_next_epoch_crosslink_committees(state: BeaconState,
+                                        validator_index: ValidatorIndex) -> List[Tuple[ValidatorIndex], ShardNumber]:
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     next_epoch_start_slot = get_epoch_start_slot(next_epoch)
