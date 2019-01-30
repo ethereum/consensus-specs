@@ -311,7 +311,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     # Validator indices
     'validator_indices': ['uint64'],
-    # Custody bitfield
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
