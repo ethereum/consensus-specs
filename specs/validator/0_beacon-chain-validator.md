@@ -113,7 +113,7 @@ Deposits cannot be processed into the beacon chain until the eth1.0 block in whi
 
 ### Validator index
 
-Once a validator has been processed and added to the beacon state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. A validator's `validator_index` is guaranteed to not change from the time of initial deposit until the validator exists and fully withdraws. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
+Once a validator has been processed and added to the beacon state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#validatorrecord) contains the `pubkey` specified in the validator's deposit. A validator's `validator_index` is guaranteed to not change from the time of initial deposit until the validator exits and fully withdraws. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
 
 ### Activation
 
@@ -136,7 +136,9 @@ A validator has two primary responsibilities to the beacon chain -- [proposing b
 
 ### Block proposal
 
-A validator is expected to propose a [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state, slot)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` that creates a valid [beacon chain state transition](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beacon-chain-state-transition-function).
+A validator is expected to propose a [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state, slot)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beacon-chain-state-transition-function).
+
+There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (eg. at 312500 validators = 10 million ETH, that's once per ~3 weeks).
 
 #### Block header
 
@@ -174,14 +176,14 @@ epoch_signature = bls_sign(
 
 ##### Eth1 Data
 
-`block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.latest_eth1_data` is updated, and validator deposits up to this root can be processed.
+`block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.latest_eth1_data` is updated, and validator deposits up to this root can be processed. The deposit root can be calculated by calling the `get_deposit_root()` function of the deposit contract using the post-state of the block hash.
 
 * Let `D` be the set of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
     * `vote.eth1_data.block_hash` is the hash of an eth1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_data`.
     * `vote.eth1_data.deposit_root` is the deposit root of the eth1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
 * If `D` is empty:
-    * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`th ancestor of the head of the canonical eth1.0 chain.
-    * Let `deposit_root` be the deposit root of the eth1.0 deposit contract at the block defined by `block_hash`.
+    * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`'th ancestor of the head of the canonical eth1.0 chain.
+    * Let `deposit_root` be the deposit root of the eth1.0 deposit contract in the post-state of the block referenced by `block_hash`
 * If `D` is nonempty:
     * Let `best_vote` be the member of `D` that has the highest `vote.eth1_data.vote_count`, breaking ties by favoring block hashes with higher associated block height.
     * Let `block_hash = best_vote.eth1_data.block_hash`.
@@ -259,7 +261,7 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head)` where `head` is 
 
 Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(head.slot)`.
 
-_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(head.slot)`.
+_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(head.slot))`.
 
 ##### Shard block root
 
