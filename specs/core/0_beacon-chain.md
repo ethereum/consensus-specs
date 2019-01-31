@@ -1020,7 +1020,7 @@ def is_power_of_two(value: int) -> bool:
 ```python
 def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
     """
-    Return the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
+    Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
     return min(state.validator_balances[index], MAX_DEPOSIT_AMOUNT)
 ```
