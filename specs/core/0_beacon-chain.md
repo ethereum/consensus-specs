@@ -217,7 +217,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
+| `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
 
@@ -227,7 +227,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | - | - | :-: | :-: |
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots | ~13 hours |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### Reward and penalty quotients
@@ -507,7 +507,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Recent state
     'latest_crosslinks': [Crosslink],
     'latest_block_roots': ['bytes32'],
-    'latest_index_roots': ['bytes32'],
+    'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
     'batched_block_roots': ['bytes32'],
@@ -785,7 +785,7 @@ def get_shuffling(seed: Bytes32,
     return split(shuffled_active_validator_indices, committees_per_epoch)
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= get_current_epoch(state) + ENTRY_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
+**Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
@@ -928,8 +928,8 @@ def get_active_index_root(state: BeaconState,
     """
     Return the index root at a recent ``epoch``.
     """
-    assert get_current_epoch(state) - LATEST_INDEX_ROOTS_LENGTH + ENTRY_EXIT_DELAY < epoch <= get_current_epoch(state) + ENTRY_EXIT_DELAY
-    return state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH]
+    assert get_current_epoch(state) - LATEST_ACTIVE_INDEX_ROOTS_LENGTH + ACTIVATION_EXIT_DELAY < epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY
+    return state.latest_active_index_roots[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
 ```
 
 ### `generate_seed`
@@ -1181,7 +1181,7 @@ def get_entry_exit_effect_epoch(epoch: EpochNumber) -> EpochNumber:
     An entry or exit triggered in the ``epoch`` given by the input takes effect at
     the epoch given by the output.
     """
-    return epoch + 1 + ENTRY_EXIT_DELAY
+    return epoch + 1 + ACTIVATION_EXIT_DELAY
 ```
 
 ### `bls_verify`
@@ -1527,7 +1527,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Recent state
         latest_crosslinks=[Crosslink(epoch=GENESIS_EPOCH, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
-        latest_index_roots=[ZERO_HASH for _ in range(LATEST_INDEX_ROOTS_LENGTH)],
+        latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
         latest_attestations=[],
         batched_block_roots=[],
@@ -1553,8 +1553,8 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
             activate_validator(state, validator_index, is_genesis=True)
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
-    for index in range(LATEST_INDEX_ROOTS_LENGTH):
-        state.latest_index_roots[index] = genesis_active_index_root
+    for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
+        state.latest_active_index_roots[index] = genesis_active_index_root
     state.current_epoch_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
@@ -2094,7 +2094,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 #### Final updates
 
-* Set `state.latest_index_roots[(next_epoch + ENTRY_EXIT_DELAY) % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch + ENTRY_EXIT_DELAY))`.
+* Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch + ACTIVATION_EXIT_DELAY))`.
 * Set `state.latest_slashed_balances[(next_epoch) % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
