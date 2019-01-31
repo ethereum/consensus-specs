@@ -86,19 +86,23 @@ def hash_to_G2(message: bytes32, domain: uint64) -> [uint384]:
 
 ### `modular_squareroot`
 
-`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored.
+`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
+
+The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (ie. integers `mod q`) and converts it to a regular integer.
 
 ```python
 Fq2_order = q ** 2 - 1
 eighth_roots_of_unity = [Fq2([1,1]) ** ((Fq2_order * k) // 8) for k in range(8)]
 
-def modular_squareroot(value: int) -> int:
+def modular_squareroot(value: Fq2) -> Fq2:
     candidate_squareroot = value ** ((Fq2_order + 8) // 16)
     check = candidate_squareroot ** 2 / value
     if check in eighth_roots_of_unity[::2]:
         x1 = candidate_squareroot / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
         x2 = -x1
-        return x1 if (x1.coeffs[1].n, x1.coeffs[0].n) > (x2.coeffs[1].n, x2.coeffs[0].n) else x2
+        x1_re, x1_im = coerce_to_int(x1.coeffs[0]), coerce_to_int(x1.coeffs[1])
+        x2_re, x2_im = coerce_to_int(x2.coeffs[0]), coerce_to_int(x2.coeffs[1])
+        return x1 if (x1_im > x2_im or (x1_im == x2_im and x1_re > x2_re)) else x2
     return None
 ```
 
@@ -106,11 +110,11 @@ def modular_squareroot(value: int) -> int:
 
 ### `bls_aggregate_pubkeys`
 
-Let `bls_aggregate_pubkeys(pubkeys: [uint384]) -> uint384` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
+Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
 
 ### `bls_aggregate_signatures`
 
-Let `bls_aggregate_signatures(signatures: [[uint384]]) -> [uint384]` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
+Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
 
 ## Signature verification
 
@@ -119,12 +123,12 @@ In the following `e` is the pairing function and `g` is the G1 generator with th
 ```python
 g_x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
 g_y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
-g = Fq2(g_x, g_y)
+g = Fq2([g_x, g_y])
 ```
 
 ### `bls_verify`
 
-Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain: uint64) -> bool`:
+Let `bls_verify(pubkey: Bytes48, message: Bytes32, signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
@@ -132,7 +136,7 @@ Let `bls_verify(pubkey: uint384, message: bytes32, signature: [uint384], domain:
 
 ### `bls_verify_multiple`
 
-Let `bls_verify_multiple(pubkeys: [uint384], messages: [bytes32], signature: [uint384], domain: uint64) -> bool`:
+Let `bls_verify_multiple(pubkeys: List[Bytes48], messages: List[Bytes32], signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
