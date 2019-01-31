@@ -606,9 +606,9 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `SlotNumber` | `uint64` | a slot number |
-| `EpochNumber` | `uint64` | an epoch number |
-| `ShardNumber` | `uint64` | a shard number |
+| `Slot` | `uint64` | a slot number |
+| `Epoch` | `uint64` | an epoch number |
+| `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | an index in the validator registry |
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Bytes32` | `bytes32` | 32 bytes of binary data |
@@ -632,7 +632,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ### `slot_to_epoch`
 
 ```python
-def slot_to_epoch(slot: SlotNumber) -> EpochNumber:
+def slot_to_epoch(slot: Slot) -> Epoch:
     """
     Return the epoch number of the given ``slot``.
     """
@@ -642,7 +642,7 @@ def slot_to_epoch(slot: SlotNumber) -> EpochNumber:
 ### `get_current_epoch`
 
 ```python
-def get_current_epoch(state: BeaconState) -> EpochNumber:
+def get_current_epoch(state: BeaconState) -> Epoch:
     """
     Return the current epoch of the given ``state``.
     """
@@ -652,7 +652,7 @@ def get_current_epoch(state: BeaconState) -> EpochNumber:
 ### `get_epoch_start_slot`
 
 ```python
-def get_epoch_start_slot(epoch: EpochNumber) -> SlotNumber:
+def get_epoch_start_slot(epoch: Epoch) -> Slot:
     """
     Return the starting slot of the given ``epoch``.
     """
@@ -661,7 +661,7 @@ def get_epoch_start_slot(epoch: EpochNumber) -> SlotNumber:
 
 ### `is_active_validator`
 ```python
-def is_active_validator(validator: Validator, epoch: EpochNumber) -> bool:
+def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     """
     Check if ``validator`` is active.
     """
@@ -671,7 +671,7 @@ def is_active_validator(validator: Validator, epoch: EpochNumber) -> bool:
 ### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber) -> List[ValidatorIndex]:
+def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> List[ValidatorIndex]:
     """
     Get indices of active validators from ``validators``.
     """
@@ -766,7 +766,7 @@ def get_epoch_committee_count(active_validator_count: int) -> int:
 ```python
 def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
-                  epoch: EpochNumber) -> List[List[ValidatorIndex]]
+                  epoch: Epoch) -> List[List[ValidatorIndex]]
     """
     Shuffle ``validators`` into crosslink committees seeded by ``seed`` and ``epoch``.
     Return a list of ``committees_per_epoch`` committees where each
@@ -832,8 +832,8 @@ def get_next_epoch_committee_count(state: BeaconState) -> int:
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                     slot: SlotNumber,
-                                     registry_change=False: bool) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
+                                     slot: Slot,
+                                     registry_change=False: bool) -> List[Tuple[List[ValidatorIndex], Shard]]:
     """
     Return the list of ``(committee, shard)`` tuples for the ``slot``.
 
@@ -897,7 +897,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
 ```python
 def get_block_root(state: BeaconState,
-                   slot: SlotNumber) -> Bytes32:
+                   slot: Slot) -> Bytes32:
     """
     Return the block root at a recent ``slot``.
     """
@@ -912,7 +912,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   epoch: EpochNumber) -> Bytes32:
+                   epoch: Epoch) -> Bytes32:
     """
     Return the randao mix at a recent ``epoch``.
     """
@@ -924,7 +924,7 @@ def get_randao_mix(state: BeaconState,
 
 ```python
 def get_active_index_root(state: BeaconState,
-                          epoch: EpochNumber) -> Bytes32:
+                          epoch: Epoch) -> Bytes32:
     """
     Return the index root at a recent ``epoch``.
     """
@@ -936,7 +936,7 @@ def get_active_index_root(state: BeaconState,
 
 ```python
 def generate_seed(state: BeaconState,
-                  epoch: EpochNumber) -> Bytes32:
+                  epoch: Epoch) -> Bytes32:
     """
     Generate a seed for the given ``epoch``.
     """
@@ -951,7 +951,7 @@ def generate_seed(state: BeaconState,
 
 ```python
 def get_beacon_proposer_index(state: BeaconState,
-                              slot: SlotNumber) -> ValidatorIndex:
+                              slot: Slot) -> ValidatorIndex:
     """
     Return the beacon proposer index for the ``slot``.
     """
@@ -1029,7 +1029,7 @@ def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
 
 ```python
 def get_fork_version(fork: Fork,
-                     epoch: EpochNumber) -> int:
+                     epoch: Epoch) -> int:
     """
     Return the fork version of the given ``epoch``.
     """
@@ -1043,7 +1043,7 @@ def get_fork_version(fork: Fork,
 
 ```python
 def get_domain(fork: Fork,
-               epoch: EpochNumber,
+               epoch: Epoch,
                domain_type: int) -> int:
     """
     Get the domain number that represents the fork meta and signature domain.
@@ -1176,7 +1176,7 @@ def integer_squareroot(n: int) -> int:
 ### `get_entry_exit_effect_epoch`
 
 ```python
-def get_entry_exit_effect_epoch(epoch: EpochNumber) -> EpochNumber:
+def get_entry_exit_effect_epoch(epoch: Epoch) -> Epoch:
     """
     An entry or exit triggered in the ``epoch`` given by the input takes effect at
     the epoch given by the output.
@@ -1587,10 +1587,10 @@ The beacon chain fork choice rule is a hybrid that combines justification and fi
 * Abstractly define `Store` as the type of storage object for the chain data and `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
 * Let `finalized_head` be the finalized block with the highest epoch. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
 * Let `justified_head` be the descendant of `finalized_head` with the highest epoch that has been justified for at least 1 epoch. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
-* Let `get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as:
+* Let `get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as:
 
 ```python
-def get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBlock:
+def get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock:
     """
     Get the ancestor of ``block`` with slot number ``slot``; return ``None`` if not found.
     """
