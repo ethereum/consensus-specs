@@ -216,7 +216,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `SLOT_DURATION` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
-| `SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
@@ -228,7 +228,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots | ~13 hours |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `LATEST_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_PENALIZED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### Reward and penalty quotients
 
@@ -508,7 +508,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_crosslinks': [Crosslink],
     'latest_block_roots': ['bytes32'],
     'latest_index_roots': ['bytes32'],
-    'latest_penalized_balances': ['uint64'],  # Balances penalized at every withdrawal period
+    'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
     'batched_block_roots': ['bytes32'],
 
@@ -532,8 +532,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'exit_epoch': 'uint64',
     # Epoch when validator withdrew
     'withdrawal_epoch': 'uint64',
-    # Epoch when validator was penalized
-    'penalized_epoch': 'uint64',
+    # Epoch when validator was slashed
+    'slashed_epoch': 'uint64',
     # Status flags
     'status_flags': 'uint64',
 }
@@ -942,7 +942,7 @@ def generate_seed(state: BeaconState,
     """
 
     return hash(
-        get_randao_mix(state, epoch - SEED_LOOKAHEAD) +
+        get_randao_mix(state, epoch - MIN_SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch)
     )
 ```
@@ -1256,7 +1256,7 @@ def process_deposit(state: BeaconState,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawal_epoch=FAR_FUTURE_EPOCH,
-            penalized_epoch=FAR_FUTURE_EPOCH,
+            slashed_epoch=FAR_FUTURE_EPOCH,
             status_flags=0,
         )
 
@@ -1327,13 +1327,13 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
     """
     exit_validator(state, index)
     validator = state.validator_registry[index]
-    state.latest_penalized_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
+    state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += get_effective_balance(state, index)
 
     whistleblower_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
-    validator.penalized_epoch = get_current_epoch(state)
+    validator.slashed_epoch = get_current_epoch(state)
 ```
 
 #### `prepare_validator_for_withdrawal`
@@ -1528,7 +1528,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         latest_crosslinks=[Crosslink(epoch=GENESIS_EPOCH, shard_block_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_index_roots=[ZERO_HASH for _ in range(LATEST_INDEX_ROOTS_LENGTH)],
-        latest_penalized_balances=[0 for _ in range(LATEST_PENALIZED_EXIT_LENGTH)],
+        latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
         latest_attestations=[],
         batched_block_roots=[],
 
@@ -1701,7 +1701,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
-* Verify that `proposer.penalized_epoch > get_current_epoch(state)`.
+* Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
 * Run `penalize_validator(state, proposer_slashing.proposer_index)`.
@@ -1718,7 +1718,7 @@ For each `attester_slashing` in `block.body.attester_slashings`:
 * Verify that `is_double_vote(slashable_attestation_1.data, slashable_attestation_2.data)` or `is_surround_vote(slashable_attestation_1.data, slashable_attestation_2.data)`.
 * Verify that `verify_slashable_attestation(state, slashable_attestation_1)`.
 * Verify that `verify_slashable_attestation(state, slashable_attestation_2)`.
-* Let `slashable_indices = [index for index in slashable_attestation_1.validator_indices if index in slashable_attestation_2.validator_indices and state.validator_registry[index].penalized_epoch > get_current_epoch(state)]`.
+* Let `slashable_indices = [index for index in slashable_attestation_1.validator_indices if index in slashable_attestation_2.validator_indices and state.validator_registry[index].slashed_epoch > get_current_epoch(state)]`.
 * Verify that `len(slashable_indices) >= 1`.
 * Run `penalize_validator(state, index)` for each `index` in `slashable_indices`.
 
@@ -1942,7 +1942,7 @@ Case 2: `epochs_since_finality > 4`:
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
-* Any [active_validator](#dfn-active-validator) `index` with `validator.penalized_epoch <= current_epoch`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
+* Any [active_validator](#dfn-active-validator) `index` with `validator.slashed_epoch <= current_epoch`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
 * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 ##### Attestation inclusion
@@ -2064,19 +2064,19 @@ def process_penalties_and_exits(state: BeaconState) -> None:
     total_balance = sum(get_effective_balance(state, i) for i in active_validator_indices)
 
     for index, validator in enumerate(state.validator_registry):
-        if current_epoch == validator.penalized_epoch + LATEST_PENALIZED_EXIT_LENGTH // 2:
-            epoch_index = current_epoch % LATEST_PENALIZED_EXIT_LENGTH
-            total_at_start = state.latest_penalized_balances[(epoch_index + 1) % LATEST_PENALIZED_EXIT_LENGTH]
-            total_at_end = state.latest_penalized_balances[epoch_index]
+        if current_epoch == validator.slashed_epoch + LATEST_SLASHED_EXIT_LENGTH // 2:
+            epoch_index = current_epoch % LATEST_SLASHED_EXIT_LENGTH
+            total_at_start = state.latest_slashed_balances[(epoch_index + 1) % LATEST_SLASHED_EXIT_LENGTH]
+            total_at_end = state.latest_slashed_balances[epoch_index]
             total_penalties = total_at_end - total_at_start
             penalty = get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
             state.validator_balances[index] -= penalty
 
     def eligible(index):
         validator = state.validator_registry[index]
-        if validator.penalized_epoch <= current_epoch:
-            penalized_withdrawal_epochs = LATEST_PENALIZED_EXIT_LENGTH // 2
-            return current_epoch >= validator.penalized_epoch + penalized_withdrawal_epochs
+        if validator.slashed_epoch <= current_epoch:
+            slashed_withdrawal_epochs = LATEST_SLASHED_EXIT_LENGTH // 2
+            return current_epoch >= validator.slashed_epoch + slashed_withdrawal_epochs
         else:
             return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 
@@ -2095,7 +2095,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 #### Final updates
 
 * Set `state.latest_index_roots[(next_epoch + ENTRY_EXIT_DELAY) % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch + ENTRY_EXIT_DELAY))`.
-* Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
+* Set `state.latest_slashed_balances[(next_epoch) % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
 
