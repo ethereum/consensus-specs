@@ -385,7 +385,7 @@ Return the hash of the serialization of the value.
 
 #### List/Vectors
 
-First, we define some helpers and then the Merkle tree function.
+First, we define some helpers and then the Merkle tree function. `zpad(input: bytes, length: int) -> bytes` is a helper that extends the given `bytes` value to the desired `length` by adding zero bytes on the right.
 
 ```python
 # Merkle tree hash of a list of homogenous, non-empty items
@@ -401,7 +401,7 @@ def merkle_hash(lst):
         items_per_chunk = SSZ_CHUNK_SIZE // len(lst[0])
 
         # Build a list of chunks based on the number of items in the chunk
-        chunkz = [b''.join(lst[i:i+items_per_chunk]) for i in range(0, len(lst), items_per_chunk)]
+        chunkz = [zpad(b''.join(lst[i:i+items_per_chunk]), SSZ_CHUNK_SIZE) for i in range(0, len(lst), items_per_chunk)]
     else:
         # Leave large items alone
         chunkz = lst
