@@ -100,7 +100,7 @@
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
         - [`Deposit` logs](#deposit-logs)
-        - [`ChainStart` log](#chainstart-log)
+        - [`Eth2Genesis` log](#chainstart-log)
         - [Vyper code](#vyper-code)
     - [On startup](#on-startup)
     - [Beacon chain processing](#beacon-chain-processing)
@@ -1369,13 +1369,13 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12 signature) is not verified by the deposit contract.
 
-### `ChainStart` log
+### `Eth2Genesis` log
 
-When sufficiently many full deposits have been made the deposit contract emits the `ChainStart` log. The beacon chain state may then be initialized by calling the `get_initial_beacon_state` function (defined below) where:
+When sufficiently many full deposits have been made the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_initial_beacon_state` function (defined below) where:
 
-* `genesis_time` equals `time` in the `ChainStart` log
-* `latest_eth1_data.deposit_root` equals `deposit_root` in the `ChainStart` log, and `latest_eth1_data.block_hash` equals the hash of the block that included the log
-* `initial_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `ChainStart` log, processed in the order in which they were emitted (oldest to newest)
+* `genesis_time` equals `time` in the `Eth2Genesis` log
+* `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log, and `latest_eth1_data.block_hash` equals the hash of the block that included the log
+* `initial_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `Eth2Genesis` log, processed in the order in which they were emitted (oldest to newest)
 
 ### Vyper code
 
@@ -1391,7 +1391,7 @@ TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
 Deposit: event({deposit_root: bytes32, data: bytes[528], merkle_tree_index: bytes[8], branch: bytes32[32]})
-ChainStart: event({deposit_root: bytes32, time: bytes[8]})
+Eth2Genesis: event({deposit_root: bytes32, time: bytes[8]})
 
 zerohashes: bytes32[32]
 branch: bytes32[32]
@@ -1454,7 +1454,7 @@ def deposit(deposit_input: bytes[512]):
         if self.full_deposit_count == CHAIN_START_FULL_DEPOSIT_THRESHOLD:
             timestamp_day_boundary: uint256 = as_unitless_number(block.timestamp) - as_unitless_number(block.timestamp) % SECONDS_PER_DAY + SECONDS_PER_DAY
             chainstart_time: bytes[8] = slice(concat("", convert(timestamp_day_boundary, bytes32)), start=24, len=8)
-            log.ChainStart(new_deposit_root, chainstart_time)
+            log.Eth2Genesis(new_deposit_root, chainstart_time)
             self.chainStarted = True
 ```
 
@@ -1485,7 +1485,7 @@ A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following val
 }
 ```
 
-`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `ChainStart` log has been emitted, `get_initial_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
+`STARTUP_STATE_ROOT` (in the above "genesis block") is generated from the `get_initial_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `Eth2Genesis` log has been emitted, `get_initial_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
 
 ```python
 def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
