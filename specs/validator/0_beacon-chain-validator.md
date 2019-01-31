@@ -50,6 +50,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Aggregation bitfield](#aggregation-bitfield)
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
+    - [Responsibility lookahead](#responsibility-lookahead)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -328,6 +329,39 @@ signed_attestation_data = bls_sign(
     )
 )
 ```
+
+## Responsibility lookahead
+
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming responsibilities of proposing and attesting dictated by the shuffling and slot.
+
+There are three possibilities for the shuffling at the next epoch:
+1. The shuffling changes due to a "validator registry change".
+2. The shuffling changes due to `epochs_since_last_registry_update` being an exact power of 2 greater than 1.
+3. The shuffling remains the same (i.e. the validator is in the same shard committee).
+
+Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is deterministic based upon `epochs_since_last_registry_update`.
+
+`get_crosslink_committees_at_slot` is designed to be able to query slots in the next epoch. When querying slots in the next epoch there are two options -- with and without a `registry_change` -- which is the optional third parameter of the function. The following helper can be used to get the potential crosslink committees in the next epoch for a given `validator_index`. This function returns a list of 2 shard committee tuples.
+
+```python
+def get_next_epoch_crosslink_committees(state: BeaconState,
+                                        validator_index: ValidatorIndex) -> List[Tuple[ValidatorIndex], ShardNumber]:
+    current_epoch = get_current_epoch(state)
+    next_epoch = current_epoch + 1
+    next_epoch_start_slot = get_epoch_start_slot(next_epoch)
+    potential_committees = []
+    for validator_registry in [False, True]:
+        for slot in range(next_epoch_start_slot, next_epoch_start_slot + EPOCH_LENGTH):
+            shard_committees = get_crosslink_committees_at_slot(state, slot, validator_registry)
+            selected_committees = [committee for committee in shard_committees if validator_index in committee[0]]
+            if len(selected_committees) > 0:
+                potential_assignments.append(selected_committees)
+                break
+
+    return potential_assignments
+```
+
+`get_next_epoch_crosslink_committees` should be called at the beginning of each epoch to plan for the next epoch. A validator should always plan for both values of `registry_change` as a possibility unless the validator can concretely eliminate one of the options. Planning for a future shuffling involves noting at which slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
 
 ## How to avoid slashing
 

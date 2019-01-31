@@ -64,6 +64,7 @@
         - [`get_shuffling`](#get_shuffling)
         - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
+        - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_randao_mix`](#get_randao_mix)
@@ -72,6 +73,7 @@
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`merkle_root`](#merkle_root)
         - [`get_attestation_participants`](#get_attestation_participants)
+        - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
         - [`get_effective_balance`](#get_effective_balance)
         - [`get_fork_version`](#get_fork_version)
@@ -815,31 +817,61 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
     return get_epoch_committee_count(len(current_active_validators))
 ```
 
+### `get_next_epoch_committee_count`
+
+```python
+def get_next_epoch_committee_count(state: BeaconState) -> int:
+    next_active_validators = get_active_validator_indices(
+        state.validator_registry,
+        get_current_epoch(state) + 1,
+    )
+    return get_epoch_committee_count(len(next_active_validators))
+```
+
 ### `get_crosslink_committees_at_slot`
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                     slot: SlotNumber) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
+                                     slot: SlotNumber,
+                                     registry_change=False: bool) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     """
     Return the list of ``(committee, shard)`` tuples for the ``slot``.
+
+    Note: There are two possible shufflings for crosslink committees for a
+    ``slot`` in the next epoch -- with and without a `registry_change`
     """
     epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else current_epoch
     next_epoch = current_epoch + 1
 
-    assert previous_epoch <= epoch < next_epoch
+    assert previous_epoch <= epoch <= next_epoch
 
-    if epoch < current_epoch:
+    if epoch == previous_epoch:
         committees_per_epoch = get_previous_epoch_committee_count(state)
         seed = state.previous_epoch_seed
         shuffling_epoch = state.previous_calculation_epoch
         shuffling_start_shard = state.previous_epoch_start_shard
-    else:
+    elif epoch == current_epoch:
         committees_per_epoch = get_current_epoch_committee_count(state)
         seed = state.current_epoch_seed
         shuffling_epoch = state.current_calculation_epoch
         shuffling_start_shard = state.current_epoch_start_shard
+    elif epoch == next_epoch:
+        current_committees_per_epoch = get_current_epoch_committee_count(state)
+        committees_per_epoch = get_next_epoch_committee_count(state)
+        shuffling_epoch = next_epoch
+
+        epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
+        if registry_change:
+            seed = generate_seed(state, next_epoch)
+            shuffling_start_shard = (state.current_epoch_start_shard + current_committees_per_epoch) % SHARD_COUNT
+        elif epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
+            seed = generate_seed(state, next_epoch)
+            shuffling_start_shard = state.current_epoch_start_shard
+        else:
+            seed = state.current_epoch_seed
+            shuffling_start_shard = state.current_epoch_start_shard
 
     shuffling = get_shuffling(
         seed,
@@ -896,7 +928,7 @@ def get_active_index_root(state: BeaconState,
     """
     Return the index root at a recent ``epoch``.
     """
-    assert get_current_epoch(state) - LATEST_INDEX_ROOTS_LENGTH < epoch <= get_current_epoch(state)
+    assert get_current_epoch(state) - LATEST_INDEX_ROOTS_LENGTH + ENTRY_EXIT_DELAY < epoch <= get_current_epoch(state) + ENTRY_EXIT_DELAY
     return state.latest_index_roots[epoch % LATEST_INDEX_ROOTS_LENGTH]
 ```
 
@@ -964,6 +996,19 @@ def get_attestation_participants(state: BeaconState,
         if aggregation_bit == 0b1:
             participants.append(validator_index)
     return participants
+```
+
+### `is_power_of_two`
+
+```
+def is_power_of_two(value: int) -> bool:
+    """
+    Check if ``value`` is a power of two integer.
+    """
+    if value == 0:
+        return False
+    else:
+        return 2**int(math.log2(value)) == value
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
@@ -1507,7 +1552,9 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, is_genesis=True)
 
-    state.latest_index_roots[GENESIS_EPOCH % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
+    for index in range(LATEST_INDEX_ROOTS_LENGTH):
+        state.latest_index_roots[index] = genesis_active_index_root
     state.current_epoch_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
@@ -1933,7 +1980,6 @@ First, update the following:
 * Set `state.previous_calculation_epoch = state.current_calculation_epoch`.
 * Set `state.previous_epoch_start_shard = state.current_epoch_start_shard`.
 * Set `state.previous_epoch_seed = state.current_epoch_seed`.
-* Set `state.latest_index_roots[next_epoch % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch))`.
 
 If the following are satisfied:
 
@@ -1996,7 +2042,7 @@ and perform the following updates:
 If a validator registry update does _not_ happen do the following:
 
 * Let `epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch`.
-* If `epochs_since_last_registry_update` is an exact power of 2:
+* If `epochs_since_last_registry_update > 1` and `is_power_of_two(epochs_since_last_registry_update)`:
     * Set `state.current_calculation_epoch = next_epoch`.
     * Set `state.current_epoch_seed = generate_seed(state, state.current_calculation_epoch)`
     * _Note_ that `state.current_epoch_start_shard` is left unchanged.
@@ -2048,6 +2094,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
 #### Final updates
 
+* Set `state.latest_index_roots[(next_epoch + ENTRY_EXIT_DELAY) % LATEST_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch + ENTRY_EXIT_DELAY))`.
 * Set `state.latest_penalized_balances[(next_epoch) % LATEST_PENALIZED_EXIT_LENGTH] = state.latest_penalized_balances[current_epoch % LATEST_PENALIZED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
