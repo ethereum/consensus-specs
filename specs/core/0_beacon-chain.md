@@ -1350,7 +1350,7 @@ def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) 
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
 
 ### Deposit arguments
 
@@ -1385,7 +1385,7 @@ When sufficiently many full deposits have been made the deposit contract emits t
 MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
 MAX_DEPOSIT_AMOUNT: constant(uint256) = 32000000000  # Gwei
 CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 16384  # 2**14
-DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
+DEPOSIT_TREE_DEPTH: constant(uint256) = 32
 TWO_TO_POWER_OF_TREE_DEPTH: constant(uint256) = 4294967296  # 2**32
 SECONDS_PER_DAY: constant(uint256) = 86400
 
