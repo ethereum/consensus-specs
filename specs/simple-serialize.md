@@ -401,7 +401,10 @@ def merkle_hash(lst):
         items_per_chunk = SSZ_CHUNK_SIZE // len(lst[0])
 
         # Build a list of chunks based on the number of items in the chunk
-        chunkz = [zpad(b''.join(lst[i:i+items_per_chunk]), SSZ_CHUNK_SIZE) for i in range(0, len(lst), items_per_chunk)]
+        chunkz = [
+            zpad(b''.join(lst[i:i + items_per_chunk]), SSZ_CHUNK_SIZE) 
+            for i in range(0, len(lst), items_per_chunk)
+        ]
     else:
         # Leave large items alone
         chunkz = lst
