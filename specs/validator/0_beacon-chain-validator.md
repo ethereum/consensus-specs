@@ -345,15 +345,23 @@ Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is determi
 
 ```python
 def get_next_epoch_crosslink_committees(state: BeaconState,
-                                        validator_index: ValidatorIndex) -> List[Tuple[ValidatorIndex], ShardNumber]:
+                                        validator_index: ValidatorIndex) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     next_epoch_start_slot = get_epoch_start_slot(next_epoch)
     potential_committees = []
-    for validator_registry in [False, True]:
+    for registry_change in [False, True]:
         for slot in range(next_epoch_start_slot, next_epoch_start_slot + EPOCH_LENGTH):
-            shard_committees = get_crosslink_committees_at_slot(state, slot, validator_registry)
-            selected_committees = [committee for committee in shard_committees if validator_index in committee[0]]
+            crosslink_committees = get_crosslink_committees_at_slot(
+                state,
+                slot,
+                registry_change=registry_change,
+            )
+            selected_committees = [
+                committee  # type: Tuple[List[ValidatorIndex], ShardNumber]
+                for committee in crosslink_committees
+                if validator_index in committee[0]
+            ]
             if len(selected_committees) > 0:
                 potential_assignments.append(selected_committees)
                 break

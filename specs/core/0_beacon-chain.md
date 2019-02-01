@@ -833,7 +833,7 @@ def get_next_epoch_committee_count(state: BeaconState) -> int:
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
                                      slot: SlotNumber,
-                                     registry_change=False: bool) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
+                                     registry_change: bool=False) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     """
     Return the list of ``(committee, shard)`` tuples for the ``slot``.
 
