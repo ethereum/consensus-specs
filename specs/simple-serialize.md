@@ -373,9 +373,9 @@ return typ(**values), item_index
 
 The below `hash_tree_root_internal` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For use as a "final output" (eg. for signing), use `hash_tree_root(x) = zpad(hash_tree_root_internal(x), 32)`, where `zpad` is a helper that extends the given `bytes` value to the desired `length` by adding zero bytes on the right:
 
-```
+```python
 def zpad(input: bytes, length: int) -> bytes:
-   return input + b'\x00' * (length - len(input))`
+   return input + b'\x00' * (length - len(input))
 ```
 
 Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
