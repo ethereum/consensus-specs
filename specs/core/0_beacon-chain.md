@@ -1551,7 +1551,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, is_genesis=True)
 
-    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
     for index in range(LATEST_INDEX_ROOTS_LENGTH):
         state.latest_index_roots[index] = genesis_active_index_root
     state.current_epoch_seed = generate_seed(state, GENESIS_EPOCH)
@@ -1736,7 +1736,7 @@ For each `attestation` in `block.body.attestations`:
 ```python
     assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
-    
+
     crosslink_committee = [
         committee for committee, shard in get_crosslink_committees_at_slot(state, attestation.data.slot)
         if shard == attestation.data.shard
