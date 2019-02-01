@@ -940,7 +940,6 @@ def generate_seed(state: BeaconState,
     """
     Generate a seed for the given ``epoch``.
     """
-
     return hash(
         get_randao_mix(state, epoch - SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch)
@@ -1000,7 +999,7 @@ def get_attestation_participants(state: BeaconState,
 
 ### `is_power_of_two`
 
-```
+```python
 def is_power_of_two(value: int) -> bool:
     """
     Check if ``value`` is a power of two integer.
