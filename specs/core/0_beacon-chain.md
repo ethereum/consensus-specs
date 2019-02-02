@@ -940,7 +940,6 @@ def generate_seed(state: BeaconState,
     """
     Generate a seed for the given ``epoch``.
     """
-
     return hash(
         get_randao_mix(state, epoch - MIN_SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch)
@@ -1000,7 +999,7 @@ def get_attestation_participants(state: BeaconState,
 
 ### `is_power_of_two`
 
-```
+```python
 def is_power_of_two(value: int) -> bool:
     """
     Check if ``value`` is a power of two integer.
@@ -1020,7 +1019,7 @@ def is_power_of_two(value: int) -> bool:
 ```python
 def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
     """
-    Return the effective balance (also known as "balance at stake") for a ``validator`` with the given ``index``.
+    Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
     return min(state.validator_balances[index], MAX_DEPOSIT_AMOUNT)
 ```
@@ -1552,7 +1551,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, is_genesis=True)
 
-    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
         state.latest_active_index_roots[index] = genesis_active_index_root
     state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
@@ -1737,15 +1736,12 @@ For each `attestation` in `block.body.attestations`:
 ```python
     assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
-    
+
     crosslink_committee = [
         committee for committee, shard in get_crosslink_committees_at_slot(state, attestation.data.slot)
         if shard == attestation.data.shard
     ][0]
-    verify_bitfield(attestation.aggregation_bitfield, len(crosslink_committee))
-    verify_bitfield(attestation.custody_bitfield, len(crosslink_committee))
-    
-    for i in range(len(crosslink_committee):
+    for i in range(len(crosslink_committee)):
         if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
             assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
 
