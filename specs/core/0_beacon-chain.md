@@ -821,6 +821,9 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
 
 ```python
 def get_next_epoch_committee_count(state: BeaconState) -> int:
+    """
+    Return the number of committees in the next epoch of the given ``state``.
+    """
     next_active_validators = get_active_validator_indices(
         state.validator_registry,
         get_current_epoch(state) + 1,
