@@ -1824,7 +1824,7 @@ For each `exit` in `block.body.exits`:
 
 The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
 
-#### Helpers
+#### Variables
 
 * Let `current_epoch = get_current_epoch(state)`.
 * Let `previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else current_epoch`.
