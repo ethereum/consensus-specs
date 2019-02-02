@@ -612,8 +612,8 @@ We define the following Python custom types for type hinting and readability:
 | `ValidatorIndex` | `uint64` | an index in the validator registry |
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Bytes32` | `bytes32` | 32 bytes of binary data |
-| `Pubkey` | `bytes48` | a BLS12-381 public key |
-| `Signature` | `bytes96` | a BLS12-381 signature |
+| `BLSPubkey` | `bytes48` | a BLS12-381 public key |
+| `BLSSignature` | `bytes96` | a BLS12-381 signature |
 
 ## Helper functions
 
@@ -1200,8 +1200,8 @@ def get_entry_exit_effect_epoch(epoch: Epoch) -> Epoch:
 
 ```python
 def validate_proof_of_possession(state: BeaconState,
-                                 pubkey: Pubkey,
-                                 proof_of_possession: Signature,
+                                 pubkey: BLSPubkey,
+                                 proof_of_possession: BLSSignature,
                                  withdrawal_credentials: Bytes32) -> bool:
     """
     Verify the given ``proof_of_possession``.
@@ -1230,9 +1230,9 @@ Used to add a [validator](#dfn-validator) or top up an existing [validator](#dfn
 
 ```python
 def process_deposit(state: BeaconState,
-                    pubkey: Pubkey,
+                    pubkey: BLSPubkey,
                     amount: Gwei,
-                    proof_of_possession: Signature,
+                    proof_of_possession: BLSSignature,
                     withdrawal_credentials: Bytes32) -> None:
     """
     Process a deposit from Ethereum 1.0.
