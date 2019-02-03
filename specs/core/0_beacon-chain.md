@@ -1031,7 +1031,7 @@ def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
 ### `total_balance`
 
 ```python
-def total_balance(state: State, validators: [ValidatorIndex]) -> Gwei: 
+def total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> Gwei: 
     """
     Return the combined effective balance of an array of validators.
     """
