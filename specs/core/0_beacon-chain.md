@@ -778,7 +778,6 @@ def get_shuffling(seed: Bytes32,
     committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
 
     # Shuffle
-    seed = xor(seed, int_to_bytes32(epoch))
     shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
 
     # Split the shuffled list into committees_per_epoch pieces
@@ -945,7 +944,8 @@ def generate_seed(state: BeaconState,
     """
     return hash(
         get_randao_mix(state, epoch - SEED_LOOKAHEAD) +
-        get_active_index_root(state, epoch)
+        get_active_index_root(state, epoch) +
+        int_to_bytes32(epoch)
     )
 ```
 
