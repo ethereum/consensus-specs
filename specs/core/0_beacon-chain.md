@@ -710,8 +710,8 @@ def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
             if remaining == 1:
                 break
 
-            # Read 3-bytes of `source` as a 24-bit big-endian integer.
-            sample_from_source = int.from_bytes(source[position:position + rand_bytes], 'big')
+            # Read 3-bytes of `source` as a 24-bit little-endian integer.
+            sample_from_source = int.from_bytes(source[position:position + rand_bytes], 'little')
 
             # Sample values greater than or equal to `sample_max` will cause
             # modulo bias when mapped into the `remaining` range.
@@ -1015,7 +1015,7 @@ def is_power_of_two(value: int) -> bool:
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
 
-`int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+`int_to_bytes1(x): return x.to_bytes(1, 'little')`, `int_to_bytes2(x): return x.to_bytes(2, 'little')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
 
 ### `get_effective_balance`
 
