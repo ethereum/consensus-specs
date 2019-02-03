@@ -1688,7 +1688,7 @@ Below are the processing steps that happen at every `block`.
 
 #### Eth1 data
 
-* If `block.eth1_data` equals `eth1_data_vote.eth1_data` for some `eth1_data_vote` in `state.eth1_data_votes`, set `eth1_data_vote.vote_count += 1`.
+* If there exists an `eth1_data_vote` in `states.eth1_data_votes` for which `eth1_data_vote.eth1_data == block.eth1_data` (there will be at most one), set `eth1_data_vote.vote_count += 1`.
 * Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
 
 #### Operations
