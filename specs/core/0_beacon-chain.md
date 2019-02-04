@@ -1049,7 +1049,7 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
     """
     Return the combined effective balance of an array of validators.
     """
-    sum([get_effective_balance(state, i) for i in validators])
+    return sum([get_effective_balance(state, i) for i in validators])
 ```
 
 ### `get_fork_version`
