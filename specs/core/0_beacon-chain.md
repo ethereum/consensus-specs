@@ -54,6 +54,7 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`slot_to_epoch`](#slot_to_epoch)
+        - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
         - [`get_epoch_start_slot`](#get_epoch_start_slot)
         - [`is_active_validator`](#is_active_validator)
@@ -640,6 +641,19 @@ def slot_to_epoch(slot: SlotNumber) -> EpochNumber:
     return slot // EPOCH_LENGTH
 ```
 
+### `get_previous_epoch`
+
+```python
+def get_previous_epoch(state: BeaconState) -> EpochNumber:
+    """`
+    Return the previous epoch of the given ``state``.
+    If the current epoch is  ``GENESIS_EPOCH``, return ``GENESIS_EPOCH``.
+    """
+    if slot_to_epoch(state.slot) > GENESIS_EPOCH:
+        return slot_to_epoch(state.slot) - 1
+    return slot_to_epoch(state.slot)
+```
+
 ### `get_current_epoch`
 
 ```python
@@ -845,7 +859,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     """
     epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
-    previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else current_epoch
+    previous_epoch = get_previous_epoch(state)
     next_epoch = current_epoch + 1
 
     assert previous_epoch <= epoch <= next_epoch
@@ -1767,7 +1781,7 @@ The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
 #### Helpers
 
 * Let `current_epoch = get_current_epoch(state)`.
-* Let `previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else current_epoch`.
+* Let `previous_epoch = get_previous_epoch(state)`.
 * Let `next_epoch = current_epoch + 1`.
 
 [Validators](#dfn-Validator) attesting during the current epoch:
