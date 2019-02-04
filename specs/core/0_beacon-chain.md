@@ -1558,8 +1558,8 @@ def get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBl
         return get_ancestor(store, store.get_parent(block), slot)
 ```
 
-* Let `get_latest_attestation(store: Store, validator: Validator) -> Attestation` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
-* Let `get_latest_attestation_target(store: Store, validator: Validator) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator)`.
+* Let `get_latest_attestation(store: Store, validator_index: int) -> Attestation` be the attestation with the highest slot number in `store` from the validator with the given `validator_index`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
+* Let `get_latest_attestation_target(store: Store, validator_index: int) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator_index)`.
 * Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
 * Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
 * The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
@@ -1570,19 +1570,16 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     Execute the LMD-GHOST algorithm to find the head ``BeaconBlock``.
     """
     validators = start_state.validator_registry
-    active_validators = [
-        validators[i]
-        for i in get_active_validator_indices(validators, start_state.slot)
-    ]
+    active_validator_indices = get_active_validator_indices(validators, start_state.slot)
     attestation_targets = [
-        get_latest_attestation_target(store, validator)
-        for validator in active_validators
+        (validator_index, get_latest_attestation_target(store, validator_index))
+        for validator_index in active_validator_indices
     ]
 
     def get_vote_count(block: BeaconBlock) -> int:
-        return len([
-            target
-            for target in attestation_targets
+        return sum([
+            int(start_state.validator_balances[validator_index])
+            for validator_index, target in attestation_targets
             if get_ancestor(store, target, block.slot) == block
         ])
 
