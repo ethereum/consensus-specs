@@ -1137,7 +1137,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
         else:
             custody_bit_1_indices.append(validator_index)
 
-    return bls_verify(
+    return bls_verify_multiple(
         pubkeys=[
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
@@ -1147,11 +1147,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
         ],
         signature=slashable_attestation.aggregate_signature,
-        domain=get_domain(
-            state.fork,
-            slot_to_epoch(vote_data.data.slot),
-            DOMAIN_ATTESTATION,
-        ),
+        domain=get_domain(state.fork, slot_to_epoch(vote_data.data.slot), DOMAIN_ATTESTATION),
     )
 ```
 
