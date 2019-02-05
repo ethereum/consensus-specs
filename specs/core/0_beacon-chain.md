@@ -1099,9 +1099,11 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
     if len(bitfield) != (committee_size + 7) // 8:
         return False
 
-    for i in range(committee_size + 1, committee_size - committee_size % 8 + 8):
-        if get_bitfield_bit(bitfield, i) == 0b1:
-            return False
+    # Check if `bitfield` has padding zeros
+    if committee_size % 8 != 0:
+        for i in range(committee_size, committee_size - committee_size % 8 + 8):
+            if get_bitfield_bit(bitfield, i) == 0b1:
+                return False
 
     return True
 ```
