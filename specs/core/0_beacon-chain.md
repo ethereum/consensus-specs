@@ -1137,7 +1137,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
         else:
             custody_bit_1_indices.append(validator_index)
 
-    return bls_verify(
+    return bls_verify_multiple(
         pubkeys=[
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
