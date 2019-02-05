@@ -1059,7 +1059,7 @@ def get_bitfield_bit(bitfield: bytes, i: int) -> int:
     """
     Extract the bit in ``bitfield`` at position ``i``.
     """
-    return (bitfield[i // 8] >> (7 - (i % 8))) % 2
+    return (bitfield[i // 8] >> (i % 8)) % 2
 ```
 
 ### `verify_bitfield`
