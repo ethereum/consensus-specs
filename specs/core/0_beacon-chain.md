@@ -13,6 +13,7 @@
     - [Constants](#constants)
         - [Misc](#misc)
         - [Deposit contract](#deposit-contract)
+        - [Gwei values](#gwei-values)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
@@ -179,8 +180,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | - | - | :-: |
 | `SHARD_COUNT` | `2**10` (= 1,024) | shards |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | [validators](#dfn-validator) |
-| `FORK_CHOICE_BALANCE_INCREMENT` | `1e9` (= 1,000,000,000) | Gwei |
-| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
@@ -190,12 +189,18 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ### Deposit contract
 
-| Name | Value | Unit |
-| - | - | :-: |
+| Name | Value |
+| - | - |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) | - |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+
+### Gwei values
+
+| Name | Value | Unit |
 | `MIN_DEPOSIT_AMOUNT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 1e9` (= 32,000,000,000) | Gwei |
+| `FORK_CHOICE_BALANCE_INCREMENT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
+| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 
 ### Initial values
 
