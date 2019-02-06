@@ -13,6 +13,7 @@
     - [Constants](#constants)
         - [Misc](#misc)
         - [Deposit contract](#deposit-contract)
+        - [Gwei values](#gwei-values)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
@@ -179,7 +180,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | - | - | :-: |
 | `SHARD_COUNT` | `2**10` (= 1,024) | shards |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | [validators](#dfn-validator) |
-| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
@@ -189,12 +189,19 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 
 ### Deposit contract
 
+| Name | Value |
+| - | - |
+| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+
+### Gwei values
+
 | Name | Value | Unit |
 | - | - | :-: |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) | - |
 | `MIN_DEPOSIT_AMOUNT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 1e9` (= 32,000,000,000) | Gwei |
+| `FORK_CHOICE_BALANCE_INCREMENT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
+| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 
 ### Initial values
 
@@ -1555,8 +1562,8 @@ def get_ancestor(store: Store, block: BeaconBlock, slot: SlotNumber) -> BeaconBl
         return get_ancestor(store, store.get_parent(block), slot)
 ```
 
-* Let `get_latest_attestation(store: Store, validator: Validator) -> Attestation` be the attestation with the highest slot number in `store` from `validator`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
-* Let `get_latest_attestation_target(store: Store, validator: Validator) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator)`.
+* Let `get_latest_attestation(store: Store, validator_index: ValidatorIndex) -> Attestation` be the attestation with the highest slot number in `store` from the validator with the given `validator_index`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
+* Let `get_latest_attestation_target(store: Store, validator_index: ValidatorIndex) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator_index)`.
 * Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
 * Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
 * The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
@@ -1567,21 +1574,18 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     Execute the LMD-GHOST algorithm to find the head ``BeaconBlock``.
     """
     validators = start_state.validator_registry
-    active_validators = [
-        validators[i]
-        for i in get_active_validator_indices(validators, start_state.slot)
-    ]
+    active_validator_indices = get_active_validator_indices(validators, start_state.slot)
     attestation_targets = [
-        get_latest_attestation_target(store, validator)
-        for validator in active_validators
+        (validator_index, get_latest_attestation_target(store, validator_index))
+        for validator_index in active_validator_indices
     ]
 
     def get_vote_count(block: BeaconBlock) -> int:
-        return len([
-            target
-            for target in attestation_targets
+        return sum(
+            get_effective_balance(start_state.validator_balances[validator_index]) // FORK_CHOICE_BALANCE_INCREMENT
+            for validator_index, target in attestation_targets
             if get_ancestor(store, target, block.slot) == block
-        ])
+        )
 
     head = start_block
     while 1:
