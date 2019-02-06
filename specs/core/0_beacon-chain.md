@@ -179,8 +179,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | - | - | :-: |
 | `SHARD_COUNT` | `2**10` (= 1,024) | shards |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | [validators](#dfn-validator) |
-| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `FORK_CHOICE_BALANCE_INCREMENT` | `1e9` (= 1,000,000,000) | Gwei |
+| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
@@ -1578,11 +1578,11 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     ]
 
     def get_vote_count(block: BeaconBlock) -> int:
-        return sum([
+        return sum(
             get_effective_balance(start_state.validator_balances[validator_index]) // FORK_CHOICE_BALANCE_INCREMENT
             for validator_index, target in attestation_targets
             if get_ancestor(store, target, block.slot) == block
-        ])
+        )
 
     head = start_block
     while 1:
