@@ -368,14 +368,14 @@ def get_next_epoch_committee_assignments(
                 registry_change=registry_change,
             )
             selected_committees = [
-                committee  # type: Tuple[List[ValidatorIndex], ShardNumber]
+                committee  # Tuple[List[ValidatorIndex], ShardNumber]
                 for committee in crosslink_committees
                 if validator_index in committee[0]
             ]
             if len(selected_committees) > 0:
                 assignment = selected_committees[0]
                 assignment += (slot,)
-                first_committee_at_slot = crosslink_committees[0]
+                first_committee_at_slot = crosslink_committees[0][0]  # List[ValidatorIndex]
                 is_proposer = first_committee_at_slot[slot % len(first_committee_at_slot)] == validator_index
                 assignment += (is_proposer,)
 
