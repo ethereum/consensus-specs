@@ -718,7 +718,7 @@ def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
             return flip if bit else pos
 
         indices = [permute(v) for v in indices]
-    return [v[index] for index in indices]
+    return [values[index] for index in indices]
 ```
 
 ### `split`
