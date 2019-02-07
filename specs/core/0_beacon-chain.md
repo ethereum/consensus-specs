@@ -1617,7 +1617,7 @@ Below are the processing steps that happen at every slot.
 
 #### Block roots
 
-* Let `previous_block_root` be the `tree_hash_root` of the previous beacon block processed in the chain.
+* Let `previous_block_root` be the `hash_tree_root` of the previous beacon block processed in the chain.
 * Set `state.latest_block_roots[(state.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH] = previous_block_root`.
 * If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
