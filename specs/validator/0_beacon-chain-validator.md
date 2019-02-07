@@ -344,12 +344,22 @@ Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is determi
 `get_crosslink_committees_at_slot` is designed to be able to query slots in the next epoch. When querying slots in the next epoch there are two options -- with and without a `registry_change` -- which is the optional third parameter of the function. The following helper can be used to get the potential crosslink committees in the next epoch for a given `validator_index`. This function returns a list of 2 shard committee tuples.
 
 ```python
-def get_next_epoch_crosslink_committees(state: BeaconState,
-                                        validator_index: ValidatorIndex) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
+def get_next_epoch_committee_assignments(
+        state: BeaconState,
+        validator_index: ValidatorIndex) -> List[Tuple[List[ValidatorIndex], ShardNumber, SlotNumber, bool]]:
+    """
+    Return a list of the two possible committee assignments for ``validator_index`` at the next epoch.
+    Possible committee ``assignment`` is of the form (List[ValidatorIndex], ShardNumber, SlotNumber, bool).
+        * ``assignment[0]`` is the list of validators in the committee
+        * ``assignment[1]`` is the shard to which the committee is assigned
+        * ``assignment[2]`` is the slot at which the committee is assigned
+        * ``assignment[3]`` is a bool signalling if the validator is expected to propose
+            a beacon block at the assigned slot.
+    """
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     next_epoch_start_slot = get_epoch_start_slot(next_epoch)
-    potential_committees = []
+    potential_assignments = []
     for registry_change in [False, True]:
         for slot in range(next_epoch_start_slot, next_epoch_start_slot + EPOCH_LENGTH):
             crosslink_committees = get_crosslink_committees_at_slot(
@@ -363,13 +373,19 @@ def get_next_epoch_crosslink_committees(state: BeaconState,
                 if validator_index in committee[0]
             ]
             if len(selected_committees) > 0:
-                potential_assignments.append(selected_committees)
+                assignment = selected_committees[0]
+                assignment += (slot,)
+                first_committee_at_slot = crosslink_committees[0]
+                is_proposer = first_committee_at_slot[slot % len(first_committee_at_slot)] == validator_index
+                assignment += (is_proposer,)
+
+                potential_assignments.append(assignment)
                 break
 
     return potential_assignments
 ```
 
-`get_next_epoch_crosslink_committees` should be called at the beginning of each epoch to plan for the next epoch. A validator should always plan for both values of `registry_change` as a possibility unless the validator can concretely eliminate one of the options. Planning for a future shuffling involves noting at which slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
+`get_next_epoch_committee_assignments` should be called at the beginning of each epoch to plan for the next epoch. A validator should always plan for both values of `registry_change` as a possibility unless the validator can concretely eliminate one of the options. Planning for a future shuffling involves noting at which slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
 
 ## How to avoid slashing
 
