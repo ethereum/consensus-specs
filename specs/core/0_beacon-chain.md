@@ -708,7 +708,7 @@ def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
     for round in range(90):
         hashvalues = b''.join([
             hash(seed + round.to_bytes(1, 'big') + i.to_bytes(4, 'big'))
-            for i in range((n + 255) // 256)
+            for i in range((len(values) + 255) // 256)
         ])
         pivot = int.from_bytes(hash(seed + round.to_bytes(1, 'big')), 'big') % n
         def permute(pos):
