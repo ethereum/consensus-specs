@@ -704,7 +704,6 @@ def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
             for i in range((n + 255) // 256)
         ])
         pivot = int.from_bytes(hash(seed + round.to_bytes(1, 'big')), 'big') % n
-        
         def permute(pos):
             flip = (pivot - pos) % n
             maxpos = max(pos, flip)
