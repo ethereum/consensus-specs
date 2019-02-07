@@ -59,7 +59,7 @@
         - [`get_epoch_start_slot`](#get_epoch_start_slot)
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
-        - [`shuffle`](#shuffle)
+        - [`get_permuted_index`](#get_permuted_index)
         - [`split`](#split)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shuffling`](#get_shuffling)
@@ -693,32 +693,27 @@ def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber
     return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
 ```
 
-### `shuffle`
+### `get_permuted_index`
 
 ```python
-def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
+def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
-    Return the shuffled ``values`` with ``seed`` as entropy.
+    Return a pseudorandom permutation of `0...list_size-1` with ``seed`` as entropy.
     
     Utilizes 'swap or not' shuffling found in
     https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
     See the 'generalized domain' algorithm on page 3.
     """
-    indices = list(range(len(values)))
     for round in range(90):
-        hashvalues = b''.join([
-            hash(seed + round.to_bytes(1, 'little') + i.to_bytes(4, 'little'))
-            for i in range((len(values) + 255) // 256)
-        ])
-        pivot = int.from_bytes(hash(seed + round.to_bytes(1, 'little')), 'little') % n
-        def permute(pos):
-            flip = (pivot - pos) % n
-            maxpos = max(pos, flip)
-            bit = (hashvalues[maxpos // 8] >> (maxpos % 8)) % 2
-            return flip if bit else pos
-
-        indices = [permute(v) for v in indices]
-    return [values[index] for index in indices]
+        pivot = int.from_bytes(hash(seed + round.to_bytes(1, 'little')), 'little') % list_size
+            
+        flip = (pivot - index) % list_size
+        hash_pos = max(index, flip)
+        h = hash(seed + round.to_bytes(1, 'little') + (hash_pos // 256).to_bytes(4, 'little'))
+        byte = h[(hash_pos % 256) // 8]
+        bit = (byte >> (hash_pos % 8)) % 2
+        index = flip if bit else index
+    return index
 ```
 
 ### `split`
@@ -768,7 +763,10 @@ def get_shuffling(seed: Bytes32,
     committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
 
     # Shuffle
-    shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
+    shuffled_active_validator_indices = [
+        active_validator_indices[get_permuted_index(i, len(active_validator_indices), seed)]
+        for i in active_validator_indices
+    ]
 
     # Split the shuffled list into committees_per_epoch pieces
     return split(shuffled_active_validator_indices, committees_per_epoch)
