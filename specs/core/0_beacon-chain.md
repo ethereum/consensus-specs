@@ -697,7 +697,7 @@ def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber
 ### `get_permuted_index`
 
 ```python
-def get_permuted_index(index: int, list_size: int, seed: Bytes32, round_count: int=90) -> List[int]:
+def get_permuted_index(index: int, list_size: int, seed: Bytes32, round_count: int=90) -> int:
     """
     Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
 
