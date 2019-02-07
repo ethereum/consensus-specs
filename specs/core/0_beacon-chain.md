@@ -76,6 +76,7 @@
         - [`get_attestation_participants`](#get_attestation_participants)
         - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
+        - [`bytes_to_int`](#bytes_to_int)
         - [`get_effective_balance`](#get_effective_balance)
         - [`get_total_balance`](#get_total_balance)
         - [`get_fork_version`](#get_fork_version)
@@ -707,7 +708,7 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32, round_count: i
     See the 'generalized domain' algorithm on page 3.
     """
     for round in range(round_count):
-        pivot = int.from_bytes(hash(seed + int_to_bytes1(round)), 'little') % list_size
+        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))) % list_size
         flip = (pivot - index) % list_size
         position = max(index, flip)
         source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
@@ -1006,6 +1007,13 @@ def is_power_of_two(value: int) -> bool:
 ### `int_to_bytes1`, `int_to_bytes2`, ...
 
 `int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+
+### `bytes_to_int`
+
+```python
+def bytes_to_int(data: bytes) -> int:
+    return int.from_bytes(data, 'little')
+```
 
 ### `get_effective_balance`
 
