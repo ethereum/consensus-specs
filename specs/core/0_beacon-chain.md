@@ -1942,12 +1942,12 @@ If the following are satisfied:
 update the validator registry and associated fields by running
 
 ```python
-def update_validator_registry(state: BeaconState) -> None:
+def update_validator_registry(state: BeaconState, current_epoch: EpochNumber) -> None:
     """
     Update validator registry.
     Note that this function mutates ``state``.
     """
-    current_epoch = get_current_epoch(state)
+    
     # The active validators
     active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)
     # The total effective balance of active validators
