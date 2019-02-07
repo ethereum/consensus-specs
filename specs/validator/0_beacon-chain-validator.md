@@ -95,7 +95,7 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`. 
+In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 
@@ -166,7 +166,7 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined a
 ```python
 epoch_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=int_to_bytes32(slot_to_epoch(block.slot)),
+    message_hash=int_to_bytes32(slot_to_epoch(block.slot)),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -205,7 +205,7 @@ proposal_root = hash_tree_root(proposal_data)
 
 signed_proposal_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=proposal_root,
+    message_hash=proposal_root,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -321,7 +321,7 @@ attestation_message_to_sign = hash_tree_root(attestation_data_and_custody_bit)
 
 signed_attestation_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=attestation_message_to_sign,
+    message_hash=attestation_message_to_sign,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
         epoch=slot_to_epoch(attestation_data.slot),

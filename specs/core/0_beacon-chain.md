@@ -1052,7 +1052,7 @@ def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
 ### `get_total_balance`
 
 ```python
-def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> Gwei: 
+def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of an array of validators.
     """
@@ -1150,7 +1150,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
-        messages=[
+        message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b0)),
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
         ],
@@ -1245,7 +1245,7 @@ def validate_proof_of_possession(state: BeaconState,
 
     return bls_verify(
         pubkey=pubkey,
-        message=hash_tree_root(proof_of_possession_data),
+        message_hash=hash_tree_root(proof_of_possession_data),
         signature=proof_of_possession,
         domain=get_domain(
             state.fork,
@@ -1633,12 +1633,12 @@ Below are the processing steps that happen at every `block`.
 
 * Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
 * Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message=proposal_root, signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message_hash=proposal_root, signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
 
 #### RANDAO
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
 * Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
 
 #### Eth1 data
@@ -1659,8 +1659,8 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
 * Verify that `proposer.penalized_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
 * Run `penalize_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
@@ -1772,7 +1772,7 @@ For each `exit` in `block.body.exits`:
 * Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
 * Verify that `get_current_epoch(state) >= exit.epoch`.
 * Let `exit_message = hash_tree_root(Exit(epoch=exit.epoch, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
 ### Per-epoch processing
