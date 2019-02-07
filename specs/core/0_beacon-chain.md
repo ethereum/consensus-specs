@@ -774,7 +774,6 @@ def get_shuffling(seed: Bytes32,
     committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
 
     # Shuffle
-    shuffled_indices = shuffle(len(active_validator_indices), seed)
     shuffled_active_validator_indices = [
         active_validator_indices[i]
         for i in shuffle(len(active_validator_indices), seed)
