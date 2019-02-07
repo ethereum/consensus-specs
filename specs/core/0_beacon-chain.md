@@ -6,139 +6,139 @@
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Notation](#notation)
-    - [Terminology](#terminology)
-    - [Constants](#constants)
-        - [Misc](#misc)
-        - [Deposit contract](#deposit-contract)
-        - [Gwei values](#gwei-values)
-        - [Initial values](#initial-values)
-        - [Time parameters](#time-parameters)
-        - [State list lengths](#state-list-lengths)
-        - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Status flags](#status-flags)
-        - [Max operations per block](#max-operations-per-block)
-        - [Signature domains](#signature-domains)
-    - [Data structures](#data-structures)
-        - [Beacon chain operations](#beacon-chain-operations)
-            - [Proposer slashings](#proposer-slashings)
-                - [`ProposerSlashing`](#proposerslashing)
-            - [Attester slashings](#attester-slashings)
-                - [`AttesterSlashing`](#attesterslashing)
-                - [`SlashableAttestation`](#slashableattestation)
-            - [Attestations](#attestations)
-                - [`Attestation`](#attestation)
-                - [`AttestationData`](#attestationdata)
-                - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
-            - [Deposits](#deposits)
-                - [`Deposit`](#deposit)
-                - [`DepositData`](#depositdata)
-                - [`DepositInput`](#depositinput)
-            - [Exits](#exits)
-                - [`Exit`](#exit)
-        - [Beacon chain blocks](#beacon-chain-blocks)
-            - [`BeaconBlock`](#beaconblock)
-            - [`BeaconBlockBody`](#beaconblockbody)
-            - [`ProposalSignedData`](#proposalsigneddata)
-        - [Beacon chain state](#beacon-chain-state)
-            - [`BeaconState`](#beaconstate)
-            - [`Validator`](#validator)
-            - [`Crosslink`](#crosslink)
-            - [`PendingAttestation`](#pendingattestation)
-            - [`Fork`](#fork)
-            - [`Eth1Data`](#eth1data)
-            - [`Eth1DataVote`](#eth1datavote)
-    - [Custom Types](#custom-types)
-    - [Helper functions](#helper-functions)
-        - [`hash`](#hash)
-        - [`hash_tree_root`](#hash_tree_root)
-        - [`slot_to_epoch`](#slot_to_epoch)
-        - [`get_previous_epoch`](#get_previous_epoch)
-        - [`get_current_epoch`](#get_current_epoch)
-        - [`get_epoch_start_slot`](#get_epoch_start_slot)
-        - [`is_active_validator`](#is_active_validator)
-        - [`get_active_validator_indices`](#get_active_validator_indices)
-        - [`shuffle`](#shuffle)
-        - [`split`](#split)
-        - [`get_epoch_committee_count`](#get_epoch_committee_count)
-        - [`get_shuffling`](#get_shuffling)
-        - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
-        - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
-        - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
-        - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
-        - [`get_block_root`](#get_block_root)
-        - [`get_randao_mix`](#get_randao_mix)
-        - [`get_active_index_root`](#get_active_index_root)
-        - [`generate_seed`](#generate_seed)
-        - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-        - [`merkle_root`](#merkle_root)
-        - [`get_attestation_participants`](#get_attestation_participants)
-        - [`is_power_of_two`](#is_power_of_two)
-        - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
-        - [`get_effective_balance`](#get_effective_balance)
-        - [`get_total_balance`](#get_total_balance)
-        - [`get_fork_version`](#get_fork_version)
-        - [`get_domain`](#get_domain)
-        - [`get_bitfield_bit`](#get_bitfield_bit)
-        - [`verify_bitfield`](#verify_bitfield)
-        - [`verify_slashable_attestation`](#verify_slashable_attestation)
-        - [`is_double_vote`](#is_double_vote)
-        - [`is_surround_vote`](#is_surround_vote)
-        - [`integer_squareroot`](#integer_squareroot)
-        - [`get_entry_exit_effect_epoch`](#get_entry_exit_effect_epoch)
-        - [`bls_verify`](#bls_verify)
-        - [`bls_verify_multiple`](#bls_verify_multiple)
-        - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
-        - [`validate_proof_of_possession`](#validate_proof_of_possession)
-        - [`process_deposit`](#process_deposit)
-        - [Routines for updating validator status](#routines-for-updating-validator-status)
-            - [`activate_validator`](#activate_validator)
-            - [`initiate_validator_exit`](#initiate_validator_exit)
-            - [`exit_validator`](#exit_validator)
-            - [`penalize_validator`](#penalize_validator)
-            - [`prepare_validator_for_withdrawal`](#prepare_validator_for_withdrawal)
-    - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
-        - [Deposit arguments](#deposit-arguments)
-        - [Withdrawal credentials](#withdrawal-credentials)
-        - [`Deposit` logs](#deposit-logs)
-        - [`ChainStart` log](#chainstart-log)
-        - [Vyper code](#vyper-code)
-    - [On startup](#on-startup)
-    - [Beacon chain processing](#beacon-chain-processing)
-        - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
-    - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-        - [Per-slot processing](#per-slot-processing)
-            - [Slot](#slot)
-            - [Block roots](#block-roots)
-        - [Per-block processing](#per-block-processing)
-            - [Slot](#slot-1)
-            - [Proposer signature](#proposer-signature)
-            - [RANDAO](#randao)
-            - [Eth1 data](#eth1-data)
-            - [Operations](#operations)
-                - [Proposer slashings](#proposer-slashings-1)
-                - [Attester slashings](#attester-slashings-1)
-                - [Attestations](#attestations-1)
-                - [Deposits](#deposits-1)
-                - [Exits](#exits-1)
-        - [Per-epoch processing](#per-epoch-processing)
-            - [Helpers](#helpers)
-            - [Eth1 data](#eth1-data-1)
-            - [Justification](#justification)
-            - [Crosslinks](#crosslinks)
-            - [Rewards and penalties](#rewards-and-penalties)
-                - [Justification and finalization](#justification-and-finalization)
-                - [Attestation inclusion](#attestation-inclusion)
-                - [Crosslinks](#crosslinks-1)
-            - [Ejections](#ejections)
-            - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
-            - [Final updates](#final-updates)
-        - [State root verification](#state-root-verification)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Notation](#notation)
+  - [Terminology](#terminology)
+  - [Constants](#constants)
+    - [Misc](#misc)
+    - [Deposit contract](#deposit-contract)
+    - [Gwei values](#gwei-values)
+    - [Initial values](#initial-values)
+    - [Time parameters](#time-parameters)
+    - [State list lengths](#state-list-lengths)
+    - [Reward and penalty quotients](#reward-and-penalty-quotients)
+    - [Status flags](#status-flags)
+    - [Max operations per block](#max-operations-per-block)
+    - [Signature domains](#signature-domains)
+  - [Data structures](#data-structures)
+    - [Beacon chain operations](#beacon-chain-operations)
+      - [Proposer slashings](#proposer-slashings)
+        - [`ProposerSlashing`](#proposerslashing)
+      - [Attester slashings](#attester-slashings)
+        - [`AttesterSlashing`](#attesterslashing)
+        - [`SlashableAttestation`](#slashableattestation)
+      - [Attestations](#attestations)
+        - [`Attestation`](#attestation)
+        - [`AttestationData`](#attestationdata)
+        - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
+      - [Deposits](#deposits)
+        - [`Deposit`](#deposit)
+        - [`DepositData`](#depositdata)
+        - [`DepositInput`](#depositinput)
+      - [Exits](#exits)
+        - [`Exit`](#exit)
+    - [Beacon chain blocks](#beacon-chain-blocks)
+      - [`BeaconBlock`](#beaconblock)
+      - [`BeaconBlockBody`](#beaconblockbody)
+      - [`ProposalSignedData`](#proposalsigneddata)
+    - [Beacon chain state](#beacon-chain-state)
+      - [`BeaconState`](#beaconstate)
+      - [`Validator`](#validator)
+      - [`Crosslink`](#crosslink)
+      - [`PendingAttestation`](#pendingattestation)
+      - [`Fork`](#fork)
+      - [`Eth1Data`](#eth1data)
+      - [`Eth1DataVote`](#eth1datavote)
+  - [Custom Types](#custom-types)
+  - [Helper functions](#helper-functions)
+    - [`hash`](#hash)
+    - [`hash_tree_root`](#hashtreeroot)
+    - [`slot_to_epoch`](#slottoepoch)
+    - [`get_previous_epoch`](#getpreviousepoch)
+    - [`get_current_epoch`](#getcurrentepoch)
+    - [`get_epoch_start_slot`](#getepochstartslot)
+    - [`is_active_validator`](#isactivevalidator)
+    - [`get_active_validator_indices`](#getactivevalidatorindices)
+    - [`shuffle`](#shuffle)
+    - [`split`](#split)
+    - [`get_epoch_committee_count`](#getepochcommitteecount)
+    - [`get_shuffling`](#getshuffling)
+    - [`get_previous_epoch_committee_count`](#getpreviousepochcommitteecount)
+    - [`get_current_epoch_committee_count`](#getcurrentepochcommitteecount)
+    - [`get_next_epoch_committee_count`](#getnextepochcommitteecount)
+    - [`get_crosslink_committees_at_slot`](#getcrosslinkcommitteesatslot)
+    - [`get_block_root`](#getblockroot)
+    - [`get_randao_mix`](#getrandaomix)
+    - [`get_active_index_root`](#getactiveindexroot)
+    - [`generate_seed`](#generateseed)
+    - [`get_beacon_proposer_index`](#getbeaconproposerindex)
+    - [`merkle_root`](#merkleroot)
+    - [`get_attestation_participants`](#getattestationparticipants)
+    - [`is_power_of_two`](#ispoweroftwo)
+    - [`int_to_bytes1`, `int_to_bytes2`, ...](#inttobytes1-inttobytes2)
+    - [`get_effective_balance`](#geteffectivebalance)
+    - [`get_total_balance`](#gettotalbalance)
+    - [`get_fork_version`](#getforkversion)
+    - [`get_domain`](#getdomain)
+    - [`get_bitfield_bit`](#getbitfieldbit)
+    - [`verify_bitfield`](#verifybitfield)
+    - [`verify_slashable_attestation`](#verifyslashableattestation)
+    - [`is_double_vote`](#isdoublevote)
+    - [`is_surround_vote`](#issurroundvote)
+    - [`integer_squareroot`](#integersquareroot)
+    - [`get_entry_exit_effect_epoch`](#getentryexiteffectepoch)
+    - [`bls_verify`](#blsverify)
+    - [`bls_verify_multiple`](#blsverifymultiple)
+    - [`bls_aggregate_pubkeys`](#blsaggregatepubkeys)
+    - [`validate_proof_of_possession`](#validateproofofpossession)
+    - [`process_deposit`](#processdeposit)
+    - [Routines for updating validator status](#routines-for-updating-validator-status)
+      - [`activate_validator`](#activatevalidator)
+      - [`initiate_validator_exit`](#initiatevalidatorexit)
+      - [`exit_validator`](#exitvalidator)
+      - [`penalize_validator`](#penalizevalidator)
+      - [`prepare_validator_for_withdrawal`](#preparevalidatorforwithdrawal)
+  - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
+    - [Deposit arguments](#deposit-arguments)
+    - [Withdrawal credentials](#withdrawal-credentials)
+    - [`Deposit` logs](#deposit-logs)
+    - [`ChainStart` log](#chainstart-log)
+    - [Vyper code](#vyper-code)
+  - [On startup](#on-startup)
+  - [Beacon chain processing](#beacon-chain-processing)
+    - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
+  - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+    - [Per-slot processing](#per-slot-processing)
+      - [Slot](#slot)
+      - [Block roots](#block-roots)
+    - [Per-block processing](#per-block-processing)
+      - [Slot](#slot-1)
+      - [Proposer signature](#proposer-signature)
+      - [RANDAO](#randao)
+      - [Eth1 data](#eth1-data)
+      - [Operations](#operations)
+        - [Proposer slashings](#proposer-slashings-1)
+        - [Attester slashings](#attester-slashings-1)
+        - [Attestations](#attestations-1)
+        - [Deposits](#deposits-1)
+        - [Exits](#exits-1)
+    - [Per-epoch processing](#per-epoch-processing)
+      - [Helpers](#helpers)
+      - [Eth1 data](#eth1-data-1)
+      - [Justification](#justification)
+      - [Crosslinks](#crosslinks)
+      - [Rewards and penalties](#rewards-and-penalties)
+        - [Justification and finalization](#justification-and-finalization)
+        - [Attestation inclusion](#attestation-inclusion)
+        - [Crosslinks](#crosslinks-1)
+      - [Ejections](#ejections)
+      - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
+      - [Final updates](#final-updates)
+    - [State root verification](#state-root-verification)
 - [References](#references)
-    - [Normative](#normative)
-    - [Informative](#informative)
+  - [Normative](#normative)
+  - [Informative](#informative)
 - [Copyright](#copyright)
 
 <!-- /TOC -->
@@ -1052,7 +1052,7 @@ def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
 ### `get_total_balance`
 
 ```python
-def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> Gwei: 
+def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of an array of validators.
     """
@@ -1150,7 +1150,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
-        messages=[
+        message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b0)),
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
         ],
@@ -1245,7 +1245,7 @@ def validate_proof_of_possession(state: BeaconState,
 
     return bls_verify(
         pubkey=pubkey,
-        message=hash_tree_root(proof_of_possession_data),
+        message_hash=hash_tree_root(proof_of_possession_data),
         signature=proof_of_possession,
         domain=get_domain(
             state.fork,
@@ -1633,12 +1633,12 @@ Below are the processing steps that happen at every `block`.
 
 * Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
 * Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message=proposal_root, signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message_hash=proposal_root, signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
 
 #### RANDAO
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
 * Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
 
 #### Eth1 data
@@ -1659,8 +1659,8 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
 * Verify that `proposer.penalized_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
 * Run `penalize_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
@@ -1772,7 +1772,7 @@ For each `exit` in `block.body.exits`:
 * Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
 * Verify that `get_current_epoch(state) >= exit.epoch`.
 * Let `exit_message = hash_tree_root(Exit(epoch=exit.epoch, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
 ### Per-epoch processing

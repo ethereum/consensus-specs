@@ -7,53 +7,53 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 0 -- Honest Validator](#ethereum-20-phase-0----honest-validator)
-    - [Table of Contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Prerequisites](#prerequisites)
-    - [Constants](#constants)
-        - [Misc](#misc)
-    - [Becoming a validator](#becoming-a-validator)
-        - [Initialization](#initialization)
-            - [BLS public key](#bls-public-key)
-            - [BLS withdrawal key](#bls-withdrawal-key)
-        - [Submit deposit](#submit-deposit)
-        - [Process deposit](#process-deposit)
-        - [Validator index](#validator-index)
-        - [Activation](#activation)
-    - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-        - [Block proposal](#block-proposal)
-            - [Block header](#block-header)
-                - [Slot](#slot)
-                - [Parent root](#parent-root)
-                - [State root](#state-root)
-                - [Randao reveal](#randao-reveal)
-                - [Eth1 Data](#eth1-data)
-                - [Signature](#signature)
-            - [Block body](#block-body)
-                - [Proposer slashings](#proposer-slashings)
-                - [Attester slashings](#attester-slashings)
-                - [Attestations](#attestations)
-                - [Deposits](#deposits)
-                - [Exits](#exits)
-        - [Attestations](#attestations-1)
-            - [Attestation data](#attestation-data)
-                - [Slot](#slot-1)
-                - [Shard](#shard)
-                - [Beacon block root](#beacon-block-root)
-                - [Epoch boundary root](#epoch-boundary-root)
-                - [Shard block root](#shard-block-root)
-                - [Latest crosslink root](#latest-crosslink-root)
-                - [Justified epoch](#justified-epoch)
-                - [Justified block root](#justified-block-root)
-            - [Construct attestation](#construct-attestation)
-                - [Data](#data)
-                - [Aggregation bitfield](#aggregation-bitfield)
-                - [Custody bitfield](#custody-bitfield)
-                - [Aggregate signature](#aggregate-signature)
-    - [Responsibility lookahead](#responsibility-lookahead)
-    - [How to avoid slashing](#how-to-avoid-slashing)
-        - [Proposer slashing](#proposer-slashing)
-        - [Attester slashing](#attester-slashing)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Prerequisites](#prerequisites)
+  - [Constants](#constants)
+    - [Misc](#misc)
+  - [Becoming a validator](#becoming-a-validator)
+    - [Initialization](#initialization)
+      - [BLS public key](#bls-public-key)
+      - [BLS withdrawal key](#bls-withdrawal-key)
+    - [Submit deposit](#submit-deposit)
+    - [Process deposit](#process-deposit)
+    - [Validator index](#validator-index)
+    - [Activation](#activation)
+  - [Beacon chain responsibilities](#beacon-chain-responsibilities)
+    - [Block proposal](#block-proposal)
+      - [Block header](#block-header)
+        - [Slot](#slot)
+        - [Parent root](#parent-root)
+        - [State root](#state-root)
+        - [Randao reveal](#randao-reveal)
+        - [Eth1 Data](#eth1-data)
+        - [Signature](#signature)
+      - [Block body](#block-body)
+        - [Proposer slashings](#proposer-slashings)
+        - [Attester slashings](#attester-slashings)
+        - [Attestations](#attestations)
+        - [Deposits](#deposits)
+        - [Exits](#exits)
+    - [Attestations](#attestations-1)
+      - [Attestation data](#attestation-data)
+        - [Slot](#slot-1)
+        - [Shard](#shard)
+        - [Beacon block root](#beacon-block-root)
+        - [Epoch boundary root](#epoch-boundary-root)
+        - [Shard block root](#shard-block-root)
+        - [Latest crosslink root](#latest-crosslink-root)
+        - [Justified epoch](#justified-epoch)
+        - [Justified block root](#justified-block-root)
+      - [Construct attestation](#construct-attestation)
+        - [Data](#data)
+        - [Aggregation bitfield](#aggregation-bitfield)
+        - [Custody bitfield](#custody-bitfield)
+        - [Aggregate signature](#aggregate-signature)
+  - [Responsibility lookahead](#responsibility-lookahead)
+  - [How to avoid slashing](#how-to-avoid-slashing)
+    - [Proposer slashing](#proposer-slashing)
+    - [Attester slashing](#attester-slashing)
 
 <!-- /TOC -->
 
@@ -95,7 +95,7 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`. 
+In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 
@@ -166,7 +166,7 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined a
 ```python
 epoch_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=int_to_bytes32(slot_to_epoch(block.slot)),
+    message_hash=int_to_bytes32(slot_to_epoch(block.slot)),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -205,7 +205,7 @@ proposal_root = hash_tree_root(proposal_data)
 
 signed_proposal_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=proposal_root,
+    message_hash=proposal_root,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -321,7 +321,7 @@ attestation_message_to_sign = hash_tree_root(attestation_data_and_custody_bit)
 
 signed_attestation_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=attestation_message_to_sign,
+    message_hash=attestation_message_to_sign,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
         epoch=slot_to_epoch(attestation_data.slot),
