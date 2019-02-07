@@ -697,6 +697,13 @@ def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber
 
 ```python
 def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
+    """
+    Return the shuffled ``values`` with ``seed`` as entropy.
+    
+    Utilizes 'swap or not' shuffling found in
+    https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
+    See the 'generalized domain' algorithm on page 3.
+    """
     indices = list(range(len(values)))
     for round in range(90):
         hashvalues = b''.join([
