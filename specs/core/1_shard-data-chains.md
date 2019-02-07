@@ -16,10 +16,11 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-| Constant               | Value           | Unit  | Approximation |
-|------------------------|-----------------|-------|---------------|
-| `SHARD_CHUNK_SIZE`     | 2**5 (= 32)     | bytes |               |
-| `SHARD_BLOCK_SIZE`     | 2**14 (= 16384) | bytes |               |
+| Constant                    | Value           | Unit   | Approximation |
+|-----------------------------|-----------------|--------|---------------|
+| `SHARD_CHUNK_SIZE`          | 2**5 (= 32)     | bytes  |               |
+| `SHARD_BLOCK_SIZE`          | 2**14 (= 16384) | bytes  |               |
+| `PROPOSAL_RESHUFFLE_PERIOD` | 2**11 (= 2048)  | epochs | 9 days        |
 
 ### Flags, domains, etc.
 
@@ -40,12 +41,10 @@ A `ShardBlock` object has the following fields:
     'slot': 'uint64',
     # What shard is it on
     'shard_id': 'uint64',
-    # Parent block's hash of root
+    # Parent block's root
     'parent_root': 'hash32',
     # Beacon chain block
     'beacon_chain_ref': 'hash32',
-    # Depth of the Merkle tree
-    'data_tree_depth': 'uint8',
     # Merkle root of data
     'data_root': 'hash32'
     # State root (placeholder for now)
@@ -67,22 +66,43 @@ For a block on a shard to be processed by a node, the following conditions must 
 
 To validate a block header on shard `shard_id`, compute as follows:
 
-* Verify that `beacon_chain_ref` is the hash of a block in the beacon chain with slot less than or equal to `slot`. Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_root`.
-* Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
-* Assert `len(participation_bitfield) == ceil_div8(len(validators))`
+* Verify that `beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
+* Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_root`.
+* Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `persistent_committee` be `[persistent_committee[i] for i in get_persistent_committee(state, slot, shard_id)`.
+* Assert `verify_bitfield(participation_bitfield, len(persistent_committee))`
 * Let `proposer_index = hash(state.randao_mix + int_to_bytes8(shard_id) + int_to_bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
-* Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_root, sig=block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
+* Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(participation_bitfield, i) is True])`. Verify that `bls_verify(pubkey=group_public_key, msg=parent_root, sig=block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
 
-### Block Merklization helper
+We define the helper `get_proposal_committee` as follows:
 
 ```python
-def merkle_root(block_body):
-    assert len(block_body) == SHARD_BLOCK_SIZE
-    chunks = SHARD_BLOCK_SIZE // SHARD_CHUNK_SIZE
-    o = [0] * chunks + [block_body[i * SHARD_CHUNK_SIZE: (i+1) * SHARD_CHUNK_SIZE] for i in range(chunks)]
-    for i in range(chunks-1, 0, -1):
-        o[i] = hash(o[i*2] + o[i*2+1])
-    return o[1]
+def get_proposal_committee(seed: Bytes32,
+                          validators: List[Validator],
+                          shard: int,
+                          epoch: EpochNumber) -> List[ValidatorIndex]:
+                  
+    earlier_committee_start = epoch - (epoch % PROPOSAL_RESHUFFLE_PERIOD) - PROPOSAL_RESHUFFLE_PERIOD * 2
+    earlier_committee = split(shuffle(
+        get_active_validator_indices(validators, earlier_committee_start),
+        generate_seed(state, earlier_committee_start)
+    ), SHARD_COUNT)[shard]
+    
+    later_committee_start = epoch - (epoch % PROPOSAL_RESHUFFLE_PERIOD) - PROPOSAL_RESHUFFLE_PERIOD
+    later_committee = split(shuffle(
+        get_active_validator_indices(validators, earlier_committee_start),
+        generate_seed(state, earlier_committee_start)
+    ), SHARD_COUNT)[shard]
+    
+    def get_switchover_epoch(index):
+        return (
+            int.from_bytes(hash(generate_seed(state, earlier_committee_start) + bytes3(index)), 'little') %
+            PROPOSAL_RESHUFFLE_PERIOD
+        )
+        
+    return (
+        [i for i in earlier_committee if epoch % PROPOSAL_RESHUFFLE_PERIOD < get_switchover_epoch(i)] +
+        [i for i in later_committee if epoch % PROPOSAL_RESHUFFLE_PERIOD >= get_switchover_epoch(i)]
+    )
 ```
 
 ### Verifying shard block data
