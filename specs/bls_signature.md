@@ -69,10 +69,10 @@ We require:
 G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
 q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
 
-def hash_to_G2(message: bytes32, domain: uint64) -> [uint384]:
+def hash_to_G2(message_hash: Bytes32, domain: uint64) -> [uint384]:
     # Initial candidate x coordinate
-    x_re = int.from_bytes(hash(message + bytes8(domain) + b'\x01'), 'big')
-    x_im = int.from_bytes(hash(message + bytes8(domain) + b'\x02'), 'big')
+    x_re = int.from_bytes(hash(message_hash + bytes8(domain) + b'\x01'), 'big')
+    x_im = int.from_bytes(hash(message_hash + bytes8(domain) + b'\x02'), 'big')
     x_coordinate = Fq2([x_re, x_im])  # x = x_re + i * x_im
     
     # Test candidate y coordinates until a one is found
@@ -128,17 +128,17 @@ g = Fq2([g_x, g_y])
 
 ### `bls_verify`
 
-Let `bls_verify(pubkey: Bytes48, message: Bytes32, signature: Bytes96, domain: uint64) -> bool`:
+Let `bls_verify(pubkey: Bytes48, message_hash: Bytes32, signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that `pubkey` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
-* Verify that `e(pubkey, hash_to_G2(message, domain)) == e(g, signature)`.
+* Verify that `e(pubkey, hash_to_G2(message_hash, domain)) == e(g, signature)`.
 
 ### `bls_verify_multiple`
 
-Let `bls_verify_multiple(pubkeys: List[Bytes48], messages: List[Bytes32], signature: Bytes96, domain: uint64) -> bool`:
+Let `bls_verify_multiple(pubkeys: List[Bytes48], message_hashes: List[Bytes32], signature: Bytes96, domain: uint64) -> bool`:
 
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
-* Verify that `len(pubkeys)` equals `len(messages)` and denote the length `L`.
-* Verify that `e(pubkeys[0], hash_to_G2(messages[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(messages[L-1], domain)) == e(g, signature)`.
+* Verify that `len(pubkeys)` equals `len(message_hashes)` and denote the length `L`.
+* Verify that `e(pubkeys[0], hash_to_G2(message_hashes[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(message_hashes[L-1], domain)) == e(g, signature)`.

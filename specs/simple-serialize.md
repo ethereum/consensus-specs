@@ -371,7 +371,12 @@ return typ(**values), item_index
 
 ### Tree Hash
 
-The below `hash_tree_root` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For the final output only (ie. not intermediate outputs), if the output is less than 32 bytes, right-zero-pad it to 32 bytes. The goal is collision resistance *within* each type, not between types.
+The below `hash_tree_root_internal` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For use as a "final output" (eg. for signing), use `hash_tree_root(x) = zpad(hash_tree_root_internal(x), 32)`, where `zpad` is a helper that extends the given `bytes` value to the desired `length` by adding zero bytes on the right:
+
+```python
+def zpad(input: bytes, length: int) -> bytes:
+   return input + b'\x00' * (length - len(input))
+```
 
 Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
 
@@ -385,7 +390,7 @@ Return the hash of the serialization of the value.
 
 #### List/Vectors
 
-First, we define some helpers and then the Merkle tree function.
+First, we define the Merkle tree function.
 
 ```python
 # Merkle tree hash of a list of homogenous, non-empty items
@@ -401,7 +406,10 @@ def merkle_hash(lst):
         items_per_chunk = SSZ_CHUNK_SIZE // len(lst[0])
 
         # Build a list of chunks based on the number of items in the chunk
-        chunkz = [b''.join(lst[i:i+items_per_chunk]) for i in range(0, len(lst), items_per_chunk)]
+        chunkz = [
+            zpad(b''.join(lst[i:i + items_per_chunk]), SSZ_CHUNK_SIZE) 
+            for i in range(0, len(lst), items_per_chunk)
+        ]
     else:
         # Leave large items alone
         chunkz = lst
@@ -416,20 +424,20 @@ def merkle_hash(lst):
     return hash(chunkz[0] + datalen)
 ```
 
-To `hash_tree_root` a list, we simply do:
+To `hash_tree_root_internal` a list, we simply do:
 
 ```python
-return merkle_hash([hash_tree_root(item) for item in value])
+return merkle_hash([hash_tree_root_internal(item) for item in value])
 ```
 
-Where the inner `hash_tree_root` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+Where the inner `hash_tree_root_internal` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
 
 #### Container
 
 Recursively tree hash the values in the container in the same order as the fields, and return the hash of the concatenation of the results.
 
 ```python
-return hash(b''.join([hash_tree_root(getattr(x, field)) for field in value.fields]))
+return hash(b''.join([hash_tree_root_internal(getattr(x, field)) for field in value.fields]))
 ```
 
 ## Implementations
