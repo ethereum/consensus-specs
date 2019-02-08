@@ -16,11 +16,11 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-| Constant                    | Value            | Unit   | Approximation |
-|-----------------------------|------------------|--------|---------------|
-| `SHARD_CHUNK_SIZE`          | 2**5 (= 32)      | bytes  |               |
-| `SHARD_BLOCK_SIZE`          | 2**14 (= 16,384) | bytes  |               |
-| `PROPOSAL_RESHUFFLE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
+| Constant                      | Value            | Unit   | Approximation |
+|-------------------------------|------------------|--------|---------------|
+| `SHARD_CHUNK_SIZE`            | 2**5 (= 32)      | bytes  |               |
+| `SHARD_BLOCK_SIZE`            | 2**14 (= 16,384) | bytes  |               |
+| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
 
 ### Flags, domains, etc.
 
@@ -73,21 +73,21 @@ To validate a block header on shard `shard_id`, compute as follows:
 * Let `proposer_index = hash(state.randao_mix + int_to_bytes8(shard_id) + int_to_bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
 * Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(participation_bitfield, i) is True])`. Verify that `bls_verify(pubkey=group_public_key, message_hash=parent_root, sig=block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
 
-We define the helper `get_proposal_committee` as follows:
+We define the helper `get_persistent_committee` as follows:
 
 ```python
-def get_proposal_committee(seed: Bytes32,
-                          validators: List[Validator],
-                          shard: ShardNumber,
-                          epoch: EpochNumber) -> List[ValidatorIndex]:
+def get_persistent_commmitee(seed: Bytes32,
+                            validators: List[Validator],
+                            shard: ShardNumber,
+                            epoch: EpochNumber) -> List[ValidatorIndex]:
                   
-    earlier_committee_start = epoch - (epoch % PROPOSAL_RESHUFFLE_PERIOD) - PROPOSAL_RESHUFFLE_PERIOD * 2
+    earlier_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
     earlier_committee = split(shuffle(
         get_active_validator_indices(validators, earlier_committee_start),
         generate_seed(state, earlier_committee_start)
     ), SHARD_COUNT)[shard]
     
-    later_committee_start = epoch - (epoch % PROPOSAL_RESHUFFLE_PERIOD) - PROPOSAL_RESHUFFLE_PERIOD
+    later_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
     later_committee = split(shuffle(
         get_active_validator_indices(validators, later_committee_start),
         generate_seed(state, later_committee_start)
@@ -96,12 +96,12 @@ def get_proposal_committee(seed: Bytes32,
     def get_switchover_epoch(index):
         return (
             bytes_to_int(hash(generate_seed(state, earlier_committee_start) + bytes3(index))[0:8]) %
-            PROPOSAL_RESHUFFLE_PERIOD
+            PERSISTENT_COMMITTEE_PERIOD
         )
         
     return (
-        [i for i in earlier_committee if epoch % PROPOSAL_RESHUFFLE_PERIOD < get_switchover_epoch(i)] +
-        [i for i in later_committee if epoch % PROPOSAL_RESHUFFLE_PERIOD >= get_switchover_epoch(i)]
+        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
+        [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )
 ```
 
