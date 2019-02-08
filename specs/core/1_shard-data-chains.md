@@ -31,6 +31,17 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 ## Helper functions
 
+#### get_split_offset
+
+````python
+def get_split_offset(list_size: int, chunks: int, index: int) -> int:
+  """
+  Returns a value such that for a list L, chunk count k and index i,
+  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k+1, i)]
+  """
+  return (len(list_size) * index) // chunks
+````
+
 #### get_persistent_committee
 
 ```python
@@ -40,20 +51,28 @@ def get_persistent_commmitee(seed: Bytes32,
                             epoch: EpochNumber) -> List[ValidatorIndex]:
                   
     earlier_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
-    earlier_committee = split(shuffle(
-        get_active_validator_indices(validators, earlier_committee_start),
-        generate_seed(state, earlier_committee_start)
-    ), SHARD_COUNT)[shard]
+    earlier_validator_set = get_active_validator_indices(validators, earlier_committee_start)
+    earlier_seed = generate_seed(state, earlier_committee_start)
+    earlier_start_offset = get_split_offset(len(earlier_validator_set), SHARD_COUNT, shard)
+    earlier_end_offset = get_split_offset(len(earlier_validator_set), SHARD_COUNT, shard+1)
+    earlier_committee = [
+        earlier_validator_set[get_permuted_index(i, len(earlier_validator_set), earlier_seed)]
+        for i in range(earlier_start_offset, earlier_end_offset)
+    ]
     
     later_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
-    later_committee = split(shuffle(
-        get_active_validator_indices(validators, later_committee_start),
-        generate_seed(state, later_committee_start)
-    ), SHARD_COUNT)[shard]
+    later_validator_set = get_active_validator_indices(validators, later_committee_start)
+    later_seed = generate_seed(state, later_committee_start)
+    later_start_offset = get_split_offset(len(later_validator_set), SHARD_COUNT, shard)
+    later_end_offset = get_split_offset(len(later_validator_set), SHARD_COUNT, shard+1)
+    later_committee = [
+        later_validator_set[get_permuted_index(i, len(later_validator_set), later_seed)]
+        for i in range(later_start_offset, later_end_offset)
+    ]
     
     def get_switchover_epoch(index):
         return (
-            bytes_to_int(hash(generate_seed(state, earlier_committee_start) + bytes3(index))[0:8]) %
+            bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) %
             PERSISTENT_COMMITTEE_PERIOD
         )
         
@@ -107,7 +126,6 @@ To validate a block header on shard `shard_block.shard_id`, compute as follows:
 * Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
 * Let `proposer_index = hash(state.randao_mix + int_to_bytes8(shard_block.shard_id) + int_to_bytes8(shard_block.slot)) % len(validators)`. Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`. Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, shard_block.slot, SHARD_PROPOSER_DOMAIN))` passes.
 * Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`. Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
-
 
 ### Verifying shard block data
 
