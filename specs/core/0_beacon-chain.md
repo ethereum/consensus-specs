@@ -1252,36 +1252,37 @@ def process_deposit(state: BeaconState,
     Note that this function mutates ``state``.
     """
     # Validate the given `proof_of_possession`
-    assert validate_proof_of_possession(
+    valid_proof = validate_proof_of_possession(
         state,
         pubkey,
         proof_of_possession,
         withdrawal_credentials,
     )
 
-    validator_pubkeys = [v.pubkey for v in state.validator_registry]
-
-    if pubkey not in validator_pubkeys:
-        # Add new validator
-        validator = Validator(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            activation_epoch=FAR_FUTURE_EPOCH,
-            exit_epoch=FAR_FUTURE_EPOCH,
-            withdrawal_epoch=FAR_FUTURE_EPOCH,
-            penalized_epoch=FAR_FUTURE_EPOCH,
-            status_flags=0,
-        )
-
-        # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
-        state.validator_registry.append(validator)
-        state.validator_balances.append(amount)
-    else:
-        # Increase balance by deposit amount
-        index = validator_pubkeys.index(pubkey)
-        assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
-
-        state.validator_balances[index] += amount
+    if valid_proof:
+        validator_pubkeys = [v.pubkey for v in state.validator_registry]
+    
+        if pubkey not in validator_pubkeys:
+            # Add new validator
+            validator = Validator(
+                pubkey=pubkey,
+                withdrawal_credentials=withdrawal_credentials,
+                activation_epoch=FAR_FUTURE_EPOCH,
+                exit_epoch=FAR_FUTURE_EPOCH,
+                withdrawal_epoch=FAR_FUTURE_EPOCH,
+                penalized_epoch=FAR_FUTURE_EPOCH,
+                status_flags=0,
+            )
+    
+            # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
+            state.validator_registry.append(validator)
+            state.validator_balances.append(amount)
+        else:
+            # Increase balance by deposit amount
+            index = validator_pubkeys.index(pubkey)
+            assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
+    
+            state.validator_balances[index] += amount
 ```
 
 ### Routines for updating validator status
