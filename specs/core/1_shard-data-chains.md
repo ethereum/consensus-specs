@@ -24,6 +24,8 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `CHALLENGE_RESPONSE_DEADLINE`| 2**14 (= 16384) | epochs | 73 days       |
 | `MAX_BRANCH_CHALLENGES`      | 2**2 (= 4)      |        |               |
 | `MAX_BRANCH_RESPONSES`       | 2**4 (= 16)     |        |               |
+| `MAX_EARLY_SUBKEY_REVEALS`   | 2**4 (= 16)     |        |               |
+| `CUSTODY_PERIOD_LENGTH`      | 2**11 (= 2048)  | epochs | 9 days        |
 
 ### Flags, domains, etc.
 
@@ -31,6 +33,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 |------------------------|-----------------|
 | `SHARD_PROPOSER_DOMAIN`| 129             |
 | `SHARD_ATTESTER_DOMAIN`| 130             |
+| `DOMAIN_CUSTODY_SUBKEY`| 131             |
 
 ## Data Structures
 
@@ -127,9 +130,9 @@ Verify that the `shard_block_combined_data_root` is the output of these function
 
 The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
 
-## Updates to the beacon chain
+# Updates to the beacon chain
 
-### Data structures
+## Data structures
 
 Add a member value to the end of the `Validator` object (initialized to `[]`):
 
@@ -168,6 +171,7 @@ Add two member values to the `BeaconBlockBody` structure:
 ```python
     'branch_challenges': [BranchChallenge],
     'branch_responses': [BranchResponse],
+    'early_subkey_reveals': [EarlySubkeyReveal],
 ```
 
 Define a `BranchChallenge` as follows:
@@ -190,6 +194,37 @@ Define a `BranchResponse` as follows:
     'data_index': 'uint64',
     'root': 'bytes32'
 }
+```
+
+Define a `EarlySubkeyReveal` as follows:
+
+```python
+{
+    'validator_index': 'uint64',
+    'period': 'uint64',
+    'subkey': 'bytes96'
+}
+```
+
+## Helpers
+
+```python
+def get_current_custody_period(state: BeaconState) -> int:
+    return get_current_epoch(state) // CUSTODY_PERIOD_LENGTH
+```
+
+```python
+def verify_custody_subkey(pubkey: bytes48, subkey: bytes96, period: int) -> bool:
+    return bls_verify(
+        pubkey=pubkey,
+        message_hash=hash(int_to_bytes8(period)),
+        signature=subkey,
+        domain=get_domain(
+            state.fork,
+            period * CUSTODY_PERIOD_LENGTH,
+            DOMAIN_CUSTODY_SUBKEY
+        )
+    )
 ```
 
 ## Per-slot processing
@@ -223,6 +258,17 @@ For each `response` in `block.body.branch_responses`:
 * Verify that `get_current_epoch(state) >= record.inclusion_epoch + ENTRY_EXIT_DELAY`.
 * Remove the `record` from `state.validator_registry[response.responder_index].open_branch_challenges`
 * Determine the proposer `proposer_index = get_beacon_proposer_index(state, state.slot)` and set `state.validator_balances[proposer_index] += base_reward(state, index) // INCLUDER_REWARD_QUOTIENT // MAX_BRANCH_CHALLENGES`.
+
+### Early subkey reveals
+
+Verify that `len(block.body.early_subkey_reveals) <= MAX_EARLY_SUBKEY_REVEALS`.
+
+For each `reveal` in `block.body.early_subkey_reveals`:
+
+* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state) + ENTRY_EXIT_DELAY`.
+* Verify that `verify_custody_subkey(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period)` returns `True`.
+* Verify that `reveal.period > get_current_custody_period(state)`.
+* Run `penalize_validator(state, reveal.validator_index)`.
 
 ## Per-epoch processing
 
