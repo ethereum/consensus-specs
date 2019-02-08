@@ -78,7 +78,7 @@ We define the helper `get_proposal_committee` as follows:
 ```python
 def get_proposal_committee(seed: Bytes32,
                           validators: List[Validator],
-                          shard: int,
+                          shard: ShardNumber,
                           epoch: EpochNumber) -> List[ValidatorIndex]:
                   
     earlier_committee_start = epoch - (epoch % PROPOSAL_RESHUFFLE_PERIOD) - PROPOSAL_RESHUFFLE_PERIOD * 2
