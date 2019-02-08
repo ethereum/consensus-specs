@@ -16,10 +16,14 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-| Constant               | Value           | Unit  | Approximation |
-|------------------------|-----------------|-------|---------------|
-| `SHARD_CHUNK_SIZE`     | 2**5 (= 32)     | bytes |               |
-| `SHARD_BLOCK_SIZE`     | 2**14 (= 16384) | bytes |               |
+| Constant                     | Value           | Unit   | Approximation |
+|------------------------------|-----------------|--------|---------------|
+| `SHARD_CHUNK_SIZE`           | 2**5 (= 32)     | bytes  |               |
+| `SHARD_BLOCK_SIZE`           | 2**14 (= 16384) | bytes  |               |
+| `MAX_BRANCH_CHALLENGE_DELAY` | 2**11 (= 2048)  | epochs | 9 days        |
+| `CHALLENGE_RESPONSE_DEADLINE`| 2**14 (= 16384) | epochs | 73 days       |
+| `MAX_BRANCH_CHALLENGES`      | 2**2 (= 4)      |        |               |
+| `MAX_BRANCH_RESPONSES`       | 2**4 (= 16)     |        |               |
 
 ### Flags, domains, etc.
 
@@ -122,3 +126,117 @@ Verify that the `shard_block_combined_data_root` is the output of these function
 ### Shard block fork choice rule
 
 The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
+
+## Updates to the beacon chain
+
+### Data structures
+
+Add a member value to the end of the `Validator` object (initialized to `[]`):
+
+```python
+    'open_branch_challenges': [BranchChallengeRecord],
+```
+
+Define a `BranchChallengeRecord` as follows:
+
+```python
+{
+    'challenger_index': 'uint64',
+    'root': 'bytes32',
+    'depth': 'uint64',
+    'inclusion_epoch': 'uint64',
+    'data_index': 'uint64'
+}
+```
+
+In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
+
+```python
+def eligible(index):
+    validator = state.validator_registry[index]
+    if len(validator.open_branch_challenges) > 0:
+        return False
+    elif validator.penalized_epoch <= current_epoch:
+        penalized_withdrawal_epochs = LATEST_PENALIZED_EXIT_LENGTH // 2
+        return current_epoch >= validator.penalized_epoch + penalized_withdrawal_epochs
+    else:
+        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+```
+
+Add two member values to the `BeaconBlockBody` structure:
+
+```python
+    'branch_challenges': [BranchChallenge],
+    'branch_responses': [BranchResponse],
+```
+
+Define a `BranchChallenge` as follows:
+
+```python
+{
+    'responder_index': 'uint64',
+    'data_index': 'uint64',
+    'attestation': SlashableAttestation,
+}
+```
+
+Define a `BranchResponse` as follows:
+
+```python
+{
+    'responder_index': 'uint64',
+    'data': 'bytes32',
+    'branch': ['bytes32'],
+    'data_index': 'uint64',
+    'root': 'bytes32'
+}
+```
+
+## Per-slot processing
+
+Add two object processing categories to the per-slot processing, in order given below and lower than all other objects (specifically, right below exits) as follows.
+
+### Branch challenges
+
+Verify that `len(block.body.branch_challenges) <= MAX_BRANCH_CHALLENGES`.
+
+For each `challenge` in `block.body.branch_challenges`:
+
+* Verify that `slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY`.
+* Verify that `state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY`.
+* Verify that `verify_slashable_attestation(state, challenge.attestation)` returns `True`.
+* Verify that `challenge.responder_index` is in `challenge.attestation.validator_indices`.
+* Let `depth = log2(next_power_of_two(SHARD_BLOCK_SIZE // 32 * EPOCH_LENGTH * (slot_to_epoch(challenge.attestation.data.slot) - challenge.attestation.latest_crosslink.epoch)`. Verify that `challenge.data_index < 2**depth`.
+* Verify that there does not exist a `BranchChallengeRecord` in `state.validator_registry[challenge.responder_index].open_branch_challenges` with `root == challenge.attestation.data.shard_chain_commitment` and `data_index == data_index`.
+* Append to `state.validator_registry[challenge.responder_index].open_branch_challenges` the object `BranchChallengeRecord(challenger_index=get_beacon_proposer_index(state, state.slot), root=challenge.attestation.data.shard_chain_commitment, depth=depth, inclusion_epoch=get_current_epoch(state), data_index=data_index)`.
+
+**Invariant**: the `open_branch_challenges` array will always stay sorted in order of `inclusion_epoch`.
+
+### Branch responses
+
+Verify that `len(block.body.branch_responses) <= MAX_BRANCH_RESPONSES`.
+
+For each `response` in `block.body.branch_responses`:
+
+* Find the `BranchChallengeRecord` in `state.validator_registry[response.responder_index].open_branch_challenges` whose (`root`, `data_index`) match the (`root`, `data_index`) of the `response`. Verify that one such record exists (it is not possible for there to be more than one), call it `record`.
+* Verify that `verify_merkle_branch(leaf=response.data, branch=response.branch, depth=record.depth, index=record.data_index, root=record.root) is True.
+* Verify that `get_current_epoch(state) >= record.inclusion_epoch + ENTRY_EXIT_DELAY`.
+* Remove the `record` from `state.validator_registry[response.responder_index].open_branch_challenges`
+* Determine the proposer `proposer_index = get_beacon_proposer_index(state, state.slot)` and set `state.validator_balances[proposer_index] += base_reward(state, index) // INCLUDER_REWARD_QUOTIENT // MAX_BRANCH_CHALLENGES`.
+
+## Per-epoch processing
+
+Add the following loop immediately below the `process_ejections` loop:
+
+```python
+def process_challenge_absences(state: BeaconState) -> None:
+    """
+    Iterate through the validator registry
+    and penalize validators with balance that did not answer challenges.
+    """
+    for index, validator in enumerate(state.validator_registry):
+        if len(validator.open_branch_challenges) > 0 and get_current_epoch(state) > validator.open_branch_challenges[0].inclusion_epoch + CHALLENGE_RESPONSE_DEADLINE:
+            penalize_validator(state, index)
+```
+
+Run penalize_validator(state, index) for each index in slashable_indices.
