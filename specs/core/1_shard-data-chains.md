@@ -95,7 +95,7 @@ def get_proposal_committee(seed: Bytes32,
     
     def get_switchover_epoch(index):
         return (
-            int.from_bytes(hash(generate_seed(state, earlier_committee_start) + bytes3(index)), 'little') %
+            bytes_to_int(hash(generate_seed(state, earlier_committee_start) + bytes3(index))[0:8]) %
             PROPOSAL_RESHUFFLE_PERIOD
         )
         
