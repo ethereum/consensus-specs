@@ -385,7 +385,7 @@ def get_next_epoch_committee_assignments(
     return potential_assignments
 ```
 
-`get_next_epoch_committee_assignments` should be called at the beginning of each epoch to plan for the next epoch. A validator should always plan for both values of `registry_change` as a possibility unless the validator can concretely eliminate one of the options. Planning for a future shuffling involves noting at which slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
+`get_next_epoch_committee_assignments` should be called at the start of each epoch to get potential assignments for the next epoch (slots during `current_epoch + 1`). A validator should always plan for both values of `registry_change` as a possibility unless the validator can concretely eliminate one of the options. Planning for future assignments involves noting at which future slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
 
 ## How to avoid slashing
 

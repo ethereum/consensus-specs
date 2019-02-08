@@ -658,9 +658,10 @@ def get_previous_epoch(state: BeaconState) -> EpochNumber:
     Return the previous epoch of the given ``state``.
     If the current epoch is  ``GENESIS_EPOCH``, return ``GENESIS_EPOCH``.
     """
-    if slot_to_epoch(state.slot) > GENESIS_EPOCH:
-        return slot_to_epoch(state.slot) - 1
-    return slot_to_epoch(state.slot)
+    current_epoch = get_current_epoch(state)
+    if current_epoch == GENESIS_EPOCH:
+        return GENESIS_EPOCH
+    return current_epoch - 1
 ```
 
 ### `get_current_epoch`
