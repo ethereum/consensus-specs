@@ -238,5 +238,3 @@ def process_challenge_absences(state: BeaconState) -> None:
         if len(validator.open_branch_challenges) > 0 and get_current_epoch(state) > validator.open_branch_challenges[0].inclusion_epoch + CHALLENGE_RESPONSE_DEADLINE:
             penalize_validator(state, index)
 ```
-
-Run penalize_validator(state, index) for each index in slashable_indices.
