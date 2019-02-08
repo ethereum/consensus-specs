@@ -29,52 +29,9 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `SHARD_PROPOSER_DOMAIN`| 129             |
 | `SHARD_ATTESTER_DOMAIN`| 130             |
 
-## Data Structures
+## Helper functions
 
-### Shard chain blocks
-
-A `ShardBlock` object has the following fields:
-
-```python
-{
-    # Slot number
-    'slot': 'uint64',
-    # What shard is it on
-    'shard_id': 'uint64',
-    # Parent block's root
-    'parent_root': 'bytes32',
-    # Beacon chain block
-    'beacon_chain_ref': 'bytes32',
-    # Merkle root of data
-    'data_root': 'bytes32'
-    # State root (placeholder for now)
-    'state_root': 'bytes32',
-    # Block signature
-    'signature': 'bytes96',
-    # Attestation
-    'participation_bitfield': 'bytes',
-    'aggregate_signature': 'bytes96',
-}
-```
-
-## Shard block processing
-
-For a block on a shard to be processed by a node, the following conditions must be met:
-
-* The `ShardBlock` pointed to by `parent_root` has already been processed and accepted
-* The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
-
-To validate a block header on shard `shard_id`, compute as follows:
-
-* Verify that `beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
-* Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_root`.
-* Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`.
-* Let `persistent_committee` be `[persistent_committee[i] for i in get_persistent_committee(state, slot, shard_id)`.
-* Assert `verify_bitfield(participation_bitfield, len(persistent_committee))`
-* Let `proposer_index = hash(state.randao_mix + int_to_bytes8(shard_id) + int_to_bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
-* Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(participation_bitfield, i) is True])`. Verify that `bls_verify(pubkey=group_public_key, message_hash=parent_root, sig=block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
-
-We define the helper `get_persistent_committee` as follows:
+#### get_persistent_committee
 
 ```python
 def get_persistent_commmitee(seed: Bytes32,
@@ -105,6 +62,52 @@ def get_persistent_commmitee(seed: Bytes32,
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )
 ```
+
+## Data Structures
+
+### Shard chain blocks
+
+A `ShardBlock` object has the following fields:
+
+```python
+{
+    # Slot number
+    'slot': 'uint64',
+    # What shard is it on
+    'shard_id': 'uint64',
+    # Parent block's root
+    'parent_root': 'bytes32',
+    # Beacon chain block
+    'beacon_chain_ref': 'bytes32',
+    # Merkle root of data
+    'data_root': 'bytes32'
+    # State root (placeholder for now)
+    'state_root': 'bytes32',
+    # Block signature
+    'signature': 'bytes96',
+    # Attestation
+    'participation_bitfield': 'bytes',
+    'aggregate_signature': 'bytes96',
+}
+```
+
+## Shard block processing
+
+For a `shard_block` on a shard to be processed by a node, the following conditions must be met:
+
+* The `ShardBlock` pointed to by `shard_block.parent_root` has already been processed and accepted
+* The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
+
+To validate a block header on shard `shard_block.shard_id`, compute as follows:
+
+* Verify that `shard_block.beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
+* Verify that `shard_block.beacon_chain_ref` is equal to or a descendant of the `shard_block.beacon_chain_ref` specified in the `ShardBlock` pointed to by `shard_block.parent_root`.
+* Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_ref`.
+* Let `persistent_committee` be `[persistent_committee[i] for i in get_persistent_committee(state, shard_block.slot, shard_block.shard_id)`.
+* Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
+* Let `proposer_index = hash(state.randao_mix + int_to_bytes8(shard_block.shard_id) + int_to_bytes8(shard_block.slot)) % len(validators)`. Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`. Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, shard_block.slot, SHARD_PROPOSER_DOMAIN))` passes.
+* Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`. Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
+
 
 ### Verifying shard block data
 
