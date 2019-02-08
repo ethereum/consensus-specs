@@ -362,8 +362,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'epoch_boundary_root': 'bytes32',
     # Shard block's hash of root
     'shard_block_root': 'bytes32',
-    # Last crosslink's hash of root
-    'latest_crosslink_root': 'bytes32',
+    # Last crosslink
+    'latest_crosslink': Crosslink,
     # Last justified epoch in the beacon state
     'justified_epoch': 'uint64',
     # Hash of the last justified beacon block
@@ -1688,7 +1688,7 @@ For each `attestation` in `block.body.attestations`:
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + EPOCH_LENGTH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
-* Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[attestation.data.shard].shard_block_root`.
+* Verify that either (i) `state.latest_crosslinks[attestation.data.shard] == attestation.data.latest_crosslink` or (ii) `state.latest_crosslinks[attestation.data.shard] == Crosslink(shard_block_root=attestation.data.shard_block_root, epoch=slot_to_epoch(attestation.data.slot))`
 * Verify bitfields and aggregate signature:
 
 ```python
@@ -1860,7 +1860,7 @@ Finally, update the following:
 
 For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch))`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
-* Set `state.latest_crosslinks[shard] = Crosslink(epoch=current_epoch, shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * get_total_balance(crosslink_committee)`.
+* Set `state.latest_crosslinks[shard] = Crosslink(epoch=slot_to_epoch(slot), shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * get_total_balance(crosslink_committee)`.
 
 #### Rewards and penalties
 
