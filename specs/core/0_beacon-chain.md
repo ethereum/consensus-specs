@@ -708,7 +708,7 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32, round_count: i
     See the 'generalized domain' algorithm on page 3.
     """
     for round in range(round_count):
-        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))) % list_size
+        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
         position = max(index, flip)
         source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
