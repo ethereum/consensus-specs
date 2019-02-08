@@ -185,6 +185,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
+| `SHUFFLE_ROUND_COUNT` | 90 | - |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -697,17 +698,15 @@ def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber
 ### `get_permuted_index`
 
 ```python
-def get_permuted_index(index: int, list_size: int, seed: Bytes32, round_count: int=90) -> int:
+def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
     Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
-
-    Note that ``round_count`` is ``90`` in protocol and parameterized for the shuffling tests.
 
     Utilizes 'swap or not' shuffling found in
     https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
     See the 'generalized domain' algorithm on page 3.
     """
-    for round in range(round_count):
+    for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
         position = max(index, flip)
