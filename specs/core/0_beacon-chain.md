@@ -60,7 +60,7 @@
         - [`get_epoch_start_slot`](#get_epoch_start_slot)
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
-        - [`shuffle`](#shuffle)
+        - [`get_permuted_index`](#get_permuted_index)
         - [`split`](#split)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shuffling`](#get_shuffling)
@@ -77,6 +77,7 @@
         - [`get_attestation_participants`](#get_attestation_participants)
         - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
+        - [`bytes_to_int`](#bytes_to_int)
         - [`get_effective_balance`](#get_effective_balance)
         - [`get_total_balance`](#get_total_balance)
         - [`get_fork_version`](#get_fork_version)
@@ -184,6 +185,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
+| `SHUFFLE_ROUND_COUNT` | 90 | - |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -700,57 +702,27 @@ def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber
     return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
 ```
 
-### `shuffle`
+### `get_permuted_index`
 
 ```python
-def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
+def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
-    Return the shuffled ``values`` with ``seed`` as entropy.
+    Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
+
+    Utilizes 'swap or not' shuffling found in
+    https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
+    See the 'generalized domain' algorithm on page 3.
     """
-    values_count = len(values)
+    for round in range(SHUFFLE_ROUND_COUNT):
+        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
+        flip = (pivot - index) % list_size
+        position = max(index, flip)
+        source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
+        byte = source[(position % 256) // 8]
+        bit = (byte >> (position % 8)) % 2
+        index = flip if bit else index
 
-    # Entropy is consumed from the seed in 3-byte (24 bit) chunks.
-    rand_bytes = 3
-    # The highest possible result of the RNG.
-    rand_max = 2 ** (rand_bytes * 8) - 1
-
-    # The range of the RNG places an upper-bound on the size of the list that
-    # may be shuffled. It is a logic error to supply an oversized list.
-    assert values_count < rand_max
-
-    output = [x for x in values]
-    source = seed
-    index = 0
-    while index < values_count - 1:
-        # Re-hash the `source` to obtain a new pattern of bytes.
-        source = hash(source)
-        # Iterate through the `source` bytes in 3-byte chunks.
-        for position in range(0, 32 - (32 % rand_bytes), rand_bytes):
-            # Determine the number of indices remaining in `values` and exit
-            # once the last index is reached.
-            remaining = values_count - index
-            if remaining == 1:
-                break
-
-            # Read 3-bytes of `source` as a 24-bit big-endian integer.
-            sample_from_source = int.from_bytes(source[position:position + rand_bytes], 'big')
-
-            # Sample values greater than or equal to `sample_max` will cause
-            # modulo bias when mapped into the `remaining` range.
-            sample_max = rand_max - rand_max % remaining
-
-            # Perform a swap if the consumed entropy will not cause modulo bias.
-            if sample_from_source < sample_max:
-                # Select a replacement index for the current index.
-                replacement_position = (sample_from_source % remaining) + index
-                # Swap the current index with the replacement index.
-                output[index], output[replacement_position] = output[replacement_position], output[index]
-                index += 1
-            else:
-                # The sample causes modulo bias. A new sample should be read.
-                pass
-
-    return output
+    return index
 ```
 
 ### `split`
@@ -800,7 +772,10 @@ def get_shuffling(seed: Bytes32,
     committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
 
     # Shuffle
-    shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
+    shuffled_active_validator_indices = [
+        active_validator_indices[get_permuted_index(i, len(active_validator_indices), seed)]
+        for i in active_validator_indices
+    ]
 
     # Split the shuffled list into committees_per_epoch pieces
     return split(shuffled_active_validator_indices, committees_per_epoch)
@@ -1038,6 +1013,13 @@ def is_power_of_two(value: int) -> bool:
 ### `int_to_bytes1`, `int_to_bytes2`, ...
 
 `int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+
+### `bytes_to_int`
+
+```python
+def bytes_to_int(data: bytes) -> int:
+    return int.from_bytes(data, 'little')
+```
 
 ### `get_effective_balance`
 
