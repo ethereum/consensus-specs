@@ -90,7 +90,7 @@ def get_proposal_committee(seed: Bytes32,
     later_committee_start = epoch - (epoch % PROPOSAL_RESHUFFLE_PERIOD) - PROPOSAL_RESHUFFLE_PERIOD
     later_committee = split(shuffle(
         get_active_validator_indices(validators, earlier_committee_start),
-        generate_seed(state, earlier_committee_start)
+        generate_seed(state, later_committee_start)
     ), SHARD_COUNT)[shard]
     
     def get_switchover_epoch(index):
