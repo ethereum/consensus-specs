@@ -42,7 +42,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Beacon block root](#beacon-block-root)
                 - [Epoch boundary root](#epoch-boundary-root)
                 - [Shard block root](#shard-block-root)
-                - [Latest crosslink root](#latest-crosslink-root)
+                - [Latest crosslink](#latest-crosslink)
                 - [Justified epoch](#justified-epoch)
                 - [Justified block root](#justified-block-root)
             - [Construct attestation](#construct-attestation)
@@ -270,9 +270,9 @@ Set `attestation_data.shard_block_root = ZERO_HASH`.
 
 _Note:_ This is a stub for phase 0.
 
-##### Latest crosslink root
+##### Latest crosslink
 
-Set `attestation_data.latest_crosslink_root = state.latest_crosslinks[shard].shard_block_root` where `state` is the beacon state at `head` and `shard` is the validator's assigned shard.
+Set `attestation_data.latest_crosslink = state.latest_crosslinks[shard]` where `state` is the beacon state at `head` and `shard` is the validator's assigned shard.
 
 ##### Justified epoch
 
