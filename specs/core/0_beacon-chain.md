@@ -1012,7 +1012,7 @@ def is_power_of_two(value: int) -> bool:
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
 
-`int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+`int_to_bytes1(x): return x.to_bytes(1, 'little')`, `int_to_bytes2(x): return x.to_bytes(2, 'little')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
 
 ### `bytes_to_int`
 
