@@ -16,11 +16,11 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-| Constant                    | Value           | Unit   | Approximation |
-|-----------------------------|-----------------|--------|---------------|
-| `SHARD_CHUNK_SIZE`          | 2**5 (= 32)     | bytes  |               |
-| `SHARD_BLOCK_SIZE`          | 2**14 (= 16384) | bytes  |               |
-| `PROPOSAL_RESHUFFLE_PERIOD` | 2**11 (= 2048)  | epochs | 9 days        |
+| Constant                    | Value            | Unit   | Approximation |
+|-----------------------------|------------------|--------|---------------|
+| `SHARD_CHUNK_SIZE`          | 2**5 (= 32)      | bytes  |               |
+| `SHARD_BLOCK_SIZE`          | 2**14 (= 16,384) | bytes  |               |
+| `PROPOSAL_RESHUFFLE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
 
 ### Flags, domains, etc.
 
@@ -42,18 +42,18 @@ A `ShardBlock` object has the following fields:
     # What shard is it on
     'shard_id': 'uint64',
     # Parent block's root
-    'parent_root': 'hash32',
+    'parent_root': 'bytes32',
     # Beacon chain block
-    'beacon_chain_ref': 'hash32',
+    'beacon_chain_ref': 'bytes32',
     # Merkle root of data
-    'data_root': 'hash32'
+    'data_root': 'bytes32'
     # State root (placeholder for now)
-    'state_root': 'hash32',
+    'state_root': 'bytes32',
     # Block signature
-    'signature': ['uint384'],
+    'signature': 'bytes96',
     # Attestation
     'participation_bitfield': 'bytes',
-    'aggregate_signature': ['uint384'],
+    'aggregate_signature': 'bytes96',
 }
 ```
 
