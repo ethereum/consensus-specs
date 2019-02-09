@@ -122,7 +122,7 @@ To validate a block header on shard `shard_block.shard_id`, compute as follows:
 * Verify that `shard_block.beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
 * Verify that `shard_block.beacon_chain_ref` is equal to or a descendant of the `shard_block.beacon_chain_ref` specified in the `ShardBlock` pointed to by `shard_block.parent_root`.
 * Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_ref`.
-* Let `persistent_committee` be `[persistent_committee[i] for i in get_persistent_committee(state, shard_block.slot, shard_block.shard_id)`.
+* Let `persistent_committee = get_persistent_committee(state, shard_block.slot, shard_block.shard_id)`.
 * Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
 * Let `proposer_index = hash(state.randao_mix + int_to_bytes8(shard_block.shard_id) + int_to_bytes8(shard_block.slot)) % len(validators)`. Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`. Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, shard_block.slot, SHARD_PROPOSER_DOMAIN))` passes.
 * Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`. Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
