@@ -45,13 +45,15 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
 #### get_persistent_committee
 
 ```python
-def get_persistent_commmitee(seed: Bytes32,
-                            validators: List[Validator],
-                            shard: ShardNumber,
-                            epoch: EpochNumber) -> List[ValidatorIndex]:
+def get_persistent_commmitee(state: BeaconState,
+                             shard: ShardNumber,
+                             epoch: EpochNumber) -> List[ValidatorIndex]:
+    """
+    Returns the persistent committee for the given shard at the given epoch
+    """
                   
     earlier_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
-    earlier_validator_set = get_active_validator_indices(validators, earlier_committee_start)
+    earlier_validator_set = get_active_validator_indices(state.validators, earlier_committee_start)
     earlier_seed = generate_seed(state, earlier_committee_start)
     earlier_start_offset = get_split_offset(len(earlier_validator_set), SHARD_COUNT, shard)
     earlier_end_offset = get_split_offset(len(earlier_validator_set), SHARD_COUNT, shard+1)
@@ -61,7 +63,7 @@ def get_persistent_commmitee(seed: Bytes32,
     ]
     
     later_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
-    later_validator_set = get_active_validator_indices(validators, later_committee_start)
+    later_validator_set = get_active_validator_indices(state.validators, later_committee_start)
     later_seed = generate_seed(state, later_committee_start)
     later_start_offset = get_split_offset(len(later_validator_set), SHARD_COUNT, shard)
     later_end_offset = get_split_offset(len(later_validator_set), SHARD_COUNT, shard+1)
