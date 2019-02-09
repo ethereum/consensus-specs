@@ -1254,12 +1254,15 @@ def process_deposit(state: BeaconState,
     Note that this function mutates ``state``.
     """
     # Validate the given `proof_of_possession`
-    assert validate_proof_of_possession(
+    proof_is_valid = validate_proof_of_possession(
         state,
         pubkey,
         proof_of_possession,
         withdrawal_credentials,
     )
+
+    if not proof_is_valid:
+        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
 
