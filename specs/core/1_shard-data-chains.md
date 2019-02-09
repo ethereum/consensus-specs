@@ -267,7 +267,7 @@ For each `reveal` in `block.body.early_subkey_reveals`:
 
 * Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state) + ENTRY_EXIT_DELAY`.
 * Verify that `verify_custody_subkey(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period)` returns `True`.
-* Verify that `reveal.period > get_current_custody_period(state)`.
+* Verify that `reveal.period >= get_current_custody_period(state)`.
 * Run `penalize_validator(state, reveal.validator_index)`.
 
 ## Per-epoch processing
