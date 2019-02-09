@@ -1259,7 +1259,7 @@ def process_deposit(state: BeaconState,
         withdrawal_credentials,
     )
 
-    if valid_proof:
+    if proof_is_valid:
         validator_pubkeys = [v.pubkey for v in state.validator_registry]
     
         if pubkey not in validator_pubkeys:
