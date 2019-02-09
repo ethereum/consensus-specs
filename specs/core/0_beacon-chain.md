@@ -526,7 +526,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
-    'deposit_count': 'uint64'
+    'deposit_index': 'uint64'
 }
 ```
 
@@ -1479,7 +1479,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Ethereum 1.0 chain data
         latest_eth1_data=latest_eth1_data,
         eth1_data_votes=[],
-        deposit_index=0
+        deposit_index=len(initial_validator_deposits)
     )
 
     # Process initial deposits
