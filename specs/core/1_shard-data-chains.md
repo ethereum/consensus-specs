@@ -99,7 +99,12 @@ A node should sign a crosslink only if the following conditions hold. **If a nod
 
 First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_root` for the same shard (unless `last_crosslink_root` equals zero, in which case we are at the genesis).
 
-Second, we verify the `shard_chain_commitment`. Let `start_slot = state.latest_crosslinks[shard].epoch * EPOCH_LENGTH + EPOCH_LENGTH - CROSSLINK_LOOKBACK` and `end_slot = attestation.data.slot - attestation.data.slot % EPOCH_LENGTH - CROSSLINK_LOOKBACK`. Let `length = end_slot - start_slot`, `headers[0] .... headers[length-1]` be the serialized block headers in the canonical shard chain from the verifer's point of view (note that this implies that `headers` and `bodies` have been checked for validity), and `bodies[0] ... bodies[length-1]` be the bodies of the blocks. If there is a missing slot, then the header and body are the same as that of the block at the most recent slot that has a block.
+Second, we verify the `shard_chain_commitment`.
+* Let `start_slot = state.latest_crosslinks[shard].epoch * EPOCH_LENGTH + EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
+* Let `end_slot = attestation.data.slot - attestation.data.slot % EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
+* Let `length = end_slot - start_slot`, `headers[0] .... headers[length-1]` be the serialized block headers in the canonical shard chain from the verifer's point of view (note that this implies that `headers` and `bodies` have been checked for validity).
+* Let `bodies[0] ... bodies[length-1]` be the bodies of the blocks.
+* Note: If there is a missing slot, then the header and body are the same as that of the block at the most recent slot that has a block.
 
 We define two helpers:
 
