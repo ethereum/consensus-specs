@@ -26,6 +26,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `MAX_BRANCH_RESPONSES`       | 2**4 (= 16)     |        |               |
 | `MAX_EARLY_SUBKEY_REVEALS`   | 2**4 (= 16)     |        |               |
 | `CUSTODY_PERIOD_LENGTH`      | 2**11 (= 2048)  | epochs | 9 days        |
+| `MINOR_REWARD_QUOTIENT`      | 2**8 (= 256)    |        |               |
 
 ### Flags, domains, etc.
 
@@ -134,11 +135,23 @@ The fork choice rule for any shard is LMD GHOST using the validators currently a
 
 ## Data structures
 
-Add a member value to the end of the `Validator` object (initialized to `[]`):
+Add member values to the end of the `Validator` object:
 
 ```python
     'open_branch_challenges': [BranchChallengeRecord],
+    'next_subkey_to_reveal': 'uint64',
+    'reveal_max_periods_late': 'uint64'
 ```
+
+And the initializers:
+
+```python
+    'open_branch_challenges': [],
+    'next_subkey_to_reveal': 0,
+    'reveal_max_periods_late': 0,
+```
+
+Rename `withdrawal_epoch` to `withdrawable_epoch`.
 
 Define a `BranchChallengeRecord` as follows:
 
@@ -152,26 +165,12 @@ Define a `BranchChallengeRecord` as follows:
 }
 ```
 
-In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
-
-```python
-def eligible(index):
-    validator = state.validator_registry[index]
-    if len(validator.open_branch_challenges) > 0:
-        return False
-    elif validator.penalized_epoch <= current_epoch:
-        penalized_withdrawal_epochs = LATEST_PENALIZED_EXIT_LENGTH // 2
-        return current_epoch >= validator.penalized_epoch + penalized_withdrawal_epochs
-    else:
-        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
-```
-
 Add two member values to the `BeaconBlockBody` structure:
 
 ```python
     'branch_challenges': [BranchChallenge],
     'branch_responses': [BranchResponse],
-    'early_subkey_reveals': [EarlySubkeyReveal],
+    'subkey_reveals': [SubkeyReveal],
 ```
 
 Define a `BranchChallenge` as follows:
@@ -196,7 +195,7 @@ Define a `BranchResponse` as follows:
 }
 ```
 
-Define a `EarlySubkeyReveal` as follows:
+Define a `SubkeyReveal` as follows:
 
 ```python
 {
@@ -225,6 +224,38 @@ def verify_custody_subkey(pubkey: bytes48, subkey: bytes96, period: int) -> bool
             DOMAIN_CUSTODY_SUBKEY
         )
     )
+```
+
+Change the definition of `prepare_validator_for_withdrawal` as follows:
+
+```python
+def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
+    """
+    Set the validator with the given ``index`` with ``WITHDRAWABLE`` flag.
+    Note that this function mutates ``state``.
+    """
+    validator = state.validator_registry[index]
+    validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+```
+
+Change the definition of `penalize_validator` as follows:
+
+```python
+def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
+    """
+    Penalize the validator of the given ``index``.
+    Note that this function mutates ``state``.
+    """
+    exit_validator(state, index)
+    validator = state.validator_registry[index]
+    state.latest_penalized_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
+
+    whistleblower_index = get_beacon_proposer_index(state, state.slot)
+    whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
+    state.validator_balances[whistleblower_index] += whistleblower_reward
+    state.validator_balances[index] -= whistleblower_reward
+    validator.penalized_epoch = get_current_epoch(state)
+    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
 ```
 
 ## Per-slot processing
@@ -257,18 +288,30 @@ For each `response` in `block.body.branch_responses`:
 * Verify that `verify_merkle_branch(leaf=response.data, branch=response.branch, depth=record.depth, index=record.data_index, root=record.root) is True.
 * Verify that `get_current_epoch(state) >= record.inclusion_epoch + ENTRY_EXIT_DELAY`.
 * Remove the `record` from `state.validator_registry[response.responder_index].open_branch_challenges`
-* Determine the proposer `proposer_index = get_beacon_proposer_index(state, state.slot)` and set `state.validator_balances[proposer_index] += base_reward(state, index) // INCLUDER_REWARD_QUOTIENT // MAX_BRANCH_CHALLENGES`.
+* Determine the proposer `proposer_index = get_beacon_proposer_index(state, state.slot)` and set `state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`.
 
-### Early subkey reveals
+### Subkey reveals
 
 Verify that `len(block.body.early_subkey_reveals) <= MAX_EARLY_SUBKEY_REVEALS`.
 
 For each `reveal` in `block.body.early_subkey_reveals`:
 
-* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state) + ENTRY_EXIT_DELAY`.
 * Verify that `verify_custody_subkey(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period)` returns `True`.
-* Verify that `reveal.period >= get_current_custody_period(state)`.
+* Let `is_early_reveal = reveal.period > get_current_custody_period(state) or (reveal.period == get_current_custody_period(state) and state.validator_registry[reveal.validator_index].exit_epoch > get_current_epoch(state))` (ie. either the reveal is of a future period, or it's of the current period and the validator is still active)
+* Verify that one of the following is true:
+    * (i) `is_early_reveal` is `True`
+    * (ii) `is_early_reveal` is `False` and `reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal` (revealing a past subkey, or a current subkey for a validator that has exited)
+
+In case (i):
+
+* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state) + ENTRY_EXIT_DELAY`.
 * Run `penalize_validator(state, reveal.validator_index)`.
+
+In case (ii):
+
+* Determine the proposer `proposer_index = get_beacon_proposer_index(state, state.slot)` and set `state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`.
+* Set `state.validator_registry[reveal.validator_index].next_subkey_to_reveal += 1`
+* Set `state.validator_registry[reveal.validator_index].reveal_max_periods_late = max(state.validator_registry[reveal.validator_index].reveal_max_periods_late, get_current_period(state) - reveal.period)`.
 
 ## Per-epoch processing
 
@@ -283,4 +326,23 @@ def process_challenge_absences(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         if len(validator.open_branch_challenges) > 0 and get_current_epoch(state) > validator.open_branch_challenges[0].inclusion_epoch + CHALLENGE_RESPONSE_DEADLINE:
             penalize_validator(state, index)
+```
+
+In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
+
+```python
+def eligible(index):
+    validator = state.validator_registry[index]
+    # Cannot exit if there are still open branch challenges
+    if len(validator.open_branch_challenges) > 0:
+        return False
+    # Cannot exit if you have not revealed all of your subkeys
+    elif validator.next_subkey_to_reveal <= validator.exit_epoch // CUSTODY_PERIOD_LENGTH:
+        return False
+    # Cannot exit if you already have
+    elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
+        return False
+    # Return minimum time
+    else:
+        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 ```
