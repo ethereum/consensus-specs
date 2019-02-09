@@ -526,6 +526,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
+    'deposit_count': 'uint64'
 }
 ```
 
@@ -1717,6 +1718,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
+* Verify that `deposit.index == state.deposit_index`.
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
@@ -1744,6 +1746,8 @@ process_deposit(
     withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
 )
 ```
+
+* Set `state.deposit_index += 1`.
 
 ##### Exits
 
