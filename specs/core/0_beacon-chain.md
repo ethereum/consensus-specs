@@ -1479,6 +1479,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Ethereum 1.0 chain data
         latest_eth1_data=latest_eth1_data,
         eth1_data_votes=[],
+        deposit_index=0
     )
 
     # Process initial deposits
