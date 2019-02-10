@@ -107,6 +107,8 @@ def get_shard_proposer_index(state: BeaconState,
         if is_active_validator(state.validators[index], get_current_epoch(state)):
             return index
     return None
+```
+
 ## Data Structures
 
 ### Shard chain blocks
