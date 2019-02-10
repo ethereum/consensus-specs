@@ -9,7 +9,7 @@ deserializing objects and data types.
 ## ToC
 
 * [About](#about)
-* [Terminology](#terminology)
+* [Variables and Functions](#variables-and-functions)
 * [Constants](#constants)
 * [Overview](#overview)
    + [Serialize/Encode](#serializeencode)
@@ -30,7 +30,7 @@ deserializing objects and data types.
       - [Container](#container-1)
     + [Tree Hash](#tree-hash)
       - [`uint8`..`uint256`, `bool`, `bytes1`..`bytes32`](#uint8uint256-bool-bytes1bytes32)
-      - [`uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`](#uint264uintn-bytes-bytes33bytesn)
+      - [`uint264`..`uintN`, `bytes33`..`bytesN`](#uint264uintn-bytes33bytesn)
       - [List/Vectors](#listvectors-2)
       - [Container](#container-2)
 * [Implementations](#implementations)
@@ -384,7 +384,7 @@ Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/b
 
 Return the serialization of the value.
 
-#### `uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`
+#### `uint264`..`uintN`, `bytes33`..`bytesN`
 
 Return the hash of the serialization of the value.
 
@@ -431,6 +431,8 @@ return merkle_hash([hash_tree_root_internal(item) for item in value])
 ```
 
 Where the inner `hash_tree_root_internal` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
+
+Type `bytes` is tree-hashed like a list of `uint8`.
 
 #### Container
 
