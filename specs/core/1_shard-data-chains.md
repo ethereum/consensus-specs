@@ -236,6 +236,8 @@ Define a `SubkeyReveal` as follows:
     'validator_index': 'uint64',
     'period': 'uint64',
     'subkey': 'bytes96',
+    'mask': 'bytes32',
+    'revealer_index': 'uint64'
 }
 ```
 
@@ -248,13 +250,30 @@ def get_current_custody_period(state: BeaconState) -> int:
     return get_current_epoch(state) // CUSTODY_PERIOD_LENGTH
 ```
 
-### `verify_custody_subkey`
+### `verify_custody_subkey_reveal`
 
 ```python
-def verify_custody_subkey(pubkey: bytes48, subkey: bytes96, period: int) -> bool:
-    return bls_verify(
-        pubkey=pubkey,
-        message_hash=hash(int_to_bytes8(period)),
+def verify_custody_subkey_reveal(pubkey: bytes48,
+                                 subkey: bytes96,
+                                 mask: bytes32,
+                                 mask_pubkey: bytes48,
+                                 period: int) -> bool:
+    # Legitimate reveal: checking that the provided value actually is the subkey
+    if mask == ZERO_HASH:
+        pubkeys=[pubkey]
+        message_hashes=[hash(int_to_bytes8(period))]
+        
+    # Punitive early reveal: checking that the provided value is a valid masked subkey
+    # (masking done to prevent "stealing the reward" from a whistleblower by block proposers)
+    # Secure under the aggregate extraction infeasibility assumption described on page 11-12
+    # of https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf
+    else:
+        pubkeys=[pubkey, mask_pubkey]
+        message_hashes=[hash(int_to_bytes8(period)), mask]
+        
+    return bls_multi_verify(
+        pubkeys=pubkeys,
+        message_hashes=message_hashes,
         signature=subkey,
         domain=get_domain(
             fork=state.fork,
@@ -340,11 +359,11 @@ Verify that `len(block.body.early_subkey_reveals) <= MAX_EARLY_SUBKEY_REVEALS`.
 
 For each `reveal` in `block.body.early_subkey_reveals`:
 
-* Verify that `verify_custody_subkey(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period)` returns `True`.
+* Verify that `verify_custody_subkey_reveal(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period, reveal.mask, state.validator_registry[reveal.revealer_index].pubkey)` returns `True`.
 * Let `is_early_reveal = reveal.period > get_current_custody_period(state) or (reveal.period == get_current_custody_period(state) and state.validator_registry[reveal.validator_index].exit_epoch > get_current_epoch(state))` (ie. either the reveal is of a future period, or it's of the current period and the validator is still active)
 * Verify that one of the following is true:
     * (i) `is_early_reveal` is `True`
-    * (ii) `is_early_reveal` is `False` and `reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal` (revealing a past subkey, or a current subkey for a validator that has exited)
+    * (ii) `is_early_reveal` is `False` and `reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal` (revealing a past subkey, or a current subkey for a validator that has exited) and `reveal.mask == ZERO_HASH`
 
 In case (i):
 
