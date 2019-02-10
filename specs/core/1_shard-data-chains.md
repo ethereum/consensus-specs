@@ -150,7 +150,10 @@ To validate a block header on shard `shard_block.shard_id`, compute as follows:
 * Let `persistent_committee = get_persistent_committee(state, shard_block.shard_id, slot_to_epoch(shard_block.slot))`.
 * Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
 * For every `i in range(len(persistent_committee))` where `is_active_validator(state.validators[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
-* Let `proposer_index = bytes_to_int(hash(state.current_epoch_seed + int_to_bytes8(shard_block.shard_id) + int_to_bytes8(shard_block.slot))[0:8]) % len(validators)`. Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`. Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), SHARD_PROPOSER_DOMAIN))` passes.
+* Let `proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)`.
+* Verify that `proposer_index` is not `None`.
+* Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`.
+* Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), SHARD_PROPOSER_DOMAIN))` passes.
 * Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`. Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), SHARD_ATTESTER_DOMAIN))` passes.
 
 ### Verifying shard block data
