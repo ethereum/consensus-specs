@@ -149,6 +149,8 @@ The fork choice rule for any shard is LMD GHOST using the shard chain attestatio
 
 ## Data structures
 
+### `Validator`
+
 Add member values to the end of the `Validator` object:
 
 ```python
@@ -167,6 +169,8 @@ And the initializers:
 
 Rename `withdrawal_epoch` to `withdrawable_epoch`.
 
+### `BranchChallengeRecord`
+
 Define a `BranchChallengeRecord` as follows:
 
 ```python
@@ -179,6 +183,8 @@ Define a `BranchChallengeRecord` as follows:
 }
 ```
 
+### `BeaconBlockBody`
+
 Add two member values to the `BeaconBlockBody` structure:
 
 ```python
@@ -186,6 +192,8 @@ Add two member values to the `BeaconBlockBody` structure:
     'branch_responses': [BranchResponse],
     'subkey_reveals': [SubkeyReveal],
 ```
+
+### `BranchChallenge`
 
 Define a `BranchChallenge` as follows:
 
@@ -196,6 +204,8 @@ Define a `BranchChallenge` as follows:
     'attestation': SlashableAttestation,
 }
 ```
+
+### `BranchResponse`
 
 Define a `BranchResponse` as follows:
 
@@ -209,6 +219,8 @@ Define a `BranchResponse` as follows:
 }
 ```
 
+### `SubkeyReveal`
+
 Define a `SubkeyReveal` as follows:
 
 ```python
@@ -221,10 +233,14 @@ Define a `SubkeyReveal` as follows:
 
 ## Helpers
 
+### `get_current_custody_period`
+
 ```python
 def get_current_custody_period(state: BeaconState) -> int:
     return get_current_epoch(state) // CUSTODY_PERIOD_LENGTH
 ```
+
+### `verify_custody_subkey`
 
 ```python
 def verify_custody_subkey(pubkey: bytes48, subkey: bytes96, period: int) -> bool:
@@ -240,6 +256,8 @@ def verify_custody_subkey(pubkey: bytes48, subkey: bytes96, period: int) -> bool
     )
 ```
 
+### `prepare_validator_for_withdrawal`
+
 Change the definition of `prepare_validator_for_withdrawal` as follows:
 
 ```python
@@ -251,6 +269,8 @@ def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) 
     validator = state.validator_registry[index]
     validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 ```
+
+### `penalize_validator`
 
 Change the definition of `penalize_validator` as follows:
 
@@ -274,9 +294,11 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
 
 ## Per-slot processing
 
-Add two object processing categories to the per-slot processing, in order given below and lower than all other objects (specifically, right below exits) as follows.
+### Operations
 
-### Branch challenges
+Add the following operations to the per-slot processing, in order given below and _following_ all other operations (specifically, right after exits) as follows.
+
+#### Branch challenges
 
 Verify that `len(block.body.branch_challenges) <= MAX_BRANCH_CHALLENGES`.
 
@@ -292,7 +314,7 @@ For each `challenge` in `block.body.branch_challenges`:
 
 **Invariant**: the `open_branch_challenges` array will always stay sorted in order of `inclusion_epoch`.
 
-### Branch responses
+#### Branch responses
 
 Verify that `len(block.body.branch_responses) <= MAX_BRANCH_RESPONSES`.
 
@@ -304,7 +326,7 @@ For each `response` in `block.body.branch_responses`:
 * Remove the `record` from `state.validator_registry[response.responder_index].open_branch_challenges`
 * Determine the proposer `proposer_index = get_beacon_proposer_index(state, state.slot)` and set `state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`.
 
-### Subkey reveals
+#### Subkey reveals
 
 Verify that `len(block.body.early_subkey_reveals) <= MAX_EARLY_SUBKEY_REVEALS`.
 
