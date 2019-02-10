@@ -20,6 +20,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 |-------------------------------|------------------|--------|---------------|
 | `SHARD_CHUNK_SIZE`            | 2**5 (= 32)      | bytes  |               |
 | `SHARD_BLOCK_SIZE`            | 2**14 (= 16,384) | bytes  |               |
+| `CROSSLINK_LOOKBACK`          | 2**5 (= 32)      | slots  |               |
 | `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
 
 ### Flags, domains, etc.
@@ -144,27 +145,40 @@ A node should sign a crosslink only if the following conditions hold. **If a nod
 
 First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_root` for the same shard (unless `last_crosslink_root` equals zero, in which case we are at the genesis).
 
-Second, we verify the `shard_block_combined_data_root`. Let `h` be the slot _immediately after_ the slot of the shard block included by the last crosslink, and `h+n-1` be the slot number of the block directly referenced by the current `shard_block_root`. Let `B[i]` be the block at slot `h+i` in the shard chain. Let `bodies[0] .... bodies[n-1]` be the bodies of these blocks and `roots[0] ... roots[n-1]` the data roots. If there is a missing slot in the shard chain at position `h+i`, then `bodies[i] == b'\x00' * shard_block_maxbytes(state[i])` and `roots[i]` be the Merkle root of the empty data. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. We define the function for computing the combined data root as follows:
+Second, we verify the `shard_chain_commitment`.
+* Let `start_slot = state.latest_crosslinks[shard].epoch * EPOCH_LENGTH + EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
+* Let `end_slot = attestation.data.slot - attestation.data.slot % EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
+* Let `length = end_slot - start_slot`, `headers[0] .... headers[length-1]` be the serialized block headers in the canonical shard chain from the verifer's point of view (note that this implies that `headers` and `bodies` have been checked for validity).
+* Let `bodies[0] ... bodies[length-1]` be the bodies of the blocks.
+* Note: If there is a missing slot, then the header and body are the same as that of the block at the most recent slot that has a block.
+
+We define two helpers:
 
 ```python
-ZERO_ROOT = merkle_root(bytes([0] * SHARD_BLOCK_SIZE))
-
-def mk_combined_data_root(roots):
-    data = roots + [ZERO_ROOT for _ in range(len(roots), next_power_of_2(len(roots)))]
-    return compute_merkle_root(data)
+def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
+    while not is_power_of_two(len(values)):
+        values = values + [SHARD_BLOCK_SIZE]
+    return values
 ```
-
-This outputs the root of a tree of the data roots, with the data roots all adjusted to have the same height if needed. The tree can also be viewed as a tree of all of the underlying data concatenated together, appropriately padded. Here is an equivalent definition that uses bodies instead of roots [TODO: check equivalence]:
 
 ```python
-def mk_combined_data_root(depths, bodies):
-    data = b''.join(bodies)
-    data += bytes([0] * (next_power_of_2(len(data)) - len(data))
-    return compute_merkle_root([data[pos:pos+SHARD_CHUNK_SIZE] for pos in range(0, len(data), SHARD_CHUNK_SIZE)])
+def merkle_root_of_bytes(data: bytes) -> bytes:
+    return merkle_root([data[i:i+32] for i in range(0, len(data), 32)])
 ```
 
-Verify that the `shard_block_combined_data_root` is the output of these functions.
+We define the function for computing the commitment as follows:
+
+```python
+def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes32:
+    return hash(
+        merkle_root(pad_to_power_of_2([merkle_root_of_bytes(zpad(serialize(h), SHARD_BLOCK_SIZE)) for h in headers])),
+        merkle_root(pad_to_power_of_2([merkle_root_of_bytes(h) for h in bodies]))
+    )
+```
+
+The `shard_chain_commitment` is only valid if it equals `compute_commitment(headers, bodies)`.
+
 
 ### Shard block fork choice rule
 
-The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
+The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).

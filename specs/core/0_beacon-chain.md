@@ -60,7 +60,7 @@
         - [`get_epoch_start_slot`](#get_epoch_start_slot)
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
-        - [`shuffle`](#shuffle)
+        - [`get_permuted_index`](#get_permuted_index)
         - [`split`](#split)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shuffling`](#get_shuffling)
@@ -77,6 +77,7 @@
         - [`get_attestation_participants`](#get_attestation_participants)
         - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
+        - [`bytes_to_int`](#bytes_to_int)
         - [`get_effective_balance`](#get_effective_balance)
         - [`get_total_balance`](#get_total_balance)
         - [`get_fork_version`](#get_fork_version)
@@ -124,7 +125,7 @@
                 - [Deposits](#deposits-1)
                 - [Exits](#exits-1)
         - [Per-epoch processing](#per-epoch-processing)
-            - [Helpers](#helpers)
+            - [Helper variables](#helper-variables)
             - [Eth1 data](#eth1-data-1)
             - [Justification](#justification)
             - [Crosslinks](#crosslinks)
@@ -184,6 +185,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
 | `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
+| `SHUFFLE_ROUND_COUNT` | 90 | - |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -362,8 +364,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'epoch_boundary_root': 'bytes32',
     # Shard block's hash of root
     'shard_block_root': 'bytes32',
-    # Last crosslink's hash of root
-    'latest_crosslink_root': 'bytes32',
+    # Last crosslink
+    'latest_crosslink': Crosslink,
     # Last justified epoch in the beacon state
     'justified_epoch': 'uint64',
     # Hash of the last justified beacon block
@@ -524,6 +526,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
+    'deposit_index': 'uint64'
 }
 ```
 
@@ -656,9 +659,10 @@ def get_previous_epoch(state: BeaconState) -> EpochNumber:
     Return the previous epoch of the given ``state``.
     If the current epoch is  ``GENESIS_EPOCH``, return ``GENESIS_EPOCH``.
     """
-    if slot_to_epoch(state.slot) > GENESIS_EPOCH:
-        return slot_to_epoch(state.slot) - 1
-    return slot_to_epoch(state.slot)
+    current_epoch = get_current_epoch(state)
+    if current_epoch == GENESIS_EPOCH:
+        return GENESIS_EPOCH
+    return current_epoch - 1
 ```
 
 ### `get_current_epoch`
@@ -700,57 +704,27 @@ def get_active_validator_indices(validators: List[Validator], epoch: EpochNumber
     return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
 ```
 
-### `shuffle`
+### `get_permuted_index`
 
 ```python
-def shuffle(values: List[Any], seed: Bytes32) -> List[Any]:
+def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
-    Return the shuffled ``values`` with ``seed`` as entropy.
+    Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
+
+    Utilizes 'swap or not' shuffling found in
+    https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
+    See the 'generalized domain' algorithm on page 3.
     """
-    values_count = len(values)
+    for round in range(SHUFFLE_ROUND_COUNT):
+        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
+        flip = (pivot - index) % list_size
+        position = max(index, flip)
+        source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
+        byte = source[(position % 256) // 8]
+        bit = (byte >> (position % 8)) % 2
+        index = flip if bit else index
 
-    # Entropy is consumed from the seed in 3-byte (24 bit) chunks.
-    rand_bytes = 3
-    # The highest possible result of the RNG.
-    rand_max = 2 ** (rand_bytes * 8) - 1
-
-    # The range of the RNG places an upper-bound on the size of the list that
-    # may be shuffled. It is a logic error to supply an oversized list.
-    assert values_count < rand_max
-
-    output = [x for x in values]
-    source = seed
-    index = 0
-    while index < values_count - 1:
-        # Re-hash the `source` to obtain a new pattern of bytes.
-        source = hash(source)
-        # Iterate through the `source` bytes in 3-byte chunks.
-        for position in range(0, 32 - (32 % rand_bytes), rand_bytes):
-            # Determine the number of indices remaining in `values` and exit
-            # once the last index is reached.
-            remaining = values_count - index
-            if remaining == 1:
-                break
-
-            # Read 3-bytes of `source` as a 24-bit big-endian integer.
-            sample_from_source = int.from_bytes(source[position:position + rand_bytes], 'big')
-
-            # Sample values greater than or equal to `sample_max` will cause
-            # modulo bias when mapped into the `remaining` range.
-            sample_max = rand_max - rand_max % remaining
-
-            # Perform a swap if the consumed entropy will not cause modulo bias.
-            if sample_from_source < sample_max:
-                # Select a replacement index for the current index.
-                replacement_position = (sample_from_source % remaining) + index
-                # Swap the current index with the replacement index.
-                output[index], output[replacement_position] = output[replacement_position], output[index]
-                index += 1
-            else:
-                # The sample causes modulo bias. A new sample should be read.
-                pass
-
-    return output
+    return index
 ```
 
 ### `split`
@@ -800,7 +774,10 @@ def get_shuffling(seed: Bytes32,
     committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
 
     # Shuffle
-    shuffled_active_validator_indices = shuffle(active_validator_indices, seed)
+    shuffled_active_validator_indices = [
+        active_validator_indices[get_permuted_index(i, len(active_validator_indices), seed)]
+        for i in active_validator_indices
+    ]
 
     # Split the shuffled list into committees_per_epoch pieces
     return split(shuffled_active_validator_indices, committees_per_epoch)
@@ -857,7 +834,7 @@ def get_next_epoch_committee_count(state: BeaconState) -> int:
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
                                      slot: SlotNumber,
-                                     registry_change=False: bool) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
+                                     registry_change: bool=False) -> List[Tuple[List[ValidatorIndex], ShardNumber]]:
     """
     Return the list of ``(committee, shard)`` tuples for the ``slot``.
 
@@ -1037,7 +1014,14 @@ def is_power_of_two(value: int) -> bool:
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
 
-`int_to_bytes1(x): return x.to_bytes(1, 'big')`, `int_to_bytes2(x): return x.to_bytes(2, 'big')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+`int_to_bytes1(x): return x.to_bytes(1, 'little')`, `int_to_bytes2(x): return x.to_bytes(2, 'little')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+
+### `bytes_to_int`
+
+```python
+def bytes_to_int(data: bytes) -> int:
+    return int.from_bytes(data, 'little')
+```
 
 ### `get_effective_balance`
 
@@ -1052,7 +1036,7 @@ def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
 ### `get_total_balance`
 
 ```python
-def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> Gwei: 
+def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of an array of validators.
     """
@@ -1150,7 +1134,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
-        messages=[
+        message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b0)),
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
         ],
@@ -1245,7 +1229,7 @@ def validate_proof_of_possession(state: BeaconState,
 
     return bls_verify(
         pubkey=pubkey,
-        message=hash_tree_root(proof_of_possession_data),
+        message_hash=hash_tree_root(proof_of_possession_data),
         signature=proof_of_possession,
         domain=get_domain(
             state.fork,
@@ -1270,12 +1254,15 @@ def process_deposit(state: BeaconState,
     Note that this function mutates ``state``.
     """
     # Validate the given `proof_of_possession`
-    assert validate_proof_of_possession(
+    proof_is_valid = validate_proof_of_possession(
         state,
         pubkey,
         proof_of_possession,
         withdrawal_credentials,
     )
+
+    if not proof_is_valid:
+        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
 
@@ -1495,6 +1482,7 @@ def get_initial_beacon_state(initial_validator_deposits: List[Deposit],
         # Ethereum 1.0 chain data
         latest_eth1_data=latest_eth1_data,
         eth1_data_votes=[],
+        deposit_index=len(initial_validator_deposits)
     )
 
     # Process initial deposits
@@ -1617,7 +1605,7 @@ Below are the processing steps that happen at every slot.
 
 #### Block roots
 
-* Let `previous_block_root` be the `tree_hash_root` of the previous beacon block processed in the chain.
+* Let `previous_block_root` be the `hash_tree_root` of the previous beacon block processed in the chain.
 * Set `state.latest_block_roots[(state.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH] = previous_block_root`.
 * If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
@@ -1633,12 +1621,12 @@ Below are the processing steps that happen at every `block`.
 
 * Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
 * Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message=proposal_root, signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message_hash=proposal_root, signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
 
 #### RANDAO
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
 * Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
 
 #### Eth1 data
@@ -1659,8 +1647,8 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
 * Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
 * Verify that `proposer.penalized_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
 * Run `penalize_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
@@ -1688,7 +1676,7 @@ For each `attestation` in `block.body.attestations`:
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + EPOCH_LENGTH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
-* Verify that either `attestation.data.latest_crosslink_root` or `attestation.data.shard_block_root` equals `state.latest_crosslinks[attestation.data.shard].shard_block_root`.
+* Verify that either (i) `state.latest_crosslinks[attestation.data.shard] == attestation.data.latest_crosslink` or (ii) `state.latest_crosslinks[attestation.data.shard] == Crosslink(shard_block_root=attestation.data.shard_block_root, epoch=slot_to_epoch(attestation.data.slot))`.
 * Verify bitfields and aggregate signature:
 
 ```python
@@ -1734,6 +1722,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
+* Verify that `deposit.index == state.deposit_index`.
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
@@ -1762,6 +1751,8 @@ process_deposit(
 )
 ```
 
+* Set `state.deposit_index += 1`.
+
 ##### Exits
 
 Verify that `len(block.body.exits) <= MAX_EXITS`.
@@ -1772,14 +1763,14 @@ For each `exit` in `block.body.exits`:
 * Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
 * Verify that `get_current_epoch(state) >= exit.epoch`.
 * Let `exit_message = hash_tree_root(Exit(epoch=exit.epoch, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
 ### Per-epoch processing
 
 The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
 
-#### Helpers
+#### Helper variables
 
 * Let `current_epoch = get_current_epoch(state)`.
 * Let `previous_epoch = get_previous_epoch(state)`.
@@ -1860,7 +1851,7 @@ Finally, update the following:
 
 For every `slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch))`, let `crosslink_committees_at_slot = get_crosslink_committees_at_slot(state, slot)`. For every `(crosslink_committee, shard)` in `crosslink_committees_at_slot`, compute:
 
-* Set `state.latest_crosslinks[shard] = Crosslink(epoch=current_epoch, shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * get_total_balance(crosslink_committee)`.
+* Set `state.latest_crosslinks[shard] = Crosslink(epoch=slot_to_epoch(slot), shard_block_root=winning_root(crosslink_committee))` if `3 * total_attesting_balance(crosslink_committee) >= 2 * get_total_balance(crosslink_committee)`.
 
 #### Rewards and penalties
 
