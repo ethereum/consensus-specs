@@ -156,7 +156,7 @@ Add member values to the end of the `Validator` object:
 ```python
     'open_branch_challenges': [BranchChallengeRecord],
     'next_subkey_to_reveal': 'uint64',
-    'reveal_max_periods_late': 'uint64'
+    'reveal_max_periods_late': 'uint64',
 ```
 
 And the initializers:
@@ -179,18 +179,26 @@ Define a `BranchChallengeRecord` as follows:
     'root': 'bytes32',
     'depth': 'uint64',
     'inclusion_epoch': 'uint64',
-    'data_index': 'uint64'
+    'data_index': 'uint64',
 }
 ```
 
 ### `BeaconBlockBody`
 
-Add two member values to the `BeaconBlockBody` structure:
+Add member values to the `BeaconBlockBody` structure:
 
 ```python
     'branch_challenges': [BranchChallenge],
     'branch_responses': [BranchResponse],
     'subkey_reveals': [SubkeyReveal],
+```
+
+And initialize to the following:
+
+```python
+    'branch_challenges': [],
+    'branch_responses': [],
+    'subkey_reveals': [],
 ```
 
 ### `BranchChallenge`
@@ -215,7 +223,7 @@ Define a `BranchResponse` as follows:
     'data': 'bytes32',
     'branch': ['bytes32'],
     'data_index': 'uint64',
-    'root': 'bytes32'
+    'root': 'bytes32',
 }
 ```
 
@@ -227,7 +235,7 @@ Define a `SubkeyReveal` as follows:
 {
     'validator_index': 'uint64',
     'period': 'uint64',
-    'subkey': 'bytes96'
+    'subkey': 'bytes96',
 }
 ```
 
@@ -249,9 +257,9 @@ def verify_custody_subkey(pubkey: bytes48, subkey: bytes96, period: int) -> bool
         message_hash=hash(int_to_bytes8(period)),
         signature=subkey,
         domain=get_domain(
-            state.fork,
-            period * CUSTODY_PERIOD_LENGTH,
-            DOMAIN_CUSTODY_SUBKEY
+            fork=state.fork,
+            epoch=period * CUSTODY_PERIOD_LENGTH,
+            domain_type=DOMAIN_CUSTODY_SUBKEY,
         )
     )
 ```
@@ -296,7 +304,7 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
 
 ### Operations
 
-Add the following operations to the per-slot processing, in order given below and _following_ all other operations (specifically, right after exits) as follows.
+Add the following operations to the per-slot processing, in order the given below and _after_ all other operations (specifically, right after exits).
 
 #### Branch challenges
 
