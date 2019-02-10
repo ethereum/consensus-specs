@@ -77,11 +77,13 @@ def get_persistent_commmitee(state: BeaconState,
             bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) %
             PERSISTENT_COMMITTEE_PERIOD
         )
-        
-    return (
+       
+    # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
+    # later committee; return a sorted list of the union of the two, deduplicated
+    return sorted(list(set(
         [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
-    )
+    )))
 ```
 
 ## Data Structures
