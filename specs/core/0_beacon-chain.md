@@ -121,7 +121,7 @@
                 - [Deposits](#deposits-1)
                 - [Exits](#exits-1)
         - [Per-epoch processing](#per-epoch-processing)
-            - [Helpers](#helpers)
+            - [Helper variables](#helper-variables)
             - [Eth1 data](#eth1-data-1)
             - [Justification](#justification)
             - [Crosslinks](#crosslinks)
@@ -1824,7 +1824,7 @@ For each `exit` in `block.body.exits`:
 
 The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
 
-#### Variables
+#### Helper variables
 
 * Let `current_epoch = get_current_epoch(state)`.
 * Let `previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else current_epoch`.
