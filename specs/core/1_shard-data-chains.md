@@ -20,7 +20,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 |------------------------------|-----------------|--------|---------------|
 | `SHARD_CHUNK_SIZE`           | 2**5 (= 32)     | bytes  |               |
 | `SHARD_BLOCK_SIZE`           | 2**14 (= 16384) | bytes  |               |
-| `CROSSLINK_LOOKBACK`         | 2**5 (= 32)     | slots |               |
+| `CROSSLINK_LOOKBACK`         | 2**5 (= 32)     | slots  |               |
 | `MAX_BRANCH_CHALLENGE_DELAY` | 2**11 (= 2048)  | epochs | 9 days        |
 | `CHALLENGE_RESPONSE_DEADLINE`| 2**14 (= 16384) | epochs | 73 days       |
 | `MAX_BRANCH_CHALLENGES`      | 2**2 (= 4)      |        |               |
