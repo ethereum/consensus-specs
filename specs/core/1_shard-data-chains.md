@@ -86,7 +86,27 @@ def get_persistent_commmitee(state: BeaconState,
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )))
 ```
+#### get_shard_proposer_index
 
+```python
+def get_shard_proposer_index(state: BeaconState,
+                             shard: ShardNumber,
+                             slot: SlotNumber) -> ValidatorIndex:
+    seed = hash(
+        state.current_epoch_seed +
+        int_to_bytes8(shard) +
+        int_to_bytes8(slot)
+    )
+    persistent_committee = get_persistent_committee(state, shard, slot_to_epoch(slot))
+    # Default proposer
+    index = bytes_to_int(seed[0:8]) % len(persistent_committee)
+    # If default proposer exits, try the other proposers in order; if all are exited
+    # return None (ie. no block can be proposed)
+    validators_to_try = persistent_committee[index:] + persistent_committee[:index]
+    for index in validators_to_try:
+        if is_active_validator(state.validators[index], get_current_epoch(state)):
+            return index
+    return None
 ## Data Structures
 
 ### Shard chain blocks
