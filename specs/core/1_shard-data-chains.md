@@ -418,7 +418,8 @@ Change the definition of `prepare_validator_for_withdrawal` as follows:
 ```python
 def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Set the validator with the given ``index`` with ``WITHDRAWABLE`` flag.
+    Set the validator with the given ``index`` as withdrawable
+    ``MIN_VALIDATOR_WITHDRAWAL_EPOCHS`` from now.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
