@@ -9,28 +9,24 @@ deserializing objects and data types.
 ## ToC
 
 * [About](#about)
-* [Terminology](#terminology)
+* [Variables and Functions](#variables-and-functions)
 * [Constants](#constants)
 * [Overview](#overview)
    + [Serialize/Encode](#serializeencode)
-      - [uint](#uint)
-      - [Bool](#bool)
-      - [Bytes](#bytes)
-         - [bytesN](#bytesn)
-         - [bytes](#bytes-1)
+      - [uintN](#uintn)
+      - [bool](#bool)
+      - [bytesN](#bytesn)
       - [List/Vectors](#listvectors)
       - [Container](#container)
    + [Deserialize/Decode](#deserializedecode)
-      - [uint](#uint-1)
-      - [Bool](#bool-1)
-      - [Bytes](#bytes-2)
-         - [bytesN](#bytesn-1)
-         - [bytes](#bytes-1)
+      - [uintN](#uintn-1)
+      - [bool](#bool-1)
+      - [bytesN](#bytesn-1)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
     + [Tree Hash](#tree-hash)
       - [`uint8`..`uint256`, `bool`, `bytes1`..`bytes32`](#uint8uint256-bool-bytes1bytes32)
-      - [`uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`](#uint264uintn-bytes-bytes33bytesn)
+      - [`uint264`..`uintN`, `bytes33`..`bytesN`](#uint264uintn-bytes33bytesn)
       - [List/Vectors](#listvectors-2)
       - [Container](#container-2)
 * [Implementations](#implementations)
@@ -68,11 +64,11 @@ overhead.
 
 ### Serialize/Encode
 
-#### uint
+#### uintN
 
 | uint Type | Usage                                                      |
 |:---------:|:-----------------------------------------------------------|
-|  `uintN`  | Type of `N` bits unsigned integer, where ``N % 8 == 0``.   |
+| `uintN`   | Type of `N` bits unsigned integer, where ``N % 8 == 0``.   |
 
 Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
 
@@ -88,7 +84,7 @@ buffer_size = int_size / 8
 return value.to_bytes(buffer_size, 'little')
 ```
 
-#### Bool
+#### bool
 
 Convert directly to a single 0x00 or 0x01 byte.
 
@@ -101,38 +97,18 @@ assert(value in (True, False))
 return b'\x01' if value is True else b'\x00'
 ```
 
-#### Bytes
+#### bytesN
 
-| Bytes Type | Usage                              |
-|:---------:|:------------------------------------|
-|  `bytesN`  | Explicit length `N` bytes data.    |
-|  `bytes`   | Bytes data with arbitrary length.  |
-
-##### bytesN
+A fixed-size byte array.
 
 | Checks to perform                      | Code                 |
 |:---------------------------------------|:---------------------|
-| Length in bytes is correct for `bytesN` | ``len(value) == N``  |
+| Length in bytes is correct for `bytesN` | ``len(value) == N`` |
 
 ```python
 assert(len(value) == N)
 
 return value
-```
-
-##### bytes
-For general `bytes` type:
-1. Get the length/number of bytes; Encode into a `4-byte` integer.
-2. Append the value to the length and return: ``[ length_bytes ] + [ value_bytes ]``
-
-| Check to perform                     | Code                   |
-|:-------------------------------------|:-----------------------|
-| Length of bytes can fit into 4 bytes | ``len(value) < 2**32`` |
-
-```python
-assert(len(value) < 2**32)
-byte_length = (len(value)).to_bytes(LENGTH_BYTES, 'little')
-return byte_length + value
 ```
 
 #### List/Vectors
@@ -145,6 +121,8 @@ Lists are a collection of elements of the same homogeneous type.
 
 1. Serialize all list elements individually and concatenate them.
 2. Prefix the concatenation with its length encoded as a `4-byte` **little-endian** unsigned integer.
+
+We define `bytes` to be a synonym of `List[bytes1]`.
 
 **Example in Python**
 
@@ -168,8 +146,8 @@ A container represents a heterogenous, associative collection of key-value pairs
 
 To serialize a container, obtain the list of its field's names in the specified order. For each field name in this list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **little endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
 
-| Check to perform                            | Code                        |
-|:--------------------------------------------|:----------------------------|
+| Check to perform                              | Code                        |
+|:----------------------------------------------|:----------------------------|
 | Length of serialized fields fits into 4 bytes | ``len(serialized) < 2**32`` |
 
 To serialize:
@@ -231,7 +209,7 @@ At the final step, the following checks should be made:
 |:-------------------------|:-------------------------------------|
 | Ensure no extra length   | `new_index == len(rawbytes)`         |
 
-#### uint
+#### uintN
 
 Convert directly from bytes into integer utilising the number of bytes the same
 size as the integer length. (e.g. ``uint16 == 2 bytes``)
@@ -245,7 +223,7 @@ assert(len(rawbytes) >= new_index)
 return int.from_bytes(rawbytes[current_index:current_index+byte_length], 'little'), new_index
 ```
 
-#### Bool
+#### bool
 
 Return True if 0x01, False if 0x00.
 
@@ -254,9 +232,7 @@ assert rawbytes in (b'\x00', b'\x01')
 return True if rawbytes == b'\x01' else False
 ```
 
-#### Bytes
-
-##### bytesN
+#### bytesN
 
 Return the `N` bytes.
 
@@ -266,35 +242,12 @@ new_index = current_index + N
 return rawbytes[current_index:current_index+N], new_index
 ```
 
-##### bytes
-
-Get the length of the bytes, return the bytes.
-
-| Check to perform                                  | code                                             |
-|:--------------------------------------------------|:-------------------------------------------------|
-| rawbytes has enough left for length               | ``len(rawbytes) > current_index + LENGTH_BYTES`` |
-| bytes to return not greater than serialized bytes | ``len(rawbytes) > bytes_end ``                   |
-
-```python
-assert(len(rawbytes) > current_index + LENGTH_BYTES)
-bytes_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'little')
-
-bytes_start = current_index + LENGTH_BYTES
-bytes_end = bytes_start + bytes_length
-new_index = bytes_end
-
-assert(len(rawbytes) >= bytes_end)
-
-return rawbytes[bytes_start:bytes_end], new_index
-```
-
 #### List/Vectors
 
 Deserialize each element in the list.
 1. Get the length of the serialized list.
 2. Loop through deserializing each item in the list until you reach the
 entire length of the list.
-
 
 | Check to perform                          | code                                                            |
 |:------------------------------------------|:----------------------------------------------------------------|
@@ -384,7 +337,7 @@ Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/b
 
 Return the serialization of the value.
 
-#### `uint264`..`uintN`, `bytes`, `bytes33`..`bytesN`
+#### `uint264`..`uintN`, `bytes33`..`bytesN`
 
 Return the hash of the serialization of the value.
 
