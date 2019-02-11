@@ -1,7 +1,5 @@
 # Ethereum 2.0 Phase 1 -- Shard Data Chains
 
-###### tags: `spec`, `eth2.0`, `casper`, `sharding`
-
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
 ## Table of contents
@@ -9,7 +7,6 @@
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
-                    - [tags: `spec`, `eth2.0`, `casper`, `sharding`](#tags-spec-eth20-casper-sharding)
     - [Table of contents](#table-of-contents)
         - [Introduction](#introduction)
         - [Terminology](#terminology)
