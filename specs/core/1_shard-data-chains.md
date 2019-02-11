@@ -4,6 +4,52 @@
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
+## Table of contents
+
+<!-- TOC -->
+
+- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
+                    - [tags: `spec`, `eth2.0`, `casper`, `sharding`](#tags-spec-eth20-casper-sharding)
+    - [Table of contents](#table-of-contents)
+        - [Introduction](#introduction)
+        - [Terminology](#terminology)
+        - [Constants](#constants)
+            - [Misc](#misc)
+        - [Time parameters](#time-parameters)
+            - [Max operations per block](#max-operations-per-block)
+        - [Signature domains](#signature-domains)
+    - [Helper functions](#helper-functions)
+            - [get_split_offset](#get_split_offset)
+            - [get_persistent_committee](#get_persistent_committee)
+            - [get_shard_proposer_index](#get_shard_proposer_index)
+    - [Data Structures](#data-structures)
+        - [Shard chain blocks](#shard-chain-blocks)
+    - [Shard block processing](#shard-block-processing)
+        - [Verifying shard block data](#verifying-shard-block-data)
+        - [Verifying a crosslink](#verifying-a-crosslink)
+        - [Shard block fork choice rule](#shard-block-fork-choice-rule)
+- [Updates to the beacon chain](#updates-to-the-beacon-chain)
+    - [Data structures](#data-structures)
+        - [`Validator`](#validator)
+        - [`BeaconBlockBody`](#beaconblockbody)
+        - [`BranchChallenge`](#branchchallenge)
+        - [`BranchResponse`](#branchresponse)
+        - [`BranchChallengeRecord`](#branchchallengerecord)
+        - [`SubkeyReveal`](#subkeyreveal)
+    - [Helpers](#helpers)
+        - [`get_current_custody_period`](#get_current_custody_period)
+        - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
+        - [`prepare_validator_for_withdrawal`](#prepare_validator_for_withdrawal)
+        - [`penalize_validator`](#penalize_validator)
+    - [Per-slot processing](#per-slot-processing)
+        - [Operations](#operations)
+            - [Branch challenges](#branch-challenges)
+            - [Branch responses](#branch-responses)
+            - [Subkey reveals](#subkey-reveals)
+    - [Per-epoch processing](#per-epoch-processing)
+
+<!-- /TOC -->
+
 ### Introduction
 
 This document represents the specification for Phase 1 of Ethereum 2.0 -- Shard Data Chains. Phase 1 depends on the implementation of [Phase 0 -- The Beacon Chain](0_beacon-chain.md).
@@ -16,23 +62,35 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-| Constant                     | Value           | Unit   | Approximation |
-|------------------------------|-----------------|--------|---------------|
-| `SHARD_CHUNK_SIZE`           | 2**5 (= 32)     | bytes  |               |
-| `SHARD_BLOCK_SIZE`           | 2**14 (= 16384) | bytes  |               |
-| `CROSSLINK_LOOKBACK`         | 2**5 (= 32)     | slots  |               |
-| `PERSISTENT_COMMITTEE_PERIOD`| 2**11 (= 2,048) | epochs | 9 days        |
-| `MAX_BRANCH_CHALLENGE_DELAY` | 2**11 (= 2048)  | epochs | 9 days        |
-| `CHALLENGE_RESPONSE_DEADLINE`| 2**14 (= 16384) | epochs | 73 days       |
-| `MAX_BRANCH_CHALLENGES`      | 2**2 (= 4)      |        |               |
-| `MAX_BRANCH_RESPONSES`       | 2**4 (= 16)     |        |               |
-| `MAX_EARLY_SUBKEY_REVEALS`   | 2**4 (= 16)     |        |               |
-| `CUSTODY_PERIOD_LENGTH`      | 2**11 (= 2048)  | epochs | 9 days        |
-| `MINOR_REWARD_QUOTIENT`      | 2**8 (= 256)    |        |               |
+#### Misc
 
-### Flags, domains, etc.
+| Name                          | Value            | Unit   |
+|-------------------------------|------------------|--------|
+| `SHARD_CHUNK_SIZE`            | 2**5 (= 32)      | bytes  |
+| `SHARD_BLOCK_SIZE`            | 2**14 (= 16,384) | bytes  |
+| `MINOR_REWARD_QUOTIENT`       | 2**8 (= 256)     |        |
 
-| Constant               | Value           |
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `CROSSLINK_LOOKBACK`          | 2**5 (= 32)      | slots  | 3.2 minutes   |
+| `MAX_BRANCH_CHALLENGE_DELAY`  | 2**11 (= 2,048)  | epochs | 9 days        |
+| `CUSTODY_PERIOD_LENGTH`       | 2**11 (= 2,048)  | epochs | 9 days        |
+| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
+| `CHALLENGE_RESPONSE_DEADLINE` | 2**14 (= 16,384) | epochs | 73 days       |
+
+#### Max operations per block
+
+| Name                          | Value         |
+|-------------------------------|---------------|
+| `MAX_BRANCH_CHALLENGES`       | 2**2 (= 4)    |
+| `MAX_BRANCH_RESPONSES`        | 2**4 (= 16)   |
+| `MAX_EARLY_SUBKEY_REVEALS`    | 2**4 (= 16)   |
+
+### Signature domains
+
+| Name                   | Value           |
 |------------------------|-----------------|
 | `SHARD_PROPOSER_DOMAIN`| 129             |
 | `SHARD_ATTESTER_DOMAIN`| 130             |
