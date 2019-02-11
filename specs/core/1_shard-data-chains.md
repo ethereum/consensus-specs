@@ -52,8 +52,8 @@ def get_shuffled_committee(state: BeaconState,
     """
     Return shuffled committee.
     """
-    validator_indices = get_active_validator_indices(state.validators, committee_start)
-    seed = generate_seed(state, committee_start)
+    validator_indices = get_active_validator_indices(state.validators, committee_start_epoch)
+    seed = generate_seed(state, committee_start_epoch)
     start_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard)
     end_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard + 1)
     return [
