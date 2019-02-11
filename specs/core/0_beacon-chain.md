@@ -1168,6 +1168,8 @@ def is_surround_vote(attestation_data_1: AttestationData,
     source_epoch_2 = attestation_data_2.justified_epoch
     target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
     target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
+    assert source_epoch_1 < target_epoch_1
+    assert source_epoch_2 < target_epoch_2
 
     return source_epoch_1 < source_epoch_2 and target_epoch_2 < target_epoch_1
 ```
