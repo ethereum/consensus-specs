@@ -12,9 +12,9 @@
         - [Terminology](#terminology)
         - [Constants](#constants)
             - [Misc](#misc)
-        - [Time parameters](#time-parameters)
+            - [Time parameters](#time-parameters)
             - [Max operations per block](#max-operations-per-block)
-        - [Signature domains](#signature-domains)
+            - [Signature domains](#signature-domains)
     - [Helper functions](#helper-functions)
             - [get_split_offset](#get_split_offset)
             - [get_persistent_committee](#get_persistent_committee)
@@ -67,7 +67,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `SHARD_BLOCK_SIZE`            | 2**14 (= 16,384) | bytes  |
 | `MINOR_REWARD_QUOTIENT`       | 2**8 (= 256)     |        |
 
-### Time parameters
+#### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
@@ -85,7 +85,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `MAX_BRANCH_RESPONSES`        | 2**4 (= 16)   |
 | `MAX_EARLY_SUBKEY_REVEALS`    | 2**4 (= 16)   |
 
-### Signature domains
+#### Signature domains
 
 | Name                   | Value           |
 |------------------------|-----------------|
