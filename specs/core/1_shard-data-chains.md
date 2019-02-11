@@ -169,20 +169,6 @@ And the initializers:
 
 Rename `withdrawal_epoch` to `withdrawable_epoch`.
 
-### `BranchChallengeRecord`
-
-Define a `BranchChallengeRecord` as follows:
-
-```python
-{
-    'challenger_index': 'uint64',
-    'root': 'bytes32',
-    'depth': 'uint64',
-    'inclusion_epoch': 'uint64',
-    'data_index': 'uint64',
-}
-```
-
 ### `BeaconBlockBody`
 
 Add member values to the `BeaconBlockBody` structure:
@@ -224,6 +210,20 @@ Define a `BranchResponse` as follows:
     'branch': ['bytes32'],
     'data_index': 'uint64',
     'root': 'bytes32',
+}
+```
+
+### `BranchChallengeRecord`
+
+Define a `BranchChallengeRecord` as follows:
+
+```python
+{
+    'challenger_index': 'uint64',
+    'root': 'bytes32',
+    'depth': 'uint64',
+    'inclusion_epoch': 'uint64',
+    'data_index': 'uint64',
 }
 ```
 
@@ -302,7 +302,7 @@ def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) 
 Change the definition of `penalize_validator` as follows:
 
 ```python
-def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
+def penalize_validator(state: BeaconState, index: ValidatorIndex, whistleblower_index=None:ValidatorIndex) -> None:
     """
     Penalize the validator of the given ``index``.
     Note that this function mutates ``state``.
@@ -310,10 +310,16 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
     exit_validator(state, index)
     validator = state.validator_registry[index]
     state.latest_penalized_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
-
-    whistleblower_index = get_beacon_proposer_index(state, state.slot)
+    
+    block_proposer_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
-    state.validator_balances[whistleblower_index] += whistleblower_reward
+    if whistleblower_index is None:
+        state.validator_balances[block_proposer_index] += whistleblower_reward
+    else:
+        state.validator_balances[whistleblower_index] += (
+            whistleblower_reward * INCLUDER_REWARD_QUOTIENT / (INCLUDER_REWARD_QUOTIENT + 1)
+        )
+        state.validator_balances[block_proposer_index] += whistleblower_reward / (INCLUDER_REWARD_QUOTIENT + 1)
     state.validator_balances[index] -= whistleblower_reward
     validator.penalized_epoch = get_current_epoch(state)
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
@@ -368,7 +374,8 @@ For each `reveal` in `block.body.early_subkey_reveals`:
 In case (i):
 
 * Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state) + ENTRY_EXIT_DELAY`.
-* Run `penalize_validator(state, reveal.validator_index)`.
+* Run `penalize_validator(state, reveal.validator_index, reveal.revealer_index)`.
+* Set `state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`
 
 In case (ii):
 
@@ -388,7 +395,7 @@ def process_challenge_absences(state: BeaconState) -> None:
     """
     for index, validator in enumerate(state.validator_registry):
         if len(validator.open_branch_challenges) > 0 and get_current_epoch(state) > validator.open_branch_challenges[0].inclusion_epoch + CHALLENGE_RESPONSE_DEADLINE:
-            penalize_validator(state, index)
+            penalize_validator(state, index, validator.open_branch_challenges[0].challenger_index)
 ```
 
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
