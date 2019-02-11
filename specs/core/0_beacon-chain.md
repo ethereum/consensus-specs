@@ -1792,6 +1792,8 @@ For each `exit` in `block.body.exits`:
 
 ##### Transfers
 
+Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
+
 Verify that `len(block.body.transfers) <= MAX_TRANSFERS`.
 
 For each `transfer` in `block.body.transfers`:
