@@ -459,7 +459,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Must be included in this slot
     'slot': 'uint64',
     # Sender signature
-    'signature'
+    'signature': 'bytes96',
 }
 ```
 
@@ -1796,6 +1796,8 @@ Verify that `len(block.body.transfers) <= MAX_TRANSFERS`.
 
 For each `transfer` in `block.body.transfers`:
 
+* Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
+* Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
 * Verify that `transfer.slot == state.slot`.
 * Verify that `transfer.from` does not match the `from` field of another transfer in `block.body.transfers`.
