@@ -452,6 +452,7 @@ return hash(b''.join([hash_tree_root_internal(getattr(x, field)) for field in va
 |   Java   | [ https://www.github.com/ConsenSys/cava/tree/master/ssz ](https://www.github.com/ConsenSys/cava/tree/master/ssz) | SSZ Java library part of the Cava suite |
 |   Go   | [ https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz ](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) | Go implementation of SSZ mantained by Prysmatic Labs |
 |  Swift | [ https://github.com/yeeth/SimpleSerialize.swift ](https://github.com/yeeth/SimpleSerialize.swift) | Swift implementation maintained SSZ |
+|  C# | [ https://github.com/codingupastorm/csharp-ssz ](https://github.com/codingupastorm/csharp-ssz) | C# implementation maintained SSZ |
 
 ## Copyright
 Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
