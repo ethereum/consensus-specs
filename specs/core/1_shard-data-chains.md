@@ -89,8 +89,8 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 | Name                   | Value           |
 |------------------------|-----------------|
-| `SHARD_PROPOSER_DOMAIN`| 129             |
-| `SHARD_ATTESTER_DOMAIN`| 130             |
+| `DOMAIN_SHARD_PROPOSER`| 129             |
+| `DOMAIN_SHARD_ATTESTER`| 130             |
 | `DOMAIN_CUSTODY_SUBKEY`| 131             |
 
 ## Helper functions
@@ -218,9 +218,9 @@ To validate a block header on shard `shard_block.shard_id`, compute as follows:
 * Let `proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)`.
 * Verify that `proposer_index` is not `None`.
 * Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`.
-* Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), SHARD_PROPOSER_DOMAIN))` passes.
+* Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_PROPOSER))` passes.
 * Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`.
-* Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), SHARD_ATTESTER_DOMAIN))` passes.
+* Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER))` passes.
 
 ### Verifying shard block data
 
