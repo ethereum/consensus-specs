@@ -57,8 +57,8 @@ overhead.
 
 | Constant          | Value | Definition                                                                            |
 |:------------------|:-----:|:--------------------------------------------------------------------------------------|
-| `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
-| `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chunk size of the Merkle tree leaf.                           |
+| `LENGTH_BYTES`    | 4     | Number of bytes used for the length added before a variable-length serialized object. |
+| `SSZ_CHUNK_SIZE`  | 32    | Number of bytes for the chunk size of the Merkle tree leaf.                           |
 
 ## Overview
 
