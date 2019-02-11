@@ -449,7 +449,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Sending from
-    'sender': 'uint64',
+    'from': 'uint64',
     # Sending to
     'to': 'uint64',
     # Amount to send
@@ -457,7 +457,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Fee
     'fee': 'uint64',
     # Must be included in this slot
-    'expected_slot': 'uint64',
+    'slot': 'uint64',
     # Sender signature
     'signature'
 }
@@ -1796,14 +1796,14 @@ Verify that `len(block.body.transfers) <= MAX_TRANSFERS`.
 
 For each `transfer` in `block.body.transfers`:
 
-* Verify that either (i) `state.validator_balances[transfer.sender] == transfer.amount + transfer.fee` or (ii) `state.validator_balances[transfer.sender] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
-* Verify that `transfer.expected_slot == state.slot`.
-* Verify that `transfer.sender` does not match the `sender` of any other transfer in `block.body.transfers`
-* Let `transfer_message = hash_tree_root(Transfer(sender=transfer.sender, to=transfer.to, value=transfer.value, fee=transfer.fee, expected_slot=transfer.expected_slot, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[transfer.sender].pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.expected_slot)), DOMAIN_TRANSFER))`.
-* Verify that `state.validator_registry[transfer.sender].withdrawal_epoch <= get_current_epoch(state)`
-* Verify that `state.validator_registry[transfer.to].withdrawal_epoch <= get_current_epoch(state)`
-* Set `state.validator_balances[transfer.sender] -= transfer.amount + transfer.fee`.
+* Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
+* Verify that `transfer.slot == state.slot`.
+* Verify that `transfer.from` does not match the `from` field of another transfer in `block.body.transfers`.
+* Verify that `get_current_epoch(state) <= state.validator_registry[transfer.from].withdrawal_epoch`.
+* Verify that `get_current_epoch(state) <= state.validator_registry[transfer.to].withdrawal_epoch`.
+* Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, value=transfer.value, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[transfer.from].pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
+* Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
 * Set `state.validator_balances[transfer.to] += transfer.amount`.
 * Set `state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee`.
 
