@@ -501,7 +501,7 @@ For each `reveal` in `block.body.early_subkey_reveals`:
 
 In case (i):
 
-* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state) + ENTRY_EXIT_DELAY`.
+* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state).
 * Run `penalize_validator(state, reveal.validator_index, reveal.revealer_index)`.
 * Set `state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`
 
