@@ -167,7 +167,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
 * **Block root** - a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
-* **Slot** - a period of `SLOT_DURATION` seconds, during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
+* **Slot** - a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
 * **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation
 * **Finalized**, **justified** - see Casper FFG finalization [[casper-ffg]](#ref-casper-ffg)
 * **Withdrawal period** - the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable
@@ -1522,7 +1522,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.parent_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's local clock time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`.
+* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`. (Note that leap seconds mean that slots will occasionally last `SLOT_DURATION + 1` or `SLOT_DURATION - 1` seconds, possibly several times a year.)
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
