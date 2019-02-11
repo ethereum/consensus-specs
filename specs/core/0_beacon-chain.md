@@ -38,6 +38,8 @@
                 - [`DepositInput`](#depositinput)
             - [Exits](#exits)
                 - [`Exit`](#exit)
+            - [Transfers](#transfers)
+                - [`Transfer`](#transfer)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
             - [`BeaconBlockBody`](#beaconblockbody)
@@ -269,6 +271,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_EXITS` | `2**4` (= 16) |
+| `MAX_TRANSFERS` | `2**4` (= 16) |
 
 ### Signature domains
 
@@ -279,6 +282,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_EXIT` | `3` |
 | `DOMAIN_RANDAO` | `4` |
+| `DOMAIN_TRANSFER` | `5` |
 
 ## Data structures
 
@@ -440,6 +444,25 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
+##### `Transfer`
+
+```python
+{
+    # Sending from
+    'sender': 'uint64',
+    # Sending to
+    'to': 'uint64',
+    # Amount to send
+    'value': 'uint64',
+    # Fee
+    'fee': 'uint64',
+    # Must be included in this slot
+    'expected_slot': 'uint64',
+    # Sender signature
+    'signature'
+}
+```
+
 ### Beacon chain blocks
 
 #### `BeaconBlock`
@@ -468,6 +491,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'attestations': [Attestation],
     'deposits': [Deposit],
     'exits': [Exit],
+    'transfers': [Transfer],
 }
 ```
 
@@ -1765,6 +1789,23 @@ For each `exit` in `block.body.exits`:
 * Let `exit_message = hash_tree_root(Exit(epoch=exit.epoch, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message_hash=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
+
+##### Transfers
+
+Verify that `len(block.body.transfers) <= MAX_TRANSFERS`.
+
+For each `transfer` in `block.body.transfers`:
+
+* Verify that either (i) `state.validator_balances[transfer.sender] == transfer.amount + transfer.fee` or (ii) `state.validator_balances[transfer.sender] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
+* Verify that `transfer.expected_slot == state.slot`.
+* Verify that `transfer.sender` does not match the `sender` of any other transfer in `block.body.transfers`
+* Let `transfer_message = hash_tree_root(Transfer(sender=transfer.sender, to=transfer.to, value=transfer.value, fee=transfer.fee, expected_slot=transfer.expected_slot, signature=EMPTY_SIGNATURE))`.
+* Verify that `bls_verify(pubkey=state.validator_registry[transfer.sender].pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.expected_slot)), DOMAIN_TRANSFER))`.
+* Verify that `state.validator_registry[transfer.sender].withdrawal_epoch <= get_current_epoch(state)`
+* Verify that `state.validator_registry[transfer.to].withdrawal_epoch <= get_current_epoch(state)`
+* Set `state.validator_balances[transfer.sender] -= transfer.amount + transfer.fee`.
+* Set `state.validator_balances[transfer.to] += transfer.amount`.
+* Set `state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee`.
 
 ### Per-epoch processing
 
