@@ -154,7 +154,7 @@ The primary source of load on the beacon chain is "attestations". Attestations a
 
 ## Notation
 
-Code snippets appearing in `this style` are to be interpreted as Python code. Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed asserts are considered invalid.
+Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Terminology
 
@@ -1592,6 +1592,8 @@ We now define the state transition function. At a high level the state transitio
 3. The per-epoch transitions, which happens at the end of the last slot of every epoch (i.e. `(state.slot + 1) % EPOCH_LENGTH == 0`).
 
 The per-slot transitions focus on the slot counter and block roots records updates; the per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`; the per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
+
+Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
 _Note_: If there are skipped slots between a block and its parent block, run the steps in the [per-slot](#per-slot-processing) and [per-epoch](#per-epoch-processing) sections once for each skipped slot and then once for the slot containing the new block.
 
