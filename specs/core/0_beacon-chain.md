@@ -452,7 +452,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'from': 'uint64',
     # Sending to
     'to': 'uint64',
-    # Amount to send
+    # Amount in GWEI to send
     'value': 'uint64',
     # Fee
     'fee': 'uint64',
