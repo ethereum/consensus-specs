@@ -417,6 +417,7 @@ def merkle_hash(lst):
     # Merkleise
     def next_power_of_2(x):  
         return 1 if x == 0 else 2**(x - 1).bit_length()
+
     for i in range(len(chunkz), next_power_of_2(len(chunkz))):
         chunkz.append(b'\x00' * SSZ_CHUNK_SIZE)
     while len(chunkz) > 1:     
