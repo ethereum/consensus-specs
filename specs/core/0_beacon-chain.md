@@ -1807,7 +1807,7 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `transfer.slot == state.slot`.
 * Verify that `transfer.from` does not match the `from` field of another transfer in `block.body.transfers`.
 * Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].exit_epoch + MIN_EXIT_EPOCHS_BEFORE_TRANSFER`.
-* Verify that `hash(transfer.pubkey) == BLS_WITHDRAWAL_PREFIX_BYTE + state.validator_registry[transfer.from].withdrawal_credentials[1:]`
+* Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
 * Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
 * Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
