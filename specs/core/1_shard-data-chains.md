@@ -43,42 +43,46 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
   return (len(list_size) * index) // chunks
 ````
 
+#### get_shuffled_committee
+
+```python
+def get_shuffled_committee(state: BeaconState,
+                           shard: ShardNumber,
+                           committee_start_epoch: EpochNumber) -> List[ValidatorIndex]:
+    """
+    Return shuffled committee.
+    """
+    validator_indices = get_active_validator_indices(state.validators, committee_start_epoch)
+    seed = generate_seed(state, committee_start_epoch)
+    start_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard)
+    end_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard + 1)
+    return [
+        validator_indices[get_permuted_index(i, len(validator_indices), seed)]
+        for i in range(start_offset, end_offset)
+    ]
+```
+
 #### get_persistent_committee
 
 ```python
-def get_persistent_commmitee(state: BeaconState,
+def get_persistent_committee(state: BeaconState,
                              shard: ShardNumber,
                              epoch: EpochNumber) -> List[ValidatorIndex]:
     """
-    Returns the persistent committee for the given shard at the given epoch
+    Return the persistent committee for the given ``shard`` at the given ``epoch``.
     """
-                  
-    earlier_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
-    earlier_validator_set = get_active_validator_indices(state.validators, earlier_committee_start)
-    earlier_seed = generate_seed(state, earlier_committee_start)
-    earlier_start_offset = get_split_offset(len(earlier_validator_set), SHARD_COUNT, shard)
-    earlier_end_offset = get_split_offset(len(earlier_validator_set), SHARD_COUNT, shard+1)
-    earlier_committee = [
-        earlier_validator_set[get_permuted_index(i, len(earlier_validator_set), earlier_seed)]
-        for i in range(earlier_start_offset, earlier_end_offset)
-    ]
-    
-    later_committee_start = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
-    later_validator_set = get_active_validator_indices(state.validators, later_committee_start)
-    later_seed = generate_seed(state, later_committee_start)
-    later_start_offset = get_split_offset(len(later_validator_set), SHARD_COUNT, shard)
-    later_end_offset = get_split_offset(len(later_validator_set), SHARD_COUNT, shard+1)
-    later_committee = [
-        later_validator_set[get_permuted_index(i, len(later_validator_set), later_seed)]
-        for i in range(later_start_offset, later_end_offset)
-    ]
-    
+    earlier_committee_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
+    earlier_committee = get_shuffled_committee(state, shard, earlier_committee_start_epoch)
+
+    later_committee_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
+    later_committee = get_shuffled_committee(state, shard, later_committee_start_epoch)
+
     def get_switchover_epoch(index):
         return (
             bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) %
             PERSISTENT_COMMITTEE_PERIOD
         )
-       
+
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(list(set(
