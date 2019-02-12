@@ -1797,7 +1797,7 @@ For each `exit` in `block.body.exits`:
 
 Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
 
-Verify that `len(block.body.transfers) <= MAX_TRANSFERS`.
+Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
 
 For each `transfer` in `block.body.transfers`:
 
@@ -1805,7 +1805,6 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
 * Verify that `transfer.slot == state.slot`.
-* Verify that `transfer.from` does not match the `from` field of another transfer in `block.body.transfers`.
 * Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].exit_epoch + MIN_EXIT_EPOCHS_BEFORE_TRANSFER`.
 * Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
 * Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
