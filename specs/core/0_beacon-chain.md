@@ -1996,7 +1996,7 @@ If a validator registry update does _not_ happen do the following:
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
 
-Regardless of whether or not a validator set change happens run `process_slashings(state)` and `process_withdrawals(state):
+Regardless of whether or not a validator set change happens run `process_slashings(state)` and `process_withdrawals(state)`:
 
 ```python
 def process_slashings(state: BeaconState) -> None:
