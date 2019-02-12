@@ -233,6 +233,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code. Be
 | `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
+| `MIN_EXIT_EPOCHS_BEFORE_TRANSFER` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### State list lengths
 
@@ -448,17 +449,17 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
-    # Sending from
+    # Sender index
     'from': 'uint64',
-    # Sending to
+    # Recipient index
     'to': 'uint64',
-    # Amount in GWEI to send
-    'value': 'uint64',
-    # Fee in GWEI to block proposer
+    # Amount in Gwei
+    'amount': 'uint64',
+    # Fee in Gwei for block proposer
     'fee': 'uint64',
-    # Must be included in this slot
+    # Inclusion slot
     'slot': 'uint64',
-    # Sender's public key
+    # Sender withdrawal pubkey
     'pubkey': 'bytes48',
     # Sender signature
     'signature': 'bytes96',
@@ -1805,10 +1806,9 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
 * Verify that `transfer.slot == state.slot`.
 * Verify that `transfer.from` does not match the `from` field of another transfer in `block.body.transfers`.
-* Verify that `get_current_epoch(state) <= state.validator_registry[transfer.from].withdrawal_epoch`.
-* Verify that `get_current_epoch(state) <= state.validator_registry[transfer.to].withdrawal_epoch`.
-* Verify that `hash(transfer.pubkey) == b'\x00' + state.validator_registry[transfer.from].withdrawal_credentials[1:]`
-* Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, value=transfer.value, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
+* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].exit_epoch + MIN_EXIT_EPOCHS_BEFORE_TRANSFER`.
+* Verify that `hash(transfer.pubkey) == BLS_WITHDRAWAL_PREFIX_BYTE + state.validator_registry[transfer.from].withdrawal_credentials[1:]`
+* Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
 * Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
 * Set `state.validator_balances[transfer.to] += transfer.amount`.
