@@ -187,7 +187,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
-* For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+* For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Deposit contract
 
@@ -218,19 +218,19 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
 
-* `GENESIS_SLOT` should be at least as large in terms of time as the largest of the time parameters or state list lengths below (ie. it should be at least as large as any value measured in slots, and at least `EPOCH_LENGTH` times as large as any value measured in epochs).
+* `GENESIS_SLOT` should be at least as large in terms of time as the largest of the time parameters or state list lengths below (ie. it should be at least as large as any value measured in slots, and at least `SLOTS_PER_EPOCH` times as large as any value measured in epochs).
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `SLOT_DURATION` | `6` | seconds | 6 seconds |
+| `SECONDS_PER_SLOT` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
-| `EPOCH_LENGTH` | `2**6` (= 64) | slots | 6.4 minutes |
+| `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
-| `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
+| `MIN_VALIDATOR_WITHDRAWAL_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### State list lengths
 
@@ -648,7 +648,7 @@ def slot_to_epoch(slot: Slot) -> Epoch:
     """
     Return the epoch number of the given ``slot``.
     """
-    return slot // EPOCH_LENGTH
+    return slot // SLOTS_PER_EPOCH
 ```
 
 ### `get_previous_epoch`
@@ -682,7 +682,7 @@ def get_epoch_start_slot(epoch: Epoch) -> Slot:
     """
     Return the starting slot of the given ``epoch``.
     """
-    return epoch * EPOCH_LENGTH
+    return epoch * SLOTS_PER_EPOCH
 ```
 
 ### `is_active_validator`
@@ -751,10 +751,10 @@ def get_epoch_committee_count(active_validator_count: int) -> int:
     return max(
         1,
         min(
-            SHARD_COUNT // EPOCH_LENGTH,
-            active_validator_count // EPOCH_LENGTH // TARGET_COMMITTEE_SIZE,
+            SHARD_COUNT // SLOTS_PER_EPOCH,
+            active_validator_count // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
         )
-    ) * EPOCH_LENGTH
+    ) * SLOTS_PER_EPOCH
 ```
 
 ### `get_shuffling`
@@ -879,8 +879,8 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         state.validator_registry,
         shuffling_epoch,
     )
-    offset = slot % EPOCH_LENGTH
-    committees_per_slot = committees_per_epoch // EPOCH_LENGTH
+    offset = slot % SLOTS_PER_EPOCH
+    committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
     slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
 
     return [
@@ -1523,11 +1523,11 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.parent_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SLOT_DURATION`. (Note that leap seconds mean that slots will occasionally last `SLOT_DURATION + 1` or `SLOT_DURATION - 1` seconds, possibly several times a year.)
+* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
-Beacon block production is significantly different because of the proof of stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block, and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (i.e. within `SLOT_DURATION` seconds) synchronized with the other nodes.
+Beacon block production is significantly different because of the proof of stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block, and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
 
 ### Beacon chain fork choice rule
 
@@ -1590,7 +1590,7 @@ We now define the state transition function. At a high level the state transitio
 
 1. The per-slot transitions, which happens at the start of every slot.
 2. The per-block transitions, which happens at every block.
-3. The per-epoch transitions, which happens at the end of the last slot of every epoch (i.e. `(state.slot + 1) % EPOCH_LENGTH == 0`).
+3. The per-epoch transitions, which happens at the end of the last slot of every epoch (i.e. `(state.slot + 1) % SLOTS_PER_EPOCH == 0`).
 
 The per-slot transitions focus on the slot counter and block roots records updates; the per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`; the per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
 
@@ -1676,7 +1676,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
-* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + EPOCH_LENGTH`.
+* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + SLOTS_PER_EPOCH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either (i) `state.latest_crosslinks[attestation.data.shard] == attestation.data.latest_crosslink` or (ii) `state.latest_crosslinks[attestation.data.shard] == Crosslink(shard_block_root=attestation.data.shard_block_root, epoch=slot_to_epoch(attestation.data.slot))`.
@@ -1771,7 +1771,7 @@ For each `exit` in `block.body.voluntary_exits`:
 
 ### Per-epoch processing
 
-The steps below happen when `(state.slot + 1) % EPOCH_LENGTH == 0`.
+The steps below happen when `(state.slot + 1) % SLOTS_PER_EPOCH == 0`.
 
 #### Helper variables
 
@@ -1824,9 +1824,9 @@ Define the following helpers to process attestation inclusion rewards and inclus
 
 #### Eth1 data
 
-If `next_epoch % ETH1_DATA_VOTING_PERIOD == 0`:
+If `next_epoch % EPOCHS_PER_ETH1_VOTING_PERIOD == 0`:
 
-* If `eth1_data_vote.vote_count * 2 > ETH1_DATA_VOTING_PERIOD * EPOCH_LENGTH` for some `eth1_data_vote` in `state.eth1_data_votes` (ie. more than half the votes in this voting period were for that value), set `state.latest_eth1_data = eth1_data_vote.eth1_data`.
+* If `eth1_data_vote.vote_count * 2 > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH` for some `eth1_data_vote` in `state.eth1_data_votes` (ie. more than half the votes in this voting period were for that value), set `state.latest_eth1_data = eth1_data_vote.eth1_data`.
 * Set `state.eth1_data_votes = []`.
 
 #### Justification
@@ -2032,7 +2032,7 @@ def process_exit_queue(state: BeaconState) -> None:
             slashed_withdrawal_epochs = LATEST_SLASHED_EXIT_LENGTH // 2
             return current_epoch >= validator.slashed_epoch + slashed_withdrawal_epochs
         else:
-            return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+            return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_DELAY
 
     eligible_indices = filter(eligible, list(range(len(state.validator_registry))))
     # Sort in order of exit epoch, and validators that exit within the same epoch exit in order of validator index
