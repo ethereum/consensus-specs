@@ -367,13 +367,16 @@ def merkle_hash(lst):
         # Leave large items alone
         chunkz = lst
 
-    # Tree-hash
-    while len(chunkz) > 1:
-        if len(chunkz) % 2 == 1:
-            chunkz.append(b'\x00' * SSZ_CHUNK_SIZE)
+    # Merkleise
+    def next_power_of_2(x):  
+        return 1 if x == 0 else 2**(x - 1).bit_length()
+
+    for i in range(len(chunkz), next_power_of_2(len(chunkz))):
+        chunkz.append(b'\x00' * SSZ_CHUNK_SIZE)
+    while len(chunkz) > 1:     
         chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
 
-    # Return hash of root and length data
+    # Return hash of root and data length
     return hash(chunkz[0] + datalen)
 ```
 
