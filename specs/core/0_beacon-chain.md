@@ -458,6 +458,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'fee': 'uint64',
     # Must be included in this slot
     'slot': 'uint64',
+    # Sender's public key
+    'pubkey': 'bytes48',
     # Sender signature
     'signature': 'bytes96',
 }
@@ -1805,8 +1807,9 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `transfer.from` does not match the `from` field of another transfer in `block.body.transfers`.
 * Verify that `get_current_epoch(state) <= state.validator_registry[transfer.from].withdrawal_epoch`.
 * Verify that `get_current_epoch(state) <= state.validator_registry[transfer.to].withdrawal_epoch`.
+* Verify that `hash(transfer.pubkey) == b'\x00' + state.validator_registry[transfer.from].withdrawal_credentials[1:]`
 * Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, value=transfer.value, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[transfer.from].pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
+* Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
 * Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
 * Set `state.validator_balances[transfer.to] += transfer.amount`.
 * Set `state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee`.
