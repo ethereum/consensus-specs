@@ -38,6 +38,8 @@
                 - [`DepositInput`](#depositinput)
             - [Exits](#exits)
                 - [`Exit`](#exit)
+            - [Transfers](#transfers)
+                - [`Transfer`](#transfer)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
             - [`BeaconBlockBody`](#beaconblockbody)
@@ -231,6 +233,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
+| `MIN_EXIT_EPOCHS_BEFORE_TRANSFER` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### State list lengths
 
@@ -269,6 +272,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_EXITS` | `2**4` (= 16) |
+| `MAX_TRANSFERS` | `2**4` (= 16) |
 
 ### Signature domains
 
@@ -279,6 +283,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_EXIT` | `3` |
 | `DOMAIN_RANDAO` | `4` |
+| `DOMAIN_TRANSFER` | `5` |
 
 ## Data structures
 
@@ -440,6 +445,27 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
+##### `Transfer`
+
+```python
+{
+    # Sender index
+    'from': 'uint64',
+    # Recipient index
+    'to': 'uint64',
+    # Amount in Gwei
+    'amount': 'uint64',
+    # Fee in Gwei for block proposer
+    'fee': 'uint64',
+    # Inclusion slot
+    'slot': 'uint64',
+    # Sender withdrawal pubkey
+    'pubkey': 'bytes48',
+    # Sender signature
+    'signature': 'bytes96',
+}
+```
+
 ### Beacon chain blocks
 
 #### `BeaconBlock`
@@ -468,6 +494,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'attestations': [Attestation],
     'deposits': [Deposit],
     'exits': [Exit],
+    'transfers': [Transfer],
 }
 ```
 
@@ -1767,6 +1794,26 @@ For each `exit` in `block.body.exits`:
 * Let `exit_message = hash_tree_root(Exit(epoch=exit.epoch, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message_hash=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
+
+##### Transfers
+
+Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
+
+Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
+
+For each `transfer` in `block.body.transfers`:
+
+* Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
+* Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
+* Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
+* Verify that `transfer.slot == state.slot`.
+* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].exit_epoch + MIN_EXIT_EPOCHS_BEFORE_TRANSFER`.
+* Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
+* Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
+* Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
+* Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
+* Set `state.validator_balances[transfer.to] += transfer.amount`.
+* Set `state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee`.
 
 ### Per-epoch processing
 
