@@ -16,10 +16,12 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard c
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-| Constant               | Value           | Unit  | Approximation |
-|------------------------|-----------------|-------|---------------|
-| `SHARD_CHUNK_SIZE`     | 2**5 (= 32)     | bytes |               |
-| `SHARD_BLOCK_SIZE`     | 2**14 (= 16384) | bytes |               |
+| Constant                      | Value            | Unit   | Approximation |
+|-------------------------------|------------------|--------|---------------|
+| `SHARD_CHUNK_SIZE`            | 2**5 (= 32)      | bytes  |               |
+| `SHARD_BLOCK_SIZE`            | 2**14 (= 16,384) | bytes  |               |
+| `CROSSLINK_LOOKBACK`          | 2**5 (= 32)      | slots  |               |
+| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
 
 ### Flags, domains, etc.
 
@@ -27,6 +29,89 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 |------------------------|-----------------|
 | `SHARD_PROPOSER_DOMAIN`| 129             |
 | `SHARD_ATTESTER_DOMAIN`| 130             |
+
+## Helper functions
+
+#### get_split_offset
+
+````python
+def get_split_offset(list_size: int, chunks: int, index: int) -> int:
+  """
+  Returns a value such that for a list L, chunk count k and index i,
+  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k+1, i)]
+  """
+  return (len(list_size) * index) // chunks
+````
+
+#### get_shuffled_committee
+
+```python
+def get_shuffled_committee(state: BeaconState,
+                           shard: ShardNumber,
+                           committee_start_epoch: EpochNumber) -> List[ValidatorIndex]:
+    """
+    Return shuffled committee.
+    """
+    validator_indices = get_active_validator_indices(state.validators, committee_start_epoch)
+    seed = generate_seed(state, committee_start_epoch)
+    start_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard)
+    end_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard + 1)
+    return [
+        validator_indices[get_permuted_index(i, len(validator_indices), seed)]
+        for i in range(start_offset, end_offset)
+    ]
+```
+
+#### get_persistent_committee
+
+```python
+def get_persistent_committee(state: BeaconState,
+                             shard: ShardNumber,
+                             epoch: EpochNumber) -> List[ValidatorIndex]:
+    """
+    Return the persistent committee for the given ``shard`` at the given ``epoch``.
+    """
+    earlier_committee_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
+    earlier_committee = get_shuffled_committee(state, shard, earlier_committee_start_epoch)
+
+    later_committee_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
+    later_committee = get_shuffled_committee(state, shard, later_committee_start_epoch)
+
+    def get_switchover_epoch(index):
+        return (
+            bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) %
+            PERSISTENT_COMMITTEE_PERIOD
+        )
+
+    # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
+    # later committee; return a sorted list of the union of the two, deduplicated
+    return sorted(list(set(
+        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
+        [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
+    )))
+```
+#### get_shard_proposer_index
+
+```python
+def get_shard_proposer_index(state: BeaconState,
+                             shard: ShardNumber,
+                             slot: SlotNumber) -> ValidatorIndex:
+    seed = hash(
+        state.current_epoch_seed +
+        int_to_bytes8(shard) +
+        int_to_bytes8(slot)
+    )
+    persistent_committee = get_persistent_committee(state, shard, slot_to_epoch(slot))
+    # Default proposer
+    index = bytes_to_int(seed[0:8]) % len(persistent_committee)
+    # If default proposer exits, try the other proposers in order; if all are exited
+    # return None (ie. no block can be proposed)
+    validators_to_try = persistent_committee[index:] + persistent_committee[:index]
+    for index in validators_to_try:
+        if is_active_validator(state.validators[index], get_current_epoch(state)):
+            return index
+    return None
+```
 
 ## Data Structures
 
@@ -40,50 +125,43 @@ A `ShardBlock` object has the following fields:
     'slot': 'uint64',
     # What shard is it on
     'shard_id': 'uint64',
-    # Parent block's hash of root
-    'parent_root': 'hash32',
+    # Parent block's root
+    'parent_root': 'bytes32',
     # Beacon chain block
-    'beacon_chain_ref': 'hash32',
-    # Depth of the Merkle tree
-    'data_tree_depth': 'uint8',
+    'beacon_chain_ref': 'bytes32',
     # Merkle root of data
-    'data_root': 'hash32'
+    'data_root': 'bytes32'
     # State root (placeholder for now)
-    'state_root': 'hash32',
+    'state_root': 'bytes32',
     # Block signature
-    'signature': ['uint384'],
+    'signature': 'bytes96',
     # Attestation
     'participation_bitfield': 'bytes',
-    'aggregate_signature': ['uint384'],
+    'aggregate_signature': 'bytes96',
 }
 ```
 
 ## Shard block processing
 
-For a block on a shard to be processed by a node, the following conditions must be met:
+For a `shard_block` on a shard to be processed by a node, the following conditions must be met:
 
-* The `ShardBlock` pointed to by `parent_root` has already been processed and accepted
+* The `ShardBlock` pointed to by `shard_block.parent_root` has already been processed and accepted
 * The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
 
-To validate a block header on shard `shard_id`, compute as follows:
+To validate a block header on shard `shard_block.shard_id`, compute as follows:
 
-* Verify that `beacon_chain_ref` is the hash of a block in the beacon chain with slot less than or equal to `slot`. Verify that `beacon_chain_ref` is equal to or a descendant of the `beacon_chain_ref` specified in the `ShardBlock` pointed to by `parent_root`.
-* Let `state` be the state of the beacon chain block referred to by `beacon_chain_ref`. Let `validators` be `[validators[i] for i in state.current_persistent_committees[shard_id]]`.
-* Assert `len(participation_bitfield) == ceil_div8(len(validators))`
-* Let `proposer_index = hash(state.randao_mix + int_to_bytes8(shard_id) + int_to_bytes8(slot)) % len(validators)`. Let `msg` be the block but with the `block.signature` set to `[0, 0]`. Verify that `BLSVerify(pub=validators[proposer_index].pubkey, msg=hash(msg), sig=block.signature, domain=get_domain(state, slot, SHARD_PROPOSER_DOMAIN))` passes.
-* Generate the `group_public_key` by adding the public keys of all the validators for whom the corresponding position in the bitfield is set to 1. Verify that `BLSVerify(pub=group_public_key, msg=parent_root, sig=block.aggregate_signature, domain=get_domain(state, slot, SHARD_ATTESTER_DOMAIN))` passes.
-
-### Block Merklization helper
-
-```python
-def merkle_root(block_body):
-    assert len(block_body) == SHARD_BLOCK_SIZE
-    chunks = SHARD_BLOCK_SIZE // SHARD_CHUNK_SIZE
-    o = [0] * chunks + [block_body[i * SHARD_CHUNK_SIZE: (i+1) * SHARD_CHUNK_SIZE] for i in range(chunks)]
-    for i in range(chunks-1, 0, -1):
-        o[i] = hash(o[i*2] + o[i*2+1])
-    return o[1]
-```
+* Verify that `shard_block.beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
+* Verify that `shard_block.beacon_chain_ref` is equal to or a descendant of the `shard_block.beacon_chain_ref` specified in the `ShardBlock` pointed to by `shard_block.parent_root`.
+* Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_ref`.
+* Let `persistent_committee = get_persistent_committee(state, shard_block.shard_id, slot_to_epoch(shard_block.slot))`.
+* Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
+* For every `i in range(len(persistent_committee))` where `is_active_validator(state.validators[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
+* Let `proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)`.
+* Verify that `proposer_index` is not `None`.
+* Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`.
+* Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), SHARD_PROPOSER_DOMAIN))` passes.
+* Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`.
+* Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), SHARD_ATTESTER_DOMAIN))` passes.
 
 ### Verifying shard block data
 
@@ -98,27 +176,40 @@ A node should sign a crosslink only if the following conditions hold. **If a nod
 
 First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_root` for the same shard (unless `last_crosslink_root` equals zero, in which case we are at the genesis).
 
-Second, we verify the `shard_block_combined_data_root`. Let `h` be the slot _immediately after_ the slot of the shard block included by the last crosslink, and `h+n-1` be the slot number of the block directly referenced by the current `shard_block_root`. Let `B[i]` be the block at slot `h+i` in the shard chain. Let `bodies[0] .... bodies[n-1]` be the bodies of these blocks and `roots[0] ... roots[n-1]` the data roots. If there is a missing slot in the shard chain at position `h+i`, then `bodies[i] == b'\x00' * shard_block_maxbytes(state[i])` and `roots[i]` be the Merkle root of the empty data. Define `compute_merkle_root` be a simple Merkle root calculating function that takes as input a list of objects, where the list's length must be an exact power of two. We define the function for computing the combined data root as follows:
+Second, we verify the `shard_chain_commitment`.
+* Let `start_slot = state.latest_crosslinks[shard].epoch * EPOCH_LENGTH + EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
+* Let `end_slot = attestation.data.slot - attestation.data.slot % EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
+* Let `length = end_slot - start_slot`, `headers[0] .... headers[length-1]` be the serialized block headers in the canonical shard chain from the verifer's point of view (note that this implies that `headers` and `bodies` have been checked for validity).
+* Let `bodies[0] ... bodies[length-1]` be the bodies of the blocks.
+* Note: If there is a missing slot, then the header and body are the same as that of the block at the most recent slot that has a block.
+
+We define two helpers:
 
 ```python
-ZERO_ROOT = merkle_root(bytes([0] * SHARD_BLOCK_SIZE))
-
-def mk_combined_data_root(roots):
-    data = roots + [ZERO_ROOT for _ in range(len(roots), next_power_of_2(len(roots)))]
-    return compute_merkle_root(data)
+def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
+    while not is_power_of_two(len(values)):
+        values = values + [SHARD_BLOCK_SIZE]
+    return values
 ```
-
-This outputs the root of a tree of the data roots, with the data roots all adjusted to have the same height if needed. The tree can also be viewed as a tree of all of the underlying data concatenated together, appropriately padded. Here is an equivalent definition that uses bodies instead of roots [TODO: check equivalence]:
 
 ```python
-def mk_combined_data_root(depths, bodies):
-    data = b''.join(bodies)
-    data += bytes([0] * (next_power_of_2(len(data)) - len(data))
-    return compute_merkle_root([data[pos:pos+SHARD_CHUNK_SIZE] for pos in range(0, len(data), SHARD_CHUNK_SIZE)])
+def merkle_root_of_bytes(data: bytes) -> bytes:
+    return merkle_root([data[i:i+32] for i in range(0, len(data), 32)])
 ```
 
-Verify that the `shard_block_combined_data_root` is the output of these functions.
+We define the function for computing the commitment as follows:
+
+```python
+def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes32:
+    return hash(
+        merkle_root(pad_to_power_of_2([merkle_root_of_bytes(zpad(serialize(h), SHARD_BLOCK_SIZE)) for h in headers])),
+        merkle_root(pad_to_power_of_2([merkle_root_of_bytes(h) for h in bodies]))
+    )
+```
+
+The `shard_chain_commitment` is only valid if it equals `compute_commitment(headers, bodies)`.
+
 
 ### Shard block fork choice rule
 
-The fork choice rule for any shard is LMD GHOST using the validators currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
+The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).

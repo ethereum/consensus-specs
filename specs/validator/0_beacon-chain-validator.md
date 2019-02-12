@@ -42,7 +42,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Beacon block root](#beacon-block-root)
                 - [Epoch boundary root](#epoch-boundary-root)
                 - [Shard block root](#shard-block-root)
-                - [Latest crosslink root](#latest-crosslink-root)
+                - [Latest crosslink](#latest-crosslink)
                 - [Justified epoch](#justified-epoch)
                 - [Justified block root](#justified-block-root)
             - [Construct attestation](#construct-attestation)
@@ -95,7 +95,7 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`. 
+In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 
@@ -166,7 +166,7 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined a
 ```python
 epoch_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=int_to_bytes32(slot_to_epoch(block.slot)),
+    message_hash=int_to_bytes32(slot_to_epoch(block.slot)),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -205,7 +205,7 @@ proposal_root = hash_tree_root(proposal_data)
 
 signed_proposal_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=proposal_root,
+    message_hash=proposal_root,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -270,9 +270,9 @@ Set `attestation_data.shard_block_root = ZERO_HASH`.
 
 _Note:_ This is a stub for phase 0.
 
-##### Latest crosslink root
+##### Latest crosslink
 
-Set `attestation_data.latest_crosslink_root = state.latest_crosslinks[shard].shard_block_root` where `state` is the beacon state at `head` and `shard` is the validator's assigned shard.
+Set `attestation_data.latest_crosslink = state.latest_crosslinks[shard]` where `state` is the beacon state at `head` and `shard` is the validator's assigned shard.
 
 ##### Justified epoch
 
@@ -321,7 +321,7 @@ attestation_message_to_sign = hash_tree_root(attestation_data_and_custody_bit)
 
 signed_attestation_data = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message=attestation_message_to_sign,
+    message_hash=attestation_message_to_sign,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
         epoch=slot_to_epoch(attestation_data.slot),
@@ -341,27 +341,47 @@ There are three possibilities for the shuffling at the next epoch:
 
 Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is deterministic based upon `epochs_since_last_registry_update`.
 
-`get_crosslink_committees_at_slot` is designed to be able to query slots in the next epoch. When querying slots in the next epoch there are two options -- with and without a `registry_change` -- which is the optional third parameter of the function. The following helper can be used to get the potential crosslink committees in the next epoch for a given `validator_index`. This function returns a list of 2 shard committee tuples.
+`get_crosslink_committees_at_slot` is designed to be able to query slots in the next epoch. When querying slots in the next epoch there are two options -- with and without a `registry_change` -- which is the optional third parameter of the function. The following helper can be used to get the potential crosslink committee assignments in the next epoch for a given `validator_index` and `registry_change`.
 
 ```python
-def get_next_epoch_crosslink_committees(state: BeaconState,
-                                        validator_index: ValidatorIndex) -> List[Tuple[ValidatorIndex], ShardNumber]:
+def get_next_epoch_committee_assignment(
+        state: BeaconState,
+        validator_index: ValidatorIndex,
+        registry_change: bool) -> Tuple[List[ValidatorIndex], ShardNumber, SlotNumber, bool]:
+    """
+    Return the committee assignment in the next epoch for ``validator_index`` and ``registry_change``.
+    ``assignment`` returned is a tuple of the following form:
+        * ``assignment[0]`` is the list of validators in the committee
+        * ``assignment[1]`` is the shard to which the committee is assigned
+        * ``assignment[2]`` is the slot at which the committee is assigned
+        * ``assignment[3]`` is a bool signalling if the validator is expected to propose
+            a beacon block at the assigned slot.
+    """
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     next_epoch_start_slot = get_epoch_start_slot(next_epoch)
-    potential_committees = []
-    for validator_registry in [False, True]:
-        for slot in range(next_epoch_start_slot, next_epoch_start_slot + EPOCH_LENGTH):
-            shard_committees = get_crosslink_committees_at_slot(state, slot, validator_registry)
-            selected_committees = [committee for committee in shard_committees if validator_index in committee[0]]
-            if len(selected_committees) > 0:
-                potential_assignments.append(selected_committees)
-                break
+    for slot in range(next_epoch_start_slot, next_epoch_start_slot + EPOCH_LENGTH):
+        crosslink_committees = get_crosslink_committees_at_slot(
+            state,
+            slot,
+            registry_change=registry_change,
+        )
+        selected_committees = [
+            committee  # Tuple[List[ValidatorIndex], ShardNumber]
+            for committee in crosslink_committees
+            if validator_index in committee[0]
+        ]
+        if len(selected_committees) > 0:
+            validators = selected_committees[0][0]
+            shard = selected_committees[0][1]
+            first_committee_at_slot = crosslink_committees[0][0]  # List[ValidatorIndex]
+            is_proposer = first_committee_at_slot[slot % len(first_committee_at_slot)] == validator_index
 
-    return potential_assignments
+            assignment = (validators, shard, slot, is_proposer)
+            return assignment
 ```
 
-`get_next_epoch_crosslink_committees` should be called at the beginning of each epoch to plan for the next epoch. A validator should always plan for both values of `registry_change` as a possibility unless the validator can concretely eliminate one of the options. Planning for a future shuffling involves noting at which slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
+`get_next_epoch_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (slots during `current_epoch + 1`). A validator should always plan for assignments from both values of `registry_change` unless the validator can concretely eliminate one of the options. Planning for future assignments involves noting at which future slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
 
 ## How to avoid slashing
 
