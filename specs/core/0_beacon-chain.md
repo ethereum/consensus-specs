@@ -177,15 +177,15 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ### Misc
 
-| Name | Value | Unit |
+| Name | Value |
 | - | - | :-: |
-| `SHARD_COUNT` | `2**10` (= 1,024) | shards |
-| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) | [validators](#dfn-validator) |
-| `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) | - |
-| `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` | - |
-| `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) | votes |
-| `MAX_WITHDRAWALS_PER_EPOCH` | `2**2` (= 4) | withdrawals |
-| `SHUFFLE_ROUND_COUNT` | 90 | - |
+| `SHARD_COUNT` | `2**10` (= 1,024) |
+| `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
+| `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
+| `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` |
+| `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) |
+| `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
+| `SHUFFLE_ROUND_COUNT` | 90 |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `EPOCH_LENGTH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -1996,7 +1996,7 @@ If a validator registry update does _not_ happen do the following:
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
 
-Regardless of whether or not a validator set change happens run `process_slashings(state)` and `process_withdrawals(state)`:
+Regardless of whether or not a validator set change happens run `process_slashings(state)` and `process_exit_queue(state)`:
 
 ```python
 def process_slashings(state: BeaconState) -> None:
@@ -2019,9 +2019,9 @@ def process_slashings(state: BeaconState) -> None:
 ```
 
 ```python
-def process_withdrawals(state: BeaconState) -> None:
+def process_exit_queue(state: BeaconState) -> None:
     """
-    Process the withdrawals.
+    Process the exit queue.
     Note that this function mutates ``state``.
     """
     current_epoch = get_current_epoch(state)
@@ -2034,12 +2034,11 @@ def process_withdrawals(state: BeaconState) -> None:
         else:
             return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 
-    all_indices = list(range(len(state.validator_registry)))
-    eligible_indices = filter(eligible, all_indices)
+    eligible_indices = filter(eligible, list(range(len(state.validator_registry))))
     # Sort in order of exit epoch, and validators that exit within the same epoch exit in order of validator index
     sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_epoch)
-    for withdrawn_so_far, index in enumerate(sorted_indices):
-        if withdrawn_so_far >= MAX_WITHDRAWALS_PER_EPOCH:
+    for dequeues, index in enumerate(sorted_indices):
+        if dequeues >= MAX_EXIT_DEQUEUES_PER_EPOCH:
             break
         prepare_validator_for_withdrawal(state, index)
 ```
