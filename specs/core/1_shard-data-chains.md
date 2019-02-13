@@ -291,7 +291,7 @@ And the initializers:
 
 ```python
     'open_branch_challenges': [],
-    'next_subkey_to_reveal': 0,
+    'next_subkey_to_reveal': get_current_custody_period(state),
     'reveal_max_periods_late': 0,
 ```
 
@@ -543,4 +543,16 @@ def eligible(index):
     # Return minimum time
     else:
         return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+```
+
+## One-time phase 1 initiation transition
+
+Run the following on the fork block after per-slot processing and before per-block and per-epoch processing.
+
+For all `validator` in `ValidatorRegistry`, update it to the new format and fill the new member values with:
+
+```python
+    'open_branch_challenges': [],
+    'next_subkey_to_reveal': get_current_custody_period(state),
+    'reveal_max_periods_late': 0,
 ```
