@@ -1369,6 +1369,7 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
     Penalize the validator of the given ``index``.
     Note that this function mutates ``state``.
     """
+    assert validator.withdrawable_epoch == FAR_FUTURE_EPOCH  # [TO BE REMOVED IN PHASE 2]
     exit_validator(state, index)
     validator = state.validator_registry[index]
     state.latest_penalized_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
