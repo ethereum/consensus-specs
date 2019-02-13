@@ -1383,7 +1383,8 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Set the validator with the given ``index`` as withdrawable``MIN_VALIDATOR_WITHDRAWAL_EPOCHS`` the current epoch.
+    Set the validator with the given ``index`` as withdrawable
+    ``MIN_VALIDATOR_WITHDRAWAL_EPOCHS`` after the current epoch.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
