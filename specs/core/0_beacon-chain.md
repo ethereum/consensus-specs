@@ -126,6 +126,7 @@
                 - [Attestations](#attestations-1)
                 - [Deposits](#deposits-1)
                 - [Exits](#exits-1)
+                - [Transfers](#transfers-1)
         - [Per-epoch processing](#per-epoch-processing)
             - [Helper variables](#helper-variables)
             - [Eth1 data](#eth1-data-1)
@@ -442,6 +443,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'signature': 'bytes96',
 }
 ```
+
+#### Transfers
 
 ##### `Transfer`
 
@@ -1804,8 +1807,8 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
 * Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
-* Verify that `transfer.slot == state.slot`.
-* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch`
+* Verify that `state.slot == transfer.slot`.
+* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch`.
 * Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
 * Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
