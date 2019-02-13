@@ -1587,7 +1587,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     Execute the LMD-GHOST algorithm to find the head ``BeaconBlock``.
     """
     validators = start_state.validator_registry
-    active_validator_indices = get_active_validator_indices(validators, start_state.slot)
+    active_validator_indices = get_active_validator_indices(validators, slot_to_epoch(start_state.slot))
     attestation_targets = [
         (validator_index, get_latest_attestation_target(store, validator_index))
         for validator_index in active_validator_indices
