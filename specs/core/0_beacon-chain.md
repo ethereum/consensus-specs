@@ -919,8 +919,6 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     ]
 ```
 
-**Note**: we plan to replace the shuffling algorithm with a pointwise-evaluable shuffle (see https://github.com/ethereum/eth2.0-specs/issues/323), which will allow calculation of the committees for each slot individually.
-
 ### `get_block_root`
 
 ```python
