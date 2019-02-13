@@ -390,10 +390,10 @@ Where the inner `hash_tree_root_internal` is a recursive application of the tree
 
 #### Container
 
-Recursively tree hash the values in the container in the same order as the fields, and return the hash of the concatenation of the results.
+Recursively tree hash the values in the container in the same order as the fields, and Merkle hash the results.
 
 ```python
-return hash(b''.join([hash_tree_root_internal(getattr(x, field)) for field in value.fields]))
+return merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields])
 ```
 
 ## Implementations

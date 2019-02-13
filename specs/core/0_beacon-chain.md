@@ -38,6 +38,8 @@
                 - [`DepositInput`](#depositinput)
             - [Voluntary exits](#voluntary-exits)
                 - [`VoluntaryExit`](#voluntaryexit)
+            - [Transfers](#transfers)
+                - [`Transfer`](#transfer)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
             - [`BeaconBlockBody`](#beaconblockbody)
@@ -231,6 +233,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
+| `MIN_EXIT_EPOCHS_BEFORE_TRANSFER` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### State list lengths
 
@@ -269,6 +272,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
+| `MAX_TRANSFERS` | `2**4` (= 16) |
 
 ### Signature domains
 
@@ -279,6 +283,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `DOMAIN_PROPOSAL` | `2` |
 | `DOMAIN_EXIT` | `3` |
 | `DOMAIN_RANDAO` | `4` |
+| `DOMAIN_TRANSFER` | `5` |
 
 ## Data structures
 
@@ -440,6 +445,27 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
+##### `Transfer`
+
+```python
+{
+    # Sender index
+    'from': 'uint64',
+    # Recipient index
+    'to': 'uint64',
+    # Amount in Gwei
+    'amount': 'uint64',
+    # Fee in Gwei for block proposer
+    'fee': 'uint64',
+    # Inclusion slot
+    'slot': 'uint64',
+    # Sender withdrawal pubkey
+    'pubkey': 'bytes48',
+    # Sender signature
+    'signature': 'bytes96',
+}
+```
+
 ### Beacon chain blocks
 
 #### `BeaconBlock`
@@ -468,6 +494,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'attestations': [Attestation],
     'deposits': [Deposit],
     'voluntary_exits': [VoluntaryExit],
+    'transfers': [Transfer],
 }
 ```
 
@@ -891,8 +918,6 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         for i in range(committees_per_slot)
     ]
 ```
-
-**Note**: we plan to replace the shuffling algorithm with a pointwise-evaluable shuffle (see https://github.com/ethereum/eth2.0-specs/issues/323), which will allow calculation of the committees for each slot individually.
 
 ### `get_block_root`
 
@@ -1563,7 +1588,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     Execute the LMD-GHOST algorithm to find the head ``BeaconBlock``.
     """
     validators = start_state.validator_registry
-    active_validator_indices = get_active_validator_indices(validators, start_state.slot)
+    active_validator_indices = get_active_validator_indices(validators, slot_to_epoch(start_state.slot))
     attestation_targets = [
         (validator_index, get_latest_attestation_target(store, validator_index))
         for validator_index in active_validator_indices
@@ -1769,6 +1794,26 @@ For each `exit` in `block.body.voluntary_exits`:
 * Verify that `bls_verify(pubkey=validator.pubkey, message_hash=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
+##### Transfers
+
+Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
+
+Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
+
+For each `transfer` in `block.body.transfers`:
+
+* Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
+* Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
+* Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
+* Verify that `transfer.slot == state.slot`.
+* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].exit_epoch + MIN_EXIT_EPOCHS_BEFORE_TRANSFER`.
+* Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
+* Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
+* Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
+* Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
+* Set `state.validator_balances[transfer.to] += transfer.amount`.
+* Set `state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee`.
+
 ### Per-epoch processing
 
 The steps below happen when `(state.slot + 1) % SLOTS_PER_EPOCH == 0`.
@@ -1782,24 +1827,21 @@ The steps below happen when `(state.slot + 1) % SLOTS_PER_EPOCH == 0`.
 [Validators](#dfn-Validator) attesting during the current epoch:
 
 * Let `current_total_balance = get_total_balance(state, get_active_validator_indices(state.validator_registry, current_epoch))`.
-* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch == slot_to_epoch(a.data.slot)]`. (Note: this is the set of attestations of slots in the epoch `current_epoch`, _not_ attestations that got included in the chain during the epoch `current_epoch`.)
+* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch == slot_to_epoch(a.data.slot)]`. (Note: Each of these attestations votes for the current justified epoch/block root because of the [attestation block validity rules](#attestations-1).)
 * Validators justifying the epoch boundary block at the start of the current epoch:
-  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(current_epoch)) and a.data.justified_epoch == state.justified_epoch]`.
+  * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(current_epoch))]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_boundary_attestations]`.
   * Let `current_epoch_boundary_attesting_balance = get_total_balance(state, current_epoch_boundary_attester_indices)`.
 
 [Validators](#dfn-Validator) attesting during the previous epoch:
 
 * Let `previous_total_balance = get_total_balance(state, get_active_validator_indices(state.validator_registry, previous_epoch))`.
-* Validators that made an attestation during the previous epoch:
-  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch == slot_to_epoch(a.data.slot)]`.
+* Validators that made an attestation during the previous epoch, targeting the previous justified slot:
+  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch == slot_to_epoch(a.data.slot)]`. (Note: Each of these attestations votes for the previous justified epoch/block root because of the [attestation block validity rules](#attestations-1).)
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_attestations]`.
-* Validators targeting the previous justified slot:
-  * Let `previous_epoch_justified_attestations = [a for a in current_epoch_attestations + previous_epoch_attestations if a.data.justified_epoch == state.previous_justified_epoch]`.
-  * Let `previous_epoch_justified_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_justified_attestations]`.
-  * Let `previous_epoch_justified_attesting_balance = get_total_balance(state, previous_epoch_justified_attester_indices)`.
+  * Let `previous_epoch_attesting_balance = get_total_balance(state, previous_epoch_attester_indices)`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
-  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_justified_attestations if a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(previous_epoch))]`.
+  * Let `previous_epoch_boundary_attestations = [a for a in previous_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(previous_epoch))]`.
   * Let `previous_epoch_boundary_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_boundary_attestations]`.
   * Let `previous_epoch_boundary_attesting_balance = get_total_balance(state, previous_epoch_boundary_attester_indices)`.
 * Validators attesting to the expected beacon chain head during the previous epoch:
@@ -1864,17 +1906,19 @@ First, we define some additional helpers:
 * Let `base_reward(state, index) = get_effective_balance(state, index) // base_reward_quotient // 5` for any validator with the given `index`.
 * Let `inactivity_penalty(state, index, epochs_since_finality) = base_reward(state, index) + get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2` for any validator with the given `index`.
 
+Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
+
 ##### Justification and finalization
 
-Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
+Note: Rewards and penalties are for participation in the previous epoch, so the "active validator" set is drawn from `get_active_validator_indices(state.validator_registry, previous_epoch)`.
 
 * Let `epochs_since_finality = next_epoch - state.finalized_epoch`.
 
 Case 1: `epochs_since_finality <= 4`:
 
 * Expected FFG source:
-  * Any [validator](#dfn-validator) `index` in `previous_epoch_justified_attester_indices` gains `base_reward(state, index) * previous_epoch_justified_attesting_balance // previous_total_balance`.
-  * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices` loses `base_reward(state, index)`.
+  * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` gains `base_reward(state, index) * previous_epoch_attesting_balance // previous_total_balance`.
+  * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_attester_indices` loses `base_reward(state, index)`.
 * Expected FFG target:
   * Any [validator](#dfn-validator) `index` in `previous_epoch_boundary_attester_indices` gains `base_reward(state, index) * previous_epoch_boundary_attesting_balance // previous_total_balance`.
   * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices` loses `base_reward(state, index)`.
@@ -1886,10 +1930,10 @@ Case 1: `epochs_since_finality <= 4`:
 
 Case 2: `epochs_since_finality > 4`:
 
-* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_justified_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
+* Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
-* Any [active_validator](#dfn-active-validator) `index` with `validator.slashed_epoch <= current_epoch`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
+* Any [active validator](#dfn-active-validator) `index` with `validator.slashed_epoch <= current_epoch`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
 * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 ##### Attestation inclusion
