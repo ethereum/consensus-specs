@@ -187,14 +187,15 @@ We define two helpers:
 
 ```python
 def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
+    zero_shard_block = b'\x00' * SHARD_BLOCK_SIZE
     while not is_power_of_two(len(values)):
-        values = values + [SHARD_BLOCK_SIZE]
+        values = values + [zero_shard_block]
     return values
 ```
 
 ```python
 def merkle_root_of_bytes(data: bytes) -> bytes:
-    return merkle_root([data[i:i+32] for i in range(0, len(data), 32)])
+    return merkle_root([data[i:i + 32] for i in range(0, len(data), 32)])
 ```
 
 We define the function for computing the commitment as follows:
@@ -202,8 +203,16 @@ We define the function for computing the commitment as follows:
 ```python
 def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes32:
     return hash(
-        merkle_root(pad_to_power_of_2([merkle_root_of_bytes(zpad(serialize(h), SHARD_BLOCK_SIZE)) for h in headers])),
-        merkle_root(pad_to_power_of_2([merkle_root_of_bytes(h) for h in bodies]))
+        merkle_root(
+            pad_to_power_of_2([
+                merkle_root_of_bytes(zpad(serialize(h), SHARD_BLOCK_SIZE)) for h in headers
+            ])
+        ) +
+        merkle_root(
+            pad_to_power_of_2([
+                merkle_root_of_bytes(h) for h in bodies
+            ])
+        )
     )
 ```
 
