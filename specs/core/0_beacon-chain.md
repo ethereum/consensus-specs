@@ -233,7 +233,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
-| `MIN_EXIT_EPOCHS_BEFORE_TRANSFER` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### State list lengths
 
@@ -261,7 +260,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value |
 | - | - |
 | `INITIATED_EXIT` | `2**0` (= 1) |
-| `WITHDRAWABLE` | `2**1` (= 2) |
 
 ### Max operations per block
 
@@ -569,8 +567,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'activation_epoch': 'uint64',
     # Epoch when validator exited
     'exit_epoch': 'uint64',
-    # Epoch when validator withdrew
-    'withdrawal_epoch': 'uint64',
+    # Epoch when validator is eligible to withdraw
+    'withdrawable_epoch': 'uint64',
     # Epoch when validator was penalized
     'penalized_epoch': 'uint64',
     # Status flags
@@ -1298,7 +1296,7 @@ def process_deposit(state: BeaconState,
             withdrawal_credentials=withdrawal_credentials,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
-            withdrawal_epoch=FAR_FUTURE_EPOCH,
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
             penalized_epoch=FAR_FUTURE_EPOCH,
             status_flags=0,
         )
@@ -1377,6 +1375,7 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
     validator.penalized_epoch = get_current_epoch(state)
+    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH 
 ```
 
 #### `prepare_validator_for_withdrawal`
@@ -1384,11 +1383,11 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Set the validator with the given ``index`` with ``WITHDRAWABLE`` flag.
+    Set the validator with the given ``index`` as withdrawable``MIN_VALIDATOR_WITHDRAWAL_EPOCHS`` the current epoch.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    validator.status_flags |= WITHDRAWABLE
+    validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 ```
 
 ## Ethereum 1.0 deposit contract
@@ -1805,7 +1804,7 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
 * Verify that `transfer.slot == state.slot`.
-* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].exit_epoch + MIN_EXIT_EPOCHS_BEFORE_TRANSFER`.
+* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch`
 * Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
 * Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
@@ -2065,9 +2064,10 @@ def process_penalties_and_exits(state: BeaconState) -> None:
 
     def eligible(index):
         validator = state.validator_registry[index]
-        if validator.penalized_epoch <= current_epoch:
-            penalized_withdrawal_epochs = LATEST_PENALIZED_EXIT_LENGTH // 2
-            return current_epoch >= validator.penalized_epoch + penalized_withdrawal_epochs
+        # Cannot exit if you already have
+        if validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
+            return False
+        # Can exit if at least the minimum amount of time has passed
         else:
             return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 
