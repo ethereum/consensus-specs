@@ -17,6 +17,7 @@
             - [Signature domains](#signature-domains)
     - [Helper functions](#helper-functions)
             - [get_split_offset](#get_split_offset)
+            - [get_shuffled_committee](#get_shuffled_committee)
             - [get_persistent_committee](#get_persistent_committee)
             - [get_shard_proposer_index](#get_shard_proposer_index)
     - [Data Structures](#data-structures)
