@@ -44,6 +44,7 @@
             - [Branch responses](#branch-responses)
             - [Subkey reveals](#subkey-reveals)
     - [Per-epoch processing](#per-epoch-processing)
+    - [One-time phase 1 initiation transition](#one-time-phase-1-initiation-transition)
 
 <!-- /TOC -->
 
