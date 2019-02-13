@@ -233,7 +233,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ENTRY_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `ETH1_DATA_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
-| `MIN_VALIDATOR_WITHDRAWAL_EPOCHS` | `2**8` (= 256) | epochs | ~27 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### State list lengths
 
@@ -1387,11 +1387,11 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex) -> None:
 def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
     """
     Set the validator with the given ``index`` as withdrawable
-    ``MIN_VALIDATOR_WITHDRAWAL_EPOCHS`` after the current epoch.
+    ``MIN_VALIDATOR_WITHDRAWABILITY_DELAY`` after the current epoch.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+    validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 ```
 
 ## Ethereum 1.0 deposit contract
@@ -2073,7 +2073,7 @@ def process_penalties_and_exits(state: BeaconState) -> None:
             return False
         # Can exit if at least the minimum amount of time has passed
         else:
-            return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+            return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 
     all_indices = list(range(len(state.validator_registry)))
     eligible_indices = filter(eligible, all_indices)
