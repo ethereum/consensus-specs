@@ -396,6 +396,14 @@ Recursively tree hash the values in the container in the same order as the field
 return merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields])
 ```
 
+### Signature hashing
+
+If a field `name_of_signature_field` in an SSZ container `value` is a signature, then `hash_for_signing(value, name_of_signature_field)` is the `hash_tree_root` of a version of the container with the signature and all fields after the signature removed, or equivalently `merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields[:i]])` where `i = value.fields.index(name_of_signature_field)`.
+
+For example if a container has fields `{"foo": SubObject1, "bar": SubObject2, "signature": bytes96, "baz": SubObject3}`, then the message hash used in the signature is `merkle_hash([hash_tree_root_internal(SubObject1), hash_tree_root_internal(SubObject2)])`).
+
+Note that this means that fields that come after the signature are _not_ signed over, or if there are multiple signatures, then they are expected to be signed in that order. If multiple signatures of the same value are expected to be computed in parallel, then the expectation is that the signature field is an array consisting of the signatures.
+
 ## Implementations
 
 | Language | Implementation                                                                                                                                                     | Description                                              |
