@@ -744,6 +744,8 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
     See the 'generalized domain' algorithm on page 3.
     """
+    assert index < list_size
+    
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
