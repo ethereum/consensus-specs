@@ -301,8 +301,6 @@ And the initializers:
     'reveal_max_periods_late': 0,
 ```
 
-Rename `withdrawal_epoch` to `withdrawable_epoch`.
-
 ### `BeaconBlockBody`
 
 Add member values to the `BeaconBlockBody` structure:
@@ -417,20 +415,6 @@ def verify_custody_subkey_reveal(pubkey: bytes48,
     )
 ```
 
-### `prepare_validator_for_withdrawal`
-
-Change the definition of `prepare_validator_for_withdrawal` as follows:
-
-```python
-def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
-    """
-    Set the validator with the given ``index`` as withdrawable ``MIN_VALIDATOR_WITHDRAWAL_EPOCHS`` the current epoch.
-    Note that this function mutates ``state``.
-    """
-    validator = state.validator_registry[index]
-    validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
-```
-
 ### `penalize_validator`
 
 Change the definition of `penalize_validator` as follows:
@@ -458,6 +442,8 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex, whistleblower_
     validator.penalized_epoch = get_current_epoch(state)
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
 ```
+
+The only change is that this introduces the possibility of a penalization where the "whistleblower" that takes credit is NOT the block proposer.
 
 ## Per-slot processing
 
