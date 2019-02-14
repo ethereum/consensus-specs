@@ -47,8 +47,8 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
 
 ```python
 def get_shuffled_committee(state: BeaconState,
-                           shard: ShardNumber,
-                           committee_start_epoch: EpochNumber) -> List[ValidatorIndex]:
+                           shard: Shard,
+                           committee_start_epoch: Epoch) -> List[ValidatorIndex]:
     """
     Return shuffled committee.
     """
@@ -66,8 +66,8 @@ def get_shuffled_committee(state: BeaconState,
 
 ```python
 def get_persistent_committee(state: BeaconState,
-                             shard: ShardNumber,
-                             epoch: EpochNumber) -> List[ValidatorIndex]:
+                             shard: Shard,
+                             epoch: Epoch) -> List[ValidatorIndex]:
     """
     Return the persistent committee for the given ``shard`` at the given ``epoch``.
     """
@@ -94,10 +94,10 @@ def get_persistent_committee(state: BeaconState,
 
 ```python
 def get_shard_proposer_index(state: BeaconState,
-                             shard: ShardNumber,
-                             slot: SlotNumber) -> ValidatorIndex:
+                             shard: Shard,
+                             slot: Slot) -> ValidatorIndex:
     seed = hash(
-        state.current_epoch_seed +
+        state.current_shuffling_seed +
         int_to_bytes8(shard) +
         int_to_bytes8(slot)
     )
@@ -177,8 +177,8 @@ A node should sign a crosslink only if the following conditions hold. **If a nod
 First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_root` for the same shard (unless `last_crosslink_root` equals zero, in which case we are at the genesis).
 
 Second, we verify the `shard_chain_commitment`.
-* Let `start_slot = state.latest_crosslinks[shard].epoch * EPOCH_LENGTH + EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
-* Let `end_slot = attestation.data.slot - attestation.data.slot % EPOCH_LENGTH - CROSSLINK_LOOKBACK`.
+* Let `start_slot = state.latest_crosslinks[shard].epoch * SLOTS_PER_EPOCH + SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK`.
+* Let `end_slot = attestation.data.slot - attestation.data.slot % SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK`.
 * Let `length = end_slot - start_slot`, `headers[0] .... headers[length-1]` be the serialized block headers in the canonical shard chain from the verifer's point of view (note that this implies that `headers` and `bodies` have been checked for validity).
 * Let `bodies[0] ... bodies[length-1]` be the bodies of the blocks.
 * Note: If there is a missing slot, then the header and body are the same as that of the block at the most recent slot that has a block.
