@@ -126,6 +126,7 @@
                 - [Attestations](#attestations-1)
                 - [Deposits](#deposits-1)
                 - [Voluntary exits](#voluntary-exits-1)
+                - [Transfers](#transfers-1)
         - [Per-epoch processing](#per-epoch-processing)
             - [Helper variables](#helper-variables)
             - [Eth1 data](#eth1-data-1)
@@ -233,7 +234,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `MIN_VALIDATOR_WITHDRAWAL_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
-| `MIN_EXIT_EPOCHS_BEFORE_TRANSFER` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### State list lengths
 
@@ -261,7 +261,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value |
 | - | - |
 | `INITIATED_EXIT` | `2**0` (= 1) |
-| `WITHDRAWABLE` | `2**1` (= 2) |
 
 ### Max transactions per block
 
@@ -445,6 +444,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
+#### Transfers
+
 ##### `Transfer`
 
 ```python
@@ -569,8 +570,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'activation_epoch': 'uint64',
     # Epoch when validator exited
     'exit_epoch': 'uint64',
-    # Epoch when validator withdrew
-    'withdrawal_epoch': 'uint64',
+    # Epoch when validator is eligible to withdraw
+    'withdrawable_epoch': 'uint64',
     # Epoch when validator was slashed
     'slashed_epoch': 'uint64',
     # Status flags
@@ -1298,7 +1299,7 @@ def process_deposit(state: BeaconState,
             withdrawal_credentials=withdrawal_credentials,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
-            withdrawal_epoch=FAR_FUTURE_EPOCH,
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
             slashed_epoch=FAR_FUTURE_EPOCH,
             status_flags=0,
         )
@@ -1368,6 +1369,7 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     Slash the validator with index ``index``.
     Note that this function mutates ``state``.
     """
+    assert state.slot < validator.withdrawable_epoch  # [TO BE REMOVED IN PHASE 2]
     exit_validator(state, index)
     validator = state.validator_registry[index]
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += get_effective_balance(state, index)
@@ -1377,6 +1379,7 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
     validator.slashed_epoch = get_current_epoch(state)
+    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH 
 ```
 
 #### `prepare_validator_for_withdrawal`
@@ -1384,11 +1387,12 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Set the validator with the given ``index`` with ``WITHDRAWABLE`` flag.
+    Set the validator with the given ``index`` as withdrawable
+    ``MIN_VALIDATOR_WITHDRAWABILITY_DELAY`` after the current epoch.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    validator.status_flags |= WITHDRAWABLE
+    validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 ```
 
 ## Ethereum 1.0 deposit contract
@@ -1805,8 +1809,8 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
 * Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
-* Verify that `transfer.slot == state.slot`.
-* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].exit_epoch + MIN_EXIT_EPOCHS_BEFORE_TRANSFER`.
+* Verify that `state.slot == transfer.slot`.
+* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch`.
 * Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
 * Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
 * Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
@@ -2068,15 +2072,14 @@ def process_exit_queue(state: BeaconState) -> None:
     Process the exit queue.
     Note that this function mutates ``state``.
     """
-    current_epoch = get_current_epoch(state)
-
     def eligible(index):
         validator = state.validator_registry[index]
-        if validator.slashed_epoch <= current_epoch:
-            slashed_withdrawal_epochs = LATEST_SLASHED_EXIT_LENGTH // 2
-            return current_epoch >= validator.slashed_epoch + slashed_withdrawal_epochs
+        # Filter out dequeued validators
+        if validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
+            return False
+        # Dequeue if the minimum amount of time has passed
         else:
-            return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_DELAY
+            return get_current_epoch(state) >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 
     eligible_indices = filter(eligible, list(range(len(state.validator_registry))))
     # Sort in order of exit epoch, and validators that exit within the same epoch exit in order of validator index
