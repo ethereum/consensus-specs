@@ -24,11 +24,12 @@ deserializing objects and data types.
       - [bytesN](#bytesn-1)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
-    + [Tree Hash](#tree-hash)
+   + [Tree Hash](#tree-hash)
       - [`uint8`..`uint256`, `bool`, `bytes1`..`bytes32`](#uint8uint256-bool-bytes1bytes32)
       - [`uint264`..`uintN`, `bytes33`..`bytesN`](#uint264uintn-bytes33bytesn)
       - [List/Vectors](#listvectors-2)
       - [Container](#container-2)
+   + [Signed Roots](#signed-roots)
 * [Implementations](#implementations)
 
 ## About
@@ -396,13 +397,13 @@ Recursively tree hash the values in the container in the same order as the field
 return merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields])
 ```
 
-### Signature hashing
+### Signed roots
 
-If a field `name_of_signature_field` in an SSZ container `value` is a signature, then `hash_for_signing(value, name_of_signature_field)` is the `hash_tree_root` of a version of the container with the signature and all fields after the signature removed, or equivalently `merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields[:i]])` where `i = value.fields.index(name_of_signature_field)`.
+Let `field_name` be a field name in an SSZ container `container`. We define `truncate(container, field_name)` to be the `container` with the fields from `field_name` onwards truncated away. That is, `truncate(container, field_name) = [getattr(container, field)) for field in value.fields[:i]]` where `i = value.fields.index(field_name)`.
 
-For example if a container has fields `{"foo": SubObject1, "bar": SubObject2, "signature": bytes96, "baz": SubObject3}`, then the message hash used in the signature is `merkle_hash([hash_tree_root_internal(SubObject1), hash_tree_root_internal(SubObject2)])`).
+When `field_name` maps to a signature (e.g. a BLS12-381 signature of type `Bytes96`) the convention is that the corresponding signed message be `signed_root(container, field_name) = hash_tree_root(truncate(container, field_name))`. For example if `container = {"foo": sub_object_1, "bar": sub_object_2, "signature": bytes96, "baz": sub_object_3}` then `signed_root(container, "signature") = merkle_hash([hash_tree_root(sub_object_1), hash_tree_root(sub_object_2)])`.
 
-Note that this means that fields that come after the signature are _not_ signed over, or if there are multiple signatures, then they are expected to be signed in that order. If multiple signatures of the same value are expected to be computed in parallel, then the expectation is that the signature field is an array consisting of the signatures.
+Note that this convention means that fields after the signature are _not_ signed over. If there are multiple signatures in `container` then those are expected to be signing over the fields in the order specified. If multiple signatures of the same value are expected the convention is that the signature field be an array of signatures.
 
 ## Implementations
 
