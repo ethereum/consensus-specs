@@ -252,6 +252,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `ATTESTATION_INCLUSION_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
+| `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
@@ -743,6 +744,8 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
     See the 'generalized domain' algorithm on page 3.
     """
+    assert index < list_size
+    
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
@@ -1706,7 +1709,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 For each `attestation` in `block.body.attestations`:
 
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + SLOTS_PER_EPOCH`.
-* Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if attestation.data.slot >= get_epoch_start_slot(get_current_epoch(state)) else state.previous_justified_epoch`.
+* Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
 * Verify that either (i) `state.latest_crosslinks[attestation.data.shard] == attestation.data.latest_crosslink` or (ii) `state.latest_crosslinks[attestation.data.shard] == Crosslink(shard_block_root=attestation.data.shard_block_root, epoch=slot_to_epoch(attestation.data.slot))`.
 * Verify bitfields and aggregate signature:
@@ -2062,7 +2065,10 @@ def process_slashings(state: BeaconState) -> None:
             total_at_start = state.latest_slashed_balances[(epoch_index + 1) % LATEST_SLASHED_EXIT_LENGTH]
             total_at_end = state.latest_slashed_balances[epoch_index]
             total_penalties = total_at_end - total_at_start
-            penalty = get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
+            penalty = max(
+                get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance,
+                get_effective_balance(state, index) // MIN_PENALTY_QUOTIENT
+            )
             state.validator_balances[index] -= penalty
 ```
 
