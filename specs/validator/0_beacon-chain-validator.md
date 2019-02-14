@@ -260,9 +260,9 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head)` where `head` is 
 
 ##### Epoch boundary root
 
-Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(head.slot)`.
+Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(slot_to_epoch(head.slot))`.
 
-_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(head.slot))`.
+_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(slot_to_epoch(head.slot)))`.
 
 ##### Shard block root
 
