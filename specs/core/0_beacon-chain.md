@@ -252,6 +252,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `INCLUDER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
+| `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
@@ -2063,7 +2064,10 @@ def process_penalties_and_exits(state: BeaconState) -> None:
             total_at_start = state.latest_penalized_balances[(epoch_index + 1) % LATEST_PENALIZED_EXIT_LENGTH]
             total_at_end = state.latest_penalized_balances[epoch_index]
             total_penalties = total_at_end - total_at_start
-            penalty = get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance
+            penalty = max(
+                get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance,
+                get_effective_balance(state, index) // MIN_PENALTY_QUOTIENT
+            )
             state.validator_balances[index] -= penalty
 
     def eligible(index):
