@@ -747,10 +747,10 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     assert index < list_size
     
     for round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_int(hash(seed + int_to_bytes2(round))[0:8]) % list_size
+        pivot = bytes_to_int(hash(seed + int_to_bytes32(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
         position = max(index, flip)
-        source = xor(hash(seed + int_to_bytes2(round)), hash(int_to_bytes32(position // 256)))
+        source = xor(hash(seed + int_to_bytes32(round)), hash(int_to_bytes32(position // 256)))
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
