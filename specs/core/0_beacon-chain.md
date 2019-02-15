@@ -750,7 +750,7 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
         pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
         position = max(index, flip)
-        source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
+        source = xor(hash(seed), hash(int_to_bytes2(round) + int_to_bytes30(position // 256)))
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
