@@ -1555,7 +1555,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.parent_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
+* The node's Unix time is greater than or equal to `state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
