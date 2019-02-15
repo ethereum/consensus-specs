@@ -471,7 +471,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Header
-    'slot': Slot,
+    'slot': 'uint64',
     'parent_root': 'bytes32',
     'state_root': 'bytes32',
     'randao_reveal': 'bytes96',
