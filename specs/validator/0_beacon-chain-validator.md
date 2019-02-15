@@ -34,7 +34,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Attester slashings](#attester-slashings)
                 - [Attestations](#attestations)
                 - [Deposits](#deposits)
-                - [Exits](#exits)
+                - [Voluntary exits](#voluntary-exits)
         - [Attestations](#attestations-1)
             - [Attestation data](#attestation-data)
                 - [Slot](#slot-1)
@@ -118,7 +118,7 @@ Once a validator has been processed and added to the beacon state's `validator_r
 
 ### Activation
 
-In normal operation, the validator is quickly activated at which point the validator is added to the shuffling and begins validation after an additional `ENTRY_EXIT_DELAY` epochs (25.6 minutes).
+In normal operation, the validator is quickly activated at which point the validator is added to the shuffling and begins validation after an additional `ACTIVATION_EXIT_DELAY` epochs (25.6 minutes).
 
 The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
@@ -232,15 +232,15 @@ Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. 
 
 Up to `MAX_DEPOSITS` [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) objects can be included in the `block`. These deposits are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposits-1).
 
-##### Exits
+##### Voluntary exits
 
-Up to `MAX_EXITS` [`Exit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#exit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#exits-1).
+Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#exits-1).
 
 ### Attestations
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The slot during which the validator performs this role is any slot at which `get_crosslink_committees_at_slot(state, slot)` contains a committee that contains `validator_index`.
 
-A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned -- that is `SLOT_DURATION * 0.5` seconds after the start of `slot`.
+A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned -- that is `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
 
 #### Attestation data
 
@@ -260,9 +260,9 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head)` where `head` is 
 
 ##### Epoch boundary root
 
-Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(head.slot)`.
+Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(slot_to_epoch(head.slot))`.
 
-_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(head.slot))`.
+_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(slot_to_epoch(head.slot)))`.
 
 ##### Shard block root
 
@@ -347,7 +347,7 @@ Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is determi
 def get_next_epoch_committee_assignment(
         state: BeaconState,
         validator_index: ValidatorIndex,
-        registry_change: bool) -> Tuple[List[ValidatorIndex], ShardNumber, SlotNumber, bool]:
+        registry_change: bool) -> Tuple[List[ValidatorIndex], Shard, Slot, bool]:
     """
     Return the committee assignment in the next epoch for ``validator_index`` and ``registry_change``.
     ``assignment`` returned is a tuple of the following form:
@@ -360,14 +360,14 @@ def get_next_epoch_committee_assignment(
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     next_epoch_start_slot = get_epoch_start_slot(next_epoch)
-    for slot in range(next_epoch_start_slot, next_epoch_start_slot + EPOCH_LENGTH):
+    for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
         crosslink_committees = get_crosslink_committees_at_slot(
             state,
             slot,
             registry_change=registry_change,
         )
         selected_committees = [
-            committee  # Tuple[List[ValidatorIndex], ShardNumber]
+            committee  # Tuple[List[ValidatorIndex], Shard]
             for committee in crosslink_committees
             if validator_index in committee[0]
         ]
