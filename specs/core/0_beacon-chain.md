@@ -44,7 +44,6 @@
             - [`BeaconBlock`](#beaconblock)
             - [`BeaconBlockBody`](#beaconblockbody)
             - [`Proposal`](#proposal)
-            - [`RandaoReveal`](#randaoreveal)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
             - [`Validator`](#validator)
@@ -509,17 +508,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'block_root': 'bytes32',
     # Signature
     'signature': 'bytes96',
-}
-```
-
-#### `RandaoReveal`
-
-```python
-{
-    # Epoch number
-    'epoch': 'uint64',
-    # RANDAO reveal
-    'randao_reveal': 'bytes96',
 }
 ```
 
@@ -1641,8 +1629,7 @@ Below are the processing steps that happen at every `block`.
 
 #### RANDAO
 
-* Let `randao_reveal = RandaoReveal(epoch=get_current_epoch(state), randao_reveal=block.randao_reveal)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(randao_reveal, "randao_reveal"), signature=randao_reveal.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
 * Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
 
 #### Eth1 data
