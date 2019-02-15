@@ -1168,7 +1168,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
         ],
         signature=slashable_attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(vote_data.data.slot), DOMAIN_ATTESTATION),
+        domain=get_domain(state.fork, slot_to_epoch(slashable_attestation.data.slot), DOMAIN_ATTESTATION),
     )
 ```
 
