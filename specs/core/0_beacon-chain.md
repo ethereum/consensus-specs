@@ -807,7 +807,7 @@ def get_shuffling(seed: Bytes32,
     # Shuffle
     shuffled_active_validator_indices = [
         active_validator_indices[get_permuted_index(i, len(active_validator_indices), seed)]
-        for i in active_validator_indices
+        for i in range(len(active_validator_indices))
     ]
 
     # Split the shuffled list into committees_per_epoch pieces
