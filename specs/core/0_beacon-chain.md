@@ -795,7 +795,7 @@ def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
                   epoch: Epoch) -> List[List[ValidatorIndex]]
     """
-    Shuffle (seeded by ``seed`` and ``epoch``) active validators and split into crosslink committees.
+    Shuffle active validators and split into crosslink committees.
     Return a list of committees (each a list of validator indices).
     """
     # Shuffle active validator indices
