@@ -222,3 +222,247 @@ The `shard_chain_commitment` is only valid if it equals `compute_commitment(head
 ### Shard block fork choice rule
 
 The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
+
+# Proof of custody interactive game
+
+### Constants
+
+MAX_POC_RESPONSE_DEPTH: 5
+DOMAIN_CUSTODY_INTERACTIVE: 132
+VALIDATOR_NULL: 2**64 - 1
+MAX_INTERACTIVE_CHALLENGE_INITIATIONS: 4
+MAX_INTERACTIVE_CHALLENGE_RESPONSES: 16
+MAX_INTERACTIVE_CHALLENGE_CONTINUTATIONS: 16
+
+### Helpers
+
+Define the helper `get_merkle_depth`:
+
+```python
+def get_merkle_depth(attestation: Attestation) -> int:
+    start_epoch = initiation.attestation.data.latest_crosslink.epoch
+    end_epoch = slot_to_epoch(initiation.attestation.data.slot)
+    chunks_per_slot = SHARD_BLOCK_SIZE // 32
+    chunks = (end_epoch - start_epoch) * EPOCH_LENGTH * chunks_per_slot
+    return log2(next_power_of_two(chunks))
+```
+
+And `epoch_to_period`:
+
+```python
+def epoch_to_period(epoch: int) -> int:
+    return epoch // CUSTODY_PERIOD_LENGTH
+```
+
+And `slot_to_period`:
+
+```python
+def slot_to_period(slot: int) -> int:
+    return epoch_to_period(slot_to_period(slot))
+```
+
+Add the following data structure to the `Validator` record:
+
+```python
+    interactive_custody_challenge_data: InteractiveCustodyChallengeData,
+    now_challenging: 'uint64',
+```
+
+### Data structures and verification
+
+Where `InteractiveCustodyChallengeData` is defined as follows:
+
+```python
+{
+    # Who initiated the challenge
+    'challenger': 'uint64',
+    # Initial data root
+    'data_root': 'bytes32',
+    # Initial custody bit
+    'custody_bit': 'bool',
+    # Responder subkey
+    'responder_subkey': 'bytes96',
+    # The hash in the PoC tree in the position that we are currently at
+    'current_custody_tree_node': 'bytes32',
+    # The position in the tree, in terms of depth and position offset
+    'depth': 'uint64',
+    'offset': 'uint64',
+    # Max depth of the branch
+    'max_depth': 'uint64',
+    # Deadline to respond (as an epoch)
+    'deadline': 'uint64',
+}
+```
+
+The initial value is `EMPTY_CHALLENGE_DATA = InteractiveCustodyChallengeData(challenger=VALIDATOR_NULL, data_root=ZERO_HASH, custody_bit=False, responder_subkey=EMPTY_SIGNATURE, current_custody_tree_node=ZERO_HASH, depth=0, offset=0, max_depth=0, deadline=0)`
+
+We define an `InteractiveCustodyChallengeInitiation` as follows:
+
+```python
+{
+    'attestation': SlashableAttestation,
+    'responder_index': 'uint64',
+    'challenger_index': 'uint64',
+    'responder_subkey': 'bytes96',
+    'signature': 'bytes96'
+}
+```
+
+To validate the `initiation`, verify:
+
+* `bls_verify(message_hash=signed_root(initiation, "signature"), pubkey=state.validator_registry[challenger_index].pubkey, signature=initiation.signature, domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE))` returns `True`.
+* `responder_index` is in `attestation.validator_indices`.
+* `state.validator_registry[responder_index].interactive_custody_challenge_data.challenger_index == VALIDATOR_NULL`.
+* `verify_custody_subkey_reveal(pubkey=state.validator_registry[responder_index].pubkey, subkey=responder_subkey, mask=ZERO_HASH, mask_pubkey=b'', period=slot_to_period(attestation.data.slot))` returns `True`.
+* `state.validator_registry[challenger_index].now_challenging == VALIDATOR_NULL`
+* `state.validator_registry[challenger_index].penalized_epoch == FAR_FUTURE_EPOCH`
+
+Set `state.validator_registry[responder_index].interactive_custody_challenge_data` to:
+
+```python
+InteractiveCustodyChallengeData(
+    challenger=initiation.challenger_index,
+    data_root=attestation.custody_commitment,
+    custody_bit=get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index)),
+    responder_subkey=responder_subkey,
+    current_custody_tree_node=ZERO_HASH,
+    depth=0,
+    offset=0,
+    max_depth=get_merkle_depth(initiation.attestation),
+    deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
+)
+```
+
+Set `state.validator_registry[responder_index].withdrawable_epoch = FAR_FUTURE_EPOCH`, and set `state.validator_registry[challenger_index].now_challenging = responder_index`
+
+We define an `InteractiveCustodyChallengeResponse` as follows:
+
+```python
+{
+    'responder_index': 'uint64',
+    'hashes': ['bytes32'],
+    'signature': 'bytes96',
+}
+```
+
+A response provides 32 hashes that are under current known proof of custody tree node. Note that at the beginning the tree node is just one bit of the custody root, so we ask the responder to sign to commit to the top 5 levels of the tree and therefore the root hash; at all other stages in the game responses are self-verifying.
+
+Here's the function for verifying and processing a response:
+
+```python
+def process_response(response: InteractiveCustodyChallengeResponse,
+                     state: State):
+    responder = state.validator_registry[response.responder_index]
+    challenge_data = responder.interactive_custody_challenge_data
+    # Check that the right number of hashes was provided
+    expected_depth = min(challenge_data.max_depth - challenge_data.depth, MAX_POC_RESPONSE_DEPTH)
+    assert 2**expected_depth == len(response.hashes)
+    # Must make some progress!
+    assert expected_depth > 0
+    # Check the hashes match the previously provided root
+    root = merkle_root(hashes)
+    if challenge_data.depth == 0:
+        assert get_bitfield_bit(root, 0) == challenge_data.custody_bit
+    else:
+        assert root == challenge_data.current_custody_tree_node
+    # Verify signature for depth 0
+    if challenge_data.depth == 0:
+        assert bls_verify(message_hash=signed_root(response, 'signature'),
+                          pubkey=responder.pubkey,
+                          signature=response.signature,
+                          domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE))
+    # Update challenge data
+    challenge_data.deadline=FAR_FUTURE_EPOCH
+    validator.withdrawable_epoch = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
+```
+
+Once a response provides 32 hashes, the challenger has the right to choose any one of them that they feel is constructed incorrectly to continue the game. Note that eventually, the game will get to the point where the `new_custody_tree_node` is a leaf node. We define an `InteractiveCustodyChallengeContinuation` object as follows:
+
+```python
+{
+    'challenger_index: 'uint64',
+    'responder_index': 'uint64',
+    'sub_index': 'uint64',
+    'new_custody_tree_node': 'bytes32',
+    'proof': ['bytes32'],
+    'signature': 'bytes96'
+}
+```
+
+Here's the function for verifying and processing a continuation challenge:
+
+```python
+def process_continuation(continuation: InteractiveCustodyChallengeContinuation,
+                         state: State):
+    responder = state.validator_registry[continuation.responder_index]
+    challenge_data = responder.interactive_custody_challenge_data
+    expected_depth = min(challenge_data.max_depth - challenge_data.depth, MAX_POC_RESPONSE_DEPTH)
+    # Verify we're not too late
+    assert get_current_epoch(state) < responder.withdrawable_epoch
+    # Verify the Merkle branch (the previous custody response provided the next level of hashes so the
+    # challenger has the info to make any Merkle branch)
+    assert verify_merkle_branch(
+        leaf=new_custody_tree_node,
+        branch=continuation.proof,
+        depth=expected_depth,
+        index=sub_index,
+        root=challenge_data.current_custody_tree_node
+    )
+    # Verify signature
+    assert bls_verify(message_hash=signed_root(continutation, 'signature'),
+                      pubkey=responder.pubkey,
+                      signature=continutation.signature,
+                      domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE))
+    # Update the challenge data
+    challenge_data.current_custody_tree_node = continuation.new_custody_tree_node
+    challenge_data.depth += expected_depth
+    challenge_data.deadline = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
+    validator.withdrawable_epoch = FAR_FUTURE_EPOCH
+    challenge_data.offset = challenger_data.offset * 2**expected_depth + sub_index
+```
+
+Once the `new_custody_tree_node` reaches the leaves of the tree, the responder can no longer provide a valid `InteractiveCustodyChallengeResponse`; instead, the responder or the challenger must provide a branch response that provides a branch of the original data tree, at which point the custody leaf equation can be checked and either side of the custody game can "conclusively win".
+
+```python
+def process_branch_response(response: BranchResponse,
+                            state: State):
+    responder = state.validator_registry[response.responder_index]
+    challenge_data = responder.interactive_custody_challenge_data
+    assert challenge_data.depth == challenge_data.max_depth
+    # Verify we're not too late
+    assert get_current_epoch(state) < responder.withdrawable_epoch
+    # Verify the Merkle branch *of the data tree*
+    assert verify_merkle_branch(
+        leaf=response.data,
+        branch=response.branch,
+        depth=challenge_data.max_depth,
+        index=challenge_data.offset,
+        root=challenge_data.data_root
+    )
+    # Responder wins
+    if hash(challenge_data.responder_subkey + response.data) == challenge_data.current_custody_tree_node:
+        penalize_validator(state, challenge_data.challenger_index, response.responder_index)
+        responder.interactive_custody_challenge_data = EMPTY_CHALLENGE_DATA
+    # Challenger wins
+    else:
+        penalize_validator(state, response.responder_index, challenge_data.challenger_index)
+        state.validator_registry[challenge_data.challenger_index].now_challenging = VALIDATOR_NULL
+```
+
+Amend `process_challenge_absences` as follows:
+
+```
+def process_challenge_absences(state: BeaconState) -> None:
+    """
+    Iterate through the validator registry
+    and penalize validators with balance that did not answer challenges.
+    """
+    for index, validator in enumerate(state.validator_registry):
+        if len(validator.open_branch_challenges) > 0 and get_current_epoch(state) > validator.open_branch_challenges[0].inclusion_epoch + CHALLENGE_RESPONSE_DEADLINE:
+            penalize_validator(state, index, validator.open_branch_challenges[0].challenger_index)
+        if validator.challenge_data.challenger != VALIDATOR_NULL and get_current_epoch(state) > validator.challenge.deadline:
+            penalize_validator(state, index, validator.challenge_data.challenger_index)
+        if get_current_epoch(state) >= state.validator_registry[validator.now_challenging].withdrawal_epoch:
+            penalize_validator(state, index, validator.now_challenging)
+            penalize_validator(state, index, validator.challenge_data.challenger_index)
+```
