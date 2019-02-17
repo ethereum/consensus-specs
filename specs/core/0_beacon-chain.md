@@ -117,6 +117,7 @@
             - [Block roots](#block-roots)
         - [Per-block processing](#per-block-processing)
             - [Slot](#slot-1)
+            - [Parent root](#parent-root)
             - [Proposer signature](#proposer-signature)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
@@ -1651,6 +1652,10 @@ Below are the processing steps that happen at every `block`.
 #### Slot
 
 * Verify that `block.slot == state.slot`.
+
+#### Parent root
+
+* Verify that `block.parent_root == get_block_root(state, block.slot - 1)`.
 
 #### Proposer signature
 
