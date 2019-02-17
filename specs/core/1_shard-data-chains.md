@@ -35,6 +35,9 @@
         - [`BranchChallengeRecord`](#branchchallengerecord)
         - [`SubkeyReveal`](#subkeyreveal)
     - [Helpers](#helpers)
+        - [`get_attestation_merkle_depth`](#get_attestation_merkle_depth)
+        - [`epoch_to_custody_period`](#epoch_to_custody_period)
+        - [`slot_to_custody_period`](#slot_to_custody_period)
         - [`get_current_custody_period`](#get_current_custody_period)
         - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
         - [`prepare_validator_for_withdrawal`](#prepare_validator_for_withdrawal)
@@ -375,11 +378,36 @@ Define a `SubkeyReveal` as follows:
 
 ## Helpers
 
+### `get_attestation_merkle_depth`
+
+```python
+def get_merkle_depth(attestation: Attestation) -> int:
+    start_epoch = attestation.data.latest_crosslink.epoch
+    end_epoch = slot_to_epoch(attestation.data.slot)
+    chunks_per_slot = SHARD_BLOCK_SIZE // 32
+    chunks = (end_epoch - start_epoch) * EPOCH_LENGTH * chunks_per_slot
+    return log2(next_power_of_two(chunks))
+```
+
+### `epoch_to_custody_period`
+
+```python
+def epoch_to_custody_period(epoch: int) -> int:
+    return epoch // CUSTODY_PERIOD_LENGTH
+```
+
+### `slot_to_custody_period`
+
+```python
+def epoch_to_custody_period(slot: int) -> int:
+    return epoch_to_custody_period(slot_to_epoch(slot))
+```
+
 ### `get_current_custody_period`
 
 ```python
 def get_current_custody_period(state: BeaconState) -> int:
-    return get_current_epoch(state) // CUSTODY_PERIOD_LENGTH
+    return epoch_to_custody_period(get_current_epoch(state))
 ```
 
 ### `verify_custody_subkey_reveal`
@@ -461,7 +489,7 @@ For each `challenge` in `block.body.branch_challenges`:
 * Verify that `state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY`.
 * Verify that `verify_slashable_attestation(state, challenge.attestation)` returns `True`.
 * Verify that `challenge.responder_index` is in `challenge.attestation.validator_indices`.
-* Let `depth = log2(next_power_of_two(SHARD_BLOCK_SIZE // 32 * EPOCH_LENGTH * (slot_to_epoch(challenge.attestation.data.slot) - challenge.attestation.latest_crosslink.epoch)`. Verify that `challenge.data_index < 2**depth`.
+* Let `depth = get_attestation_merkle_depth(challenge.attestation))`. Verify that `challenge.data_index < 2**depth`.
 * Verify that there does not exist a `BranchChallengeRecord` in `state.validator_registry[challenge.responder_index].open_branch_challenges` with `root == challenge.attestation.data.shard_chain_commitment` and `data_index == data_index`.
 * Append to `state.validator_registry[challenge.responder_index].open_branch_challenges` the object `BranchChallengeRecord(challenger_index=get_beacon_proposer_index(state, state.slot), root=challenge.attestation.data.shard_chain_commitment, depth=depth, inclusion_epoch=get_current_epoch(state), data_index=data_index)`.
 
@@ -527,7 +555,7 @@ def eligible(index):
     if len(validator.open_branch_challenges) > 0:
         return False
     # Cannot exit if you have not revealed all of your subkeys
-    elif validator.next_subkey_to_reveal <= validator.exit_epoch // CUSTODY_PERIOD_LENGTH:
+    elif validator.next_subkey_to_reveal <= epoch_to_custody_period(validator.exit_epoch):
         return False
     # Cannot exit if you already have
     elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
