@@ -236,32 +236,7 @@ The fork choice rule for any shard is LMD GHOST using the shard chain attestatio
 | `MAX_INTERACTIVE_CHALLENGE_RESPONSES`      | 16               |         |               |
 | `MAX_INTERACTIVE_CHALLENGE_CONTINUTATIONS` | 16               |         |               |
 
-### Helpers
-
-Define the helper `get_merkle_depth`:
-
-```python
-def get_merkle_depth(attestation: Attestation) -> int:
-    start_epoch = initiation.attestation.data.latest_crosslink.epoch
-    end_epoch = slot_to_epoch(initiation.attestation.data.slot)
-    chunks_per_slot = SHARD_BLOCK_SIZE // 32
-    chunks = (end_epoch - start_epoch) * EPOCH_LENGTH * chunks_per_slot
-    return log2(next_power_of_two(chunks))
-```
-
-And `epoch_to_period`:
-
-```python
-def epoch_to_period(epoch: int) -> int:
-    return epoch // CUSTODY_PERIOD_LENGTH
-```
-
-And `slot_to_period`:
-
-```python
-def slot_to_period(slot: int) -> int:
-    return epoch_to_period(slot_to_period(slot))
-```
+### Data structures and verification
 
 Add the following data structure to the `Validator` record:
 
@@ -269,8 +244,6 @@ Add the following data structure to the `Validator` record:
     interactive_custody_challenge_data: InteractiveCustodyChallengeData,
     now_challenging: 'uint64',
 ```
-
-### Data structures and verification
 
 Where `InteractiveCustodyChallengeData` is defined as follows:
 
@@ -315,7 +288,7 @@ To validate the `initiation`, verify:
 * `bls_verify(message_hash=signed_root(initiation, "signature"), pubkey=state.validator_registry[challenger_index].pubkey, signature=initiation.signature, domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE))` returns `True`.
 * `responder_index` is in `attestation.validator_indices`.
 * `state.validator_registry[responder_index].interactive_custody_challenge_data.challenger_index == VALIDATOR_NULL`.
-* `verify_custody_subkey_reveal(pubkey=state.validator_registry[responder_index].pubkey, subkey=responder_subkey, mask=ZERO_HASH, mask_pubkey=b'', period=slot_to_period(attestation.data.slot))` returns `True`.
+* `verify_custody_subkey_reveal(pubkey=state.validator_registry[responder_index].pubkey, subkey=responder_subkey, mask=ZERO_HASH, mask_pubkey=b'', period=slot_to_custody_period(attestation.data.slot))` returns `True`.
 * `state.validator_registry[challenger_index].now_challenging == VALIDATOR_NULL`
 * `state.validator_registry[challenger_index].penalized_epoch == FAR_FUTURE_EPOCH`
 
