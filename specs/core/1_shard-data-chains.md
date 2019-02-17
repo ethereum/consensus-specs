@@ -399,7 +399,7 @@ def epoch_to_custody_period(epoch: int) -> int:
 ### `slot_to_custody_period`
 
 ```python
-def epoch_to_custody_period(slot: int) -> int:
+def slot_to_custody_period(slot: int) -> int:
     return epoch_to_custody_period(slot_to_epoch(slot))
 ```
 
