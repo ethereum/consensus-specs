@@ -227,12 +227,14 @@ The fork choice rule for any shard is LMD GHOST using the shard chain attestatio
 
 ### Constants
 
-MAX_POC_RESPONSE_DEPTH: 5
-DOMAIN_CUSTODY_INTERACTIVE: 132
-VALIDATOR_NULL: 2**64 - 1
-MAX_INTERACTIVE_CHALLENGE_INITIATIONS: 4
-MAX_INTERACTIVE_CHALLENGE_RESPONSES: 16
-MAX_INTERACTIVE_CHALLENGE_CONTINUTATIONS: 16
+| Constant                                   | Value            | Unit    | Approximation |
+|--------------------------------------------|------------------|---------|---------------|
+| `MAX_POC_RESPONSE_DEPTH`                   | 5                | layers  |               |
+| `DOMAIN_CUSTODY_INTERACTIVE`               | 132              |         |               |
+| `VALIDATOR_NULL`                           | 2**64 - 1        |         |               |
+| `MAX_INTERACTIVE_CHALLENGE_INITIATIONS`    | 2                |         |               |
+| `MAX_INTERACTIVE_CHALLENGE_RESPONSES`      | 16               |         |               |
+| `MAX_INTERACTIVE_CHALLENGE_CONTINUTATIONS` | 16               |         |               |
 
 ### Helpers
 
