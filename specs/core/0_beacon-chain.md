@@ -43,7 +43,7 @@
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
             - [`BeaconBlockBody`](#beaconblockbody)
-            - [`ProposalSignedData`](#proposalsigneddata)
+            - [`Proposal`](#proposal)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
             - [`Validator`](#validator)
@@ -94,7 +94,6 @@
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
-        - [`validate_proof_of_possession`](#validate_proof_of_possession)
         - [`process_deposit`](#process_deposit)
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`activate_validator`](#activate_validator)
@@ -117,7 +116,7 @@
             - [Block roots](#block-roots)
         - [Per-block processing](#per-block-processing)
             - [Slot](#slot-1)
-            - [Proposer signature](#proposer-signature)
+            - [Block signature](#block-signature)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
             - [Transactions](#transactions)
@@ -299,14 +298,10 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     # Proposer index
     'proposer_index': 'uint64',
-    # First proposal data
-    'proposal_data_1': ProposalSignedData,
-    # First proposal signature
-    'proposal_signature_1': 'bytes96',
-    # Second proposal data
-    'proposal_data_2': ProposalSignedData,
-    # Second proposal signature
-    'proposal_signature_2': 'bytes96',
+    # First proposal
+    'proposal_1': Proposal,
+    # Second proposal
+    'proposal_2': Proposal,
 }
 ```
 
@@ -363,9 +358,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'slot': 'uint64',
     # Shard number
     'shard': 'uint64',
-    # Hash of root of the signed beacon block
+    # Root of the signed beacon block
     'beacon_block_root': 'bytes32',
-    # Hash of root of the ancestor at the epoch boundary
+    # Root of the ancestor at the epoch boundary
     'epoch_boundary_root': 'bytes32',
     # Shard block's hash of root
     'shard_block_root': 'bytes32',
@@ -474,16 +469,17 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
-    ## Header ##
+    # Header
     'slot': 'uint64',
     'parent_root': 'bytes32',
     'state_root': 'bytes32',
     'randao_reveal': 'bytes96',
     'eth1_data': Eth1Data,
-    'signature': 'bytes96',
 
-    ## Body ##
+    # Body
     'body': BeaconBlockBody,
+    # Signature
+    'signature': 'bytes96',
 }
 ```
 
@@ -500,7 +496,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
-#### `ProposalSignedData`
+#### `Proposal`
 
 ```python
 {
@@ -508,8 +504,10 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'slot': 'uint64',
     # Shard number (`BEACON_CHAIN_SHARD_NUMBER` for beacon chain)
     'shard': 'uint64',
-    # Block's hash of root
+    # Block root
     'block_root': 'bytes32',
+    # Signature
+    'signature': 'bytes96',
 }
 ```
 
@@ -669,6 +667,10 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ### `hash_tree_root`
 
 `def hash_tree_root(object: SSZSerializable) -> Bytes32` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
+
+### `signed_root`
+
+`def signed_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
 
 ### `slot_to_epoch`
 
@@ -1241,60 +1243,33 @@ def get_entry_exit_effect_epoch(epoch: Epoch) -> Epoch:
 
 `bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_aggregate_pubkeys).
 
-### `validate_proof_of_possession`
+### `process_deposit`
+
+Used to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance by some `deposit` amount:
 
 ```python
-def validate_proof_of_possession(state: BeaconState,
-                                 pubkey: BLSPubkey,
-                                 proof_of_possession: BLSSignature,
-                                 withdrawal_credentials: Bytes32) -> bool:
+def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
-    Verify the given ``proof_of_possession``.
+    Process a deposit from Ethereum 1.0.
+    Note that this function mutates ``state``.
     """
-    proof_of_possession_data = DepositInput(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        proof_of_possession=EMPTY_SIGNATURE,
-    )
+    deposit_input = deposit.deposit_data.deposit_input
 
-    return bls_verify(
-        pubkey=pubkey,
-        message_hash=hash_tree_root(proof_of_possession_data),
-        signature=proof_of_possession,
+    assert bls_verify(
+        pubkey=deposit_input.pubkey,
+        message_hash=signed_root(deposit_input, "proof_of_possession"),
+        signature=deposit_input.proof_of_possession,
         domain=get_domain(
             state.fork,
             get_current_epoch(state),
             DOMAIN_DEPOSIT,
         )
     )
-```
-
-### `process_deposit`
-
-Used to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance by some `deposit` amount:
-
-```python
-def process_deposit(state: BeaconState,
-                    pubkey: BLSPubkey,
-                    amount: Gwei,
-                    proof_of_possession: BLSSignature,
-                    withdrawal_credentials: Bytes32) -> None:
-    """
-    Process a deposit from Ethereum 1.0.
-    Note that this function mutates ``state``.
-    """
-    # Validate the given `proof_of_possession`
-    proof_is_valid = validate_proof_of_possession(
-        state,
-        pubkey,
-        proof_of_possession,
-        withdrawal_credentials,
-    )
-
-    if not proof_is_valid:
-        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
+    pubkey = deposit_input.pubkey
+    amount = deposit.deposit_data.amount
+    withdrawal_credentials = deposit_input.withdrawal_credentials
 
     if pubkey not in validator_pubkeys:
         # Add new validator
@@ -1521,13 +1496,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
-        process_deposit(
-            state=state,
-            pubkey=deposit.deposit_data.deposit_input.pubkey,
-            amount=deposit.deposit_data.amount,
-            proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
-            withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-        )
+        process_deposit(state, deposit)
 
     # Process genesis activations
     for validator_index, _ in enumerate(state.validator_registry):
@@ -1653,16 +1622,15 @@ Below are the processing steps that happen at every `block`.
 
 * Verify that `block.slot == state.slot`.
 
-#### Proposer signature
+#### Block signature
 
-* Let `block_without_signature_root` be the `hash_tree_root` of `block` where `block.signature` is set to `EMPTY_SIGNATURE`.
-* Let `proposal_root = hash_tree_root(ProposalSignedData(state.slot, BEACON_CHAIN_SHARD_NUMBER, block_without_signature_root))`.
-* Verify that `bls_verify(pubkey=state.validator_registry[get_beacon_proposer_index(state, state.slot)].pubkey, message_hash=proposal_root, signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
+* Let `proposal = Proposal(block.slot, BEACON_CHAIN_SHARD_NUMBER, signed_root(block, "signature"), block.signature)`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposal, "signature"), signature=proposal.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
 
 #### RANDAO
 
-* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=int_to_bytes32(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
 * Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
 
 #### Eth1 data
@@ -1679,12 +1647,12 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `proposer_slashing.proposal_data_1.slot == proposer_slashing.proposal_data_2.slot`.
-* Verify that `proposer_slashing.proposal_data_1.shard == proposer_slashing.proposal_data_2.shard`.
-* Verify that `proposer_slashing.proposal_data_1.block_root != proposer_slashing.proposal_data_2.block_root`.
+* Verify that `proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot`.
+* Verify that `proposer_slashing.proposal_1.shard == proposer_slashing.proposal_2.shard`.
+* Verify that `proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root`.
 * Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_1), signature=proposer_slashing.proposal_signature_1, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(proposer_slashing.proposal_data_2), signature=proposer_slashing.proposal_signature_2, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_data_2.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_1, "signature"), signature=proposer_slashing.proposal_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_1.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_2, "signature"), signature=proposer_slashing.proposal_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_2.slot), DOMAIN_PROPOSAL))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
@@ -1778,13 +1746,7 @@ def verify_merkle_branch(leaf: Bytes32, branch: List[Bytes32], depth: int, index
 * Run the following:
 
 ```python
-process_deposit(
-    state=state,
-    pubkey=deposit.deposit_data.deposit_input.pubkey,
-    amount=deposit.deposit_data.amount,
-    proof_of_possession=deposit.deposit_data.deposit_input.proof_of_possession,
-    withdrawal_credentials=deposit.deposit_data.deposit_input.withdrawal_credentials,
-)
+process_deposit(state, deposit)
 ```
 
 * Set `state.deposit_index += 1`.
@@ -1798,8 +1760,7 @@ For each `exit` in `block.body.voluntary_exits`:
 * Let `validator = state.validator_registry[exit.validator_index]`.
 * Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
 * Verify that `get_current_epoch(state) >= exit.epoch`.
-* Let `exit_message = hash_tree_root(VoluntaryExit(epoch=exit.epoch, validator_index=exit.validator_index, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=exit_message, signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=signed_root(exit, "signature"), signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
 ##### Transfers
@@ -1816,8 +1777,7 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `state.slot == transfer.slot`.
 * Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch`.
 * Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
-* Let `transfer_message = hash_tree_root(Transfer(from=transfer.from, to=transfer.to, amount=transfer.amount, fee=transfer.fee, slot=transfer.slot, signature=EMPTY_SIGNATURE))`.
-* Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=transfer_message, signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
+* Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=signed_root(transfer, "signature"), signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
 * Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
 * Set `state.validator_balances[transfer.to] += transfer.amount`.
 * Set `state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee`.
