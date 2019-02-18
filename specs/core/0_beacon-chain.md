@@ -41,9 +41,8 @@
             - [Transfers](#transfers)
                 - [`Transfer`](#transfer)
         - [Beacon chain blocks](#beacon-chain-blocks)
+            - [`BeaconBlockMetadata`](#beaconblockmetadata)
             - [`BeaconBlock`](#beaconblock)
-            - [`BeaconBlockBody`](#beaconblockbody)
-            - [`Proposal`](#proposal)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
             - [`Validator`](#validator)
@@ -116,6 +115,7 @@
             - [Block roots](#block-roots)
         - [Per-block processing](#per-block-processing)
             - [Slot](#slot-1)
+            - [Block roots](#block-roots-1)
             - [Block signature](#block-signature)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
@@ -184,7 +184,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
-| `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) |
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
@@ -298,10 +297,10 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     # Proposer index
     'proposer_index': 'uint64',
-    # First proposal
-    'proposal_1': Proposal,
-    # Second proposal
-    'proposal_2': Proposal,
+    # First block metadata
+    'block_metadata_1': BeaconBlockMetadata,
+    # Second block metadata
+    'block_metadata_2': BeaconBlockMetadata,
 }
 ```
 
@@ -465,49 +464,30 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ### Beacon chain blocks
 
-#### `BeaconBlock`
+#### `BeaconBlockMetadata`
 
 ```python
 {
-    # Header
     'slot': 'uint64',
     'parent_root': 'bytes32',
     'state_root': 'bytes32',
-    'randao_reveal': 'bytes96',
-    'eth1_data': Eth1Data,
-
-    # Body
-    'body': BeaconBlockBody,
-    # Signature
     'signature': 'bytes96',
 }
 ```
 
-#### `BeaconBlockBody`
+#### `BeaconBlock`
 
 ```python
 {
+    'randao_reveal': 'bytes96',
+    'eth1_data': Eth1Data,
     'proposer_slashings': [ProposerSlashing],
     'attester_slashings': [AttesterSlashing],
     'attestations': [Attestation],
     'deposits': [Deposit],
     'voluntary_exits': [VoluntaryExit],
     'transfers': [Transfer],
-}
-```
-
-#### `Proposal`
-
-```python
-{
-    # Slot number
-    'slot': 'uint64',
-    # Shard number (`BEACON_CHAIN_SHARD_NUMBER` for beacon chain)
-    'shard': 'uint64',
-    # Block root
-    'block_root': 'bytes32',
-    # Signature
-    'signature': 'bytes96',
+    'metadata': BeaconBlockMetadata,
 }
 ```
 
@@ -1391,7 +1371,7 @@ Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSI
 
 ### `Eth2Genesis` log
 
-When sufficiently many full deposits have been made the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
+When sufficiently many full deposits have been made the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
 * `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
@@ -1412,39 +1392,55 @@ For convenience, we provide the interface to the contract here:
 
 ## On genesis
 
-A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following values. Other validity rules (e.g. requiring a signature) do not apply.
+When enough full deposits have been made to the deposit contract a `Eth2Genesis` is log emitted. The genesis block and state are defined by `get_genesis_block` and `get_genesis_state` where:
+
+* `genesis_validator_deposits` is the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log
+* `genesis_time` is timestamp specified in the `Eth2Genesis` log
+* `genesis_eth1_data` is the `Eth1Data` when `Eth2Genesis` is emitted
 
 ```python
-{
-    slot=GENESIS_SLOT,
-    parent_root=ZERO_HASH,
-    state_root=GENESIS_STATE_ROOT,
-    randao_reveal=EMPTY_SIGNATURE,
-    eth1_data=Eth1Data(
-        deposit_root=ZERO_HASH,
-        block_hash=ZERO_HASH
-    ),
-    signature=EMPTY_SIGNATURE,
-    body=BeaconBlockBody(
+def get_genesis_block(genesis_validator_deposits: List[Deposit],
+                      genesis_time: int,
+                      genesis_eth1_data: Eth1Data) -> BeaconBlock
+    """
+    Get the genesis ``BeaconBlock``.
+    """
+    genesis_block = BeaconBlock(
+        randao_reveal=EMPTY_SIGNATURE,
+        eth1_data=Eth1Data(
+            deposit_root=ZERO_HASH,
+            block_hash=ZERO_HASH
+        ),
         proposer_slashings=[],
         attester_slashings=[],
         attestations=[],
         deposits=[],
         exits=[],
-    ),
+        transfers=[],
+        metadata=BeaconBlockMetadata(
+            slot=GENESIS_SLOT,
+            parent_root=ZERO_HASH,
+            state_root=ZERO_HASH,
+            signature=EMPTY_SIGNATURE,
+        ),
+    )
+
+    genesis_block_root = signed_hash(genesis_block)
+    genesis_state = get_genesis_state(genesis_validator_deposits, genesis_time, genesis_block_root, genesis_eth1_data)
+    genesis_block.metadata.state_root = hash_tree_root(genesis_state)
+    return genesis_block
 }
 ```
 
-`GENESIS_STATE_ROOT` (in the above "genesis block") is generated from the `get_genesis_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `Eth2Genesis` log has been emitted, `get_genesis_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
-
 ```python
-def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
-                             genesis_time: int,
-                             latest_eth1_data: Eth1Data) -> BeaconState:
+def get_genesis_state(genesis_validator_deposits: List[Deposit],
+                      genesis_time: int,
+                      genesis_eth1_data: Eth1Data,
+                      genesis_block_root: Bytes32) -> BeaconState:
     """
     Get the genesis ``BeaconState``.
     """
-    state = BeaconState(
+    genesis_state = BeaconState(
         # Misc
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
@@ -1483,26 +1479,28 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         batched_block_roots=[],
 
         # Ethereum 1.0 chain data
-        latest_eth1_data=latest_eth1_data,
+        latest_eth1_data=genesis_eth1_data,
         eth1_data_votes=[],
-        deposit_index=len(genesis_validator_deposits)
+        deposit_index=len(genesis_validator_deposits),
     )
+
+    genesis_state.latest_block_roots[GENESIS_SLOT % LATEST_BLOCK_ROOTS_LENGTH] = genesis_block_root
 
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
-        process_deposit(state, deposit)
+        process_deposit(genesis_state, deposit)
 
     # Process genesis activations
-    for validator_index, _ in enumerate(state.validator_registry):
-        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
-            activate_validator(state, validator_index, is_genesis=True)
+    for validator_index, _ in enumerate(genesis_state.validator_registry):
+        if get_effective_balance(genesis_state, validator_index) >= MAX_DEPOSIT_AMOUNT:
+            activate_validator(genesis_state, validator_index, is_genesis=True)
 
-    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(genesis_state.validator_registry, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
-        state.latest_active_index_roots[index] = genesis_active_index_root
-    state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
+        genesis_state.latest_active_index_roots[index] = genesis_active_index_root
+    genesis_state.current_shuffling_seed = generate_seed(genesis_state, GENESIS_EPOCH)
 
-    return state
+    return genesis_state
 ```
 
 ## Beacon chain processing
@@ -1604,8 +1602,7 @@ Below are the processing steps that happen at every slot.
 
 #### Block roots
 
-* Let `previous_block_root` be the `hash_tree_root` of the previous beacon block processed in the chain.
-* Set `state.latest_block_roots[(state.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH] = previous_block_root`.
+* Set `state.latest_block_roots[state.slot % LATEST_BLOCK_ROOTS_LENGTH] = get_block_root(state, block.slot - 1)`.
 * If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
 
 ### Per-block processing
@@ -1616,11 +1613,16 @@ Below are the processing steps that happen at every `block`.
 
 * Verify that `block.slot == state.slot`.
 
+#### Block roots
+
+* Let `block_root = signed_root(block, "metadata")`.
+* Set `state.latest_block_roots[state.slot % LATEST_BLOCK_ROOTS_LENGTH] = block_root`.
+* Verify that `block.parent_root == get_block_root(state, block.slot - 1)`.
+
 #### Block signature
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Let `proposal = Proposal(block.slot, BEACON_CHAIN_SHARD_NUMBER, signed_root(block, "signature"), block.signature)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposal, "signature"), signature=proposal.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.metadata, "signature"), signature=block.metadata.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
 
 #### RANDAO
 
@@ -1636,24 +1638,24 @@ Below are the processing steps that happen at every `block`.
 
 ##### Proposer slashings
 
-Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
+Verify that `len(block.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 
-For each `proposer_slashing` in `block.body.proposer_slashings`:
+For each `proposer_slashing` in `block.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot`.
-* Verify that `proposer_slashing.proposal_1.shard == proposer_slashing.proposal_2.shard`.
-* Verify that `proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root`.
+* Verify that `proposer_slashing.metadata_1.slot == proposer_slashing.metadata_2.slot`.
+* Verify that `proposer_slashing.metadata_1.shard == proposer_slashing.metadata_2.shard`.
+* Verify that `proposer_slashing.metadata_1.block_root != proposer_slashing.metadata_2.block_root`.
 * Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_1, "signature"), signature=proposer_slashing.proposal_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_2, "signature"), signature=proposer_slashing.proposal_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_2.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.metadata_1, "signature"), signature=proposer_slashing.metadata_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.metadata_1.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.metadata_2, "signature"), signature=proposer_slashing.metadata_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.metadata_2.slot), DOMAIN_PROPOSAL))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
 
-Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
+Verify that `len(block.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 
-For each `attester_slashing` in `block.body.attester_slashings`:
+For each `attester_slashing` in `block.attester_slashings`:
 
 * Let `slashable_attestation_1 = attester_slashing.slashable_attestation_1`.
 * Let `slashable_attestation_2 = attester_slashing.slashable_attestation_2`.
@@ -1667,9 +1669,9 @@ For each `attester_slashing` in `block.body.attester_slashings`:
 
 ##### Attestations
 
-Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
+Verify that `len(block.attestations) <= MAX_ATTESTATIONS`.
 
-For each `attestation` in `block.body.attestations`:
+For each `attestation` in `block.attestations`:
 
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + SLOTS_PER_EPOCH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state) else state.previous_justified_epoch`.
@@ -1712,12 +1714,12 @@ For each `attestation` in `block.body.attestations`:
 
 ##### Deposits
 
-Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
+Verify that `len(block.deposits) <= MAX_DEPOSITS`.
 
 [TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
 [TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
 
-For each `deposit` in `block.body.deposits`:
+For each `deposit` in `block.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
 * Verify that `deposit.index == state.deposit_index`.
@@ -1747,9 +1749,9 @@ process_deposit(state, deposit)
 
 ##### Voluntary exits
 
-Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
+Verify that `len(block.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 
-For each `exit` in `block.body.voluntary_exits`:
+For each `exit` in `block.voluntary_exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
 * Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
@@ -1761,9 +1763,9 @@ For each `exit` in `block.body.voluntary_exits`:
 
 Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
 
-Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
+Verify that `len(block.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
 
-For each `transfer` in `block.body.transfers`:
+For each `transfer` in `block.transfers`:
 
 * Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
 * Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
