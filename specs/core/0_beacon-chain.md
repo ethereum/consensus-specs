@@ -798,23 +798,16 @@ def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
                   epoch: Epoch) -> List[List[ValidatorIndex]]
     """
-    Shuffle ``validators`` into crosslink committees seeded by ``seed`` and ``epoch``.
-    Return a list of ``committees_per_epoch`` committees where each
-    committee is itself a list of validator indices.
+    Shuffle active validators and split into crosslink committees.
+    Return a list of committees (each a list of validator indices).
     """
-
+    # Shuffle active validator indices
     active_validator_indices = get_active_validator_indices(validators, epoch)
+    length = len(active_validator_indices)
+    shuffled_indices = [active_validator_indices[get_permuted_index(i, length, seed)] for i in range(length)]
 
-    committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
-
-    # Shuffle
-    shuffled_active_validator_indices = [
-        active_validator_indices[get_permuted_index(i, len(active_validator_indices), seed)]
-        for i in active_validator_indices
-    ]
-
-    # Split the shuffled list into committees_per_epoch pieces
-    return split(shuffled_active_validator_indices, committees_per_epoch)
+    # Split the shuffled active validator indices
+    return split(shuffled_indices, get_epoch_committee_count(length))
 ```
 
 **Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
