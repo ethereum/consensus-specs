@@ -283,32 +283,53 @@ We define an `InteractiveCustodyChallengeInitiation` as follows:
 }
 ```
 
-To validate the `initiation`, verify:
-
-* `bls_verify(message_hash=signed_root(initiation, "signature"), pubkey=state.validator_registry[challenger_index].pubkey, signature=initiation.signature, domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE))` returns `True`.
-* `responder_index` is in `attestation.validator_indices`.
-* `state.validator_registry[responder_index].interactive_custody_challenge_data.challenger_index == VALIDATOR_NULL`.
-* `verify_custody_subkey_reveal(pubkey=state.validator_registry[responder_index].pubkey, subkey=responder_subkey, mask=ZERO_HASH, mask_pubkey=b'', period=slot_to_custody_period(attestation.data.slot))` returns `True`.
-* `state.validator_registry[challenger_index].now_challenging == VALIDATOR_NULL`
-* `state.validator_registry[challenger_index].penalized_epoch == FAR_FUTURE_EPOCH`
-
-Set `state.validator_registry[responder_index].interactive_custody_challenge_data` to:
+Here's the function for validating and processing an initiation:
 
 ```python
-InteractiveCustodyChallengeData(
-    challenger=initiation.challenger_index,
-    data_root=attestation.custody_commitment,
-    custody_bit=get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index)),
-    responder_subkey=responder_subkey,
-    current_custody_tree_node=ZERO_HASH,
-    depth=0,
-    offset=0,
-    max_depth=get_merkle_depth(initiation.attestation),
-    deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
-)
+def process_initiation(initiation: InteractiveCustodyChallengeInitiation,
+                       state: BeaconState):
+    challenger = state.validator_registry[challenger_index]
+    responder = state.validator_registry[responder_index]
+    # Verify the signature                   
+    assert bls_verify(
+        message_hash=signed_root(initiation, 'signature'),
+        pubkey=state.validator_registry[challenger_index].pubkey,
+        signature=initiation.signature,
+        domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE)
+    )
+    # Check that the responder actually participated in the attestation
+    assert responder_index in attestation.validator_indices
+    # Can only be challenged by one challenger at a time
+    assert responder.interactive_custody_challenge_data.challenger_index == VALIDATOR_NULL
+    # Can only challenge one responder at a time
+    assert challenger.now_challenging == VALIDATOR_NULL
+    # Can't challenge if you've been penalized
+    assert challenger.penalized_epoch == FAR_FUTURE_EPOCH
+    # Make sure the revealed subkey is valid
+    assert verify_custody_subkey_reveal(
+        pubkey=state.validator_registry[responder_index].pubkey,
+        subkey=responder_subkey,
+        mask=ZERO_HASH,
+        mask_pubkey=b'',
+        period=slot_to_custody_period(attestation.data.slot)
+    )
+    # Set the challenge object
+    responder.interactive_custody_challenge_data = InteractiveCustodyChallengeData(
+        challenger=initiation.challenger_index,
+        data_root=attestation.custody_commitment,
+        custody_bit=get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index)),
+        responder_subkey=responder_subkey,
+        current_custody_tree_node=ZERO_HASH,
+        depth=0,
+        offset=0,
+        max_depth=get_merkle_depth(initiation.attestation),
+        deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
+    )
+    # Responder can't withdraw yet!
+    state.validator_registry[responder_index].withdrawable_epoch = FAR_FUTURE_EPOCH
+    # Challenger can't challenge anyone else
+    challenger.now_challenging = responder_index
 ```
-
-Set `state.validator_registry[responder_index].withdrawable_epoch = FAR_FUTURE_EPOCH`, and set `state.validator_registry[challenger_index].now_challenging = responder_index`
 
 We define an `InteractiveCustodyChallengeResponse` as follows:
 
@@ -426,7 +447,7 @@ def process_branch_response(response: BranchResponse,
 
 Amend `process_challenge_absences` as follows:
 
-```
+```python
 def process_challenge_absences(state: BeaconState) -> None:
     """
     Iterate through the validator registry
