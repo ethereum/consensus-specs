@@ -995,6 +995,7 @@ def get_beacon_proposer_index(state: BeaconState,
 def merkle_root(values: List[Bytes32]) -> Bytes32:
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
+    Note that the leaves are not hashed.
     """
     o = [0] * len(values) + values
     for i in range(len(values) - 1, 0, -1):
