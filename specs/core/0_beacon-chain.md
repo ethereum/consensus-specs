@@ -180,7 +180,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 ### Misc
 
 | Name | Value |
-| - | - | :-: |
+| - | - |
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
@@ -997,6 +997,7 @@ def get_beacon_proposer_index(state: BeaconState,
 def merkle_root(values: List[Bytes32]) -> Bytes32:
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
+    Note that the leaves are not hashed.
     """
     o = [0] * len(values) + values
     for i in range(len(values) - 1, 0, -1):
@@ -1170,7 +1171,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
         ],
         signature=slashable_attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(vote_data.data.slot), DOMAIN_ATTESTATION),
+        domain=get_domain(state.fork, slot_to_epoch(slashable_attestation.data.slot), DOMAIN_ATTESTATION),
     )
 ```
 
@@ -1347,9 +1348,9 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     Slash the validator with index ``index``.
     Note that this function mutates ``state``.
     """
-    assert state.slot < validator.withdrawable_epoch  # [TO BE REMOVED IN PHASE 2]
-    exit_validator(state, index)
     validator = state.validator_registry[index]
+    assert state.slot < get_epoch_start_slot(validator.withdrawable_epoch)  # [TO BE REMOVED IN PHASE 2]
+    exit_validator(state, index)
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += get_effective_balance(state, index)
 
     whistleblower_index = get_beacon_proposer_index(state, state.slot)
@@ -1524,7 +1525,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.parent_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
+* The node's Unix time is greater than or equal to `state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
@@ -1634,7 +1635,7 @@ Below are the processing steps that happen at every `block`.
 
 #### Eth1 data
 
-* If there exists an `eth1_data_vote` in `states.eth1_data_votes` for which `eth1_data_vote.eth1_data == block.eth1_data` (there will be at most one), set `eth1_data_vote.vote_count += 1`.
+* If there exists an `eth1_data_vote` in `state.eth1_data_votes` for which `eth1_data_vote.eth1_data == block.eth1_data` (there will be at most one), set `eth1_data_vote.vote_count += 1`.
 * Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
 
 #### Transactions
@@ -2058,7 +2059,7 @@ def process_exit_queue(state: BeaconState) -> None:
 
 #### Final updates
 
-* Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state, next_epoch + ACTIVATION_EXIT_DELAY))`.
+* Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY))`.
 * Set `state.latest_slashed_balances[(next_epoch) % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.

@@ -24,11 +24,12 @@ deserializing objects and data types.
       - [bytesN](#bytesn-1)
       - [List/Vectors](#listvectors-1)
       - [Container](#container-1)
-    + [Tree Hash](#tree-hash)
+   + [Tree Hash](#tree-hash)
       - [`uint8`..`uint256`, `bool`, `bytes1`..`bytes32`](#uint8uint256-bool-bytes1bytes32)
       - [`uint264`..`uintN`, `bytes33`..`bytesN`](#uint264uintn-bytes33bytesn)
       - [List/Vectors](#listvectors-2)
       - [Container](#container-2)
+   + [Signed Roots](#signed-roots)
 * [Implementations](#implementations)
 
 ## About
@@ -395,6 +396,14 @@ Recursively tree hash the values in the container in the same order as the field
 ```python
 return merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields])
 ```
+
+### Signed roots
+
+Let `field_name` be a field name in an SSZ container `container`. We define `truncate(container, field_name)` to be the `container` with the fields from `field_name` onwards truncated away. That is, `truncate(container, field_name) = [getattr(container, field)) for field in value.fields[:i]]` where `i = value.fields.index(field_name)`.
+
+When `field_name` maps to a signature (e.g. a BLS12-381 signature of type `Bytes96`) the convention is that the corresponding signed message be `signed_root(container, field_name) = hash_tree_root(truncate(container, field_name))`. For example if `container = {"foo": sub_object_1, "bar": sub_object_2, "signature": bytes96, "baz": sub_object_3}` then `signed_root(container, "signature") = merkle_hash([hash_tree_root(sub_object_1), hash_tree_root(sub_object_2)])`.
+
+Note that this convention means that fields after the signature are _not_ signed over. If there are multiple signatures in `container` then those are expected to be signing over the fields in the order specified. If multiple signatures of the same value are expected the convention is that the signature field be an array of signatures.
 
 ## Implementations
 
