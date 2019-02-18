@@ -298,9 +298,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Proposer index
     'proposer_index': 'uint64',
     # First block metadata
-    'block_metadata_1': BeaconBlockMetadata,
+    'metadata_1': BeaconBlockMetadata,
     # Second block metadata
-    'block_metadata_2': BeaconBlockMetadata,
+    'metadata_2': BeaconBlockMetadata,
 }
 ```
 
