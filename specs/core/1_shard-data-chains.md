@@ -381,7 +381,7 @@ Define a `SubkeyReveal` as follows:
 ### `get_attestation_merkle_depth`
 
 ```python
-def get_merkle_depth(attestation: Attestation) -> int:
+def get_attestation_merkle_depth(attestation: Attestation) -> int:
     start_epoch = attestation.data.latest_crosslink.epoch
     end_epoch = slot_to_epoch(attestation.data.slot)
     chunks_per_slot = SHARD_BLOCK_SIZE // 32
@@ -489,7 +489,7 @@ For each `challenge` in `block.body.branch_challenges`:
 * Verify that `state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY`.
 * Verify that `verify_slashable_attestation(state, challenge.attestation)` returns `True`.
 * Verify that `challenge.responder_index` is in `challenge.attestation.validator_indices`.
-* Let `depth = get_attestation_merkle_depth(challenge.attestation))`. Verify that `challenge.data_index < 2**depth`.
+* Let `depth = get_attestation_merkle_depth(challenge.attestation)`. Verify that `challenge.data_index < 2**depth`.
 * Verify that there does not exist a `BranchChallengeRecord` in `state.validator_registry[challenge.responder_index].open_branch_challenges` with `root == challenge.attestation.data.shard_chain_commitment` and `data_index == data_index`.
 * Append to `state.validator_registry[challenge.responder_index].open_branch_challenges` the object `BranchChallengeRecord(challenger_index=get_beacon_proposer_index(state, state.slot), root=challenge.attestation.data.shard_chain_commitment, depth=depth, inclusion_epoch=get_current_epoch(state), data_index=data_index)`.
 
