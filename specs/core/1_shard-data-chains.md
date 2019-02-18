@@ -392,14 +392,14 @@ def get_merkle_depth(attestation: Attestation) -> int:
 ### `epoch_to_custody_period`
 
 ```python
-def epoch_to_custody_period(epoch: int) -> int:
+def epoch_to_custody_period(epoch: Epoch) -> int:
     return epoch // CUSTODY_PERIOD_LENGTH
 ```
 
 ### `slot_to_custody_period`
 
 ```python
-def slot_to_custody_period(slot: int) -> int:
+def slot_to_custody_period(slot: Slot) -> int:
     return epoch_to_custody_period(slot_to_epoch(slot))
 ```
 
