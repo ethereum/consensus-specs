@@ -1436,7 +1436,7 @@ def get_genesis_beacon_block(state: BeaconState) -> BeaconBlock
         header=Proposal(
             slot=GENESIS_SLOT,
             parent_root=ZERO_HASH,
-            block_root=tree_hash_root(block.body),
+            block_root=tree_hash_root(body),
             state_root=hash_tree_root(state),
             signature=EMPTY_SIGNATURE,
         ),
