@@ -1402,7 +1402,9 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
 
 * Let `genesis_validator_deposits` be the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log.
 * Let `genesis_time` be the timestamp specified in the `Eth2Genesis` log.
-* Let `genesis_eth1_data` be the `Eth1Data` when `Eth2Genesis` is emitted.
+* Let `genesis_eth1_data` be the `Eth1Data` object where:
+    * `genesis_eth1_data.deposit_root` is the deposit root when the `Eth2Genesis` log was emitted
+    * `genesis_eth1_data.block_hash` is the block hash of the block that emitted the `Eth2Genesis` log
 * Let `genesis_block_body = get_genesis_beacon_block_body()`.
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_block_body, genesis_eth1_data)`.
 * Let `genesis_block = get_genesis_beacon_block(genesis_state, genesis_block_body)`.
