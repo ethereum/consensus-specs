@@ -1352,7 +1352,7 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
     validator.slashed_epoch = get_current_epoch(state)
-    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH 
+    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
 ```
 
 #### `prepare_validator_for_withdrawal`
