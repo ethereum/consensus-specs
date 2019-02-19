@@ -276,11 +276,11 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value |
 | - | - |
 | `DOMAIN_BLOCK_HEADER` | `0` |
-| `DOMAIN_RANDAO` | `2` |
-| `DOMAIN_ATTESTATION` | `3` |
-| `DOMAIN_DEPOSIT` | `4` |
-| `DOMAIN_VOLUNTARY_EXIT` | `5` |
-| `DOMAIN_TRANSFER` | `6` |
+| `DOMAIN_RANDAO` | `1` |
+| `DOMAIN_ATTESTATION` | `2` |
+| `DOMAIN_DEPOSIT` | `3` |
+| `DOMAIN_VOLUNTARY_EXIT` | `4` |
+| `DOMAIN_TRANSFER` | `5` |
 
 ## Data structures
 
