@@ -42,8 +42,8 @@
                 - [`Transfer`](#transfer)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
+            - [`BeaconBlockHeader`](#beaconblockheader)
             - [`BeaconBlockBody`](#beaconblockbody)
-            - [`Proposal`](#proposal)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
             - [`Validator`](#validator)
@@ -115,9 +115,7 @@
             - [Slot](#slot)
             - [Block roots](#block-roots)
         - [Per-block processing](#per-block-processing)
-            - [Slot](#slot-1)
-            - [Block roots](#block-roots-1)
-            - [Block signature](#block-signature)
+            - [Block header](#block-header)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
             - [Transactions](#transactions)
@@ -279,7 +277,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | - | - |
 | `DOMAIN_DEPOSIT` | `0` |
 | `DOMAIN_ATTESTATION` | `1` |
-| `DOMAIN_PROPOSAL` | `2` |
+| `DOMAIN_HEADER` | `2` |
 | `DOMAIN_EXIT` | `3` |
 | `DOMAIN_RANDAO` | `4` |
 | `DOMAIN_TRANSFER` | `5` |
@@ -298,10 +296,10 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     # Proposer index
     'proposer_index': 'uint64',
-    # First proposal
-    'proposal_1': Proposal,
-    # Second proposal
-    'proposal_2': Proposal,
+    # First block header
+    'header_1': BeaconBlockHeader,
+    # Second block header
+    'header_2': BeaconBlockHeader,
 }
 ```
 
@@ -469,8 +467,20 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
-    'header': Proposal,
+    'header': BeaconBlockHeader,
     'body': BeaconBlockBody,
+}
+```
+
+#### `BeaconBlockHeader`
+
+```python
+{
+    'slot': 'uint64',
+    'parent_root': 'bytes32',
+    'block_root': 'bytes32',
+    'state_root': 'bytes32',
+    'signature': 'bytes96',
 }
 ```
 
@@ -486,23 +496,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'deposits': [Deposit],
     'voluntary_exits': [VoluntaryExit],
     'transfers': [Transfer],
-}
-```
-
-#### `Proposal`
-
-```python
-{
-    # Slot number
-    'slot': 'uint64',
-    # Parent root
-    'parent_root': 'bytes32',
-    # Block root
-    'block_root': 'bytes32',
-    # State root
-    'state_root': 'bytes32',
-    # Signature
-    'signature': 'bytes96',
 }
 ```
 
@@ -1407,18 +1400,21 @@ For convenience, we provide the interface to the contract here:
 
 ## On genesis
 
-When enough full deposits have been made to the deposit contract a `Eth2Genesis` log is emitted. The genesis block and state are defined by `get_genesis_beacon_block` and `get_genesis_beacon_state` where:
+When enough full deposits have been made to the deposit contract a `Eth2Genesis` log is emitted. Construct a corresponding `genesis_state` and `genesis_block` as follows:
 
-* `genesis_validator_deposits` is the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log
-* `genesis_time` is timestamp specified in the `Eth2Genesis` log
-* `latest_eth1_data` is the `Eth1Data` when `Eth2Genesis` is emitted
+* Let `genesis_validator_deposits` be the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log.
+* Let `genesis_time` be the timestamp specified in the `Eth2Genesis` log.
+* Let `genesis_eth1_data` be the `Eth1Data` when `Eth2Genesis` is emitted.
+* Let `genesis_block_body = get_genesis_beacon_block_body()`.
+* Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_block_body, genesis_eth1_data)`.
+* Let `genesis_block = get_genesis_beacon_block(genesis_state, genesis_block_body)`.
 
 ```python
-def get_genesis_beacon_block(state: BeaconState) -> BeaconBlock
+def get_genesis_beacon_block_body() -> BeaconBlock
     """
-    Get the genesis ``BeaconBlock``.
+    Get the genesis ``BeaconBlockBody``.
     """
-    body = BeaconBlockBody(
+    return BeaconBlockBody(
         randao_reveal=EMPTY_SIGNATURE,
         eth1_data=Eth1Data(
             deposit_root=ZERO_HASH,
@@ -1431,25 +1427,14 @@ def get_genesis_beacon_block(state: BeaconState) -> BeaconBlock
         exits=[],
         transfers=[],
     )
-
-    return BeaconBlock(
-        header=Proposal(
-            slot=GENESIS_SLOT,
-            parent_root=ZERO_HASH,
-            block_root=tree_hash_root(body),
-            state_root=hash_tree_root(state),
-            signature=EMPTY_SIGNATURE,
-        ),
-        body=body
-    )
 }
 ```
 
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             genesis_block_root: Bytes32,
-                             latest_eth1_data: Eth1Data) -> BeaconState:
+                             genesis_block_body: BeaconBlockBody,
+                             genesis_eth1_data: Eth1Data) -> BeaconState:
     """
     Get the genesis ``BeaconState``.
     """
@@ -1492,12 +1477,12 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         batched_block_roots=[],
 
         # Ethereum 1.0 chain data
-        latest_eth1_data=latest_eth1_data,
+        latest_eth1_data=genesis_eth1_data,
         eth1_data_votes=[],
         deposit_index=len(genesis_validator_deposits)
     )
 
-    state.latest_block_roots[GENESIS_SLOT % LATEST_BLOCK_ROOTS_LENGTH] = genesis_block_root
+    state.latest_block_roots[GENESIS_SLOT % LATEST_BLOCK_ROOTS_LENGTH] = hash_tree_root(genesis_block_body)
 
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
@@ -1514,6 +1499,24 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
+```
+
+```python
+def get_genesis_beacon_block(genesis_state: BeaconState,
+                             genesis_block_body: BeaconBlockBody) -> BeaconBlock
+    """
+    Get the genesis ``BeaconBlock``.
+    """
+    return BeaconBlock(
+        header=BeaconBlockHeader(
+            slot=GENESIS_SLOT,
+            parent_root=ZERO_HASH,
+            block_root=hash_tree_root(genesis_block_body),
+            state_root=hash_tree_root(genesis_state),
+            signature=EMPTY_SIGNATURE,
+        ),
+        body=genesis_block_body
+    )
 ```
 
 ## Beacon chain processing
@@ -1622,20 +1625,14 @@ Below are the processing steps that happen at every slot.
 
 Below are the processing steps that happen at every `block`.
 
-#### Slot
+#### Block header
 
 * Verify that `block.header.slot == state.slot`.
-
-#### Block roots
-
-* Verify that `block.header.block_root == tree_hash_root(block.body)`.
-* Set `state.latest_block_roots[state.slot % LATEST_BLOCK_ROOTS_LENGTH] = block.header.block_root`.
 * Verify that `block.header.parent_root == get_block_root(state, state.slot - 1)`.
-
-#### Block signature
-
+* Verify that `block.header.block_root == hash_tree_root(block.body)`.
+* Set `state.latest_block_roots[state.slot % LATEST_BLOCK_ROOTS_LENGTH] = block.header.block_root`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_HEADER))`.
 
 #### RANDAO
 
@@ -1656,11 +1653,11 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot`.
-* Verify that `proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root`.
+* Verify that `proposer_slashing.header_1.slot == proposer_slashing.header_2.slot`.
+* Verify that `proposer_slashing.header_1.block_root != proposer_slashing.header_2.block_root`.
 * Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_1, "signature"), signature=proposer_slashing.proposal_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_2, "signature"), signature=proposer_slashing.proposal_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_2.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_1, "signature"), signature=proposer_slashing.header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_1.slot), DOMAIN_HEADER))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_2, "signature"), signature=proposer_slashing.header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_2.slot), DOMAIN_HEADER))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
