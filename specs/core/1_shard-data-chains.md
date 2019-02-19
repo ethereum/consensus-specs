@@ -356,7 +356,7 @@ def process_response(response: InteractiveCustodyChallengeResponse,
     # Must make some progress!
     assert expected_depth > 0
     # Check the hashes match the previously provided root
-    root = merkle_root(hashes)
+    root = merkle_root(response.hashes)
     if challenge_data.depth == 0:
         assert get_bitfield_bit(root, 0) == challenge_data.custody_bit
     else:
