@@ -275,12 +275,12 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `DOMAIN_DEPOSIT` | `0` |
-| `DOMAIN_ATTESTATION` | `1` |
-| `DOMAIN_HEADER` | `2` |
-| `DOMAIN_EXIT` | `3` |
-| `DOMAIN_RANDAO` | `4` |
-| `DOMAIN_TRANSFER` | `5` |
+| `DOMAIN_BLOCK_HEADER` | `0` |
+| `DOMAIN_RANDAO` | `2` |
+| `DOMAIN_ATTESTATION` | `3` |
+| `DOMAIN_DEPOSIT` | `4` |
+| `DOMAIN_VOLUNTARY_EXIT` | `5` |
+| `DOMAIN_TRANSFER` | `6` |
 
 ## Data structures
 
@@ -1632,7 +1632,7 @@ Below are the processing steps that happen at every `block`.
 * Verify that `block.header.block_root == hash_tree_root(block.body)`.
 * Set `state.latest_block_roots[state.slot % LATEST_BLOCK_ROOTS_LENGTH] = block.header.block_root`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_HEADER))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
 
 #### RANDAO
 
@@ -1656,8 +1656,8 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.header_1.slot == proposer_slashing.header_2.slot`.
 * Verify that `proposer_slashing.header_1.block_root != proposer_slashing.header_2.block_root`.
 * Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_1, "signature"), signature=proposer_slashing.header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_1.slot), DOMAIN_HEADER))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_2, "signature"), signature=proposer_slashing.header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_2.slot), DOMAIN_HEADER))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_1, "signature"), signature=proposer_slashing.header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_1.slot), DOMAIN_BLOCK_HEADER))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_2, "signature"), signature=proposer_slashing.header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_2.slot), DOMAIN_BLOCK_HEADER))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
@@ -1765,7 +1765,7 @@ For each `exit` in `block.body.voluntary_exits`:
 * Let `validator = state.validator_registry[exit.validator_index]`.
 * Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
 * Verify that `get_current_epoch(state) >= exit.epoch`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=signed_root(exit, "signature"), signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
+* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=signed_root(exit, "signature"), signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_VOLUNTARY_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
 
 ##### Transfers
