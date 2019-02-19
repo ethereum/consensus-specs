@@ -1378,7 +1378,7 @@ Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSI
 
 ### `Eth2Genesis` log
 
-When sufficiently many full deposits have been made the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_state` function (defined below) where:
+When sufficiently many full deposits have been made the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
 * `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
@@ -1399,14 +1399,14 @@ For convenience, we provide the interface to the contract here:
 
 ## On genesis
 
-When enough full deposits have been made to the deposit contract a `Eth2Genesis` log is emitted. The genesis block and state are defined by `get_genesis_block` and `get_genesis_state` where:
+When enough full deposits have been made to the deposit contract a `Eth2Genesis` log is emitted. The genesis block and state are defined by `get_genesis_beacon_block` and `get_genesis_beacon_state` where:
 
 * `genesis_validator_deposits` is the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log
 * `genesis_time` is timestamp specified in the `Eth2Genesis` log
 * `latest_eth1_data` is the `Eth1Data` when `Eth2Genesis` is emitted
 
 ```python
-def get_genesis_block(genesis_validator_deposits: List[Deposit],
+def get_genesis_beacon_block(genesis_validator_deposits: List[Deposit],
                       genesis_time: int,
                       latest_eth1_data: Eth1Data) -> BeaconBlock
     """
@@ -1435,14 +1435,14 @@ def get_genesis_block(genesis_validator_deposits: List[Deposit],
     )
 
     genesis_block_root = tree_hash_root(block.body)
-    state = get_genesis_state(genesis_validator_deposits, genesis_time, genesis_block_root, latest_eth1_data)
+    state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_block_root, latest_eth1_data)
     block.header.state_root = hash_tree_root(state)
     return block
 }
 ```
 
 ```python
-def get_genesis_state(genesis_validator_deposits: List[Deposit],
+def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
                       genesis_time: int,
                       latest_eth1_data: Eth1Data,
                       genesis_block_root: Bytes32) -> BeaconState:
