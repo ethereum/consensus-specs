@@ -357,19 +357,22 @@ def process_response(response: InteractiveCustodyChallengeResponse,
     assert expected_depth > 0
     # Check the hashes match the previously provided root
     root = merkle_root(response.hashes)
+    # If this is the first response check the bit and the signature and set the root
     if challenge_data.depth == 0:
         assert get_bitfield_bit(root, 0) == challenge_data.custody_bit
+        assert bls_verify(
+            message_hash=signed_root(response, 'signature'),
+            pubkey=responder.pubkey,
+            signature=response.signature,
+            domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE)
+        )
+        challenge_data.current_custody_tree_node = root
+    # Otherwise just check the response against the root
     else:
         assert root == challenge_data.current_custody_tree_node
-    # Verify signature for depth 0
-    if challenge_data.depth == 0:
-        assert bls_verify(message_hash=signed_root(response, 'signature'),
-                          pubkey=responder.pubkey,
-                          signature=response.signature,
-                          domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE))
     # Update challenge data
     challenge_data.deadline=FAR_FUTURE_EPOCH
-    validator.withdrawable_epoch = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
+    responder.withdrawable_epoch = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
 ```
 
 Once a response provides 32 hashes, the challenger has the right to choose any one of them that they feel is constructed incorrectly to continue the game. Note that eventually, the game will get to the point where the `new_custody_tree_node` is a leaf node. We define an `InteractiveCustodyChallengeContinuation` object as follows:
@@ -413,7 +416,7 @@ def process_continuation(continuation: InteractiveCustodyChallengeContinuation,
     challenge_data.current_custody_tree_node = continuation.new_custody_tree_node
     challenge_data.depth += expected_depth
     challenge_data.deadline = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
-    validator.withdrawable_epoch = FAR_FUTURE_EPOCH
+    responder.withdrawable_epoch = FAR_FUTURE_EPOCH
     challenge_data.offset = challenger_data.offset * 2**expected_depth + sub_index
 ```
 
