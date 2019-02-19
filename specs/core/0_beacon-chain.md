@@ -212,7 +212,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value |
 | - | - |
 | `GENESIS_FORK_VERSION` | `0` |
-| `GENESIS_SLOT` | `2**63` |
+| `GENESIS_SLOT` | `2**32` |
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
@@ -688,12 +688,8 @@ def slot_to_epoch(slot: Slot) -> Epoch:
 def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
     Return the previous epoch of the given ``state``.
-    If the current epoch is  ``GENESIS_EPOCH``, return ``GENESIS_EPOCH``.
     """
-    current_epoch = get_current_epoch(state)
-    if current_epoch == GENESIS_EPOCH:
-        return GENESIS_EPOCH
-    return current_epoch - 1
+    return get_current_epoch(state) - 1
 ```
 
 ### `get_current_epoch`
