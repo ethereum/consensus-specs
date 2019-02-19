@@ -1626,7 +1626,7 @@ Below are the processing steps that happen at every `block`.
 
 * Let `block_root = tree_hash_root(block.body)`.
 * Set `state.latest_block_roots[state.slot % LATEST_BLOCK_ROOTS_LENGTH] = block_root`.
-* Verify that `block.parent_root == get_block_root(state, state.slot - 1)`.
+* Verify that `block.header.parent_root == get_block_root(state, state.slot - 1)`.
 
 #### Block signature
 
@@ -1635,21 +1635,21 @@ Below are the processing steps that happen at every `block`.
 
 #### RANDAO
 
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
-* Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(get_current_epoch(state)), signature=block.body.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
+* Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.body.randao_reveal))`.
 
 #### Eth1 data
 
-* If there exists an `eth1_data_vote` in `state.eth1_data_votes` for which `eth1_data_vote.eth1_data == block.eth1_data` (there will be at most one), set `eth1_data_vote.vote_count += 1`.
-* Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
+* If there exists an `eth1_data_vote` in `state.eth1_data_votes` for which `eth1_data_vote.eth1_data == block.body.eth1_data` (there will be at most one), set `eth1_data_vote.vote_count += 1`.
+* Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.body.eth1_data, vote_count=1)`.
 
 #### Transactions
 
 ##### Proposer slashings
 
-Verify that `len(block.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
+Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 
-For each `proposer_slashing` in `block.proposer_slashings`:
+For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
 * Verify that `proposer_slashing.block_header_1.slot == proposer_slashing.block_header_2.slot`.
@@ -1661,9 +1661,9 @@ For each `proposer_slashing` in `block.proposer_slashings`:
 
 ##### Attester slashings
 
-Verify that `len(block.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
+Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 
-For each `attester_slashing` in `block.attester_slashings`:
+For each `attester_slashing` in `block.body.attester_slashings`:
 
 * Let `slashable_attestation_1 = attester_slashing.slashable_attestation_1`.
 * Let `slashable_attestation_2 = attester_slashing.slashable_attestation_2`.
@@ -1677,9 +1677,9 @@ For each `attester_slashing` in `block.attester_slashings`:
 
 ##### Attestations
 
-Verify that `len(block.attestations) <= MAX_ATTESTATIONS`.
+Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
-For each `attestation` in `block.attestations`:
+For each `attestation` in `block.body.attestations`:
 
 * Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY < attestation.data.slot + SLOTS_PER_EPOCH`.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state) else state.previous_justified_epoch`.
@@ -1722,12 +1722,12 @@ For each `attestation` in `block.attestations`:
 
 ##### Deposits
 
-Verify that `len(block.deposits) <= MAX_DEPOSITS`.
+Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
 [TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
 [TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
 
-For each `deposit` in `block.deposits`:
+For each `deposit` in `block.body.deposits`:
 
 * Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
 * Verify that `deposit.index == state.deposit_index`.
@@ -1757,9 +1757,9 @@ process_deposit(state, deposit)
 
 ##### Voluntary exits
 
-Verify that `len(block.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
+Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 
-For each `exit` in `block.voluntary_exits`:
+For each `exit` in `block.body.voluntary_exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
 * Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
@@ -1771,9 +1771,9 @@ For each `exit` in `block.voluntary_exits`:
 
 Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
 
-Verify that `len(block.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
+Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
 
-For each `transfer` in `block.transfers`:
+For each `transfer` in `block.body.transfers`:
 
 * Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
 * Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
@@ -2070,7 +2070,7 @@ def process_exit_queue(state: BeaconState) -> None:
 
 ### State root verification
 
-Verify `block.state_root == hash_tree_root(state)` if there exists a `block` for the slot being processed.
+Verify `block.header.state_root == hash_tree_root(state)` if there exists a `block` for the slot being processed.
 
 # References
 
