@@ -42,8 +42,8 @@
                 - [`Transfer`](#transfer)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
-            - [`BeaconBlockHeader`](#beaconblockheader)
             - [`BeaconBlockBody`](#beaconblockbody)
+            - [`Proposal`](#Proposal)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
             - [`Validator`](#validator)
@@ -299,9 +299,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Proposer index
     'proposer_index': 'uint64',
     # First block header
-    'block_header_1': BeaconBlockHeader,
+    'proposal_1': Proposal,
     # Second block header
-    'block_header_2': BeaconBlockHeader,
+    'proposal_2': Proposal,
 }
 ```
 
@@ -467,19 +467,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 #### `BeaconBlock`
 {
-    'header': BeaconBlockHeader,
+    'header': Proposal,
     'body': BeaconBlockBody,
-}
-```
-
-#### `BeaconBlockHeader`
-
-```python
-{
-    'slot': 'uint64',
-    'parent_root': 'bytes32',
-    'state_root': 'bytes32',
-    'signature': 'bytes96',
 }
 ```
 
@@ -495,6 +484,21 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'deposits': [Deposit],
     'voluntary_exits': [VoluntaryExit],
     'transfers': [Transfer],
+}
+```
+
+#### `Proposal`
+
+```python
+{
+    # Slot number
+    'slot': 'uint64',
+    # Parent root
+    'parent_root': 'bytes32',
+    # Block root
+    'state_root': 'bytes32',
+    # Signature
+    'signature': 'bytes96',
 }
 ```
 
@@ -1413,7 +1417,7 @@ def get_genesis_beacon_block(genesis_validator_deposits: List[Deposit],
     Get the genesis ``BeaconBlock``.
     """
     block = BeaconBlock(
-        header=BeaconBlockHeader(
+        header=Proposal(
             slot=GENESIS_SLOT,
             parent_root=ZERO_HASH,
             state_root=ZERO_HASH,
@@ -1652,11 +1656,11 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `proposer_slashing.block_header_1.slot == proposer_slashing.block_header_2.slot`.
-* Verify that `proposer_slashing.block_header_1.block_root != proposer_slashing.block_header_2.block_root`.
+* Verify that `proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot`.
+* Verify that `proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root`.
 * Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.block_header_1, "signature"), signature=proposer_slashing.block_header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.block_header_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.block_header_2, "signature"), signature=proposer_slashing.block_header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.block_header_2.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_1, "signature"), signature=proposer_slashing.proposal_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_1.slot), DOMAIN_PROPOSAL))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_2, "signature"), signature=proposer_slashing.proposal_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_2.slot), DOMAIN_PROPOSAL))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
