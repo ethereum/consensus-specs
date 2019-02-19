@@ -1448,8 +1448,8 @@ def get_genesis_beacon_block(state: BeaconState) -> BeaconBlock
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             latest_eth1_data: Eth1Data,
-                             genesis_block_root: Bytes32) -> BeaconState:
+                             genesis_block_root: Bytes32,
+                             latest_eth1_data: Eth1Data) -> BeaconState:
     """
     Get the genesis ``BeaconState``.
     """
