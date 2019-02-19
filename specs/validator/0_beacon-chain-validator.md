@@ -186,7 +186,7 @@ epoch_signature = bls_sign(
     * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`'th ancestor of the head of the canonical eth1.0 chain.
     * Let `deposit_root` be the deposit root of the eth1.0 deposit contract in the post-state of the block referenced by `block_hash`
 * If `D` is nonempty:
-    * Let `best_vote` be the member of `D` that has the highest `vote.eth1_data.vote_count`, breaking ties by favoring block hashes with higher associated block height.
+    * Let `best_vote` be the member of `D` that has the highest `vote.vote_count`, breaking ties by favoring block hashes with higher associated block height.
     * Let `block_hash = best_vote.eth1_data.block_hash`.
     * Let `deposit_root = best_vote.eth1_data.deposit_root`.
 * Set `block.eth1_data = Eth1Data(deposit_root=deposit_root, block_hash=block_hash)`.
