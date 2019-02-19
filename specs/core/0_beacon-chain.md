@@ -1403,16 +1403,16 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
 
 * `genesis_validator_deposits` is the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log
 * `genesis_time` is timestamp specified in the `Eth2Genesis` log
-* `genesis_eth1_data` is the `Eth1Data` when `Eth2Genesis` is emitted
+* `latest_eth1_data` is the `Eth1Data` when `Eth2Genesis` is emitted
 
 ```python
 def get_genesis_block(genesis_validator_deposits: List[Deposit],
                       genesis_time: int,
-                      genesis_eth1_data: Eth1Data) -> BeaconBlock
+                      latest_eth1_data: Eth1Data) -> BeaconBlock
     """
     Get the genesis ``BeaconBlock``.
     """
-    genesis_block = BeaconBlock(
+    block = BeaconBlock(
         header=BeaconBlockHeader(
             slot=GENESIS_SLOT,
             parent_root=ZERO_HASH,
@@ -1434,22 +1434,22 @@ def get_genesis_block(genesis_validator_deposits: List[Deposit],
         ),
     )
 
-    genesis_block_root = tree_hash_root(genesis_block.body)
-    genesis_state = get_genesis_state(genesis_validator_deposits, genesis_time, genesis_block_root, genesis_eth1_data)
-    genesis_block.header.state_root = hash_tree_root(genesis_state)
-    return genesis_block
+    genesis_block_root = tree_hash_root(block.body)
+    state = get_genesis_state(genesis_validator_deposits, genesis_time, genesis_block_root, latest_eth1_data)
+    block.header.state_root = hash_tree_root(state)
+    return block
 }
 ```
 
 ```python
 def get_genesis_state(genesis_validator_deposits: List[Deposit],
                       genesis_time: int,
-                      genesis_eth1_data: Eth1Data,
+                      latest_eth1_data: Eth1Data,
                       genesis_block_root: Bytes32) -> BeaconState:
     """
     Get the genesis ``BeaconState``.
     """
-    genesis_state = BeaconState(
+    state = BeaconState(
         # Misc
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
@@ -1488,28 +1488,28 @@ def get_genesis_state(genesis_validator_deposits: List[Deposit],
         batched_block_roots=[],
 
         # Ethereum 1.0 chain data
-        latest_eth1_data=genesis_eth1_data,
+        latest_eth1_data=latest_eth1_data,
         eth1_data_votes=[],
-        deposit_index=len(genesis_validator_deposits),
+        deposit_index=len(genesis_validator_deposits)
     )
 
-    genesis_state.latest_block_roots[GENESIS_SLOT % LATEST_BLOCK_ROOTS_LENGTH] = genesis_block_root
+    state.latest_block_roots[GENESIS_SLOT % LATEST_BLOCK_ROOTS_LENGTH] = genesis_block_root
 
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
-        process_deposit(genesis_state, deposit)
+        process_deposit(state, deposit)
 
     # Process genesis activations
-    for validator_index, _ in enumerate(genesis_state.validator_registry):
-        if get_effective_balance(genesis_state, validator_index) >= MAX_DEPOSIT_AMOUNT:
-            activate_validator(genesis_state, validator_index, is_genesis=True)
+    for validator_index, _ in enumerate(state.validator_registry):
+        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
+            activate_validator(state, validator_index, is_genesis=True)
 
-    genesis_active_index_root = hash_tree_root(get_active_validator_indices(genesis_state.validator_registry, GENESIS_EPOCH))
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
-        genesis_state.latest_active_index_roots[index] = genesis_active_index_root
-    genesis_state.current_shuffling_seed = generate_seed(genesis_state, GENESIS_EPOCH)
+        state.latest_active_index_roots[index] = genesis_active_index_root
+    state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
 
-    return genesis_state
+    return state
 ```
 
 ## Beacon chain processing
