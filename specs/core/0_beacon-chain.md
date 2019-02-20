@@ -63,7 +63,6 @@
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`get_permuted_index`](#get_permuted_index)
-        - [`split`](#split)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shuffling`](#get_shuffling)
         - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
@@ -756,20 +755,6 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
         index = flip if bit else index
 
     return index
-```
-
-### `split`
-
-```python
-def split(values: List[Any], split_count: int) -> List[List[Any]]:
-    """
-    Splits ``values`` into ``split_count`` pieces.
-    """
-    list_length = len(values)
-    return [
-        values[(list_length * i // split_count): (list_length * (i + 1) // split_count)]
-        for i in range(split_count)
-    ]
 ```
 
 ### `get_epoch_committee_count`
