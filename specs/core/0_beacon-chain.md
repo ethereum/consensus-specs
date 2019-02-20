@@ -232,7 +232,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
-| `MIN_VALIDATOR_WITHDRAWAL_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### State list lengths
 
