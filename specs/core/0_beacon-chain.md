@@ -89,7 +89,7 @@
         - [`is_double_vote`](#is_double_vote)
         - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
-        - [`get_entry_exit_effect_epoch`](#get_entry_exit_effect_epoch)
+        - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
@@ -1208,13 +1208,12 @@ def integer_squareroot(n: int) -> int:
     return x
 ```
 
-### `get_entry_exit_effect_epoch`
+### `get_delayed_activation_exit_epoch`
 
 ```python
-def get_entry_exit_effect_epoch(epoch: Epoch) -> Epoch:
+def get_delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
     """
-    An entry or exit triggered in the ``epoch`` given by the input takes effect at
-    the epoch given by the output.
+    Return the epoch at which an activation or exit triggered in ``epoch`` takes effect.
     """
     return epoch + 1 + ACTIVATION_EXIT_DELAY
 ```
@@ -1296,7 +1295,7 @@ def activate_validator(state: BeaconState, index: ValidatorIndex, is_genesis: bo
     """
     validator = state.validator_registry[index]
 
-    validator.activation_epoch = GENESIS_EPOCH if is_genesis else get_entry_exit_effect_epoch(get_current_epoch(state))
+    validator.activation_epoch = GENESIS_EPOCH if is_genesis else get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### `initiate_validator_exit`
@@ -1322,10 +1321,10 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
     validator = state.validator_registry[index]
 
     # The following updates only occur if not previous exited
-    if validator.exit_epoch <= get_entry_exit_effect_epoch(get_current_epoch(state)):
+    if validator.exit_epoch <= get_delayed_activation_exit_epoch(get_current_epoch(state)):
         return
 
-    validator.exit_epoch = get_entry_exit_effect_epoch(get_current_epoch(state))
+    validator.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### `slash_validator`
@@ -1746,7 +1745,7 @@ Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 For each `exit` in `block.body.voluntary_exits`:
 
 * Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `validator.exit_epoch > get_entry_exit_effect_epoch(get_current_epoch(state))`.
+* Verify that `validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))`.
 * Verify that `get_current_epoch(state) >= exit.epoch`.
 * Verify that `bls_verify(pubkey=validator.pubkey, message_hash=signed_root(exit, "signature"), signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
 * Run `initiate_validator_exit(state, exit.validator_index)`.
@@ -1956,7 +1955,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch > get_entry_exit_effect_epoch(current_epoch) and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_epoch > get_delayed_activation_exit_epoch(current_epoch) and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1968,7 +1967,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.exit_epoch > get_entry_exit_effect_epoch(current_epoch) and validator.initiated_exit:
+        if validator.exit_epoch > get_delayed_activation_exit_epoch(current_epoch) and validator.initiated_exit:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
