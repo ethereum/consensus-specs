@@ -18,7 +18,6 @@
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Status flags](#status-flags)
         - [Max transactions per block](#max-transactions-per-block)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
@@ -568,7 +567,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'withdrawable_epoch': 'uint64',
     # Did the validator initiate an exit
     'initiated_exit': 'bool',
-    # Was the validator penalized
+    # Was the validator slashed
     'slashed': 'bool',
 }
 ```
