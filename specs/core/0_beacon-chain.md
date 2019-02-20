@@ -181,7 +181,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 ### Misc
 
 | Name | Value |
-| - | - | :-: |
+| - | - |
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
