@@ -72,6 +72,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `SHARD_BLOCK_SIZE`            | 2**14 (= 16,384) | bytes  |
 | `MINOR_REWARD_QUOTIENT`       | 2**8 (= 256)     |        |
 | `MAX_POC_RESPONSE_DEPTH`      | 5                |        |
+| `ZERO_PUBKEY`                 | int_to_bytes48(0)|        |
 | `VALIDATOR_NULL`              | 2**64 - 1        |        |
 
 #### Time parameters
@@ -513,9 +514,9 @@ def get_current_custody_period(state: BeaconState) -> int:
 ```python
 def verify_custody_subkey_reveal(pubkey: bytes48,
                                  subkey: bytes96,
-                                 mask: bytes32,
-                                 mask_pubkey: bytes48,
-                                 period: int) -> bool:
+                                 period: int,
+                                 mask=ZERO_HASH: bytes32,
+                                 mask_pubkey=ZERO_PUBKEY: bytes48) -> bool:
     # Legitimate reveal: checking that the provided value actually is the subkey
     if mask == ZERO_HASH:
         pubkeys=[pubkey]
@@ -712,8 +713,6 @@ def process_initiation(initiation: InteractiveCustodyChallengeInitiation,
     assert verify_custody_subkey_reveal(
         pubkey=state.validator_registry[responder_index].pubkey,
         subkey=responder_subkey,
-        mask=ZERO_HASH,
-        mask_pubkey=b'',
         period=slot_to_custody_period(attestation.data.slot)
     )
     # Set the challenge object
