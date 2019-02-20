@@ -1410,7 +1410,7 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
 * Let `genesis_block = get_genesis_beacon_block(genesis_state, genesis_block_body)`.
 
 ```python
-def get_genesis_beacon_block_body() -> BeaconBlock
+def get_genesis_beacon_block_body() -> BeaconBlockBody:
     """
     Get the genesis ``BeaconBlockBody``.
     """
@@ -1504,7 +1504,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
 ```python
 def get_genesis_beacon_block(genesis_state: BeaconState,
-                             genesis_block_body: BeaconBlockBody) -> BeaconBlock
+                             genesis_block_body: BeaconBlockBody) -> BeaconBlock:
     """
     Get the genesis ``BeaconBlock``.
     """
@@ -1613,7 +1613,7 @@ _Note_: If there are skipped slots between a block and its parent block, run the
 
 Below are the processing steps that happen at every `slot > GENESIS_SLOT`.
 
-* Set `state.latest_state_roots[state.slot % SLOTS_PER_BATCHING] = hash(state)`.
+* Set `state.latest_state_roots[state.slot % SLOTS_PER_BATCHING] = hash_tree_root(state)`.
 * Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = get_block_root(state, state.slot)`.
 * If `state.slot % SLOTS_PER_BATCHING == 0` append `merkle_root(state.latest_block_roots + state.latest_state_roots)` to `state.historical_batchings`.
 * Set `state.slot += 1`.
