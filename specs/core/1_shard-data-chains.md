@@ -466,7 +466,6 @@ Define a `SubkeyReveal` as follows:
 
 ```python
 {
-    'challenger_index: 'uint64',
     'responder_index': 'uint64',
     'sub_index': 'uint64',
     'new_custody_tree_node': 'bytes32',
@@ -800,7 +799,7 @@ def process_continuation(continuation: InteractiveCustodyChallengeContinuation,
     )
     # Verify signature
     assert bls_verify(message_hash=signed_root(continutation, 'signature'),
-                      pubkey=responder.pubkey,
+                      pubkey=state.validator_registry[challenge_data.challenger].pubkey,
                       signature=continutation.signature,
                       domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE))
     # Update the challenge data
@@ -808,7 +807,7 @@ def process_continuation(continuation: InteractiveCustodyChallengeContinuation,
     challenge_data.depth += expected_depth
     challenge_data.deadline = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH
-    challenge_data.offset = challenger_data.offset * 2**expected_depth + sub_index
+    challenge_data.offset = challenge_data.offset * 2**expected_depth + sub_index
 ```
 
 ## Per-epoch processing
