@@ -1955,7 +1955,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch > get_delayed_activation_exit_epoch(current_epoch) and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_epoch == FAR_FUTURE_EPOCH and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -1967,7 +1967,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.exit_epoch > get_delayed_activation_exit_epoch(current_epoch) and validator.initiated_exit:
+        if validator.activation_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -2029,7 +2029,7 @@ def process_exit_queue(state: BeaconState) -> None:
     def eligible(index):
         validator = state.validator_registry[index]
         # Filter out dequeued validators
-        if validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
+        if validator.withdrawable_epoch != FAR_FUTURE_EPOCH:
             return False
         # Dequeue if the minimum amount of time has passed
         else:
