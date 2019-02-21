@@ -1497,7 +1497,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
         state.latest_active_index_roots[index] = genesis_active_index_root
     state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
-    state.previous_shuffling_seed = state.current_shuffling_seed
 
     return state
 ```
