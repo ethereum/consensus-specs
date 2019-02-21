@@ -475,8 +475,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     'slot': 'uint64',
-    'parent_root': 'bytes32',
-    'block_root': 'bytes32',
+    'parent_block_root': 'bytes32',
+    'block_body_root': 'bytes32',
     'state_root': 'bytes32',
     'signature': 'bytes96',
 }
@@ -536,6 +536,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
     'historical_batchings': ['bytes32'],
+    'latest_block_body_root': bytes32,
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
@@ -1476,14 +1477,13 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
         latest_attestations=[],
         historical_batchings=[],
+        latest_block_body_root=hash_tree_root(genesis_block_body),
 
         # Ethereum 1.0 chain data
         latest_eth1_data=genesis_eth1_data,
         eth1_data_votes=[],
         deposit_index=len(genesis_validator_deposits)
     )
-
-    state.latest_block_roots[GENESIS_SLOT % SLOTS_PER_BATCHING] = hash_tree_root(genesis_block_body)
 
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
@@ -1511,8 +1511,8 @@ def get_genesis_beacon_block(genesis_state: BeaconState,
     return BeaconBlock(
         header=BeaconBlockHeader(
             slot=GENESIS_SLOT,
-            parent_root=ZERO_HASH,
-            block_root=hash_tree_root(genesis_block_body),
+            parent_block_root=ZERO_HASH,
+            block_body_root=hash_tree_root(genesis_block_body),
             state_root=hash_tree_root(genesis_state),
             signature=EMPTY_SIGNATURE,
         ),
@@ -1532,7 +1532,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with root `block.parent_root` has been processed and accepted.
+* The parent block with root `block.parent_block_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
 * The node's Unix time is greater than or equal to `state.genesis_time + (block.header.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
@@ -1614,8 +1614,8 @@ _Note_: If there are skipped slots between a block and its parent block, run the
 Below are the processing steps that happen at every `slot >= GENESIS_SLOT`.
 
 * Set `state.latest_state_roots[state.slot % SLOTS_PER_BATCHING] = hash_tree_root(state)`.
-* Set `state.slot += 1`.
 * Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = get_block_root(state, state.slot - 1)`.
+* Set `state.slot += 1`.
 * If `state.slot % SLOTS_PER_BATCHING == 0` append `merkle_root(state.latest_block_roots + state.latest_state_roots)` to `state.historical_batchings`.
 
 ### Per-block processing
@@ -1625,9 +1625,21 @@ Below are the processing steps that happen at every `block`.
 #### Block header
 
 * Verify that `block.header.slot == state.slot`.
-* Verify that `block.header.parent_root == get_block_root(state, state.slot - 1)`.
-* Verify that `block.header.block_root == hash_tree_root(block.body)`.
-* Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = block.header.block_root`.
+* Verify that `block.header.parent_block_root` equals
+
+```python
+signed_root(BeaconBlockHeader(
+    slot=state.slot - 1,
+    parent_block_root=get_block_root(state, state.slot - 1),
+    block_body_root=state.latest_block_body_root,
+    state_root=get_state_root(state, state.slot - 1),
+    signature=EMPTY_SIGNATURE,
+), "signature")`
+```
+
+* Verify that `block.header.block_body_root == hash_tree_root(block.body)`.
+* Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = signed_root(block.header, "signature")`.
+* Set `state.latest_block_body_root = block.header.block_body_root`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
 
