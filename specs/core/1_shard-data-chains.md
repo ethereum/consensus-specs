@@ -117,7 +117,7 @@ InteractiveCustodyChallengeData(
     depth=0,
     offset=0,
     max_depth=0,
-    deadline=0
+    deadline=0,
 )
 ```
 
@@ -336,8 +336,8 @@ And the initializers:
     'open_branch_challenges': [],
     'next_subkey_to_reveal': get_current_custody_period(state),
     'reveal_max_periods_late': 0,
-    'interactive_custody_challenge_data': EMPTY_CHALLENGE_DATA
-    'now_challenging': VALIDATOR_NULL
+    'interactive_custody_challenge_data': EMPTY_CHALLENGE_DATA,
+    'now_challenging': VALIDATOR_NULL,
 ```
 
 ### `BeaconBlockBody`
@@ -448,7 +448,7 @@ Define a `SubkeyReveal` as follows:
     'responder_index': 'uint64',
     'challenger_index': 'uint64',
     'responder_subkey': 'bytes96',
-    'signature': 'bytes96'
+    'signature': 'bytes96',
 }
 ```
 
@@ -470,7 +470,7 @@ Define a `SubkeyReveal` as follows:
     'sub_index': 'uint64',
     'new_custody_tree_node': 'bytes32',
     'proof': ['bytes32'],
-    'signature': 'bytes96'
+    'signature': 'bytes96',
 }
 ```
 
