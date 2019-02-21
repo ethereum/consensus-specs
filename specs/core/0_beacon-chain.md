@@ -1636,9 +1636,8 @@ signed_root(BeaconBlockHeader(
     signature=EMPTY_SIGNATURE,
 ), "signature")`
 ```
-
+* Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.header.parent_block_root`.
 * Verify that `block.header.block_body_root == hash_tree_root(block.body)`.
-* Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = signed_root(block.header, "signature")`.
 * Set `state.latest_block_body_root = block.header.block_body_root`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
