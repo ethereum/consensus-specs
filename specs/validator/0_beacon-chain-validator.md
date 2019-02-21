@@ -263,7 +263,7 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head)` where `head` is 
 Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(slot_to_epoch(head.slot))`.
 
 _Note:_ This can be looked up in the state using:
-* Let `epoch_start_slot = get_epoch_start_slot(slot_to_epoch(head.slot))`. `get_block_root(state, get_epoch_start_slot(slot_to_epoch(head.slot)))`.
+* Let `epoch_start_slot = get_epoch_start_slot(slot_to_epoch(head.slot))`.
 * Set `epoch_boundary_root = hash_tree_root(head) if epoch_start_slot == head.slot else get_block_root(state, epoch_start_slot)`.
 
 ##### Shard block root
@@ -282,7 +282,7 @@ Set `attestation_data.justified_epoch = state.justified_epoch` where `state` is 
 
 ##### Justified block root
 
-Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at `state.justified_epoch` in the chain defined by `head`.
+Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at the slot `get_epoch_start_slot(state.justified_epoch)` in the chain defined by `head`.
 
 _Note:_ This can be looked up in the state using `get_block_root(state, justified_epoch)`.
 
