@@ -476,7 +476,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     'slot': 'uint64',
     'previous_block_root': 'bytes32',
-    'block_body_root': 'bytes32',
     'state_root': 'bytes32',
     'signature': 'bytes96',
 }
@@ -1402,27 +1401,35 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
 * Let `genesis_eth1_data` be the `Eth1Data` object where:
     * `genesis_eth1_data.deposit_root` is the deposit root when the `Eth2Genesis` log was emitted
     * `genesis_eth1_data.block_hash` is the hash of the block that emitted the `Eth2Genesis` log
-* Let `genesis_block_body = get_genesis_beacon_block_body()`.
-* Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_block_body, genesis_eth1_data)`.
-* Let `genesis_block = get_genesis_beacon_block(genesis_state, genesis_block_body)`.
+* Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
+* Let `genesis_block = get_empty_block()`.
+* Let `genesis_block.header.state_root = hash_tree_root(genesis_state)`.
 
 ```python
-def get_genesis_beacon_block_body() -> BeaconBlockBody:
+def get_empty_block() -> BeaconBlock:
     """
-    Get the genesis ``BeaconBlockBody``.
+    Get an empty ``BeaconBlock``.
     """
-    return BeaconBlockBody(
-        randao_reveal=EMPTY_SIGNATURE,
-        eth1_data=Eth1Data(
-            deposit_root=ZERO_HASH,
-            block_hash=ZERO_HASH
+    return BeaconBlock(
+        header=BeaconBlockHeader(
+            slot=GENESIS_SLOT,
+            previous_block_root=ZERO_HASH,
+            state_root=ZERO_HASH,
+            signature=EMPTY_SIGNATURE,
         ),
-        proposer_slashings=[],
-        attester_slashings=[],
-        attestations=[],
-        deposits=[],
-        exits=[],
-        transfers=[],
+        body=BeaconBlockBody(
+            randao_reveal=EMPTY_SIGNATURE,
+            eth1_data=Eth1Data(
+                deposit_root=ZERO_HASH,
+                block_hash=ZERO_HASH
+            ),
+            proposer_slashings=[],
+            attester_slashings=[],
+            attestations=[],
+            deposits=[],
+            exits=[],
+            transfers=[],
+        ),
     )
 }
 ```
@@ -1430,7 +1437,6 @@ def get_genesis_beacon_block_body() -> BeaconBlockBody:
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             genesis_block_body: BeaconBlockBody,
                              genesis_eth1_data: Eth1Data) -> BeaconState:
     """
     Get the genesis ``BeaconState``.
@@ -1472,13 +1478,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
         latest_attestations=[],
-        latest_partial_header=BeaconBlockHeader(
-            slot=GENESIS_SLOT,
-            previous_block_root=ZERO_HASH,
-            block_body_root=hash_tree_root(genesis_block_body),
-            state_root=ZERO_HASH,
-            signature=EMPTY_SIGNATURE,
-        ),
+        latest_partial_block=get_empty_block(),
         historical_batchings=[],
 
         # Ethereum 1.0 chain data
@@ -1502,24 +1502,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
-```
-
-```python
-def get_genesis_beacon_block(genesis_state: BeaconState,
-                             genesis_block_body: BeaconBlockBody) -> BeaconBlock:
-    """
-    Get the genesis ``BeaconBlock``.
-    """
-    return BeaconBlock(
-        header=BeaconBlockHeader(
-            slot=GENESIS_SLOT,
-            previous_block_root=ZERO_HASH,
-            block_body_root=hash_tree_root(genesis_block_body),
-            state_root=hash_tree_root(genesis_state),
-            signature=EMPTY_SIGNATURE,
-        ),
-        body=genesis_block_body
-    )
 ```
 
 ## Beacon chain processing
@@ -1627,7 +1609,6 @@ Below are the processing steps that happen at every `block`.
 #### Block header
 
 * Verify that `block.header.slot == state.slot`.
-* Verify that `block.header.block_body_root == hash_tree_root(block.body)`.
 * Set `state.latest_partial_header.state_root = get_state_root(state, state.slot - 1)`.
 * Verify that `block.header.previous_block_root == hash_tree_root(state.latest_partial_header)`.
 * Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.header.previous_block_root`.
