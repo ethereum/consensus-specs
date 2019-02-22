@@ -1607,7 +1607,7 @@ Below are the processing steps that happen at every `slot >= GENESIS_SLOT`.
 
 ### Per-block processing
 
-Below are the processing steps that happen at every `block`.
+Below are the processing steps that happen at every `block` except the genesis block.
 
 #### Block header
 
