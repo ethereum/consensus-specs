@@ -1486,21 +1486,16 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         historical_batchings=[],
 
         # Ethereum 1.0 chain data
-        latest_eth1_data=Eth1Data(
-            deposit_root=ZERO_HASH,
-            block_hash=ZERO_HASH
-        ),
+        latest_eth1_data=genesis_eth1_data,
         eth1_data_votes=[],
-        deposit_index=len(genesis_validator_deposits),
+        deposit_index=len(genesis_validator_deposits)
     )
 
     state.latest_partial_block = get_empty_block()
-    state.latest_eth1_data = genesis_eth1_data
 
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
         process_deposit(state, deposit)
-    state.deposit_index = len(genesis_validator_deposits)
 
     # Process genesis activations
     for validator_index, _ in enumerate(state.validator_registry):
