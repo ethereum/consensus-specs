@@ -350,6 +350,8 @@ def get_committee_assignment(
         * ``assignment[3]`` is a bool signalling if the validator is expected to propose
             a beacon block at the assigned slot.
     """
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = get_current_epoch(state)
     assert previous_epoch <= epoch <= next_epoch
 
     epoch_start_slot = get_epoch_start_slot(epoch)
