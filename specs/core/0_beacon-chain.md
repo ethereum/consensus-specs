@@ -540,7 +540,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
-    'latest_block_header': BeaconBlockHeader,
+    'latest_block_header': BeaconBlockHeader,  # Latest block header with `state_root` set to `ZERO_HASH`
     'historical_batchings': ['bytes32'],
 
     # Ethereum 1.0 chain data
