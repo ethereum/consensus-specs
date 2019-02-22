@@ -683,7 +683,7 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
     Return the previous epoch of the given ``state``.
     """
-    return get_current_epoch(state) - 1
+    return max(get_current_epoch(state) - 1, GENESIS_EPOCH)
 ```
 
 ### `get_current_epoch`
@@ -865,16 +865,16 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
     assert previous_epoch <= epoch <= next_epoch
 
-    if epoch == previous_epoch:
-        committees_per_epoch = get_previous_epoch_committee_count(state)
-        seed = state.previous_shuffling_seed
-        shuffling_epoch = state.previous_shuffling_epoch
-        shuffling_start_shard = state.previous_shuffling_start_shard
-    elif epoch == current_epoch:
+    if epoch == current_epoch:
         committees_per_epoch = get_current_epoch_committee_count(state)
         seed = state.current_shuffling_seed
         shuffling_epoch = state.current_shuffling_epoch
         shuffling_start_shard = state.current_shuffling_start_shard
+    elif epoch == previous_epoch:
+        committees_per_epoch = get_previous_epoch_committee_count(state)
+        seed = state.previous_shuffling_seed
+        shuffling_epoch = state.previous_shuffling_epoch
+        shuffling_start_shard = state.previous_shuffling_start_shard
     elif epoch == next_epoch:
         current_committees_per_epoch = get_current_epoch_committee_count(state)
         committees_per_epoch = get_next_epoch_committee_count(state)
@@ -1657,6 +1657,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
+* Verify that `attestation.data.slot >= GENESIS_SLOT`.
 * Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
 * Verify that `state.slot < attestation.data.slot + SLOTS_PER_EPOCH.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state) else state.previous_justified_epoch`.
