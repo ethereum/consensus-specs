@@ -208,7 +208,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value |
 | - | - |
 | `GENESIS_FORK_VERSION` | `0` |
-| `GENESIS_SLOT` | `2**63` |
+| `GENESIS_SLOT` | `2**32` |
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
@@ -229,7 +229,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
 | `SLOTS_PER_BATCHING` | `2**13` (= 8,192) | slots | ~13 hours |
-| `MIN_VALIDATOR_WITHDRAWAL_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### State list lengths
 
@@ -676,12 +676,8 @@ def slot_to_epoch(slot: Slot) -> Epoch:
 def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
     Return the previous epoch of the given ``state``.
-    If the current epoch is  ``GENESIS_EPOCH``, return ``GENESIS_EPOCH``.
     """
-    current_epoch = get_current_epoch(state)
-    if current_epoch == GENESIS_EPOCH:
-        return GENESIS_EPOCH
-    return current_epoch - 1
+    return get_current_epoch(state) - 1
 ```
 
 ### `get_current_epoch`
@@ -1339,7 +1335,7 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
     validator.slashed_epoch = get_current_epoch(state)
-    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH 
+    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
 ```
 
 #### `prepare_validator_for_withdrawal`
@@ -1455,7 +1451,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         validator_registry_update_epoch=GENESIS_EPOCH,
 
         # Randomness and committees
-        latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
+        latest_randao_mixes=[EMPTY_SIGNATURE for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
         previous_shuffling_start_shard=GENESIS_START_SHARD,
         current_shuffling_start_shard=GENESIS_START_SHARD,
         previous_shuffling_epoch=GENESIS_EPOCH,
@@ -1717,7 +1713,7 @@ For each `attestation` in `block.body.attestations`:
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_participants]),
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
         ],
-        messages=[
+        message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
             hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b1)),
         ],
