@@ -1491,8 +1491,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         deposit_index=len(genesis_validator_deposits)
     )
 
-    state.latest_partial_block = get_empty_block()
-
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
         process_deposit(state, deposit)
@@ -1506,6 +1504,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
         state.latest_active_index_roots[index] = genesis_active_index_root
     state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
+
+    return state
 ```
 
 ## Beacon chain processing
