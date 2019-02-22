@@ -16,10 +16,10 @@
             - [Max operations per block](#max-operations-per-block)
             - [Signature domains](#signature-domains)
     - [Helper functions](#helper-functions)
-            - [get_split_offset](#get_split_offset)
-            - [get_shuffled_committee](#get_shuffled_committee)
-            - [get_persistent_committee](#get_persistent_committee)
-            - [get_shard_proposer_index](#get_shard_proposer_index)
+            - [`get_split_offset`](#get_split_offset)
+            - [`get_shuffled_committee`](#get_shuffled_committee)
+            - [`get_persistent_committee`](#get_persistent_committee)
+            - [`get_shard_proposer_index`](#get_shard_proposer_index)
     - [Data Structures](#data-structures)
         - [Shard chain blocks](#shard-chain-blocks)
     - [Shard block processing](#shard-block-processing)
@@ -100,7 +100,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 ## Helper functions
 
-#### get_split_offset
+#### `get_split_offset`
 
 ````python
 def get_split_offset(list_size: int, chunks: int, index: int) -> int:
@@ -111,7 +111,7 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
   return (len(list_size) * index) // chunks
 ````
 
-#### get_shuffled_committee
+#### `get_shuffled_committee`
 
 ```python
 def get_shuffled_committee(state: BeaconState,
@@ -130,7 +130,7 @@ def get_shuffled_committee(state: BeaconState,
     ]
 ```
 
-#### get_persistent_committee
+#### `get_persistent_committee`
 
 ```python
 def get_persistent_committee(state: BeaconState,
@@ -158,7 +158,8 @@ def get_persistent_committee(state: BeaconState,
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )))
 ```
-#### get_shard_proposer_index
+
+#### `get_shard_proposer_index`
 
 ```python
 def get_shard_proposer_index(state: BeaconState,
@@ -289,7 +290,7 @@ The `shard_chain_commitment` is only valid if it equals `compute_commitment(head
 
 ### Shard block fork choice rule
 
-The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
+The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the latest block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].crosslink_data_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
 
 # Updates to the beacon chain
 
