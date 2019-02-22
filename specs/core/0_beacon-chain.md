@@ -535,7 +535,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
-    'latest_partial_header': BeaconBlockHeader,
+    'latest_partial_block': BeaconBlock,
     'historical_batchings': ['bytes32'],
 
     # Ethereum 1.0 chain data
@@ -1613,11 +1613,11 @@ Below are the processing steps that happen at every `block`.
 
 * Verify that `block.header.slot == state.slot`.
 * Verify that `block.header.block_body_root == hash_tree_root(block.body)`.
-* Set `state.latest_partial_header.state_root = get_state_root(state, state.slot - 1)`.
-* Verify that `block.header.previous_block_root == hash_tree_root(state.latest_partial_header)`.
+* Set `state.latest_partial_block.state_root = get_state_root(state, state.slot - 1)`.
+* Verify that `block.header.previous_block_root == hash_tree_root(block)`.
 * Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.header.previous_block_root`.
-* Set `state.latest_partial_header = block.header`.
-* Set `state.latest_partial_header.state_root = ZERO_ROOT`.
+* Set `state.latest_partial_block = block`.
+* Set `state.latest_partial_block.header.state_root = ZERO_ROOT`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
 
