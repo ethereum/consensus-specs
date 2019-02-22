@@ -1435,7 +1435,6 @@ def get_empty_block() -> BeaconBlock:
         ),
         body=body,
     )
-}
 ```
 
 ```python
