@@ -1671,7 +1671,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
 For each `attestation` in `block.body.attestations`:
 
-* Verify that `attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY`.
+* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
 * Verify that `state.slot < attestation.data.slot + SLOTS_PER_EPOCH.
 * Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state) else state.previous_justified_epoch`.
 * Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
