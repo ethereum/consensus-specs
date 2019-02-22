@@ -1028,10 +1028,7 @@ def is_power_of_two(value: int) -> bool:
     """
     Check if ``value`` is a power of two integer.
     """
-    if value == 0:
-        return False
-    else:
-        return 2**int(math.log2(value)) == value
+    return (value > 0) and (value & (value - 1) == 0)
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
