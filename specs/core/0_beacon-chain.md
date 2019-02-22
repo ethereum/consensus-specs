@@ -476,6 +476,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     'slot': 'uint64',
     'previous_block_root': 'bytes32',
+    'block_body_root': 'bytes32',
     'state_root': 'bytes32',
     'signature': 'bytes96',
 }
@@ -1403,6 +1404,7 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
     * `genesis_eth1_data.block_hash` is the hash of the block that emitted the `Eth2Genesis` log
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
 * Let `genesis_block = get_empty_block()`.
+* Let `genesis_block.header.block_body_root = hash_tree_root(genesis_block.body)`.
 * Let `genesis_block.header.state_root = hash_tree_root(genesis_state)`.
 
 ```python
@@ -1414,6 +1416,7 @@ def get_empty_block() -> BeaconBlock:
         header=BeaconBlockHeader(
             slot=GENESIS_SLOT,
             previous_block_root=ZERO_HASH,
+            block_body_root=ZERO_HASH,
             state_root=ZERO_HASH,
             signature=EMPTY_SIGNATURE,
         ),
@@ -1609,6 +1612,7 @@ Below are the processing steps that happen at every `block`.
 #### Block header
 
 * Verify that `block.header.slot == state.slot`.
+* Verify that `block.header.block_body_root == hash_tree_root(block.body)`.
 * Set `state.latest_partial_header.state_root = get_state_root(state, state.slot - 1)`.
 * Verify that `block.header.previous_block_root == hash_tree_root(state.latest_partial_header)`.
 * Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.header.previous_block_root`.
