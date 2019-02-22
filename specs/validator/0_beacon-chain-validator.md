@@ -284,7 +284,7 @@ Set `attestation_data.justified_epoch = state.justified_epoch` where `state` is 
 
 Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at the slot `get_epoch_start_slot(state.justified_epoch)` in the chain defined by `head`.
 
-_Note:_ This can be looked up in the state using `get_block_root(state, justified_epoch)`.
+_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(state.justified_epoch))`.
 
 #### Construct attestation
 
