@@ -1613,8 +1613,8 @@ Below are the processing steps that happen at every `block`.
 
 * Verify that `block.header.slot == state.slot`.
 * Verify that `block.header.block_body_root == hash_tree_root(block.body)`.
-* Set `state.latest_partial_block.state_root = get_state_root(state, state.slot - 1)`.
-* Verify that `block.header.previous_block_root == hash_tree_root(block)`.
+* Set `state.latest_partial_block.header.state_root = get_state_root(state, state.slot - 1)`.
+* Verify that `block.header.previous_block_root == hash_tree_root(state.latest_partial_block)`.
 * Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.header.previous_block_root`.
 * Set `state.latest_partial_block = block`.
 * Set `state.latest_partial_block.header.state_root = ZERO_ROOT`.
