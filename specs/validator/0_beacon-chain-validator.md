@@ -41,7 +41,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Shard](#shard)
                 - [Beacon block root](#beacon-block-root)
                 - [Epoch boundary root](#epoch-boundary-root)
-                - [Shard block root](#shard-block-root)
+                - [Crosslink data root](#crosslink-data-root)
                 - [Latest crosslink](#latest-crosslink)
                 - [Justified epoch](#justified-epoch)
                 - [Justified block root](#justified-block-root)
@@ -264,9 +264,9 @@ Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` wher
 
 _Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(slot_to_epoch(head.slot)))`.
 
-##### Shard block root
+##### Crosslink data root
 
-Set `attestation_data.shard_block_root = ZERO_HASH`.
+Set `attestation_data.crosslink_data_root = ZERO_HASH`.
 
 _Note:_ This is a stub for phase 0.
 
