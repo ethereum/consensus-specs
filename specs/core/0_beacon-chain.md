@@ -1642,7 +1642,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
 * Verify that `proposer_slashing.header_1.slot == proposer_slashing.header_2.slot`.
-* Verify that `proposer_slashing.header_1.block_root != proposer_slashing.header_2.block_root`.
+* Verify that `proposer_slashing.header_1.block_body_root != proposer_slashing.header_2.block_body_root`.
 * Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_1, "signature"), signature=proposer_slashing.header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_1.slot), DOMAIN_BLOCK_HEADER))`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_2, "signature"), signature=proposer_slashing.header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_2.slot), DOMAIN_BLOCK_HEADER))`.
