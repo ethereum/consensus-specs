@@ -1402,44 +1402,50 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
 * Let `genesis_eth1_data` be the `Eth1Data` object where:
     * `genesis_eth1_data.deposit_root` is the deposit root when the `Eth2Genesis` log was emitted
     * `genesis_eth1_data.block_hash` is the hash of the block that emitted the `Eth2Genesis` log
-* Let `(genesis_block, genesis_state) = get_genesis_block_and_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
+* Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
+* Let `genesis_block = get_empty_block()`.
+* let `genesis_block.header.state_root = hash_tree_root(genesis_state)`.
 
 ```python
 def get_empty_block() -> BeaconBlock:
     """
     Get an empty ``BeaconBlock``.
     """
+    body = BeaconBlockBody(
+        randao_reveal=EMPTY_SIGNATURE,
+        eth1_data=Eth1Data(
+            deposit_root=ZERO_HASH,
+            block_hash=ZERO_HASH
+        ),
+        proposer_slashings=[],
+        attester_slashings=[],
+        attestations=[],
+        deposits=[],
+        exits=[],
+        transfers=[],
+    )
+
     return BeaconBlock(
         header=BeaconBlockHeader(
             slot=GENESIS_SLOT,
             previous_block_root=ZERO_HASH,
-            block_body_root=ZERO_HASH,
+            block_body_root=hash_tree_root(body),
             state_root=ZERO_HASH,
             signature=EMPTY_SIGNATURE,
         ),
-        body=BeaconBlockBody(
-            randao_reveal=EMPTY_SIGNATURE,
-            eth1_data=Eth1Data(
-                deposit_root=ZERO_HASH,
-                block_hash=ZERO_HASH
-            ),
-            proposer_slashings=[],
-            attester_slashings=[],
-            attestations=[],
-            deposits=[],
-            exits=[],
-            transfers=[],
-        ),
+        body=body,
     )
 }
 ```
 
 ```python
-def get_empty_beacon_state() -> BeaconState:
+def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
+                             genesis_time: int,
+                             genesis_eth1_data: Eth1Data) -> BeaconBlock:
     """
-    Get an empty ``BeaconState``.
+    Get the genesis ``BeaconState``.
     """
-    return BeaconState(
+    state = BeaconState(
         # Misc
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
@@ -1485,22 +1491,10 @@ def get_empty_beacon_state() -> BeaconState:
             block_hash=ZERO_HASH
         ),
         eth1_data_votes=[],
-        deposit_index=0,
+        deposit_index=len(genesis_validator_deposits),
     )
-```
 
-```python
-def get_genesis_block_and_state(genesis_validator_deposits: List[Deposit],
-                             genesis_time: int,
-                             genesis_eth1_data: Eth1Data) -> (BeaconBlock, BeaconState):
-    """
-    Get the genesis ``BeaconState``.
-    """
-    block = get_empty_block()
-    block.header.block_body_root = hash_tree_root(block.body)
-
-    state = get_empty_beacon_state()
-    state.latest_partial_block = block
+    state.latest_partial_block = get_empty_block()
     state.latest_eth1_data = genesis_eth1_data
 
     # Process genesis deposits
@@ -1517,10 +1511,6 @@ def get_genesis_block_and_state(genesis_validator_deposits: List[Deposit],
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
         state.latest_active_index_roots[index] = genesis_active_index_root
     state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
-
-    block.header.state_root = hash_tree_root(genesis_state)
-
-    return (block, state)
 ```
 
 ## Beacon chain processing
