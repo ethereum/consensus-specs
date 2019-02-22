@@ -56,6 +56,8 @@
     - [Helper functions](#helper-functions)
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
+        - [`signed_root`](#signed_root)
+        - [`get_block_header`](#get_block_header)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -465,8 +467,11 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
-    'header': BeaconBlockHeader,
+    'slot': 'uint64',
+    'previous_block_root': 'bytes32',
+    'state_root': 'bytes32',
     'body': BeaconBlockBody,
+    'signature': 'bytes96',
 }
 ```
 
@@ -476,8 +481,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     'slot': 'uint64',
     'previous_block_root': 'bytes32',
-    'block_body_root': 'bytes32',
     'state_root': 'bytes32',
+    'block_body_root': 'bytes32',
     'signature': 'bytes96',
 }
 ```
@@ -535,7 +540,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
-    'latest_partial_block': BeaconBlock,
+    'latest_block_header': BeaconBlockHeader,
     'historical_batchings': ['bytes32'],
 
     # Ethereum 1.0 chain data
@@ -659,6 +664,22 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ### `signed_root`
 
 `def signed_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
+
+### `get_block_header`
+
+```python
+def get_block_header(block: BeaconBlock) -> BeaconBlockHeader:
+    """
+    Return the block header corresponding to a block
+    """
+    return BeaconBlockHeader(
+        slot=block.slot,
+        previous_block_root=block.previous_block_root,
+        state_root=block.state_root,
+        block_body_root=hash_tree_root(block.body),
+        signature=block.signature,
+    )
+```
 
 ### `slot_to_epoch`
 
@@ -1404,36 +1425,31 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
     * `genesis_eth1_data.block_hash` is the hash of the block that emitted the `Eth2Genesis` log
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
 * Let `genesis_block = get_empty_block()`.
-* let `genesis_block.header.state_root = hash_tree_root(genesis_state)`.
+* let `genesis_block.state_root = hash_tree_root(genesis_state)`.
 
 ```python
 def get_empty_block() -> BeaconBlock:
     """
     Get an empty ``BeaconBlock``.
     """
-    body = BeaconBlockBody(
-        randao_reveal=EMPTY_SIGNATURE,
-        eth1_data=Eth1Data(
-            deposit_root=ZERO_HASH,
-            block_hash=ZERO_HASH
-        ),
-        proposer_slashings=[],
-        attester_slashings=[],
-        attestations=[],
-        deposits=[],
-        exits=[],
-        transfers=[],
-    )
-
     return BeaconBlock(
-        header=BeaconBlockHeader(
-            slot=GENESIS_SLOT,
-            previous_block_root=ZERO_HASH,
-            block_body_root=hash_tree_root(body),
-            state_root=ZERO_HASH,
-            signature=EMPTY_SIGNATURE,
+        slot=GENESIS_SLOT,
+        previous_block_root=ZERO_HASH,
+        state_root=ZERO_HASH,
+        body=BeaconBlockBody(
+            randao_reveal=EMPTY_SIGNATURE,
+            eth1_data=Eth1Data(
+                deposit_root=ZERO_HASH,
+                block_hash=ZERO_HASH,
+            ),
+            proposer_slashings=[],
+            attester_slashings=[],
+            attestations=[],
+            deposits=[],
+            exits=[],
+            transfers=[],
         ),
-        body=body,
+        signature=EMPTY_SIGNATURE,
     )
 ```
 
@@ -1481,7 +1497,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
         latest_attestations=[],
-        latest_partial_block=get_empty_block(),
+        latest_block_header=get_block_header(get_empty_block()),
         historical_batchings=[],
 
         # Ethereum 1.0 chain data
@@ -1521,7 +1537,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.previous_block_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + (block.header.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
+* The node's Unix time is greater than or equal to `state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
@@ -1541,9 +1557,9 @@ def get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock:
     """
     Get the ancestor of ``block`` with slot number ``slot``; return ``None`` if not found.
     """
-    if block.header.slot == slot:
+    if block.slot == slot:
         return block
-    elif block.header.slot < slot:
+    elif block.slot < slot:
         return None
     else:
         return get_ancestor(store, store.get_parent(block), slot)
@@ -1571,7 +1587,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         return sum(
             get_effective_balance(start_state.validator_balances[validator_index]) // FORK_CHOICE_BALANCE_INCREMENT
             for validator_index, target in attestation_targets
-            if get_ancestor(store, target, block.header.slot) == block
+            if get_ancestor(store, target, block.slot) == block
         )
 
     head = start_block
@@ -1611,16 +1627,15 @@ Below are the processing steps that happen at every `block` except the genesis b
 
 #### Block header
 
-* Verify that `block.header.slot == state.slot`.
-* Verify that `block.header.block_body_root == hash_tree_root(block.body)`.
-* Let `previous_block = state.latest_partial_block`.
-* Set `previous_block.header.state_root = get_state_root(state, state.slot - 1)`.
-* Verify that `block.header.previous_block_root == hash_tree_root(previous_block)`.
-* Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.header.previous_block_root`.
-* Set `state.latest_partial_block = block`.
-* Set `state.latest_partial_block.header.state_root = ZERO_ROOT`.
+* Verify that `block.slot == state.slot`.
+* Let `previous_block_header = state.latest_block_header`.
+* Set `previous_block_header.state_root = get_state_root(state, state.slot - 1)`.
+* Verify that `block.previous_block_root == hash_tree_root(previous_block_header)`.
+* Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.previous_block_root`.
+* Set `state.latest_block_header = get_block_header(block)`.
+* Set `state.latest_block_header.state_root = ZERO_ROOT`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block.header, "signature"), signature=block.header.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block, "signature"), signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
 
 #### RANDAO
 
@@ -2059,7 +2074,7 @@ def process_exit_queue(state: BeaconState) -> None:
 
 ### State root verification
 
-Verify `block.header.state_root == hash_tree_root(state)` if there exists a `block` for the slot being processed.
+Verify `block.state_root == hash_tree_root(state)` if there exists a `block` for the slot being processed.
 
 # References
 
