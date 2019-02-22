@@ -1456,7 +1456,7 @@ def get_empty_block() -> BeaconBlock:
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             genesis_eth1_data: Eth1Data) -> BeaconBlock:
+                             genesis_eth1_data: Eth1Data) -> BeaconState:
     """
     Get the genesis ``BeaconState``.
     """
