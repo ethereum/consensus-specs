@@ -389,7 +389,7 @@ When querying for assignments in the next epoch there are two options -- with an
 
 `get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should always plan for assignments from both values of `registry_change` unless the validator can concretely eliminate one of the options. Planning for future assignments involves noting at which future slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
 
-Specifically, a validator should call both `get_committee_assignment(state, next_epoch, validator_index, registry_chang=True)` and `get_committee_assignment(state, next_epoch, validator_index, registry_change=False)` when checking for next epoch assignments.
+Specifically, a validator should call both `get_committee_assignment(state, next_epoch, validator_index, registry_change=True)` and `get_committee_assignment(state, next_epoch, validator_index, registry_change=False)` when checking for next epoch assignments.
 
 ## How to avoid slashing
 
