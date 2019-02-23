@@ -1425,7 +1425,7 @@ When enough full deposits have been made to the deposit contract a `Eth2Genesis`
     * `genesis_eth1_data.block_hash` is the hash of the block that emitted the `Eth2Genesis` log
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
 * Let `genesis_block = get_empty_block()`.
-* let `genesis_block.state_root = hash_tree_root(genesis_state)`.
+* Set `genesis_block.state_root = hash_tree_root(genesis_state)`.
 
 ```python
 def get_empty_block() -> BeaconBlock:
