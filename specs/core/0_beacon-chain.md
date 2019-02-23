@@ -275,7 +275,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BLOCK_HEADER` | `0` |
+| `DOMAIN_BEACON_BLOCK` | `0` |
 | `DOMAIN_RANDAO` | `1` |
 | `DOMAIN_ATTESTATION` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
@@ -1633,7 +1633,7 @@ Below are the processing steps that happen at every `block` except the genesis b
 * Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.previous_block_root`.
 * Set `state.latest_block_header = get_temporary_block_header(block)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block, "signature"), signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block, "signature"), signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BEACON_BLOCK))`.
 
 #### RANDAO
 
@@ -1657,8 +1657,8 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.header_1.slot == proposer_slashing.header_2.slot`.
 * Verify that `proposer_slashing.header_1.block_body_root != proposer_slashing.header_2.block_body_root`.
 * Verify that `proposer.slashed_epoch > get_current_epoch(state)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_1, "signature"), signature=proposer_slashing.header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_1.slot), DOMAIN_BLOCK_HEADER))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_2, "signature"), signature=proposer_slashing.header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_2.slot), DOMAIN_BLOCK_HEADER))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_1, "signature"), signature=proposer_slashing.header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_1.slot), DOMAIN_BEACON_BLOCK))`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_2, "signature"), signature=proposer_slashing.header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_2.slot), DOMAIN_BEACON_BLOCK))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
 
 ##### Attester slashings
