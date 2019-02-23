@@ -57,7 +57,7 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signed_root`](#signed_root)
-        - [`get_block_header`](#get_block_header)
+        - [`get_temporary_block_header`](#get_temporary_block_header)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -540,7 +540,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
-    'latest_block_header': BeaconBlockHeader,  # Latest block header with `state_root` set to `ZERO_HASH`
+    'latest_block_header': BeaconBlockHeader,  # `latest_block_header.state_root == ZERO_HASH` temporarily
     'historical_batchings': ['bytes32'],
 
     # Ethereum 1.0 chain data
@@ -665,17 +665,17 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 `def signed_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
 
-### `get_block_header`
+### `get_temporary_block_header`
 
 ```python
-def get_block_header(block: BeaconBlock) -> BeaconBlockHeader:
+def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
     """
-    Return the block header corresponding to a block
+    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``. 
     """
     return BeaconBlockHeader(
         slot=block.slot,
         previous_block_root=block.previous_block_root,
-        state_root=block.state_root,
+        state_root=ZERO_HASH,
         block_body_root=hash_tree_root(block.body),
         signature=block.signature,
     )
@@ -1497,7 +1497,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
         latest_attestations=[],
-        latest_block_header=get_block_header(get_empty_block()),
+        latest_block_header=get_temporary_block_header(get_empty_block()),
         historical_batchings=[],
 
         # Ethereum 1.0 chain data
@@ -1618,6 +1618,7 @@ Below are the processing steps that happen at every `slot >= GENESIS_SLOT`.
 
 * Set `state.latest_state_roots[state.slot % SLOTS_PER_BATCHING] = hash_tree_root(state)`.
 * Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = get_block_root(state, state.slot - 1)`.
+* Let `state.previous_block_header.state_root = get_state_root(state, state.slot)`.
 * Set `state.slot += 1`.
 * If `state.slot % SLOTS_PER_BATCHING == 0` append `merkle_root(state.latest_block_roots + state.latest_state_roots)` to `state.historical_batchings`.
 
@@ -1628,12 +1629,9 @@ Below are the processing steps that happen at every `block` except the genesis b
 #### Block header
 
 * Verify that `block.slot == state.slot`.
-* Let `previous_block_header = state.latest_block_header`.
-* Set `previous_block_header.state_root = get_state_root(state, state.slot - 1)`.
-* Verify that `block.previous_block_root == hash_tree_root(previous_block_header)`.
+* Verify that `block.previous_block_root == hash_tree_root(state.latest_block_header)`.
 * Set `state.latest_block_roots[(state.slot - 1) % SLOTS_PER_BATCHING] = block.previous_block_root`.
-* Set `state.latest_block_header = get_block_header(block)`.
-* Set `state.latest_block_header.state_root = ZERO_ROOT`.
+* Set `state.latest_block_header = get_temporary_block_header(block)`.
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(block, "signature"), signature=block.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BLOCK_HEADER))`.
 
