@@ -434,8 +434,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
-#### 
-
+#### Transfers
 
 ##### `Transfer`
 
