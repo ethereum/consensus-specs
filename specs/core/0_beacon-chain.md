@@ -434,7 +434,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 }
 ```
 
-#### Transfers
+#### 
+
 
 ##### `Transfer`
 
@@ -1753,8 +1754,6 @@ Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers 
 
 For each `transfer` in `block.body.transfers`:
 
-* Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
-* Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
 * Verify that `state.slot == transfer.slot`.
 * Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch`.
