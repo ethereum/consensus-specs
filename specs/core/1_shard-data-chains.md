@@ -107,7 +107,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 ## Helper functions
 
-#### get_split_offset
+#### `get_split_offset`
 
 ````python
 def get_split_offset(list_size: int, chunks: int, index: int) -> int:
@@ -118,7 +118,7 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
   return (len(list_size) * index) // chunks
 ````
 
-#### get_shuffled_committee
+#### `get_shuffled_committee`
 
 ```python
 def get_shuffled_committee(state: BeaconState,
@@ -137,7 +137,7 @@ def get_shuffled_committee(state: BeaconState,
     ]
 ```
 
-#### get_persistent_committee
+#### `get_persistent_committee`
 
 ```python
 def get_persistent_committee(state: BeaconState,
@@ -165,7 +165,7 @@ def get_persistent_committee(state: BeaconState,
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )))
 ```
-#### get_shard_proposer_index
+#### `get_shard_proposer_index`
 
 ```python
 def get_shard_proposer_index(state: BeaconState,
