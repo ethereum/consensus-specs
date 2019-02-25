@@ -1235,7 +1235,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
     deposit_input = deposit.deposit_data.deposit_input
 
-    assert bls_verify(
+    proof_is_valid = bls_verify(
         pubkey=deposit_input.pubkey,
         message_hash=signed_root(deposit_input, "proof_of_possession"),
         signature=deposit_input.proof_of_possession,
@@ -1245,6 +1245,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             DOMAIN_DEPOSIT,
         )
     )
+    
+    if not proof_is_valid:
+        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit_input.pubkey
