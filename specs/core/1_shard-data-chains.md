@@ -2,6 +2,8 @@
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
+At the current stage, development teams are encouraged to treat the "Shard chains and crosslink data" section as reasonably close to the expected final form and worth starting development if they have spare resources, but the "Updates to the beacon chain" section, while fundamentally feature-complete, is still expected to undergo very considerable revision and review.
+
 ## Table of contents
 
 <!-- TOC -->
@@ -15,26 +17,27 @@
             - [Time parameters](#time-parameters)
             - [Max operations per block](#max-operations-per-block)
             - [Signature domains](#signature-domains)
-    - [Helper functions](#helper-functions)
+    - [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
+      - [Helper functions](#helper-functions)
             - [`get_split_offset`](#get_split_offset)
             - [`get_shuffled_committee`](#get_shuffled_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
-    - [Data Structures](#data-structures)
+      - [Data Structures](#data-structures)
         - [Shard chain blocks](#shard-chain-blocks)
-    - [Shard block processing](#shard-block-processing)
+      - [Shard block processing](#shard-block-processing)
         - [Verifying shard block data](#verifying-shard-block-data)
         - [Verifying a crosslink](#verifying-a-crosslink)
         - [Shard block fork choice rule](#shard-block-fork-choice-rule)
-- [Updates to the beacon chain](#updates-to-the-beacon-chain)
-    - [Data structures](#data-structures)
+    - [Updates to the beacon chain](#updates-to-the-beacon-chain)
+      - [Data structures](#data-structures)
         - [`Validator`](#validator)
         - [`BeaconBlockBody`](#beaconblockbody)
         - [`BranchChallenge`](#branchchallenge)
         - [`BranchResponse`](#branchresponse)
         - [`BranchChallengeRecord`](#branchchallengerecord)
         - [`SubkeyReveal`](#subkeyreveal)
-    - [Helpers](#helpers)
+      - [Helpers](#helpers)
         - [`get_attestation_merkle_depth`](#get_attestation_merkle_depth)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
         - [`slot_to_custody_period`](#slot_to_custody_period)
@@ -42,13 +45,13 @@
         - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
         - [`prepare_validator_for_withdrawal`](#prepare_validator_for_withdrawal)
         - [`penalize_validator`](#penalize_validator)
-    - [Per-slot processing](#per-slot-processing)
+      - [Per-slot processing](#per-slot-processing)
         - [Operations](#operations)
             - [Branch challenges](#branch-challenges)
             - [Branch responses](#branch-responses)
             - [Subkey reveals](#subkey-reveals)
-    - [Per-epoch processing](#per-epoch-processing)
-    - [One-time phase 1 initiation transition](#one-time-phase-1-initiation-transition)
+      - [Per-epoch processing](#per-epoch-processing)
+      - [One-time phase 1 initiation transition](#one-time-phase-1-initiation-transition)
 
 <!-- /TOC -->
 
@@ -97,6 +100,8 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `DOMAIN_SHARD_PROPOSER`| 129             |
 | `DOMAIN_SHARD_ATTESTER`| 130             |
 | `DOMAIN_CUSTODY_SUBKEY`| 131             |
+
+# Shard chains and crosslink data
 
 ## Helper functions
 
