@@ -353,7 +353,7 @@ def get_committee_assignment(
             a beacon block at the assigned slot.
     """
     previous_epoch = get_previous_epoch(state)
-    next_epoch = get_current_epoch(state)
+    next_epoch = get_current_epoch(state) + 1
     assert previous_epoch <= epoch <= next_epoch
 
     epoch_start_slot = get_epoch_start_slot(epoch)
