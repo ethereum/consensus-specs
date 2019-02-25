@@ -1608,7 +1608,7 @@ Below are the processing steps that happen at every `slot >= GENESIS_SLOT`.
 
 * Set `state.latest_state_roots[state.slot % SLOTS_PER_BATCHING] = hash_tree_root(state)`.
 * Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = get_block_root(state, state.slot - 1)`.
-* Let `state.previous_block_header.state_root = get_state_root(state, state.slot)`.
+* Set `state.previous_block_header.state_root = get_state_root(state, state.slot)` if `state.previous_block_header.state_root == ZERO_HASH`.
 * Set `state.slot += 1`.
 * If `state.slot % SLOTS_PER_BATCHING == 0` append `merkle_root(state.latest_block_roots + state.latest_state_roots)` to `state.historical_batchings`.
 
