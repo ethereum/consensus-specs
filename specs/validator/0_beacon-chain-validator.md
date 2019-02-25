@@ -50,7 +50,8 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Aggregation bitfield](#aggregation-bitfield)
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
-    - [Responsibility lookahead](#responsibility-lookahead)
+    - [Validator assigments](#validator-assignments)
+        - [Lookahead](#lookahead)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -332,26 +333,18 @@ signed_attestation_data = bls_sign(
 )
 ```
 
-## Responsibility lookahead
+## Validator assignments
 
-The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming responsibilities of proposing and attesting dictated by the shuffling and slot.
-
-There are three possibilities for the shuffling at the next epoch:
-1. The shuffling changes due to a "validator registry change".
-2. The shuffling changes due to `epochs_since_last_registry_update` being an exact power of 2 greater than 1.
-3. The shuffling remains the same (i.e. the validator is in the same shard committee).
-
-Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is deterministic based upon `epochs_since_last_registry_update`.
-
-`get_crosslink_committees_at_slot` is designed to be able to query slots in the next epoch. When querying slots in the next epoch there are two options -- with and without a `registry_change` -- which is the optional third parameter of the function. The following helper can be used to get the potential crosslink committee assignments in the next epoch for a given `validator_index` and `registry_change`.
+A validator can get the current and previous epoch committee assignments using the following helper via `get_committee_assignment(state, epoch, validator_index)` where `previous_epoch <= epoch <= current_epoch`.
 
 ```python
-def get_next_epoch_committee_assignment(
+def get_committee_assignment(
         state: BeaconState,
+        epoch: Epoch,
         validator_index: ValidatorIndex,
-        registry_change: bool) -> Tuple[List[ValidatorIndex], Shard, Slot, bool]:
+        registry_change: bool=False) -> Tuple[List[ValidatorIndex], Shard, Slot, bool]:
     """
-    Return the committee assignment in the next epoch for ``validator_index`` and ``registry_change``.
+    Return the committee assignment in the ``epoch`` for ``validator_index`` and ``registry_change``.
     ``assignment`` returned is a tuple of the following form:
         * ``assignment[0]`` is the list of validators in the committee
         * ``assignment[1]`` is the shard to which the committee is assigned
@@ -359,10 +352,12 @@ def get_next_epoch_committee_assignment(
         * ``assignment[3]`` is a bool signalling if the validator is expected to propose
             a beacon block at the assigned slot.
     """
-    current_epoch = get_current_epoch(state)
-    next_epoch = current_epoch + 1
-    next_epoch_start_slot = get_epoch_start_slot(next_epoch)
-    for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = get_current_epoch(state)
+    assert previous_epoch <= epoch <= next_epoch
+
+    epoch_start_slot = get_epoch_start_slot(epoch)
+    for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH):
         crosslink_committees = get_crosslink_committees_at_slot(
             state,
             slot,
@@ -383,7 +378,22 @@ def get_next_epoch_committee_assignment(
             return assignment
 ```
 
-`get_next_epoch_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (slots during `current_epoch + 1`). A validator should always plan for assignments from both values of `registry_change` unless the validator can concretely eliminate one of the options. Planning for future assignments involves noting at which future slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
+### Lookahead
+
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming assignemnts of proposing and attesting dictated by the shuffling and slot.
+
+There are three possibilities for the shuffling at the next epoch:
+1. The shuffling changes due to a "validator registry change".
+2. The shuffling changes due to `epochs_since_last_registry_update` being an exact power of 2 greater than 1.
+3. The shuffling remains the same (i.e. the validator is in the same shard committee).
+
+Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is deterministic based upon `epochs_since_last_registry_update`.
+
+When querying for assignments in the next epoch there are two options -- with and without a `registry_change` -- which is the optional fourth parameter of the `get_committee_assignment`.
+
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should always plan for assignments from both values of `registry_change` unless the validator can concretely eliminate one of the options. Planning for future assignments involves noting at which future slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
+
+Specifically, a validator should call both `get_committee_assignment(state, next_epoch, validator_index, registry_change=True)` and `get_committee_assignment(state, next_epoch, validator_index, registry_change=False)` when checking for next epoch assignments.
 
 ## How to avoid slashing
 
