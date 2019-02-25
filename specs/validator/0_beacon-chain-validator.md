@@ -41,7 +41,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Shard](#shard)
                 - [Beacon block root](#beacon-block-root)
                 - [Epoch boundary root](#epoch-boundary-root)
-                - [Shard block root](#shard-block-root)
+                - [Crosslink data root](#crosslink-data-root)
                 - [Latest crosslink](#latest-crosslink)
                 - [Justified epoch](#justified-epoch)
                 - [Justified block root](#justified-block-root)
@@ -50,7 +50,8 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Aggregation bitfield](#aggregation-bitfield)
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
-    - [Responsibility lookahead](#responsibility-lookahead)
+    - [Validator assigments](#validator-assignments)
+        - [Lookahead](#lookahead)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -186,7 +187,7 @@ epoch_signature = bls_sign(
     * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`'th ancestor of the head of the canonical eth1.0 chain.
     * Let `deposit_root` be the deposit root of the eth1.0 deposit contract in the post-state of the block referenced by `block_hash`
 * If `D` is nonempty:
-    * Let `best_vote` be the member of `D` that has the highest `vote.eth1_data.vote_count`, breaking ties by favoring block hashes with higher associated block height.
+    * Let `best_vote` be the member of `D` that has the highest `vote.vote_count`, breaking ties by favoring block hashes with higher associated block height.
     * Let `block_hash = best_vote.eth1_data.block_hash`.
     * Let `deposit_root = best_vote.eth1_data.deposit_root`.
 * Set `block.eth1_data = Eth1Data(deposit_root=deposit_root, block_hash=block_hash)`.
@@ -262,11 +263,13 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head)` where `head` is 
 
 Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(slot_to_epoch(head.slot))`.
 
-_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(slot_to_epoch(head.slot)))`.
+_Note:_ This can be looked up in the state using:
+* Let `epoch_start_slot = get_epoch_start_slot(slot_to_epoch(head.slot))`.
+* Set `epoch_boundary_root = hash_tree_root(head) if epoch_start_slot == head.slot else get_block_root(state, epoch_start_slot)`.
 
-##### Shard block root
+##### Crosslink data root
 
-Set `attestation_data.shard_block_root = ZERO_HASH`.
+Set `attestation_data.crosslink_data_root = ZERO_HASH`.
 
 _Note:_ This is a stub for phase 0.
 
@@ -280,9 +283,9 @@ Set `attestation_data.justified_epoch = state.justified_epoch` where `state` is 
 
 ##### Justified block root
 
-Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at `state.justified_epoch` in the chain defined by `head`.
+Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at the slot `get_epoch_start_slot(state.justified_epoch)` in the chain defined by `head`.
 
-_Note:_ This can be looked up in the state using `get_block_root(state, justified_epoch)`.
+_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(state.justified_epoch))`.
 
 #### Construct attestation
 
@@ -330,26 +333,18 @@ signed_attestation_data = bls_sign(
 )
 ```
 
-## Responsibility lookahead
+## Validator assignments
 
-The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming responsibilities of proposing and attesting dictated by the shuffling and slot.
-
-There are three possibilities for the shuffling at the next epoch:
-1. The shuffling changes due to a "validator registry change".
-2. The shuffling changes due to `epochs_since_last_registry_update` being an exact power of 2 greater than 1.
-3. The shuffling remains the same (i.e. the validator is in the same shard committee).
-
-Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is deterministic based upon `epochs_since_last_registry_update`.
-
-`get_crosslink_committees_at_slot` is designed to be able to query slots in the next epoch. When querying slots in the next epoch there are two options -- with and without a `registry_change` -- which is the optional third parameter of the function. The following helper can be used to get the potential crosslink committee assignments in the next epoch for a given `validator_index` and `registry_change`.
+A validator can get the current and previous epoch committee assignments using the following helper via `get_committee_assignment(state, epoch, validator_index)` where `previous_epoch <= epoch <= current_epoch`.
 
 ```python
-def get_next_epoch_committee_assignment(
+def get_committee_assignment(
         state: BeaconState,
+        epoch: Epoch,
         validator_index: ValidatorIndex,
-        registry_change: bool) -> Tuple[List[ValidatorIndex], Shard, Slot, bool]:
+        registry_change: bool=False) -> Tuple[List[ValidatorIndex], Shard, Slot, bool]:
     """
-    Return the committee assignment in the next epoch for ``validator_index`` and ``registry_change``.
+    Return the committee assignment in the ``epoch`` for ``validator_index`` and ``registry_change``.
     ``assignment`` returned is a tuple of the following form:
         * ``assignment[0]`` is the list of validators in the committee
         * ``assignment[1]`` is the shard to which the committee is assigned
@@ -357,10 +352,12 @@ def get_next_epoch_committee_assignment(
         * ``assignment[3]`` is a bool signalling if the validator is expected to propose
             a beacon block at the assigned slot.
     """
-    current_epoch = get_current_epoch(state)
-    next_epoch = current_epoch + 1
-    next_epoch_start_slot = get_epoch_start_slot(next_epoch)
-    for slot in range(next_epoch_start_slot, next_epoch_start_slot + SLOTS_PER_EPOCH):
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = get_current_epoch(state)
+    assert previous_epoch <= epoch <= next_epoch
+
+    epoch_start_slot = get_epoch_start_slot(epoch)
+    for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH):
         crosslink_committees = get_crosslink_committees_at_slot(
             state,
             slot,
@@ -381,7 +378,22 @@ def get_next_epoch_committee_assignment(
             return assignment
 ```
 
-`get_next_epoch_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (slots during `current_epoch + 1`). A validator should always plan for assignments from both values of `registry_change` unless the validator can concretely eliminate one of the options. Planning for future assignments involves noting at which future slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
+### Lookahead
+
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming assignemnts of proposing and attesting dictated by the shuffling and slot.
+
+There are three possibilities for the shuffling at the next epoch:
+1. The shuffling changes due to a "validator registry change".
+2. The shuffling changes due to `epochs_since_last_registry_update` being an exact power of 2 greater than 1.
+3. The shuffling remains the same (i.e. the validator is in the same shard committee).
+
+Either (2) or (3) occurs if (1) fails. The choice between (2) and (3) is deterministic based upon `epochs_since_last_registry_update`.
+
+When querying for assignments in the next epoch there are two options -- with and without a `registry_change` -- which is the optional fourth parameter of the `get_committee_assignment`.
+
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should always plan for assignments from both values of `registry_change` unless the validator can concretely eliminate one of the options. Planning for future assignments involves noting at which future slot one might have to attest and propose and also which shard one should begin syncing (in phase 1+).
+
+Specifically, a validator should call both `get_committee_assignment(state, next_epoch, validator_index, registry_change=True)` and `get_committee_assignment(state, next_epoch, validator_index, registry_change=False)` when checking for next epoch assignments.
 
 ## How to avoid slashing
 
