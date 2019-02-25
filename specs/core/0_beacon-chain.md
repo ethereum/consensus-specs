@@ -1235,7 +1235,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
     deposit_input = deposit.deposit_data.deposit_input
 
-    assert bls_verify(
+    proof_is_valid = bls_verify(
         pubkey=deposit_input.pubkey,
         message_hash=signed_root(deposit_input, "proof_of_possession"),
         signature=deposit_input.proof_of_possession,
@@ -1245,6 +1245,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             DOMAIN_DEPOSIT,
         )
     )
+    
+    if not proof_is_valid:
+        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit_input.pubkey
@@ -1702,7 +1705,6 @@ For each `attestation` in `block.body.attestations`:
 
 Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
-[TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
 [TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
 
 For each `deposit` in `block.body.deposits`:
