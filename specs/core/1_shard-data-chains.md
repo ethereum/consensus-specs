@@ -105,15 +105,6 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `DOMAIN_CUSTODY_SUBKEY`      | 131             |
 | `DOMAIN_CUSTODY_INTERACTIVE` | 132             |
 
-#### Challenge codes
-
-| Name                    | Value         |
-|-------------------------|---------------|
-| `BRANCH_CHALLENGE`      | 1             |
-| `CUSTODY_INITIATION`    | 2             |
-| `CUSTODY_RESPONSE`      | 3             |
-| `CUSTODY_CONTINUATION`  | 4             |
-
 ## Helper functions
 
 #### get_split_offset
