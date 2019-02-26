@@ -371,8 +371,7 @@ def get_committee_assignment(
         if len(selected_committees) > 0:
             validators = selected_committees[0][0]
             shard = selected_committees[0][1]
-            first_committee_at_slot = crosslink_committees[0][0]  # List[ValidatorIndex]
-            is_proposer = first_committee_at_slot[slot % len(first_committee_at_slot)] == validator_index
+            is_proposer = validator_index == get_beacon_proposer_index(state, slot, registry_change)
 
             assignment = (validators, shard, slot, is_proposer)
             return assignment
