@@ -290,6 +290,7 @@ We define the following Python custom types for type hinting and readability:
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Hash` | `bytes32` | result of hashing and its derivatives | 
+| `Bitfield` | `bytes` | an arbitrary length bits sequence | 
 | `BLSPubkey` | `bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `bytes96` | a BLS12-381 signature |
 
@@ -336,7 +337,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
-    'custody_bitfield': 'bytes',
+    'custody_bitfield': Bitfield,
     # Aggregate signature
     'aggregate_signature': BLSSignature,
 }
@@ -349,11 +350,11 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Attester aggregation bitfield
-    'aggregation_bitfield': 'bytes',
+    'aggregation_bitfield': Bitfield,
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
-    'custody_bitfield': 'bytes',
+    'custody_bitfield': Bitfield,
     # BLS aggregate signature
     'aggregate_signature': BLSSignature,
 }
@@ -603,11 +604,11 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Attester aggregation bitfield
-    'aggregation_bitfield': 'bytes',
+    'aggregation_bitfield': Bitfield,
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
-    'custody_bitfield': 'bytes',
+    'custody_bitfield': Bitfield,
     # Inclusion slot
     'inclusion_slot': Slot,
 }
@@ -994,7 +995,7 @@ def merkle_root(values: List[Hash]) -> Hash:
 ```python
 def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
-                                 bitfield: bytes) -> List[ValidatorIndex]:
+                                 bitfield: Bitfield) -> List[ValidatorIndex]:
     """
     Return the participant indices at for the ``attestation_data`` and ``bitfield``.
     """
@@ -1086,7 +1087,7 @@ def get_domain(fork: Fork,
 ### `get_bitfield_bit`
 
 ```python
-def get_bitfield_bit(bitfield: bytes, i: int) -> int:
+def get_bitfield_bit(bitfield: Bitfield, i: int) -> int:
     """
     Extract the bit in ``bitfield`` at position ``i``.
     """
@@ -1096,7 +1097,7 @@ def get_bitfield_bit(bitfield: bytes, i: int) -> int:
 ### `verify_bitfield`
 
 ```python
-def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
+def verify_bitfield(bitfield: Bitfield, committee_size: int) -> bool:
     """
     Verify ``bitfield`` against the ``committee_size``.
     """
