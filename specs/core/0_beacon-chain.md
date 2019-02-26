@@ -208,16 +208,16 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ### Initial values
 
-| Name | Value |
-| - | - |
-| `GENESIS_FORK_VERSION` | `0` |
-| `GENESIS_SLOT` | `2**32` |
-| `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
-| `GENESIS_START_SHARD` | `0` |
-| `FAR_FUTURE_EPOCH` | `2**64 - 1` |
-| `ZERO_HASH` | `int_to_bytes32(0)` |
-| `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
-| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
+| Name | Value | Unit | 
+| - | - | - |
+| `GENESIS_FORK_VERSION` | `0` | uint64 | 
+| `GENESIS_SLOT` | `2**32` | Slot | 
+| `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` | Epoch | 
+| `GENESIS_START_SHARD` | `0` | Shard | 
+| `FAR_FUTURE_EPOCH` | `2**64 - 1` | Epoch | 
+| `ZERO_HASH` | `int_to_bytes32(0)` | Hash |
+| `EMPTY_SIGNATURE` | `int_to_bytes96(0)` | BLSSignature | 
+| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` | bytes1 | 
 
 * `GENESIS_SLOT` should be at least as large in terms of time as the largest of the time parameters or state list lengths below (ie. it should be at least as large as any value measured in slots, and at least `SLOTS_PER_EPOCH` times as large as any value measured in epochs).
 
@@ -226,21 +226,21 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `SECONDS_PER_SLOT` | `6` | seconds | 6 seconds |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
-| `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | Slot | 24 seconds |
+| `SLOTS_PER_EPOCH` | `2**6` (= 64) | Slot | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | Epoch | 6.4 minutes |
+| `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | Epoch | 25.6 minutes |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | Epoch | ~1.7 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | Epoch | ~27 hours |
 
 ### State list lengths
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots | ~13 hours |
-| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | Slot | ~13 hours |
+| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | Epoch | ~36 days |
+| `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | Epoch | ~36 days |
+| `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | Epoch | ~36 days |
 
 ### Reward and penalty quotients
 
