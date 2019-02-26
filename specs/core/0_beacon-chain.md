@@ -353,17 +353,17 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Shard number
     'shard': Shard,
     # Root of the signed beacon block
-    'beacon_block_root': Bytes32,
+    'beacon_block_root': Hash,
     # Root of the ancestor at the epoch boundary
-    'epoch_boundary_root': Bytes32,
+    'epoch_boundary_root': Hash,
     # Data from the shard since the last attestation
-    'crosslink_data_root': Bytes32,
+    'crosslink_data_root': Hash,
     # Last crosslink
     'latest_crosslink': Crosslink,
     # Last justified epoch in the beacon state
     'justified_epoch': Epoch,
     # Hash of the last justified beacon block
-    'justified_block_root': Bytes32,
+    'justified_block_root': Hash,
 }
 ```
 
@@ -385,7 +385,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Branch in the deposit tree
-    'branch': [Bytes32],
+    'branch': [Hash],
     # Index in the deposit tree
     'index': 'uint64',
     # Data
@@ -413,7 +413,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # BLS pubkey
     'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': Bytes32,
+    'withdrawal_credentials': Hash,
     # A BLS signature of this `DepositInput`
     'proof_of_possession': BLSSignature,
 }
@@ -465,8 +465,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     # Header
     'slot': Slot,
-    'parent_root': Bytes32,
-    'state_root': Bytes32,
+    'parent_root': Hash,
+    'state_root': Hash,
     'randao_reveal': BLSSignature,
     'eth1_data': Eth1Data,
 
@@ -499,7 +499,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Shard number (`BEACON_CHAIN_SHARD_NUMBER` for beacon chain)
     'shard': Shard,
     # Block root
-    'block_root': Bytes32,
+    'block_root': Hash,
     # Signature
     'signature': BLSSignature,
 }
@@ -522,13 +522,13 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'validator_registry_update_epoch': Epoch,
 
     # Randomness and committees
-    'latest_randao_mixes': [Bytes32],
+    'latest_randao_mixes': [Hash],
     'previous_shuffling_start_shard': Shard,
     'current_shuffling_start_shard': Shard,
     'previous_shuffling_epoch': Epoch,
     'current_shuffling_epoch': Epoch,
-    'previous_shuffling_seed': Bytes32,
-    'current_shuffling_seed': Bytes32,
+    'previous_shuffling_seed': Hash,
+    'current_shuffling_seed': Hash,
 
     # Finality
     'previous_justified_epoch': Epoch,
@@ -538,11 +538,11 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
     # Recent state
     'latest_crosslinks': [Crosslink],
-    'latest_block_roots': [Bytes32],
-    'latest_active_index_roots': [Bytes32],
+    'latest_block_roots': [Hash],
+    'latest_active_index_roots': [Hash],
     'latest_slashed_balances': [Gwei],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
-    'batched_block_roots': [Bytes32],
+    'batched_block_roots': [Hash],
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
@@ -558,7 +558,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # BLS public key
     'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': Bytes32,
+    'withdrawal_credentials': Hash,
     # Epoch when validator activated
     'activation_epoch': Epoch,
     # Epoch when validator exited
@@ -579,7 +579,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Epoch number
     'epoch': Epoch,
     # Shard data since the previous crosslink
-    'crosslink_data_root': Bytes32,
+    'crosslink_data_root': Hash,
 }
 ```
 
@@ -616,9 +616,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Root of the deposit tree
-    'deposit_root': Bytes32,
+    'deposit_root': Hash,
     # Block hash
-    'block_hash': Bytes32,
+    'block_hash': Hash,
 }
 ```
 
@@ -644,7 +644,7 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Bytes32` | `bytes32` | 32 bytes of binary data |
+| `Hash` | `bytes32` | result of hashing and its derivatives | 
 | `BLSPubkey` | `bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `bytes96` | a BLS12-381 signature |
 
@@ -660,11 +660,11 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 ### `hash_tree_root`
 
-`def hash_tree_root(object: SSZSerializable) -> Bytes32` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
+`def hash_tree_root(object: SSZSerializable) -> Hash` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
 ### `signed_root`
 
-`def signed_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
+`def signed_root(object: SSZContainer) -> Hash` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
 
 ### `slot_to_epoch`
 
@@ -728,7 +728,7 @@ def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> L
 ### `get_permuted_index`
 
 ```python
-def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
+def get_permuted_index(index: int, list_size: int, seed: Hash) -> int:
     """
     Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
 
@@ -784,7 +784,7 @@ def get_epoch_committee_count(active_validator_count: int) -> int:
 ### `get_shuffling`
 
 ```python
-def get_shuffling(seed: Bytes32,
+def get_shuffling(seed: Hash,
                   validators: List[Validator],
                   epoch: Epoch) -> List[List[ValidatorIndex]]
     """
@@ -913,7 +913,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
 ```python
 def get_block_root(state: BeaconState,
-                   slot: Slot) -> Bytes32:
+                   slot: Slot) -> Hash:
     """
     Return the block root at a recent ``slot``.
     """
@@ -928,7 +928,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   epoch: Epoch) -> Bytes32:
+                   epoch: Epoch) -> Hash:
     """
     Return the randao mix at a recent ``epoch``.
     """
@@ -940,7 +940,7 @@ def get_randao_mix(state: BeaconState,
 
 ```python
 def get_active_index_root(state: BeaconState,
-                          epoch: Epoch) -> Bytes32:
+                          epoch: Epoch) -> Hash:
     """
     Return the index root at a recent ``epoch``.
     """
@@ -952,7 +952,7 @@ def get_active_index_root(state: BeaconState,
 
 ```python
 def generate_seed(state: BeaconState,
-                  epoch: Epoch) -> Bytes32:
+                  epoch: Epoch) -> Hash:
     """
     Generate a seed for the given ``epoch``.
     """
@@ -978,7 +978,7 @@ def get_beacon_proposer_index(state: BeaconState,
 ### `merkle_root`
 
 ```python
-def merkle_root(values: List[Bytes32]) -> Bytes32:
+def merkle_root(values: List[Hash]) -> Hash:
     """
     Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
     Note that the leaves are not hashed.
@@ -1714,7 +1714,7 @@ For each `deposit` in `block.body.deposits`:
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
 ```python
-def verify_merkle_branch(leaf: Bytes32, branch: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
+def verify_merkle_branch(leaf: Hash, branch: List[Hash], depth: int, index: int, root: Hash) -> bool:
     """
     Verify that the given ``leaf`` is on the merkle branch ``branch``.
     """
