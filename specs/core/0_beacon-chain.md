@@ -1633,7 +1633,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Verify that `proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot`.
 * Verify that `proposer_slashing.proposal_1.shard == proposer_slashing.proposal_2.shard`.
 * Verify that `proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root`.
-* Verify that `not proposer.slashed`.
+* Verify that `proposer.slashed is False`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_1, "signature"), signature=proposer_slashing.proposal_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_1.slot), DOMAIN_PROPOSAL))`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_2, "signature"), signature=proposer_slashing.proposal_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_2.slot), DOMAIN_PROPOSAL))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
