@@ -270,7 +270,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 ### Signature domains
 
 | Name | Value |
-| - | - |
+| --- | --- |
 | `DOMAIN_DEPOSIT` | `0` |
 | `DOMAIN_ATTESTATION` | `1` |
 | `DOMAIN_PROPOSAL` | `2` |
@@ -291,7 +291,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Proposer index
-    'proposer_index': 'uint64',
+    'proposer_index': ValidatorIndex,
     # First proposal
     'proposal_1': Proposal,
     # Second proposal
@@ -317,13 +317,13 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Validator indices
-    'validator_indices': ['uint64'],
+    'validator_indices': [ValidatorIndex],
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # Aggregate signature
-    'aggregate_signature': 'bytes96',
+    'aggregate_signature': BLSSignature,
 }
 ```
 
@@ -340,7 +340,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
-    'aggregate_signature': 'bytes96',
+    'aggregate_signature': BLSSignature,
 }
 ```
 
@@ -349,21 +349,21 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Slot number
-    'slot': 'uint64',
+    'slot': Slot,
     # Shard number
-    'shard': 'uint64',
+    'shard': Shard,
     # Root of the signed beacon block
-    'beacon_block_root': 'bytes32',
+    'beacon_block_root': Bytes32,
     # Root of the ancestor at the epoch boundary
-    'epoch_boundary_root': 'bytes32',
+    'epoch_boundary_root': Bytes32,
     # Data from the shard since the last attestation
-    'crosslink_data_root': 'bytes32',
+    'crosslink_data_root': Bytes32,
     # Last crosslink
     'latest_crosslink': Crosslink,
     # Last justified epoch in the beacon state
-    'justified_epoch': 'uint64',
+    'justified_epoch': Epoch,
     # Hash of the last justified beacon block
-    'justified_block_root': 'bytes32',
+    'justified_block_root': Bytes32,
 }
 ```
 
@@ -385,7 +385,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Branch in the deposit tree
-    'branch': ['bytes32'],
+    'branch': [Bytes32],
     # Index in the deposit tree
     'index': 'uint64',
     # Data
@@ -398,7 +398,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Amount in Gwei
-    'amount': 'uint64',
+    'amount': Gwei,
     # Timestamp from deposit contract
     'timestamp': 'uint64',
     # Deposit input
@@ -411,11 +411,11 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # BLS pubkey
-    'pubkey': 'bytes48',
+    'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': 'bytes32',
+    'withdrawal_credentials': Bytes32,
     # A BLS signature of this `DepositInput`
-    'proof_of_possession': 'bytes96',
+    'proof_of_possession': BLSSignature,
 }
 ```
 
@@ -426,11 +426,11 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Minimum epoch for processing exit
-    'epoch': 'uint64',
+    'epoch': Epoch,
     # Index of the exiting validator
-    'validator_index': 'uint64',
+    'validator_index': ValidatorIndex,
     # Validator signature
-    'signature': 'bytes96',
+    'signature': BLSSignature,
 }
 ```
 
@@ -441,19 +441,19 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Sender index
-    'from': 'uint64',
+    'from': ValidatorIndex,
     # Recipient index
-    'to': 'uint64',
+    'to': ValidatorIndex,
     # Amount in Gwei
-    'amount': 'uint64',
+    'amount': Gwei,
     # Fee in Gwei for block proposer
-    'fee': 'uint64',
+    'fee': Gwei,
     # Inclusion slot
-    'slot': 'uint64',
+    'slot': Slot,
     # Sender withdrawal pubkey
-    'pubkey': 'bytes48',
+    'pubkey': BLSPubkey,
     # Sender signature
-    'signature': 'bytes96',
+    'signature': BLSSignature,
 }
 ```
 
@@ -464,16 +464,16 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Header
-    'slot': 'uint64',
-    'parent_root': 'bytes32',
-    'state_root': 'bytes32',
-    'randao_reveal': 'bytes96',
+    'slot': Slot,
+    'parent_root': Bytes32,
+    'state_root': Bytes32,
+    'randao_reveal': BLSSignature,
     'eth1_data': Eth1Data,
 
     # Body
     'body': BeaconBlockBody,
     # Signature
-    'signature': 'bytes96',
+    'signature': BLSSignature,
 }
 ```
 
@@ -495,13 +495,13 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Slot number
-    'slot': 'uint64',
+    'slot': Slot,
     # Shard number (`BEACON_CHAIN_SHARD_NUMBER` for beacon chain)
-    'shard': 'uint64',
+    'shard': Shard,
     # Block root
-    'block_root': 'bytes32',
+    'block_root': Bytes32,
     # Signature
-    'signature': 'bytes96',
+    'signature': BLSSignature,
 }
 ```
 
@@ -512,42 +512,42 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Misc
-    'slot': 'uint64',
+    'slot': Slot,
     'genesis_time': 'uint64',
     'fork': Fork,  # For versioning hard forks
 
     # Validator registry
     'validator_registry': [Validator],
-    'validator_balances': ['uint64'],
-    'validator_registry_update_epoch': 'uint64',
+    'validator_balances': [Gwei],
+    'validator_registry_update_epoch': Epoch,
 
     # Randomness and committees
-    'latest_randao_mixes': ['bytes32'],
-    'previous_shuffling_start_shard': 'uint64',
-    'current_shuffling_start_shard': 'uint64',
-    'previous_shuffling_epoch': 'uint64',
-    'current_shuffling_epoch': 'uint64',
-    'previous_shuffling_seed': 'bytes32',
-    'current_shuffling_seed': 'bytes32',
+    'latest_randao_mixes': [Bytes32],
+    'previous_shuffling_start_shard': Shard,
+    'current_shuffling_start_shard': Shard,
+    'previous_shuffling_epoch': Epoch,
+    'current_shuffling_epoch': Epoch,
+    'previous_shuffling_seed': Bytes32,
+    'current_shuffling_seed': Bytes32,
 
     # Finality
-    'previous_justified_epoch': 'uint64',
-    'justified_epoch': 'uint64',
+    'previous_justified_epoch': Epoch,
+    'justified_epoch': Epoch,
     'justification_bitfield': 'uint64',
-    'finalized_epoch': 'uint64',
+    'finalized_epoch': Epoch,
 
     # Recent state
     'latest_crosslinks': [Crosslink],
-    'latest_block_roots': ['bytes32'],
-    'latest_active_index_roots': ['bytes32'],
-    'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
+    'latest_block_roots': [Bytes32],
+    'latest_active_index_roots': [Bytes32],
+    'latest_slashed_balances': [Gwei],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
-    'batched_block_roots': ['bytes32'],
+    'batched_block_roots': [Bytes32],
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
-    'deposit_index': 'uint64'
+    'deposit_index': ValidatorIndex
 }
 ```
 
@@ -556,15 +556,15 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # BLS public key
-    'pubkey': 'bytes48',
+    'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': 'bytes32',
+    'withdrawal_credentials': Bytes32,
     # Epoch when validator activated
-    'activation_epoch': 'uint64',
+    'activation_epoch': Epoch,
     # Epoch when validator exited
-    'exit_epoch': 'uint64',
+    'exit_epoch': Epoch,
     # Epoch when validator is eligible to withdraw
-    'withdrawable_epoch': 'uint64',
+    'withdrawable_epoch': Epoch,
     # Did the validator initiate an exit
     'initiated_exit': 'bool',
     # Was the validator slashed
@@ -577,9 +577,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Epoch number
-    'epoch': 'uint64',
+    'epoch': Epoch,
     # Shard data since the previous crosslink
-    'crosslink_data_root': 'bytes32',
+    'crosslink_data_root': Bytes32,
 }
 ```
 
@@ -594,7 +594,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # Inclusion slot
-    'inclusion_slot': 'uint64',
+    'inclusion_slot': Slot,
 }
 ```
 
@@ -607,7 +607,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Current fork version
     'current_version': 'uint64',
     # Fork epoch number
-    'epoch': 'uint64',
+    'epoch': Epoch,
 }
 ```
 
@@ -616,9 +616,9 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Root of the deposit tree
-    'deposit_root': 'bytes32',
+    'deposit_root': Bytes32,
     # Block hash
-    'block_hash': 'bytes32',
+    'block_hash': Bytes32,
 }
 ```
 
