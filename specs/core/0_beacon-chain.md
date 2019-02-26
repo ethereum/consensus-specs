@@ -270,7 +270,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 ### Signature domains
 
 | Name | Value |
-| --- | --- |
+| - | - |
 | `DOMAIN_DEPOSIT` | `0` |
 | `DOMAIN_ATTESTATION` | `1` |
 | `DOMAIN_PROPOSAL` | `2` |
