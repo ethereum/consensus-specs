@@ -55,6 +55,7 @@
     - [Helper functions](#helper-functions)
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
+        - [`signed_root`](#signed_root)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
