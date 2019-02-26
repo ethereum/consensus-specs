@@ -20,6 +20,7 @@
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Max transactions per block](#max-transactions-per-block)
         - [Signature domains](#signature-domains)
+    - [Custom Types](#custom-types)
     - [Data structures](#data-structures)
         - [Beacon chain transactions](#beacon-chain-transactions)
             - [Proposer slashings](#proposer-slashings)
@@ -51,7 +52,6 @@
             - [`Fork`](#fork)
             - [`Eth1Data`](#eth1data)
             - [`Eth1DataVote`](#eth1datavote)
-    - [Custom Types](#custom-types)
     - [Helper functions](#helper-functions)
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
@@ -277,6 +277,21 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `DOMAIN_EXIT` | `3` |
 | `DOMAIN_RANDAO` | `4` |
 | `DOMAIN_TRANSFER` | `5` |
+
+## Custom Types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `Slot` | `uint64` | a slot number |
+| `Epoch` | `uint64` | an epoch number |
+| `Shard` | `uint64` | a shard number |
+| `ValidatorIndex` | `uint64` | a validator registry index |
+| `Gwei` | `uint64` | an amount in Gwei |
+| `Hash` | `bytes32` | result of hashing and its derivatives | 
+| `BLSPubkey` | `bytes48` | a BLS12-381 public key |
+| `BLSSignature` | `bytes96` | a BLS12-381 signature |
 
 ## Data structures
 
@@ -632,21 +647,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'vote_count': 'uint64',
 }
 ```
-
-## Custom Types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Slot` | `uint64` | a slot number |
-| `Epoch` | `uint64` | an epoch number |
-| `Shard` | `uint64` | a shard number |
-| `ValidatorIndex` | `uint64` | a validator registry index |
-| `Gwei` | `uint64` | an amount in Gwei |
-| `Hash` | `bytes32` | result of hashing and its derivatives | 
-| `BLSPubkey` | `bytes48` | a BLS12-381 public key |
-| `BLSSignature` | `bytes96` | a BLS12-381 signature |
 
 ## Helper functions
 
