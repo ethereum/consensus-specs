@@ -2044,7 +2044,7 @@ def process_exit_queue(state: BeaconState) -> None:
 #### Final updates
 
 * Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY))`.
-* Set `state.latest_slashed_balances[(next_epoch) % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
+* Set `state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
 
