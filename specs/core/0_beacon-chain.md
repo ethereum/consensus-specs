@@ -389,7 +389,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Index in the deposit tree
     'index': 'uint64',
     # Data
-    'deposit_data': DepositData,
+    'data': DepositData,
 }
 ```
 
@@ -402,7 +402,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Timestamp from deposit contract
     'timestamp': 'uint64',
     # Deposit input
-    'deposit_input': DepositInput,
+    'input': DepositInput,
 }
 ```
 
@@ -1233,12 +1233,12 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
-    deposit_input = deposit.deposit_data.deposit_input
+    input = deposit.data.input
 
     proof_is_valid = bls_verify(
-        pubkey=deposit_input.pubkey,
-        message_hash=signed_root(deposit_input, "proof_of_possession"),
-        signature=deposit_input.proof_of_possession,
+        pubkey=input.pubkey,
+        message_hash=signed_root(input, "proof_of_possession"),
+        signature=input.proof_of_possession,
         domain=get_domain(
             state.fork,
             get_current_epoch(state),
@@ -1250,9 +1250,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
-    pubkey = deposit_input.pubkey
-    amount = deposit.deposit_data.amount
-    withdrawal_credentials = deposit_input.withdrawal_credentials
+    pubkey = input.pubkey
+    amount = deposit.data.amount
+    withdrawal_credentials = input.withdrawal_credentials
 
     if pubkey not in validator_pubkeys:
         # Add new validator
@@ -1709,7 +1709,7 @@ Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
 For each `deposit` in `block.body.deposits`:
 
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
+* Let `serialized_deposit_data` be the serialized form of `deposit.data`. It should be 8 bytes for `data.amount` followed by 8 bytes for `data.timestamp` and then the `DepositInput` bytes. That is, it should match `data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
 * Verify that `deposit.index == state.deposit_index`.
 * Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
 
