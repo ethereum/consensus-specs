@@ -4,11 +4,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ## Table of contents
 
-- [Constants](#constants)
 - [Typing](#typing)
     - [Basic types](#basic-types)
     - [Composite types](#composite-types)
-    - [Notation](#notation)
     - [Aliases](#aliases)
 - [Serialization](#serialization)
     - [`uintN`](#uintn)
@@ -19,31 +17,18 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Self-signed containers](#self-signed-containers)
 - [Implementations](#implementations)
 
-## Constants
-
-| Name | Value | Description |
-|-|-|-|
-| `LENGTH_BYTES` | `4` | Number of bytes for the length of variable-length serialized objects. |
-| `MAX_LENGTH` | `2**(8 * LENGTH_BYTES)` | Maximum serialization length. |
-
 ## Typing
 
-#### Basic types
+### Basic types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 * `bool`: 1-bit unsigned integer
 
-#### Composite types
+### Composite types
 
-* **container**: ordered heterogenous collection of values
-* **tuple**: ordered fixed-length homogeneous collection of values
-* **list**: ordered variable-length homogenous collection of values 
-
-#### Notation
-
-* **container**: key-pair curly braket notation `{}` (e.g. `{'key1': uint64, 'key2': bool}`)
-* **tuple**: angle braket notation `[N]` (e.g. `uint64[N]`)
-* **list**: angle braket notation `[]` (e.g. `uint64[]`)
+* **container**: ordered heterogenous collection of values (key-pair curly braket notation `{}`, e.g. `{'foo': uint64, 'bar': bool}`)
+* **tuple**: ordered fixed-length homogeneous collection of values (angle braket notation `[N]`, e.g. `uint64[N]`)
+* **list**: ordered variable-length homogenous collection of values (angle braket notation `[]`, e.g. `uint64[]`)
 
 #### Aliases
 
@@ -52,7 +37,6 @@ For convenience we alias:
 * `byte` to `uint8`
 * `bytes` to `byte[]`
 * `bytesN` to `byte[N]`
-* `bit` to `bool`
 
 ## Serialization
 
@@ -75,8 +59,9 @@ return b'\x01' if value is True else b'\x00'
 #### Containers, tuples, lists
 
 ```python
+LENGTH_BYTES = 4
 serialized_bytes = ''.join([serialize(element) for element in value])
-assert len(serialized_bytes) < MAX_LENGTH
+assert len(serialized_bytes) < 2**(8 * LENGTH_BYTES)
 serialized_length = len(serialized_bytes).to_bytes(LENGTH_BYTES, 'little')
 return serialized_length + serialized_bytes
 ```
