@@ -43,7 +43,7 @@ For convenience we alias:
 
 ## Serialization
 
-We reccursively define the serialisation `serialize` function which consumes an object `value` (of the type specified) and returns a byte string of type `bytes`.
+We reccursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a byte string of type `bytes`.
 
 #### `uintN`
 
