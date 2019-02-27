@@ -4,6 +4,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ## Table of contents
 
+- [Constants](#constants)
 - [Typing](#typing)
     - [Basic types](#basic-types)
     - [Composite types](#composite-types)
@@ -17,8 +18,14 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Self-signed containers](#self-signed-containers)
 - [Implementations](#implementations)
 
-## Typing
+## Constants
 
+| Name | Value | Description |
+|-|-|-|
+| `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk.
+| `BYTES_PER_LENGTH_PREFIX` | `4` | Number of bytes per serialized length prefix. |
+
+## Typing
 ### Basic types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
@@ -27,7 +34,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 ### Composite types
 
 * **container**: ordered heterogenous collection of values
-    * key-pair curly braket notation `{}`, e.g. `{'foo': uint64, 'bar': bool}`
+    * key-pair curly braket notation `{}`, e.g. `{'foo': "uint64", 'bar': "bool"}`
 * **tuple**: ordered fixed-length homogeneous collection of values
     * angle braket notation `[N]`, e.g. `uint64[N]`
 * **list**: ordered variable-length homogenous collection of values
@@ -63,9 +70,8 @@ return b'\x01' if value is True else b'\x00'
 
 ```python
 serialized_bytes = ''.join([serialize(element) for element in value])
-LENGTH_BYTES = 4
-assert len(serialized_bytes) < 2**(8 * LENGTH_BYTES)
-serialized_length = len(serialized_bytes).to_bytes(LENGTH_BYTES, 'little')
+assert len(serialized_bytes) < 2**(8 * BYTES_PER_LENGTH_PREFIX)
+serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, 'little')
 return serialized_length + serialized_bytes
 ```
 
@@ -77,8 +83,8 @@ Given a type, serialization is an injective function from objects of that type t
 
 We first define helper functions:
 
-* `pack`: Given ordered objects of the same basic type, serialize them, pack them into 32-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleize`: Given ordered 32-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
+* `pack`: Given ordered objects of the same basic type, serialize them, pack them into BYTES_PER_CHUNK-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `merkleize`: Given ordered BYTES_PER_CHUNK-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`uint256` little-endian serialization) return `hash(root + length)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
