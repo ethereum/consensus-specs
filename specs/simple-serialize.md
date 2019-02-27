@@ -64,7 +64,7 @@ We reccursively define the `serialize` function which consumes an object `object
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
-return object.to_bytes(N / 8, 'little')
+return object.to_bytes(N // 8, 'little')
 ```
 
 #### `bool`
@@ -111,7 +111,7 @@ Given a type, serialization is an injective function from objects of that type t
 We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into 32-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleize`: Given ordered 32-byte chunks, right-pad them with zero chunks to the closest power of two, Merkleize the chunks, and return the root.
+* `merkleize`: Given ordered 32-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (32-byte little-endian serialization) return `hash(root + length)`.
 
 Let `object` be an object. We now define object Merkleization `hash_tree_root(object)` recursively:
