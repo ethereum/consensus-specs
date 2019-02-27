@@ -1,6 +1,6 @@
 # [WIP] SimpleSerialiZe (SSZ)
 
-This is a **work in progress** describing typing, serialisation and Merkleisation of Ethereum 2.0 objects.
+This is a **work in progress** describing typing, serialization and Merkleization of Ethereum 2.0 objects.
 
 ## Table of contents
 
@@ -25,8 +25,8 @@ This is a **work in progress** describing typing, serialisation and Merkleisatio
 
 | Name | Value | Definition |
 |-|:-:|-|
-| `LENGTH_BYTES` | 4 | Number of bytes for the length of variable-length serialized objects. |
-| `MAX_LENGTH` | 2**(8 * LENGTH_BYTES) | Maximum serialization length. |
+| `LENGTH_BYTES` | `4` | Number of bytes for the length of variable-length serialized objects. |
+| `MAX_LENGTH` | `2**(8 * LENGTH_BYTES)` | Maximum serialization length. |
 
 ## Types
 
@@ -104,15 +104,15 @@ return serialized_length + serialized_bytes
 
 ## Deserialization
 
-Given a type, serialisation is an injective function from objects of that type to byte strings. That is, deserialisation—the inverse function—is well-defined.
+Given a type, serialization is an injective function from objects of that type to byte strings. That is, deserialization—the inverse function—is well-defined.
 
 ## Merkleization
 
 We first define helper functions:
 
-* `pack`: Given ordered objects of the same basic type, serialise them, pack them into 32-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleise`: Given ordered 32-byte chunks, right-pad them with zero chunks to the closest power of two, Merkleize the chunks, and return the root.
-* `mix_in_length`: Given a Merkle root `r` and a length `l` (32-byte little-endian serialisation) return `hash(r + l)`.
+* `pack`: Given ordered objects of the same basic type, serialize them, pack them into 32-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `merkleize`: Given ordered 32-byte chunks, right-pad them with zero chunks to the closest power of two, Merkleize the chunks, and return the root.
+* `mix_in_length`: Given a Merkle root `root` and a length `length` (32-byte little-endian serialization) return `hash(root + length)`.
 
 Let `o` be an object. We now define object Merkleization `hash_tree_root(o)` recursively:
 
