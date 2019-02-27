@@ -18,7 +18,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
     - [Lists](#lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
-- [Signed containers](#signed-containers)
+- [Self-signed containers](#self-signed-containers)
 - [Implementations](#implementations)
 
 ## Constants
@@ -121,21 +121,21 @@ Let `o` be an object. We now define object Merkleization `hash_tree_root(o)` rec
 * `merkleize([hash_tree_root(element) for element in o])` if `o` is a tuple of composite objects or a container
 * `mix_in_length(merkleize([hash_tree_root(element) for element in o]), len(o))` if `o` is a list of composite objects
 
-## Signed containers
+## Self-signed containers
 
 Let `container` be a self-signed container object. The convention is that the signature (e.g. a `bytes96` BLS12-381 signature) be the last field of `container`. Further, the signed message for `container` is `signed_root(container) = hash_tree_root(truncate_last(container))` where `truncate_last` truncates the last element of `container`.
 
 ## Implementations
 
-| Language | Implementation | Description |
-|:-:|-|-|
-| Python | [ https://github.com/ethereum/py-ssz ](https://github.com/ethereum/py-ssz) | Python implementation of SSZ |
-| Rust | [ https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz ](https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz) | Lighthouse (Rust Ethereum 2.0 Node) maintained SSZ |
-| Nim | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implementation maintained SSZ |
-| Rust | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz) | Shasper implementation of SSZ maintained by ParityTech |
-| Javascript | [ https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js ](https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js) | Javascript Implementation maintained SSZ |
-| Java | [ https://www.github.com/ConsenSys/cava/tree/master/ssz ](https://www.github.com/ConsenSys/cava/tree/master/ssz) | SSZ Java library part of the Cava suite |
-| Go | [ https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz ](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) | Go implementation of SSZ mantained by Prysmatic Labs |
-| Swift | [ https://github.com/yeeth/SimpleSerialize.swift ](https://github.com/yeeth/SimpleSerialize.swift) | Swift implementation maintained SSZ |
-| C# | [ https://github.com/codingupastorm/csharp-ssz ](https://github.com/codingupastorm/csharp-ssz) | C# implementation maintained SSZ |
-| C++ | [ https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) | C++ implementation maintained SSZ |
+| Language | Project | Maintainer | Implementation |
+|-|-|-|-|
+| Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
+| Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz](https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz) |
+| Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
+| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/util/ssz](https://github.com/paritytech/shasper/tree/master/util/ssz) |
+| Javascript | Lodestart | Chain Safe Systems | [https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js](https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js) |
+| Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
+| Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) |
+| Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |
+| C# | | Jordan Andrews | [https://github.com/codingupastorm/csharp-ssz](https://github.com/codingupastorm/csharp-ssz) |
+| C++ | | | [https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) |
