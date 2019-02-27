@@ -1978,8 +1978,8 @@ def update_validator_registry(state: BeaconState) -> None:
 
 and perform the following updates:
 
-* Set `state.current_shuffling_epoch = next_epoch`
 * Set `state.current_shuffling_start_shard = (state.current_shuffling_start_shard + get_current_epoch_committee_count(state)) % SHARD_COUNT`
+* Set `state.current_shuffling_epoch = next_epoch`
 * Set `state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)`
 
 If a validator registry update does _not_ happen do the following:
