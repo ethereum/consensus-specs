@@ -13,9 +13,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`uintN`](#uintn)
     - [`bool`](#bool)
-    - [Containers](#containers)
-    - [Tuples](#tuples)
-    - [Lists](#lists)
+    - [Containers, tuples, lists](#containers-tuples-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -58,47 +56,28 @@ For convenience we alias:
 
 ## Serialization
 
-We reccursively define the `serialize` function which consumes an object `object` (of the type specified) and returns a byte string of type `bytes`.
+We reccursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a byte string of type `bytes`.
 
 #### `uintN`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
-return object.to_bytes(N // 8, 'little')
+return value.to_bytes(N // 8, 'little')
 ```
 
 #### `bool`
 
 ```python
-assert object in (True, False)
-return b'\x01' if object is True else b'\x00'
+assert value in (True, False)
+return b'\x01' if value is True else b'\x00'
 ```
 
-#### Containers
+#### Containers, tuples, lists
 
 ```python
-serialized_elements = [serialize(element) for element in object]
-serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
+serialized_bytes = ''.join([serialize(element) for element in value])
 assert len(serialized_bytes) < MAX_LENGTH
 serialized_length = len(serialized_bytes).to_bytes(LENGTH_BYTES, 'little')
-return serialized_length + serialized_bytes
-```
-
-#### Tuples
-
-```python
-serialized_elements = [serialize(element) for element in object]
-serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
-return serialized_bytes
-```
-
-#### Lists
-
-```python
-serialized_elements = [serialize(element) for element in object]
-serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
-assert len(serialized_elements) < MAX_LENGTH
-serialized_length = len(serialized_elements).to_bytes(LENGTH_BYTES, 'little')
 return serialized_length + serialized_bytes
 ```
 
@@ -114,12 +93,12 @@ We first define helper functions:
 * `merkleize`: Given ordered 32-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (32-byte little-endian serialization) return `hash(root + length)`.
 
-Let `object` be an object. We now define object Merkleization `hash_tree_root(object)` recursively:
+Let `value` be an object. We now define object Merkleization `hash_tree_root(value)` recursively:
 
-* `merkleize(pack(object))` if `object` is a basic object or a tuple of basic objects
-* `mix_in_length(merkleize(pack(object)), len(object))` if `object` is a list of basic objects
-* `merkleize([hash_tree_root(element) for element in object])` if `object` is a tuple of composite objects or a container
-* `mix_in_length(merkleize([hash_tree_root(element) for element in object]), len(object))` if `object` is a list of composite objects
+* `merkleize(pack(value))` if `value` is a basic object or a tuple of basic objects
+* `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
+* `merkleize([hash_tree_root(element) for element in value])` if `value` is a tuple of composite objects or a container
+* `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
 
 ## Self-signed containers
 
