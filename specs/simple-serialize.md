@@ -26,9 +26,12 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ### Composite types
 
-* **container**: ordered heterogenous collection of values (key-pair curly braket notation `{}`, e.g. `{'foo': uint64, 'bar': bool}`)
-* **tuple**: ordered fixed-length homogeneous collection of values (angle braket notation `[N]`, e.g. `uint64[N]`)
-* **list**: ordered variable-length homogenous collection of values (angle braket notation `[]`, e.g. `uint64[]`)
+* **container**: ordered heterogenous collection of values
+    * key-pair curly braket notation `{}`, e.g. `{'foo': uint64, 'bar': bool}`
+* **tuple**: ordered fixed-length homogeneous collection of values
+    * angle braket notation `[N]`, e.g. `uint64[N]`
+* **list**: ordered variable-length homogenous collection of values
+    * angle braket notation `[]`, e.g. `uint64[]`
 
 #### Aliases
 
@@ -40,7 +43,7 @@ For convenience we alias:
 
 ## Serialization
 
-We reccursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a byte string of type `bytes`.
+We reccursively define the serialisation `serialize` function which consumes an object `value` (of the type specified) and returns a byte string of type `bytes`.
 
 #### `uintN`
 
