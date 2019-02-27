@@ -33,7 +33,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 * **list**: ordered variable-length homogenous collection of values
     * angle braket notation `[]`, e.g. `uint64[]`
 
-#### Aliases
+### Aliases
 
 For convenience we alias:
 
