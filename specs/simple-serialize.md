@@ -59,8 +59,8 @@ return b'\x01' if value is True else b'\x00'
 #### Containers, tuples, lists
 
 ```python
-LENGTH_BYTES = 4
 serialized_bytes = ''.join([serialize(element) for element in value])
+LENGTH_BYTES = 4
 assert len(serialized_bytes) < 2**(8 * LENGTH_BYTES)
 serialized_length = len(serialized_bytes).to_bytes(LENGTH_BYTES, 'little')
 return serialized_length + serialized_bytes
@@ -78,7 +78,7 @@ We first define helper functions:
 * `merkleize`: Given ordered 32-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (32-byte little-endian serialization) return `hash(root + length)`.
 
-Let `value` be an object. We now define object Merkleization `hash_tree_root(value)` recursively:
+We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
 * `merkleize(pack(value))` if `value` is a basic object or a tuple of basic objects
 * `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
