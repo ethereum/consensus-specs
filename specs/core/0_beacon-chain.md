@@ -575,7 +575,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # BLS public key
     'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': Hash,
+    'withdrawal_credentials': Bytes32,
     # Epoch when validator activated
     'activation_epoch': Epoch,
     # Epoch when validator exited
