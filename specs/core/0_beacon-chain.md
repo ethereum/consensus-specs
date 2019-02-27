@@ -289,7 +289,6 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Bytes32` | `bytes32` | 32 bytes of binary data |
 | `Hash` | `bytes32` | result of hashing and its derivatives | 
 | `Bitfield` | `bytes` | an arbitrary length bits sequence | 
 | `BLSPubkey` | `bytes48` | a BLS12-381 public key |
@@ -430,7 +429,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # BLS pubkey
     'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': Bytes32,
+    'withdrawal_credentials': Hash,
     # A BLS signature of this `DepositInput`
     'proof_of_possession': BLSSignature,
 }
@@ -575,7 +574,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # BLS public key
     'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': Bytes32,
+    'withdrawal_credentials': Hash,
     # Epoch when validator activated
     'activation_epoch': Epoch,
     # Epoch when validator exited
