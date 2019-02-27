@@ -531,6 +531,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'current_shuffling_seed': 'bytes32',
 
     # Finality
+    'previous_epoch_attestations': [PendingAttestation],
+    'current_epoch_attestations': [PendingAttestation],
     'previous_justified_epoch': 'uint64',
     'justified_epoch': 'uint64',
     'justification_bitfield': 'uint64',
@@ -541,7 +543,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_block_roots': ['bytes32'],
     'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
-    'latest_attestations': [PendingAttestation],
     'batched_block_roots': ['bytes32'],
 
     # Ethereum 1.0 chain data
@@ -1458,6 +1459,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         current_shuffling_seed=ZERO_HASH,
 
         # Finality
+        previous_epoch_attestations=[],
+        current_epoch_attestations=[],
         previous_justified_epoch=GENESIS_EPOCH,
         justified_epoch=GENESIS_EPOCH,
         justification_bitfield=0,
@@ -1468,7 +1471,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
-        latest_attestations=[],
         batched_block_roots=[],
 
         # Ethereum 1.0 chain data
@@ -1699,7 +1701,9 @@ For each `attestation` in `block.body.attestations`:
 ```
 
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.crosslink_data_root == ZERO_HASH`.
-* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, inclusion_slot=state.slot)` to `state.latest_attestations`.
+* Let `pending_attestation = PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, inclusion_slot=state.slot)`.
+* Append `pending_attestation` to `state.previous_epoch_attestations` if `slot_to_epoch(attestation.data.slot) == get_previous_epoch(state)`.
+* Append `pending_attestation` to `state.current_epoch_attestations` if `slot_to_epoch(attestation.data.slot) == get_current_epoch(state)`.
 
 ##### Deposits
 
@@ -1779,7 +1783,7 @@ The steps below happen when `(state.slot + 1) % SLOTS_PER_EPOCH == 0`.
 [Validators](#dfn-Validator) attesting during the current epoch:
 
 * Let `current_total_balance = get_total_balance(state, get_active_validator_indices(state.validator_registry, current_epoch))`.
-* Let `current_epoch_attestations = [a for a in state.latest_attestations if current_epoch == slot_to_epoch(a.data.slot)]`. (Note: Each of these attestations votes for the current justified epoch/block root because of the [attestation block validity rules](#attestations-1).)
+* Let `current_epoch_attestations = state.current_epoch_attestations`.
 * Validators justifying the epoch boundary block at the start of the current epoch:
   * Let `current_epoch_boundary_attestations = [a for a in current_epoch_attestations if a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(current_epoch))]`.
   * Let `current_epoch_boundary_attester_indices` be the union of the [validator](#dfn-validator) index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in current_epoch_boundary_attestations]`.
@@ -1789,7 +1793,7 @@ The steps below happen when `(state.slot + 1) % SLOTS_PER_EPOCH == 0`.
 
 * Let `previous_total_balance = get_total_balance(state, get_active_validator_indices(state.validator_registry, previous_epoch))`.
 * Validators that made an attestation during the previous epoch, targeting the previous justified slot:
-  * Let `previous_epoch_attestations = [a for a in state.latest_attestations if previous_epoch == slot_to_epoch(a.data.slot)]`. (Note: Each of these attestations votes for the previous justified epoch/block root because of the [attestation block validity rules](#attestations-1).)
+  * Let `previous_epoch_attestations = state.previous_epoch_attestations`.
   * Let `previous_epoch_attester_indices` be the union of the validator index sets given by `[get_attestation_participants(state, a.data, a.aggregation_bitfield) for a in previous_epoch_attestations]`.
   * Let `previous_epoch_attesting_balance = get_total_balance(state, previous_epoch_attester_indices)`.
 * Validators justifying the epoch boundary block at the start of the previous epoch:
@@ -2046,7 +2050,8 @@ def process_exit_queue(state: BeaconState) -> None:
 * Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY))`.
 * Set `state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
-* Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
+* Set `state.current_epoch_attestations = state.previous_epoch_attestations`.
+* Set `state.previous_epoch_attestations = []`.
 
 ### State root verification
 
