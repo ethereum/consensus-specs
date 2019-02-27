@@ -2,7 +2,7 @@
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
-At the current stage, Phase 1 is, while fundamentally feature-complete, is still subject to change. Development teams with spare resources may consider starting on the "Shard chains and crosslink data" section; at least basic properties, such as the fact that a shard block can get created every slot and is dependent on both a parent block in the same shard and a beacon chain block at or before that same slot, are unlikely to change, though details are likely to undergo similar kinds of changes to what Phase 0 has undergone since the start of the year.
+At the current stage, Phase 1, while fundamentally feature-complete, is still subject to change. Development teams with spare resources may consider starting on the "Shard chains and crosslink data" section; at least basic properties, such as the fact that a shard block can get created every slot and is dependent on both a parent block in the same shard and a beacon chain block at or before that same slot, are unlikely to change, though details are likely to undergo similar kinds of changes to what Phase 0 has undergone since the start of the year.
 
 ## Table of contents
 
