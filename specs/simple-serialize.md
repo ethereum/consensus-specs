@@ -83,8 +83,8 @@ Given a type, serialization is an injective function from objects of that type t
 
 We first define helper functions:
 
-* `pack`: Given ordered objects of the same basic type, serialize them, pack them into BYTES_PER_CHUNK-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleize`: Given ordered BYTES_PER_CHUNK-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
+* `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`uint256` little-endian serialization) return `hash(root + length)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
