@@ -6,7 +6,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 - [Constants](#constants)
 - [Typing](#typing)
-    - [Primitive types](#primitive-types)
+    - [Basic types](#basic-types)
     - [Composite types](#composite-types)
     - [Notation](#notation)
     - [Aliases](#aliases)
@@ -30,7 +30,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ## Typing
 
-#### Primitive types
+#### Basic types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 * `bool`: 1-bit unsigned integer
