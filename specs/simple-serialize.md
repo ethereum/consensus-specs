@@ -1,11 +1,11 @@
-# [WIP] SimpleSerialiZe (SSZ)
+# SimpleSerialiZe (SSZ)
 
 This is a **work in progress** describing typing, serialization and Merkleization of Ethereum 2.0 objects.
 
 ## Table of contents
 
 - [Constants](#constants)
-- [Types](#types)
+- [Typing](#typing)
     - [Primitive types](#primitive-types)
     - [Composite types](#composite-types)
     - [Notation](#notation)
@@ -23,12 +23,12 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ## Constants
 
-| Name | Value | Definition |
-|-|:-:|-|
+| Name | Value | Description |
+|-|-|-|
 | `LENGTH_BYTES` | `4` | Number of bytes for the length of variable-length serialized objects. |
 | `MAX_LENGTH` | `2**(8 * LENGTH_BYTES)` | Maximum serialization length. |
 
-## Types
+## Typing
 
 ### Primitive types
 
@@ -43,9 +43,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ### Notation
 
-* **Container**: key-pair notation `{}`, e.g. `{'key1': uint64, 'key2': bool}`
-* **Tuple**: angle-braket notation `[N]`, e.g. `uint64[N]`
-* **List**: angle-braket notation `[]`, e.g. `uint64[]`
+* **Container**: key-pair curly braken notation `{}` (e.g. `{'key1': uint64, 'key2': bool}`)
+* **Tuple**: angle braket notation `[N]` (e.g. `uint64[N]`)
+* **List**: angle braket notation `[]` (e.g. `uint64[]`)
 
 ### Aliases
 
@@ -58,26 +58,26 @@ For convenience we alias:
 
 ## Serialization
 
-We reccursively define the `serialize` function which consumes an object `o` (of the type specified) and returns a byte string `[]byte`.
+We reccursively define the `serialize` function which consumes an object `object` (of the type specified) and returns a byte string of type `bytes`.
 
 ### `uintN`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
-return o.to_bytes(N / 8, 'little')
+return object.to_bytes(N / 8, 'little')
 ```
 
 ### `bool`
 
 ```python
-assert o in (True, False)
-return b'\x01' if o is True else b'\x00'
+assert object in (True, False)
+return b'\x01' if object is True else b'\x00'
 ```
 
 ### Containers
 
 ```python
-serialized_elements = [serialize(element) for element in o]
+serialized_elements = [serialize(element) for element in object]
 serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
 assert len(serialized_bytes) < MAX_LENGTH
 serialized_length = len(serialized_bytes).to_bytes(LENGTH_BYTES, 'little')
@@ -87,7 +87,7 @@ return serialized_length + serialized_bytes
 ### Tuples
 
 ```python
-serialized_elements = [serialize(element) for element in o]
+serialized_elements = [serialize(element) for element in object]
 serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
 return serialized_bytes
 ```
@@ -95,7 +95,7 @@ return serialized_bytes
 ### Lists
 
 ```python
-serialized_elements = [serialize(element) for element in o]
+serialized_elements = [serialize(element) for element in object]
 serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
 assert len(serialized_elements) < MAX_LENGTH
 serialized_length = len(serialized_elements).to_bytes(LENGTH_BYTES, 'little')
@@ -114,12 +114,12 @@ We first define helper functions:
 * `merkleize`: Given ordered 32-byte chunks, right-pad them with zero chunks to the closest power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (32-byte little-endian serialization) return `hash(root + length)`.
 
-Let `o` be an object. We now define object Merkleization `hash_tree_root(o)` recursively:
+Let `object` be an object. We now define object Merkleization `hash_tree_root(object)` recursively:
 
-* `merkleize(pack(o))` if `o` is a basic object or a tuple of basic objects
-* `mix_in_length(merkleize(pack(o)), len(o))` if `o` is a list of basic objects
-* `merkleize([hash_tree_root(element) for element in o])` if `o` is a tuple of composite objects or a container
-* `mix_in_length(merkleize([hash_tree_root(element) for element in o]), len(o))` if `o` is a list of composite objects
+* `merkleize(pack(object))` if `object` is a basic object or a tuple of basic objects
+* `mix_in_length(merkleize(pack(object)), len(object))` if `object` is a list of basic objects
+* `merkleize([hash_tree_root(element) for element in object])` if `object` is a tuple of composite objects or a container
+* `mix_in_length(merkleize([hash_tree_root(element) for element in object]), len(object))` if `object` is a list of composite objects
 
 ## Self-signed containers
 
@@ -128,7 +128,7 @@ Let `container` be a self-signed container object. The convention is that the si
 ## Implementations
 
 | Language | Project | Maintainer | Implementation |
-|-|-|-|-|
+|:-:|-|-|
 | Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
 | Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz](https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz) |
 | Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
