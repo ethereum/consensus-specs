@@ -30,24 +30,24 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ## Typing
 
-### Primitive types
+#### Primitive types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 * `bool`: 1-bit unsigned integer
 
-### Composite types
+#### Composite types
 
-* **Container**: ordered heterogenous collection of values
-* **Tuple**: ordered fixed-length homogeneous collection of values
-* **List**: ordered variable-length homogenous collection of values 
+* **container**: ordered heterogenous collection of values
+* **tuple**: ordered fixed-length homogeneous collection of values
+* **list**: ordered variable-length homogenous collection of values 
 
-### Notation
+#### Notation
 
-* **Container**: key-pair curly braken notation `{}` (e.g. `{'key1': uint64, 'key2': bool}`)
-* **Tuple**: angle braket notation `[N]` (e.g. `uint64[N]`)
-* **List**: angle braket notation `[]` (e.g. `uint64[]`)
+* **container**: key-pair curly braket notation `{}` (e.g. `{'key1': uint64, 'key2': bool}`)
+* **tuple**: angle braket notation `[N]` (e.g. `uint64[N]`)
+* **list**: angle braket notation `[]` (e.g. `uint64[]`)
 
-### Aliases
+#### Aliases
 
 For convenience we alias:
 
@@ -60,21 +60,21 @@ For convenience we alias:
 
 We reccursively define the `serialize` function which consumes an object `object` (of the type specified) and returns a byte string of type `bytes`.
 
-### `uintN`
+#### `uintN`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
 return object.to_bytes(N / 8, 'little')
 ```
 
-### `bool`
+#### `bool`
 
 ```python
 assert object in (True, False)
 return b'\x01' if object is True else b'\x00'
 ```
 
-### Containers
+#### Containers
 
 ```python
 serialized_elements = [serialize(element) for element in object]
@@ -84,7 +84,7 @@ serialized_length = len(serialized_bytes).to_bytes(LENGTH_BYTES, 'little')
 return serialized_length + serialized_bytes
 ```
 
-### Tuples
+#### Tuples
 
 ```python
 serialized_elements = [serialize(element) for element in object]
@@ -92,7 +92,7 @@ serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
 return serialized_bytes
 ```
 
-### Lists
+#### Lists
 
 ```python
 serialized_elements = [serialize(element) for element in object]
