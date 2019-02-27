@@ -25,7 +25,8 @@ This is a **work in progress** describing typing, serialisation and Merkleisatio
 
 | Name | Value | Definition |
 |-|:-:|-|
-| `LENGTH_BYTES` | 4 | Number of bytes used for the length added before a variable-length serialized object. |
+| `LENGTH_BYTES` | 4 | Number of bytes for the length of variable-length serialized objects. |
+| `MAX_LENGTH` | 2**(8 * LENGTH_BYTES) | Maximum serialization length. |
 
 ## Types
 
@@ -36,15 +37,15 @@ This is a **work in progress** describing typing, serialisation and Merkleisatio
 
 ### Composite types
 
-* **Containes**: ordered heterogenous collection of values
-* **Tuple**: ordered fixed-size homogeneous collection of values
-* **List**: ordered variable-size homogenous collection of values 
+* **Container**: ordered heterogenous collection of values
+* **Tuple**: ordered fixed-length homogeneous collection of values
+* **List**: ordered variable-length homogenous collection of values 
 
 ### Notation
 
-* **Containes**: key-pair notation `{}`, e.g. `{'key1': uint64, 'key2': bool}`
-* **Tuple**: angle-braket notation `[]`, e.g. `uint64[]`
-* **List**: angle-braket notation `[N]`, e.g. `uint64[N]`
+* **Container**: key-pair notation `{}`, e.g. `{'key1': uint64, 'key2': bool}`
+* **Tuple**: angle-braket notation `[N]`, e.g. `uint64[N]`
+* **List**: angle-braket notation `[]`, e.g. `uint64[]`
 
 ### Aliases
 
@@ -57,28 +58,28 @@ For convenience we alias:
 
 ## Serialization
 
-We reccursively define a `serialize` function. In the code below `value` refers to a value of the specified type.
+We reccursively define the `serialize` function which consumes an object `o` (of the type specified) and returns a byte string `[]byte`.
 
 ### `uintN`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
-return value.to_bytes(N / 8, 'little')
+return o.to_bytes(N / 8, 'little')
 ```
 
 ### `bool`
 
 ```python
-assert value in (True, False)
-return b'\x01' if value is True else b'\x00'
+assert o in (True, False)
+return b'\x01' if o is True else b'\x00'
 ```
 
 ### Containers
 
 ```python
-serialized_elements = [serialize(element) for element in value]
+serialized_elements = [serialize(element) for element in o]
 serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
-assert len(serialized_bytes) < 2**32
+assert len(serialized_bytes) < MAX_LENGTH
 serialized_length = len(serialized_bytes).to_bytes(LENGTH_BYTES, 'little')
 return serialized_length + serialized_bytes
 ```
@@ -86,7 +87,7 @@ return serialized_length + serialized_bytes
 ### Tuples
 
 ```python
-serialized_elements = [serialize(element) for element in value]
+serialized_elements = [serialize(element) for element in o]
 serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
 return serialized_bytes
 ```
@@ -94,9 +95,9 @@ return serialized_bytes
 ### Lists
 
 ```python
-serialized_elements = [serialize(element) for element in value]
+serialized_elements = [serialize(element) for element in o]
 serialized_bytes = reduce(lambda x, y: x + y, serialized_elements)
-assert len(serialized_elements) < 2**32
+assert len(serialized_elements) < MAX_LENGTH
 serialized_length = len(serialized_elements).to_bytes(LENGTH_BYTES, 'little')
 return serialized_length + serialized_bytes
 ```
