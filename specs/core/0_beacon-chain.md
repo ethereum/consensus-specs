@@ -1410,13 +1410,13 @@ For convenience, we provide the interface to the contract here:
 
 ## On genesis
 
-When enough full deposits have been made to the deposit contract a `Eth2Genesis` log is emitted. Construct a corresponding `genesis_state` and `genesis_block` as follows:
+When enough full deposits have been made to the deposit contract, an `Eth2Genesis` log is emitted. Construct a corresponding `genesis_state` and `genesis_block` as follows:
 
 * Let `genesis_validator_deposits` be the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log.
 * Let `genesis_time` be the timestamp specified in the `Eth2Genesis` log.
 * Let `genesis_eth1_data` be the `Eth1Data` object where:
-    * `genesis_eth1_data.deposit_root` is the deposit root when the `Eth2Genesis` log was emitted
-    * `genesis_eth1_data.block_hash` is the hash of the block that emitted the `Eth2Genesis` log
+    * `genesis_eth1_data.deposit_root` is the `deposit_root` contained in the `Eth2Genesis` log.
+    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
 * Let `genesis_block = get_empty_block()`.
 * Set `genesis_block.state_root = hash_tree_root(genesis_state)`.
