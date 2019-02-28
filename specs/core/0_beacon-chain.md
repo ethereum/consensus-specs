@@ -1243,7 +1243,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
     deposit_input = deposit.deposit_data.deposit_input
 
-    assert bls_verify(
+    proof_is_valid = bls_verify(
         pubkey=deposit_input.pubkey,
         message_hash=signed_root(deposit_input, "proof_of_possession"),
         signature=deposit_input.proof_of_possession,
@@ -1253,6 +1253,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             DOMAIN_DEPOSIT,
         )
     )
+    
+    if not proof_is_valid:
+        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit_input.pubkey
@@ -1320,12 +1323,13 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
+    delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 
     # The following updates only occur if not previous exited
-    if validator.exit_epoch <= get_delayed_activation_exit_epoch(get_current_epoch(state)):
+    if validator.exit_epoch <= delayed_activation_exit_epoch:
         return
-
-    validator.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+    else:
+        validator.exit_epoch = delayed_activation_exit_epoch
 ```
 
 #### `slash_validator`
@@ -1646,7 +1650,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`:
 * Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
 * Verify that `proposer_slashing.header_1.slot == proposer_slashing.header_2.slot`.
 * Verify that `proposer_slashing.header_1.block_body_root != proposer_slashing.header_2.block_body_root`.
-* Verify that `proposer.slashed == False`.
+* Verify that `proposer.slashed is False`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_1, "signature"), signature=proposer_slashing.header_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_1.slot), DOMAIN_BEACON_BLOCK))`.
 * Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.header_2, "signature"), signature=proposer_slashing.header_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.header_2.slot), DOMAIN_BEACON_BLOCK))`.
 * Run `slash_validator(state, proposer_slashing.proposer_index)`.
@@ -1663,7 +1667,7 @@ For each `attester_slashing` in `block.body.attester_slashings`:
 * Verify that `is_double_vote(slashable_attestation_1.data, slashable_attestation_2.data)` or `is_surround_vote(slashable_attestation_1.data, slashable_attestation_2.data)`.
 * Verify that `verify_slashable_attestation(state, slashable_attestation_1)`.
 * Verify that `verify_slashable_attestation(state, slashable_attestation_2)`.
-* Let `slashable_indices = [index for index in slashable_attestation_1.validator_indices if index in slashable_attestation_2.validator_indices and state.validator_registry[index].slashed == False]`.
+* Let `slashable_indices = [index for index in slashable_attestation_1.validator_indices if index in slashable_attestation_2.validator_indices and state.validator_registry[index].slashed is False]`.
 * Verify that `len(slashable_indices) >= 1`.
 * Run `slash_validator(state, index)` for each `index` in `slashable_indices`.
 
@@ -1718,7 +1722,6 @@ For each `attestation` in `block.body.attestations`:
 
 Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
-[TODO: add logic to ensure that deposits from 1.0 chain are processed in order]
 [TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
 
 For each `deposit` in `block.body.deposits`:
@@ -1773,7 +1776,7 @@ For each `transfer` in `block.body.transfers`:
 * Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
 * Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
 * Verify that `state.slot == transfer.slot`.
-* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch`.
+* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch` or `state.validator_registry[transfer.from].activation_epoch == FAR_FUTURE_EPOCH`.
 * Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
 * Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=signed_root(transfer, "signature"), signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
 * Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
@@ -1899,7 +1902,7 @@ Case 2: `epochs_since_finality > 4`:
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_boundary_attester_indices`, loses `inactivity_penalty(state, index, epochs_since_finality)`.
 * Any [active validator](#dfn-active-validator) `index` not in `previous_epoch_head_attester_indices`, loses `base_reward(state, index)`.
-* Any [active validator](#dfn-active-validator) `index` with `validator.slashed == True`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
+* Any [active validator](#dfn-active-validator) `index` with `validator.slashed is True`, loses `2 * inactivity_penalty(state, index, epochs_since_finality) + base_reward(state, index)`.
 * Any [validator](#dfn-validator) `index` in `previous_epoch_attester_indices` loses `base_reward(state, index) - base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_distance(state, index)`
 
 ##### Attestation inclusion
@@ -1978,7 +1981,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
+        if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -2058,7 +2061,7 @@ def process_exit_queue(state: BeaconState) -> None:
 #### Final updates
 
 * Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY))`.
-* Set `state.latest_slashed_balances[(next_epoch) % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
+* Set `state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
 
