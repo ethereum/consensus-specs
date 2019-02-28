@@ -55,6 +55,7 @@
     - [Helper functions](#helper-functions)
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
+        - [`signed_root`](#signed_root)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -1315,12 +1316,13 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
+    delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 
     # The following updates only occur if not previous exited
-    if validator.exit_epoch <= get_delayed_activation_exit_epoch(get_current_epoch(state)):
+    if validator.exit_epoch <= delayed_activation_exit_epoch:
         return
-
-    validator.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+    else:
+        validator.exit_epoch = delayed_activation_exit_epoch
 ```
 
 #### `slash_validator`
@@ -1964,7 +1966,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Exit validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
+        if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
