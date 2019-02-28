@@ -1614,7 +1614,6 @@ Below are the processing steps that happen at every `slot >= GENESIS_SLOT`.
 * Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = get_block_root(state, state.slot - 1)`.
 * Set `state.latest_block_header.state_root = get_state_root(state, state.slot)` if `state.latest_block_header.state_root == ZERO_HASH`.
 * Set `state.slot += 1`.
-* If `state.slot % SLOTS_PER_BATCHING == 0` append `merkle_root(state.latest_block_roots + state.latest_state_roots)` to `state.historical_batchings`.
 
 ### Per-block processing
 
@@ -2063,6 +2062,7 @@ def process_exit_queue(state: BeaconState) -> None:
 * Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY))`.
 * Set `state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
 * Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
+* If `next_epoch % slot_to_epoch(SLOTS_PER_BATCHING) == 0`, append `merkle_root(state.latest_block_roots + state.latest_state_roots)` to `state.historical_batchings`.
 * Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
 
 ### State root verification
