@@ -34,11 +34,11 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 ### Composite types
 
 * **container**: ordered heterogenous collection of values
-    * key-pair curly braket notation `{}`, e.g. `{'foo': "uint64", 'bar': "bool"}`
+    * key-pair curly bracket notation `{}`, e.g. `{'foo': "uint64", 'bar': "bool"}`
 * **tuple**: ordered fixed-length homogeneous collection of values
-    * angle braket notation `[N]`, e.g. `uint64[N]`
+    * angle bracket notation `[N]`, e.g. `uint64[N]`
 * **list**: ordered variable-length homogenous collection of values
-    * angle braket notation `[]`, e.g. `uint64[]`
+    * angle bracket notation `[]`, e.g. `uint64[]`
 
 ### Aliases
 
@@ -50,7 +50,9 @@ For convenience we alias:
 
 ## Serialization
 
-We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a byte string of type `bytes`.
+We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `bytes`.
+
+*Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, etc.) objects implicitly carry their type.
 
 ### `uintN`
 
@@ -77,14 +79,14 @@ return serialized_length + serialized_bytes
 
 ## Deserialization
 
-Given a type, serialization is an injective function from objects of that type to byte strings. That is, deserialization—the inverse function—is well-defined.
+Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
 ## Merkleization
 
 We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, right-pad them with zero chunks to the next power of two, Merkleize the chunks, and return the root.
+* `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`uint256` little-endian serialization) return `hash(root + length)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
@@ -96,7 +98,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 
 ## Self-signed containers
 
-Let `container` be a self-signed container object. The convention is that the signature (e.g. a `bytes96` BLS12-381 signature) be the last field of `container`. Further, the signed message for `container` is `signed_root(container) = hash_tree_root(truncate_last(container))` where `truncate_last` truncates the last element of `container`.
+Let `value` be a self-signed container object. The convention is that the signature (e.g. a `bytes96` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signed_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
 ## Implementations
 
