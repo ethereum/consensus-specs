@@ -55,6 +55,7 @@
     - [Helper functions](#helper-functions)
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
+        - [`signed_root`](#signed_root)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -879,19 +880,19 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
         if registry_change:
             committees_per_epoch = get_next_epoch_committee_count(state)
-            shuffling_epoch = next_epoch
             seed = generate_seed(state, next_epoch)
+            shuffling_epoch = next_epoch
             current_committees_per_epoch = get_current_epoch_committee_count(state)
             shuffling_start_shard = (state.current_shuffling_start_shard + current_committees_per_epoch) % SHARD_COUNT
         elif epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
             committees_per_epoch = get_next_epoch_committee_count(state)
-            shuffling_epoch = next_epoch
             seed = generate_seed(state, next_epoch)
+            shuffling_epoch = next_epoch
             shuffling_start_shard = state.current_shuffling_start_shard
         else:
             committees_per_epoch = get_current_epoch_committee_count(state)
-            shuffling_epoch = state.current_shuffling_epoch
             seed = state.current_shuffling_seed
+            shuffling_epoch = state.current_shuffling_epoch
             shuffling_start_shard = state.current_shuffling_start_shard
 
     shuffling = get_shuffling(
