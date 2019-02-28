@@ -29,7 +29,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 ### Basic types
 
 * `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
-* `bool`: 1-bit unsigned integer
+* `bool`: `True` or `False`
 
 ### Composite types
 
