@@ -394,7 +394,7 @@ Where the inner `hash_tree_root_internal` is a recursive application of the tree
 Recursively tree hash the values in the container in the same order as the fields, and Merkle hash the results.
 
 ```python
-return merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields])
+return merkle_hash([hash_tree_root(getattr(x, field)) for field in value.fields])
 ```
 
 ### Signed roots
