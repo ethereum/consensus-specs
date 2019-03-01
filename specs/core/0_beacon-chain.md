@@ -847,7 +847,7 @@ def get_next_epoch_committee_count(state: BeaconState) -> int:
     return get_epoch_committee_count(len(next_active_validators))
 ```
 
-### `get_crosslink_committees_at_slot`
+### `get_crosslink_committees`
 
 ```python
 def get_crosslink_committees(state: BeaconState,
@@ -885,7 +885,7 @@ def get_previous_epoch_committees_at_slot(state: BeaconState,
     seed = state.previous_shuffling_seed
     shuffling_epoch = state.previous_shuffling_epoch
     shuffling_start_shard = state.previous_shuffling_start_shard
-    return get_crosslink_committees_at_slot(
+    return get_crosslink_committees(
         state,
         seed,
         shuffling_epoch,
@@ -904,7 +904,7 @@ def get_current_epoch_committees_at_slot(state: BeaconState,
     seed = state.current_shuffling_seed
     shuffling_epoch = state.current_shuffling_epoch
     shuffling_start_shard = state.current_shuffling_start_shard
-    return get_crosslink_committees_at_slot(
+    return get_crosslink_committees(
         state,
         seed,
         shuffling_epoch,
@@ -939,7 +939,7 @@ def get_next_epoch_committees_at_slot(state: BeaconState,
         shuffling_epoch = state.current_shuffling_epoch
         shuffling_start_shard = state.current_shuffling_start_shard
 
-    return get_crosslink_committees_at_slot(
+    return get_crosslink_committees(
         state,
         seed,
         shuffling_epoch,
