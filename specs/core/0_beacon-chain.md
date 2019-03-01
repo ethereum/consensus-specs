@@ -1694,7 +1694,7 @@ def process_attestation(attestation: Attestation, state: BeaconState):
     assert attestation.data.slot >= GENESIS_SLOT
     state.slot < attestation.data.slot + SLOTS_PER_EPOCH
     # Can't submit attestations too quickly
-    attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+    assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     # Verify that the justified epoch is correct, case 1: current epoch attestations
     if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state):
         assert attestation.data.justified_epoch == state.justified_epoch
