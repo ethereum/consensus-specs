@@ -76,6 +76,7 @@
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`merkle_root`](#merkle_root)
+        - [`verify_merkle_branch`](#verify_merkle_branch)
         - [`get_attestation_participants`](#get_attestation_participants)
         - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
@@ -990,6 +991,22 @@ def merkle_root(values: List[Bytes32]) -> Bytes32:
     return o[1]
 ```
 
+### `verify_merkle_branch`
+
+```python
+def verify_merkle_branch(leaf: Bytes32, branch: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
+    """
+    Verify that the given ``leaf`` is on the merkle branch ``branch``.
+    """
+    value = leaf
+    for i in range(depth):
+        if index // (2**i) % 2:
+            value = hash(branch[i] + value)
+        else:
+            value = hash(value + branch[i])
+    return value == root
+```
+
 ### `get_attestation_participants`
 
 ```python
@@ -1236,6 +1253,32 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
     deposit_input = deposit.deposit_data.deposit_input
 
+    # Should equal 8 bytes for deposit_data.amount +
+    #              8 bytes for deposit_data.timestamp +
+    #              176 bytes for deposit_data.deposit_input
+    # It should match the deposit_data in the eth1.0 deposit contract
+    serialized_deposit_data = ssz_serialize(deposit.deposit_data)
+    # Deposits must be processed in order
+    assert deposit.index == state.deposit_index
+    
+    # Verify the Merkle branch
+    merkle_branch_is_valid = verify_merkle_branch(
+        leaf=hash(serialized_deposit_data),
+        branch=deposit.branch,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH,
+        index=deposit.index,
+        root=state.latest_eth1_data.deposit_root
+    )
+    if not merkle_branch_is_valid:
+        return
+        
+    # Increment the next deposit index we are expecting. Note that this
+    # needs to be done here because while the deposit contract will never
+    # create an invalid Merkle branch, it may admit an invalid deposit
+    # object, and we need to be able to skip over it
+    state.deposit_index += 1
+    
+    # Verify the proof of possession
     proof_is_valid = bls_verify(
         pubkey=deposit_input.pubkey,
         message_hash=signed_root(deposit_input, "proof_of_possession"),
@@ -1247,7 +1290,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         )
     )
     
-    if not proof_is_valid:
+    if not not proof_is_valid:
         return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
@@ -1476,7 +1519,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Ethereum 1.0 chain data
         latest_eth1_data=latest_eth1_data,
         eth1_data_votes=[],
-        deposit_index=len(genesis_validator_deposits)
+        deposit_index=0,
     )
 
     # Process genesis deposits
@@ -1707,35 +1750,7 @@ For each `attestation` in `block.body.attestations`:
 
 Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
-[TODO: update the call to `verify_merkle_branch` below if it needs to change after we process deposits in order]
-
-For each `deposit` in `block.body.deposits`:
-
-* Let `serialized_deposit_data` be the serialized form of `deposit.deposit_data`. It should be 8 bytes for `deposit_data.amount` followed by 8 bytes for `deposit_data.timestamp` and then the `DepositInput` bytes. That is, it should match `deposit_data` in the [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract) of which the hash was placed into the Merkle tree.
-* Verify that `deposit.index == state.deposit_index`.
-* Verify that `verify_merkle_branch(hash(serialized_deposit_data), deposit.branch, DEPOSIT_CONTRACT_TREE_DEPTH, deposit.index, state.latest_eth1_data.deposit_root)` is `True`.
-
-```python
-def verify_merkle_branch(leaf: Bytes32, branch: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
-    """
-    Verify that the given ``leaf`` is on the merkle branch ``branch``.
-    """
-    value = leaf
-    for i in range(depth):
-        if index // (2**i) % 2:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    return value == root
-```
-
-* Run the following:
-
-```python
-process_deposit(state, deposit)
-```
-
-* Set `state.deposit_index += 1`.
+For each `deposit` in `block.body.deposits`, run `process_deposit(state, deposit)`
 
 ##### Voluntary exits
 
