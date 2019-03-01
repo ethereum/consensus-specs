@@ -1257,7 +1257,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     #              8 bytes for deposit_data.timestamp +
     #              176 bytes for deposit_data.deposit_input
     # It should match the deposit_data in the eth1.0 deposit contract
-    serialized_deposit_data = ssz_serialize(deposit.deposit_data)
+    serialized_deposit_data = serialize(deposit.deposit_data)
     # Deposits must be processed in order
     assert deposit.index == state.deposit_index
     
