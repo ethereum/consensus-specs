@@ -1692,7 +1692,7 @@ For each `attestation` in `block.body.attestations`, run the following function:
 def process_attestation(attestation: Attestation, state: BeaconState):
     # Can't submit attestations that are too far in history (or in prehistory) 
     assert attestation.data.slot >= GENESIS_SLOT
-    state.slot < attestation.data.slot + SLOTS_PER_EPOCH
+    assert state.slot < attestation.data.slot + SLOTS_PER_EPOCH
     # Can't submit attestations too quickly
     assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     # Verify that the justified epoch is correct, case 1: current epoch attestations
