@@ -1608,7 +1608,7 @@ _Note_: If there are skipped slots between a block and its parent block, run the
 
 ### Per-slot processing
 
-Below are the processing steps that happen at every `slot >= GENESIS_SLOT`.
+Below are the processing steps that happen at every `slot > GENESIS_SLOT`.
 
 * Set `state.latest_state_roots[state.slot % SLOTS_PER_BATCHING] = hash_tree_root(state)`.
 * Set `state.latest_block_roots[state.slot % SLOTS_PER_BATCHING] = get_block_root(state, state.slot - 1)`.
