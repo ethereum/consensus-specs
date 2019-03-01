@@ -850,6 +850,108 @@ def get_next_epoch_committee_count(state: BeaconState) -> int:
 ### `get_crosslink_committees_at_slot`
 
 ```python
+def get_crosslink_committees(state: BeaconState,
+                             seed: Bytes32,
+                             shuffling_epoch,
+                             slot: Slot,
+                             start_shard: Shard,
+                             committees_per_epoch: int) -> List[Tuple[List[ValidatorIndex], Shard]]:
+    offset = slot % SLOTS_PER_EPOCH
+    committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
+    slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
+
+    shuffling = get_shuffling(
+        seed,
+        state.validator_registry,
+        shuffling_epoch,
+    )
+
+    return [
+        (
+            shuffling[committees_per_slot * offset + i],
+            (slot_start_shard + i) % SHARD_COUNT,
+        )
+        for i in range(committees_per_slot)
+    ]
+
+```
+
+### `get_previous_epoch_committees_at_slot`
+
+```python
+def get_previous_epoch_committees_at_slot(state: BeaconState,
+                                          slot: Slot) -> List[Tuple[List[ValidatorIndex], Shard]]:
+    committees_per_epoch = get_previous_epoch_committee_count(state)
+    seed = state.previous_shuffling_seed
+    shuffling_epoch = state.previous_shuffling_epoch
+    shuffling_start_shard = state.previous_shuffling_start_shard
+    return get_crosslink_committees_at_slot(
+        state,
+        seed,
+        shuffling_epoch,
+        slot,
+        start_shard,
+        committees_per_epoch,
+    )
+```
+
+### `get_current_epoch_committees_at_slot`
+
+```python
+def get_current_epoch_committees_at_slot(state: BeaconState,
+                                         slot: Slot) -> List[Tuple[List[ValidatorIndex], Shard]]:
+    committees_per_epoch = get_current_epoch_committee_count(state)
+    seed = state.current_shuffling_seed
+    shuffling_epoch = state.current_shuffling_epoch
+    shuffling_start_shard = state.current_shuffling_start_shard
+    return get_crosslink_committees_at_slot(
+        state,
+        seed,
+        shuffling_epoch,
+        slot,
+        start_shard,
+        committees_per_epoch,
+    )
+
+```
+
+### `get_next_epoch_committees_at_slot`
+
+```python
+def get_next_epoch_committees_at_slot(state: BeaconState,
+                                      slot: Slot,
+                                      registry_change: bool) -> List[Tuple[List[ValidatorIndex], Shard]]:
+    epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
+    if registry_change:
+        committees_per_epoch = get_next_epoch_committee_count(state)
+        seed = generate_seed(state, next_epoch)
+        shuffling_epoch = next_epoch
+        current_committees_per_epoch = get_current_epoch_committee_count(state)
+        shuffling_start_shard = (state.current_shuffling_start_shard + current_committees_per_epoch) % SHARD_COUNT
+    elif epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
+        committees_per_epoch = get_next_epoch_committee_count(state)
+        seed = generate_seed(state, next_epoch)
+        shuffling_epoch = next_epoch
+        shuffling_start_shard = state.current_shuffling_start_shard
+    else:
+        committees_per_epoch = get_current_epoch_committee_count(state)
+        seed = state.current_shuffling_seed
+        shuffling_epoch = state.current_shuffling_epoch
+        shuffling_start_shard = state.current_shuffling_start_shard
+
+    return get_crosslink_committees_at_slot(
+        state,
+        seed,
+        shuffling_epoch,
+        slot,
+        start_shard,
+        committees_per_epoch,
+    )
+```
+
+### `get_crosslink_committees_at_slot`
+
+```python
 def get_crosslink_committees_at_slot(state: BeaconState,
                                      slot: Slot,
                                      registry_change: bool=False) -> List[Tuple[List[ValidatorIndex], Shard]]:
@@ -867,50 +969,11 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     assert previous_epoch <= epoch <= next_epoch
 
     if epoch == current_epoch:
-        committees_per_epoch = get_current_epoch_committee_count(state)
-        seed = state.current_shuffling_seed
-        shuffling_epoch = state.current_shuffling_epoch
-        shuffling_start_shard = state.current_shuffling_start_shard
+        return get_current_epoch_committees_at_slot(state, slot)
     elif epoch == previous_epoch:
-        committees_per_epoch = get_previous_epoch_committee_count(state)
-        seed = state.previous_shuffling_seed
-        shuffling_epoch = state.previous_shuffling_epoch
-        shuffling_start_shard = state.previous_shuffling_start_shard
+        return get_previous_epoch_committees_at_slot(state, slot)
     elif epoch == next_epoch:
-        epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
-        if registry_change:
-            committees_per_epoch = get_next_epoch_committee_count(state)
-            seed = generate_seed(state, next_epoch)
-            shuffling_epoch = next_epoch
-            current_committees_per_epoch = get_current_epoch_committee_count(state)
-            shuffling_start_shard = (state.current_shuffling_start_shard + current_committees_per_epoch) % SHARD_COUNT
-        elif epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
-            committees_per_epoch = get_next_epoch_committee_count(state)
-            seed = generate_seed(state, next_epoch)
-            shuffling_epoch = next_epoch
-            shuffling_start_shard = state.current_shuffling_start_shard
-        else:
-            committees_per_epoch = get_current_epoch_committee_count(state)
-            seed = state.current_shuffling_seed
-            shuffling_epoch = state.current_shuffling_epoch
-            shuffling_start_shard = state.current_shuffling_start_shard
-
-    shuffling = get_shuffling(
-        seed,
-        state.validator_registry,
-        shuffling_epoch,
-    )
-    offset = slot % SLOTS_PER_EPOCH
-    committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
-    slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
-
-    return [
-        (
-            shuffling[committees_per_slot * offset + i],
-            (slot_start_shard + i) % SHARD_COUNT,
-        )
-        for i in range(committees_per_slot)
-    ]
+        return get_next_epoch_committee_count(state, slot, registry_change)
 ```
 
 ### `get_block_root`
