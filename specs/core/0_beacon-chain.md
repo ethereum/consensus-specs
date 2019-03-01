@@ -1629,59 +1629,107 @@ Below are the processing steps that happen at every `block`.
 
 Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 
-For each `proposer_slashing` in `block.body.proposer_slashings`:
+For each `proposer_slashing` in `block.body.proposer_slashings`, run the following function:
 
-* Let `proposer = state.validator_registry[proposer_slashing.proposer_index]`.
-* Verify that `proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot`.
-* Verify that `proposer_slashing.proposal_1.shard == proposer_slashing.proposal_2.shard`.
-* Verify that `proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root`.
-* Verify that `proposer.slashed is False`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_1, "signature"), signature=proposer_slashing.proposal_1.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_1.slot), DOMAIN_PROPOSAL))`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposer_slashing.proposal_2, "signature"), signature=proposer_slashing.proposal_2.signature, domain=get_domain(state.fork, slot_to_epoch(proposer_slashing.proposal_2.slot), DOMAIN_PROPOSAL))`.
-* Run `slash_validator(state, proposer_slashing.proposer_index)`.
+```python
+def process_proposer_slashing(proposer_slashing: ProposerSlashing,
+                              state: BeaconState):
+    proposer = state.validator_registry[proposer_slashing.proposer_index]
+    # Verify that the slot is the same
+    assert proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot
+    # Verify that the shard is the same (or that both proposals are beacon chain proposals)
+    assert proposer_slashing.proposal_1.shard == proposer_slashing.proposal_2.shard
+    # But the roots are different!
+    assert proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root
+    # Proposer is not yet slashed
+    assert proposer.slashed is False
+    # Signatures are valid
+    for proposal in (proposer_slashing.proposal_1, proposer_slashing.proposal_2):
+        assert bls_verify(
+            pubkey=proposer.pubkey,
+            message_hash=signed_root(proposal, "signature"),           
+            signature=proposal.signature,
+            domain=get_domain(state.fork, slot_to_epoch(proposal.slot), DOMAIN_PROPOSAL)
+        )
+    slash_validator(state, proposer_slashing.proposer_index)
+```
 
 ##### Attester slashings
 
 Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 
-For each `attester_slashing` in `block.body.attester_slashings`:
+For each `attester_slashing` in `block.body.attester_slashings`, run the following function:
 
-* Let `slashable_attestation_1 = attester_slashing.slashable_attestation_1`.
-* Let `slashable_attestation_2 = attester_slashing.slashable_attestation_2`.
-* Verify that `slashable_attestation_1.data != slashable_attestation_2.data`.
-* Verify that `is_double_vote(slashable_attestation_1.data, slashable_attestation_2.data)` or `is_surround_vote(slashable_attestation_1.data, slashable_attestation_2.data)`.
-* Verify that `verify_slashable_attestation(state, slashable_attestation_1)`.
-* Verify that `verify_slashable_attestation(state, slashable_attestation_2)`.
-* Let `slashable_indices = [index for index in slashable_attestation_1.validator_indices if index in slashable_attestation_2.validator_indices and state.validator_registry[index].slashed is False]`.
-* Verify that `len(slashable_indices) >= 1`.
-* Run `slash_validator(state, index)` for each `index` in `slashable_indices`.
+```python
+def process_attester_slashing(attester_slashing: ProposerSlashing,
+                              state: BeaconState):
+    attestation1 = attester_slashing.slashable_attestation_1  
+    attestation2 = attester_slashing.slashable_attestation_2
+    # Check that the attestations are conflicting
+    assert attestation1.data != attestation2.data
+    assert (
+        is_double_vote(attestation1.data, attestation2.data) or
+        is_surround_vote(attestation1.data, attestation2.data)
+    )
+    assert verify_slashable_attestation(state, attestation1)
+    assert verify_slashable_attestation(state, attestation2)
+    slashable_indices = [
+        index for index in attestation1.validator_indices if
+        index in attestation2.validator_indices and state.validator_registry[index].slashed is False
+    ]
+    assert len(slashable_indices) >= 1
+    for index in slashable_indices:
+        slash_validator(state, index)
+```
 
 ##### Attestations
 
 Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
-For each `attestation` in `block.body.attestations`:
-
-* Verify that `attestation.data.slot >= GENESIS_SLOT`.
-* Verify that `attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot`.
-* Verify that `state.slot < attestation.data.slot + SLOTS_PER_EPOCH.
-* Verify that `attestation.data.justified_epoch` is equal to `state.justified_epoch if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state) else state.previous_justified_epoch`.
-* Verify that `attestation.data.justified_block_root` is equal to `get_block_root(state, get_epoch_start_slot(attestation.data.justified_epoch))`.
-* Verify that either (i) `state.latest_crosslinks[attestation.data.shard] == attestation.data.latest_crosslink` or (ii) `state.latest_crosslinks[attestation.data.shard] == Crosslink(crosslink_data_root=attestation.data.crosslink_data_root, epoch=slot_to_epoch(attestation.data.slot))`.
-* Verify bitfields and aggregate signature:
+For each `attestation` in `block.body.attestations`, , run the following function:
 
 ```python
-    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)  # [TO BE REMOVED IN PHASE 1]
+def process_attestation(attestation: Attestation, state: BeaconState):
+    # Can't submit attestations that are too far in history (or in prehistory) 
+    assert attestation.data.slot >= GENESIS_SLOT
+    state.slot < attestation.data.slot + SLOTS_PER_EPOCH
+    # Can't submit attestations too quickly
+    attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+    # Verify that the justified epoch is correct, case 1: current epoch attestations
+    if slot_to_epoch(attestation.data.slot + 1) >= get_current_epoch(state):
+        assert attestation.data.justified_epoch == state.justified_epoch
+    # Case 2: previous epoch attestations
+    else:
+        assert attestation.data.justified_epoch == state.previous_justified_epoch
+    # Check that the justified block root is correct
+    assert attestation.data.justified_block_root == get_block_root(
+        state, get_epoch_start_slot(attestation.data.justified_epoch)
+    )
+    # Check that the crosslink data is valid
+    assert (
+        # Case 1: Latest crosslink matches the one in the state
+        state.latest_crosslinks[attestation.data.shard] == attestation.data.latest_crosslink or
+        # Case 2: State has already been updated, state's latest crosslink matches the crosslink
+        # the attestation is trying to create
+        state.latest_crosslinks[attestation.data.shard] == Crosslink(
+            crosslink_data_root=attestation.data.crosslink_data_root,
+            epoch=slot_to_epoch(attestation.data.slot)
+        )
+    )
+    # Attestation must be nonempty!
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
-
+    # Custody must be empty (to be removed in phase 1)
+    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)
+    # Get the committee for the specific shard that this attestation is for
     crosslink_committee = [
         committee for committee, shard in get_crosslink_committees_at_slot(state, attestation.data.slot)
         if shard == attestation.data.shard
     ][0]
+    # Custody bitfield must be a subset of the attestation bitfield
     for i in range(len(crosslink_committee)):
         if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
             assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
-
+    # Verify aggregate signature
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
     custody_bit_0_participants = [i in participants for i not in custody_bit_1_participants]
@@ -1698,10 +1746,16 @@ For each `attestation` in `block.body.attestations`:
         signature=attestation.aggregate_signature,
         domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION),
     )
+    # Crosslink data root is zero (to be removed in phase 1)
+    assert attestation.data.crosslink_data_root == ZERO_HASH
+    # Apply the attestation
+    state.latest_attestations.append(PendingAttestation(
+        data=attestation.data,
+        aggregation_bitfield=attestation.aggregation_bitfield,
+        custody_bitfield=attestation.custody_bitfield,
+        inclusion_slot=state.slot)
+    )
 ```
-
-* [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.crosslink_data_root == ZERO_HASH`.
-* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, inclusion_slot=state.slot)` to `state.latest_attestations`.
 
 ##### Deposits
 
@@ -1741,13 +1795,25 @@ process_deposit(state, deposit)
 
 Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 
-For each `exit` in `block.body.voluntary_exits`:
+For each `exit` in `block.body.voluntary_exits`, run the following function:
 
-* Let `validator = state.validator_registry[exit.validator_index]`.
-* Verify that `validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))`.
-* Verify that `get_current_epoch(state) >= exit.epoch`.
-* Verify that `bls_verify(pubkey=validator.pubkey, message_hash=signed_root(exit, "signature"), signature=exit.signature, domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT))`.
-* Run `initiate_validator_exit(state, exit.validator_index)`.
+```python
+def process_exit(exit: VoluntaryExit, state: BeaconState):
+    validator = state.validator_registry[exit.validator_index]
+    # Verify the validator has not yet exited
+    assert validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))
+    # Exits must specify an epoch when they become valid; they are not valid before then
+    assert get_current_epoch(state) >= exit.epoch
+    # Verify signature
+    assert bls_verify(
+        pubkey=validator.pubkey,
+        message_hash=signed_root(exit, "signature"),
+        signature=exit.signature,
+        domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT)
+    )
+    # Run the exit
+    initiate_validator_exit(state, exit.validator_index)
+```
 
 ##### Transfers
 
@@ -1755,18 +1821,40 @@ Note: Transfers are a temporary functionality for phases 0 and 1, to be removed 
 
 Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
 
-For each `transfer` in `block.body.transfers`:
+For each `transfer` in `block.body.transfers`, run the following function:
 
-* Verify that `state.validator_balances[transfer.from] >= transfer.amount`.
-* Verify that `state.validator_balances[transfer.from] >= transfer.fee`.
-* Verify that `state.validator_balances[transfer.from] == transfer.amount + transfer.fee` or `state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT`.
-* Verify that `state.slot == transfer.slot`.
-* Verify that `get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch` or `state.validator_registry[transfer.from].activation_epoch == FAR_FUTURE_EPOCH`.
-* Verify that `state.validator_registry[transfer.from].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]`.
-* Verify that `bls_verify(pubkey=transfer.pubkey, message_hash=signed_root(transfer, "signature"), signature=transfer.signature, domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER))`.
-* Set `state.validator_balances[transfer.from] -= transfer.amount + transfer.fee`.
-* Set `state.validator_balances[transfer.to] += transfer.amount`.
-* Set `state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee`.
+```python
+def process_exit(transfer: Transfer, state: BeaconState):
+    # Verify that we have enough ETH to send, and that after the transfer the balance will be either
+    # exactly zero or at least MIN_DEPOSIT_AMOUNT
+    assert (
+        state.validator_balances[transfer.from] == transfer.amount + transfer.fee or
+        state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
+    )
+    # A transfer is valid in only one slot
+    assert state.slot == transfer.slot
+    # Only withdrawn or not-yet-deposited accounts can transfer
+    assert (
+        get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch or
+        state.validator_registry[transfer.from].activation_epoch == FAR_FUTURE_EPOCH
+    )
+    # Verify that the pubkey is valid
+    assert (
+        state.validator_registry[transfer.from].withdrawal_credentials ==
+        BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]
+    )
+    # Verify that the signature is valid
+    assert bls_verify(
+        pubkey=transfer.pubkey,
+        message_hash=signed_root(transfer, "signature"),
+        signature=transfer.signature,
+        domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
+    )
+    # Process the transfer
+    state.validator_balances[transfer.from] -= transfer.amount + transfer.fee
+    state.validator_balances[transfer.to] += transfer.amount
+    state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee
+```
 
 ### Per-epoch processing
 
