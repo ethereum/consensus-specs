@@ -1290,7 +1290,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         )
     )
     
-    if not not proof_is_valid:
+    if not proof_is_valid:
         return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
