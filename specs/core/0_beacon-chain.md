@@ -1269,8 +1269,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         index=deposit.index,
         root=state.latest_eth1_data.deposit_root
     )
-    if not merkle_branch_is_valid:
-        return
+    assert merkle_branch_is_valid
         
     # Increment the next deposit index we are expecting. Note that this
     # needs to be done here because while the deposit contract will never
