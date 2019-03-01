@@ -852,7 +852,7 @@ def get_next_epoch_committee_count(state: BeaconState) -> int:
 ```python
 def get_crosslink_committees(state: BeaconState,
                              seed: Bytes32,
-                             shuffling_epoch,
+                             shuffling_epoch: Epoch,
                              slot: Slot,
                              start_shard: Shard,
                              committees_per_epoch: int) -> List[Tuple[List[ValidatorIndex], Shard]]:
