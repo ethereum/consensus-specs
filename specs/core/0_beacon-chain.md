@@ -1686,7 +1686,7 @@ def process_attester_slashing(attester_slashing: ProposerSlashing,
 
 Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 
-For each `attestation` in `block.body.attestations`, , run the following function:
+For each `attestation` in `block.body.attestations`, run the following function:
 
 ```python
 def process_attestation(attestation: Attestation, state: BeaconState):
