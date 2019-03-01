@@ -1750,7 +1750,7 @@ For each `attestation` in `block.body.attestations`:
 
 Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
 
-For each `deposit` in `block.body.deposits`, run `process_deposit(state, deposit)`
+For each `deposit` in `block.body.deposits`, run `process_deposit(state, deposit)`.
 
 ##### Voluntary exits
 
