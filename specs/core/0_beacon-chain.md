@@ -1267,7 +1267,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         branch=deposit.branch,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
         index=deposit.index,
-        root=state.latest_eth1_data.deposit_root
+        root=state.latest_eth1_data.deposit_root,
     )
     assert merkle_branch_is_valid
         
