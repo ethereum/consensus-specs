@@ -1634,6 +1634,10 @@ For each `proposer_slashing` in `block.body.proposer_slashings`, run the followi
 ```python
 def process_proposer_slashing(state: BeaconState,
                               proposer_slashing: ProposerSlashing) -> None:
+    """
+    Process ``ProposerSlashing`` transaction.
+    Note that this function mutates ``state``.
+    """
     proposer = state.validator_registry[proposer_slashing.proposer_index]
     # Verify that the slot is the same
     assert proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot
@@ -1663,6 +1667,10 @@ For each `attester_slashing` in `block.body.attester_slashings`, run the followi
 ```python
 def process_attester_slashing(state: BeaconState,
                               attester_slashing: AttesterSlashing) -> None:
+    """
+    Process ``AttesterSlashing`` transaction.
+    Note that this function mutates ``state``.
+    """
     attestation1 = attester_slashing.slashable_attestation_1  
     attestation2 = attester_slashing.slashable_attestation_2
     # Check that the attestations are conflicting
@@ -1693,6 +1701,10 @@ For each `attestation` in `block.body.attestations`, run the following function:
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+    """
+    Process ``Attestation`` transaction.
+    Note that this function mutates ``state``.
+    """
     # Can't submit attestations that are too far in history (or in prehistory) 
     assert attestation.data.slot >= GENESIS_SLOT
     assert state.slot < attestation.data.slot + SLOTS_PER_EPOCH
@@ -1803,6 +1815,10 @@ For each `exit` in `block.body.voluntary_exits`, run the following function:
 
 ```python
 def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
+    """
+    Process ``VoluntaryExit`` transaction.
+    Note that this function mutates ``state``.
+    """
     validator = state.validator_registry[exit.validator_index]
     # Verify the validator has not yet exited
     assert validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))
@@ -1828,7 +1844,11 @@ Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers 
 For each `transfer` in `block.body.transfers`, run the following function:
 
 ```python
-def process_exit(state: BeaconState, transfer: Transfer) -> None:
+def process_transfer(state: BeaconState, transfer: Transfer) -> None:
+    """
+    Process ``Transfer`` transaction.
+    Note that this function mutates ``state``.
+    """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
     assert state.validator_balances[transfer.from] >= max(transfer.amount, transfer.fee)
     # Verify that we have enough ETH to send, and that after the transfer the balance will be either
