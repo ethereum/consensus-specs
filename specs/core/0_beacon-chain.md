@@ -1798,7 +1798,7 @@ Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 For each `exit` in `block.body.voluntary_exits`, run the following function:
 
 ```python
-def process_exit(exit: VoluntaryExit, state: BeaconState):
+def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     validator = state.validator_registry[exit.validator_index]
     # Verify the validator has not yet exited
     assert validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))
