@@ -1918,14 +1918,15 @@ def update_justification_and_finalization(state: BeaconState) -> None:
 Run the following function:
 
 ```python
-for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
-    for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
-        winning_root, participants = get_winning_root_and_participants(state, shard)
-        if 3 * total_balance(participants) >= 2 * total_balance(crosslink_committee):
-            state.latest_crosslinks[shard] = Crosslink(
-                epoch=slot_to_epoch(slot),
-                crosslink_data_root=winning_root
-            )
+def process_crosslinks(state: BeaconState) -> None:
+    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
+        for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
+            winning_root, participants = get_winning_root_and_participants(state, shard)
+            if 3 * total_balance(participants) >= 2 * total_balance(crosslink_committee):
+                state.latest_crosslinks[shard] = Crosslink(
+                    epoch=slot_to_epoch(slot),
+                    crosslink_data_root=winning_root
+                )
 ```
 
 #### Eth1 data
