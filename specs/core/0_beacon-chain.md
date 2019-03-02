@@ -1958,12 +1958,8 @@ Note: When applying penalties in the following balance recalculations implemente
 
 ```python
 def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[ValidatorIndex, Gwei]:
-    previous_active_validator_indices = get_active_validator_indices(state.validator_registry, previous_epoch)
+    active_validator_indices = get_active_validator_indices(state.validator_registry, previous_epoch)
     epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
-    active_validator_indices = [
-        i for i in range(len(state.validator_registry)) if
-        is_active_validator(state.validator_registry[i], get_current_epoch(state) - 1)
-    ]
     # Initialize deltas that we are returning to zero
     deltas = {index: 0 for index in range(len(state.validator_registry))}
     # Some helper variables
@@ -1980,7 +1976,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[Valida
     if epochs_since_finality <= 4:
         for index in active_validator_indices:
             # Expected FFG source
-            if index in get_attesting_indices(get_previous_epoch_attestations(state)):
+            if index in get_attesting_indices(get_previous_attestations(state)):
                 deltas[index] += get_base_reward(state, index) * total_attesting_balance // total_balance
                 # Inclusion speed bonus
                 deltas[index] += (
@@ -2019,6 +2015,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[Valida
                 deltas[index] -= get_inactivity_penalty(state, index, epochs_since_finality)
             if index not in get_attesting_indices(matching_head_attestations):
                 deltas[index] -= get_base_reward(state, index)
+        # Penalize slashed-but-inactive validators as though they were active but offline
         for index in range(len(state.validator_registry)):
             if index not in active_validator_indices and state.validator_registry[index].slashed:
                 deltas[index] -= (
@@ -2055,7 +2052,7 @@ def apply_rewards(state: BeaconState) -> None:
     deltas1 = get_justification_and_finalization_deltas(state)
     deltas2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
-        state.validator_balances[i] += deltas1[i] + deltas2[i]
+        state.validator_balances[i] = max(0, state.validator_balances[i] + deltas1[i] + deltas2[i])
 ```
 
 #### Ejections
