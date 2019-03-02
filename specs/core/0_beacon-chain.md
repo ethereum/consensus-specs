@@ -387,7 +387,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Branch in the deposit tree
-    'branch': ['bytes32'],
+    'proof': ['bytes32'],
     # Index in the deposit tree
     'index': 'uint64',
     # Data
@@ -994,16 +994,17 @@ def merkle_root(values: List[Bytes32]) -> Bytes32:
 ### `verify_merkle_branch`
 
 ```python
-def verify_merkle_branch(leaf: Bytes32, branch: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
+def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
     """
-    Verify that the given ``leaf`` is on the merkle branch ``branch``.
+    Verify that the given ``leaf`` is on the merkle branch ``proof``
+    starting with the given ``root``.
     """
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
-            value = hash(branch[i] + value)
+            value = hash(proof[i] + value)
         else:
-            value = hash(value + branch[i])
+            value = hash(value + proof[i])
     return value == root
 ```
 
@@ -1264,7 +1265,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Verify the Merkle branch
     merkle_branch_is_valid = verify_merkle_branch(
         leaf=hash(serialized_deposit_data),
-        branch=deposit.branch,
+        proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
         index=deposit.index,
         root=state.latest_eth1_data.deposit_root,
