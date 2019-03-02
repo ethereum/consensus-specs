@@ -1797,7 +1797,7 @@ def get_previous_attestations(state: BeaconState) -> List[PendingAttestation]:
 ```
 
 ```python
-def get_attesting_indices(attestations: List[PendingAttestation], state: BeaconState) -> List[int]:
+def get_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
     output = set({})
     for a in attestations:
         output = output.union([get_attestation_participants(state, a.data, a.aggregation_bitfield)])
@@ -1805,12 +1805,12 @@ def get_attesting_indices(attestations: List[PendingAttestation], state: BeaconS
 ```
 
 ```python
-def get_attesting_balance(attestations: List[PendingAttestation], state: BeaconState) -> List[int]:
+def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
     return get_total_balance(state, get_attesting_indices(attestations, state))
 ```
 
 ```python
-def get_current_epoch_boundary_attestations(state: BeaconState):
+def get_current_epoch_boundary_attestations(state: BeaconState) -> List[PendingAttestation]:
     return [
         a for a in get_current_attestations(state) if 
         a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(get_current_epoch(state)))
@@ -1818,7 +1818,7 @@ def get_current_epoch_boundary_attestations(state: BeaconState):
 ```
 
 ```python
-def get_previous_epoch_boundary_attestations(state: BeaconState):
+def get_previous_epoch_boundary_attestations(state: BeaconState) -> List[PendingAttestation]:
     return [
         a for a in get_previous_attestations(state) if 
         a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
@@ -1828,14 +1828,14 @@ def get_previous_epoch_boundary_attestations(state: BeaconState):
 **Note**: Total balances computed for the previous epoch might be marginally different than the actual total balances during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
 ```python
-def get_winning_root_and_participants(state: BeaconState, shard: Shard):
+def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
     all_attestations = get_current_attestations(state) + get_previous_attestations(state)
     valid_attestations = [
         a for a in all_attestations if a.data.latest_crosslink == state.latest_crosslinks[shard]
     ]
     all_roots = [a.data.crosslink_data_root for a in valid_attestations]
     
-    def get_attestations_for(root):
+    def get_attestations_for(root) -> List[PendingAttestation]:
         return [a for a in valid_attestations if a.data.crosslink_data_root == root]
         
     winning_root = max(all_roots, key=lambda r: get_attesting_balance(get_attestations_for(r)))
@@ -1844,22 +1844,22 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard):
 ```
 
 ```python
-def earliest_attestation(state: BeaconState, validator_index: ValidatorIndex):
+def earliest_attestation(state: BeaconState, validator_index: ValidatorIndex) -> PendingAttestation:
     return min([
         a for a in state.previous_epoch_attestations if
         validator_index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
-    ], key = lambda a: a.inclusion_slot)
+    ], key=lambda a: a.inclusion_slot)
 ```
 
 ```python
-def inclusion_slot(state: BeaconState, validator_index: ValidatorIndex):
+def inclusion_slot(state: BeaconState, validator_index: ValidatorIndex) -> Slot:
     return earliest_attestation(state, validator_index).inclusion_slot
 ```
 
 ```python
-def inclusion_distance(state: BeaconState, validator_index: ValidatorIndex):
+def inclusion_distance(state: BeaconState, validator_index: ValidatorIndex) -> int:
     attestation = earliest_attestation(state, validator_index)
-    return attestation.inclusion_slot - attestation.data_slot
+    return attestation.inclusion_slot - attestation.data.slot
 ```
 
 #### Justification
@@ -1867,7 +1867,7 @@ def inclusion_distance(state: BeaconState, validator_index: ValidatorIndex):
 Run the following function:
 
 ```python
-def update_justification_and_finalization(state):
+def update_justification_and_finalization(state: BeaconState) -> None:
 
     new_justified_epoch = state.justified_epoch
     # Rotate the justification bitfield up one epoch to make room for the current epoch
@@ -1924,7 +1924,7 @@ for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(nex
 Run the following function:
 
 ```python
-def maybe_reset_eth1_period(state):
+def maybe_reset_eth1_period(state: BeaconState) -> None:
     if (get_current_epoch(state) + 1) % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
         for eth1_data_vote in state.eth1_data_votes:
             # If a majority of all votes were for a particular eth1_data value,
@@ -1939,15 +1939,15 @@ def maybe_reset_eth1_period(state):
 First, we define some additional helpers:
 
 ```python
-def get_base_reward(state: BeaconState, index: ValidatorIndex) -> int:
+def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     adjusted_quotient = integer_squareroot(get_previous_total_balance(state)) // BASE_REWARD_QUOTIENT
     return get_effective_balance(state, index) // adjusted_quotient // 5
 ```
 
 ```python
-def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex) -> int:
+def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex) -> Gwei:
     return (
-        base_reward(state, index) +
+        get_base_reward(state, index) +
         get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
     )
 ```
@@ -1957,7 +1957,7 @@ Note: When applying penalties in the following balance recalculations implemente
 ##### Justification and finalization
 
 ```python
-def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[Int -> Int]:
+def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[ValidatorIndex, Gwei]:
     previous_active_validator_indices = get_active_validator_indices(state.validator_registry, previous_epoch)
     epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
     active_validator_indices = [
@@ -1995,7 +1995,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[Int ->
             else:
                 deltas[index] -= get_base_reward(state, index)
             # Expected head
-            if index in matching_head_attestations:
+            if index in get_attesting_indices(matching_head_attestations):
                 deltas[index] += get_base_reward(state, index) * matching_head_balance // total_balance
             else:
                 deltas[index] -= get_base_reward(state, index)    
@@ -2017,7 +2017,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[Int ->
                     
             if index not in get_attesting_indices(boundary_attestations):
                 deltas[index] -= get_inactivity_penalty(state, index, epochs_since_finality)
-            if index not in matching_head_attestations:
+            if index not in get_attesting_indices(matching_head_attestations):
                 deltas[index] -= get_base_reward(state, index)
         for index in range(len(state.validator_registry)):
             if index not in active_validator_indices and state.validator_registry[index].slashed:
@@ -2031,9 +2031,9 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Dict[Int ->
 ##### Crosslinks
 
 ```python
-def get_crosslink_reward_deltas(state: BeaconState) -> Dict[int, int]:
+def get_crosslink_deltas(state: BeaconState) -> Dict[ValidatorIndex, Gwei]:
     deltas = {index: 0 for index in range(len(state.validator_registry))}
-    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
+    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(current_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
             participating_balance = get_total_balance(state, participants)
@@ -2051,7 +2051,7 @@ def get_crosslink_reward_deltas(state: BeaconState) -> Dict[int, int]:
 Run the following:
 
 ```python
-def apply_rewards(state: BeaconState):
+def apply_rewards(state: BeaconState) -> None:
     deltas1 = get_justification_and_finalization_deltas(state)
     deltas2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
