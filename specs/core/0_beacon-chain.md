@@ -1632,8 +1632,8 @@ Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
 For each `proposer_slashing` in `block.body.proposer_slashings`, run the following function:
 
 ```python
-def process_proposer_slashing(proposer_slashing: ProposerSlashing,
-                              state: BeaconState):
+def process_proposer_slashing(state: BeaconState,
+                              proposer_slashing: ProposerSlashing):
     proposer = state.validator_registry[proposer_slashing.proposer_index]
     # Verify that the slot is the same
     assert proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot
@@ -1661,8 +1661,8 @@ Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
 For each `attester_slashing` in `block.body.attester_slashings`, run the following function:
 
 ```python
-def process_attester_slashing(attester_slashing: ProposerSlashing,
-                              state: BeaconState):
+def process_attester_slashing(state: BeaconState,
+                              attester_slashing: AttesterSlashing):
     attestation1 = attester_slashing.slashable_attestation_1  
     attestation2 = attester_slashing.slashable_attestation_2
     # Check that the attestations are conflicting
@@ -1674,8 +1674,11 @@ def process_attester_slashing(attester_slashing: ProposerSlashing,
     assert verify_slashable_attestation(state, attestation1)
     assert verify_slashable_attestation(state, attestation2)
     slashable_indices = [
-        index for index in attestation1.validator_indices if
-        index in attestation2.validator_indices and state.validator_registry[index].slashed is False
+        index for index in attestation1.validator_indices
+        if (
+            index in attestation2.validator_indices and
+            state.validator_registry[index].slashed is False
+        )
     ]
     assert len(slashable_indices) >= 1
     for index in slashable_indices:
@@ -1706,16 +1709,17 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state, get_epoch_start_slot(attestation.data.justified_epoch)
     )
     # Check that the crosslink data is valid
-    assert (
+    acceptable_crosslink_data = {
         # Case 1: Latest crosslink matches the one in the state
-        state.latest_crosslinks[attestation.data.shard] == attestation.data.latest_crosslink or
+        attestation.data.latest_crosslink,
         # Case 2: State has already been updated, state's latest crosslink matches the crosslink
         # the attestation is trying to create
-        state.latest_crosslinks[attestation.data.shard] == Crosslink(
+        Crosslink(
             crosslink_data_root=attestation.data.crosslink_data_root,
             epoch=slot_to_epoch(attestation.data.slot)
         )
-    )
+    }
+    assert state.latest_crosslinks[attestation.data.shard] in acceptable_crosslink_data
     # Attestation must be nonempty!
     assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
     # Custody must be empty (to be removed in phase 1)
@@ -1825,6 +1829,8 @@ For each `transfer` in `block.body.transfers`, run the following function:
 
 ```python
 def process_exit(state: BeaconState,transfer: Transfer) -> None:
+    # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
+    assert state.validator_balances[transfer.from] >= max(transfer.amount, transfer.fee)
     # Verify that we have enough ETH to send, and that after the transfer the balance will be either
     # exactly zero or at least MIN_DEPOSIT_AMOUNT
     assert (
