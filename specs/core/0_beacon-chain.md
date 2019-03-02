@@ -1633,7 +1633,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`, run the followi
 
 ```python
 def process_proposer_slashing(state: BeaconState,
-                              proposer_slashing: ProposerSlashing):
+                              proposer_slashing: ProposerSlashing) -> None:
     proposer = state.validator_registry[proposer_slashing.proposer_index]
     # Verify that the slot is the same
     assert proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot
@@ -1662,7 +1662,7 @@ For each `attester_slashing` in `block.body.attester_slashings`, run the followi
 
 ```python
 def process_attester_slashing(state: BeaconState,
-                              attester_slashing: AttesterSlashing):
+                              attester_slashing: AttesterSlashing) -> None:
     attestation1 = attester_slashing.slashable_attestation_1  
     attestation2 = attester_slashing.slashable_attestation_2
     # Check that the attestations are conflicting
@@ -1828,7 +1828,7 @@ Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers 
 For each `transfer` in `block.body.transfers`, run the following function:
 
 ```python
-def process_exit(state: BeaconState,transfer: Transfer) -> None:
+def process_exit(state: BeaconState, transfer: Transfer) -> None:
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
     assert state.validator_balances[transfer.from] >= max(transfer.amount, transfer.fee)
     # Verify that we have enough ETH to send, and that after the transfer the balance will be either
