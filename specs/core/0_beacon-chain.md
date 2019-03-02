@@ -1689,7 +1689,7 @@ Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
 For each `attestation` in `block.body.attestations`, run the following function:
 
 ```python
-def process_attestation(attestation: Attestation, state: BeaconState):
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Can't submit attestations that are too far in history (or in prehistory) 
     assert attestation.data.slot >= GENESIS_SLOT
     assert state.slot < attestation.data.slot + SLOTS_PER_EPOCH
