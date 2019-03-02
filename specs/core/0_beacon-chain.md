@@ -1824,7 +1824,7 @@ Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers 
 For each `transfer` in `block.body.transfers`, run the following function:
 
 ```python
-def process_exit(transfer: Transfer, state: BeaconState):
+def process_exit(state: BeaconState,transfer: Transfer) -> None:
     # Verify that we have enough ETH to send, and that after the transfer the balance will be either
     # exactly zero or at least MIN_DEPOSIT_AMOUNT
     assert (
