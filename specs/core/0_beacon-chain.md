@@ -137,6 +137,7 @@
                 - [Crosslinks](#crosslinks-1)
             - [Ejections](#ejections)
             - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
+            - [Slashings and exit queue](#slashings-and-exit-queue)
             - [Final updates](#final-updates)
         - [State root verification](#state-root-verification)
 - [References](#references)
@@ -2093,18 +2094,21 @@ def process_ejections(state: BeaconState) -> None:
 
 #### Validator registry and shuffling seed data
 
-First, update the following:
-
-* Set `state.previous_shuffling_epoch = state.current_shuffling_epoch`.
-* Set `state.previous_shuffling_start_shard = state.current_shuffling_start_shard`.
-* Set `state.previous_shuffling_seed = state.current_shuffling_seed`.
-
-If the following are satisfied:
-
-* `state.finalized_epoch > state.validator_registry_update_epoch`
-* `state.latest_crosslinks[shard].epoch > state.validator_registry_update_epoch` for every shard number `shard` in `[(state.current_shuffling_start_shard + i) % SHARD_COUNT for i in range(get_current_epoch_committee_count(state))]` (that is, for every shard in the current committees)
-
-update the validator registry and associated fields by running
+```python
+def should_update_validator_registry(state: BeaconState) -> bool:
+    # Must have finalized a new block
+    if state.finalized_epoch <= state.validator_registry_update_epoch:
+        return False
+    # Must have processed new crosslinks on all shards of the current epoch
+    shards_to_check [
+        (state.current_shuffling_start_shard + i) % SHARD_COUNT
+        for i in range(get_current_epoch_committee_count(state))
+    ]
+    for shard in shards_to_check:
+        if state.latest_crosslinks[shard].epoch <= state.validator_registry_update_epoch:
+            return False
+    return True
+```
 
 ```python
 def update_validator_registry(state: BeaconState) -> None:
@@ -2151,23 +2155,38 @@ def update_validator_registry(state: BeaconState) -> None:
     state.validator_registry_update_epoch = current_epoch
 ```
 
-and perform the following updates:
+Run the following function:
 
-* Set `state.current_shuffling_epoch = next_epoch`
-* Set `state.current_shuffling_start_shard = (state.current_shuffling_start_shard + get_current_epoch_committee_count(state)) % SHARD_COUNT`
-* Set `state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)`
-
-If a validator registry update does _not_ happen do the following:
-
-* Let `epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch`.
-* If `epochs_since_last_registry_update > 1` and `is_power_of_two(epochs_since_last_registry_update)`:
-    * Set `state.current_shuffling_epoch = next_epoch`.
-    * Set `state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)`
-    * _Note_ that `state.current_shuffling_start_shard` is left unchanged.
+```python
+def update_registry_and_shuffling_data(state: BeaconState) -> None:
+    # First set previous shuffling data to current shuffling data
+    state.previous_shuffling_epoch = state.current_shuffling_epoch
+    state.previous_shuffling_start_shard = state.current_shuffling_start_shard
+    state.previous_shuffling_seed = state.current_shuffling_seed
+    # Check if we should update, and if so, update
+    if should_update_validator_registry(state):
+        update_validator_registry(state)
+        # If we update the registry, update the shuffling data and shards as well
+        state.current_shuffling_epoch = next_epoch
+        state.current_shuffling_start_shard = (
+            state.current_shuffling_start_shard +
+            get_current_epoch_committee_count(state)) % SHARD_COUNT
+        )
+        state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)
+    else:
+        # If processing at least one crosslink keeps failing, then reshuffle every power of two,
+        # but don't update the current_shuffling_start_shard
+        epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
+        if epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
+            state.current_shuffling_epoch = next_epoch
+            state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)
+```
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
 
-Regardless of whether or not a validator set change happens run `process_slashings(state)` and `process_exit_queue(state)`:
+#### Slashings and exit queue
+
+Run `process_slashings(state)` and `process_exit_queue(state)`:
 
 ```python
 def process_slashings(state: BeaconState) -> None:
@@ -2218,10 +2237,29 @@ def process_exit_queue(state: BeaconState) -> None:
 
 #### Final updates
 
-* Set `state.latest_active_index_roots[(next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH] = hash_tree_root(get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY))`.
-* Set `state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]`.
-* Set `state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)`.
-* Remove any `attestation` in `state.latest_attestations` such that `slot_to_epoch(attestation.data.slot) < current_epoch`.
+Run the following function:
+
+```python
+def finish_epoch_update(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
+    next_epoch = current_epoch + 1
+    # Set active index root
+    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
+    state.latest_active_index_roots[index_root_position] = hash_tree_root(
+        get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY)
+    )
+    # Set total slashed balances
+    state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = (
+        state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+    )
+    # Set randao mix
+    state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
+    # Remove previous epoch attestations
+    state.latest_attestations = [
+        a for a in state.latest_attestations if
+        slot_to_epoch(attestation.data.slot) == current_epoch
+    ]
+```
 
 ### State root verification
 
