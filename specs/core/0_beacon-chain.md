@@ -2268,7 +2268,7 @@ def should_update_validator_registry(state: BeaconState) -> bool:
     if state.finalized_epoch <= state.validator_registry_update_epoch:
         return False
     # Must have processed new crosslinks on all shards of the current epoch
-    shards_to_check [
+    shards_to_check = [
         (state.current_shuffling_start_shard + i) % SHARD_COUNT
         for i in range(get_current_epoch_committee_count(state))
     ]
@@ -2340,7 +2340,7 @@ def update_registry_and_shuffling_data(state: BeaconState) -> None:
         state.current_shuffling_epoch = next_epoch
         state.current_shuffling_start_shard = (
             state.current_shuffling_start_shard +
-            get_current_epoch_committee_count(state)) % SHARD_COUNT
+            get_current_epoch_committee_count(state) % SHARD_COUNT
         )
         state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)
     else:
