@@ -533,6 +533,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'current_shuffling_seed': 'bytes32',
 
     # Finality
+    'previous_epoch_attestations': [PendingAttestation],
+    'current_epoch_attestations': [PendingAttestation],
     'previous_justified_epoch': 'uint64',
     'justified_epoch': 'uint64',
     'justification_bitfield': 'uint64',
@@ -543,7 +545,6 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'latest_block_roots': ['bytes32'],
     'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
-    'latest_attestations': [PendingAttestation],
     'batched_block_roots': ['bytes32'],
 
     # Ethereum 1.0 chain data
@@ -1461,6 +1462,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         current_shuffling_seed=ZERO_HASH,
 
         # Finality
+        previous_epoch_attestations=[],
+        current_epoch_attestations=[],
         previous_justified_epoch=GENESIS_EPOCH,
         justified_epoch=GENESIS_EPOCH,
         justification_bitfield=0,
@@ -1471,7 +1474,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
         latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
-        latest_attestations=[],
         batched_block_roots=[],
 
         # Ethereum 1.0 chain data
@@ -1702,7 +1704,9 @@ For each `attestation` in `block.body.attestations`:
 ```
 
 * [TO BE REMOVED IN PHASE 1] Verify that `attestation.data.crosslink_data_root == ZERO_HASH`.
-* Append `PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, inclusion_slot=state.slot)` to `state.latest_attestations`.
+* Let `pending_attestation = PendingAttestation(data=attestation.data, aggregation_bitfield=attestation.aggregation_bitfield, custody_bitfield=attestation.custody_bitfield, inclusion_slot=state.slot)`.
+* Append `pending_attestation` to `state.previous_epoch_attestations` if `slot_to_epoch(attestation.data.slot) == get_previous_epoch(state)`.
+* Append `pending_attestation` to `state.current_epoch_attestations` if `slot_to_epoch(attestation.data.slot) == get_current_epoch(state)`.
 
 ##### Deposits
 
@@ -1778,11 +1782,6 @@ The steps below happen when `(state.slot + 1) % SLOTS_PER_EPOCH == 0`.
 We define some helper functions:
 
 ```python
-def get_current_attestations(state: BeaconState) -> List[PendingAttestation]:
-    return [a for a in state.latest_attestations if get_current_epoch(state) == slot_to_epoch(a.data.slot)]
-```
-
-```python
 def get_current_total_balance(state: BeaconState) -> Gwei:
     return get_total_balance(state, get_active_validator_indices(state.validator_registry, get_current_epoch(state)))
 ```
@@ -1790,11 +1789,6 @@ def get_current_total_balance(state: BeaconState) -> Gwei:
 ```python
 def get_previous_total_balance(state: BeaconState) -> Gwei:
     return get_total_balance(state, get_active_validator_indices(state.validator_registry, get_previous_epoch(state)))
-```
-
-```python
-def get_previous_attestations(state: BeaconState) -> List[PendingAttestation]:
-    return [a for a in state.latest_attestations if get_previous_epoch(state) == slot_to_epoch(a.data.slot)]
 ```
 
 ```python
@@ -1813,7 +1807,7 @@ def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestat
 ```python
 def get_current_epoch_boundary_attestations(state: BeaconState) -> List[PendingAttestation]:
     return [
-        a for a in get_current_attestations(state) if 
+        a for a in state.current_epoch_attestations if 
         a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(get_current_epoch(state)))
     ]
 ```
@@ -1821,7 +1815,7 @@ def get_current_epoch_boundary_attestations(state: BeaconState) -> List[PendingA
 ```python
 def get_previous_epoch_boundary_attestations(state: BeaconState) -> List[PendingAttestation]:
     return [
-        a for a in get_previous_attestations(state) if 
+        a for a in state.previous_epoch_attestations if 
         a.data.epoch_boundary_root == get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
     ]
 ```
@@ -1829,7 +1823,7 @@ def get_previous_epoch_boundary_attestations(state: BeaconState) -> List[Pending
 ```python
 def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[PendingAttestation]:
     return [
-        a for a in get_previous_epoch_attestations(state) if
+        a for a in state.previous_epoch_attestations if
         a.data.beacon_block_root == get_block_root(state, a.data.slot)
     ]
 ```
@@ -1838,7 +1832,7 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 
 ```python
 def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
-    all_attestations = get_current_attestations(state) + get_previous_attestations(state)
+    all_attestations = state.current_epoch_attestations + state.previous_epoch_attestations
     valid_attestations = [
         a for a in all_attestations if a.data.latest_crosslink == state.latest_crosslinks[shard]
     ]
@@ -1989,7 +1983,7 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
     # Process rewards or penalties for all validators
     for index in get_active_validator_indices(state.validator_registry, previous_epoch):
         # Expected FFG source
-        if index in get_attesting_indices(get_previous_attestations(state)):
+        if index in get_attesting_indices(state.previous_epoch_attestations):
             deltas[index] += get_base_reward(state, index) * total_attesting_balance // total_balance
             # Inclusion speed bonus
             deltas[index] += (
@@ -2258,11 +2252,9 @@ def finish_epoch_update(state: BeaconState) -> None:
     )
     # Set randao mix
     state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
-    # Remove previous epoch attestations
-    state.latest_attestations = [
-        a for a in state.latest_attestations if
-        slot_to_epoch(attestation.data.slot) == current_epoch
-    ]
+    # Rotate current/previous epoch attestations
+    state.previous_epoch_attestations = state.current_epoch_attestations
+    state.current_epoch_attestations = []
 ```
 
 ### State root verification
