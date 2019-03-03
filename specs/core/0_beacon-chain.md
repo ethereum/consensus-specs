@@ -2164,6 +2164,8 @@ def update_registry_and_shuffling_data(state: BeaconState) -> None:
     state.previous_shuffling_epoch = state.current_shuffling_epoch
     state.previous_shuffling_start_shard = state.current_shuffling_start_shard
     state.previous_shuffling_seed = state.current_shuffling_seed
+    current_epoch = get_current_epoch(state)
+    next_epoch = current_epoch + 1
     # Check if we should update, and if so, update
     if should_update_validator_registry(state):
         update_validator_registry(state)
