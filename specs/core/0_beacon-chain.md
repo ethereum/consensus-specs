@@ -1779,7 +1779,7 @@ We define some helper functions:
 
 ```python
 def get_current_attestations(state: BeaconState) -> List[PendingAttestation]:
-    return  [a for a in state.latest_attestations if current_epoch == slot_to_epoch(a.data.slot)]
+    return [a for a in state.latest_attestations if get_current_epoch(state) == slot_to_epoch(a.data.slot)]
 ```
 
 ```python
