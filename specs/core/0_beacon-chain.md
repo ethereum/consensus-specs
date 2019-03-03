@@ -41,8 +41,8 @@
                 - [`Transfer`](#transfer)
         - [Beacon chain blocks](#beacon-chain-blocks)
             - [`BeaconBlock`](#beaconblock)
+            - [`BeaconBlockHeader`](#beaconblockheader)
             - [`BeaconBlockBody`](#beaconblockbody)
-            - [`Proposal`](#proposal)
         - [Beacon chain state](#beacon-chain-state)
             - [`BeaconState`](#beaconstate)
             - [`Validator`](#validator)
@@ -56,6 +56,7 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signed_root`](#signed_root)
+        - [`get_temporary_block_header`](#get_temporary_block_header)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -115,8 +116,7 @@
             - [Slot](#slot)
             - [Block roots](#block-roots)
         - [Per-block processing](#per-block-processing)
-            - [Slot](#slot-1)
-            - [Block signature](#block-signature)
+            - [Block header](#block-header)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
             - [Transactions](#transactions)
@@ -185,7 +185,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
-| `BEACON_CHAIN_SHARD_NUMBER` | `2**64 - 1` |
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) |
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
@@ -233,13 +232,13 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours | 
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### State list lengths
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `LATEST_BLOCK_ROOTS_LENGTH` | `2**13` (= 8,192) | slots | ~13 hours |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
@@ -273,12 +272,12 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `DOMAIN_DEPOSIT` | `0` |
-| `DOMAIN_ATTESTATION` | `1` |
-| `DOMAIN_PROPOSAL` | `2` |
-| `DOMAIN_EXIT` | `3` |
-| `DOMAIN_RANDAO` | `4` |
-| `DOMAIN_TRANSFER` | `5` |
+| `DOMAIN_BEACON_BLOCK` | `0` |
+| `DOMAIN_RANDAO` | `1` |
+| `DOMAIN_ATTESTATION` | `2` |
+| `DOMAIN_DEPOSIT` | `3` |
+| `DOMAIN_VOLUNTARY_EXIT` | `4` |
+| `DOMAIN_TRANSFER` | `5` | 
 
 ## Data structures
 
@@ -294,10 +293,10 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     # Proposer index
     'proposer_index': 'uint64',
-    # First proposal
-    'proposal_1': Proposal,
-    # Second proposal
-    'proposal_2': Proposal,
+    # First block header
+    'header_1': BeaconBlockHeader,
+    # Second block header
+    'header_2': BeaconBlockHeader,
 }
 ```
 
@@ -467,14 +466,21 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 {
     # Header
     'slot': 'uint64',
-    'parent_root': 'bytes32',
+    'previous_block_root': 'bytes32',
     'state_root': 'bytes32',
-    'randao_reveal': 'bytes96',
-    'eth1_data': Eth1Data,
-
-    # Body
     'body': BeaconBlockBody,
-    # Signature
+    'signature': 'bytes96',
+}
+```
+
+#### `BeaconBlockHeader`
+
+```python
+{
+    'slot': 'uint64',
+    'previous_block_root': 'bytes32',
+    'state_root': 'bytes32',
+    'block_body_root': 'bytes32',
     'signature': 'bytes96',
 }
 ```
@@ -483,27 +489,14 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
+    'randao_reveal': 'bytes96',
+    'eth1_data': Eth1Data,
     'proposer_slashings': [ProposerSlashing],
     'attester_slashings': [AttesterSlashing],
     'attestations': [Attestation],
     'deposits': [Deposit],
     'voluntary_exits': [VoluntaryExit],
     'transfers': [Transfer],
-}
-```
-
-#### `Proposal`
-
-```python
-{
-    # Slot number
-    'slot': 'uint64',
-    # Shard number (`BEACON_CHAIN_SHARD_NUMBER` for beacon chain)
-    'shard': 'uint64',
-    # Block root
-    'block_root': 'bytes32',
-    # Signature
-    'signature': 'bytes96',
 }
 ```
 
@@ -543,9 +536,11 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Recent state
     'latest_crosslinks': [Crosslink],
     'latest_block_roots': ['bytes32'],
+    'latest_state_roots': ['bytes32'],
     'latest_active_index_roots': ['bytes32'],
     'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
-    'batched_block_roots': ['bytes32'],
+    'latest_block_header': BeaconBlockHeader,  # `latest_block_header.state_root == ZERO_HASH` temporarily
+    'historical_roots': ['bytes32'],
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
@@ -668,6 +663,22 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ### `signed_root`
 
 `def signed_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
+
+### `get_temporary_block_header`
+
+```python
+def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
+    """
+    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``. 
+    """
+    return BeaconBlockHeader(
+        slot=block.slot,
+        previous_block_root=block.previous_block_root,
+        state_root=ZERO_HASH,
+        block_body_root=hash_tree_root(block.body),
+        signature=block.signature,
+    )
+```
 
 ### `slot_to_epoch`
 
@@ -920,9 +931,8 @@ def get_block_root(state: BeaconState,
     """
     Return the block root at a recent ``slot``.
     """
-    assert state.slot <= slot + LATEST_BLOCK_ROOTS_LENGTH
-    assert slot < state.slot
-    return state.latest_block_roots[slot % LATEST_BLOCK_ROOTS_LENGTH]
+    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
+    return state.latest_block_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 `get_block_root(_, s)` should always return `hash_tree_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
@@ -1405,35 +1415,47 @@ For convenience, we provide the interface to the contract here:
 
 ## On genesis
 
-A valid block with slot `GENESIS_SLOT` (a "genesis block") has the following values. Other validity rules (e.g. requiring a signature) do not apply.
+When enough full deposits have been made to the deposit contract, an `Eth2Genesis` log is emitted. Construct a corresponding `genesis_state` and `genesis_block` as follows:
+
+* Let `genesis_validator_deposits` be the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log.
+* Let `genesis_time` be the timestamp specified in the `Eth2Genesis` log.
+* Let `genesis_eth1_data` be the `Eth1Data` object where:
+    * `genesis_eth1_data.deposit_root` is the `deposit_root` contained in the `Eth2Genesis` log.
+    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
+* Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
+* Let `genesis_block = get_empty_block()`.
+* Set `genesis_block.state_root = hash_tree_root(genesis_state)`.
 
 ```python
-{
-    slot=GENESIS_SLOT,
-    parent_root=ZERO_HASH,
-    state_root=GENESIS_STATE_ROOT,
-    randao_reveal=EMPTY_SIGNATURE,
-    eth1_data=Eth1Data(
-        deposit_root=ZERO_HASH,
-        block_hash=ZERO_HASH
-    ),
-    signature=EMPTY_SIGNATURE,
-    body=BeaconBlockBody(
-        proposer_slashings=[],
-        attester_slashings=[],
-        attestations=[],
-        deposits=[],
-        exits=[],
-    ),
-}
+def get_empty_block() -> BeaconBlock:
+    """
+    Get an empty ``BeaconBlock``.
+    """
+    return BeaconBlock(
+        slot=GENESIS_SLOT,
+        previous_block_root=ZERO_HASH,
+        state_root=ZERO_HASH,
+        body=BeaconBlockBody(
+            randao_reveal=EMPTY_SIGNATURE,
+            eth1_data=Eth1Data(
+                deposit_root=ZERO_HASH,
+                block_hash=ZERO_HASH,
+            ),
+            proposer_slashings=[],
+            attester_slashings=[],
+            attestations=[],
+            deposits=[],
+            exits=[],
+            transfers=[],
+        ),
+        signature=EMPTY_SIGNATURE,
+    )
 ```
-
-`GENESIS_STATE_ROOT` (in the above "genesis block") is generated from the `get_genesis_beacon_state` function below. When enough full deposits have been made to the deposit contract and the `Eth2Genesis` log has been emitted, `get_genesis_beacon_state` will execute to compute the `hash_tree_root` of `BeaconState`.
 
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
                              genesis_time: int,
-                             latest_eth1_data: Eth1Data) -> BeaconState:
+                             genesis_eth1_data: Eth1Data) -> BeaconState:
     """
     Get the genesis ``BeaconState``.
     """
@@ -1471,13 +1493,15 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Recent state
         latest_crosslinks=[Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_block_roots=[ZERO_HASH for _ in range(LATEST_BLOCK_ROOTS_LENGTH)],
+        latest_block_roots=[ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
+        latest_state_roots=[ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
         latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
         latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
-        batched_block_roots=[],
+        latest_block_header=get_temporary_block_header(get_empty_block()),
+        historical_roots=[],
 
         # Ethereum 1.0 chain data
-        latest_eth1_data=latest_eth1_data,
+        latest_eth1_data=genesis_eth1_data,
         eth1_data_votes=[],
         deposit_index=len(genesis_validator_deposits)
     )
@@ -1511,7 +1535,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with root `block.parent_root` has been processed and accepted.
+* The parent block with root `block.previous_block_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
 * The node's Unix time is greater than or equal to `state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
@@ -1590,41 +1614,73 @@ _Note_: If there are skipped slots between a block and its parent block, run the
 
 ### Per-slot processing
 
-Below are the processing steps that happen at every slot.
+At every `slot > GENESIS_SLOT` run the following function:
 
-#### Slot
-
-* Set `state.slot += 1`.
-
-#### Block roots
-
-* Let `previous_block_root` be the `hash_tree_root` of the previous beacon block processed in the chain.
-* Set `state.latest_block_roots[(state.slot - 1) % LATEST_BLOCK_ROOTS_LENGTH] = previous_block_root`.
-* If `state.slot % LATEST_BLOCK_ROOTS_LENGTH == 0` append `merkle_root(state.latest_block_roots)` to `state.batched_block_roots`.
+```python
+def advance_slot(state: BeaconState) -> None:
+    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = get_block_root(state, state.slot - 1)
+    if state.latest_block_header.state_root == ZERO_HASH:
+        state.latest_block_header.state_root = get_state_root(state, state.slot)
+    state.slot += 1
+```
 
 ### Per-block processing
 
-Below are the processing steps that happen at every `block`.
+For every `block` except the genesis block, run `process_block_header(state, block)`, `process_randao(state, block)` and `process_eth1_data(state, block)`.
 
-#### Slot
+#### Block header
 
-* Verify that `block.slot == state.slot`.
-
-#### Block signature
-
-* Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Let `proposal = Proposal(block.slot, BEACON_CHAIN_SHARD_NUMBER, signed_root(block, "signature"), block.signature)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposal, "signature"), signature=proposal.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+```python
+def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
+    # Verify that the slots match
+    assert block.slot == state.slot
+    # Verify that the parent matches
+    assert block.previous_block_root == hash_tree_root(state.latest_block_header)
+    # Save previous block root
+    state.latest_block_roots[(state.slot - 1) % SLOTS_PER_HISTORICAL_ROOT] = block.previous_block_root
+    # Save current block as the new latest block
+    state.latest_block_header = get_temporary_block_header(block)
+    # Verify proposer signature
+    proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
+    assert bls_verify(
+        pubkey=proposer.pubkey,
+        message_hash=signed_root(block, "signature"),
+        signature=block.signature,
+        domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BEACON_BLOCK)
+    )
+```
 
 #### RANDAO
 
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=hash_tree_root(get_current_epoch(state)), signature=block.randao_reveal, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO))`.
-* Set `state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = xor(get_randao_mix(state, get_current_epoch(state)), hash(block.randao_reveal))`.
+```python
+def process_randao(state: BeaconState, block: BeaconBlock) -> None:
+    # Verify that the provided randao value is valid
+    assert bls_verify(
+        pubkey=proposer.pubkey,
+        message_hash=hash_tree_root(get_current_epoch(state)),
+        signature=block.body.randao_reveal,
+        domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO)
+    )
+    # Mix it in
+    state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
+        xor(get_randao_mix(state, get_current_epoch(state)),
+            hash(block.body.randao_reveal))
+    )
+```
 
 #### Eth1 data
 
-* If there exists an `eth1_data_vote` in `state.eth1_data_votes` for which `eth1_data_vote.eth1_data == block.eth1_data` (there will be at most one), set `eth1_data_vote.vote_count += 1`.
-* Otherwise, append to `state.eth1_data_votes` a new `Eth1DataVote(eth1_data=block.eth1_data, vote_count=1)`.
+```python
+def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
+    for eth1_data_vote in state.eth1_data_votes:
+        # If someone else has already voted for the same hash, add to its counter
+        if eth1_data_vote.eth1_data == block.body.eth1_data:
+            eth1_data_vote.vote_count += 1
+            return
+    # If we're seeing this hash for the first time, make a new counter
+    state.eth1_data_votes.append(Eth1DataVote(eth1_data=block.body.eth1_data, vote_count=1))
+```
 
 #### Transactions
 
@@ -1643,20 +1699,20 @@ def process_proposer_slashing(state: BeaconState,
     """
     proposer = state.validator_registry[proposer_slashing.proposer_index]
     # Verify that the slot is the same
-    assert proposer_slashing.proposal_1.slot == proposer_slashing.proposal_2.slot
+    assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
     # Verify that the shard is the same (or that both proposals are beacon chain proposals)
-    assert proposer_slashing.proposal_1.shard == proposer_slashing.proposal_2.shard
+    assert proposer_slashing.header_1.shard == proposer_slashing.header_2.shard
     # But the roots are different!
-    assert proposer_slashing.proposal_1.block_root != proposer_slashing.proposal_2.block_root
+    assert proposer_slashing.header_1.block_root != proposer_slashing.header_2.block_root
     # Proposer is not yet slashed
     assert proposer.slashed is False
     # Signatures are valid
-    for proposal in (proposer_slashing.proposal_1, proposer_slashing.proposal_2):
+    for header in (proposer_slashing.header_1, proposer_slashing.header_2):
         assert bls_verify(
             pubkey=proposer.pubkey,
-            message_hash=signed_root(proposal, "signature"),           
-            signature=proposal.signature,
-            domain=get_domain(state.fork, slot_to_epoch(proposal.slot), DOMAIN_PROPOSAL)
+            message_hash=signed_root(header, "signature"),           
+            signature=header.signature,
+            domain=get_domain(state.fork, slot_to_epoch(header.slot), DOMAIN_PROPOSAL)
         )
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -1836,7 +1892,7 @@ def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
         pubkey=validator.pubkey,
         message_hash=signed_root(exit, "signature"),
         signature=exit.signature,
-        domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT)
+        domain=get_domain(state.fork, exit.epoch, DOMAIN_VOLUNTARY_EXIT)
     )
     # Run the exit
     initiate_validator_exit(state, exit.validator_index)
@@ -2368,6 +2424,9 @@ def finish_epoch_update(state: BeaconState) -> None:
     )
     # Set randao mix
     state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
+    # Set historical root accumulator
+    if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
+        state.historical_roots.append(merkle_root(state.latest_block_roots + state.latest_state_roots))
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
