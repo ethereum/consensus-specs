@@ -1807,7 +1807,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Verify aggregate signature
     participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
-    custody_bit_0_participants = [i in participants for i not in custody_bit_1_participants]
+    custody_bit_0_participants = [i for i in participants if i not in custody_bit_1_participants]
 
     assert bls_verify_multiple(
         pubkeys=[
