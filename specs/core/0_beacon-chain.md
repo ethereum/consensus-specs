@@ -1789,7 +1789,7 @@ def get_current_total_balance(state: BeaconState) -> Gwei:
 
 ```python
 def get_previous_total_balance(state: BeaconState) -> Gwei:
-    return get_total_balance(state, get_active_validator_indices(state.validator_registry, previous_epoch))
+    return get_total_balance(state, get_active_validator_indices(state.validator_registry, get_previous_epoch(state)))
 ```
 
 ```python
