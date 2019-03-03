@@ -1784,7 +1784,7 @@ def get_current_attestations(state: BeaconState) -> List[PendingAttestation]:
 
 ```python
 def get_current_total_balance(state: BeaconState) -> Gwei:
-    return get_total_balance(state, get_active_validator_indices(state.validator_registry, current_epoch))
+    return get_total_balance(state, get_active_validator_indices(state.validator_registry, get_current_epoch(state)))
 ```
 
 ```python
