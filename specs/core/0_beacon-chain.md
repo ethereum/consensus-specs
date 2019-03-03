@@ -1794,7 +1794,7 @@ def get_previous_total_balance(state: BeaconState) -> Gwei:
 
 ```python
 def get_previous_attestations(state: BeaconState) -> List[PendingAttestation]:
-    return [a for a in state.latest_attestations if previous_epoch == slot_to_epoch(a.data.slot)]
+    return [a for a in state.latest_attestations if get_previous_epoch(state) == slot_to_epoch(a.data.slot)]
 ```
 
 ```python
