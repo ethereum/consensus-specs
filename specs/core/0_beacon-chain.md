@@ -442,7 +442,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Sender index
-    'from': 'uint64',
+    'sender': 'uint64',
     # Recipient index
     'to': 'uint64',
     # Amount in Gwei
@@ -1913,23 +1913,23 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     Note that this function mutates ``state``.
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
-    assert state.validator_balances[transfer.from] >= max(transfer.amount, transfer.fee)
+    assert state.validator_balances[transfer.sender] >= max(transfer.amount, transfer.fee)
     # Verify that we have enough ETH to send, and that after the transfer the balance will be either
     # exactly zero or at least MIN_DEPOSIT_AMOUNT
     assert (
-        state.validator_balances[transfer.from] == transfer.amount + transfer.fee or
-        state.validator_balances[transfer.from] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
+        state.validator_balances[transfer.sender] == transfer.amount + transfer.fee or
+        state.validator_balances[transfer.sender] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
     )
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
     # Only withdrawn or not-yet-deposited accounts can transfer
     assert (
-        get_current_epoch(state) >= state.validator_registry[transfer.from].withdrawable_epoch or
-        state.validator_registry[transfer.from].activation_epoch == FAR_FUTURE_EPOCH
+        get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
+        state.validator_registry[transfer.sender].activation_epoch == FAR_FUTURE_EPOCH
     )
     # Verify that the pubkey is valid
     assert (
-        state.validator_registry[transfer.from].withdrawal_credentials ==
+        state.validator_registry[transfer.sender].withdrawal_credentials ==
         BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid
@@ -1940,7 +1940,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
     )
     # Process the transfer
-    state.validator_balances[transfer.from] -= transfer.amount + transfer.fee
+    state.validator_balances[transfer.sender] -= transfer.amount + transfer.fee
     state.validator_balances[transfer.to] += transfer.amount
     state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee
 ```
