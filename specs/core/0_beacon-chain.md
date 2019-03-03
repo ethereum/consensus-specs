@@ -1877,7 +1877,6 @@ Run the following function:
 
 ```python
 def update_justification_and_finalization(state: BeaconState) -> None:
-
     new_justified_epoch = state.justified_epoch
     # Rotate the justification bitfield up one epoch to make room for the current epoch
     state.justification_bitfield <<= 1
