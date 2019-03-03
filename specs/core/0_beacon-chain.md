@@ -890,19 +890,22 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         shuffling_epoch = state.previous_shuffling_epoch
         shuffling_start_shard = state.previous_shuffling_start_shard
     elif epoch == next_epoch:
-        current_committees_per_epoch = get_current_epoch_committee_count(state)
-        committees_per_epoch = get_next_epoch_committee_count(state)
-        shuffling_epoch = next_epoch
-
         epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
         if registry_change:
+            committees_per_epoch = get_next_epoch_committee_count(state)
             seed = generate_seed(state, next_epoch)
+            shuffling_epoch = next_epoch
+            current_committees_per_epoch = get_current_epoch_committee_count(state)
             shuffling_start_shard = (state.current_shuffling_start_shard + current_committees_per_epoch) % SHARD_COUNT
         elif epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
+            committees_per_epoch = get_next_epoch_committee_count(state)
             seed = generate_seed(state, next_epoch)
+            shuffling_epoch = next_epoch
             shuffling_start_shard = state.current_shuffling_start_shard
         else:
+            committees_per_epoch = get_current_epoch_committee_count(state)
             seed = state.current_shuffling_seed
+            shuffling_epoch = state.current_shuffling_epoch
             shuffling_start_shard = state.current_shuffling_start_shard
 
     shuffling = get_shuffling(
@@ -2368,12 +2371,14 @@ def process_slashings(state: BeaconState) -> None:
     active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)
     total_balance = sum(get_effective_balance(state, i) for i in active_validator_indices)
 
+    # Compute `total_penalties`
+    epoch_index = current_epoch % LATEST_SLASHED_EXIT_LENGTH
+    total_at_start = state.latest_slashed_balances[(epoch_index + 1) % LATEST_SLASHED_EXIT_LENGTH]
+    total_at_end = state.latest_slashed_balances[epoch_index]
+    total_penalties = total_at_end - total_at_start
+
     for index, validator in enumerate(state.validator_registry):
         if validator.slashed and current_epoch == validator.withdrawable_epoch - LATEST_SLASHED_EXIT_LENGTH // 2:
-            epoch_index = current_epoch % LATEST_SLASHED_EXIT_LENGTH
-            total_at_start = state.latest_slashed_balances[(epoch_index + 1) % LATEST_SLASHED_EXIT_LENGTH]
-            total_at_end = state.latest_slashed_balances[epoch_index]
-            total_penalties = total_at_end - total_at_start
             penalty = max(
                 get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance,
                 get_effective_balance(state, index) // MIN_PENALTY_QUOTIENT
