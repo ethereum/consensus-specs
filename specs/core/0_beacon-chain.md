@@ -2021,7 +2021,7 @@ def compute_inactivity_leak_deltas(state: BeaconState) -> List[Gwei]:
     deltas = [0 for index in range(len(state.validator_registry))]
     boundary_attestations = get_previous_epoch_boundary_attestations(state)
     matching_head_attestations = get_previous_epoch_matching_head_attestations(state)
-    active_validator_indices = get_active_validator_indices(state.validator_registry, previous_epoch)
+    active_validator_indices = get_active_validator_indices(state.validator_registry, get_previous_epoch(state))
     epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
     for index in active_validator_indices:
         if index not in get_attesting_indices(get_previous_epoch_attestations(state)):
