@@ -800,7 +800,7 @@ def get_epoch_committee_count(active_validator_count: int) -> int:
 ```python
 def get_shuffling(seed: Bytes32,
                   validators: List[Validator],
-                  epoch: Epoch) -> List[List[ValidatorIndex]]
+                  epoch: Epoch) -> List[List[ValidatorIndex]]:
     """
     Shuffle active validators and split into crosslink committees.
     Return a list of committees (each a list of validator indices).
