@@ -2053,7 +2053,9 @@ def compute_inactivity_leak_deltas(state: BeaconState) -> List[Gwei]:
 ```python
 def get_crosslink_deltas(state: BeaconState) -> List[Gwei]:
     deltas = [0 for index in range(len(state.validator_registry))]
-    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(current_epoch)):
+    previous_epoch_start_slot = get_epoch_start_slot(get_previous_epoch(state))
+    current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
+    for slot in range(previous_epoch_start_slot, current_epoch_start_slot):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
             participating_balance = get_total_balance(state, participants)
