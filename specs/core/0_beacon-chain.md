@@ -2119,12 +2119,14 @@ def process_slashings(state: BeaconState) -> None:
     active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)
     total_balance = sum(get_effective_balance(state, i) for i in active_validator_indices)
 
+    # Compute `total_penalties`
+    epoch_index = current_epoch % LATEST_SLASHED_EXIT_LENGTH
+    total_at_start = state.latest_slashed_balances[(epoch_index + 1) % LATEST_SLASHED_EXIT_LENGTH]
+    total_at_end = state.latest_slashed_balances[epoch_index]
+    total_penalties = total_at_end - total_at_start
+
     for index, validator in enumerate(state.validator_registry):
         if validator.slashed and current_epoch == validator.withdrawable_epoch - LATEST_SLASHED_EXIT_LENGTH // 2:
-            epoch_index = current_epoch % LATEST_SLASHED_EXIT_LENGTH
-            total_at_start = state.latest_slashed_balances[(epoch_index + 1) % LATEST_SLASHED_EXIT_LENGTH]
-            total_at_end = state.latest_slashed_balances[epoch_index]
-            total_penalties = total_at_end - total_at_start
             penalty = max(
                 get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance,
                 get_effective_balance(state, index) // MIN_PENALTY_QUOTIENT
