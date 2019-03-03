@@ -1451,7 +1451,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         validator_registry_update_epoch=GENESIS_EPOCH,
 
         # Randomness and committees
-        latest_randao_mixes=[EMPTY_SIGNATURE for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
+        latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
         previous_shuffling_start_shard=GENESIS_START_SHARD,
         current_shuffling_start_shard=GENESIS_START_SHARD,
         previous_shuffling_epoch=GENESIS_EPOCH,
