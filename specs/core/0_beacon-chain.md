@@ -72,6 +72,7 @@
         - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
+        - [`get_state_root`](#get_state_root)
         - [`get_randao_mix`](#get_randao_mix)
         - [`get_active_index_root`](#get_active_index_root)
         - [`generate_seed`](#generate_seed)
@@ -941,6 +942,17 @@ def get_block_root(state: BeaconState,
 
 `get_block_root(_, s)` should always return `hash_tree_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
+### `get_state_root`
+
+```python
+def get_state_root(state: BeaconState,
+                   slot: Slot) -> Bytes32:
+    """
+    Return the state root at a recent ``slot``.
+    """
+    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
+    return state.latest_state_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
+```
 ### `get_randao_mix`
 
 ```python
@@ -1674,9 +1686,9 @@ At every `slot > GENESIS_SLOT` run the following function:
 def advance_slot(state: BeaconState) -> None:
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state)
     state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = get_block_root(state, state.slot - 1)
-    if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = get_state_root(state, state.slot)
     state.slot += 1
+    if state.latest_block_header.state_root == ZERO_HASH:
+        state.latest_block_header.state_root = get_state_root(state, state.slot - 1)
 ```
 
 ### Per-block processing
