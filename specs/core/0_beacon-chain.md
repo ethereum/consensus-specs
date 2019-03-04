@@ -971,11 +971,19 @@ def generate_seed(state: BeaconState,
 
 ```python
 def get_beacon_proposer_index(state: BeaconState,
-                              slot: Slot) -> ValidatorIndex:
+                              slot: Slot,
+                              registry_change: bool=False) -> ValidatorIndex:
     """
     Return the beacon proposer index for the ``slot``.
     """
-    first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
+    epoch = slot_to_epoch(slot)
+    current_epoch = get_current_epoch(state)
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = current_epoch + 1
+
+    assert previous_epoch <= epoch <= next_epoch
+
+    first_committee, _ = get_crosslink_committees_at_slot(state, slot, registry_change)[0]
     return first_committee[slot % len(first_committee)]
 ```
 
