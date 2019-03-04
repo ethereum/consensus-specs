@@ -1448,7 +1448,7 @@ def get_empty_block() -> BeaconBlock:
             attester_slashings=[],
             attestations=[],
             deposits=[],
-            exits=[],
+            voluntary_exits=[],
             transfers=[],
         ),
         signature=EMPTY_SIGNATURE,
