@@ -53,6 +53,7 @@
             - [`Eth1DataVote`](#eth1datavote)
     - [Custom Types](#custom-types)
     - [Helper functions](#helper-functions)
+        - [`xor`](#xor)
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signed_root`](#signed_root)
@@ -651,6 +652,13 @@ We define the following Python custom types for type hinting and readability:
 ## Helper functions
 
 Note: The definitions below are for specification purposes and are not necessarily optimal implementations.
+
+### `xor`
+
+```python
+def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
+    return bytes(a ^ b for a, b in zip(bytes1, bytes2))
+```
 
 ### `hash`
 
