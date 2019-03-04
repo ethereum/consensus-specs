@@ -1055,7 +1055,7 @@ def bytes_to_int(data: bytes) -> int:
 ### `get_effective_balance`
 
 ```python
-def get_effective_balance(state: State, index: ValidatorIndex) -> Gwei:
+def get_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
