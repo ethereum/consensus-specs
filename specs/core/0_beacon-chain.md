@@ -277,7 +277,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `DOMAIN_ATTESTATION` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
 | `DOMAIN_VOLUNTARY_EXIT` | `4` |
-| `DOMAIN_TRANSFER` | `5` | 
+| `DOMAIN_TRANSFER` | `5` |
 
 ## Data structures
 
