@@ -1658,6 +1658,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_randao(state: BeaconState, block: BeaconBlock) -> None:
+    proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     # Verify that the provided randao value is valid
     assert bls_verify(
         pubkey=proposer.pubkey,
@@ -1968,7 +1969,7 @@ def get_previous_total_balance(state: BeaconState) -> Gwei:
 
 ```python
 def get_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
-    output = set({})
+    output = set()
     for a in attestations:
         output = output.union([get_attestation_participants(state, a.data, a.aggregation_bitfield)])
     return sorted(list(output))
@@ -2087,6 +2088,9 @@ Run the following function:
 
 ```python
 def process_crosslinks(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
+    previous_epoch = current_epoch - 1
+    next_epoch = current_epoch + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
@@ -2124,6 +2128,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 
 ```python
 def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
     return (
         get_base_reward(state, index) +
         get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
