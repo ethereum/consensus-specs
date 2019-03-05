@@ -1693,10 +1693,10 @@ At every `slot > GENESIS_SLOT` run the following function:
 ```python
 def advance_slot(state: BeaconState) -> None:
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state)
-    if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = get_state_root(state, state.slot)
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state.latest_block_header)
     state.slot += 1
+    if state.latest_block_header.state_root == ZERO_HASH:
+        state.latest_block_header.state_root = get_state_root(state, state.slot - 1)
+    state.latest_block_roots[(state.slot - 1) % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state.latest_block_header)
 ```
 
 ### Per-block processing
