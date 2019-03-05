@@ -2094,12 +2094,12 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     # Rotate the justification bitfield up one epoch to make room for the current epoch
     state.justification_bitfield <<= 1
     # If the previous epoch gets justified, fill the second last bit
-    previous_boundary_attesting_balance = get_attesting_balance(get_previous_epoch_boundary_attestations(state))
+    previous_boundary_attesting_balance = get_attesting_balance(state, get_previous_epoch_boundary_attestations(state))
     if previous_boundary_attesting_balance * 3 >= get_previous_total_balance(state) * 2:
         new_justified_epoch = get_current_epoch(state) - 1
         state.justification_bitfield |= 2
     # If the current epoch gets justified, fill the last bit
-    current_boundary_attesting_balance = get_attesting_balance(get_current_epoch_boundary_attestations(state))
+    current_boundary_attesting_balance = get_attesting_balance(state, get_current_epoch_boundary_attestations(state))
     if current_boundary_attesting_balance * 3 >= get_current_total_balance(state) * 2:
         new_justified_epoch = get_current_epoch(state)
         state.justification_bitfield |= 1
@@ -2203,11 +2203,11 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
     ]
     # Some helper variables
     boundary_attestations = get_previous_epoch_boundary_attestations(state)
-    boundary_attesting_balance = get_attesting_balance(boundary_attestations)
+    boundary_attesting_balance = get_attesting_balance(state, boundary_attestations)
     total_balance = get_previous_total_balance(state)
-    total_attesting_balance = get_attesting_balance(get_previous_epoch_attestations(state))
+    total_attesting_balance = get_attesting_balance(state, get_previous_epoch_attestations(state))
     matching_head_attestations = get_previous_epoch_matching_head_attestations(state)
-    matching_head_balance = get_attesting_balance(matching_head_attestations)
+    matching_head_balance = get_attesting_balance(state, matching_head_attestations)
     # Process rewards or penalties for all validators
     for index in get_active_validator_indices(state.validator_registry, previous_epoch):
         # Expected FFG source
