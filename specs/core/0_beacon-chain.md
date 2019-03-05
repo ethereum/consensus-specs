@@ -2010,7 +2010,7 @@ def get_previous_total_balance(state: BeaconState) -> Gwei:
 def get_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
     output = set()
     for a in attestations:
-        output = output.union([get_attestation_participants(state, a.data, a.aggregation_bitfield)])
+        output = output.union(get_attestation_participants(state, a.data, a.aggregation_bitfield))
     return sorted(list(output))
 ```
 
