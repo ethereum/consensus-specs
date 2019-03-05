@@ -2294,7 +2294,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
             participating_balance = get_total_balance(state, participants)
-            total_balance = get_total_balance(state, crossling_committee)
+            total_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:
                 if index in participants:
                     deltas[0][index] += get_base_reward(state, index) * participating_balance // total_balance
