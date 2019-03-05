@@ -707,7 +707,7 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
     Return the previous epoch of the given ``state``.
     """
-    return max(get_current_epoch(state) - 1, GENESIS_EPOCH)
+    return get_current_epoch(state) - 1
 ```
 
 ### `get_current_epoch`
