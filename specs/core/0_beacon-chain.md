@@ -1693,10 +1693,10 @@ At every `slot > GENESIS_SLOT` run the following function:
 ```python
 def advance_slot(state: BeaconState) -> None:
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state)
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = get_block_root(state, state.slot - 1)
-    state.slot += 1
     if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = get_state_root(state, state.slot - 1)
+        state.latest_block_header.state_root = get_state_root(state, state.slot)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state.latest_block_header)
+    state.slot += 1
 ```
 
 ### Per-block processing
@@ -1711,8 +1711,6 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     assert block.slot == state.slot
     # Verify that the parent matches
     assert block.previous_block_root == hash_tree_root(state.latest_block_header)
-    # Save previous block root
-    state.latest_block_roots[(state.slot - 1) % SLOTS_PER_HISTORICAL_ROOT] = block.previous_block_root
     # Save current block as the new latest block
     state.latest_block_header = get_temporary_block_header(block)
     # Verify proposer signature
