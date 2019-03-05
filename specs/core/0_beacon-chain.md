@@ -2239,6 +2239,7 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
         # Proposer bonus
         proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
         deltas[0][proposer_index] += base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+    return deltas
 ```
 
 When blocks are not finalizing normally...
