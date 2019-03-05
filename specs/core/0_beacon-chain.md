@@ -2056,12 +2056,16 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple
         a for a in all_attestations if a.data.latest_crosslink == state.latest_crosslinks[shard]
     ]
     all_roots = [a.data.crosslink_data_root for a in valid_attestations]
-    
+
+    # handle when no attestations for shard available
+    if len(all_roots) == 0:
+        return ZERO_HASH, []
+
     def get_attestations_for(root) -> List[PendingAttestation]:
         return [a for a in valid_attestations if a.data.crosslink_data_root == root]
-        
+
     winning_root = max(all_roots, key=lambda r: get_attesting_balance(state, get_attestations_for(r)))
-    
+
     return winning_root, get_attesting_indices(state, get_attestations_for(winning_root))
 ```
 
