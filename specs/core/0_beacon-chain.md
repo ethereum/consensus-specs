@@ -2137,7 +2137,9 @@ def process_crosslinks(state: BeaconState) -> None:
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
-            if 3 * total_balance(participants) >= 2 * total_balance(crosslink_committee):
+            participating_balance = get_total_balance(state, participants)
+            total_balance = get_total_balance(state, crosslink_committee)
+            if 3 * participating_balance >= 2 * total_balance:
                 state.latest_crosslinks[shard] = Crosslink(
                     epoch=slot_to_epoch(slot),
                     crosslink_data_root=winning_root
@@ -2434,7 +2436,7 @@ def process_slashings(state: BeaconState) -> None:
     """
     current_epoch = get_current_epoch(state)
     active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)
-    total_balance = sum(get_effective_balance(state, i) for i in active_validator_indices)
+    total_balance = get_total_balance(state, active_validator_indices)
 
     # Compute `total_penalties`
     epoch_index = current_epoch % LATEST_SLASHED_EXIT_LENGTH
