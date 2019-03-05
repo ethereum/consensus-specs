@@ -2211,11 +2211,11 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
     boundary_attestations = get_previous_epoch_boundary_attestations(state)
     boundary_attesting_balance = get_attesting_balance(state, boundary_attestations)
     total_balance = get_previous_total_balance(state)
-    total_attesting_balance = get_attesting_balance(state, get_previous_epoch_attestations(state))
+    total_attesting_balance = get_attesting_balance(state, state.previous_epoch_attestations)
     matching_head_attestations = get_previous_epoch_matching_head_attestations(state)
     matching_head_balance = get_attesting_balance(state, matching_head_attestations)
     # Process rewards or penalties for all validators
-    for index in get_active_validator_indices(state.validator_registry, previous_epoch):
+    for index in get_active_validator_indices(state.validator_registry, get_previous_epoch(state)):
         # Expected FFG source
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
             deltas[0][index] += get_base_reward(state, index) * total_attesting_balance // total_balance
@@ -2256,7 +2256,7 @@ def compute_inactivity_leak_deltas(state: BeaconState) -> Tuple[List[Gwei], List
     active_validator_indices = get_active_validator_indices(state.validator_registry, get_previous_epoch(state))
     epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
     for index in active_validator_indices:
-        if index not in get_attesting_indices(state, get_previous_epoch_attestations(state)):
+        if index not in get_attesting_indices(state, state.previous_epoch_attestations):
             deltas[1][index] += get_inactivity_penalty(state, index, epochs_since_finality)
         else:
             # If a validator did attest, apply a small penalty for getting attestations included late
@@ -2295,7 +2295,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
             participating_balance = get_total_balance(state, participants)
-            total_balance = get_total_balance(state, committee)
+            total_balance = get_total_balance(state, crossling_committee)
             for index in crosslink_committee:
                 if index in participants:
                     deltas[0][index] += get_base_reward(state, index) * participating_balance // total_balance
