@@ -12,8 +12,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`uintN`](#uintn)
     - [`bool`](#bool)
-    - [Tuples](#lists)
-    - [Containers, lists](#containers-lists)
+    - [Tuples, containers, lists](#tuples-containers-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -69,13 +68,15 @@ assert value in (True, False)
 return b'\x01' if value is True else b'\x00'
 ```
 
-### Tuples
+### Tuples, containers, lists
+
+If `value` is fixed-length (i.e. does not embed a list):
 
 ```python
 return ''.join([serialize(element) for element in value])
 ```
 
-### Containers, lists
+If `value` is variable-length (i.e. embeds a list):
 
 ```python
 serialized_bytes = ''.join([serialize(element) for element in value])
