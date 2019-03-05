@@ -1773,19 +1773,17 @@ def process_proposer_slashing(state: BeaconState,
     proposer = state.validator_registry[proposer_slashing.proposer_index]
     # Verify that the slot is the same
     assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
-    # Verify that the shard is the same (or that both proposals are beacon chain proposals)
-    assert proposer_slashing.header_1.shard == proposer_slashing.header_2.shard
     # But the roots are different!
-    assert proposer_slashing.header_1.block_root != proposer_slashing.header_2.block_root
+    assert hash_tree_root(proposer_slashing.header_1) != hash_tree_root(proposer_slashing.header_2)
     # Proposer is not yet slashed
     assert proposer.slashed is False
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
         assert bls_verify(
             pubkey=proposer.pubkey,
-            message_hash=signed_root(header, "signature"),           
+            message_hash=signed_root(header, "signature"),
             signature=header.signature,
-            domain=get_domain(state.fork, slot_to_epoch(header.slot), DOMAIN_PROPOSAL)
+            domain=get_domain(state.fork, slot_to_epoch(header.slot), DOMAIN_BEACON_BLOCK)
         )
     slash_validator(state, proposer_slashing.proposer_index)
 ```
