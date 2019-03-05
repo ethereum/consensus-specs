@@ -205,10 +205,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `MIN_DEPOSIT_AMOUNT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
-| `MAX_DEPOSIT_AMOUNT` | `2**5 * 1e9` (= 32,000,000,000) | Gwei |
-| `FORK_CHOICE_BALANCE_INCREMENT` | `2**0 * 1e9` (= 1,000,000,000) | Gwei |
-| `EJECTION_BALANCE` | `2**4 * 1e9` (= 16,000,000,000) | Gwei |
+| `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
+| `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
+| `FORK_CHOICE_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
+| `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
 
 ### Initial values
 
