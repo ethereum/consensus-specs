@@ -379,7 +379,7 @@ def get_committee_assignment(
 
 ### Lookahead
 
-The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming assignemnts of proposing and attesting dictated by the shuffling and slot.
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming assignments of proposing and attesting dictated by the shuffling and slot.
 
 There are three possibilities for the shuffling at the next epoch:
 1. The shuffling changes due to a "validator registry change".
