@@ -50,7 +50,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Aggregation bitfield](#aggregation-bitfield)
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
-    - [Validator assigments](#validator-assignments)
+    - [Validator assignments](#validator-assignments)
         - [Lookahead](#lookahead)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
@@ -353,7 +353,7 @@ def get_committee_assignment(
             a beacon block at the assigned slot.
     """
     previous_epoch = get_previous_epoch(state)
-    next_epoch = get_current_epoch(state)
+    next_epoch = get_current_epoch(state) + 1
     assert previous_epoch <= epoch <= next_epoch
 
     epoch_start_slot = get_epoch_start_slot(epoch)
@@ -371,8 +371,7 @@ def get_committee_assignment(
         if len(selected_committees) > 0:
             validators = selected_committees[0][0]
             shard = selected_committees[0][1]
-            first_committee_at_slot = crosslink_committees[0][0]  # List[ValidatorIndex]
-            is_proposer = first_committee_at_slot[slot % len(first_committee_at_slot)] == validator_index
+            is_proposer = validator_index == get_beacon_proposer_index(state, slot, registry_change=registry_change)
 
             assignment = (validators, shard, slot, is_proposer)
             return assignment
