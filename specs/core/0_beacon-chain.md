@@ -447,7 +447,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     # Sender index
     'sender': 'uint64',
     # Recipient index
-    'to': 'uint64',
+    'recipient': 'uint64',
     # Amount in Gwei
     'amount': 'uint64',
     # Fee in Gwei for block proposer
@@ -1984,7 +1984,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     )
     # Process the transfer
     state.validator_balances[transfer.sender] -= transfer.amount + transfer.fee
-    state.validator_balances[transfer.to] += transfer.amount
+    state.validator_balances[transfer.recipient] += transfer.amount
     state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee
 ```
 
