@@ -387,7 +387,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Branch in the deposit tree
-    'proof': ['bytes32'],
+    'proof': ['bytes32', DEPOSIT_CONTRACT_TREE_DEPTH],
     # Index in the deposit tree
     'index': 'uint64',
     # Data
