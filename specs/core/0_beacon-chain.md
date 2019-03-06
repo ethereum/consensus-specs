@@ -1292,7 +1292,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # Verify the proof of possession
     proof_is_valid = bls_verify(
         pubkey=deposit_input.pubkey,
-        message_hash=signed_root(deposit_input, "proof_of_possession"),
+        message_hash=signed_root(deposit_input),
         signature=deposit_input.proof_of_possession,
         domain=get_domain(
             state.fork,
@@ -1664,8 +1664,8 @@ Below are the processing steps that happen at every `block`.
 #### Block signature
 
 * Let `proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]`.
-* Let `proposal = Proposal(block.slot, BEACON_CHAIN_SHARD_NUMBER, signed_root(block, "signature"), block.signature)`.
-* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposal, "signature"), signature=proposal.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
+* Let `proposal = Proposal(block.slot, BEACON_CHAIN_SHARD_NUMBER, signed_root(block), block.signature)`.
+* Verify that `bls_verify(pubkey=proposer.pubkey, message_hash=signed_root(proposal), signature=proposal.signature, domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_PROPOSAL))`.
 
 #### RANDAO
 
@@ -1705,7 +1705,7 @@ def process_proposer_slashing(state: BeaconState,
     for proposal in (proposer_slashing.proposal_1, proposer_slashing.proposal_2):
         assert bls_verify(
             pubkey=proposer.pubkey,
-            message_hash=signed_root(proposal, "signature"),           
+            message_hash=signed_root(proposal),
             signature=proposal.signature,
             domain=get_domain(state.fork, slot_to_epoch(proposal.slot), DOMAIN_PROPOSAL)
         )
@@ -1853,7 +1853,7 @@ def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Verify signature
     assert bls_verify(
         pubkey=validator.pubkey,
-        message_hash=signed_root(exit, "signature"),
+        message_hash=signed_root(exit),
         signature=exit.signature,
         domain=get_domain(state.fork, exit.epoch, DOMAIN_EXIT)
     )
@@ -1898,7 +1898,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Verify that the signature is valid
     assert bls_verify(
         pubkey=transfer.pubkey,
-        message_hash=signed_root(transfer, "signature"),
+        message_hash=signed_root(transfer),
         signature=transfer.signature,
         domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
     )

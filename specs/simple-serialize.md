@@ -44,9 +44,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 For convenience we alias:
 
-* `"byte"` to `"uint8"`
-* `"bytes"` to `["byte"]`
-* `"bytesN"` to `["byte", N]`
+* `"byte"` to `"uint8"` (this is a basic type)
+* `"bytes"` to `["byte"]` (this is *not* a basic type)
+* `"bytesN"` to `["byte", N]` (this is *not* a basic type)
 
 ## Serialization
 
