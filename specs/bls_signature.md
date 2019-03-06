@@ -13,7 +13,7 @@
         - [G2 points](#g2-points)
     - [Helpers](#helpers)
         - [`hash_to_G2`](#hash_to_g2)
-        - [`modular_squareroot`](#modular_squareroot)
+        - [`modular_squareroot_in_FQ2`](#modular_squareroot_in_FQ2)
     - [Aggregation operations](#aggregation-operations)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
@@ -59,7 +59,7 @@ We require:
 * `a_flag2 == b_flag2 == c_flag2 == 0`
 * `c_flag1 == 1`
 * if `b_flag1 == 1` then `a_flag1 == x1 == x2 == 0` and `(z1, z2)` represents the point at infinity
-* if `b_flag1 == 0` then `(z1, z2)` represents the point `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part `y_im` of `y` satisfies `(y_im * 2) // q == a_flag1`
+* if `b_flag1 == 0` then `(z1, z2)` represents the point `(x1 * i + x2, y)` where `y` is the valid coordinate such that the imaginary part `y_im` of `y` satisfies `(y_im * 2) // q == a_flag1`. If `y_im` happens to be `0`, use the real part to set `(y_re * 2) // q == a_flag1`.
 
 ## Helpers
 
@@ -78,15 +78,15 @@ def hash_to_G2(message_hash: Bytes32, domain: uint64) -> [uint384]:
     # Test candidate y coordinates until a one is found
     while 1:
         y_coordinate_squared = x_coordinate ** 3 + Fq2([4, 4])  # The curve is y^2 = x^3 + 4(i + 1)
-        y_coordinate = modular_squareroot(y_coordinate_squared)
+        y_coordinate = modular_squareroot_in_FQ2(y_coordinate_squared)
         if y_coordinate is not None:  # Check if quadratic residue found
             return multiply_in_G2((x_coordinate, y_coordinate), G2_cofactor)
         x_coordinate += Fq2([1, 0])  # Add 1 and try again
 ```
 
-### `modular_squareroot`
+### `modular_squareroot_in_FQ2`
 
-`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
+`modular_squareroot_in_FQ2(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
 
 The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (ie. integers `mod q`) and converts it to a regular integer.
 
@@ -94,7 +94,7 @@ The following is a sample implementation; implementers are free to implement mod
 Fq2_order = q ** 2 - 1
 eighth_roots_of_unity = [Fq2([1,1]) ** ((Fq2_order * k) // 8) for k in range(8)]
 
-def modular_squareroot(value: Fq2) -> Fq2:
+def modular_squareroot_in_FQ2(value: Fq2) -> Fq2:
     candidate_squareroot = value ** ((Fq2_order + 8) // 16)
     check = candidate_squareroot ** 2 / value
     if check in eighth_roots_of_unity[::2]:
