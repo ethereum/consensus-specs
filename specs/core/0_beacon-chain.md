@@ -2237,7 +2237,7 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
             deltas[1][index] += get_base_reward(state, index)
         # Proposer bonus
         proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-        deltas[0][proposer_index] += base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
     return deltas
 ```
 
@@ -2261,10 +2261,10 @@ def compute_inactivity_leak_deltas(state: BeaconState) -> Tuple[List[Gwei], List
         else:
             # If a validator did attest, apply a small penalty for getting attestations included late
             deltas[0][index] += (
-                base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY //
+                get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY //
                 inclusion_distance(state, index)
             )
-            deltas[1][index] += base_reward(state, index)
+            deltas[1][index] += get_base_reward(state, index)
         if index not in get_attesting_indices(state, boundary_attestations):
             deltas[1][index] += get_inactivity_penalty(state, index, epochs_since_finality)
         if index not in get_attesting_indices(state, matching_head_attestations):
