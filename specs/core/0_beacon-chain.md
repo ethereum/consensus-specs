@@ -64,6 +64,10 @@
         - [`get_epoch_start_slot`](#get_epoch_start_slot)
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
+        - [`get_balance`](#get_balance)
+        - [`set_balance`](#set_balance)
+        - [`increase_balance`](#increase_balance)
+        - [`decrease_balance`](#decrease_balance)
         - [`get_permuted_index`](#get_permuted_index)
         - [`split`](#split)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
@@ -205,10 +209,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
+| `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 2,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
-| `FORK_CHOICE_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 | `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
+| `HIGH_BALANCE_INCREMENT` | `10 ** 9` (= 1,000,000,000) | Gwei |
 
 ### Initial values
 
@@ -516,7 +520,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
     # Validator registry
     'validator_registry': [Validator],
-    'validator_balances': ['uint64'],
+    'low_balances': ['uint32'],
     'validator_registry_update_epoch': 'uint64',
 
     # Randomness and committees
@@ -570,6 +574,8 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'initiated_exit': 'bool',
     # Was the validator slashed
     'slashed': 'bool',
+    # Rounded balance
+    'high_balance': 'uint32'
 }
 ```
 
@@ -748,6 +754,45 @@ def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> L
     """
     return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
 ```
+
+### `get_balance`
+
+```python
+def get_balance(state: BeaconState, index: int) -> int:
+    return (
+        state.validator_registry[index].high_balance * HIGH_BALANCE_INCREMENT + 
+        state.low_balances[index]
+    )
+```
+#### `set_balance`
+
+````python
+def set_balance(state: BeaconState, index: int, new_balance: int) -> None:
+    validator = state.validator_registry[index]
+    HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
+    if (
+        validator.rounded_balance * HIGH_BALANCE_INCREMENT > new_balance or
+        validator.rounded_balance * HIGH_BALANCE_INCREMENT + HALF_INCREMENT * 3 < new_balance
+    ):
+        validator.rounded_balance = new_balance // HIGH_BALANCE_INCREMENT
+    state.validator_fractional_balances[index] = (
+        new_balance - validator.rounded_balance * HIGH_BALANCE_INCREMENT
+    )
+````
+
+#### `increase_balance`
+
+````python
+def increase_balance(state: BeaconState, index: int, delta: int) -> None:
+    set_balance(state, index, get_balance(state, index) + delta)
+````
+
+#### `decrease_balance`
+
+````python
+def decrease_balance(state: BeaconState, index: int, delta: int) -> None:
+    set_balance(state, index, get_balance(state, index) - delta)
+````
 
 ### `get_permuted_index`
 
@@ -1105,7 +1150,7 @@ def get_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
-    return min(state.validator_balances[index], MAX_DEPOSIT_AMOUNT)
+    return min(get_balance(state, index), MAX_DEPOSIT_AMOUNT)
 ```
 
 ### `get_total_balance`
@@ -1351,17 +1396,18 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             initiated_exit=False,
             slashed=False,
+            high_balance=0
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
         state.validator_registry.append(validator)
-        state.validator_balances.append(amount)
+        state.low_balances.append(0)
+        set_balance(state, len(state.validator_registry)-1, amount)
     else:
         # Increase balance by deposit amount
         index = validator_pubkeys.index(pubkey)
         assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
-
-        state.validator_balances[index] += amount
+        increase_balance(state, index, amount)
 ```
 
 ### Routines for updating validator status
@@ -1426,8 +1472,8 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
 
     whistleblower_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
-    state.validator_balances[whistleblower_index] += whistleblower_reward
-    state.validator_balances[index] -= whistleblower_reward
+    increase_balance(state, whistleblower_index, whistleblower_reward)
+    decrease_balance(state, index, whistleblower_reward)
     validator.slashed = True
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
 ```
@@ -1545,7 +1591,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Validator registry
         validator_registry=[],
-        validator_balances=[],
+        low_balances=[],
         validator_registry_update_epoch=GENESIS_EPOCH,
 
         # Randomness and committees
@@ -1657,9 +1703,12 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         for validator_index in active_validator_indices
     ]
 
+    # Use the rounded-balance-with-hysteresis supplied by the protocol for fork
+    # choice voting. This reduces the number of recomputations that need to be
+    # made for optimized implementations that precompute and save data
     def get_vote_count(block: BeaconBlock) -> int:
         return sum(
-            get_effective_balance(start_state.validator_balances[validator_index]) // FORK_CHOICE_BALANCE_INCREMENT
+            start_state.validator_registry[validator_index].high_balance
             for validator_index, target in attestation_targets
             if get_ancestor(store, target, block.slot) == block
         )
@@ -1956,12 +2005,12 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     Note that this function mutates ``state``.
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
-    assert state.validator_balances[transfer.sender] >= max(transfer.amount, transfer.fee)
+    assert get_balance(state, transfer.sender) >= max(transfer.amount, transfer.fee)
     # Verify that we have enough ETH to send, and that after the transfer the balance will be either
     # exactly zero or at least MIN_DEPOSIT_AMOUNT
     assert (
-        state.validator_balances[transfer.sender] == transfer.amount + transfer.fee or
-        state.validator_balances[transfer.sender] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
+        get_balance(state, transfer.sender) == transfer.amount + transfer.fee or
+        get_balance(state, transfer.sender) >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
     )
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
@@ -1983,9 +2032,9 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
     )
     # Process the transfer
-    state.validator_balances[transfer.sender] -= transfer.amount + transfer.fee
-    state.validator_balances[transfer.recipient] += transfer.amount
-    state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee
+    decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
+    increase_balance(state, transfer.recipient, transfer.amount)
+    increase_balance(state, get_beacon_proposer_index(state, state.slot), transfer.fee)
 ```
 
 ### Per-epoch processing
@@ -2320,10 +2369,10 @@ def apply_rewards(state: BeaconState) -> None:
     deltas1 = get_justification_and_finalization_deltas(state)
     deltas2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
-        state.validator_balances[i] = max(
+        set_balance(state, i, max(
             0,
-            state.validator_balances[i] + deltas1[0][i] + deltas2[0][i] - deltas1[1][i] - deltas2[1][i]
-        )
+            get_balance(state, i) + deltas1[0][i] + deltas2[0][i] - deltas1[1][i] - deltas2[1][i]
+        ))
 ```
 
 #### Ejections
@@ -2337,7 +2386,7 @@ def process_ejections(state: BeaconState) -> None:
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
     for index in get_active_validator_indices(state.validator_registry, get_current_epoch(state)):
-        if state.validator_balances[index] < EJECTION_BALANCE:
+        if get_balance(state, index) < EJECTION_BALANCE:
             exit_validator(state, index)
 ```
 
@@ -2380,7 +2429,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch == FAR_FUTURE_EPOCH and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_epoch == FAR_FUTURE_EPOCH and get_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -2461,7 +2510,7 @@ def process_slashings(state: BeaconState) -> None:
                 get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance,
                 get_effective_balance(state, index) // MIN_PENALTY_QUOTIENT
             )
-            state.validator_balances[index] -= penalty
+            decrease_balance(state, index, penalty)
 ```
 
 ```python
