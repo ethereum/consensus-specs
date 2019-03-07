@@ -1002,7 +1002,7 @@ def get_beacon_proposer_index(state: BeaconState,
     assert previous_epoch <= epoch <= next_epoch
 
     first_committee, _ = get_crosslink_committees_at_slot(state, slot, registry_change)[0]
-    return first_committee[slot % len(first_committee)]
+    return first_committee[epoch % len(first_committee)]
 ```
 
 ### `merkle_root`
