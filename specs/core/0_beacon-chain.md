@@ -1899,7 +1899,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         data=attestation.data,
         aggregation_bitfield=attestation.aggregation_bitfield,
         custody_bitfield=attestation.custody_bitfield,
-        inclusion_slot=state.slot
+        inclusion_slot=state.slot,
     )
     if slot_to_epoch(attestation.data.slot) == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
@@ -2057,7 +2057,7 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple
     if len(all_roots) == 0:
         return ZERO_HASH, []
 
-    def get_attestations_for(root) -> List[PendingAttestation]:
+    def get_attestations_for(root: Bytes32) -> List[PendingAttestation]:
         return [a for a in valid_attestations if a.data.crosslink_data_root == root]
 
     # Winning crosslink root is the root with the most votes for it, ties broken in favor of
@@ -2134,7 +2134,7 @@ Run the following function:
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    previous_epoch = current_epoch - 1
+    previous_epoch = get_previous_epoch(state)
     next_epoch = current_epoch + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
@@ -2144,7 +2144,7 @@ def process_crosslinks(state: BeaconState) -> None:
             if 3 * participating_balance >= 2 * total_balance:
                 state.latest_crosslinks[shard] = Crosslink(
                     epoch=slot_to_epoch(slot),
-                    crosslink_data_root=winning_root
+                    crosslink_data_root=winning_root,
                 )
 ```
 
