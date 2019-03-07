@@ -389,7 +389,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 ```python
 {
     # Branch in the deposit tree
-    'proof': ['bytes32'],
+    'proof': ['bytes32', DEPOSIT_CONTRACT_TREE_DEPTH],
     # Index in the deposit tree
     'index': 'uint64',
     # Data
@@ -520,7 +520,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'validator_registry_update_epoch': 'uint64',
 
     # Randomness and committees
-    'latest_randao_mixes': ['bytes32'],
+    'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
     'previous_shuffling_start_shard': 'uint64',
     'current_shuffling_start_shard': 'uint64',
     'previous_shuffling_epoch': 'uint64',
@@ -537,13 +537,14 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
     'finalized_epoch': 'uint64',
 
     # Recent state
-    'latest_crosslinks': [Crosslink],
-    'latest_block_roots': ['bytes32'],
-    'latest_state_roots': ['bytes32'],
-    'latest_active_index_roots': ['bytes32'],
-    'latest_slashed_balances': ['uint64'],  # Balances slashed at every withdrawal period
+    'latest_crosslinks': [Crosslink, SHARD_COUNT],
+    'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
+    'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
+    'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
+    'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],  # Balances slashed at every withdrawal period
     'latest_block_header': BeaconBlockHeader,  # `latest_block_header.state_root == ZERO_HASH` temporarily
-    'historical_roots': ['bytes32'],
+    'latest_attestations': [PendingAttestation],
+    'batched_block_roots': ['bytes32'],
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
