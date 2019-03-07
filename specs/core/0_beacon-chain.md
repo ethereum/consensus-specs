@@ -540,7 +540,7 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
     # Recent state
     'latest_crosslinks': [Crosslink, SHARD_COUNT],
-    'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
+    'latest_block_roots': ['bytes32', LATEST_BLOCK_ROOTS_LENGTH],
     'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
     'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],  # Balances slashed at every withdrawal period
     'latest_attestations': [PendingAttestation],
