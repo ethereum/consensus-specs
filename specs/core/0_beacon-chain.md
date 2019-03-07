@@ -209,10 +209,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 2,000,000,000) | Gwei |
+| `MIN_DEPOSIT_AMOUNT` | `10**9` (= 1,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
 | `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
-| `HIGH_BALANCE_INCREMENT` | `10 ** 9` (= 1,000,000,000) | Gwei |
+| `HIGH_BALANCE_INCREMENT` | `10**9` (= 1,000,000,000) | Gwei |
 
 ### Initial values
 
