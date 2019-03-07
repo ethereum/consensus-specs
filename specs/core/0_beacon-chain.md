@@ -791,7 +791,8 @@ def increase_balance(state: BeaconState, index: int, delta: int) -> None:
 
 ````python
 def decrease_balance(state: BeaconState, index: int, delta: int) -> None:
-    set_balance(state, index, get_balance(state, index) - delta)
+    cur_balance = get_balance(state, index)
+    set_balance(state, index, cur_balance - delta if cur_balance >= delta else 0)
 ````
 
 ### `get_permuted_index`
