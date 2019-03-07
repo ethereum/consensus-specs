@@ -1682,7 +1682,7 @@ _Note_: If there are skipped slots between a block and its parent block, run the
 At every `slot > GENESIS_SLOT` run the following function:
 
 ```python
-def store_state_root(state: BeaconState) -> None:
+def cache_state_root(state: BeaconState) -> None:
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state)
 ```
 
