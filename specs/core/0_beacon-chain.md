@@ -2273,7 +2273,12 @@ def compute_inactivity_leak_deltas(state: BeaconState) -> Tuple[List[Gwei], List
             deltas[1][index] += get_base_reward(state, index)
     # Penalize slashed-but-inactive validators as though they were active but offline
     for index in range(len(state.validator_registry)):
-        if index not in active_validator_indices and state.validator_registry[index].slashed:
+        eligible = (
+            index not in active_validator_indices and
+            state.validator_registry[index].slashed and
+            get_current_epoch(state) < state.validator_registry[index].withdrawable_epoch
+        )
+        if eligible:
             deltas[1][index] += (
                 2 * get_inactivity_penalty(state, index, epochs_since_finality) +
                 get_base_reward(state, index)
