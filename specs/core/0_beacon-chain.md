@@ -34,6 +34,7 @@
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`Validator`](#validator)
             - [`PendingAttestation`](#pendingattestation)
+            - [`HistoricalBatch`](#historicalbatch)
         - [Beacon transactions](#beacon-transactions)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
@@ -449,6 +450,17 @@ The types are defined topologically to aid in facilitating an executable version
     'custody_bitfield': 'bytes',
     # Inclusion slot
     'inclusion_slot': 'uint64',
+}
+```
+
+#### `HistoricalBatch`
+
+```python
+{
+    // Block roots
+    'block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
+    // State roots
+    'state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
 }
 ```
 
@@ -2191,7 +2203,11 @@ def finish_epoch_update(state: BeaconState) -> None:
     state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        state.historical_roots.append(hash_tree_root(state.latest_block_roots + state.latest_state_roots))
+        historical_batch = HistoricalBatch(
+            block_roots=state.latest_block_roots,
+            state_roots=state.latest_state_roots,
+        )
+        state.historical_roots.append(hash_tree_root(historical_batch))
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
