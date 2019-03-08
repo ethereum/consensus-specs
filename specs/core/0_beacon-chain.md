@@ -34,6 +34,7 @@
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`Validator`](#validator)
             - [`PendingAttestation`](#pendingattestation)
+            - [`HistoricalBatch`](#historicalbatch)
         - [Beacon transactions](#beacon-transactions)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
@@ -73,7 +74,6 @@
         - [`get_active_index_root`](#get_active_index_root)
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-        - [`merkle_root`](#merkle_root)
         - [`verify_merkle_branch`](#verify_merkle_branch)
         - [`get_attestation_participants`](#get_attestation_participants)
         - [`is_power_of_two`](#is_power_of_two)
@@ -450,6 +450,17 @@ The types are defined topologically to aid in facilitating an executable version
     'custody_bitfield': 'bytes',
     # Inclusion slot
     'inclusion_slot': 'uint64',
+}
+```
+
+#### `HistoricalBatch`
+
+```python
+{
+    # Block roots
+    'block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
+    # State roots
+    'state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
 }
 ```
 
@@ -1004,20 +1015,6 @@ def get_beacon_proposer_index(state: BeaconState,
 
     first_committee, _ = get_crosslink_committees_at_slot(state, slot, registry_change)[0]
     return first_committee[slot % len(first_committee)]
-```
-
-### `merkle_root`
-
-```python
-def merkle_root(values: List[Bytes32]) -> Bytes32:
-    """
-    Merkleize ``values`` (where ``len(values)`` is a power of two) and return the Merkle root.
-    Note that the leaves are not hashed.
-    """
-    o = [0] * len(values) + values
-    for i in range(len(values) - 1, 0, -1):
-        o[i] = hash(o[i * 2] + o[i * 2 + 1])
-    return o[1]
 ```
 
 ### `verify_merkle_branch`
@@ -2216,7 +2213,11 @@ def finish_epoch_update(state: BeaconState) -> None:
     state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        state.historical_roots.append(merkle_root(state.latest_block_roots + state.latest_state_roots))
+        historical_batch = HistoricalBatch(
+            block_roots=state.latest_block_roots,
+            state_roots=state.latest_state_roots,
+        )
+        state.historical_roots.append(hash_tree_root(historical_batch))
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
