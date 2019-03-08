@@ -457,9 +457,9 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    // Block roots
+    # Block roots
     'block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
-    // State roots
+    # State roots
     'state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
 }
 ```
