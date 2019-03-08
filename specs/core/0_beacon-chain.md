@@ -1946,8 +1946,9 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
         else:
             deltas[1][index] += get_base_reward(state, index)
         # Proposer bonus
-        proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-        deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        if index in get_attesting_indices(state, state.previous_epoch_attestations):
+            proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
+            deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
     return deltas
 ```
 
