@@ -1654,7 +1654,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         children = get_children(store, head)
         if len(children) == 0:
             return head
-        head = max(children, key=get_vote_count)
+        head = max(children, key=lambda x: (get_vote_count(x), hash_tree_root(x)))
 ```
 
 ## Beacon chain state transition function
