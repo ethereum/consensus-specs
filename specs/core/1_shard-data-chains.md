@@ -162,12 +162,12 @@ def get_persistent_committee(state: BeaconState,
     earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
     later_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
 
-    committee_count = max(1,
+    committee_count = max(
         len(get_active_validator_indices(state.validators, earlier_start_epoch)) //
         (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
         len(get_active_validator_indices(state.validators, later_start_epoch)) //
         (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
-    )
+    ) + 1
     
     index = slot % committee_count
     earlier_committee = get_shuffled_committee(state, shard, earlier_start_epoch, index, committee_count)
