@@ -1107,7 +1107,7 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
 
 ```python
 def get_fork_version(fork: Fork,
-                     epoch: Epoch) -> bytes8:
+                     epoch: Epoch) -> bytes4:
     """
     Return the fork version of the given ``epoch``.
     """
