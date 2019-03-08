@@ -268,12 +268,12 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_BLOCK` | `0` |
-| `DOMAIN_RANDAO` | `1` |
-| `DOMAIN_ATTESTATION` | `2` |
-| `DOMAIN_DEPOSIT` | `3` |
-| `DOMAIN_VOLUNTARY_EXIT` | `4` |
-| `DOMAIN_TRANSFER` | `5` |
+| `DOMAIN_BEACON_BLOCK` | `int_to_bytes4(0)` |
+| `DOMAIN_RANDAO` | `int_to_bytes4(1)` |
+| `DOMAIN_ATTESTATION` | `int_to_bytes4(2)` |
+| `DOMAIN_DEPOSIT` | `int_to_bytes4(3)` |
+| `DOMAIN_VOLUNTARY_EXIT` | `int_to_bytes4(4)` |
+| `DOMAIN_TRANSFER` | `int_to_bytes4(5)` |
 
 ## Data structures
 
@@ -288,9 +288,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Previous fork version
-    'previous_version': 'uint64',
+    'previous_version': 'bytes4',
     # Current fork version
-    'current_version': 'uint64',
+    'current_version': 'bytes4',
     # Fork epoch number
     'epoch': 'uint64',
 }
@@ -1107,7 +1107,7 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
 
 ```python
 def get_fork_version(fork: Fork,
-                     epoch: Epoch) -> int:
+                     epoch: Epoch) -> bytes8:
     """
     Return the fork version of the given ``epoch``.
     """
@@ -1122,12 +1122,11 @@ def get_fork_version(fork: Fork,
 ```python
 def get_domain(fork: Fork,
                epoch: Epoch,
-               domain_type: int) -> int:
+               domain_type: bytes4) -> bytes8:
     """
     Get the domain number that represents the fork meta and signature domain.
     """
-    fork_version = get_fork_version(fork, epoch)
-    return fork_version * 2**32 + domain_type
+    return get_fork_version(fork, epoch) + domain_type
 ```
 
 ### `get_bitfield_bit`
