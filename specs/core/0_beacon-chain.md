@@ -130,12 +130,12 @@
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
             - [Transactions](#transactions)
-                - [Proposer slashings](#proposer-slashings-1)
-                - [Attester slashings](#attester-slashings-1)
-                - [Attestations](#attestations-1)
-                - [Deposits](#deposits-1)
-                - [Voluntary exits](#voluntary-exits-1)
-                - [Transfers](#transfers-1)
+                - [Proposer slashings](#proposer-slashings)
+                - [Attester slashings](#attester-slashings)
+                - [Attestations](#attestations)
+                - [Deposits](#deposits)
+                - [Voluntary exits](#voluntary-exits)
+                - [Transfers](#transfers)
             - [State root verification](#state-root-verification)
 - [References](#references)
     - [Normative](#normative)
@@ -2306,8 +2306,8 @@ def process_proposer_slashing(state: BeaconState,
     proposer = state.validator_registry[proposer_slashing.proposer_index]
     # Verify that the slot is the same
     assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
-    # But the roots are different!
-    assert hash_tree_root(proposer_slashing.header_1) != hash_tree_root(proposer_slashing.header_2)
+    # But the headers are different
+    assert proposer_slashing.header_1 != proposer_slashing.header_2
     # Proposer is not yet slashed
     assert proposer.slashed is False
     # Signatures are valid
