@@ -22,6 +22,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`get_split_offset`](#get_split_offset)
             - [`get_shuffled_committee`](#get_shuffled_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
+            - [`get_persistent_committee_at_slot`](#get_persistent_committee_at_slot)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
       - [Data Structures](#data-structures)
         - [Shard chain blocks](#shard-chain-blocks)
@@ -128,14 +129,20 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
 ```python
 def get_shuffled_committee(state: BeaconState,
                            shard: Shard,
-                           committee_start_epoch: Epoch) -> List[ValidatorIndex]:
+                           committee_start_epoch: Epoch,
+                           index: int,
+                           committee_count: int) -> List[ValidatorIndex]:
     """
     Return shuffled committee.
     """
     validator_indices = get_active_validator_indices(state.validators, committee_start_epoch)
     seed = generate_seed(state, committee_start_epoch)
-    start_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard)
-    end_offset = get_split_offset(len(validator_indices), SHARD_COUNT, shard + 1)
+    start_offset = get_split_offset(len(validator_indices),
+                                    SHARD_COUNT * committee_count,
+                                    shard * committee_count + index)
+    end_offset = get_split_offset(len(validator_indices),
+                                  SHARD_COUNT * committee_count,
+                                  shard * committee_count + index + 1)
     return [
         validator_indices[get_permuted_index(i, len(validator_indices), seed)]
         for i in range(start_offset, end_offset)
@@ -147,15 +154,21 @@ def get_shuffled_committee(state: BeaconState,
 ```python
 def get_persistent_committee(state: BeaconState,
                              shard: Shard,
-                             epoch: Epoch) -> List[ValidatorIndex]:
+                             slot: Slot) -> List[ValidatorIndex]:
     """
-    Return the persistent committee for the given ``shard`` at the given ``epoch``.
+    Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
-    earlier_committee_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
-    earlier_committee = get_shuffled_committee(state, shard, earlier_committee_start_epoch)
+        
+    earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
+    committee_count = max(1,
+        len(get_active_validator_indices(state.validators, earlier_start_epoch)) //
+        (SHARD_COUNT * TARGET_COMMITTEE_SIZE)    
+    )
+    index = slot % committee_count
+    earlier_committee = get_shuffled_committee(state, shard, earlier_start_epoch, index, committee_count)
 
-    later_committee_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
-    later_committee = get_shuffled_committee(state, shard, later_committee_start_epoch)
+    later_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
+    later_committee = get_shuffled_committee(state, shard, later_start_epoch, index, committee_count)
 
     def get_switchover_epoch(index):
         return (
@@ -170,6 +183,7 @@ def get_persistent_committee(state: BeaconState,
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )))
 ```
+
 #### `get_shard_proposer_index`
 
 ```python
@@ -181,7 +195,7 @@ def get_shard_proposer_index(state: BeaconState,
         int_to_bytes8(shard) +
         int_to_bytes8(slot)
     )
-    persistent_committee = get_persistent_committee(state, shard, slot_to_epoch(slot))
+    persistent_committee = get_persistent_committee(state, shard, slot)
     # Default proposer
     index = bytes_to_int(seed[0:8]) % len(persistent_committee)
     # If default proposer exits, try the other proposers in order; if all are exited
@@ -233,7 +247,7 @@ To validate a block header on shard `shard_block.shard_id`, compute as follows:
 * Verify that `shard_block.beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
 * Verify that `shard_block.beacon_chain_ref` is equal to or a descendant of the `shard_block.beacon_chain_ref` specified in the `ShardBlock` pointed to by `shard_block.parent_root`.
 * Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_ref`.
-* Let `persistent_committee = get_persistent_committee(state, shard_block.shard_id, slot_to_epoch(shard_block.slot))`.
+* Let `persistent_committee = get_persistent_committee(state, shard_block.shard_id, shard_block.slot)`.
 * Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
 * For every `i in range(len(persistent_committee))` where `is_active_validator(state.validators[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
 * Let `proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)`.
