@@ -1885,8 +1885,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```
 
 ```python
-def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
+def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_since_finality: int) -> Gwei:
     return (
         get_base_reward(state, index) +
         get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
