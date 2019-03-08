@@ -1122,7 +1122,7 @@ def get_fork_version(fork: Fork,
 ```python
 def get_domain(fork: Fork,
                epoch: Epoch,
-               domain_type: bytes4) -> uint64:
+               domain_type: bytes4) -> int:
     """
     Get the domain number that represents the fork meta and signature domain.
     """
