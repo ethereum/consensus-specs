@@ -110,7 +110,7 @@
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-        - [State-root caching](#state-root-caching)
+        - [State caching](#state-caching)
         - [Per-epoch processing](#per-epoch-processing)
             - [Helper functions](#helper-functions-1)
             - [Justification](#justification)
@@ -1662,28 +1662,38 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
 
 We now define the state transition function. At a high level the state transition is made up of four parts:
 
-1. State-root caching, which happens at the start of every slot.
+1. State caching, which happens at the start of every slot.
 2. The per-epoch transitions, which happens at the start of the first slot of every epoch.
 3. The per-slot transitions, which happens at every slot.
 4. The per-block transitions, which happens at every block.
 
 Transition section notes:
-* The state-root caching, caches the state root of the previous slot;
-* The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization;
-* The per-slot transitions focus on the slot counter and block roots records updates;
+* The state caching, caches the state root of the previous slot.
+* The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
+* The per-slot transitions focus on the slot counter and block roots records updates.
 * The per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
 
 Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
-_Note_: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-root-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
+_Note_: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
 
-### State-root caching
+### State caching
 
 At every `slot > GENESIS_SLOT` run the following function:
 
 ```python
-def cache_state_root(state: BeaconState) -> None:
-    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state)
+def cache_state(state: BeaconState) -> None:
+    previous_slot_state_root = hash_tree_root(state)
+
+    # store the previous slot's post state transition root
+    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_slot_state_root
+
+    # cache state root in stored latest_block_header if empty
+    if state.latest_block_header.state_root == ZERO_HASH:
+        state.latest_block_header.state_root = previous_slot_state_root
+
+    # store latest known block for previous slot
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state.latest_block_header)
 ```
 
 ### Per-epoch processing
@@ -2218,9 +2228,6 @@ At every `slot > GENESIS_SLOT` run the following function:
 
 ```python
 def advance_slot(state: BeaconState) -> None:
-    if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT]
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state.latest_block_header)
     state.slot += 1
 ```
 
