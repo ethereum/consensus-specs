@@ -2191,7 +2191,7 @@ def finish_epoch_update(state: BeaconState) -> None:
     state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        state.historical_roots.append(merkle_root(state.latest_block_roots + state.latest_state_roots))
+        state.historical_roots.append(hash_tree_root(state.latest_block_roots + state.latest_state_roots))
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
