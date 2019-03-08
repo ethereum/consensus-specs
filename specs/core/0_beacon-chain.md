@@ -245,7 +245,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | - | - |
 | `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
-| `ATTESTATION_INCLUSION_REWARD_QUOTIENT` | `2**3` (= 8) |
+| `ATTESTATION_INCLUSION_REWARD_QUOTIENT` | `2**2` (= 4) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
@@ -2224,7 +2224,10 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
             deltas[1][index] += get_base_reward(state, index)
         # Proposer bonus
         proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-        deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        deltas[0][proposer_index] += (
+            get_base_reward(state, index) * get_effective_balance(state, proposer_index)
+            // MAX_DEPOSIT_AMOUNT // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        )
     return deltas
 ```
 
