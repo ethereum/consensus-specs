@@ -1341,10 +1341,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         state.validator_balances.append(amount)
     else:
         # Increase balance by deposit amount
-        index = validator_pubkeys.index(pubkey)
-        assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
-
-        state.validator_balances[index] += amount
+        state.validator_balances[validator_pubkeys.index(pubkey)] += amount
 ```
 
 ### Routines for updating validator status
