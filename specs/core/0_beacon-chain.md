@@ -2453,7 +2453,7 @@ Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 For each `exit` in `block.body.voluntary_exits`, run the following function:
 
 ```python
-def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
+def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
     Process ``VoluntaryExit`` transaction.
     Note that this function mutates ``state``.
