@@ -1882,8 +1882,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```
 
 ```python
-def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
+def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_since_finality: int) -> Gwei:
     return (
         get_base_reward(state, index) +
         get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
@@ -1943,8 +1942,9 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
         else:
             deltas[1][index] += get_base_reward(state, index)
         # Proposer bonus
-        proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-        deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        if index in get_attesting_indices(state, state.previous_epoch_attestations):
+            proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
+            deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
     return deltas
 ```
 
