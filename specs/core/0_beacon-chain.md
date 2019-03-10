@@ -2460,7 +2460,9 @@ def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
     validator = state.validator_registry[exit.validator_index]
     # Verify the validator has not yet exited
-    assert validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Verify the validator has not initiated an exit
+    assert validator.initiated_exit is False
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= exit.epoch
     # Verify signature
