@@ -1883,8 +1883,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```
 
 ```python
-def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
+def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_since_finality: int) -> Gwei:
     return (
         get_base_reward(state, index) +
         get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
@@ -1944,8 +1943,9 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
         else:
             deltas[1][index] += get_base_reward(state, index)
         # Proposer bonus
-        proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-        deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        if index in get_attesting_indices(state, state.previous_epoch_attestations):
+            proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
+            deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
     return deltas
 ```
 
@@ -2371,7 +2371,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     """
     # Can't submit attestations that are too far in history (or in prehistory) 
     assert attestation.data.slot >= GENESIS_SLOT
-    assert state.slot < attestation.data.slot + SLOTS_PER_EPOCH
+    assert state.slot <= attestation.data.slot + SLOTS_PER_EPOCH
     # Can't submit attestations too quickly
     assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     # Verify that the justified epoch is correct, case 1: current epoch attestations
@@ -2454,14 +2454,16 @@ Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 For each `exit` in `block.body.voluntary_exits`, run the following function:
 
 ```python
-def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
+def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
     Process ``VoluntaryExit`` transaction.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[exit.validator_index]
     # Verify the validator has not yet exited
-    assert validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Verify the validator has not initiated an exit
+    assert validator.initiated_exit is False
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= exit.epoch
     # Must have been in the validator set long enough
