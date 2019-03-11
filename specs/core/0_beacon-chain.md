@@ -613,6 +613,8 @@ The types are defined topologically to aid in facilitating an executable version
     'current_epoch_attestations': [PendingAttestation],
     'previous_justified_epoch': 'uint64',
     'justified_epoch': 'uint64',
+    'previous_justified_root': 'bytes32',
+    'justified_root': 'bytes32',
     'justification_bitfield': 'uint64',
     'finalized_epoch': 'uint64',
 
@@ -1546,6 +1548,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         current_epoch_attestations=[],
         previous_justified_epoch=GENESIS_EPOCH,
         justified_epoch=GENESIS_EPOCH,
+        previous_justified_root=ZERO_HASH,
+        justified_root=ZERO_HASH,
         justification_bitfield=0,
         finalized_epoch=GENESIS_EPOCH,
 
@@ -1830,7 +1834,9 @@ def update_justification_and_finalization(state: BeaconState) -> None:
 
     # Rotate justified epochs
     state.previous_justified_epoch = state.justified_epoch
+    state.previous_justified_root = state.justified_root
     state.justified_epoch = new_justified_epoch
+    state.justified_root = get_block_root(state, get_epoch_start_slot(new_justified_epoch))
 ```
 
 #### Crosslinks
@@ -2374,16 +2380,15 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert state.slot <= attestation.data.slot + SLOTS_PER_EPOCH
     # Can't submit attestations too quickly
     assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
-    # Verify that the justified epoch is correct, case 1: current epoch attestations
+    # Verify that the justified epoch/root is correct
     if slot_to_epoch(attestation.data.slot) >= get_current_epoch(state):
+        # Case 1: current epoch attestations
         assert attestation.data.justified_epoch == state.justified_epoch
-    # Case 2: previous epoch attestations
+        assert attestation.data.justified_block_root == state.justified_root
     else:
+        # Case 2: previous epoch attestations
         assert attestation.data.justified_epoch == state.previous_justified_epoch
-    # Check that the justified block root is correct
-    assert attestation.data.justified_block_root == get_block_root(
-        state, get_epoch_start_slot(attestation.data.justified_epoch)
-    )
+        assert attestation.data.justified_block_root == state.previous_justified_root
     # Check that the crosslink data is valid
     acceptable_crosslink_data = {
         # Case 1: Latest crosslink matches the one in the state
