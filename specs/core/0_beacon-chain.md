@@ -1303,21 +1303,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # create an invalid Merkle branch, it may admit an invalid deposit
     # object, and we need to be able to skip over it
     state.deposit_index += 1
-    
-    # Verify the proof of possession
-    proof_is_valid = bls_verify(
-        pubkey=deposit_input.pubkey,
-        message_hash=signed_root(deposit_input),
-        signature=deposit_input.proof_of_possession,
-        domain=get_domain(
-            state.fork,
-            get_current_epoch(state),
-            DOMAIN_DEPOSIT,
-        )
-    )
-    
-    if not proof_is_valid:
-        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit_input.pubkey
@@ -1325,6 +1310,19 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     withdrawal_credentials = deposit_input.withdrawal_credentials
 
     if pubkey not in validator_pubkeys:
+        # Verify the proof of possession
+        if not bls_verify(
+            pubkey=deposit_input.pubkey,
+            message_hash=signed_root(deposit_input),
+            signature=deposit_input.proof_of_possession,
+            domain=get_domain(
+                state.fork,
+                get_current_epoch(state),
+                DOMAIN_DEPOSIT,
+            )
+        ):
+            return
+
         # Add new validator
         validator = Validator(
             pubkey=pubkey,
