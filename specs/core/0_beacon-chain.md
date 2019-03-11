@@ -768,12 +768,12 @@ def set_balance(state: BeaconState, index: int, new_balance: int) -> None:
     validator = state.validator_registry[index]
     HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
     if (
-        validator.rounded_balance * HIGH_BALANCE_INCREMENT > new_balance or
-        validator.rounded_balance * HIGH_BALANCE_INCREMENT + HALF_INCREMENT * 3 < new_balance
+        validator.high_balance * HIGH_BALANCE_INCREMENT > new_balance or
+        validator.high_balance * HIGH_BALANCE_INCREMENT + HALF_INCREMENT * 3 < new_balance
     ):
-        validator.rounded_balance = new_balance // HIGH_BALANCE_INCREMENT
-    state.validator_fractional_balances[index] = (
-        new_balance - validator.rounded_balance * HIGH_BALANCE_INCREMENT
+        validator.high_balance = new_balance // HIGH_BALANCE_INCREMENT
+    state.low_balances[index] = (
+        new_balance - validator.high_balance * HIGH_BALANCE_INCREMENT
     )
 ````
 
