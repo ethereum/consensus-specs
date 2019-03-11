@@ -10,8 +10,8 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
     - [Composite types](#composite-types)
     - [Aliases](#aliases)
 - [Serialization](#serialization)
-    - [`uintN`](#uintn)
-    - [`bool`](#bool)
+    - [`"uintN"`](#uintn)
+    - [`"bool"`](#bool)
     - [Tuples, containers, lists](#tuples-containers-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
@@ -28,29 +28,29 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 ## Typing
 ### Basic types
 
-* `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
-* `bool`: `True` or `False`
+* `"uintN"`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
+* `"bool"`: `True` or `False`
 
 ### Composite types
 
 * **container**: ordered heterogenous collection of values
     * key-pair curly bracket notation `{}`, e.g. `{'foo': "uint64", 'bar': "bool"}`
 * **tuple**: ordered fixed-length homogeneous collection of values
-    * angle bracket notation `[N]`, e.g. `uint64[N]`
+    * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
 * **list**: ordered variable-length homogenous collection of values
-    * angle bracket notation `[]`, e.g. `uint64[]`
+    * angle bracket notation `[type]`, e.g. `["uint64"]`
 
 ### Aliases
 
 For convenience we alias:
 
-* `byte` to `uint8` (this is a basic type)
-* `bytes` to `byte[]` (this is *not* a basic type)
-* `bytesN` to `byte[N]` (this is *not* a basic type)
+* `"byte"` to `"uint8"` (this is a basic type)
+* `"bytes"` to `["byte"]` (this is *not* a basic type)
+* `"bytesN"` to `["byte", N]` (this is *not* a basic type)
 
 ## Serialization
 
-We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `bytes`.
+We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
 *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, etc.) objects implicitly carry their type.
 
@@ -95,7 +95,7 @@ We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
-* `mix_in_length`: Given a Merkle root `root` and a length `length` (`uint256` little-endian serialization) return `hash(root + length)`.
+* `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
@@ -106,7 +106,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 
 ## Self-signed containers
 
-Let `value` be a self-signed container object. The convention is that the signature (e.g. a `bytes96` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signed_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
+Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signed_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
 ## Implementations
 
