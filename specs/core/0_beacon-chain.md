@@ -203,10 +203,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `MIN_DEPOSIT_AMOUNT` | `10**9` (= 1,000,000,000) | Gwei |
+| `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
 | `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
-| `HIGH_BALANCE_INCREMENT` | `10**9` (= 1,000,000,000) | Gwei |
+| `HIGH_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 
 ### Initial values
 
@@ -440,7 +440,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Was the validator slashed
     'slashed': 'bool',
     # Rounded balance
-    'high_balance': 'uint32'
+    'high_balance': 'uint64'
 }
 ```
 
@@ -756,25 +756,17 @@ def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> L
 
 ```python
 def get_balance(state: BeaconState, index: int) -> int:
-    return (
-        state.validator_registry[index].high_balance * HIGH_BALANCE_INCREMENT + 
-        state.low_balances[index]
-    )
+    return state.validator_registry[index].high_balance + state.low_balances[index]
 ```
 #### `set_balance`
 
 ````python
-def set_balance(state: BeaconState, index: int, new_balance: int) -> None:
+def set_balance(state: BeaconState, index: int, balance: int) -> None:
     validator = state.validator_registry[index]
     HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
-    if (
-        validator.high_balance * HIGH_BALANCE_INCREMENT > new_balance or
-        validator.high_balance * HIGH_BALANCE_INCREMENT + HALF_INCREMENT * 3 < new_balance
-    ):
-        validator.high_balance = new_balance // HIGH_BALANCE_INCREMENT
-    state.low_balances[index] = (
-        new_balance - validator.high_balance * HIGH_BALANCE_INCREMENT
-    )
+    if validator.high_balance > balance or validator.high_balance + 3 * HALF_INCREMENT < balance:
+        validator.high_balance = balance - balance % HIGH_BALANCE_INCREMENT
+    state.low_balances[index] = balance - validator.high_balance
 ````
 
 #### `increase_balance`
