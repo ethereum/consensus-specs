@@ -1288,7 +1288,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     serialized_deposit_data = serialize(deposit.deposit_data)
     # Deposits must be processed in order
     assert deposit.index == state.deposit_index
-    
+
     # Verify the Merkle branch
     merkle_branch_is_valid = verify_merkle_branch(
         leaf=hash(serialized_deposit_data),
@@ -1298,27 +1298,12 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         root=state.latest_eth1_data.deposit_root,
     )
     assert merkle_branch_is_valid
-        
+
     # Increment the next deposit index we are expecting. Note that this
     # needs to be done here because while the deposit contract will never
     # create an invalid Merkle branch, it may admit an invalid deposit
     # object, and we need to be able to skip over it
     state.deposit_index += 1
-    
-    # Verify the proof of possession
-    proof_is_valid = bls_verify(
-        pubkey=deposit_input.pubkey,
-        message_hash=signed_root(deposit_input),
-        signature=deposit_input.proof_of_possession,
-        domain=get_domain(
-            state.fork,
-            get_current_epoch(state),
-            DOMAIN_DEPOSIT,
-        )
-    )
-    
-    if not proof_is_valid:
-        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit_input.pubkey
@@ -1326,6 +1311,20 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     withdrawal_credentials = deposit_input.withdrawal_credentials
 
     if pubkey not in validator_pubkeys:
+        # Verify the proof of possession
+        proof_is_valid = bls_verify(
+            pubkey=deposit_input.pubkey,
+            message_hash=signed_root(deposit_input),
+            signature=deposit_input.proof_of_possession,
+            domain=get_domain(
+                state.fork,
+                get_current_epoch(state),
+                DOMAIN_DEPOSIT,
+            )
+        )
+        if not proof_is_valid:
+            return
+
         # Add new validator
         validator = Validator(
             pubkey=pubkey,
@@ -1342,10 +1341,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         state.validator_balances.append(amount)
     else:
         # Increase balance by deposit amount
-        index = validator_pubkeys.index(pubkey)
-        assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
-
-        state.validator_balances[index] += amount
+        state.validator_balances[validator_pubkeys.index(pubkey)] += amount
 ```
 
 ### Routines for updating validator status
