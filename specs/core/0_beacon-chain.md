@@ -614,6 +614,7 @@ The types are defined topologically to aid in facilitating an executable version
     'current_justified_root': 'bytes32',
     'justification_bitfield': 'uint64',
     'finalized_epoch': 'uint64',
+    'finalized_root': 'bytes32',
 
     # Recent state
     'latest_crosslinks': [Crosslink, SHARD_COUNT],
@@ -1828,6 +1829,7 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     # The 1st/2nd most recent epochs are both justified, the 1st using the 2nd as source
     if (bitfield >> 0) % 4 == 0b11 and state.current_justified_epoch == current_epoch - 1:
         state.finalized_epoch = state.current_justified_epoch
+    state.finalized_root = get_block_root(state, get_epoch_start_slot(finalized_epoch))
 
     # Rotate justified epochs
     state.previous_justified_epoch = state.current_justified_epoch
