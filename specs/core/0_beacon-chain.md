@@ -1835,8 +1835,9 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     # Rotate justified epochs
     state.previous_justified_epoch = state.justified_epoch
     state.previous_justified_root = state.justified_root
-    state.justified_epoch = new_justified_epoch
-    state.justified_root = get_block_root(state, get_epoch_start_slot(new_justified_epoch))
+    if new_justified_epoch != state.justified_epoch:
+        state.justified_epoch = new_justified_epoch
+        state.justified_root = get_block_root(state, get_epoch_start_slot(new_justified_epoch))
 ```
 
 #### Crosslinks
