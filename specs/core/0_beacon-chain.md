@@ -229,8 +229,9 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours | 
+| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
+| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 
 ### State list lengths
 
@@ -1877,8 +1878,7 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```
 
 ```python
-def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
+def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_since_finality: int) -> Gwei:
     return (
         get_base_reward(state, index) +
         get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
@@ -1938,8 +1938,9 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
         else:
             deltas[1][index] += get_base_reward(state, index)
         # Proposer bonus
-        proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-        deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        if index in get_attesting_indices(state, state.previous_epoch_attestations):
+            proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
+            deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
     return deltas
 ```
 
@@ -2299,8 +2300,8 @@ def process_proposer_slashing(state: BeaconState,
     Note that this function mutates ``state``.
     """
     proposer = state.validator_registry[proposer_slashing.proposer_index]
-    # Verify that the slot is the same
-    assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
+    # Verify that the epoch is the same
+    assert slot_to_epoch(proposer_slashing.header_1.slot) == slot_to_epoch(proposer_slashing.header_2.slot)
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
     # Proposer is not yet slashed
@@ -2365,7 +2366,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     """
     # Can't submit attestations that are too far in history (or in prehistory) 
     assert attestation.data.slot >= GENESIS_SLOT
-    assert state.slot < attestation.data.slot + SLOTS_PER_EPOCH
+    assert state.slot <= attestation.data.slot + SLOTS_PER_EPOCH
     # Can't submit attestations too quickly
     assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     # Verify that the justified epoch is correct, case 1: current epoch attestations
@@ -2448,16 +2449,20 @@ Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
 For each `exit` in `block.body.voluntary_exits`, run the following function:
 
 ```python
-def process_exit(state: BeaconState, exit: VoluntaryExit) -> None:
+def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
     Process ``VoluntaryExit`` transaction.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[exit.validator_index]
     # Verify the validator has not yet exited
-    assert validator.exit_epoch > get_delayed_activation_exit_epoch(get_current_epoch(state))
+    assert validator.exit_epoch == FAR_FUTURE_EPOCH
+    # Verify the validator has not initiated an exit
+    assert validator.initiated_exit is False
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= exit.epoch
+    # Must have been in the validator set long enough
+    assert get_current_epoch(state) - validator.activation_epoch >= PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
     assert bls_verify(
         pubkey=validator.pubkey,
