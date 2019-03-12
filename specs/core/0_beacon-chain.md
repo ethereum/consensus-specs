@@ -208,7 +208,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `GENESIS_FORK_VERSION` | `0` |
+| `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` |
 | `GENESIS_SLOT` | `2**32` |
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
 | `GENESIS_START_SHARD` | `0` |
@@ -1517,8 +1517,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
         fork=Fork(
-            previous_version=int_to_bytes4(GENESIS_FORK_VERSION),
-            current_version=int_to_bytes4(GENESIS_FORK_VERSION),
+            previous_version=GENESIS_FORK_VERSION,
+            current_version=GENESIS_FORK_VERSION,
             epoch=GENESIS_EPOCH,
         ),
 
