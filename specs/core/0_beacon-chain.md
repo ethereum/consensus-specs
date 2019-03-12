@@ -601,7 +601,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Validator registry
     'validator_registry': [Validator],
-    'low_balances': ['uint32'],
+    'balances': ['uint64'],
     'validator_registry_update_epoch': 'uint64',
 
     # Randomness and committees
@@ -756,7 +756,7 @@ def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> L
 
 ```python
 def get_balance(state: BeaconState, index: int) -> int:
-    return state.validator_registry[index].high_balance + state.low_balances[index]
+    return state.balances[index]
 ```
 #### `set_balance`
 
@@ -766,7 +766,7 @@ def set_balance(state: BeaconState, index: int, balance: int) -> None:
     HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
     if validator.high_balance > balance or validator.high_balance + 3 * HALF_INCREMENT < balance:
         validator.high_balance = balance - balance % HIGH_BALANCE_INCREMENT
-    state.low_balances[index] = balance - validator.high_balance
+    state.balances[index] = balance
 ````
 
 #### `increase_balance`
@@ -1377,7 +1377,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
         state.validator_registry.append(validator)
-        state.low_balances.append(0)
+        state.balances.append(0)
         set_balance(state, len(state.validator_registry)-1, amount)
     else:
         # Increase balance by deposit amount
@@ -1567,7 +1567,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Validator registry
         validator_registry=[],
-        low_balances=[],
+        balances=[],
         validator_registry_update_epoch=GENESIS_EPOCH,
 
         # Randomness and committees
