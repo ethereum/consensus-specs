@@ -268,12 +268,12 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_BLOCK` | `int_to_bytes4(0)` |
-| `DOMAIN_RANDAO` | `int_to_bytes4(1)` |
-| `DOMAIN_ATTESTATION` | `int_to_bytes4(2)` |
-| `DOMAIN_DEPOSIT` | `int_to_bytes4(3)` |
-| `DOMAIN_VOLUNTARY_EXIT` | `int_to_bytes4(4)` |
-| `DOMAIN_TRANSFER` | `int_to_bytes4(5)` |
+| `DOMAIN_BEACON_BLOCK` | `0` |
+| `DOMAIN_RANDAO` | `1` |
+| `DOMAIN_ATTESTATION` | `2` |
+| `DOMAIN_DEPOSIT` | `3` |
+| `DOMAIN_VOLUNTARY_EXIT` | `4` |
+| `DOMAIN_TRANSFER` | `5` |
 
 ## Data structures
 
@@ -1107,7 +1107,7 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
 
 ```python
 def get_fork_version(fork: Fork,
-                     epoch: Epoch) -> bytes4:
+                     epoch: Epoch) -> bytes:
     """
     Return the fork version of the given ``epoch``.
     """
@@ -1122,11 +1122,11 @@ def get_fork_version(fork: Fork,
 ```python
 def get_domain(fork: Fork,
                epoch: Epoch,
-               domain_type: bytes4) -> int:
+               domain_type: int) -> int:
     """
     Get the domain number that represents the fork meta and signature domain.
     """
-    return bytes_to_int(get_fork_version(fork, epoch) + domain_type))
+    return bytes_to_int(get_fork_version(fork, epoch) + int_to_bytes4(domain_type))
 ```
 
 ### `get_bitfield_bit`
