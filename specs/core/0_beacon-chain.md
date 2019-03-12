@@ -1517,8 +1517,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
         fork=Fork(
-            previous_version=GENESIS_FORK_VERSION,
-            current_version=GENESIS_FORK_VERSION,
+            previous_version=int_to_bytes4(GENESIS_FORK_VERSION),
+            current_version=int_to_bytes4(GENESIS_FORK_VERSION),
             epoch=GENESIS_EPOCH,
         ),
 
