@@ -1288,7 +1288,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     serialized_deposit_data = serialize(deposit.deposit_data)
     # Deposits must be processed in order
     assert deposit.index == state.deposit_index
-    
+
     # Verify the Merkle branch
     merkle_branch_is_valid = verify_merkle_branch(
         leaf=hash(serialized_deposit_data),
@@ -1298,7 +1298,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         root=state.latest_eth1_data.deposit_root,
     )
     assert merkle_branch_is_valid
-        
+
     # Increment the next deposit index we are expecting. Note that this
     # needs to be done here because while the deposit contract will never
     # create an invalid Merkle branch, it may admit an invalid deposit
@@ -1312,7 +1312,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
     if pubkey not in validator_pubkeys:
         # Verify the proof of possession
-        if not bls_verify(
+        proof_is_valid = bls_verify(
             pubkey=deposit_input.pubkey,
             message_hash=signed_root(deposit_input),
             signature=deposit_input.proof_of_possession,
@@ -1321,7 +1321,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
                 get_current_epoch(state),
                 DOMAIN_DEPOSIT,
             )
-        ):
+        )
+        if not proof_is_valid:
             return
 
         # Add new validator
