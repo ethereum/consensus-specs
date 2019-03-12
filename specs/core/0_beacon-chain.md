@@ -1545,6 +1545,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         current_justified_root=ZERO_HASH,
         justification_bitfield=0,
         finalized_epoch=GENESIS_EPOCH,
+        finalized_root=ZERO_HASH,
 
         # Recent state
         latest_crosslinks=[Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
@@ -1796,6 +1797,8 @@ Run the following function:
 ```python
 def update_justification_and_finalization(state: BeaconState) -> None:
     new_justified_epoch = state.current_justified_epoch
+    new_finalized_epoch = state.finalized_epoch
+
     # Rotate the justification bitfield up one epoch to make room for the current epoch
     state.justification_bitfield <<= 1
     # If the previous epoch gets justified, fill the second last bit
@@ -1814,24 +1817,26 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     # The 2nd/3rd/4th most recent epochs are all justified, the 2nd using the 4th as source
     if (bitfield >> 1) % 8 == 0b111 and state.previous_justified_epoch == current_epoch - 3:
-        state.finalized_epoch = state.previous_justified_epoch
+        new_finalized_epoch = state.previous_justified_epoch
     # The 2nd/3rd most recent epochs are both justified, the 2nd using the 3rd as source
     if (bitfield >> 1) % 4 == 0b11 and state.previous_justified_epoch == current_epoch - 2:
-        state.finalized_epoch = state.previous_justified_epoch
+        new_finalized_epoch = state.previous_justified_epoch
     # The 1st/2nd/3rd most recent epochs are all justified, the 1st using the 3rd as source
     if (bitfield >> 0) % 8 == 0b111 and state.current_justified_epoch == current_epoch - 2:
-        state.finalized_epoch = state.current_justified_epoch
+        new_finalized_epoch = state.current_justified_epoch
     # The 1st/2nd most recent epochs are both justified, the 1st using the 2nd as source
     if (bitfield >> 0) % 4 == 0b11 and state.current_justified_epoch == current_epoch - 1:
-        state.finalized_epoch = state.current_justified_epoch
-    state.finalized_root = get_block_root(state, get_epoch_start_slot(finalized_epoch))
+        new_finalized_epoch = state.current_justified_epoch
 
-    # Rotate justified epochs
+    # Update state jusification/finality fields
     state.previous_justified_epoch = state.current_justified_epoch
     state.previous_justified_root = state.current_justified_root
     if new_justified_epoch != state.current_justified_epoch:
         state.current_justified_epoch = new_justified_epoch
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(new_justified_epoch))
+    if new_finalized_epoch != state.finalized_epoch:
+        state.finalized_epoch = new_finalized_epoch
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(new_finalized_epoch))
 ```
 
 #### Crosslinks
