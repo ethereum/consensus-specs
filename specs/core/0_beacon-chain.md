@@ -290,9 +290,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Previous fork version
-    'previous_version': 'uint64',
+    'previous_version': 'bytes4',
     # Current fork version
-    'current_version': 'uint64',
+    'current_version': 'bytes4',
     # Fork epoch number
     'epoch': 'uint64',
 }
@@ -1015,7 +1015,7 @@ def get_beacon_proposer_index(state: BeaconState,
     assert previous_epoch <= epoch <= next_epoch
 
     first_committee, _ = get_crosslink_committees_at_slot(state, slot, registry_change)[0]
-    return first_committee[slot % len(first_committee)]
+    return first_committee[epoch % len(first_committee)]
 ```
 
 ### `verify_merkle_branch`
@@ -1106,7 +1106,7 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
 
 ```python
 def get_fork_version(fork: Fork,
-                     epoch: Epoch) -> int:
+                     epoch: Epoch) -> bytes:
     """
     Return the fork version of the given ``epoch``.
     """
@@ -1125,8 +1125,7 @@ def get_domain(fork: Fork,
     """
     Get the domain number that represents the fork meta and signature domain.
     """
-    fork_version = get_fork_version(fork, epoch)
-    return fork_version * 2**32 + domain_type
+    return bytes_to_int(get_fork_version(fork, epoch) + int_to_bytes4(domain_type))
 ```
 
 ### `get_bitfield_bit`
@@ -1288,7 +1287,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     serialized_deposit_data = serialize(deposit.deposit_data)
     # Deposits must be processed in order
     assert deposit.index == state.deposit_index
-    
+
     # Verify the Merkle branch
     merkle_branch_is_valid = verify_merkle_branch(
         leaf=hash(serialized_deposit_data),
@@ -1298,27 +1297,12 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         root=state.latest_eth1_data.deposit_root,
     )
     assert merkle_branch_is_valid
-        
+
     # Increment the next deposit index we are expecting. Note that this
     # needs to be done here because while the deposit contract will never
     # create an invalid Merkle branch, it may admit an invalid deposit
     # object, and we need to be able to skip over it
     state.deposit_index += 1
-    
-    # Verify the proof of possession
-    proof_is_valid = bls_verify(
-        pubkey=deposit_input.pubkey,
-        message_hash=signed_root(deposit_input),
-        signature=deposit_input.proof_of_possession,
-        domain=get_domain(
-            state.fork,
-            get_current_epoch(state),
-            DOMAIN_DEPOSIT,
-        )
-    )
-    
-    if not proof_is_valid:
-        return
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit_input.pubkey
@@ -1326,6 +1310,20 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     withdrawal_credentials = deposit_input.withdrawal_credentials
 
     if pubkey not in validator_pubkeys:
+        # Verify the proof of possession
+        proof_is_valid = bls_verify(
+            pubkey=deposit_input.pubkey,
+            message_hash=signed_root(deposit_input),
+            signature=deposit_input.proof_of_possession,
+            domain=get_domain(
+                state.fork,
+                get_current_epoch(state),
+                DOMAIN_DEPOSIT,
+            )
+        )
+        if not proof_is_valid:
+            return
+
         # Add new validator
         validator = Validator(
             pubkey=pubkey,
@@ -1342,10 +1340,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         state.validator_balances.append(amount)
     else:
         # Increase balance by deposit amount
-        index = validator_pubkeys.index(pubkey)
-        assert state.validator_registry[index].withdrawal_credentials == withdrawal_credentials
-
-        state.validator_balances[index] += amount
+        state.validator_balances[validator_pubkeys.index(pubkey)] += amount
 ```
 
 ### Routines for updating validator status
@@ -1522,8 +1517,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
         fork=Fork(
-            previous_version=GENESIS_FORK_VERSION,
-            current_version=GENESIS_FORK_VERSION,
+            previous_version=int_to_bytes4(GENESIS_FORK_VERSION),
+            current_version=int_to_bytes4(GENESIS_FORK_VERSION),
             epoch=GENESIS_EPOCH,
         ),
 
@@ -2311,8 +2306,8 @@ def process_proposer_slashing(state: BeaconState,
     Note that this function mutates ``state``.
     """
     proposer = state.validator_registry[proposer_slashing.proposer_index]
-    # Verify that the slot is the same
-    assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
+    # Verify that the epoch is the same
+    assert slot_to_epoch(proposer_slashing.header_1.slot) == slot_to_epoch(proposer_slashing.header_2.slot)
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
     # Proposer is not yet slashed
