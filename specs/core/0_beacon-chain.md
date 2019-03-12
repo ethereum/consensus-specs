@@ -2448,7 +2448,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Deposits
 
-Verify that `len(block.body.deposits) <= MAX_DEPOSITS`. If `state.latest_eth1_data.deposit_count > state.deposit_index`, verify that `len(block.body.deposits) >= 1`.
+Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.
 
 For each `deposit` in `block.body.deposits`, run `process_deposit(state, deposit)`.
 
