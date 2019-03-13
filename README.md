@@ -17,6 +17,8 @@ Accompanying documents can be found in [specs](specs) and include
 * [BLS signature verification](specs/bls_signature.md)
 * [General test format](specs/test-format.md)
 * [Honest validator implementation doc](specs/validator/0_beacon-chain-validator.md)
+* [Merkle proof formats](specs/light_client/merkle_proofs.md)
+* [Light client syncing protocol](specs/light_client/sync_protocol.md)
 
 ## Design goals
 The following are the broad design goals for Ethereum 2.0:
