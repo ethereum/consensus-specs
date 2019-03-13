@@ -608,7 +608,7 @@ For each `challenge` in `block.body.branch_challenges`, run:
 
 ```python
 def process_branch_challenge(state: BeaconState,
-                             challenge: BranchChallenge):
+                             challenge: BranchChallenge) -> None:
     # Check that it's not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY
     assert state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY
@@ -644,7 +644,7 @@ For each `response` in `block.body.branch_responses`, if `response.responding_to
 
 ```python
 def process_branch_exploration_response(state: BeaconState,
-                                        response: BranchResponse):
+                                        response: BranchResponse) -> None:
     challenge = get_branch_challenge_record_by_id(response.challenge_id)
     assert verify_merkle_branch(
         leaf=response.data,
@@ -665,7 +665,7 @@ If `response.responding_to_custody_challenge == True`, run:
 
 ```python
 def process_branch_custody_response(state: BeaconState,
-                                    response: BranchResponse):
+                                    response: BranchResponse) -> None:
     challenge = get_custody_challenge_record_by_id(response.challenge_id)
     responder = state.validator_registry[challenge.responder_index]
     # Verify we're not too late
@@ -719,7 +719,7 @@ For each `initiation` in `block.body.interactive_custody_challenge_initiations`,
 
 ```python
 def process_initiation(state: BeaconState,
-                       initiation: InteractiveCustodyChallengeInitiation):
+                       initiation: InteractiveCustodyChallengeInitiation) -> None:
     challenger = state.validator_registry[initiation.challenger_index]
     responder = state.validator_registry[initiation.responder_index]
     # Verify the signature
@@ -772,7 +772,7 @@ For each `response` in `block.body.interactive_custody_challenge_responses`, use
 
 ```python
 def process_response(state: BeaconState,
-                     response: InteractiveCustodyChallengeResponse):
+                     response: InteractiveCustodyChallengeResponse) -> None:
     challenge = get_custody_challenge_record_by_id(state, response.challenge_id)
     responder = state.validator_registry[challenge.responder_index]
     # Check that the right number of hashes was provided
@@ -805,7 +805,7 @@ For each `continuation` in `block.body.interactive_custody_challenge_continuatio
 
 ```python
 def process_continuation(state: BeaconState,
-                         continuation: InteractiveCustodyChallengeContinuation):
+                         continuation: InteractiveCustodyChallengeContinuation) -> None:
     challenge = get_custody_challenge_record_by_id(state, continuation.challenge_id)
     challenger = state.validator_registry[challenge.challenger_index]
     responder = state.validator_registry[challenge.responder_index]
