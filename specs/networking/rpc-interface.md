@@ -165,7 +165,7 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MUST be 
 ```
 # BlockRootSlot
 (
-    block_root: HashTreeRoot
+    block_root: bytes32
     slot: uint64
 )
 
