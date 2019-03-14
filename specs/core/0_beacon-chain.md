@@ -1018,7 +1018,7 @@ def get_beacon_proposer_index(state: BeaconState,
     i = 0
     while True:
         rand_byte = hash(generate_seed(get_current_epoch(state)) + int_to_bytes8(i // 32))[i % 32]
-        candidate = first_committee[(epoch % i) % len(first_committee)]
+        candidate = first_committee[(epoch + i) % len(first_committee)]
         if get_effective_balance(state, candidate) * 256 > MAX_DEPOSIT_AMOUNT * rand_byte:
             return candidate
         i += 1
