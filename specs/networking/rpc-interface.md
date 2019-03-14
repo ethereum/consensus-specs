@@ -30,7 +30,7 @@ All referenced data structures can be found in the [0-beacon-chain](https://gith
 
 ## `libp2p` Protocol Names
 
-A "Protocol Name" in `libp2p` parlance refers to a human-readable identifier `libp2p` uses in order to identify sub-protocols and stream messages of different types over the same connection. A client's supported protocol paths are negotiated by the `libp2p` stack at connection time; as such they are not part of individual message bodies.
+A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp2p` uses in order to identify sub-protocols and stream messages of different types over the same connection. Peers exchange supported protocol IDs via the `Identify` protocol upon connection. When opening a new stream, peers pin a particular protocol ID to it, and the stream remains contextualised thereafter. Since messages are sent inside a stream, they do not need to bear the protocol ID.
 
 ## RPC-Over-`libp2p`
 
