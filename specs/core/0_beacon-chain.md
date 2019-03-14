@@ -463,15 +463,23 @@ The following data structures are defined as [SimpleSerialize (SSZ)](https://git
 
 ```python
 {
+    'header': BeaconBlockHeader,
+
+    # Body
+    'body': BeaconBlockBody,
+}
+```
+
+#### `BeaconBlockHeader`
+
+```python
+{
     # Header
     'slot': 'uint64',
     'parent_root': 'bytes32',
     'state_root': 'bytes32',
     'randao_reveal': 'bytes96',
     'eth1_data': Eth1Data,
-
-    # Body
-    'body': BeaconBlockBody,
     # Signature
     'signature': 'bytes96',
 }
