@@ -229,9 +229,9 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | Epoch | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | Epoch | 25.6 minutes |
 | `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | Epoch | ~1.7 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | Slot | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | Epoch | ~27 hours |
-| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
+| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | Epoch | 9 days  |
 
 ### State list lengths
 
@@ -319,9 +319,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Epoch number
-    'epoch': 'uint64',
+    'epoch': Epoch,
     # Shard data since the previous crosslink
-    'crosslink_data_root': 'bytes32',
+    'crosslink_data_root': Hash,
 }
 ```
 
@@ -330,9 +330,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Root of the deposit tree
-    'deposit_root': 'bytes32',
+    'deposit_root': Hash,
     # Block hash
-    'block_hash': 'bytes32',
+    'block_hash': Hash,
 }
 ```
 
@@ -352,18 +352,18 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # LMD GHOST vote
-    'slot': 'uint64',
-    'beacon_block_root': 'bytes32',
+    'slot': Slot,
+    'beacon_block_root': Hash,
 
     # FFG vote
-    'source_epoch': 'uint64',
-    'source_root': 'bytes32',
-    'target_root': 'bytes32',
+    'source_epoch': Epoch,
+    'source_root': Hash,
+    'target_root': Hash,
 
     # Crosslink vote
-    'shard': 'uint64',
+    'shard': Shard,
     'previous_crosslink': Crosslink,
-    'crosslink_data_root': 'bytes32',
+    'crosslink_data_root': Hash,
 }
 ```
 
@@ -398,11 +398,11 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # BLS pubkey
-    'pubkey': 'bytes48',
+    'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': 'bytes32',
+    'withdrawal_credentials': Hash,
     # A BLS signature of this `DepositInput`
-    'proof_of_possession': 'bytes96',
+    'proof_of_possession': BLSSignature,
 }
 ```
 
@@ -411,7 +411,7 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Amount in Gwei
-    'amount': 'uint64',
+    'amount': Gwei,
     # Timestamp from deposit contract
     'timestamp': 'uint64',
     # Deposit input
@@ -423,11 +423,11 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    'slot': 'uint64',
-    'previous_block_root': 'bytes32',
-    'state_root': 'bytes32',
-    'block_body_root': 'bytes32',
-    'signature': 'bytes96',
+    'slot': Slot,
+    'previous_block_root': Hash,
+    'state_root': Hash,
+    'block_body_root': Hash,
+    'signature': BLSSignature,
 }
 ```
 
@@ -436,15 +436,15 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # BLS public key
-    'pubkey': 'bytes48',
+    'pubkey': BLSPubkey,
     # Withdrawal credentials
-    'withdrawal_credentials': 'bytes32',
+    'withdrawal_credentials': Hash,
     # Epoch when validator activated
-    'activation_epoch': 'uint64',
+    'activation_epoch': Epoch,
     # Epoch when validator exited
-    'exit_epoch': 'uint64',
+    'exit_epoch': Epoch,
     # Epoch when validator is eligible to withdraw
-    'withdrawable_epoch': 'uint64',
+    'withdrawable_epoch': Epoch,
     # Did the validator initiate an exit
     'initiated_exit': 'bool',
     # Was the validator slashed
@@ -509,13 +509,13 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Attester aggregation bitfield
-    'aggregation_bitfield': 'bytes',
+    'aggregation_bitfield': Bitfield,
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
-    'custody_bitfield': 'bytes',
+    'custody_bitfield': Bitfield,
     # BLS aggregate signature
-    'aggregate_signature': 'bytes96',
+    'aggregate_signature': BLSSignature,
 }
 ```
 
@@ -626,11 +626,11 @@ The types are defined topologically to aid in facilitating an executable version
     'current_epoch_attestations': [PendingAttestation],
     'previous_justified_epoch': Epoch,
     'current_justified_epoch': Epoch,
-    'previous_justified_root': 'bytes32',
-    'current_justified_root': 'bytes32',
+    'previous_justified_root': Hash,
+    'current_justified_root': Hash,
     'justification_bitfield': 'uint64',
     'finalized_epoch': Epoch,
-    'finalized_root': 'bytes32',
+    'finalized_root': Hash,
 
     # Recent state
     'latest_crosslinks': [Crosslink, SHARD_COUNT],
@@ -644,7 +644,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
-    'deposit_index': ValidatorIndex
+    'deposit_index': 'uint64'
 }
 ```
 
