@@ -1719,7 +1719,7 @@ def get_attesting_indices(state: BeaconState, attestations: List[PendingAttestat
 ```
 
 ```python
-def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
+def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestation]) -> Gwei:
     return get_total_balance(state, get_attesting_indices(state, attestations))
 ```
 
