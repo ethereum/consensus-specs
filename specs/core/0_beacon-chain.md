@@ -655,7 +655,7 @@ Note: The definitions below are for specification purposes and are not necessari
 ### `xor`
 
 ```python
-def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
+def xor(bytes1: bytes32, bytes2: bytes32) -> bytes32:
     return bytes(a ^ b for a, b in zip(bytes1, bytes2))
 ```
 
@@ -953,7 +953,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_state_root(state: BeaconState,
-                   slot: Slot) -> Bytes32:
+                   slot: Slot) -> Hash:
     """
     Return the state root at a recent ``slot``.
     """
@@ -1022,7 +1022,7 @@ def get_beacon_proposer_index(state: BeaconState,
 ### `verify_merkle_branch`
 
 ```python
-def verify_merkle_branch(leaf: Bytes32, proof: List[Hash], depth: int, index: int, root: Hash) -> bool:
+def verify_merkle_branch(leaf: Hash, proof: List[Hash], depth: int, index: int, root: Hash) -> bool:
     """
     Verify that the given ``leaf`` is on the merkle branch ``proof``
     starting with the given ``root``.
@@ -1107,7 +1107,7 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
 
 ```python
 def get_fork_version(fork: Fork,
-                     epoch: Epoch) -> bytes:
+                     epoch: Epoch) -> bytes4:
     """
     Return the fork version of the given ``epoch``.
     """
@@ -1751,7 +1751,7 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 **Note**: Total balances computed for the previous epoch might be marginally different than the actual total balances during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
 ```python
-def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
+def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple[Hash, List[ValidatorIndex]]:
     all_attestations = state.current_epoch_attestations + state.previous_epoch_attestations
     valid_attestations = [
         a for a in all_attestations if a.data.previous_crosslink == state.latest_crosslinks[shard]
