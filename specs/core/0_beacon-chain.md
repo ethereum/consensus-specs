@@ -660,7 +660,7 @@ def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
 
 ### `hash`
 
-The hash function is denoted by `hash`. In Phase 0 the beacon chain is deployed with the same hash function as Ethereum 1.0, i.e. Keccak-256 (also incorrectly known as SHA3).
+The `hash` function is SHA256.
 
 Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
