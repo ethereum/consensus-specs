@@ -595,6 +595,7 @@ The types are defined topologically to aid in facilitating an executable version
     'validator_registry': [Validator],
     'validator_balances': ['uint64'],
     'validator_registry_update_epoch': 'uint64',
+    'validator_registry_update_slashed_balances': 'uint64',
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
@@ -2116,6 +2117,7 @@ def update_validator_registry(state: BeaconState) -> None:
             exit_validator(state, index)
 
     state.validator_registry_update_epoch = current_epoch
+    state.validator_registry_update_slashed_balances = total_at_end
 ```
 
 Run the following function:
@@ -2164,7 +2166,7 @@ def process_slashings(state: BeaconState) -> None:
     total_balance = get_total_balance(state, active_validator_indices)
 
     # Compute `total_penalties`
-    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
+    total_at_start = state.validator_registry_update_slashed_balances
     total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
     total_penalties = total_at_end - total_at_start
 
