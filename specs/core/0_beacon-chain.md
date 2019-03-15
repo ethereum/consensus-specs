@@ -628,7 +628,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
-    'deposit_index': 'uint64'
+    'deposit_index': 'uint64',
 }
 ```
 
