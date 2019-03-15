@@ -63,7 +63,7 @@
         - [`get_permuted_index`](#get_permuted_index)
         - [`split`](#split)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
-        - [`get_shuffling`](#get_shuffling)
+        - [`compute_committee`](#compute_committee)
         - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
         - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
@@ -803,28 +803,26 @@ def get_epoch_committee_count(active_validator_count: int) -> int:
     ) * SLOTS_PER_EPOCH
 ```
 
-### `get_shuffling`
+### `compute_committee`
 
 ```python
-def get_shuffling(seed: Bytes32,
-                  validators: List[Validator],
-                  epoch: Epoch) -> List[List[ValidatorIndex]]:
+def compute_committee(validator_indices: [int],
+                      seed: Bytes32,
+                      index: int,
+                      total_committees: int) -> List[ValidatorIndex]:
     """
-    Shuffle active validators and split into crosslink committees.
-    Return a list of committees (each a list of validator indices).
+    Return the index'th shuffled committee out of a total `total_committees`
+    using the given validator_indices and seed
     """
-    # Shuffle active validator indices
-    active_validator_indices = get_active_validator_indices(validators, epoch)
-    length = len(active_validator_indices)
-    shuffled_indices = [active_validator_indices[get_permuted_index(i, length, seed)] for i in range(length)]
-
-    # Split the shuffled active validator indices
-    return split(shuffled_indices, get_epoch_committee_count(length))
+    start_offset = get_split_offset(len(validator_indices), total_committees, index)
+    end_offset = get_split_offset(len(validator_indices), total_committees, index + 1)
+    return [
+        validator_indices[get_permuted_index(i, len(validator_indices), seed)]
+        for i in range(start_offset, end_offset)
+    ]
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
-
-**Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
+**Note**: this definition and the next few definitions are highly inefficient as algorithms as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
 ### `get_previous_epoch_committee_count`
 
@@ -916,22 +914,17 @@ def get_crosslink_committees_at_slot(state: BeaconState,
             shuffling_epoch = state.current_shuffling_epoch
             shuffling_start_shard = state.current_shuffling_start_shard
 
-    shuffling = get_shuffling(
-        seed,
-        state.validator_registry,
-        shuffling_epoch,
-    )
-    offset = slot % SLOTS_PER_EPOCH
-    committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
-    slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
-
+    indices = get_active_validator_indices(state.validator_registry, shuffling_epoch)
+    committee_count = get_epoch_committee_count(len(indices))
+    committees_per_slot = committee_count // EPOCH_LENGTH
     return [
         (
-            shuffling[committees_per_slot * offset + i],
+            compute_committee(indices, seed, committees_per_slot * offset + i, committee_count)
             (slot_start_shard + i) % SHARD_COUNT,
         )
         for i in range(committees_per_slot)
     ]
+
 ```
 
 ### `get_block_root`
