@@ -1,3 +1,5 @@
+**NOTICE**: This document is a work-in-progress for researchers and implementers.
+
 # Beacon chain light client syncing
 
 One of the design goals of the eth2 beacon chain is light-client friendlines, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
