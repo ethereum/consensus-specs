@@ -811,8 +811,8 @@ def compute_committee(validator_indices: List[ValidatorIndex],
                       index: int,
                       total_committees: int) -> List[ValidatorIndex]:
     """
-    Return the index'th shuffled committee out of a total `total_committees`
-    using the given validator_indices and seed
+    Return the ``index``'th shuffled committee out of a total ``total_committees``
+    using ``validator_indices`` and ``seed``.
     """
     start_offset = get_split_offset(len(validator_indices), total_committees, index)
     end_offset = get_split_offset(len(validator_indices), total_committees, index + 1)
