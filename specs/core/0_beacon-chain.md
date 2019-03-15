@@ -2103,7 +2103,7 @@ def update_validator_registry(state: BeaconState) -> None:
             activate_validator(state, index, is_genesis=False)
 
     # Exit validators within the allowable balance churn
-    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
+    total_at_start = state.validator_registry_update_slashed_balances
     total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
     balance_churn = total_at_end - total_at_start
     for index, validator in enumerate(state.validator_registry):
@@ -2166,7 +2166,7 @@ def process_slashings(state: BeaconState) -> None:
     total_balance = get_total_balance(state, active_validator_indices)
 
     # Compute `total_penalties`
-    total_at_start = state.validator_registry_update_slashed_balances
+    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
     total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
     total_penalties = total_at_end - total_at_start
 
