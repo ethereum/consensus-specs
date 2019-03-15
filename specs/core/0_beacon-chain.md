@@ -2050,7 +2050,7 @@ def process_ejections(state: BeaconState) -> None:
     """
     for index in get_active_validator_indices(state.validator_registry, get_current_epoch(state)):
         if state.validator_balances[index] < EJECTION_BALANCE:
-            exit_validator(state, index)
+            initiate_validator_exit(state, index)
 ```
 
 #### Validator registry and shuffling seed data
