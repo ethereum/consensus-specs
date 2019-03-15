@@ -806,7 +806,7 @@ def get_epoch_committee_count(active_validator_count: int) -> int:
 ### `compute_committee`
 
 ```python
-def compute_committee(validator_indices: [int],
+def compute_committee(validator_indices: List[ValidatorIndex],
                       seed: Bytes32,
                       index: int,
                       total_committees: int) -> List[ValidatorIndex]:
