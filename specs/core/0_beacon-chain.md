@@ -2378,8 +2378,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
     assert attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
-    # Check source epoch and root match current or previous justified epoch and root
-    assert (slot_to_epoch(attestation.data.slot), attestation.data.source_epoch, attestation.data.source_root) in {
+    # Check target epoch, source epoch, and source root
+    target_epoch = slot_to_epoch(attestation.data.slot)
+    assert (target_epoch, attestation.data.source_epoch, attestation.data.source_root) in {
         (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root), 
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root),
     }
@@ -2390,7 +2391,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         attestation.data.previous_crosslink,  # Case 1: latest crosslink matches previous crosslink
         Crosslink(                            # Case 2: latest crosslink matches current crosslink
             crosslink_data_root=attestation.data.crosslink_data_root,
-            epoch=slot_to_epoch(attestation.data.slot),
+            epoch=target_epoch,
         ),
     }
 
@@ -2404,7 +2405,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         pubkey=bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in participants]),
         message_hash=hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
         signature=attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION),
+        domain=get_domain(state.fork, target_epoch, DOMAIN_ATTESTATION),
     )
 
     # Cache pending attestation
@@ -2414,7 +2415,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         custody_bitfield=attestation.custody_bitfield,
         inclusion_slot=state.slot
     )
-    if slot_to_epoch(attestation.data.slot) == get_current_epoch(state):
+    if target_epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
     else:
         state.previous_epoch_attestations.append(pending_attestation)
