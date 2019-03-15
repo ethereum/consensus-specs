@@ -29,7 +29,6 @@
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`SlashableAttestation`](#slashableattestation)
-            - [`DepositInput`](#depositinput)
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`Validator`](#validator)
@@ -377,7 +376,7 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
-#### `DepositInput`
+#### `DepositData`
 
 ```python
 {
@@ -385,21 +384,10 @@ The types are defined topologically to aid in facilitating an executable version
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # A BLS signature of this `DepositInput`
-    'proof_of_possession': 'bytes96',
-}
-```
-
-#### `DepositData`
-
-```python
-{
     # Amount in Gwei
     'amount': 'uint64',
-    # Timestamp from deposit contract
-    'timestamp': 'uint64',
-    # Deposit input
-    'deposit_input': DepositInput,
+    # Container self-signature
+    'proof_of_possession': 'bytes96',
 }
 ```
 
@@ -512,7 +500,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Index in the deposit tree
     'index': 'uint64',
     # Data
-    'deposit_data': DepositData,
+    'data': DepositData,
 }
 ```
 
@@ -1278,19 +1266,12 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     Process a deposit from Ethereum 1.0.
     Note that this function mutates ``state``.
     """
-    deposit_input = deposit.deposit_data.deposit_input
-
-    # Should equal 8 bytes for deposit_data.amount +
-    #              8 bytes for deposit_data.timestamp +
-    #              176 bytes for deposit_data.deposit_input
-    # It should match the deposit_data in the eth1.0 deposit contract
-    serialized_deposit_data = serialize(deposit.deposit_data)
     # Deposits must be processed in order
     assert deposit.index == state.deposit_index
 
     # Verify the Merkle branch
     merkle_branch_is_valid = verify_merkle_branch(
-        leaf=hash(serialized_deposit_data),
+        leaf=hash(serialize(deposit.data)),  # 48 + 32 + 8 + 96 = 184 bytes serialisation
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
         index=deposit.index,
@@ -1305,16 +1286,14 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     state.deposit_index += 1
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
-    pubkey = deposit_input.pubkey
-    amount = deposit.deposit_data.amount
-    withdrawal_credentials = deposit_input.withdrawal_credentials
+    pubkey = deposit.data.pubkey
 
     if pubkey not in validator_pubkeys:
         # Verify the proof of possession
         proof_is_valid = bls_verify(
-            pubkey=deposit_input.pubkey,
-            message_hash=signed_root(deposit_input),
-            signature=deposit_input.proof_of_possession,
+            pubkey=pubkey,
+            message_hash=signed_root(deposit.data),
+            signature=deposit.data.proof_of_possession,
             domain=get_domain(
                 state.fork,
                 get_current_epoch(state),
@@ -1327,7 +1306,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Add new validator
         validator = Validator(
             pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
+            withdrawal_credentials=deposit.data.withdrawal_credentials,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
@@ -1337,10 +1316,10 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
         state.validator_registry.append(validator)
-        state.validator_balances.append(amount)
+        state.validator_balances.append(deposit.data.amount)
     else:
         # Increase balance by deposit amount
-        state.validator_balances[validator_pubkeys.index(pubkey)] += amount
+        state.validator_balances[validator_pubkeys.index(pubkey)] += deposit.data.amount
 ```
 
 ### Routines for updating validator status
@@ -1430,11 +1409,11 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositInput`.
+The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositData`.
 
 ### Withdrawal credentials
 
-One of the `DepositInput` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawals to shards. The first byte of `withdrawal_credentials` is a version number. As of now the only expected format is as follows:
+One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawals to shards. The first byte of `withdrawal_credentials` is a version number. As of now the only expected format is as follows:
 
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
