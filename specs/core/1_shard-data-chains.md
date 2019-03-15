@@ -144,7 +144,7 @@ def get_shuffled_committee(state: BeaconState,
     """
     Return shuffled committee.
     """
-    active_validator_indices = get_active_validator_indices(state.validators, committee_start_epoch)
+    active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
     length = len(active_validator_indices)
     seed = generate_seed(state, committee_start_epoch)
     start_offset = get_split_offset(
@@ -177,9 +177,9 @@ def get_persistent_committee(state: BeaconState,
     later_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
 
     committee_count = max(
-        len(get_active_validator_indices(state.validators, earlier_start_epoch)) //
+        len(get_active_validator_indices(state.validator_registry, earlier_start_epoch)) //
         (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
-        len(get_active_validator_indices(state.validators, later_start_epoch)) //
+        len(get_active_validator_indices(state.validator_registry, later_start_epoch)) //
         (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
     ) + 1
     
@@ -219,7 +219,7 @@ def get_shard_proposer_index(state: BeaconState,
     # return None (ie. no block can be proposed)
     validators_to_try = persistent_committee[index:] + persistent_committee[:index]
     for index in validators_to_try:
-        if is_active_validator(state.validators[index], get_current_epoch(state)):
+        if is_active_validator(state.validator_registry[index], get_current_epoch(state)):
             return index
     return None
 ```
@@ -266,12 +266,12 @@ To validate a block header on shard `shard_block.shard_id`, compute as follows:
 * Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_ref`.
 * Let `persistent_committee = get_persistent_committee(state, shard_block.shard_id, shard_block.slot)`.
 * Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
-* For every `i in range(len(persistent_committee))` where `is_active_validator(state.validators[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
+* For every `i in range(len(persistent_committee))` where `is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
 * Let `proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)`.
 * Verify that `proposer_index` is not `None`.
 * Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`.
 * Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_PROPOSER))` passes.
-* Let `group_public_key = bls_aggregate_pubkeys([state.validators[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`.
+* Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`.
 * Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER))` passes.
 
 ### Verifying shard block data
