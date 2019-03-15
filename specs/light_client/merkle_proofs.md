@@ -1,3 +1,5 @@
+**NOTICE**: This document is a work-in-progress for researchers and implementers.
+
 ### Constants
 
 | Name | Value |
