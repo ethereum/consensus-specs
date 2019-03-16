@@ -1042,7 +1042,7 @@ def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
                                  bitfield: bytes) -> List[ValidatorIndex]:
     """
-    Return the participant indices at for the ``attestation_data`` and ``bitfield``.
+    Return the participant indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
