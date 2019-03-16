@@ -595,7 +595,6 @@ The types are defined topologically to aid in facilitating an executable version
     'validator_registry': [Validator],
     'validator_balances': ['uint64'],
     'validator_registry_update_epoch': 'uint64',
-    'validator_registry_update_slashed_balances': 'uint64',
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
@@ -2103,21 +2102,23 @@ def update_validator_registry(state: BeaconState) -> None:
             activate_validator(state, index, is_genesis=False)
 
     # Exit validators within the allowable balance churn
-    total_at_start = state.validator_registry_update_slashed_balances
-    total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
-    balance_churn = total_at_end - total_at_start
-    for index, validator in enumerate(state.validator_registry):
-        if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
-            # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(state, index)
-            if balance_churn > max_balance_churn:
-                break
+    if state.current_epoch < state.validator_registry_update_epoch + LATEST_SLASHED_EXIT_LENGTH:
+        balance_churn = (
+            state.latest_slashed_balances[state.validator_registry_update_epoch % LATEST_SLASHED_EXIT_LENGTH] -
+            state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+        )
 
-            # Exit validator
-            exit_validator(state, index)
+        for index, validator in enumerate(state.validator_registry):
+            if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
+                # Check the balance churn would be within the allowance
+                balance_churn += get_effective_balance(state, index)
+                if balance_churn > max_balance_churn:
+                    break
+
+                # Exit validator
+                exit_validator(state, index)
 
     state.validator_registry_update_epoch = current_epoch
-    state.validator_registry_update_slashed_balances = total_at_end
 ```
 
 Run the following function:
