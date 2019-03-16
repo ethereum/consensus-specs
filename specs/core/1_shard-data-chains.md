@@ -118,9 +118,9 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 def get_split_offset(list_size: int, chunks: int, index: int) -> int:
   """
   Returns a value such that for a list L, chunk count k and index i,
-  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k+1, i)]
+  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
   """
-  return (len(list_size) * index) // chunks
+  return (list_size * index) // chunks
 ````
 
 #### `get_shuffled_committee`
