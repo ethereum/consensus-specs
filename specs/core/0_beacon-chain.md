@@ -208,7 +208,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `GENESIS_FORK_VERSION` | int_to_bytes4(`0`) |
+| `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` |
 | `GENESIS_SLOT` | `2**32` |
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
 | `GENESIS_START_SHARD` | `0` |
