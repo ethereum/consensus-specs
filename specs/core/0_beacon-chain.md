@@ -622,7 +622,6 @@ The types are defined topologically to aid in facilitating an executable version
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
     'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],  # Balances slashed at every withdrawal period
-    'latest_block_header': BeaconBlockHeader,  # `latest_block_header.state_root == ZERO_HASH` temporarily
     'historical_roots': ['bytes32'],
 
     # Ethereum 1.0 chain data
@@ -1553,7 +1552,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_state_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
         latest_active_index_roots=Vector([ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)]),
         latest_slashed_balances=Vector([0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)]),
-        latest_block_header=get_temporary_block_header(get_empty_block()),
         historical_roots=[],
 
         # Ethereum 1.0 chain data
@@ -1684,12 +1682,8 @@ def cache_state(state: BeaconState) -> None:
     # store the previous slot's post state transition root
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_slot_state_root
 
-    # cache state root in stored latest_block_header if empty
-    if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = previous_slot_state_root
-
     # store latest known block for previous slot
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(state.latest_block_header)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = state.latest_block_roots[(state.slot - 1) % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 ### Per-epoch processing
@@ -2247,12 +2241,10 @@ For every `block` except the genesis block, run `process_block_header(state, blo
 
 ```python
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
+    # Cache block root
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(block)
     # Verify that the slots match
     assert block.slot == state.slot
-    # Verify that the parent matches
-    assert block.previous_block_root == hash_tree_root(state.latest_block_header)
-    # Save current block as the new latest block
-    state.latest_block_header = get_temporary_block_header(block)
     # Verify proposer signature
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     assert bls_verify(
