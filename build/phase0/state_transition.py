@@ -1,3 +1,18 @@
+import build.phase0.spec as spec
+
+
+from typing import (
+    Any,
+    Callable,
+    List,
+    NewType,
+    Tuple,
+)
+
+from build.phase0.spec import (
+    BeaconState,
+    BeaconBlock,
+)
 
 
 def process_transaction_type(state: BeaconState,
@@ -13,72 +28,73 @@ def process_transactions(state: BeaconState, block: BeaconBlock) -> None:
     process_transaction_type(
         state,
         block.body.proposer_slashings,
-        MAX_PROPOSER_SLASHINGS,
-        process_proposer_slashing,
+        spec.MAX_PROPOSER_SLASHINGS,
+        spec.process_proposer_slashing,
     )
     process_transaction_type(
         state,
         block.body.attester_slashings,
-        MAX_ATTESTER_SLASHINGS,
-        process_attester_slashing,
+        spec.MAX_ATTESTER_SLASHINGS,
+        spec.process_attester_slashing,
     )
     process_transaction_type(
         state,
         block.body.attestations,
-        MAX_ATTESTATIONS,
-        process_attestation,
+        spec.MAX_ATTESTATIONS,
+        spec.process_attestation,
     )
     process_transaction_type(
         state,
         block.body.deposits,
-        MAX_DEPOSITS,
-        process_deposit,
+        spec.MAX_DEPOSITS,
+        spec.process_deposit,
     )
     process_transaction_type(
         state,
         block.body.voluntary_exits,
-        MAX_VOLUNTARY_EXITS,
-        process_voluntary_exit,
+        spec.MAX_VOLUNTARY_EXITS,
+        spec.process_voluntary_exit,
     )
     assert len(block.body.transfers) == len(set(block.body.transfers))
     process_transaction_type(
         state,
         block.body.transfers,
-        MAX_TRANSFERS,
-        process_transfer,
+        spec.MAX_TRANSFERS,
+        spec.process_transfer,
     )
 
 
 def process_block(state: BeaconState,
                   block: BeaconBlock,
                   verify_state_root: bool=False) -> None:
-    process_block_header(state, block)
-    process_randao(state, block)
-    process_eth1_data(state, block)
+    spec.process_block_header(state, block)
+    spec.process_randao(state, block)
+    spec.process_eth1_data(state, block)
+
     process_transactions(state, block)
     if verify_state_root:
-        verify_block_state_root(state, block)
+        spec.verify_block_state_root(state, block)
 
 
 def process_epoch_transition(state: BeaconState) -> None:
-    update_justification_and_finalization(state)
-    process_crosslinks(state)
-    maybe_reset_eth1_period(state)
-    apply_rewards(state)
-    process_ejections(state)
-    update_registry_and_shuffling_data(state)
-    process_slashings(state)
-    process_exit_queue(state)
-    finish_epoch_update(state)
+    spec.update_justification_and_finalization(state)
+    spec.process_crosslinks(state)
+    spec.maybe_reset_eth1_period(state)
+    spec.apply_rewards(state)
+    spec.process_ejections(state)
+    spec.update_registry_and_shuffling_data(state)
+    spec.process_slashings(state)
+    spec.process_exit_queue(state)
+    spec.finish_epoch_update(state)
 
 
 def state_transition(state: BeaconState,
                      block: BeaconBlock,
                      verify_state_root: bool=False) -> BeaconState:
     while state.slot < block.slot:
-        cache_state(state)
-        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
+        spec.cache_state(state)
+        if (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0:
             process_epoch_transition(state)
-        advance_slot(state)
+        spec.advance_slot(state)
         if block.slot == state.slot:
             process_block(state, block)

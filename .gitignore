@@ -1,5 +1,4 @@
 *.pyc
 /__pycache__
 /venv
-
-/build
+/.pytest_cache

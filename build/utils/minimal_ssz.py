@@ -1,4 +1,4 @@
-from utils.hash import hash
+from .hash_function import hash
 
 
 BYTES_PER_CHUNK = 32

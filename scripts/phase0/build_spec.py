@@ -1,14 +1,18 @@
 import sys
 import function_puller
 
-code_lines = []
 
-for i in (1, 2, 3, 4, 8, 32, 48, 96):
-    code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
-code_lines.append("SLOTS_PER_EPOCH = 64")  # stub, will get overwritten by real var
-code_lines.append("def slot_to_epoch(x): return x // SLOTS_PER_EPOCH")
+def build_spec(sourcefile, outfile):
+    code_lines = []
 
-code_lines.append("""
+    code_lines.append("from build.utils.minimal_ssz import *")
+    code_lines.append("from build.utils.bls_stub import *")
+    for i in (1, 2, 3, 4, 8, 32, 48, 96):
+        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
+    code_lines.append("SLOTS_PER_EPOCH = 64")  # stub, will get overwritten by real var
+    code_lines.append("def slot_to_epoch(x): return x // SLOTS_PER_EPOCH")
+
+    code_lines.append("""
 from typing import (
     Any,
     Callable,
@@ -28,16 +32,48 @@ BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
 BLSSignature = NewType('BLSSignature', bytes)  # bytes96
 Any = None
 Store = None
-""")
+    """)
 
 
-code_lines += function_puller.get_lines(sys.argv[1])
+    code_lines += function_puller.get_lines(sourcefile)
 
-print(open(sys.argv[2]).read())
-print(open(sys.argv[3]).read())
+    code_lines.append("""
+# Monkey patch validator shuffling cache
+_get_shuffling = get_shuffling
+shuffling_cache = {}
+def get_shuffling(seed: Bytes32,
+                  validators: List[Validator],
+                  epoch: Epoch) -> List[List[ValidatorIndex]]:
 
-for line in code_lines:
-    print(line)
+    param_hash = (seed, hash_tree_root(validators, [Validator]), epoch)
 
-print(open(sys.argv[4]).read())
-print(open(sys.argv[5]).read())
+    if param_hash in shuffling_cache:
+        # print("Cache hit, epoch={0}".format(epoch))
+        return shuffling_cache[param_hash]
+    else:
+        # print("Cache miss, epoch={0}".format(epoch))
+        ret = _get_shuffling(seed, validators, epoch)
+        shuffling_cache[param_hash] = ret
+        return ret
+
+
+# Monkey patch hash cache
+_hash = hash
+hash_cache = {}
+def hash(x):
+    if x in hash_cache:
+        return hash_cache[x]
+    else:
+        ret = _hash(x)
+        hash_cache[x] = ret
+        return ret
+    """)
+
+    with open(outfile, 'w') as out:
+        out.write("\n".join(code_lines))
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print("Error: spec source and outfile must defined")
+    build_spec(sys.argv[1], sys.argv[2])
