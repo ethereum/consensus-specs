@@ -4,7 +4,7 @@ from py_ecc import bls
 
 from build.phase0 import spec
 
-from build.utils.merkle_minimal import (
+from build.phase0.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
     get_merkle_proof,
     get_merkle_root,

@@ -1,5 +1,5 @@
-from build.utils.minimal_ssz import *
-from build.utils.bls_stub import *
+from build.phase0.utils.minimal_ssz import *
+from build.phase0.utils.bls_stub import *
 def int_to_bytes1(x): return x.to_bytes(1, 'little')
 def int_to_bytes2(x): return x.to_bytes(2, 'little')
 def int_to_bytes3(x): return x.to_bytes(3, 'little')

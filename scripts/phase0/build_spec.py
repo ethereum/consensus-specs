@@ -5,8 +5,8 @@ import function_puller
 def build_spec(sourcefile, outfile):
     code_lines = []
 
-    code_lines.append("from build.utils.minimal_ssz import *")
-    code_lines.append("from build.utils.bls_stub import *")
+    code_lines.append("from build.phase0.utils.minimal_ssz import *")
+    code_lines.append("from build.phase0.utils.bls_stub import *")
     for i in (1, 2, 3, 4, 8, 32, 48, 96):
         code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
     code_lines.append("SLOTS_PER_EPOCH = 64")  # stub, will get overwritten by real var

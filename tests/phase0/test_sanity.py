@@ -6,7 +6,7 @@ from copy import deepcopy
 from py_ecc import bls
 import build.phase0.spec as spec
 
-from build.utils.minimal_ssz import signed_root
+from build.phase0.utils.minimal_ssz import signed_root
 from build.phase0.spec import (
     # SSZ
     Attestation,
@@ -43,7 +43,7 @@ from build.phase0.spec import (
 from build.phase0.state_transition import (
     state_transition,
 )
-from build.utils.merkle_minimal import (
+from build.phase0.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
     get_merkle_proof,
     get_merkle_root,
