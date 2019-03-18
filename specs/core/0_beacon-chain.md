@@ -1475,18 +1475,13 @@ When enough full deposits have been made to the deposit contract, an `Eth2Genesi
     * `genesis_eth1_data.deposit_root` is the `deposit_root` contained in the `Eth2Genesis` log.
     * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
-* Let `genesis_block = get_empty_block()`.
-* Set `genesis_block.state_root = hash_tree_root(genesis_state)`.
+* Let `genesis_block` equal
 
 ```python
-def get_empty_block() -> BeaconBlock:
-    """
-    Get an empty ``BeaconBlock``.
-    """
-    return BeaconBlock(
+    BeaconBlock(
         slot=GENESIS_SLOT,
         previous_block_root=ZERO_HASH,
-        state_root=ZERO_HASH,
+        state_root=hash_tree_root(genesis_state),
         body=BeaconBlockBody(
             randao_reveal=EMPTY_SIGNATURE,
             eth1_data=Eth1Data(
