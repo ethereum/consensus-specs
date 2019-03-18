@@ -2,3 +2,5 @@
 /__pycache__
 /venv
 /.pytest_cache
+
+build/phase0/spec.py
