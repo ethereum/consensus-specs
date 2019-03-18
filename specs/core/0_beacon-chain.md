@@ -208,7 +208,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value | Unit | 
 | - | - | - |
-| `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` | uint64 | 
+| `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` | bytes4 | 
 | `GENESIS_SLOT` | `2**32` | Slot | 
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` | Epoch | 
 | `GENESIS_START_SHARD` | `0` | Shard | 
