@@ -1683,7 +1683,7 @@ def cache_state(state: BeaconState) -> None:
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_slot_state_root
 
     # store latest known block for previous slot
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = state.latest_block_roots[(state.slot - 1) % SLOTS_PER_HISTORICAL_ROOT]
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = get_block_root(state, state.slot - 1)
 ```
 
 ### Per-epoch processing
@@ -2245,7 +2245,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     assert block.slot == state.slot
     # Verify the previous block root
     assert block.previous_block_root == get_block_root(state, state.slot - 1)
-    # Verify the signature
+    # Verify proposer signature
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     assert bls_verify(
         pubkey=proposer.pubkey,
