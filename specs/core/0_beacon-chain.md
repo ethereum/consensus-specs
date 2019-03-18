@@ -408,7 +408,7 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     'slot': 'uint64',
-    'previous_block_root': 'bytes32',
+    'previous_block_signature': 'bytes96',
     'state_root': 'bytes32',
     'block_body_root': 'bytes32',
     'signature': 'bytes96',
@@ -573,7 +573,7 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Header
     'slot': 'uint64',
-    'previous_block_root': 'bytes32',
+    'previous_block_signature': 'bytes96',
     'state_root': 'bytes32',
     'body': BeaconBlockBody,
     'signature': 'bytes96',
@@ -681,7 +681,7 @@ def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
     """
     return BeaconBlockHeader(
         slot=block.slot,
-        previous_block_root=block.previous_block_root,
+        previous_block_signature=ZERO_SIGNATURE,
         state_root=ZERO_HASH,
         block_body_root=hash_tree_root(block.body),
         signature=block.signature,
@@ -1486,7 +1486,7 @@ def get_empty_block() -> BeaconBlock:
     """
     return BeaconBlock(
         slot=GENESIS_SLOT,
-        previous_block_root=ZERO_HASH,
+        previous_block_signature=EMPTY_SIGNATURE,
         state_root=ZERO_HASH,
         body=BeaconBlockBody(
             randao_reveal=EMPTY_SIGNATURE,
@@ -1591,7 +1591,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with root `block.previous_block_root` has been processed and accepted.
+* The parent block with signature `block.previous_block_signature` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
 * The node's Unix time is greater than or equal to `state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
@@ -2249,8 +2249,13 @@ For every `block` except the genesis block, run `process_block_header(state, blo
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
-    # Verify that the parent matches
-    assert block.previous_block_root == hash_tree_root(state.latest_block_header)
+    # Verify the previous block signature
+    assert bls_verify(
+        pubkey=state.latest_block_header.pubkey,
+        message_hash=signed_root(state.latest_block_header),
+        signature=block.previous_block_signature,
+        domain=get_domain(state.fork, slot_to_epoch(state.latest_block_header.slot), DOMAIN_BEACON_BLOCK)
+    )
     # Save current block as the new latest block
     state.latest_block_header = get_temporary_block_header(block)
     # Verify proposer signature
