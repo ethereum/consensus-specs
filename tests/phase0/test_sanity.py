@@ -1,8 +1,10 @@
 import os
 import sys
 import time
-
 from copy import deepcopy
+
+import pytest
+
 from py_ecc import bls
 import build.phase0.spec as spec
 
@@ -48,78 +50,15 @@ from build.phase0.utils.merkle_minimal import (
     get_merkle_proof,
     get_merkle_root,
 )
-# from state_test_gen import (
-    # generate_from_test,
-    # dump_json,
-    # dump_yaml,
-# )
+from tests.phase0.helpers import (
+    build_attestation_data,
+    build_deposit_data,
+    build_empty_block_for_next_slot,
+)
 
 
-def get_empty_root():
-    return get_merkle_root((spec.ZERO_HASH,))
-
-
-def construct_empty_block_for_next_slot(state):
-    empty_block = get_empty_block()
-    empty_block.slot = state.slot + 1
-    previous_block_header = deepcopy(state.latest_block_header)
-    if previous_block_header.state_root == spec.ZERO_HASH:
-        previous_block_header.state_root = state.hash_tree_root()
-    empty_block.previous_block_root = previous_block_header.hash_tree_root()
-    return empty_block
-
-
-def create_deposit_data(state, pubkey, privkey, amount):
-    deposit_input = DepositInput(
-        pubkey=pubkey,
-        withdrawal_credentials=privkey.to_bytes(32, byteorder='big'),
-        proof_of_possession=b'00'*96,
-    )
-    proof_of_possession = bls.sign(
-        message_hash=signed_root(deposit_input),
-        privkey=privkey,
-        domain=get_domain(
-            state.fork,
-            get_current_epoch(state),
-            spec.DOMAIN_DEPOSIT,
-        )
-    )
-    deposit_input.proof_of_possession = proof_of_possession
-    deposit_data = DepositData(
-        amount=amount,
-        timestamp=0,
-        deposit_input=deposit_input,
-    )
-    return deposit_data
-
-
-def build_attestation_data(state, slot, shard):
-    assert state.slot >= slot
-
-    block_root = construct_empty_block_for_next_slot(state).previous_block_root
-
-    epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
-    if epoch_start_slot == slot:
-        epoch_boundary_root = block_root
-    else:
-        get_block_root(state, epoch_start_slot)
-
-    if slot < epoch_start_slot:
-        justified_block_root = state.previous_justified_root
-    else:
-        justified_block_root = state.current_justified_root
-
-    return AttestationData(
-        slot=slot,
-        shard=shard,
-        beacon_block_root=block_root,
-        source_epoch=state.current_justified_epoch,
-        source_root=justified_block_root,
-        target_root=epoch_boundary_root,
-        crosslink_data_root=spec.ZERO_HASH,
-        previous_crosslink=deepcopy(state.latest_crosslinks[shard]),
-    )
-
+# mark entire file as 'sanity'
+pytestmark = pytest.mark.sanity
 
 def test_slot_transition(state):
     test_state = deepcopy(state)
@@ -133,7 +72,7 @@ def test_slot_transition(state):
 def test_empty_block_transition(state):
     test_state = deepcopy(state)
 
-    block = construct_empty_block_for_next_slot(test_state)
+    block = build_empty_block_for_next_slot(test_state)
     state_transition(test_state, block)
 
     assert len(test_state.eth1_data_votes) == len(state.eth1_data_votes) + 1
@@ -144,7 +83,7 @@ def test_empty_block_transition(state):
 
 def test_skipped_slots(state):
     test_state = deepcopy(state)
-    block = construct_empty_block_for_next_slot(test_state)
+    block = build_empty_block_for_next_slot(test_state)
     block.slot += 3
 
     state_transition(test_state, block)
@@ -158,7 +97,7 @@ def test_skipped_slots(state):
 
 def test_empty_epoch_transition(state):
     test_state = deepcopy(state)
-    block = construct_empty_block_for_next_slot(test_state)
+    block = build_empty_block_for_next_slot(test_state)
     block.slot += spec.SLOTS_PER_EPOCH
 
     state_transition(test_state, block)
@@ -172,7 +111,7 @@ def test_empty_epoch_transition(state):
 
 def test_empty_epoch_transition_not_finalizing(state):
     test_state = deepcopy(state)
-    block = construct_empty_block_for_next_slot(test_state)
+    block = build_empty_block_for_next_slot(test_state)
     block.slot += spec.SLOTS_PER_EPOCH * 5
 
     state_transition(test_state, block)
@@ -226,7 +165,7 @@ def test_proposer_slashing(state, pubkeys, privkeys):
     #
     # Add to state via block transition
     #
-    block = construct_empty_block_for_next_slot(test_state)
+    block = build_empty_block_for_next_slot(test_state)
     block.body.proposer_slashings.append(proposer_slashing)
     state_transition(test_state, block)
 
@@ -251,7 +190,7 @@ def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
     index = len(test_deposit_data_leaves)
     pubkey = pubkeys[index]
     privkey = privkeys[index]
-    deposit_data = create_deposit_data(pre_state, pubkey, privkey, spec.MAX_DEPOSIT_AMOUNT)
+    deposit_data = build_deposit_data(pre_state, pubkey, privkey, spec.MAX_DEPOSIT_AMOUNT)
 
     item = hash(deposit_data.serialize())
     test_deposit_data_leaves.append(item)
@@ -268,7 +207,7 @@ def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
 
     pre_state.latest_eth1_data.deposit_root = root
     post_state = deepcopy(pre_state)
-    block = construct_empty_block_for_next_slot(post_state)
+    block = build_empty_block_for_next_slot(post_state)
     block.body.deposits.append(deposit)
 
     state_transition(post_state, block)
@@ -287,7 +226,7 @@ def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
     amount = spec.MAX_DEPOSIT_AMOUNT // 4
     pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
-    deposit_data = create_deposit_data(pre_state, pubkey, privkey, amount)
+    deposit_data = build_deposit_data(pre_state, pubkey, privkey, amount)
 
     merkle_index = len(test_deposit_data_leaves)
     item = hash(deposit_data.serialize())
@@ -304,7 +243,7 @@ def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
     )
 
     pre_state.latest_eth1_data.deposit_root = root
-    block = construct_empty_block_for_next_slot(pre_state)
+    block = build_empty_block_for_next_slot(pre_state)
     block.body.deposits.append(deposit)
 
     pre_balance = pre_state.validator_balances[validator_index]
@@ -365,7 +304,7 @@ def test_attestation(state, pubkeys, privkeys):
     #
     # Add to state via block transition
     #
-    attestation_block = construct_empty_block_for_next_slot(test_state)
+    attestation_block = build_empty_block_for_next_slot(test_state)
     attestation_block.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
     attestation_block.body.attestations.append(attestation)
     state_transition(test_state, attestation_block)
@@ -377,7 +316,7 @@ def test_attestation(state, pubkeys, privkeys):
     #
     pre_current_epoch_attestations = deepcopy(test_state.current_epoch_attestations)
 
-    epoch_block = construct_empty_block_for_next_slot(test_state)
+    epoch_block = build_empty_block_for_next_slot(test_state)
     epoch_block.slot += spec.SLOTS_PER_EPOCH
     state_transition(test_state, epoch_block)
 
@@ -417,7 +356,7 @@ def test_voluntary_exit(state, pubkeys, privkeys):
     #
     # Add to state via block transition
     #
-    initiate_exit_block = construct_empty_block_for_next_slot(post_state)
+    initiate_exit_block = build_empty_block_for_next_slot(post_state)
     initiate_exit_block.body.voluntary_exits.append(voluntary_exit)
     state_transition(post_state, initiate_exit_block)
 
@@ -428,7 +367,7 @@ def test_voluntary_exit(state, pubkeys, privkeys):
     #
     # Process within epoch transition
     #
-    exit_block = construct_empty_block_for_next_slot(post_state)
+    exit_block = build_empty_block_for_next_slot(post_state)
     exit_block.slot += spec.SLOTS_PER_EPOCH
     state_transition(post_state, exit_block)
 
@@ -476,7 +415,7 @@ def test_transfer(state, pubkeys, privkeys):
     #
     # Add to state via block transition
     #
-    block = construct_empty_block_for_next_slot(post_state)
+    block = build_empty_block_for_next_slot(post_state)
     block.body.transfers.append(transfer)
     state_transition(post_state, block)
 
@@ -503,7 +442,7 @@ def test_ejection(state):
     #
     # trigger epoch transition
     #
-    block = construct_empty_block_for_next_slot(post_state)
+    block = build_empty_block_for_next_slot(post_state)
     block.slot += spec.SLOTS_PER_EPOCH
     state_transition(post_state, block)
 
@@ -518,7 +457,7 @@ def test_historical_batch(state):
 
     post_state = deepcopy(pre_state)
 
-    block = construct_empty_block_for_next_slot(post_state)
+    block = build_empty_block_for_next_slot(post_state)
 
     state_transition(post_state, block)
 
@@ -527,106 +466,3 @@ def test_historical_batch(state):
     assert len(post_state.historical_roots) == len(pre_state.historical_roots) + 1
 
     return pre_state, [block], post_state
-
-
-def sanity_tests(num_validators=100, config=None):
-    print(f"Buidling state with {num_validators} validators...")
-    if config:
-        overwrite_spec_config(config)
-    genesis_state = create_genesis_state(num_validators=num_validators)
-    print("done!")
-    print()
-
-    test_cases = []
-
-    print("Running some sanity check tests...\n")
-    test_slot_transition(genesis_state)
-    print("Passed slot transition test\n")
-    test_cases.append(
-        generate_from_test(test_empty_block_transition, genesis_state, config=config, fields=['slot'])
-    )
-    print("Passed empty block transition test\n")
-    test_cases.append(
-        generate_from_test(test_skipped_slots, genesis_state, config=config, fields=['slot', 'latest_block_roots'])
-    )
-    print("Passed skipped slot test\n")
-    test_cases.append(
-        generate_from_test(test_empty_epoch_transition, genesis_state, config=config, fields=['slot', 'latest_block_roots'])
-    )
-    print("Passed empty epoch transition test\n")
-    test_cases.append(
-        generate_from_test(test_empty_epoch_transition_not_finalizing, genesis_state, config=config, fields=['slot', 'finalized_epoch'])
-    )
-    print("Passed non-finalizing epoch test\n")
-    test_cases.append(
-        generate_from_test(test_proposer_slashing, genesis_state, config=config, fields=['validator_registry', 'validator_balances'])
-    )
-    print("Passed proposer slashing test\n")
-    test_cases.append(
-        generate_from_test(test_attestation, genesis_state, config=config, fields=['previous_epoch_attestations', 'current_epoch_attestations'])
-    )
-    print("Passed attestation test\n")
-    test_cases.append(
-        generate_from_test(test_deposit_in_block, genesis_state, config=config, fields=['validator_registry', 'validator_balances'])
-    )
-    print("Passed deposit test\n")
-    test_cases.append(
-        generate_from_test(test_deposit_top_up, genesis_state, config=config, fields=['validator_registry', 'validator_balances'])
-    )
-    print("Passed deposit top up test\n")
-    test_cases.append(
-        generate_from_test(test_voluntary_exit, genesis_state, config=config, fields=['validator_registry'])
-    )
-    print("Passed voluntary exit test\n")
-    test_cases.append(
-        generate_from_test(test_transfer, genesis_state, config=config, fields=['validator_balances'])
-    )
-    print("Passed transfer test\n")
-    test_cases.append(
-        generate_from_test(test_ejection, genesis_state, config=config, fields=['validator_registry'])
-    )
-    print("Passed ejection test\n")
-    test_cases.append(
-        generate_from_test(test_historical_batch, genesis_state, config=config, fields=['historical_roots'])
-    )
-    print("Passed historical batch test\n")
-    print("done!")
-
-    return test_cases
-
-
-if __name__ == "__main__":
-    config = {
-        "SHARD_COUNT": 8,
-        "MIN_ATTESTATION_INCLUSION_DELAY": 2,
-        "TARGET_COMMITTEE_SIZE": 4,
-        "SLOTS_PER_EPOCH": 8,
-        "GENESIS_EPOCH": spec.GENESIS_SLOT // 8,
-        "SLOTS_PER_HISTORICAL_ROOT": 64,
-        "LATEST_RANDAO_MIXES_LENGTH": 64,
-        "LATEST_ACTIVE_INDEX_ROOTS_LENGTH": 64,
-        "LATEST_SLASHED_EXIT_LENGTH": 64,
-    }
-
-    test_cases = sanity_tests(32, config)
-    # uncomment below to run/generate against the default config
-    # test_cases = sanity_tests(100)
-
-    test = {}
-    metadata = {}
-    metadata['title'] = "Sanity tests"
-    metadata['summary'] = "Basic sanity checks from phase 0 spec pythonization. All tests are run with `verify_signatures` as set to False."
-    metadata['test_suite'] = "beacon_state"
-    metadata['fork'] = "tchaikovsky"
-    metadata['version'] = "v0.5.0"
-    test['metadata'] = metadata
-    test['test_cases'] = test_cases
-
-    if '--output-json' in sys.argv:
-        os.makedirs('output', exist_ok=True)
-        with open("output/sanity_check_tests.json", "w+") as outfile:
-            dump_json(test, outfile)
-    if '--output-yaml' in sys.argv:
-        os.makedirs('output', exist_ok=True)
-        with open("output/sanity_check_tests.yaml", "w+") as outfile:
-            dump_yaml(test, outfile)

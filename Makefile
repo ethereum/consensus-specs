@@ -3,8 +3,19 @@ SCRIPT_DIR = ./scripts
 BUILD_DIR = ./build
 UTILS_DIR = ./utils
 
-.PHONY: clean all $(BUILD_DIR)/phase0
 
+.PHONY: clean all test
+
+
+all: $(BUILD_DIR)/phase0
+
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+
+test:
+	pytest -m "sanity and minimal_config" tests/
 
 $(BUILD_DIR)/phase0:
 	mkdir -p $@
