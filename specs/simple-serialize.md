@@ -62,12 +62,17 @@ For basic types the `serialize` function is defined as follows.
 
 #### `"uintN"`
 
+A byte string of width  `N // 8` containing the little-endian encode integer.
+
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
 return value.to_bytes(N // 8, "little")
 ```
 
 #### `"bool"`
+
+* The byte `\x00` **if** the value is `False`
+* The byte `\x01` **if** the value is `True`
 
 ```python
 assert value in (True, False)
@@ -87,29 +92,46 @@ The serialized representation of composite types is comprised of two binary segm
 
 #### `"vector"`, `"container"` and `"list"`
 
-For conmposite types the `serialize` function is defined as follows.
-
-> *Note*: The `collate` function combines the serialized *fixed size* values
-> and the serialized offsets into a single array correctly ordered with respect
-> to the original element types.  The implementation of this logic is not
-> included in this example for simplicity.
-
+An implementation of the `serialize` function for `"Vector"`, `"Container"` and
+`"List"` types would take the following form.
 
 ```python
-# section 2
+# The second section is just the concatenation of the serialized *variable size* elements
 section_2_parts = [serialize(element) for element in value if is_variable_size(element)]
 section_2_lengths = [len(part) for part in section_2_parts]
 section_2 ''.join(section_2_parts)
 
-# section 1
+# Serialize the *fixed size* elements
 section_1_fixed_parts = [serialize(element) for element in value if is_fixed_size(element)]
+
+# Compute the length of the first section
 section_1_length = sum(len(part) for part in section_1_fixed_parts) + 4 * len(section_2_parts)
+
+# Compute the offset values for each part of the second section
 section_1_offsets = [
     section_1_length + sum(section_2_lengths[:index])
     for index in range(len(section_2_parts))
 ]
 assert all(offset < 2**32 for offset in section_1_offsets)
-section_1_parts = collate(section_1_fixed_parts, section_1_offsets)
+
+# compute the appropriate indices for *fixed size* elements for the first section
+fixed_size_element_indices = [index for index, element in enumerate(value) if is_fixed_size(element)]
+
+# compute the appropriate indices for the offsets of the *variable size* elements
+variable_size_element_indices = [index for index, element in enumerate(value) if is_variable_size(element)]
+
+# create a list with placeholders for all values
+section_1_parts = [None] * len(value)
+
+# populate all of the serialized *fixed size* elements
+for index, data in zip(fixed_size_element_indices, section_1_fixed_parts):
+    section_1_parts[index] = data
+
+# populate all of the serialized offsets for the *variable size* elements
+for index, offset in zip(variable_size_element_indices, section_1_offsets):
+    section_1_parts[index] = serialize(offset)
+
+assert not any(part is None for part in section_1_parts)
 section_1 = ''.join(section_1_parts)
 
 return ''.join([section_1, section_2])
