@@ -15,15 +15,17 @@ This specification seeks to define a messaging protocol that is flexible enough 
 
 ## Message Structure
 
-An ETH 2.0 message consists of a single byte representing the message version followed by the encoded, potentially compressed body. We separate the message's version from the version included in the `libp2p` protocol path in order to allow encoding and compression schemes to be updated independently of the `libp2p` protocols themselves.
-
-It is unlikely that more than 255 message versions will need to be supported, so a single byte should suffice.
+An ETH 2.0 message consists of an envelope that defines the message's compression, encoding, and length followed by the body itself.
 
 Visually, a message looks like this:
 
 ```
 +--------------------------+
-|    version byte          |
+|    compression nibble    |
++--------------------------+
+|    encoding nibble       |
++--------------------------+
+|  body length (uint64)    |
 +--------------------------+
 |                          |
 |           body           |
@@ -31,11 +33,12 @@ Visually, a message looks like this:
 +--------------------------+
 ```
 
-Clients MUST ignore messages with mal-formed bodies. The `version` byte MUST be one of the below values:
+Clients MUST ignore messages with mal-formed bodies. The compression/encoding nibbles MUST be one of the following values:
 
-## Version Byte Values
+## Compression Nibble Values
 
-### `0x01`
+- `0x0`: no compression
 
-- **Encoding Scheme:** SSZ
-- **Compression Scheme:** Snappy
+## Encoding Nibble Values
+
+- `0x1`: SSZ
