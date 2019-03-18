@@ -24,7 +24,7 @@ Message body schemas are notated like this:
 )
 ```
 
-SSZ serialization is field-order dependent. Therefore, fields MUST be  encoded and decoded according to the order described in this document. The encoded values of each field are concatenated to form the final encoded message body. Embedded structs are serialized as Containers unless otherwise noted.
+Embedded types are serialized as SSZ Containers unless otherwise noted.
 
 All referenced data structures can be found in the [0-beacon-chain](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#data-structures) specification.
 
@@ -34,7 +34,7 @@ A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp
 
 ## RPC-Over-`libp2p`
 
-To facilitate RPC-over-`libp2p`, a single protocol path is used: `/eth/serenity/rpc/1.0.0`. Remote method calls are wrapped in a "request" structure:
+To facilitate RPC-over-`libp2p`, a single protocol path is used: `/eth/serenity/beacon/rpc/1.0.0`. Remote method calls are wrapped in a "request" structure:
 
 ```
 (
@@ -49,6 +49,7 @@ and their corresponding responses are wrapped in a "response" structure:
 ```
 (
     id: uint64
+    is_error: boolean
     result: Response
 )
 ```
@@ -58,7 +59,8 @@ If an error occurs, a variant of the response structure is returned:
 ```
 (
     id: uint64
-    error: (
+    is_error: boolean
+    result: (
         code: uint16
         data: bytes
     )
@@ -69,11 +71,13 @@ The details of the RPC-Over-`libp2p` protocol are similar to [JSON-RPC 2.0](http
 
 1. The `id` member is REQUIRED.
 2. The `id` member in the response MUST be the same as the value of the `id` in the request.
-3. The `method_id` member is REQUIRED.
-4. The `result` member is required on success, and MUST NOT exist if there was an error.
-5. The `error` member is REQUIRED on errors, and MUST NOT exist if there wasn't an error.
+3. The `id` member MUST be unique within the context of a single connection. Monotonically increasing `id`s are RECOMMENDED.
+4. The `method_id` member is REQUIRED.
+5. The `result` member is required on success, and MUST NOT exist if there was an error.
+6. The `error` member is REQUIRED on errors, and MUST NOT exist if there wasn't an error.
+7. `is_error` MUST be `true` on errors, or `false` otherwise.
 
-Structuring RPC requests in this manner allows multiple calls and responses to be multiplexed over the same stream without switching.
+Structuring RPC requests in this manner allows multiple calls and responses to be multiplexed over the same stream without switching. Note that this implies that responses MAY arrive in a different order than requests.
 
 The "method ID" fields in the below messages refer to the `method` field in the request structure above.
 
@@ -136,7 +140,7 @@ Root B          ^
        +---+
 ```
 
-Once the handshake completes, the client with the higher `latest_finalized_epoch` or `best_slot` (if the clients have equal `latest_finalized_epoch`s) SHOULD send beacon block roots to its counterparty via `beacon_block_roots` (i.e., RPC method `10`).
+Once the handshake completes, the client with the higher `latest_finalized_epoch` or `best_slot` (if the clients have equal `latest_finalized_epoch`s) SHOULD request beacon block roots from its counterparty via `beacon_block_roots` (i.e., RPC method `10`).
 
 ### Goodbye
 
@@ -154,13 +158,20 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MUST be 
 
 - `1`: Client shut down.
 - `2`: Irrelevant network.
-- `3`: Irrelevant shard.
+- `3`: Too many peers.
+- `4`: Fault/error.
 
-### Provide Beacon Block Roots
+### Request Beacon Block Roots
 
 **Method ID:** `10`
 
-**Body:**
+**Request Body**
+
+```
+()
+```
+
+**Response Body:**
 
 ```
 # BlockRootSlot
@@ -174,7 +185,7 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MUST be 
 )
 ```
 
-Send a list of block roots and slots to the peer.
+Send a list of block roots and slots to the requesting peer.
 
 ### Beacon Block Headers
 
