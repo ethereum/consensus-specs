@@ -136,7 +136,7 @@
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
                 - [Transfers](#transfers)
-            - [State root verification](#state-root-verification)
+            - [Final updates](#final-updates-1)
 - [References](#references)
     - [Normative](#normative)
     - [Informative](#informative)
@@ -2241,11 +2241,11 @@ For every `block` except the genesis block, run `process_block_header(state, blo
 
 ```python
 def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
-    # Cache block root
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(block)
     # Verify that the slots match
     assert block.slot == state.slot
-    # Verify proposer signature
+    # Verify the previous block root
+    assert block.previous_block_root == get_block_root(state, state.slot - 1)
+    # Verify the signature
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     assert bls_verify(
         pubkey=proposer.pubkey,
@@ -2523,13 +2523,16 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee
 ```
 
-#### State root verification
+#### Final updates
 
 Verify the block's `state_root` by running the following function:
 
 ```python
-def verify_block_state_root(state: BeaconState, block: BeaconBlock) -> None:
+def final_updates(state: BeaconState, block: BeaconBlock) -> None:
+    # Check state root
     assert block.state_root == hash_tree_root(state)
+    # Cache block root
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = hash_tree_root(block)
 ```
 
 # References
