@@ -136,7 +136,7 @@
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
                 - [Transfers](#transfers)
-            - [Final updates](#final-updates-1)
+            - [Final processing](#final-processing)
 - [References](#references)
     - [Normative](#normative)
     - [Informative](#informative)
@@ -2523,12 +2523,12 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee
 ```
 
-#### Final updates
+#### Final processing
 
 Verify the block's `state_root` by running the following function:
 
 ```python
-def final_updates(state: BeaconState, block: BeaconBlock) -> None:
+def final_processing(state: BeaconState, block: BeaconBlock) -> None:
     # Check state root
     assert block.state_root == hash_tree_root(state)
     # Cache block root
