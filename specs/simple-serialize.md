@@ -12,7 +12,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
-    - [Vectors, containers, lists](#vectors-containers-lists)
+    - [Vectors, containers, lists](#composite-types-vectors-containers-and-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -32,8 +32,6 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 * `"bool"`: `True` or `False`
 
 ### Composite types
-
-Composite types are limited to a maximum of `2**32 - 1` elements.
 
 * **container**: ordered heterogenous collection of values
     * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
@@ -78,15 +76,12 @@ return b"\x01" if value is True else b"\x00"
 
 ### Composite Types (Vectors, Containers and Lists)
 
-The serialized representation of composite types is comprised of three binary segments.
+The serialized representation of composite types is comprised of two binary segments.
 
-* The first segment contains the concatenation of the serialized representation of **only** the *fixed size* types:
-    - This section is empty in the case of a purely *variable-size* type.
-* The second segment contains the concatenation of the `uint32` serialized offsets where the serialized representation of the *variable sized* types can be found in the third section.
-    - This section is empty in the case of a purely *fixed size* type.
-    - The first offset will always be the length of the serialized *fixed size* elements + the length of all of the serialized offsets.
-    - Subsequent offsets are the first offset + the combined lengths of the serialized representations for all of the previous *variable size* elements.
-* The third segment contains the concatenation of the serialized representations of **only** the *variable size* types.
+* The first segment is *fixed size* for all types, containing the concatenation of *either* 
+    - The serialized representation of value for each of the *fixed size* types
+    - The `"uint32"` serialized offset where the serialized representation of the *variable sized* type is located in the second section.
+* The second segment contains the concatenation of the serialized representations of **only** the *variable size* types.
     - This section is empty in the case of a purely *fixed size* type.
 
 
@@ -94,28 +89,30 @@ The serialized representation of composite types is comprised of three binary se
 
 For conmposite types the `serialize` function is defined as follows.
 
+> *Note*: The `collate` function combines the serialized *fixed size* values
+> and the serialized offsets into a single array correctly ordered with respect
+> to the original element types.  The implementation of this logic is not
+> included in this example for simplicity.
+
 
 ```python
-# section 1
-section_1 = ''.join([serialize(element) for element in value if is_fixed_size(element)])
-
-# section 3
-section_3_parts = [serialize(element) for element in value if is_variable_size(element)]
-section_3 ''.join(section_3_parts)
-
 # section 2
-section_1_length = len(section_1)
-section_2_length = 4 * len(section_3_parts)
-section_3_base_offset = section_1_length + section_2_length
-section_3_lengths = [len(part) for part in section_3_parts]
-section_3_offsets = [
-    (section_3_base_offset + sum(section_3_lengths[:index]))
-    for index in range(len(section_3_parts))
-]
-assert all(offset < 2**32 for offset in section_3_offsets)
-section_2 = ''.join([serialize(offset) for offset in section_3_offsets])
+section_2_parts = [serialize(element) for element in value if is_variable_size(element)]
+section_2_lengths = [len(part) for part in section_2_parts]
+section_2 ''.join(section_2_parts)
 
-return ''.join([section_1, section_2, section_3])
+# section 1
+section_1_fixed_parts = [serialize(element) for element in value if is_fixed_size(element)]
+section_1_length = sum(len(part) for part in section_1_fixed_parts) + 4 * len(section_2_parts)
+section_1_offsets = [
+    section_1_length + sum(section_2_lengths[:index])
+    for index in range(len(section_2_parts))
+]
+assert all(offset < 2**32 for offset in section_1_offsets)
+section_1_parts = collate(section_1_fixed_parts, section_1_offsets)
+section_1 = ''.join(section_1_parts)
+
+return ''.join([section_1, section_2])
 ```
 
 
