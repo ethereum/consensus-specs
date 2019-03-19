@@ -11,6 +11,8 @@ The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL�
 
 This specification seeks to define a messaging protocol that is flexible enough to be changed easily as the ETH 2.0 specification evolves.
 
+Note that while `libp2p` is the chosen networking stack for Ethereum 2.0, as of this writing some clients do not have workable `libp2p` implementations. To allow those clients to communicate, we define a message envelope that includes the body's compression, encoding, and body length. Once `libp2p` is available across all implementations, this message envelope will be removed because `libp2p` will negotiate the values defined in the envelope upfront.
+
 # Specification
 
 ## Message Structure

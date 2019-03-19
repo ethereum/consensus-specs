@@ -34,7 +34,9 @@ A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp
 
 ## RPC-Over-`libp2p`
 
-To facilitate RPC-over-`libp2p`, a single protocol path is used: `/eth/serenity/beacon/rpc/1.0.0`. Remote method calls are wrapped in a "request" structure:
+To facilitate RPC-over-`libp2p`, a single protocol name is used: `/eth/serenity/beacon/rpc/1`. The version number in the protocol name is neither backwards or forwards compatible, and will be incremented whenever changes to the below structures are required.
+
+Remote method calls are wrapped in a "request" structure:
 
 ```
 (
@@ -87,6 +89,10 @@ The first 1,000 values in `error.code` are reserved for system use. The followin
 2. `10`: Invalid request.
 3. `20`: Method not found.
 4. `30`: Server error.
+
+### Alternative for Non-`libp2p` Clients
+
+Since some clients are waiting for `libp2p` implementations in their respective languages. As such, they MAY listen for raw TCP messages on port `9000`. To distinguish RPC messages from other messages on that port, a byte prefix of `ETH` (`0x455448`) MUST be prepended to all messages. This option will be removed once `libp2p` is ready in all supported languages.
 
 ## Messages
 
@@ -154,12 +160,13 @@ Once the handshake completes, the client with the higher `latest_finalized_epoch
 )
 ```
 
-Client MAY send `goodbye` messages upon disconnection. The reason field MUST be one of the following values:
+Client MAY send `goodbye` messages upon disconnection. The reason field MAY be one of the following values:
 
 - `1`: Client shut down.
 - `2`: Irrelevant network.
-- `3`: Too many peers.
-- `4`: Fault/error.
+- `3`: Fault/error.
+
+Clients MAY define custom goodbye reasons as long as the value is larger than `1000`.
 
 ### Request Beacon Block Roots
 
@@ -168,7 +175,10 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MUST be 
 **Request Body**
 
 ```
-()
+(
+	start_slot: uint64
+	count: uint64
+)
 ```
 
 **Response Body:**
@@ -185,7 +195,7 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MUST be 
 )
 ```
 
-Send a list of block roots and slots to the requesting peer.
+Requests a list of block roots and slots from the peer. The `count` parameter MUST be less than or equal to `32768`.
 
 ### Beacon Block Headers
 
@@ -210,7 +220,7 @@ Send a list of block roots and slots to the requesting peer.
 )
 ```
 
-Requests beacon block headers from the peer starting from `(start_root, start_slot)`. The response MUST contain no more than `max_headers` headers. `skip_slots` defines the maximum number of slots to skip between blocks. For example, requesting blocks starting at slots `2` a `skip_slots` value of `2` would return the blocks at `[2, 4, 6, 8, 10]`. In cases where a slot is empty for a given slot number, the closest previous block MUST be returned. For example, if slot `4` were empty in the previous example, the returned array would contain `[2, 3, 6, 8, 10]`. If slot three were further empty, the array would contain `[2, 6, 8, 10]` - i.e., duplicate blocks MUST be collapsed.
+Requests beacon block headers from the peer starting from `(start_root, start_slot)`. The response MUST contain no more than `max_headers` headers. `skip_slots` defines the maximum number of slots to skip between blocks. For example, requesting blocks starting at slots `2` a `skip_slots` value of `1` would return the blocks at `[2, 4, 6, 8, 10]`. In cases where a slot is empty for a given slot number, the closest previous block MUST be returned. For example, if slot `4` were empty in the previous example, the returned array would contain `[2, 3, 6, 8, 10]`. If slot three were further empty, the array would contain `[2, 6, 8, 10]` - i.e., duplicate blocks MUST be collapsed. A `skip_slots` value of `0` returns all blocks.
 
 The function of the `skip_slots` parameter helps facilitate light client sync - for example, in [#459](https://github.com/ethereum/eth2.0-specs/issues/459) - and allows clients to balance the peers from whom they request headers. Clients could, for instance, request every 10th block from a set of peers where each per has a different starting block in order to populate block data.
 
