@@ -186,7 +186,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
-* For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+* For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Deposit contract
 
@@ -208,7 +208,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `GENESIS_FORK_VERSION` | `0` |
+| `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` |
 | `GENESIS_SLOT` | `2**32` |
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
 | `GENESIS_START_SHARD` | `0` |
@@ -628,7 +628,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
-    'deposit_index': 'uint64'
+    'deposit_index': 'uint64',
 }
 ```
 
@@ -1035,7 +1035,7 @@ def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
                                  bitfield: bytes) -> List[ValidatorIndex]:
     """
-    Return the participant indices at for the ``attestation_data`` and ``bitfield``.
+    Return the participant indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
@@ -1510,8 +1510,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
         fork=Fork(
-            previous_version=int_to_bytes4(GENESIS_FORK_VERSION),
-            current_version=int_to_bytes4(GENESIS_FORK_VERSION),
+            previous_version=GENESIS_FORK_VERSION,
+            current_version=GENESIS_FORK_VERSION,
             epoch=GENESIS_EPOCH,
         ),
 
@@ -1521,7 +1521,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         validator_registry_update_epoch=GENESIS_EPOCH,
 
         # Randomness and committees
-        latest_randao_mixes=[ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)],
+        latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
         previous_shuffling_start_shard=GENESIS_START_SHARD,
         current_shuffling_start_shard=GENESIS_START_SHARD,
         previous_shuffling_epoch=GENESIS_EPOCH,
@@ -1541,11 +1541,11 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         finalized_root=ZERO_HASH,
 
         # Recent state
-        latest_crosslinks=[Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)],
-        latest_block_roots=[ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
-        latest_state_roots=[ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
-        latest_active_index_roots=[ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)],
-        latest_slashed_balances=[0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)],
+        latest_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
+        latest_block_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
+        latest_state_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
+        latest_active_index_roots=Vector([ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)]),
+        latest_slashed_balances=Vector([0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)]),
         latest_block_header=get_temporary_block_header(get_empty_block()),
         historical_roots=[],
 
