@@ -10,8 +10,8 @@ from tests.phase0.helpers import (
     build_empty_block_for_next_slot,
 )
 
-# mark entire file as 'sanity' and 'header'
-pytestmark = [pytest.mark.sanity, pytest.mark.header]
+# mark entire file as 'header'
+pytestmark = pytest.mark.header
 
 
 def test_proposer_slashed(state):

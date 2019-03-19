@@ -43,6 +43,7 @@ from tests.phase0.helpers import (
     build_attestation_data,
     build_deposit_data,
     build_empty_block_for_next_slot,
+    force_registry_change_at_next_epoch,
 )
 
 
@@ -324,10 +325,7 @@ def test_voluntary_exit(state, pubkeys, privkeys):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # artificially trigger registry update at next epoch transition
-    pre_state.finalized_epoch = get_current_epoch(pre_state) - 1
-    for crosslink in pre_state.latest_crosslinks:
-        crosslink.epoch = pre_state.finalized_epoch
-    pre_state.validator_registry_update_epoch = pre_state.finalized_epoch - 1
+    force_registry_change_at_next_epoch(pre_state)
 
     post_state = deepcopy(pre_state)
 
@@ -369,7 +367,7 @@ def test_voluntary_exit(state, pubkeys, privkeys):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
-def test_no_exit_too_long_since_change(state):
+def test_no_exit_churn_too_long_since_change(state):
     pre_state = deepcopy(state)
     validator_index = get_active_validator_indices(
         pre_state.validator_registry,
@@ -382,9 +380,7 @@ def test_no_exit_too_long_since_change(state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # artificially trigger registry update at next epoch transition
-    pre_state.finalized_epoch = get_current_epoch(pre_state) - 1
-    for crosslink in pre_state.latest_crosslinks:
-        crosslink.epoch = pre_state.finalized_epoch
+    force_registry_change_at_next_epoch(pre_state)
     # make epochs since registry update greater than LATEST_SLASHED_EXIT_LENGTH
     pre_state.validator_registry_update_epoch = (
         get_current_epoch(pre_state) - spec.LATEST_SLASHED_EXIT_LENGTH

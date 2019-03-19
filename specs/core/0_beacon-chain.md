@@ -2431,13 +2431,15 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[exit.validator_index]
+    # Verify the validator is active
+    assert is_active_validator(validator, get_current_epoch(state))
     # Verify the validator has not yet exited
     assert validator.exit_epoch == FAR_FUTURE_EPOCH
     # Verify the validator has not initiated an exit
     assert validator.initiated_exit is False
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= exit.epoch
-    # Must have been in the validator set long enough
+    # Verify the validator has been active long enough
     assert get_current_epoch(state) - validator.activation_epoch >= PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
     assert bls_verify(
@@ -2446,7 +2448,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
         signature=exit.signature,
         domain=get_domain(state.fork, exit.epoch, DOMAIN_VOLUNTARY_EXIT)
     )
-    # Run the exit
+    # Initiate exit
     initiate_validator_exit(state, exit.validator_index)
 ```
 
