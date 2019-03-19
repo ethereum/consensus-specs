@@ -2089,16 +2089,21 @@ def update_validator_registry(state: BeaconState) -> None:
             activate_validator(state, index, is_genesis=False)
 
     # Exit validators within the allowable balance churn
-    balance_churn = 0
-    for index, validator in enumerate(state.validator_registry):
-        if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
-            # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(state, index)
-            if balance_churn > max_balance_churn:
-                break
+    if current_epoch < state.validator_registry_update_epoch + LATEST_SLASHED_EXIT_LENGTH:
+        balance_churn = (
+            state.latest_slashed_balances[state.validator_registry_update_epoch % LATEST_SLASHED_EXIT_LENGTH] -
+            state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+        )
 
-            # Exit validator
-            exit_validator(state, index)
+        for index, validator in enumerate(state.validator_registry):
+            if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
+                # Check the balance churn would be within the allowance
+                balance_churn += get_effective_balance(state, index)
+                if balance_churn > max_balance_churn:
+                    break
+
+                # Exit validator
+                exit_validator(state, index)
 
     state.validator_registry_update_epoch = current_epoch
 ```
