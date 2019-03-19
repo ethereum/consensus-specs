@@ -1,4 +1,5 @@
-# Ethereum 2.0 Specifications
+Ethereum 2.0 Specifications
+------------
 
 [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -25,3 +26,7 @@ The following are the broad design goals for Ethereum 2.0:
 * to select all components such that they are either quantum secure or can be easily swapped out for quantum secure counterparts when available
 * to utilize crypto and design techniques that allow for a large participation of validators in total and per unit time
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
+
+# Executable spec
+
+The aim is to have the entirety of the Ethereum 2.0Current just the phase 0 spec is executable.

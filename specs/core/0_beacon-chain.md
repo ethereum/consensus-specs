@@ -920,7 +920,6 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         )
         for i in range(committees_per_slot)
     ]
-
 ```
 
 ### `get_block_root`
