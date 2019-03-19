@@ -61,9 +61,9 @@
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`get_permuted_index`](#get_permuted_index)
-        - [`split`](#split)
+        - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
-        - [`get_shuffling`](#get_shuffling)
+        - [`compute_committee`](#compute_committee)
         - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
         - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
@@ -773,18 +773,11 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     return index
 ```
 
-### `split`
+### `get_split_offset`
 
 ```python
-def split(values: List[Any], split_count: int) -> List[List[Any]]:
-    """
-    Splits ``values`` into ``split_count`` pieces.
-    """
-    list_length = len(values)
-    return [
-        values[(list_length * i // split_count): (list_length * (i + 1) // split_count)]
-        for i in range(split_count)
-    ]
+def get_split_offset(list_length: int, split_count: int, index: int) -> int:
+    return (list_length * index) // split_count
 ```
 
 ### `get_epoch_committee_count`
@@ -803,28 +796,26 @@ def get_epoch_committee_count(active_validator_count: int) -> int:
     ) * SLOTS_PER_EPOCH
 ```
 
-### `get_shuffling`
+### `compute_committee`
 
 ```python
-def get_shuffling(seed: Bytes32,
-                  validators: List[Validator],
-                  epoch: Epoch) -> List[List[ValidatorIndex]]:
+def compute_committee(validator_indices: List[ValidatorIndex],
+                      seed: Bytes32,
+                      index: int,
+                      total_committees: int) -> List[ValidatorIndex]:
     """
-    Shuffle active validators and split into crosslink committees.
-    Return a list of committees (each a list of validator indices).
+    Return the ``index``'th shuffled committee out of a total ``total_committees``
+    using ``validator_indices`` and ``seed``.
     """
-    # Shuffle active validator indices
-    active_validator_indices = get_active_validator_indices(validators, epoch)
-    length = len(active_validator_indices)
-    shuffled_indices = [active_validator_indices[get_permuted_index(i, length, seed)] for i in range(length)]
-
-    # Split the shuffled active validator indices
-    return split(shuffled_indices, get_epoch_committee_count(length))
+    start_offset = get_split_offset(len(validator_indices), total_committees, index)
+    end_offset = get_split_offset(len(validator_indices), total_committees, index + 1)
+    return [
+        validator_indices[get_permuted_index(i, len(validator_indices), seed)]
+        for i in range(start_offset, end_offset)
+    ]
 ```
 
-**Invariant**: if `get_shuffling(seed, validators, epoch)` returns some value `x` for some `epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY`, it should return the same value `x` for the same `seed` and `epoch` and possible future modifications of `validators` forever in phase 0, and until the ~1 year deletion delay in phase 2 and in the future.
-
-**Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
+**Note**: this definition and the next few definitions are highly inefficient as algorithms as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
 ### `get_previous_epoch_committee_count`
 
@@ -916,18 +907,14 @@ def get_crosslink_committees_at_slot(state: BeaconState,
             shuffling_epoch = state.current_shuffling_epoch
             shuffling_start_shard = state.current_shuffling_start_shard
 
-    shuffling = get_shuffling(
-        seed,
-        state.validator_registry,
-        shuffling_epoch,
-    )
-    offset = slot % SLOTS_PER_EPOCH
+    indices = get_active_validator_indices(state.validator_registry, shuffling_epoch)
     committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
+    offset = slot % SLOTS_PER_EPOCH
     slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
 
     return [
         (
-            shuffling[committees_per_slot * offset + i],
+            compute_committee(indices, seed, committees_per_slot * offset + i, committees_per_epoch),
             (slot_start_shard + i) % SHARD_COUNT,
         )
         for i in range(committees_per_slot)
@@ -1377,17 +1364,14 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Exit the validator of the given ``index``.
+    Exit the validator with the given ``index``.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 
-    # The following updates only occur if not previous exited
-    if validator.exit_epoch <= delayed_activation_exit_epoch:
-        return
-    else:
-        validator.exit_epoch = delayed_activation_exit_epoch
+    # Update validator exit epoch if not previously exited
+    if validator.exit_epoch == FAR_FUTURE_EPOCH:
+        validator.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### `slash_validator`
@@ -1531,7 +1515,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
         previous_shuffling_start_shard=GENESIS_START_SHARD,
         current_shuffling_start_shard=GENESIS_START_SHARD,
-        previous_shuffling_epoch=GENESIS_EPOCH,
+        previous_shuffling_epoch=GENESIS_EPOCH - 1,
         current_shuffling_epoch=GENESIS_EPOCH,
         previous_shuffling_seed=ZERO_HASH,
         current_shuffling_seed=ZERO_HASH,
@@ -1539,7 +1523,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Finality
         previous_epoch_attestations=[],
         current_epoch_attestations=[],
-        previous_justified_epoch=GENESIS_EPOCH,
+        previous_justified_epoch=GENESIS_EPOCH - 1,
         current_justified_epoch=GENESIS_EPOCH,
         previous_justified_root=ZERO_HASH,
         current_justified_root=ZERO_HASH,
@@ -2050,7 +2034,7 @@ def process_ejections(state: BeaconState) -> None:
     """
     for index in get_active_validator_indices(state.validator_registry, get_current_epoch(state)):
         if state.validator_balances[index] < EJECTION_BALANCE:
-            exit_validator(state, index)
+            initiate_validator_exit(state, index)
 ```
 
 #### Validator registry and shuffling seed data
@@ -2102,16 +2086,21 @@ def update_validator_registry(state: BeaconState) -> None:
             activate_validator(state, index, is_genesis=False)
 
     # Exit validators within the allowable balance churn
-    balance_churn = 0
-    for index, validator in enumerate(state.validator_registry):
-        if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
-            # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(state, index)
-            if balance_churn > max_balance_churn:
-                break
+    if current_epoch < state.validator_registry_update_epoch + LATEST_SLASHED_EXIT_LENGTH:
+        balance_churn = (
+            state.latest_slashed_balances[state.validator_registry_update_epoch % LATEST_SLASHED_EXIT_LENGTH] -
+            state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+        )
 
-            # Exit validator
-            exit_validator(state, index)
+        for index, validator in enumerate(state.validator_registry):
+            if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
+                # Check the balance churn would be within the allowance
+                balance_churn += get_effective_balance(state, index)
+                if balance_churn > max_balance_churn:
+                    break
+
+                # Exit validator
+                exit_validator(state, index)
 
     state.validator_registry_update_epoch = current_epoch
 ```
@@ -2375,74 +2364,49 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` transaction.
     Note that this function mutates ``state``.
     """
-    # Can't submit attestations that are too far in history (or in prehistory) 
-    assert attestation.data.slot >= GENESIS_SLOT
-    assert state.slot <= attestation.data.slot + SLOTS_PER_EPOCH
-    # Can't submit attestations too quickly
-    assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
-    # Verify that the justified epoch and root is correct
-    if slot_to_epoch(attestation.data.slot) >= get_current_epoch(state):
-        # Case 1: current epoch attestations
-        assert attestation.data.source_epoch == state.current_justified_epoch
-        assert attestation.data.source_root == state.current_justified_root
-    else:
-        # Case 2: previous epoch attestations
-        assert attestation.data.source_epoch == state.previous_justified_epoch
-        assert attestation.data.source_root == state.previous_justified_root
-    # Check that the crosslink data is valid
-    acceptable_crosslink_data = {
-        # Case 1: Latest crosslink matches the one in the state
-        attestation.data.previous_crosslink,
-        # Case 2: State has already been updated, state's latest crosslink matches the crosslink
-        # the attestation is trying to create
-        Crosslink(
-            crosslink_data_root=attestation.data.crosslink_data_root,
-            epoch=slot_to_epoch(attestation.data.slot)
-        )
-    }
-    assert state.latest_crosslinks[attestation.data.shard] in acceptable_crosslink_data
-    # Attestation must be nonempty!
-    assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
-    # Custody must be empty (to be removed in phase 1)
-    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)
-    # Get the committee for the specific shard that this attestation is for
-    crosslink_committee = [
-        committee for committee, shard in get_crosslink_committees_at_slot(state, attestation.data.slot)
-        if shard == attestation.data.shard
-    ][0]
-    # Custody bitfield must be a subset of the attestation bitfield
-    for i in range(len(crosslink_committee)):
-        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
-            assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
-    # Verify aggregate signature
-    participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
-    custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
-    custody_bit_0_participants = [i for i in participants if i not in custody_bit_1_participants]
+    assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
+    assert attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
-    assert bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_participants]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
-        ],
-        message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b1)),
-        ],
+    # Check target epoch, source epoch, and source root
+    target_epoch = slot_to_epoch(attestation.data.slot)
+    assert (target_epoch, attestation.data.source_epoch, attestation.data.source_root) in {
+        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root), 
+        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root),
+    }
+
+    # Check crosslink data
+    assert attestation.data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
+    assert state.latest_crosslinks[attestation.data.shard] in {
+        attestation.data.previous_crosslink,  # Case 1: latest crosslink matches previous crosslink
+        Crosslink(                            # Case 2: latest crosslink matches current crosslink
+            crosslink_data_root=attestation.data.crosslink_data_root,
+            epoch=target_epoch,
+        ),
+    }
+
+    # Check custody bits [to be generalised in phase 1]
+    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)
+
+    # Check aggregate signature [to be generalised in phase 1]
+    participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    assert len(participants) != 0
+    assert bls_verify(
+        pubkey=bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in participants]),
+        message_hash=hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
         signature=attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION),
+        domain=get_domain(state.fork, target_epoch, DOMAIN_ATTESTATION),
     )
-    # Crosslink data root is zero (to be removed in phase 1)
-    assert attestation.data.crosslink_data_root == ZERO_HASH
-    # Apply the attestation
+
+    # Cache pending attestation
     pending_attestation = PendingAttestation(
         data=attestation.data,
         aggregation_bitfield=attestation.aggregation_bitfield,
         custody_bitfield=attestation.custody_bitfield,
         inclusion_slot=state.slot
     )
-    if slot_to_epoch(attestation.data.slot) == get_current_epoch(state):
+    if target_epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
-    elif slot_to_epoch(attestation.data.slot) == get_previous_epoch(state):
+    else:
         state.previous_epoch_attestations.append(pending_attestation)
 ```
 
