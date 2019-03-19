@@ -50,7 +50,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [`slot_to_custody_period`](#slot_to_custody_period)
         - [`get_current_custody_period`](#get_current_custody_period)
         - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
-        - [`verify_signed_challenge_message`](#verify_signed_challenge_message)
         - [`penalize_validator`](#penalize_validator)
     - [Per-slot processing](#per-slot-processing)
         - [Operations](#operations)
@@ -81,12 +80,12 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 | Name                          | Value            | Unit   |
 |-------------------------------|------------------|--------|
-| `SHARD_CHUNK_SIZE`            | 2**5 (= 32)      | bytes  |
-| `SHARD_BLOCK_SIZE`            | 2**14 (= 16,384) | bytes  |
-| `MINOR_REWARD_QUOTIENT`       | 2**8 (= 256)     |        |
-| `MAX_POC_RESPONSE_DEPTH`      | 5                |        |
-| `ZERO_PUBKEY`                 | int_to_bytes48(0)|        |
-| `VALIDATOR_NULL`              | 2**64 - 1        |        |
+| `SHARD_CHUNK_SIZE`            | `2**5` (= 32)       | bytes  |
+| `MIX_CHUNK_SIZE`              | `2**9` (= 512)      | bytes  |
+| `SHARD_BLOCK_SIZE`            | `2**14` (= 16,384)  | bytes  |
+| `MINOR_REWARD_QUOTIENT`       | `2**8` (= 256)      |        |
+| `ZERO_PUBKEY`                 | `int_to_bytes48(0)` |        |
+| `VALIDATOR_NULL`              | `2**64 - 1`         |        |
 
 #### Time parameters
 
@@ -362,7 +361,7 @@ Add member values to the `BeaconBlockBody` structure:
     'branch_challenges': [BranchChallenge],
     'branch_responses': [BranchResponse],
     'subkey_reveals': [SubkeyReveal],
-    'interactive_custody_challenge_initiations': [InteractiveCustodyChallengeInitiation],
+    'interactive_custody_challenges': [InteractiveCustodyChallenge],
     'interactive_custody_challenge_responses': [InteractiveCustodyChallengeResponse],
     'interactive_custody_challenge_continuations': [InteractiveCustodyChallengeContinuation],
 
@@ -406,7 +405,6 @@ Define a `BranchResponse` as follows:
 ```python
 {
     'challenge_id': 'uint64',
-    'responding_to_custody_challenge': 'bool',
     'data': 'bytes32',
     'branch': ['bytes32'],
 }
@@ -437,23 +435,16 @@ Define a `BranchChallengeRecord` as follows:
     'responder_index': 'uint64',
     # Initial data root
     'data_root': 'bytes32',
-    # Initial custody bit
-    'custody_bit': 'bool',
+    # Challenger-provided mix data
+    'challenge_mix': 'bytes',
     # Responder subkey
     'responder_subkey': 'bytes96',
-    # The hash in the PoC tree in the position that we are currently at
-    'current_custody_tree_node': 'bytes32',
-    # The position in the tree, in terms of depth and position offset
-    'depth': 'uint64',
-    'offset': 'uint64',
-    # Max depth of the branch
-    'max_depth': 'uint64',
     # Deadline to respond (as an epoch)
     'deadline': 'uint64',
 }
 ```
 
-### `InteractiveCustodyChallengeInitiation`
+### `InteractiveCustodyChallenge`
 
 ```python
 {
@@ -461,6 +452,7 @@ Define a `BranchChallengeRecord` as follows:
     'responder_index': 'uint64',
     'challenger_index': 'uint64',
     'responder_subkey': 'bytes96',
+    'mix': 'bytes',
     'signature': 'bytes96',
 }
 ```
@@ -470,20 +462,9 @@ Define a `BranchChallengeRecord` as follows:
 ```python
 {
     'challenge_id': 'uint64',
-    'hashes': ['bytes32'],
-    'signature': 'bytes96',
-}
-```
-
-### `InteractiveCustodyChallengeContinuation`
-
-```python
-{
-    'challenge_id': 'uint64',
-    'sub_index': 'uint64',
-    'new_custody_tree_node': 'bytes32',
-    'proof': ['bytes32'],
-    'signature': 'bytes96',
+    'position': 'uint64',
+    'data': ['byte', MIX_CHUNK_SIZE],
+    'branch': ['bytes32']
 }
 ```
 
@@ -517,15 +498,21 @@ def get_custody_challenge_record_by_id(state: BeaconState, id: int) -> BranchCha
     return [c for c in state.branch_challenges if c.challenge_id == id][0]
 ```
 
-### `get_attestation_merkle_depth`
+### `get_attestation_epoch_length`
 
 ```python
-def get_attestation_merkle_depth(attestation: Attestation) -> int:
+def get_attestation_epoch_length(attestation: Attestation) -> int:
     start_epoch = attestation.data.latest_crosslink.epoch
     end_epoch = slot_to_epoch(attestation.data.slot)
+    return end_epoch - start_epoch
+```
+
+### `get_attestation_chunk_count`
+
+```python
+def get_attestation_chunk_acount(attestation:Attestation) -> int:
     chunks_per_slot = SHARD_BLOCK_SIZE // 32
-    chunks = (end_epoch - start_epoch) * EPOCH_LENGTH * chunks_per_slot
-    return log2(next_power_of_two(chunks))
+    return get_attestation_epoch_length(attestation) * EPOCH_LENGTH * chunks_per_slot
 ```
 
 ### `epoch_to_custody_period`
@@ -580,19 +567,6 @@ def verify_custody_subkey_reveal(pubkey: bytes48,
             domain_type=DOMAIN_CUSTODY_SUBKEY,
         )
     )
-```
-
-### `verify_signed_challenge_message`
-
-```python
-def verify_signed_challenge_message(message: Any, pubkey: bytes48) -> bool:
-    return bls_verify(
-        message_hash=signed_root(message),
-        pubkey=pubkey,
-        signature=message.signature,
-        domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE)
-    )
-
 ```
 
 ### `penalize_validator`
@@ -653,7 +627,7 @@ def process_branch_challenge(state: BeaconState,
         c.data_index == challenge.data_index
     ] == []
     # Check validity of depth
-    depth = get_attestation_merkle_depth(challenge.attestation)
+    depth = log2(next_power_of_two(get_attestation_chunk_count(challenge.attestation)))
     assert c.data_index < 2**depth
     # Add new challenge
     state.branch_challenge_records.append(BranchChallengeRecord(
@@ -671,11 +645,11 @@ def process_branch_challenge(state: BeaconState,
 
 Verify that `len(block.body.branch_responses) <= MAX_BRANCH_RESPONSES`.
 
-For each `response` in `block.body.branch_responses`, if `response.responding_to_custody_challenge == False`, run:
+For each `response` in `block.body.branch_responses`, run:
 
 ```python
-def process_branch_exploration_response(state: BeaconState,
-                                        response: BranchResponse) -> None:
+def process_branch_response(state: BeaconState,
+                            response: BranchResponse) -> None:
     challenge = get_branch_challenge_record_by_id(response.challenge_id)
     assert verify_merkle_branch(
         leaf=response.data,
@@ -686,36 +660,10 @@ def process_branch_exploration_response(state: BeaconState,
     )
     # Must wait at least ENTRY_EXIT_DELAY before responding to a branch challenge
     assert get_current_epoch(state) >= challenge.inclusion_epoch + ENTRY_EXIT_DELAY
-    state.branch_challenge_records.pop(challenge)
+    state.branch_challenge_records.remove(challenge)
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state, state.slot)
     state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
-```
-
-If `response.responding_to_custody_challenge == True`, run:
-
-```python
-def process_branch_custody_response(state: BeaconState,
-                                    response: BranchResponse) -> None:
-    challenge = get_custody_challenge_record_by_id(response.challenge_id)
-    responder = state.validator_registry[challenge.responder_index]
-    # Verify we're not too late
-    assert get_current_epoch(state) < responder.withdrawable_epoch
-    # Verify the Merkle branch *of the data tree*
-    assert verify_merkle_branch(
-        leaf=response.data,
-        branch=response.branch,
-        depth=challenge.max_depth,
-        index=challenge.offset,
-        root=challenge.data_root
-    )
-    # Responder wins
-    if hash(challenge.responder_subkey + response.data) == challenge.current_custody_tree_node:
-        penalize_validator(state, challenge.challenger_index, challenge.responder_index)
-    # Challenger wins
-    else:
-        penalize_validator(state, challenge.responder_index, challenge.challenger_index)
-    state.custody_challenge_records.pop(challenge)
 ```
 
 #### Subkey reveals
@@ -742,19 +690,24 @@ In case (ii):
 * Set `state.validator_registry[reveal.validator_index].next_subkey_to_reveal += 1`
 * Set `state.validator_registry[reveal.validator_index].reveal_max_periods_late = max(state.validator_registry[reveal.validator_index].reveal_max_periods_late, get_current_period(state) - reveal.period)`.
 
-#### Interactive custody challenge initiations
+#### Interactive custody challenges
 
-Verify that `len(block.body.interactive_custody_challenge_initiations) <= MAX_INTERACTIVE_CUSTODY_CHALLENGE_INITIATIONS`.
+Verify that `len(block.body.interactive_custody_challenges) <= MAX_INTERACTIVE_CUSTODY_CHALLENGES`.
 
-For each `initiation` in `block.body.interactive_custody_challenge_initiations`, use the following function to process it:
+For each `challenge` in `block.body.interactive_custody_challenges`, use the following function to process it:
 
 ```python
-def process_initiation(state: BeaconState,
-                       initiation: InteractiveCustodyChallengeInitiation) -> None:
-    challenger = state.validator_registry[initiation.challenger_index]
-    responder = state.validator_registry[initiation.responder_index]
+def process_challenge(state: BeaconState,
+                      challenge: InteractiveCustodyChallenge) -> None:
+    challenger = state.validator_registry[challenge.challenger_index]
+    responder = state.validator_registry[challenge.responder_index]
     # Verify the signature
-    assert verify_signed_challenge_message(initiation, challenger.pubkey)
+    assert bls_verify(
+        message_hash=signed_root(challenge),
+        pubkey=challenger.pubkey,
+        signature=challenge.signature,
+        domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE)
+    )
     # Verify the attestation
     assert verify_slashable_attestation(initiation.attestation, state)
     # Check that the responder actually participated in the attestation
@@ -774,18 +727,19 @@ def process_initiation(state: BeaconState,
     # Verify that the attestation is still eligible for challenging
     min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.reveal_max_periods_late)
     assert min_challengeable_epoch <= slot_to_epoch(initiation.attestation.data.slot) 
+    # Verify the mix's length and that its last bit is opposite the attested bit
+    mix_length = get_attestation_chunk_count(challenge.attestation) * SHARD_CHUNK_SIZE // MIX_CHUNK_SIZE
+    verify_bitfield(challenge.mix, mix_length)
+    attested_bit = get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index))
+    assert attested_bit != get_bitfield_bit(challenge.mix, mix_length-1)
     # Create a new challenge object
     state.branch_challenge_records.append(InteractiveCustodyChallengeRecord(
         challenge_id=state.next_branch_challenge_id,
-        challenger_index=initiation.challenger_index,
-        responder_index=initiation.responder_index,
-        data_root=attestation.custody_commitment,
-        custody_bit=get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index)),
+        challenger_index=challenge.challenger_index,
+        responder_index=challenge.responder_index,
+        data_root=challenge.attestation.custody_commitment,
+        challenge_mix=,challenge.mix,
         responder_subkey=responder_subkey,
-        current_custody_tree_node=ZERO_HASH,
-        depth=0,
-        offset=0,
-        max_depth=get_attestation_data_merkle_depth(initiation.attestation.data),
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
     ))
     state.next_branch_challenge_id += 1
@@ -795,7 +749,7 @@ def process_initiation(state: BeaconState,
 
 #### Interactive custody challenge responses
 
-A response provides 32 hashes that are under current known proof of custody tree node. Note that at the beginning the tree node is just one bit of the custody root, so we ask the responder to sign to commit to the top 5 levels of the tree and therefore the root hash; at all other stages in the game responses are self-verifying.
+A response proves that a challenger's mix is invalid by pointing to one index where the mix appears to have been incorrectly constructed.
 
 Verify that `len(block.body.interactive_custody_challenge_responses) <= MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`.
 
@@ -806,60 +760,26 @@ def process_response(state: BeaconState,
                      response: InteractiveCustodyChallengeResponse) -> None:
     challenge = get_custody_challenge_record_by_id(state, response.challenge_id)
     responder = state.validator_registry[challenge.responder_index]
-    # Check that the right number of hashes was provided
-    expected_depth = min(challenge.max_depth - challenge.depth, MAX_POC_RESPONSE_DEPTH)
-    assert 2**expected_depth == len(response.hashes)
-    # Must make some progress!
-    assert expected_depth > 0
-    # Check the hashes match the previously provided root
-    root = merkle_root(response.hashes)
-    # If this is the first response check the bit and the signature and set the root
-    if challenge.depth == 0:
-        assert get_bitfield_bit(root, 0) == challenge.custody_bit
-        assert verify_signed_challenge_message(response, responder.pubkey)
-        challenge.current_custody_tree_node = root
-    # Otherwise just check the response against the root
-    else:
-        assert root == challenge_data.current_custody_tree_node
-    # Update challenge data
-    challenge.deadline=FAR_FUTURE_EPOCH
-    responder.withdrawable_epoch = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
-```
-
-#### Interactive custody challenge continuations
-
-Once a response provides 32 hashes, the challenger has the right to choose any one of them that they feel is constructed incorrectly to continue the game. Note that eventually, the game will get to the point where the `new_custody_tree_node` is a leaf node.
-
-Verify that `len(block.body.interactive_custody_challenge_continuations) <= MAX_INTERACTIVE_CUSTODY_CHALLENGE_CONTINUATIONS`.
-
-For each `continuation` in `block.body.interactive_custody_challenge_continuations`, use the following function to process it:
-
-```python
-def process_continuation(state: BeaconState,
-                         continuation: InteractiveCustodyChallengeContinuation) -> None:
-    challenge = get_custody_challenge_record_by_id(state, continuation.challenge_id)
-    challenger = state.validator_registry[challenge.challenger_index]
-    responder = state.validator_registry[challenge.responder_index]
-    expected_depth = min(challenge_data.max_depth - challenge_data.depth, MAX_POC_RESPONSE_DEPTH)
-    # Verify we're not too late
-    assert get_current_epoch(state) < responder.withdrawable_epoch
-    # Verify the Merkle branch (the previous custody response provided the next level of hashes so the
-    # challenger has the info to make any Merkle branch)
+    # Check that the position is valid
+    assert response.position < len(challenge.mix)
+    # Check that the provided data is part of the attested data
     assert verify_merkle_branch(
-        leaf=new_custody_tree_node,
-        branch=continuation.proof,
-        depth=expected_depth,
-        index=sub_index,
-        root=challenge_data.current_custody_tree_node
+        leaf=hash_tree_root(response.data),
+        branch=response.branch,
+        depth=log2(next_power_of_two(len(challenge.mix))),
+        index=response.position,
+        root=challenge.data_root
     )
-    # Verify signature
-    assert verify_signed_challenge_message(continuation, challenger.pubkey)
-    # Update the challenge data
-    challenge.current_custody_tree_node = continuation.new_custody_tree_node
-    challenge.depth += expected_depth
-    challenge.deadline = get_current_epoch(state) + MAX_POC_RESPONSE_DEPTH
-    responder.withdrawable_epoch = FAR_FUTURE_EPOCH
-    challenge.offset = challenge_data.offset * 2**expected_depth + sub_index
+    # Check the mix bit, assert that the response did identify an invalid position
+    # in the challenge
+    mix_bit = get_bitfield_bit(hash(challenge.responder_subkey + response.data), 0)
+    prev_bit = 0 if response.position == 0 else get_bitfield_bit(challenge.mix, response.position-1)
+    next_bit = get_bitfield_bit(challenge.mix, response.position)
+    assert prev_bit ^ mix_bit != next_bit
+    assert expected_depth > 0
+    # Resolve the challenge in the responder's favor
+    penalize_validator(state, challenge.challenger_index, challenge.responder_index)
+    state.custody_challenge_records.remove(challenge)
 ```
 
 ## Per-epoch processing
