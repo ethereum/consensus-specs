@@ -13,6 +13,10 @@ from tests.phase0.helpers import (
 )
 
 
+# mark entire file as 'voluntary_exits'
+pytestmark = pytest.mark.voluntary_exits
+
+
 def test_success(state, pub_to_priv):
     pre_state = deepcopy(state)
     #

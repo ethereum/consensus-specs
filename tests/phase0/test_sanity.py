@@ -196,6 +196,7 @@ def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
     )
 
     pre_state.latest_eth1_data.deposit_root = root
+    pre_state.latest_eth1_data.deposit_count = len(test_deposit_data_leaves)
     post_state = deepcopy(pre_state)
     block = build_empty_block_for_next_slot(post_state)
     block.body.deposits.append(deposit)
@@ -233,6 +234,7 @@ def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
     )
 
     pre_state.latest_eth1_data.deposit_root = root
+    pre_state.latest_eth1_data.deposit_count = len(test_deposit_data_leaves)
     block = build_empty_block_for_next_slot(pre_state)
     block.body.deposits.append(deposit)
 
