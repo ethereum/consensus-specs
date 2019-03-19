@@ -64,9 +64,7 @@
         - [`split`](#split)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shuffling`](#get_shuffling)
-        - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
-        - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_state_root`](#get_state_root)
@@ -823,20 +821,6 @@ def get_shuffling(seed: Bytes32,
 
 **Note**: this definition and the next few definitions make heavy use of repetitive computing. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
-### `get_previous_epoch_committee_count`
-
-```python
-def get_previous_epoch_committee_count(state: BeaconState) -> int:
-    """
-    Return the number of committees in the previous epoch of the given ``state``.
-    """
-    previous_active_validators = get_active_validator_indices(
-        state.validator_registry,
-        state.previous_shuffling_epoch,
-    )
-    return get_epoch_committee_count(len(previous_active_validators))
-```
-
 ### `get_current_epoch_committee_count`
 
 ```python
@@ -849,20 +833,6 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
         get_current_epoch(state),
     )
     return get_epoch_committee_count(len(current_active_validators))
-```
-
-### `get_next_epoch_committee_count`
-
-```python
-def get_next_epoch_committee_count(state: BeaconState) -> int:
-    """
-    Return the number of committees in the next epoch of the given ``state``.
-    """
-    next_active_validators = get_active_validator_indices(
-        state.validator_registry,
-        get_current_epoch(state) + 1,
-    )
-    return get_epoch_committee_count(len(next_active_validators))
 ```
 
 ### `get_crosslink_committees_at_slot`
@@ -895,10 +865,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
             state.current_shuffling_start_shard - EPOCH_LENGTH * committees_per_epoch
         ) % SHARD_COUNT
     elif epoch == next_epoch:
-        current_epoch_committees = get_epoch_committee_count(get_active_validator_indices(
-            state.validator_registry,
-            current_epoch,
-        ))
+        current_epoch_committees = get_current_epoch_committee_count(state)
         shuffling_start_shard = (
             state.current_shuffling_start_shard + EPOCH_LENGTH * current_epoch_committees
         ) % SHARD_COUNT
