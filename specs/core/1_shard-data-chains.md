@@ -102,8 +102,8 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `MAX_BRANCH_CHALLENGES`                            | 2**2 (= 4)    |
 | `MAX_BRANCH_RESPONSES`                             | 2**4 (= 16)   |
 | `MAX_EARLY_SUBKEY_REVEALS`                         | 2**4 (= 16)   |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_CHS`    | 2             |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`      | 16            |
+| `MAX_INTERACTIVE_CUSTODY_CHALLENGES`               | 2**1 (= 2)    |
+| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`      | 2**4 (= 16)   |
 
 #### Signature domains
 
