@@ -916,7 +916,8 @@ def get_crosslink_committees_at_slot(state: BeaconState,
 
     indices = get_active_validator_indices(state.validator_registry, shuffling_epoch)
     committee_count = get_epoch_committee_count(len(indices))
-    committees_per_slot = committee_count // EPOCH_LENGTH
+    committees_per_slot = committee_count // SLOTS_PER_EPOCH
+    offset = slot % SLOTS_PER_EPOCH
     return [
         (
             compute_committee(indices, seed, committees_per_slot * offset + i, committee_count)
