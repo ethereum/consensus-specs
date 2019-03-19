@@ -40,11 +40,11 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
                 - [Slot](#slot-1)
                 - [Shard](#shard)
                 - [Beacon block root](#beacon-block-root)
-                - [Epoch boundary root](#epoch-boundary-root)
+                - [Target root](#target-root)
                 - [Crosslink data root](#crosslink-data-root)
                 - [Latest crosslink](#latest-crosslink)
-                - [Justified epoch](#justified-epoch)
-                - [Justified block root](#justified-block-root)
+                - [Source epoch](#source-epoch)
+                - [Source root](#source-root)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bitfield](#aggregation-bitfield)
@@ -101,8 +101,7 @@ In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW 
 To submit a deposit:
 
 * Pack the validator's [initialization parameters](#initialization) into `deposit_input`, a [`DepositInput`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#depositinput) SSZ object.
-* Set `deposit_input.proof_of_possession = EMPTY_SIGNATURE`.
-* Let `proof_of_possession` be the result of `bls_sign` of the `hash_tree_root(deposit_input)` with `domain=DOMAIN_DEPOSIT`.
+* Let `proof_of_possession` be the result of `bls_sign` of the `signed_root(deposit_input)` with `domain=DOMAIN_DEPOSIT`.
 * Set `deposit_input.proof_of_possession = proof_of_possession`.
 * Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_DEPOSIT_AMOUNT`.
 * Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `deposit` along with `serialize(deposit_input)` as the singular `bytes` input along with a deposit `amount` in Gwei.
@@ -121,11 +120,12 @@ Once a validator has been processed and added to the beacon state's `validator_r
 
 In normal operation, the validator is quickly activated at which point the validator is added to the shuffling and begins validation after an additional `ACTIVATION_EXIT_DELAY` epochs (25.6 minutes).
 
-The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
+The function [`is_active_validator`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given shuffling epoch. Note that the `BeaconState` contains a field `current_shuffling_epoch` which dictates from which epoch the current active validators are taken. Usage is as follows:
 
 ```python
+shuffling_epoch = state.current_shuffling_epoch
 validator = state.validator_registry[validator_index]
-is_active = is_active_validator(validator, epoch)
+is_active = is_active_validator(validator, shuffling_epoch)
 ```
 
 Once a validator is activated, the validator is assigned [responsibilities](#beacon-chain-responsibilities) until exited.
@@ -138,7 +138,7 @@ A validator has two primary responsibilities to the beacon chain -- [proposing b
 
 ### Block proposal
 
-A validator is expected to propose a [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state, slot)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beacon-chain-state-transition-function).
+A validator is expected to propose a [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state, slot)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
 There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (eg. at 312500 validators = 10 million ETH, that's once per ~3 weeks).
 
@@ -152,13 +152,13 @@ _Note:_ there might be "skipped" slots between the `parent` and `block`. These s
 
 ##### Parent root
 
-Set `block.parent_root = hash_tree_root(parent)`.
+Set `block.previous_block_root = hash_tree_root(parent)`.
 
 ##### State root
 
 Set `block.state_root = hash_tree_root(state)` of the resulting `state` of the `parent -> block` state transition.
 
-_Note_: To calculate `state_root`, the validator should first run the state transition function on an unsigned `block` containing a stub for the `state_root`. It is useful to be able to run a state transition function that does _not_ validate signatures for this purpose.
+_Note_: To calculate `state_root`, the validator should first run the state transition function on an unsigned `block` containing a stub for the `state_root`. It is useful to be able to run a state transition function that does _not_ validate signatures or state root for this purpose.
 
 ##### Randao reveal
 
@@ -166,8 +166,8 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined a
 
 ```python
 epoch_signature = bls_sign(
-    privkey=validator.privkey,  # privkey store locally, not in state
-    message_hash=int_to_bytes32(slot_to_epoch(block.slot)),
+    privkey=validator.privkey,  # privkey stored locally, not in state
+    message_hash=hash_tree_root(slot_to_epoch(block.slot)),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -194,23 +194,16 @@ epoch_signature = bls_sign(
 
 ##### Signature
 
-Set `block.signature = signed_proposal_data` where `signed_proposal_data` is defined as:
+Set `block.signature = block_signature` where `block_signature` is defined as:
 
 ```python
-proposal_data = ProposalSignedData(
-    slot=slot,
-    shard=BEACON_CHAIN_SHARD_NUMBER,
-    block_root=hash_tree_root(block),  # where `block.sigature == EMPTY_SIGNATURE
-)
-proposal_root = hash_tree_root(proposal_data)
-
-signed_proposal_data = bls_sign(
+block_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message_hash=proposal_root,
+    message_hash=signed_root(block),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
-        domain_type=DOMAIN_PROPOSAL,
+        domain_type=DOMAIN_BEACON_BLOCK,
     )
 )
 ```
@@ -227,11 +220,13 @@ Up to `MAX_ATTESTER_SLASHINGS` [`AttesterSlashing`](https://github.com/ethereum/
 
 ##### Attestations
 
-Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to create aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
+Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to gather aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
 
 ##### Deposits
 
 Up to `MAX_DEPOSITS` [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) objects can be included in the `block`. These deposits are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposits-1).
+
+The `proof` for each deposit must be constructed against the deposit root contained in `state.latest_eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `latest_eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
 ##### Voluntary exits
 
@@ -247,9 +242,12 @@ A validator should create and broadcast the attestation halfway through the `slo
 
 First the validator should construct `attestation_data`, an [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) object based upon the state at the assigned slot.
 
+* Let `head_block` be the result of running the fork choice during the assigned slot.
+* Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot.
+
 ##### Slot
 
-Set `attestation_data.slot = slot` where `slot` is the current slot of which the validator is a member of a committee.
+Set `attestation_data.slot = head_state.slot`.
 
 ##### Shard
 
@@ -257,15 +255,15 @@ Set `attestation_data.shard = shard` where `shard` is the shard associated with 
 
 ##### Beacon block root
 
-Set `attestation_data.beacon_block_root = hash_tree_root(head)` where `head` is the validator's view of the `head` block of the beacon chain during `slot`.
+Set `attestation_data.beacon_block_root = hash_tree_root(head_block)`.
 
-##### Epoch boundary root
+##### Target root
 
-Set `attestation_data.epoch_boundary_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary in the chain defined by `head` -- i.e. the `BeaconBlock` where `block.slot == get_epoch_start_slot(slot_to_epoch(head.slot))`.
+Set `attestation_data.target_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary.
 
 _Note:_ This can be looked up in the state using:
-* Let `epoch_start_slot = get_epoch_start_slot(slot_to_epoch(head.slot))`.
-* Set `epoch_boundary_root = hash_tree_root(head) if epoch_start_slot == head.slot else get_block_root(state, epoch_start_slot)`.
+* Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
+* Set `epoch_boundary = head if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
 
 ##### Crosslink data root
 
@@ -275,17 +273,15 @@ _Note:_ This is a stub for phase 0.
 
 ##### Latest crosslink
 
-Set `attestation_data.latest_crosslink = state.latest_crosslinks[shard]` where `state` is the beacon state at `head` and `shard` is the validator's assigned shard.
+Set `attestation_data.previous_crosslink = head_state.latest_crosslinks[shard]`.
 
-##### Justified epoch
+##### Source epoch
 
-Set `attestation_data.justified_epoch = state.justified_epoch` where `state` is the beacon state at `head`.
+Set `attestation_data.source_epoch = head_state.justified_epoch`.
 
-##### Justified block root
+##### Source root
 
-Set `attestation_data.justified_block_root = hash_tree_root(justified_block)` where `justified_block` is the block at the slot `get_epoch_start_slot(state.justified_epoch)` in the chain defined by `head`.
-
-_Note:_ This can be looked up in the state using `get_block_root(state, get_epoch_start_slot(state.justified_epoch))`.
+Set `attestation_data.source_root = head_state.current_justified_root`.
 
 #### Construct attestation
 
@@ -320,11 +316,11 @@ attestation_data_and_custody_bit = AttestationDataAndCustodyBit(
     data=attestation.data,
     custody_bit=0b0,
 )
-attestation_message_to_sign = hash_tree_root(attestation_data_and_custody_bit)
+attestation_message = hash_tree_root(attestation_data_and_custody_bit)
 
 signed_attestation_data = bls_sign(
-    privkey=validator.privkey,  # privkey store locally, not in state
-    message_hash=attestation_message_to_sign,
+    privkey=validator.privkey,  # privkey stored locally, not in state
+    message_hash=attestation_message,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
         epoch=slot_to_epoch(attestation_data.slot),
@@ -402,12 +398,12 @@ _Note_: Signed data must be within a sequential `Fork` context to conflict. Mess
 
 ### Proposer slashing
 
-To avoid "proposer slashings", a validator must not sign two conflicting [`ProposalSignedData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposalsigneddata) where conflicting is defined as having the same `slot` and `shard` but a different `block_root`. In phase 0, proposals are only made for the beacon chain (`shard == BEACON_CHAIN_SHARD_NUMBER`).
+To avoid "proposer slashings", a validator must not sign two conflicting [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposalsigneddata) where conflicting is defined as two distinct blocks within the same epoch.
 
-_In phase 0, as long as the validator does not sign two different beacon chain proposals for the same slot, the validator is safe against proposer slashings._
+_In phase 0, as long as the validator does not sign two different beacon blocks for the same epoch, the validator is safe against proposer slashings._
 
 Specifically, when signing an `BeaconBlock`, a validator should perform the following steps in the following order:
-1. Save a record to hard disk that an beacon block has been signed for the `slot=slot` and `shard=BEACON_CHAIN_SHARD_NUMBER`.
+1. Save a record to hard disk that an beacon block has been signed for the `epoch=slot_to_epoch(block.slot)`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online the hard disk has the record of the _potentially_ signed/broadcast block and can effectively avoid slashing.
@@ -417,7 +413,7 @@ If the software crashes at some point within this routine, then when the validat
 To avoid "attester slashings", a validator must not sign two conflicting [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#is_surround_vote).
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
-1. Save a record to hard disk that an attestation has been signed for source -- `attestation_data.justified_epoch` -- and target -- `slot_to_epoch(attestation_data.slot)`.
+1. Save a record to hard disk that an attestation has been signed for source -- `attestation_data.source_epoch` -- and target -- `slot_to_epoch(attestation_data.slot)`.
 2. Generate and broadcast attestation.
 
 If the software crashes at some point within this routine, then when the validator comes back online the hard disk has the record of the _potentially_ signed/broadcast attestation and can effectively avoid slashing.
