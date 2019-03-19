@@ -2472,6 +2472,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= exit.epoch
     # Must have been in the validator set long enough
+    assert validator.activation_epoch != FAR_FUTURE_EPOCH
     assert get_current_epoch(state) - validator.activation_epoch >= PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
     assert bls_verify(
