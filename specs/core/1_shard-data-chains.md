@@ -155,7 +155,7 @@ def get_shuffled_committee(state: BeaconState,
         shard * committee_count + index + 1,
     )
     return [
-        active_validator_indices[get_permuted_index(i, length, seed)]
+        active_validator_indices[get_permuted_index(index, length, seed)]
         for i in range(start_offset, end_offset)
     ]
 ```
@@ -185,10 +185,7 @@ def get_persistent_committee(state: BeaconState,
     later_committee = get_shuffled_committee(state, shard, later_start_epoch, index, committee_count)
 
     def get_switchover_epoch(index):
-        return (
-            bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) %
-            PERSISTENT_COMMITTEE_PERIOD
-        )
+        return bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) % PERSISTENT_COMMITTEE_PERIOD
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
