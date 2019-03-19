@@ -212,25 +212,25 @@ block_signature = bls_sign(
 
 ##### Proposer slashings
 
-Up to `MAX_PROPOSER_SLASHINGS` [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposerslashing) objects can be included in the `block`. The proposer slashings must satisfy the verification conditions found in [proposer slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposer-slashings-1). The validator receives a small "whistleblower" reward for each proposer slashing found and included.
+Up to `MAX_PROPOSER_SLASHINGS` [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposerslashing) objects can be included in the `block`. The proposer slashings must satisfy the verification conditions found in [proposer slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposer-slashings). The validator receives a small "whistleblower" reward for each proposer slashing found and included.
 
 ##### Attester slashings
 
-Up to `MAX_ATTESTER_SLASHINGS` [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attesterslashing) objects can be included in the `block`. The attester slashings must satisfy the verification conditions found in [Attester slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attester-slashings-1). The validator receives a small "whistleblower" reward for each attester slashing found and included.
+Up to `MAX_ATTESTER_SLASHINGS` [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attesterslashing) objects can be included in the `block`. The attester slashings must satisfy the verification conditions found in [Attester slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attester-slashings). The validator receives a small "whistleblower" reward for each attester slashing found and included.
 
 ##### Attestations
 
-Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to gather aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
+Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations). To maximize profit, the validator should attempt to gather aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
 
 ##### Deposits
 
-Up to `MAX_DEPOSITS` [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) objects can be included in the `block`. These deposits are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposits-1).
+If there are any unprocessed deposits for the existing `state.latest_eth1_data` (i.e. `state.latest_eth1_data.deposit_count > state.deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.  These [`deposits`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposits).
 
 The `proof` for each deposit must be constructed against the deposit root contained in `state.latest_eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `latest_eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
 ##### Voluntary exits
 
-Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#exits-1).
+Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntary-exits).
 
 ### Attestations
 
