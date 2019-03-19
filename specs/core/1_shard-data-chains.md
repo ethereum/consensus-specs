@@ -15,7 +15,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [Constants](#constants)
             - [Misc](#misc)
             - [Time parameters](#time-parameters)
-            - [Max operations per block](#max-operations-per-block)
+            - [Max transactions per block](#max-transactions-per-block)
             - [Signature domains](#signature-domains)
 - [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
     - [Helper functions](#helper-functions)
@@ -38,23 +38,25 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [`BranchResponse`](#branchresponse)
         - [`BranchChallengeRecord`](#branchchallengerecord)
         - [`InteractiveCustodyChallengeRecord`](#interactivecustodychallengerecord)
+        - [`InteractiveCustodyChallenge`](#interactivecustodychallenge)
         - [`InteractiveCustodyChallengeResponse`](#interactivecustodychallengeresponse)
         - [`SubkeyReveal`](#subkeyreveal)
     - [Helpers](#helpers)
         - [`get_branch_challenge_record_by_id`](#get_branch_challenge_record_by_id)
         - [`get_custody_challenge_record_by_id`](#get_custody_challenge_record_by_id)
-        - [`get_attestation_merkle_depth`](#get_attestation_merkle_depth)
+        - [`get_attestation_epoch_length`](#get_attestation_epoch_length)
+        - [`get_attestation_chunk_count`](#get_attestation_chunk_count)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
         - [`slot_to_custody_period`](#slot_to_custody_period)
         - [`get_current_custody_period`](#get_current_custody_period)
         - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
         - [`penalize_validator`](#penalize_validator)
-    - [Per-slot processing](#per-slot-processing)
-        - [Operations](#operations)
+    - [Per-block processing](#per-block-processing)
+        - [Transactions](#transactions)
             - [Branch challenges](#branch-challenges)
             - [Branch responses](#branch-responses)
             - [Subkey reveals](#subkey-reveals)
-            - [Interactive custody challenge initiations](#interactive-custody-challenge-initiations)
+            - [Interactive custody challenges](#interactive-custody-challenges)
             - [Interactive custody challenge responses](#interactive-custody-challenge-responses)
     - [Per-epoch processing](#per-epoch-processing)
     - [One-time phase 1 initiation transition](#one-time-phase-1-initiation-transition)
@@ -94,7 +96,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
 | `CHALLENGE_RESPONSE_DEADLINE` | 2**14 (= 16,384) | epochs | 73 days       |
 
-#### Max operations per block
+#### Max transactions per block
 
 | Name                                               | Value         |
 |----------------------------------------------------|---------------|
@@ -324,7 +326,6 @@ def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes3
 
 The `shard_chain_commitment` is only valid if it equals `compute_commitment(headers, bodies)`.
 
-
 ### Shard block fork choice rule
 
 The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
@@ -335,14 +336,14 @@ The fork choice rule for any shard is LMD GHOST using the shard chain attestatio
 
 ### `Validator`
 
-Add member values to the end of the `Validator` object:
+Add fields to the end of the `Validator` container:
 
 ```python
     'next_subkey_to_reveal': 'uint64',
     'reveal_max_periods_late': 'uint64',
 ```
 
-And the initializers:
+Initialized to the following:
 
 ```python
     'next_subkey_to_reveal': get_current_custody_period(state),
@@ -351,7 +352,7 @@ And the initializers:
 
 ### `BeaconBlockBody`
 
-Add member values to the `BeaconBlockBody` structure:
+Add fields to the end of the `BeaconBlockBody` container:
 
 ```python
     'branch_challenges': [BranchChallenge],
@@ -361,17 +362,9 @@ Add member values to the `BeaconBlockBody` structure:
     'interactive_custody_challenge_responses': [InteractiveCustodyChallengeResponse],
 ```
 
-And initialize to the following:
-
-```python
-    'branch_challenges': [],
-    'branch_responses': [],
-    'subkey_reveals': [],
-```
-
 ### `BeaconState`
 
-Add member values to the `BeaconState` structure:
+Add fields to the end of the `BeaconState` container:
 
 ```python
     'branch_challenge_records': [BranchChallengeRecord],
@@ -380,9 +373,16 @@ Add member values to the `BeaconState` structure:
     'next_custody_challenge_id': 'uint64',
 ```
 
-### `BranchChallenge`
+Initialized to the following:
 
-Define a `BranchChallenge` as follows:
+```python
+    'branch_challenge_records': [],
+    'next_branch_challenge_id': 0,
+    'custody_challenge_records': [],
+    'next_custody_challenge_id': 0,
+``` 
+
+### `BranchChallenge`
 
 ```python
 {
@@ -394,8 +394,6 @@ Define a `BranchChallenge` as follows:
 
 ### `BranchResponse`
 
-Define a `BranchResponse` as follows:
-
 ```python
 {
     'challenge_id': 'uint64',
@@ -405,8 +403,6 @@ Define a `BranchResponse` as follows:
 ```
 
 ### `BranchChallengeRecord`
-
-Define a `BranchChallengeRecord` as follows:
 
 ```python
 {
@@ -463,8 +459,6 @@ Define a `BranchChallengeRecord` as follows:
 ```
 
 ### `SubkeyReveal`
-
-Define a `SubkeyReveal` as follows:
 
 ```python
 {
@@ -593,11 +587,11 @@ def penalize_validator(state: BeaconState, index: ValidatorIndex, whistleblower_
 
 The only change is that this introduces the possibility of a penalization where the "whistleblower" that takes credit is NOT the block proposer.
 
-## Per-slot processing
+## Per-block processing
 
-### Operations
+### Transactions
 
-Add the following operations to the per-slot processing, in order the given below and _after_ all other operations (specifically, right after exits).
+Add the following transactions to the per-block processing, in order the given below and after all other transactions in phase 0.
 
 #### Branch challenges
 
@@ -703,24 +697,24 @@ def process_challenge(state: BeaconState,
         domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE)
     )
     # Verify the attestation
-    assert verify_slashable_attestation(initiation.attestation, state)
+    assert verify_slashable_attestation(challenge.attestation, state)
     # Check that the responder actually participated in the attestation
-    assert initiation.responder_index in attestation.validator_indices
+    assert challenge.responder_index in attestation.validator_indices
     # Any validator can be a challenger or responder of max 1 challenge at a time
     for c in state.custody_challenge_records:
-        assert c.challenger_index != initiation.challenger_index
-        assert c.responder_index != initiation.responder_index
+        assert c.challenger_index != challenge.challenger_index
+        assert c.responder_index != challenge.responder_index
     # Can't challenge if you've been penalized
     assert challenger.penalized_epoch == FAR_FUTURE_EPOCH
     # Make sure the revealed subkey is valid
     assert verify_custody_subkey_reveal(
         pubkey=state.validator_registry[responder_index].pubkey,
-        subkey=initiation.responder_subkey,
+        subkey=challenge.responder_subkey,
         period=slot_to_custody_period(attestation.data.slot)
     )
     # Verify that the attestation is still eligible for challenging
     min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.reveal_max_periods_late)
-    assert min_challengeable_epoch <= slot_to_epoch(initiation.attestation.data.slot) 
+    assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
     # Verify the mix's length and that its last bit is opposite the attested bit
     mix_length = get_attestation_chunk_count(challenge.attestation) * SHARD_CHUNK_SIZE // MIX_CHUNK_SIZE
     verify_bitfield(challenge.mix, mix_length)
@@ -732,7 +726,7 @@ def process_challenge(state: BeaconState,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
         data_root=challenge.attestation.custody_commitment,
-        challenge_mix=,challenge.mix,
+        challenge_mix=challenge.mix,
         responder_subkey=responder_subkey,
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
     ))
