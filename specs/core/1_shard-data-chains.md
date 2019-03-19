@@ -50,7 +50,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [`slot_to_custody_period`](#slot_to_custody_period)
         - [`get_current_custody_period`](#get_current_custody_period)
         - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
-        - [`penalize_validator`](#penalize_validator)
+        - [`slash_validator`](#slash_validator)
     - [Per-block processing](#per-block-processing)
         - [Transactions](#transactions)
             - [Branch challenges](#branch-challenges)
@@ -343,13 +343,6 @@ Add fields to the end of the `Validator` container:
     'reveal_max_periods_late': 'uint64',
 ```
 
-Initialized to the following:
-
-```python
-    'next_subkey_to_reveal': get_current_custody_period(state),
-    'reveal_max_periods_late': 0,
-```
-
 ### `BeaconBlockBody`
 
 Add fields to the end of the `BeaconBlockBody` container:
@@ -372,15 +365,6 @@ Add fields to the end of the `BeaconState` container:
     'custody_challenge_records': [InteractiveCustodyChallengeRecord],
     'next_custody_challenge_id': 'uint64',
 ```
-
-Initialized to the following:
-
-```python
-    'branch_challenge_records': [],
-    'next_branch_challenge_id': 0,
-    'custody_challenge_records': [],
-    'next_custody_challenge_id': 0,
-``` 
 
 ### `BranchChallenge`
 
@@ -557,12 +541,12 @@ def verify_custody_subkey_reveal(pubkey: bytes48,
     )
 ```
 
-### `penalize_validator`
+### `slash_validator`
 
-Change the definition of `penalize_validator` as follows:
+Change the definition of `slash_validator` as follows:
 
 ```python
-def penalize_validator(state: BeaconState, index: ValidatorIndex, whistleblower_index=None:ValidatorIndex) -> None:
+def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_index=None:ValidatorIndex) -> None:
     """
     Penalize the validator of the given ``index``.
     Note that this function mutates ``state``.
@@ -669,7 +653,7 @@ For each `reveal` in `block.body.early_subkey_reveals`:
 In case (i):
 
 * Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state)`.
-* Run `penalize_validator(state, reveal.validator_index, reveal.revealer_index)`.
+* Run `slash_validator(state, reveal.validator_index, reveal.revealer_index)`.
 * Set `state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`
 
 In case (ii):
@@ -766,7 +750,7 @@ def process_response(state: BeaconState,
     assert prev_bit ^ mix_bit != next_bit
     assert expected_depth > 0
     # Resolve the challenge in the responder's favor
-    penalize_validator(state, challenge.challenger_index, challenge.responder_index)
+    slash_validator(state, challenge.challenger_index, challenge.responder_index)
     state.custody_challenge_records.remove(challenge)
 ```
 
@@ -782,13 +766,13 @@ def process_challenge_absences(state: BeaconState) -> None:
     """
     for c in state.branch_challenge_records:
         if get_current_epoch(state) > c.deadline:
-            penalize_validator(state, c.responder_index, c.challenger_index)
+            slash_validator(state, c.responder_index, c.challenger_index)
     
     for c in state.custody_challenge_records:
         if get_current_epoch(state) > c.deadline:
-            penalize_validator(state, c.responder_index, c.challenger_index)
+            slash_validator(state, c.responder_index, c.challenger_index)
         if get_current_epoch(state) > state.validator_registry[c.responder_index].withdrawable_epoch:
-            penalize_validator(state, c.challenger_index, c.responder_index)
+            slash_validator(state, c.challenger_index, c.responder_index)
 ```
 
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
