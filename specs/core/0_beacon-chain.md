@@ -2315,8 +2315,8 @@ def process_proposer_slashing(state: BeaconState,
     assert slot_to_epoch(proposer_slashing.header_1.slot) == slot_to_epoch(proposer_slashing.header_2.slot)
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
-    # Proposer is not yet slashed
-    assert proposer.slashed is False
+    # Proposer is active and not already slashed
+    assert is_active_validator(proposer) and proposer.slashed is False
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
         assert bls_verify(
@@ -2355,6 +2355,7 @@ def process_attester_slashing(state: BeaconState,
         index for index in attestation1.validator_indices
         if (
             index in attestation2.validator_indices and
+            is_active_validator(state.validator_registry[index]) and
             state.validator_registry[index].slashed is False
         )
     ]
