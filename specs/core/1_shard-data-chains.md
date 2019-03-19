@@ -38,7 +38,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [`BranchResponse`](#branchresponse)
         - [`BranchChallengeRecord`](#branchchallengerecord)
         - [`InteractiveCustodyChallengeRecord`](#interactivecustodychallengerecord)
-        - [`InteractiveCustodyChallengeInitiation`](#interactivecustodychallengeinitiation)
         - [`InteractiveCustodyChallengeResponse`](#interactivecustodychallengeresponse)
         - [`SubkeyReveal`](#subkeyreveal)
     - [Helpers](#helpers)
