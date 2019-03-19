@@ -59,6 +59,7 @@
         - [`get_current_epoch`](#get_current_epoch)
         - [`get_epoch_start_slot`](#get_epoch_start_slot)
         - [`is_active_validator`](#is_active_validator)
+        - [`is_slashable_validator`](#is_slashable_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`get_permuted_index`](#get_permuted_index)
         - [`split`](#split)
@@ -735,6 +736,18 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     Check if ``validator`` is active.
     """
     return validator.activation_epoch <= epoch < validator.exit_epoch
+```
+
+### `is_slashable_validator`
+```python
+def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
+    """
+    Check if ``validator`` is slashable.
+    """
+    return (
+        validator.activation_epoch <= epoch < validator.withdrawable_epoch and
+        validator.slashed is False
+    )
 ```
 
 ### `get_active_validator_indices`
@@ -2315,8 +2328,8 @@ def process_proposer_slashing(state: BeaconState,
     assert slot_to_epoch(proposer_slashing.header_1.slot) == slot_to_epoch(proposer_slashing.header_2.slot)
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
-    # Proposer is active and not already slashed
-    assert is_active_validator(proposer) and proposer.slashed is False
+    # Check proposer is slashable
+    assert is_slashable_validator(proposer)
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
         assert bls_verify(
@@ -2355,8 +2368,7 @@ def process_attester_slashing(state: BeaconState,
         index for index in attestation1.validator_indices
         if (
             index in attestation2.validator_indices and
-            is_active_validator(state.validator_registry[index]) and
-            state.validator_registry[index].slashed is False
+            is_slashable_validator(state.validator_registry[index])
         )
     ]
     assert len(slashable_indices) >= 1
