@@ -13,6 +13,7 @@ from build.phase0.spec import (
     DepositInput,
     DepositData,
     Eth1Data,
+    VoluntaryExit,
     # functions
     get_block_root,
     get_current_epoch,
@@ -82,6 +83,14 @@ def create_genesis_state(num_validators, deposit_data_leaves):
     )
 
 
+def force_registry_change_at_next_epoch(state):
+    # artificially trigger registry update at next epoch transition
+    state.finalized_epoch = get_current_epoch(state) - 1
+    for crosslink in state.latest_crosslinks:
+        crosslink.epoch = state.finalized_epoch
+    state.validator_registry_update_epoch = state.finalized_epoch - 1
+
+
 def build_empty_block_for_next_slot(state):
     empty_block = get_empty_block()
     empty_block.slot = state.slot + 1
@@ -143,3 +152,22 @@ def build_attestation_data(state, slot, shard):
         crosslink_data_root=spec.ZERO_HASH,
         previous_crosslink=deepcopy(state.latest_crosslinks[shard]),
     )
+
+
+def build_voluntary_exit(state, epoch, validator_index, privkey):
+    voluntary_exit = VoluntaryExit(
+        epoch=epoch,
+        validator_index=validator_index,
+        signature=EMPTY_SIGNATURE,
+    )
+    voluntary_exit.signature = bls.sign(
+        message_hash=signed_root(voluntary_exit),
+        privkey=privkey,
+        domain=get_domain(
+            fork=state.fork,
+            epoch=epoch,
+            domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+        )
+    )
+
+    return voluntary_exit
