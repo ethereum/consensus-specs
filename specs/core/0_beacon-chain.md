@@ -1412,7 +1412,6 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    assert state.slot < get_epoch_start_slot(validator.withdrawable_epoch)  # [TO BE REMOVED IN PHASE 2]
     exit_validator(state, index)
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += get_effective_balance(state, index)
 
