@@ -316,12 +316,18 @@ def test_attestation(state, pubkeys, privkeys):
 
 def test_voluntary_exit(state, pubkeys, privkeys):
     pre_state = deepcopy(state)
-    validator_index = get_active_validator_indices(pre_state.validator_registry, get_current_epoch(pre_state))[-1]
+    validator_index = get_active_validator_indices(
+        pre_state.validator_registry,
+        get_current_epoch(pre_state)
+    )[-1]
 
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # artificially trigger registry update at next epoch transition
-    pre_state.validator_registry_update_epoch -= 1
+    pre_state.finalized_epoch = get_current_epoch(pre_state) - 1
+    for crosslink in pre_state.latest_crosslinks:
+        crosslink.epoch = pre_state.finalized_epoch
+    pre_state.validator_registry_update_epoch = pre_state.finalized_epoch - 1
 
     post_state = deepcopy(pre_state)
 
