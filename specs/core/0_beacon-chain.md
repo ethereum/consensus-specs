@@ -315,6 +315,8 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Root of the deposit tree
     'deposit_root': 'bytes32',
+    # Total number of deposits
+    'deposit_count': 'uint64',
     # Block hash
     'block_hash': 'bytes32',
 }
@@ -1435,6 +1437,7 @@ When sufficiently many full deposits have been made the deposit contract emits t
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
 * `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
+* `latest_eth1_data.deposit_count` equals `deposit_count` in the `Eth2Genesis` log
 * `latest_eth1_data.block_hash` equals the hash of the block that included the log
 * `genesis_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `Eth2Genesis` log, processed in the order in which they were emitted (oldest to newest)
 
@@ -1458,6 +1461,7 @@ When enough full deposits have been made to the deposit contract, an `Eth2Genesi
 * Let `genesis_time` be the timestamp specified in the `Eth2Genesis` log.
 * Let `genesis_eth1_data` be the `Eth1Data` object where:
     * `genesis_eth1_data.deposit_root` is the `deposit_root` contained in the `Eth2Genesis` log.
+    * `genesis_eth1_data.deposit_count` is the `deposit_count` contained in the `Eth2Genesis` log.
     * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
 * Let `genesis_block = get_empty_block()`.
@@ -1476,6 +1480,7 @@ def get_empty_block() -> BeaconBlock:
             randao_reveal=EMPTY_SIGNATURE,
             eth1_data=Eth1Data(
                 deposit_root=ZERO_HASH,
+                deposit_count=0,
                 block_hash=ZERO_HASH,
             ),
             proposer_slashings=[],
@@ -2414,7 +2419,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Deposits
 
-Verify that `len(block.body.deposits) <= MAX_DEPOSITS`.
+Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.
 
 For each `deposit` in `block.body.deposits`, run `process_deposit(state, deposit)`.
 

@@ -15,6 +15,13 @@ from .spec import (
 )
 
 
+def expected_deposit_count(state: BeaconState) -> int:
+    return min(
+        spec.MAX_DEPOSITS,
+        state.latest_eth1_data.deposit_count - state.deposit_index
+    )
+
+
 def process_transaction_type(state: BeaconState,
                              transactions: List[Any],
                              max_transactions: int,
@@ -31,30 +38,36 @@ def process_transactions(state: BeaconState, block: BeaconBlock) -> None:
         spec.MAX_PROPOSER_SLASHINGS,
         spec.process_proposer_slashing,
     )
+
     process_transaction_type(
         state,
         block.body.attester_slashings,
         spec.MAX_ATTESTER_SLASHINGS,
         spec.process_attester_slashing,
     )
+
     process_transaction_type(
         state,
         block.body.attestations,
         spec.MAX_ATTESTATIONS,
         spec.process_attestation,
     )
+
+    assert len(block.body.deposits) == expected_deposit_count(state)
     process_transaction_type(
         state,
         block.body.deposits,
         spec.MAX_DEPOSITS,
         spec.process_deposit,
     )
+
     process_transaction_type(
         state,
         block.body.voluntary_exits,
         spec.MAX_VOLUNTARY_EXITS,
         spec.process_voluntary_exit,
     )
+
     assert len(block.body.transfers) == len(set(block.body.transfers))
     process_transaction_type(
         state,
