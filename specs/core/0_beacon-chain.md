@@ -2362,74 +2362,49 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` transaction.
     Note that this function mutates ``state``.
     """
-    # Can't submit attestations that are too far in history (or in prehistory) 
-    assert attestation.data.slot >= GENESIS_SLOT
-    assert state.slot <= attestation.data.slot + SLOTS_PER_EPOCH
-    # Can't submit attestations too quickly
-    assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
-    # Verify that the justified epoch and root is correct
-    if slot_to_epoch(attestation.data.slot) >= get_current_epoch(state):
-        # Case 1: current epoch attestations
-        assert attestation.data.source_epoch == state.current_justified_epoch
-        assert attestation.data.source_root == state.current_justified_root
-    else:
-        # Case 2: previous epoch attestations
-        assert attestation.data.source_epoch == state.previous_justified_epoch
-        assert attestation.data.source_root == state.previous_justified_root
-    # Check that the crosslink data is valid
-    acceptable_crosslink_data = {
-        # Case 1: Latest crosslink matches the one in the state
-        attestation.data.previous_crosslink,
-        # Case 2: State has already been updated, state's latest crosslink matches the crosslink
-        # the attestation is trying to create
-        Crosslink(
-            crosslink_data_root=attestation.data.crosslink_data_root,
-            epoch=slot_to_epoch(attestation.data.slot)
-        )
-    }
-    assert state.latest_crosslinks[attestation.data.shard] in acceptable_crosslink_data
-    # Attestation must be nonempty!
-    assert attestation.aggregation_bitfield != b'\x00' * len(attestation.aggregation_bitfield)
-    # Custody must be empty (to be removed in phase 1)
-    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)
-    # Get the committee for the specific shard that this attestation is for
-    crosslink_committee = [
-        committee for committee, shard in get_crosslink_committees_at_slot(state, attestation.data.slot)
-        if shard == attestation.data.shard
-    ][0]
-    # Custody bitfield must be a subset of the attestation bitfield
-    for i in range(len(crosslink_committee)):
-        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b0:
-            assert get_bitfield_bit(attestation.custody_bitfield, i) == 0b0
-    # Verify aggregate signature
-    participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
-    custody_bit_1_participants = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
-    custody_bit_0_participants = [i for i in participants if i not in custody_bit_1_participants]
+    assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
+    assert attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
-    assert bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_participants]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_participants]),
-        ],
-        message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b1)),
-        ],
+    # Check target epoch, source epoch, and source root
+    target_epoch = slot_to_epoch(attestation.data.slot)
+    assert (target_epoch, attestation.data.source_epoch, attestation.data.source_root) in {
+        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root), 
+        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root),
+    }
+
+    # Check crosslink data
+    assert attestation.data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
+    assert state.latest_crosslinks[attestation.data.shard] in {
+        attestation.data.previous_crosslink,  # Case 1: latest crosslink matches previous crosslink
+        Crosslink(                            # Case 2: latest crosslink matches current crosslink
+            crosslink_data_root=attestation.data.crosslink_data_root,
+            epoch=target_epoch,
+        ),
+    }
+
+    # Check custody bits [to be generalised in phase 1]
+    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)
+
+    # Check aggregate signature [to be generalised in phase 1]
+    participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    assert len(participants) != 0
+    assert bls_verify(
+        pubkey=bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in participants]),
+        message_hash=hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
         signature=attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(attestation.data.slot), DOMAIN_ATTESTATION),
+        domain=get_domain(state.fork, target_epoch, DOMAIN_ATTESTATION),
     )
-    # Crosslink data root is zero (to be removed in phase 1)
-    assert attestation.data.crosslink_data_root == ZERO_HASH
-    # Apply the attestation
+
+    # Cache pending attestation
     pending_attestation = PendingAttestation(
         data=attestation.data,
         aggregation_bitfield=attestation.aggregation_bitfield,
         custody_bitfield=attestation.custody_bitfield,
         inclusion_slot=state.slot
     )
-    if slot_to_epoch(attestation.data.slot) == get_current_epoch(state):
+    if target_epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
-    elif slot_to_epoch(attestation.data.slot) == get_previous_epoch(state):
+    else:
         state.previous_epoch_attestations.append(pending_attestation)
 ```
 
