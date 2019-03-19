@@ -908,14 +908,13 @@ def get_crosslink_committees_at_slot(state: BeaconState,
             shuffling_start_shard = state.current_shuffling_start_shard
 
     indices = get_active_validator_indices(state.validator_registry, shuffling_epoch)
-    committee_count = get_epoch_committee_count(len(indices))
-    committees_per_slot = committee_count // SLOTS_PER_EPOCH
+    committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
     offset = slot % SLOTS_PER_EPOCH
     slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
 
     return [
         (
-            compute_committee(indices, seed, committees_per_slot * offset + i, committee_count),
+            compute_committee(indices, seed, committees_per_slot * offset + i, committees_per_epoch),
             (slot_start_shard + i) % SHARD_COUNT,
         )
         for i in range(committees_per_slot)
