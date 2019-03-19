@@ -9,7 +9,7 @@ def get_lines(file_name):
     for linenum, line in enumerate(open(sys.argv[1]).readlines()):
         line = line.rstrip()
         if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
-            current_name = line[line[:-1].rfind('`')+1: -1]
+            current_name = line[line[:-1].rfind('`') + 1: -1]
         if line[:9] == '```python':
             assert pulling_from is None
             pulling_from = linenum + 1

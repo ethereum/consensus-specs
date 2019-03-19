@@ -1,6 +1,3 @@
-import os
-import sys
-import time
 from copy import deepcopy
 
 import pytest
@@ -12,32 +9,21 @@ from build.phase0.utils.minimal_ssz import signed_root
 from build.phase0.spec import (
     # SSZ
     Attestation,
-    AttestationData,
     AttestationDataAndCustodyBit,
     BeaconBlockHeader,
     Deposit,
-    DepositData,
-    DepositInput,
-    Eth1Data,
     Transfer,
     ProposerSlashing,
-    Validator,
     VoluntaryExit,
     # functions
-    int_to_bytes32,
-    int_to_bytes48,
     get_active_validator_indices,
     get_attestation_participants,
     get_block_root,
     get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
-    get_empty_block,
-    get_epoch_start_slot,
-    get_genesis_beacon_state,
     get_state_root,
     advance_slot,
-    slot_to_epoch,
     cache_state,
     verify_merkle_branch,
     hash,
@@ -59,6 +45,7 @@ from tests.phase0.helpers import (
 
 # mark entire file as 'sanity'
 pytestmark = pytest.mark.sanity
+
 
 def test_slot_transition(state):
     test_state = deepcopy(state)
@@ -126,18 +113,17 @@ def test_proposer_slashing(state, pubkeys, privkeys):
     test_state = deepcopy(state)
     current_epoch = get_current_epoch(test_state)
     validator_index = get_active_validator_indices(test_state.validator_registry, current_epoch)[-1]
-    pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
     slot = spec.GENESIS_SLOT
     header_1 = BeaconBlockHeader(
         slot=slot,
-        previous_block_root=b'\x00'*32,
-        state_root=b'\x00'*32,
-        block_body_root=b'\x00'*32,
-        signature=b'\x00'*96
+        previous_block_root=b'\x00' * 32,
+        state_root=b'\x00' * 32,
+        block_body_root=b'\x00' * 32,
+        signature=b'\x00' * 96
     )
     header_2 = deepcopy(header_1)
-    header_2.previous_block_root = b'\x02'*32
+    header_2.previous_block_root = b'\x02' * 32
     header_2.slot = slot + 1
 
     domain = get_domain(
@@ -273,7 +259,7 @@ def test_attestation(state, pubkeys, privkeys):
         aggregation_bitfield=aggregation_bitfield,
         data=attestation_data,
         custody_bitfield=custody_bitfield,
-        aggregate_signature=b'\x00'*96,
+        aggregate_signature=b'\x00' * 96,
     )
     participants = get_attestation_participants(
         test_state,
@@ -283,7 +269,6 @@ def test_attestation(state, pubkeys, privkeys):
     assert len(participants) == 1
 
     validator_index = participants[0]
-    pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
 
     message_hash = AttestationDataAndCustodyBit(
@@ -329,7 +314,6 @@ def test_attestation(state, pubkeys, privkeys):
 def test_voluntary_exit(state, pubkeys, privkeys):
     pre_state = deepcopy(state)
     validator_index = get_active_validator_indices(pre_state.validator_registry, get_current_epoch(pre_state))[-1]
-    pubkey = pubkeys[validator_index]
 
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -341,7 +325,7 @@ def test_voluntary_exit(state, pubkeys, privkeys):
     voluntary_exit = VoluntaryExit(
         epoch=get_current_epoch(pre_state),
         validator_index=validator_index,
-        signature=b'\x00'*96,
+        signature=b'\x00' * 96,
     )
     voluntary_exit.signature = bls.sign(
         message_hash=signed_root(voluntary_exit),
@@ -392,7 +376,7 @@ def test_transfer(state, pubkeys, privkeys):
         fee=0,
         slot=pre_state.slot + 1,
         pubkey=transfer_pubkey,
-        signature=b'\x00'*96,
+        signature=b'\x00' * 96,
     )
     transfer.signature = bls.sign(
         message_hash=signed_root(transfer),

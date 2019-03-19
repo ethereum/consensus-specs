@@ -26,7 +26,7 @@ from build.phase0.utils.merkle_minimal import (
 )
 
 
-privkeys_list = [i+1 for i in range(1000)]
+privkeys_list = [i + 1 for i in range(1000)]
 pubkeys_list = [bls.privtopub(privkey) for privkey in privkeys_list]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys_list, pubkeys_list)}
 
@@ -77,6 +77,7 @@ def create_genesis_state(num_validators, deposit_data_leaves):
         ),
     )
 
+
 def build_empty_block_for_next_slot(state):
     empty_block = get_empty_block()
     empty_block.slot = state.slot + 1
@@ -91,7 +92,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
     deposit_input = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=privkey.to_bytes(32, byteorder='big'),
-        proof_of_possession=b'00'*96,
+        proof_of_possession=b'\x00' * 96,
     )
     proof_of_possession = bls.sign(
         message_hash=signed_root(deposit_input),

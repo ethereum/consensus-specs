@@ -1,7 +1,7 @@
 from . import spec
 
 
-from typing import (
+from typing import (  # noqa: F401
     Any,
     Callable,
     List,

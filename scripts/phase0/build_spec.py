@@ -34,7 +34,6 @@ Any = None
 Store = None
     """)
 
-
     code_lines += function_puller.get_lines(sourcefile)
 
     code_lines.append("""

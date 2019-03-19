@@ -5,6 +5,7 @@ BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_PREFIX = 4
 ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
 
+
 def SSZType(fields):
     class SSZObject():
         def __init__(self, **kwargs):
@@ -37,6 +38,7 @@ def SSZType(fields):
     SSZObject.fields = fields
     return SSZObject
 
+
 class Vector(list):
     def __init__(self, x):
         list.__init__(self, x)
@@ -47,8 +49,10 @@ class Vector(list):
 
     remove = clear = extend = pop = insert = append
 
+
 def is_basic(typ):
     return isinstance(typ, str) and (typ[:4] in ('uint', 'bool') or typ == 'byte')
+
 
 def is_constant_sized(typ):
     if is_basic(typ):
@@ -67,6 +71,7 @@ def is_constant_sized(typ):
     else:
         raise Exception("Type not recognized")
 
+
 def coerce_to_bytes(x):
     if isinstance(x, str):
         o = x.encode('utf-8')
@@ -76,6 +81,7 @@ def coerce_to_bytes(x):
         return x
     else:
         raise Exception("Expecting bytes")
+
 
 def serialize_value(value, typ=None):
     if typ is None:
@@ -110,27 +116,33 @@ def serialize_value(value, typ=None):
         print(value, typ)
         raise Exception("Type not recognized")
 
+
 def chunkify(bytez):
     bytez += b'\x00' * (-len(bytez) % BYTES_PER_CHUNK)
-    return [bytez[i:i+32] for i in range(0, len(bytez), 32)]
+    return [bytez[i:i + 32] for i in range(0, len(bytez), 32)]
+
 
 def pack(values, subtype):
     return chunkify(b''.join([serialize_value(value, subtype) for value in values]))
 
+
 def is_power_of_two(x):
-    return x > 0 and x & (x-1) == 0
+    return x > 0 and x & (x - 1) == 0
+
 
 def merkleize(chunks):
     tree = chunks[::]
     while not is_power_of_two(len(tree)):
         tree.append(ZERO_CHUNK)
     tree = [ZERO_CHUNK] * len(tree) + tree
-    for i in range(len(tree)//2-1, 0, -1):
-        tree[i] = hash(tree[i*2] + tree[i*2+1])
+    for i in range(len(tree) // 2 - 1, 0, -1):
+        tree[i] = hash(tree[i * 2] + tree[i * 2 + 1])
     return tree[1]
+
 
 def mix_in_length(root, length):
     return hash(root + length.to_bytes(32, 'little'))
+
 
 def infer_type(value):
     if hasattr(value.__class__, 'fields'):
@@ -145,6 +157,7 @@ def infer_type(value):
         return 'uint64'
     else:
         raise Exception("Failed to infer type")
+
 
 def hash_tree_root(value, typ=None):
     if typ is None:
@@ -170,6 +183,7 @@ def hash_tree_root(value, typ=None):
     else:
         raise Exception("Type not recognized")
 
+
 def truncate(container):
     field_keys = list(container.fields.keys())
     truncated_fields = {
@@ -183,8 +197,10 @@ def truncate(container):
     }
     return truncated_class(**kwargs)
 
+
 def signed_root(container):
     return hash_tree_root(truncate(container))
+
 
 def serialize(ssz_object):
     return getattr(ssz_object, 'serialize')()
