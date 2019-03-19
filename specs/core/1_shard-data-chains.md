@@ -40,7 +40,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [`InteractiveCustodyChallengeRecord`](#interactivecustodychallengerecord)
         - [`InteractiveCustodyChallengeInitiation`](#interactivecustodychallengeinitiation)
         - [`InteractiveCustodyChallengeResponse`](#interactivecustodychallengeresponse)
-        - [`InteractiveCustodyChallengeContinuation`](#interactivecustodychallengecontinuation)
         - [`SubkeyReveal`](#subkeyreveal)
     - [Helpers](#helpers)
         - [`get_branch_challenge_record_by_id`](#get_branch_challenge_record_by_id)
@@ -58,7 +57,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [Subkey reveals](#subkey-reveals)
             - [Interactive custody challenge initiations](#interactive-custody-challenge-initiations)
             - [Interactive custody challenge responses](#interactive-custody-challenge-responses)
-            - [Interactive custody challenge continuations](#interactive-custody-challenge-continuations)
     - [Per-epoch processing](#per-epoch-processing)
     - [One-time phase 1 initiation transition](#one-time-phase-1-initiation-transition)
 
@@ -363,8 +361,6 @@ Add member values to the `BeaconBlockBody` structure:
     'subkey_reveals': [SubkeyReveal],
     'interactive_custody_challenges': [InteractiveCustodyChallenge],
     'interactive_custody_challenge_responses': [InteractiveCustodyChallengeResponse],
-    'interactive_custody_challenge_continuations': [InteractiveCustodyChallengeContinuation],
-
 ```
 
 And initialize to the following:
