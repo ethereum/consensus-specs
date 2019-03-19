@@ -61,7 +61,7 @@
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`get_permuted_index`](#get_permuted_index)
-        - [`split`](#split)
+        - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`compute_committee`](#compute_committee)
         - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
@@ -773,18 +773,11 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     return index
 ```
 
-### `split`
+### `get_split_offset`
 
 ```python
-def split(values: List[Any], split_count: int) -> List[List[Any]]:
-    """
-    Splits ``values`` into ``split_count`` pieces.
-    """
-    list_length = len(values)
-    return [
-        values[(list_length * i // split_count): (list_length * (i + 1) // split_count)]
-        for i in range(split_count)
-    ]
+def get_split_offset(list_length: int, split_count: int, index: int) -> int:
+    return (list_length * index) // split_count
 ```
 
 ### `get_epoch_committee_count`
@@ -918,9 +911,11 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     committee_count = get_epoch_committee_count(len(indices))
     committees_per_slot = committee_count // SLOTS_PER_EPOCH
     offset = slot % SLOTS_PER_EPOCH
+    slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
+
     return [
         (
-            compute_committee(indices, seed, committees_per_slot * offset + i, committee_count)
+            compute_committee(indices, seed, committees_per_slot * offset + i, committee_count),
             (slot_start_shard + i) % SHARD_COUNT,
         )
         for i in range(committees_per_slot)
