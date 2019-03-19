@@ -7,6 +7,9 @@ import build.phase0.spec as spec
 
 from build.phase0.utils.minimal_ssz import signed_root
 from build.phase0.spec import (
+    # constants
+    EMPTY_SIGNATURE,
+    ZERO_HASH,
     # SSZ
     Attestation,
     AttestationDataAndCustodyBit,
@@ -117,10 +120,10 @@ def test_proposer_slashing(state, pubkeys, privkeys):
     slot = spec.GENESIS_SLOT
     header_1 = BeaconBlockHeader(
         slot=slot,
-        previous_block_root=b'\x00' * 32,
-        state_root=b'\x00' * 32,
-        block_body_root=b'\x00' * 32,
-        signature=b'\x00' * 96
+        previous_block_root=ZERO_HASH,
+        state_root=ZERO_HASH,
+        block_body_root=ZERO_HASH,
+        signature=EMPTY_SIGNATURE,
     )
     header_2 = deepcopy(header_1)
     header_2.previous_block_root = b'\x02' * 32
@@ -259,7 +262,7 @@ def test_attestation(state, pubkeys, privkeys):
         aggregation_bitfield=aggregation_bitfield,
         data=attestation_data,
         custody_bitfield=custody_bitfield,
-        aggregate_signature=b'\x00' * 96,
+        aggregate_signature=EMPTY_SIGNATURE,
     )
     participants = get_attestation_participants(
         test_state,
@@ -325,7 +328,7 @@ def test_voluntary_exit(state, pubkeys, privkeys):
     voluntary_exit = VoluntaryExit(
         epoch=get_current_epoch(pre_state),
         validator_index=validator_index,
-        signature=b'\x00' * 96,
+        signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
         message_hash=signed_root(voluntary_exit),
@@ -376,7 +379,7 @@ def test_transfer(state, pubkeys, privkeys):
         fee=0,
         slot=pre_state.slot + 1,
         pubkey=transfer_pubkey,
-        signature=b'\x00' * 96,
+        signature=EMPTY_SIGNATURE,
     )
     transfer.signature = bls.sign(
         message_hash=signed_root(transfer),

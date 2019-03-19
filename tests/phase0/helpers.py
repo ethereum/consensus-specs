@@ -5,11 +5,15 @@ from py_ecc import bls
 import build.phase0.spec as spec
 from build.phase0.utils.minimal_ssz import signed_root
 from build.phase0.spec import (
+    # constants
+    EMPTY_SIGNATURE,
+    # SSZ
     AttestationData,
     Deposit,
     DepositInput,
     DepositData,
     Eth1Data,
+    # functions
     get_block_root,
     get_current_epoch,
     get_domain,
@@ -92,7 +96,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
     deposit_input = DepositInput(
         pubkey=pubkey,
         withdrawal_credentials=privkey.to_bytes(32, byteorder='big'),
-        proof_of_possession=b'\x00' * 96,
+        proof_of_possession=EMPTY_SIGNATURE,
     )
     proof_of_possession = bls.sign(
         message_hash=signed_root(deposit_input),
