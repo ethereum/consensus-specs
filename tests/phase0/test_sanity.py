@@ -369,6 +369,44 @@ def test_voluntary_exit(state, pubkeys, privkeys):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
+def test_no_exit_too_long_since_change(state):
+    pre_state = deepcopy(state)
+    validator_index = get_active_validator_indices(
+        pre_state.validator_registry,
+        get_current_epoch(pre_state)
+    )[-1]
+
+    #
+    # setup pre_state
+    #
+    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
+    pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # artificially trigger registry update at next epoch transition
+    pre_state.finalized_epoch = get_current_epoch(pre_state) - 1
+    for crosslink in pre_state.latest_crosslinks:
+        crosslink.epoch = pre_state.finalized_epoch
+    # make epochs since registry update greater than LATEST_SLASHED_EXIT_LENGTH
+    pre_state.validator_registry_update_epoch = (
+        get_current_epoch(pre_state) - spec.LATEST_SLASHED_EXIT_LENGTH
+    )
+    # set validator to have previously initiated exit
+    pre_state.validator_registry[validator_index].initiated_exit = True
+
+    post_state = deepcopy(pre_state)
+
+    #
+    # Process registry change but ensure no exit
+    #
+    block = build_empty_block_for_next_slot(post_state)
+    block.slot += spec.SLOTS_PER_EPOCH
+    state_transition(post_state, block)
+
+    assert post_state.validator_registry_update_epoch == get_current_epoch(post_state) - 1
+    assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+
+    return pre_state, [block], post_state
+
+
 def test_transfer(state, pubkeys, privkeys):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
