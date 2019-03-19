@@ -1364,17 +1364,14 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Exit the validator of the given ``index``.
+    Exit the validator with the given ``index``.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 
-    # The following updates only occur if not previous exited
-    if validator.exit_epoch <= delayed_activation_exit_epoch:
-        return
-    else:
-        validator.exit_epoch = delayed_activation_exit_epoch
+    # Update validator exit epoch if not previously exited
+    if validator.exit_epoch == FAR_FUTURE_EPOCH:
+        validator.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### `slash_validator`
