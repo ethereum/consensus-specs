@@ -97,4 +97,4 @@ def state_transition(state: BeaconState,
             process_epoch_transition(state)
         spec.advance_slot(state)
         if block.slot == state.slot:
-            process_block(state, block)
+            process_block(state, block, verify_state_root)
