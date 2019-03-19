@@ -42,13 +42,13 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves):
     deposit_data_list = []
     for i in range(num_validators):
         pubkey = pubkeys_list[i]
-        privkey = pubkey_to_privkey[pubkey]
         deposit_data = DepositData(
             amount=spec.MAX_DEPOSIT_AMOUNT,
             timestamp=deposit_timestamp,
             deposit_input=DepositInput(
                 pubkey=pubkey,
-                withdrawal_credentials=privkey.to_bytes(32, byteorder='big'),
+                # insecurely use pubkey as withdrawal key as well
+                withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
                 proof_of_possession=proof_of_possession,
             ),
         )
@@ -95,7 +95,8 @@ def build_empty_block_for_next_slot(state):
 def build_deposit_data(state, pubkey, privkey, amount):
     deposit_input = DepositInput(
         pubkey=pubkey,
-        withdrawal_credentials=privkey.to_bytes(32, byteorder='big'),
+        # insecurely use pubkey as withdrawal key as well
+        withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
         proof_of_possession=EMPTY_SIGNATURE,
     )
     proof_of_possession = bls.sign(
