@@ -74,7 +74,6 @@
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
         - [`get_attestation_participants`](#get_attestation_participants)
-        - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_effective_balance`](#get_effective_balance)
@@ -861,16 +860,12 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     ))
 
     if epoch == current_epoch:
-        shuffling_start_shard = state.latest_start_shard
+        start_shard = state.latest_start_shard
     elif epoch == previous_epoch:
-        shuffling_start_shard = (
-            state.latest_start_shard - SLOTS_PER_EPOCH * committees_per_epoch
-        ) % SHARD_COUNT
+        start_shard = (state.latest_start_shard - SLOTS_PER_EPOCH * committees_per_epoch) % SHARD_COUNT
     elif epoch == next_epoch:
         current_epoch_committees = get_current_epoch_committee_count(state)
-        shuffling_start_shard = (
-            state.latest_start_shard + EPOCH_LENGTH * current_epoch_committees
-        ) % SHARD_COUNT
+        start_shard = (state.latest_start_shard + EPOCH_LENGTH * current_epoch_committees) % SHARD_COUNT
 
     shuffling = get_shuffling(
         generate_seed(state, epoch),
@@ -879,7 +874,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     )
     offset = slot % SLOTS_PER_EPOCH
     committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
-    slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
+    slot_start_shard = (start_shard + committees_per_slot * offset) % SHARD_COUNT
 
     return [
         (
@@ -1015,16 +1010,6 @@ def get_attestation_participants(state: BeaconState,
         if aggregation_bit == 0b1:
             participants.append(validator_index)
     return participants
-```
-
-### `is_power_of_two`
-
-```python
-def is_power_of_two(value: int) -> bool:
-    """
-    Check if ``value`` is a power of two integer.
-    """
-    return (value > 0) and (value & (value - 1) == 0)
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
