@@ -102,9 +102,8 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `MAX_BRANCH_CHALLENGES`                            | 2**2 (= 4)    |
 | `MAX_BRANCH_RESPONSES`                             | 2**4 (= 16)   |
 | `MAX_EARLY_SUBKEY_REVEALS`                         | 2**4 (= 16)   |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_INITIATIONS`    | 2             |
+| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_CHS`    | 2             |
 | `MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`      | 16            |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_CONTINUTATIONS` | 16            |
 
 #### Signature domains
 
@@ -676,7 +675,7 @@ For each `reveal` in `block.body.early_subkey_reveals`:
 
 In case (i):
 
-* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state).
+* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state)`.
 * Run `penalize_validator(state, reveal.validator_index, reveal.revealer_index)`.
 * Set `state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`
 
