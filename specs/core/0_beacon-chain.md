@@ -2328,7 +2328,7 @@ def process_proposer_slashing(state: BeaconState,
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
     # Check proposer is slashable
-    assert is_slashable_validator(proposer)
+    assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
         assert bls_verify(
@@ -2367,7 +2367,7 @@ def process_attester_slashing(state: BeaconState,
         index for index in attestation1.validator_indices
         if (
             index in attestation2.validator_indices and
-            is_slashable_validator(state.validator_registry[index])
+            is_slashable_validator(state.validator_registry[index], get_current_epoch(state))
         )
     ]
     assert len(slashable_indices) >= 1
