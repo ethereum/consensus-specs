@@ -77,43 +77,43 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 #### Misc
 
-| Name                          | Value            | Unit   |
-|-------------------------------|------------------|--------|
-| `SHARD_CHUNK_SIZE`            | `2**5` (= 32)       | bytes  |
-| `MIX_CHUNK_SIZE`              | `2**9` (= 512)      | bytes  |
-| `SHARD_BLOCK_SIZE`            | `2**14` (= 16,384)  | bytes  |
-| `MINOR_REWARD_QUOTIENT`       | `2**8` (= 256)      |        |
-| `ZERO_PUBKEY`                 | `int_to_bytes48(0)` |        |
-| `VALIDATOR_NULL`              | `2**64 - 1`         |        |
+| Name | Value |
+| - | - |
+| `BYTES_PER_SHARD_CHUNK` | `2**5` (= 32) |
+| `BYTES_PER_MIX_CHUNK` | `2**9` (= 512) |
+| `BYTES_PER_SHARD_BLOCK` | `2**14` (= 16,384) |
+| `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
+| `EMPTY_PUBKEY` | `int_to_bytes48(0)` |
+| `VALIDATOR_NULL` | `2**64 - 1` |
 
 #### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `CROSSLINK_LOOKBACK`          | 2**5 (= 32)      | slots  | 3.2 minutes   |
-| `MAX_BRANCH_CHALLENGE_DELAY`  | 2**11 (= 2,048)  | epochs | 9 days        |
-| `CUSTODY_PERIOD_LENGTH`       | 2**11 (= 2,048)  | epochs | 9 days        |
-| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048)  | epochs | 9 days        |
-| `CHALLENGE_RESPONSE_DEADLINE` | 2**14 (= 16,384) | epochs | 73 days       |
+| `CROSSLINK_LOOKBACK` | 2**5 (= 32) | slots  | 3.2 minutes |
+| `MAX_BRANCH_CHALLENGE_DELAY` | 2**11 (= 2,048) | epochs | ~9 days |
+| `CUSTODY_PERIOD_LENGTH` | 2**11 (= 2,048) | epochs | ~9 days |
+| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
+| `CHALLENGE_RESPONSE_DEADLINE` | 2**14 (= 16,384) | epochs | ~73 days |
 
 #### Max transactions per block
 
-| Name                                               | Value         |
-|----------------------------------------------------|---------------|
-| `MAX_BRANCH_CHALLENGES`                            | 2**2 (= 4)    |
-| `MAX_BRANCH_RESPONSES`                             | 2**4 (= 16)   |
-| `MAX_EARLY_SUBKEY_REVEALS`                         | 2**4 (= 16)   |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGES`               | 2**1 (= 2)    |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`      | 2**4 (= 16)   |
+| Name | Value |
+| - | - |
+| `MAX_BRANCH_CHALLENGES` | `2**2` (= 4) |
+| `MAX_BRANCH_RESPONSES` | `2**4` (= 16) |
+| `MAX_EARLY_SUBKEY_REVEALS` | `2**4` (= 16) |
+| `MAX_INTERACTIVE_CUSTODY_CHALLENGES` | `2**1` (= 2) |
+| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES` | `2**4` (= 16) |
 
 #### Signature domains
 
-| Name                         | Value           |
-|------------------------------|-----------------|
-| `DOMAIN_SHARD_PROPOSER`      | 129             |
-| `DOMAIN_SHARD_ATTESTER`      | 130             |
-| `DOMAIN_CUSTODY_SUBKEY`      | 131             |
-| `DOMAIN_CUSTODY_INTERACTIVE` | 132             |
+| Name | Value |
+| - | - |
+| `DOMAIN_SHARD_PROPOSER` | `129` |
+| `DOMAIN_SHARD_ATTESTER` | `130` |
+| `DOMAIN_CUSTODY_SUBKEY` | `131` |
+| `DOMAIN_CUSTODY_INTERACTIVE` | `132` |
 
 # Shard chains and crosslink data
 
@@ -123,11 +123,11 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 ````python
 def get_split_offset(list_size: int, chunks: int, index: int) -> int:
-  """
-  Returns a value such that for a list L, chunk count k and index i,
-  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
-  """
-  return (list_size * index) // chunks
+    """
+    Returns a value such that for a list L, chunk count k and index i,
+    split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
+    """
+    return (list_size * index) // chunks
 ````
 
 #### `get_shuffled_committee`
@@ -229,20 +229,14 @@ A `ShardBlock` object has the following fields:
 
 ```python
 {
-    # Slot number
     'slot': 'uint64',
-    # What shard is it on
-    'shard_id': 'uint64',
-    # Parent block's root
-    'parent_root': 'bytes32',
-    # Beacon chain block
-    'beacon_chain_ref': 'bytes32',
-    # Merkle root of data
+    'shard': 'uint64',
+    'previous_block_root': 'bytes32',
+    'beacon_chain_reference': 'bytes32',
     'data_root': 'bytes32'
-    # State root (placeholder for now)
-    'state_root': 'bytes32',
-    # Block signature
+    'state_root': 'bytes32',  # placeholder for now
     'signature': 'bytes96',
+    
     # Attestation
     'participation_bitfield': 'bytes',
     'aggregate_signature': 'bytes96',
@@ -253,29 +247,29 @@ A `ShardBlock` object has the following fields:
 
 For a `shard_block` on a shard to be processed by a node, the following conditions must be met:
 
-* The `ShardBlock` pointed to by `shard_block.parent_root` has already been processed and accepted
+* The `ShardBlock` pointed to by `shard_block.previous_block_root` has already been processed and accepted
 * The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
 
-To validate a block header on shard `shard_block.shard_id`, compute as follows:
+To validate a block header on shard `shard_block.shard`, compute as follows:
 
-* Verify that `shard_block.beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
-* Verify that `shard_block.beacon_chain_ref` is equal to or a descendant of the `shard_block.beacon_chain_ref` specified in the `ShardBlock` pointed to by `shard_block.parent_root`.
-* Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_ref`.
-* Let `persistent_committee = get_persistent_committee(state, shard_block.shard_id, shard_block.slot)`.
+* Verify that `shard_block.beacon_chain_reference` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
+* Verify that `shard_block.beacon_chain_reference` is equal to or a descendant of the `shard_block.beacon_chain_reference` specified in the `ShardBlock` pointed to by `shard_block.previous_block_root`.
+* Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_reference`.
+* Let `persistent_committee = get_persistent_committee(state, shard_block.shard, shard_block.slot)`.
 * Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
 * For every `i in range(len(persistent_committee))` where `is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
-* Let `proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)`.
+* Let `proposer_index = get_shard_proposer_index(state, shard_block.shard, shard_block.slot)`.
 * Verify that `proposer_index` is not `None`.
 * Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`.
 * Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_PROPOSER))` passes.
 * Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`.
-* Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER))` passes.
+* Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.previous_block_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER))` passes.
 
 ### Verifying shard block data
 
 At network layer, we expect a shard block header to be broadcast along with its `block_body`.
 
-* Verify that `len(block_body) == SHARD_BLOCK_SIZE`
+* Verify that `len(block_body) == BYTES_PER_SHARD_BLOCK`
 * Verify that `merkle_root(block_body)` equals the `data_root` in the header.
 
 ### Verifying a crosslink
@@ -295,7 +289,7 @@ We define two helpers:
 
 ```python
 def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
-    zero_shard_block = b'\x00' * SHARD_BLOCK_SIZE
+    zero_shard_block = b'\x00' * BYTES_PER_SHARD_BLOCK
     while not is_power_of_two(len(values)):
         values = values + [zero_shard_block]
     return values
@@ -313,7 +307,7 @@ def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes3
     return hash(
         merkle_root(
             pad_to_power_of_2([
-                merkle_root_of_bytes(zpad(serialize(h), SHARD_BLOCK_SIZE)) for h in headers
+                merkle_root_of_bytes(zpad(serialize(h), BYTES_PER_SHARD_BLOCK)) for h in headers
             ])
         ) +
         merkle_root(
@@ -328,7 +322,7 @@ The `shard_chain_commitment` is only valid if it equals `compute_commitment(head
 
 ### Shard block fork choice rule
 
-The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_ref` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
+The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_reference` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
 
 # Updates to the beacon chain
 
@@ -437,7 +431,7 @@ Add fields to the end of the `BeaconState` container:
 {
     'challenge_id': 'uint64',
     'position': 'uint64',
-    'data': ['byte', MIX_CHUNK_SIZE],
+    'data': ['byte', BYTES_PER_MIX_CHUNK],
     'branch': ['bytes32']
 }
 ```
@@ -483,7 +477,7 @@ def get_attestation_epoch_length(attestation: Attestation) -> int:
 
 ```python
 def get_attestation_chunk_acount(attestation:Attestation) -> int:
-    chunks_per_slot = SHARD_BLOCK_SIZE // 32
+    chunks_per_slot = BYTES_PER_SHARD_BLOCK // 32
     return get_attestation_epoch_length(attestation) * EPOCH_LENGTH * chunks_per_slot
 ```
 
@@ -700,7 +694,7 @@ def process_challenge(state: BeaconState,
     min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.reveal_max_periods_late)
     assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
     # Verify the mix's length and that its last bit is opposite the attested bit
-    mix_length = get_attestation_chunk_count(challenge.attestation) * SHARD_CHUNK_SIZE // MIX_CHUNK_SIZE
+    mix_length = get_attestation_chunk_count(challenge.attestation) * BYTES_PER_SHARD_CHUNK // BYTES_PER_MIX_CHUNK
     verify_bitfield(challenge.mix, mix_length)
     attested_bit = get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index))
     assert attested_bit != get_bitfield_bit(challenge.mix, mix_length-1)
