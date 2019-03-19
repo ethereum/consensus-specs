@@ -183,10 +183,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) |
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
-| `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
-* `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // EPOCH_LENGTH`
 
 ### Deposit contract
 
@@ -232,6 +230,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
+| `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) |
+
+* `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
+
 
 ### State list lengths
 
@@ -598,7 +600,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
-    'current_shuffling_start_shard': 'uint64',
+    'latest_start_shard': 'uint64',
 
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
@@ -859,15 +861,15 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     ))
 
     if epoch == current_epoch:
-        shuffling_start_shard = state.current_shuffling_start_shard
+        shuffling_start_shard = state.latest_start_shard
     elif epoch == previous_epoch:
         shuffling_start_shard = (
-            state.current_shuffling_start_shard - EPOCH_LENGTH * committees_per_epoch
+            state.latest_start_shard - SLOTS_PER_EPOCH * committees_per_epoch
         ) % SHARD_COUNT
     elif epoch == next_epoch:
         current_epoch_committees = get_current_epoch_committee_count(state)
         shuffling_start_shard = (
-            state.current_shuffling_start_shard + EPOCH_LENGTH * current_epoch_committees
+            state.latest_start_shard + EPOCH_LENGTH * current_epoch_committees
         ) % SHARD_COUNT
 
     shuffling = get_shuffling(
@@ -1483,7 +1485,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Randomness and committees
         latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
-        current_shuffling_start_shard=GENESIS_START_SHARD,
+        latest_start_shard=GENESIS_START_SHARD,
 
         # Finality
         previous_epoch_attestations=[],
@@ -2004,14 +2006,6 @@ def process_ejections(state: BeaconState) -> None:
 #### Validator registry and shuffling seed data
 
 ```python
-def should_update_validator_registry(state: BeaconState) -> bool:
-    # Must have finalized a new block
-    if state.finalized_epoch <= state.validator_registry_update_epoch:
-        return False
-    return True
-```
-
-```python
 def update_validator_registry(state: BeaconState) -> None:
     """
     Update validator registry.
@@ -2060,16 +2054,13 @@ Run the following function:
 
 ```python
 def update_registry(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    next_epoch = current_epoch + 1
     # Check if we should update, and if so, update
-    if should_update_validator_registry(state):
+    if state.finalized_epoch > state.validator_registry_update_epoch:
         update_validator_registry(state)
-        # If we update the registry, update the shuffling data 2/3 or and shards as well
-    state.current_shuffling_start_shard = (
-        state.current_shuffling_start_shard +
-        get_current_epoch_committee_count(state) % SHARD_COUNT
-    )
+    state.latest_start_shard = (
+        state.latest_start_shard +
+        get_current_epoch_committee_count(state)
+    ) % SHARD_COUNT
 ```
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
