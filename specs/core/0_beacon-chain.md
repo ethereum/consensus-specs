@@ -2242,8 +2242,10 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     assert block.previous_block_root == hash_tree_root(state.latest_block_header)
     # Save current block as the new latest block
     state.latest_block_header = get_temporary_block_header(block)
-    # Verify proposer signature
+    # Verify proposer is not slashed
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
+    assert not proposer.slashed
+    # Verify proposer signature
     assert bls_verify(
         pubkey=proposer.pubkey,
         message_hash=signed_root(block),
