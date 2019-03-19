@@ -37,9 +37,9 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [`BranchChallenge`](#branchchallenge)
         - [`BranchResponse`](#branchresponse)
         - [`BranchChallengeRecord`](#branchchallengerecord)
-        - [`InteractiveCustodyChallengeRecord`](#interactivecustodychallengerecord)
-        - [`InteractiveCustodyChallenge`](#interactivecustodychallenge)
-        - [`InteractiveCustodyChallengeResponse`](#interactivecustodychallengeresponse)
+        - [`CustodyChallengeRecord`](#custodychallengerecord)
+        - [`CustodyChallenge`](#custodychallenge)
+        - [`CustodyResponse`](#custodyresponse)
         - [`SubkeyReveal`](#subkeyreveal)
     - [Helpers](#helpers)
         - [`get_branch_challenge_record_by_id`](#get_branch_challenge_record_by_id)
@@ -342,8 +342,8 @@ Add fields to the end of the `BeaconBlockBody` container:
     'branch_challenges': [BranchChallenge],
     'branch_responses': [BranchResponse],
     'subkey_reveals': [SubkeyReveal],
-    'interactive_custody_challenges': [InteractiveCustodyChallenge],
-    'interactive_custody_challenge_responses': [InteractiveCustodyChallengeResponse],
+    'custody_challenges': [CustodyChallenge],
+    'custody_responses': [CustodyResponse],
 ```
 
 ### `BeaconState`
@@ -353,7 +353,7 @@ Add fields to the end of the `BeaconState` container:
 ```python
     'branch_challenge_records': [BranchChallengeRecord],
     'next_branch_challenge_id': 'uint64',
-    'custody_challenge_records': [InteractiveCustodyChallengeRecord],
+    'custody_challenge_records': [CustodyChallengeRecord],
     'next_custody_challenge_id': 'uint64',
 ```
 
@@ -391,7 +391,7 @@ Add fields to the end of the `BeaconState` container:
 }
 ```
 
-### `InteractiveCustodyChallengeRecord`
+### `CustodyChallengeRecord`
 
 ```python
 {
@@ -409,7 +409,7 @@ Add fields to the end of the `BeaconState` container:
 }
 ```
 
-### `InteractiveCustodyChallenge`
+### `CustodyChallenge`
 
 ```python
 {
@@ -422,7 +422,7 @@ Add fields to the end of the `BeaconState` container:
 }
 ```
 
-### `InteractiveCustodyChallengeResponse`
+### `CustodyResponse`
 
 ```python
 {
@@ -655,13 +655,13 @@ In case (ii):
 
 #### Interactive custody challenges
 
-Verify that `len(block.body.interactive_custody_challenges) <= MAX_INTERACTIVE_CUSTODY_CHALLENGES`.
+Verify that `len(block.body.custody_challenges) <= MAX_INTERACTIVE_CUSTODY_CHALLENGES`.
 
-For each `challenge` in `block.body.interactive_custody_challenges`, use the following function to process it:
+For each `challenge` in `block.body.custody_challenges`, use the following function to process it:
 
 ```python
 def process_challenge(state: BeaconState,
-                      challenge: InteractiveCustodyChallenge) -> None:
+                      challenge: CustodyChallenge) -> None:
     challenger = state.validator_registry[challenge.challenger_index]
     responder = state.validator_registry[challenge.responder_index]
     # Verify the signature
@@ -693,10 +693,10 @@ def process_challenge(state: BeaconState,
     # Verify the mix's length and that its last bit is opposite the attested bit
     mix_length = get_attestation_chunk_count(challenge.attestation) * BYTES_PER_SHARD_CHUNK // BYTES_PER_MIX_CHUNK
     verify_bitfield(challenge.mix, mix_length)
-    attested_bit = get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index))
+    attested_bit = get_bitfield_bit(attestation.custodyfield, attestation.validator_indices.index(responder_index))
     assert attested_bit != get_bitfield_bit(challenge.mix, mix_length-1)
     # Create a new challenge object
-    state.branch_challenge_records.append(InteractiveCustodyChallengeRecord(
+    state.branch_challenge_records.append(CustodyChallengeRecord(
         challenge_id=state.next_branch_challenge_id,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
@@ -714,13 +714,13 @@ def process_challenge(state: BeaconState,
 
 A response proves that a challenger's mix is invalid by pointing to one index where the mix appears to have been incorrectly constructed.
 
-Verify that `len(block.body.interactive_custody_challenge_responses) <= MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`.
+Verify that `len(block.body.custody_responses) <= MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`.
 
-For each `response` in `block.body.interactive_custody_challenge_responses`, use the following function to process it:
+For each `response` in `block.body.custody_responses`, use the following function to process it:
 
 ```python
 def process_response(state: BeaconState,
-                     response: InteractiveCustodyChallengeResponse) -> None:
+                     response: CustodyResponse) -> None:
     challenge = get_custody_challenge_record_by_id(state, response.challenge_id)
     responder = state.validator_registry[challenge.responder_index]
     # Check that the position is valid
