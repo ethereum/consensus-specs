@@ -54,7 +54,7 @@ For convenience we alias:
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
-> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, etc.) objects implicitly carry their type.
+> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, `is_fixed_size`, `is_variable_size` etc.) objects implicitly carry their type.
 
 ### Basic Types
 
@@ -83,17 +83,19 @@ return b"\x01" if value is True else b"\x00"
 
 The serialized representation of composite types is comprised of two binary sections.
 
-* The first section is *fixed size* for all types, containing the concatenation of *either* 
-    - The serialized representation for each of the *fixed size* elements of value
-    - The `"uint32"` serialized offset where the serialized representation of the *variable sized* type is located in the second section relative to the beginning of the first section.
+* The first section is *fixed size* for all types, containing the concatenation of
+    - The serialized representation for each of the *fixed size* elements from the value
+    - The `"uint32"` serialized offset where the serialized representation of the *variable sized* elements from the value are located in the second section.
 * The second section contains the concatenation of the serialized representations of **only** the *variable size* types.
     - This section is empty in the case of a purely *fixed size* type.
+
+> **NOTE**: Offsets are relative to the beginning of the beginning of the entire serialized representation (the start of the first section)
 
 
 #### `"vector"`, `"container"` and `"list"`
 
-An implementation of the `serialize` function for `"Vector"`, `"Container"` and
-`"List"` types would take the following form.
+Below is an illustrative implementation of the `serialize` function for `"Vector"`,
+`"Container"` and `"List"` types.
 
 ```python
 # The second section is just the concatenation of the serialized *variable size* elements
