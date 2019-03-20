@@ -25,9 +25,9 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`ShardBlock`](#shardblock)
             - [`ShardAttestation`](#shardattestation)
         - [Custody objects](#custody-objects)
-            - [`BranchChallenge`](#branchchallenge)
+            - [`DataChallenge`](#datachallenge)
             - [`BranchResponse`](#branchresponse)
-            - [`BranchChallengeRecord`](#branchchallengerecord)
+            - [`DataChallengeRecord`](#datachallengerecord)
             - [`CustodyChallengeRecord`](#custodychallengerecord)
             - [`CustodyChallenge`](#custodychallenge)
             - [`SubkeyReveal`](#subkeyreveal)
@@ -182,7 +182,7 @@ Add the following fields to the end of the specified container objects.
 
 ### Custody objects
 
-#### `BranchChallenge`
+#### `DataChallenge`
 
 ```python
 {
@@ -451,7 +451,7 @@ The `shard_chain_commitment` is only valid if it equals `compute_commitment(head
 #### `get_data_challenge_record`
 
 ```python
-def get_data_challenge_record(state: BeaconState, id: int) -> BranchChallengeRecord:
+def get_data_challenge_record(state: BeaconState, id: int) -> DataChallengeRecord:
     records = [c for c in state.data_challenges if c.challenge_id == id]
     return records[0] if len(records) > 0 else None
 ```
@@ -579,7 +579,7 @@ For each `challenge` in `block.body.data_challenges`, run:
 
 ```python
 def process_data_challenge(state: BeaconState,
-                           challenge: BranchChallenge) -> None:
+                           challenge: DataChallenge) -> None:
     # Check it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_DATA_CHALLENGE_DELAY
     assert state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_DATA_CHALLENGE_DELAY
