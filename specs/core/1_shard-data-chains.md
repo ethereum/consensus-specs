@@ -23,7 +23,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`BeaconState`](#beaconstate)
         - [Shard blocks](#shard-blocks)
             - [`ShardBlock`](#shardblock)
-            - [`AttestedShardBlock`](#attestedshardblock)
+            - [`ShardAttestation`](#shardattestation)
         - [Custody objects](#custody-objects)
             - [`BranchChallenge`](#branchchallenge)
             - [`BranchResponse`](#branchresponse)
@@ -38,10 +38,9 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`get_shuffled_committee`](#get_shuffled_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
-        - [Shard block processing](#shard-block-processing)
-        - [Verifying shard block data](#verifying-shard-block-data)
+        - [Shard attestation processing](#shard-attestation-processing)
         - [Verifying a crosslink](#verifying-a-crosslink)
-        - [Shard block fork choice rule](#shard-block-fork-choice-rule)
+        - [Shard fork choice rule](#shard-fork-choice-rule)
     - [Updates to the beacon chain](#updates-to-the-beacon-chain)
         - [Helpers](#helpers)
             - [`get_branch_challenge_record`](#get_branch_challenge_record)
@@ -67,7 +66,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
 
 ## Introduction
 
-This document represents the specification for Phase 1 of Ethereum 2.0 -- Shard Data Chains. Phase 1 depends on the implementation of [Phase 0 -- The Beacon Chain](0_beacon-chain.md).
+This document represents the specification for Phase 1 of Ethereum 2.0 -- Shard Data Chains, building upon the [phase 0](0_beacon-chain.md) specification.
 
 Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shards. Phase 1 is primarily concerned with the construction, validity, and consensus on the _data_ of these shard chains. Phase 1 does not specify shard chain state execution or account balances. This is left for future phases.
 
@@ -157,17 +156,31 @@ Add the following fields to the end of the specified container objects.
     'shard': 'uint64',
     'previous_block_root': 'bytes32',
     'beacon_chain_reference': 'bytes32',
-    'data_root': 'bytes32'
+    'data': ['byte', BYTES_PER_SHARD_BLOCK],
     'state_root': 'bytes32',
     'signature': 'bytes96',
 }
 ```
 
-#### `AttestedShardBlock`
+#### `ShardBlockHeader`
 
 ```python
 {
-    'shard_block': ShardBlock,
+    'slot': 'uint64',
+    'shard': 'uint64',
+    'previous_block_root': 'bytes32',
+    'beacon_chain_reference': 'bytes32',
+    'data_root': 'bytes32',
+    'state_root': 'bytes32',
+    'signature': 'bytes96',
+}
+```
+
+#### `ShardAttestation`
+
+```python
+{
+    'header': ShardBlockHeader,
     'participation_bitfield': 'bytes',
     'aggregate_signature': 'bytes96',
 }
@@ -269,7 +282,7 @@ Add the following fields to the end of the specified container objects.
 def get_split_offset(list_size: int, chunks: int, index: int) -> int:
     """
     Returns a value such that for a list L, chunk count k and index i,
-    split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
+    split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i + 1)]
     """
     return (list_size * index) // chunks
 ````
@@ -287,19 +300,10 @@ def get_shuffled_committee(state: BeaconState,
     """
     active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
     length = len(active_validator_indices)
-    seed = generate_seed(state, committee_start_epoch)
-    start_offset = get_split_offset(
-        length,
-        SHARD_COUNT * committee_count,
-        shard * committee_count + index,
-    )
-    end_offset = get_split_offset(
-        length,
-        SHARD_COUNT * committee_count,
-        shard * committee_count + index + 1,
-    )
+    start_offset = get_split_offset(length, SHARD_COUNT * committee_count, shard * committee_count + index)
+    end_offset = get_split_offset(length, SHARD_COUNT * committee_count, shard * committee_count + index + 1)
     return [
-        active_validator_indices[get_permuted_index(index, length, seed)]
+        active_validator_indices[get_permuted_index(index, length, generate_seed(state, committee_start_epoch))]
         for i in range(start_offset, end_offset)
     ]
 ```
@@ -361,57 +365,52 @@ def get_shard_proposer_index(state: BeaconState,
     return None
 ```
 
-### Shard block processing
+### Shard fork choice rule
 
-For a `shard_block` on a shard to be processed by a node, the following conditions must be met:
+For a `ShardBlockHeader` object `header` to be processed by a node the following conditions must be met:
 
-* The `ShardBlock` pointed to by `shard_block.previous_block_root` has already been processed and accepted
-* The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
+* The `header.previous_block_root` is the hash a of `ShardBlock` that has been processed and accepted.
+* The `header.beacon_chain_reference` is the hash of a `BeaconBlock` in the canonical beacon chain with slot less than or equal to `header.slot`.
+* The `header.beacon_chain_reference` is equal to or a descendant of the `beacon_chain_reference` specified in the `ShardBlock` pointed to by `header.previous_block_root`.
+* The `ShardBlock` object `shard_block` with the same root as `header` has been downloaded.
 
-To validate a block header on shard `shard_block.shard`, compute as follows:
+The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (i.e. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_reference` is the block in the main beacon chain at the specified `slot` should be considered. (If the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot.)
 
-* Verify that `shard_block.beacon_chain_reference` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
-* Verify that `shard_block.beacon_chain_reference` is equal to or a descendant of the `shard_block.beacon_chain_reference` specified in the `ShardBlock` pointed to by `shard_block.previous_block_root`.
-* Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_reference`.
+### Shard attestation processing
+
+Given a `shard_attestation` let `state` be the `BeaconState` referred to by `shard_attestation.header.beacon_chain_reference` and run `verify_shard_attestation(state, shard_attestation)`.
 
 ```python
-def verify_attesed_shard_block(state: BeaconState, attested_shard_block: AttestedShardBlock) -> None:
-    shard_block = attested_shard_block.shard_block
+def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttestation) -> None:
+    header = shard_attestation.header
 
     # Check proposer signature
-    proposer_index = get_shard_proposer_index(state, shard_block.shard, shard_block.slot)
+    proposer_index = get_shard_proposer_index(state, header.shard, header.slot)
     assert proposer_index is not None
     assert bls_verify(
         pubkey=validators[proposer_index].pubkey,
-        message_hash=signed_root(shard_block),
-        signature=shard_block.signature,
-        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_PROPOSER)
+        message_hash=signed_root(header),
+        signature=header.signature,
+        domain=get_domain(state, slot_to_epoch(header.slot), DOMAIN_SHARD_PROPOSER)
     )
 
     # Check attestations
-    persistent_committee = get_persistent_committee(state, shard_block.shard, shard_block.slot)
-    assert verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))
+    persistent_committee = get_persistent_committee(state, header.shard, header.slot)
+    assert verify_bitfield(header.participation_bitfield, len(persistent_committee))
     for i in range(len(persistent_committee)):
         if not is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state)):
-            assert get_bitfield_bit(shard_block.participation_bitfield, i) == 0b0
+            assert get_bitfield_bit(header.participation_bitfield, i) == 0b0
     aggregate_pubkey = bls_aggregate_pubkeys([
         state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee)
-        if get_bitfield_bit(shard_block.participation_bitfield, i) == 0b1
+        if get_bitfield_bit(header.participation_bitfield, i) == 0b1
     ])
     assert bls_verify(
         pubkey=aggregate_pubkey,
-        message_hash=shard_block.previous_block_root,
-        signature=shard_block.aggregate_signature,
-        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER)
+        message_hash=header.previous_block_root,
+        signature=header.aggregate_signature,
+        domain=get_domain(state, slot_to_epoch(header.slot), DOMAIN_SHARD_ATTESTER)
     )
 ```
-
-### Verifying shard block data
-
-At network layer, we expect a shard block header to be broadcast along with its `block_body`.
-
-* Verify that `len(block_body) == BYTES_PER_SHARD_BLOCK`
-* Verify that `merkle_root(block_body)` equals the `data_root` in the header.
 
 ### Verifying a crosslink
 
@@ -460,10 +459,6 @@ def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes3
 ```
 
 The `shard_chain_commitment` is only valid if it equals `compute_commitment(headers, bodies)`.
-
-### Shard block fork choice rule
-
-The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_reference` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
 
 ## Updates to the beacon chain
 
@@ -561,12 +556,12 @@ Change the definition of `slash_validator` as follows:
 ```python
 def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_index=None:ValidatorIndex) -> None:
     """
-    Penalize the validator of the given ``index``.
+    Slash the validator of the given ``index``.
     Note that this function mutates ``state``.
     """
     exit_validator(state, index)
     validator = state.validator_registry[index]
-    state.latest_penalized_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
+    state.latest_slashed_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
     
     block_proposer_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
@@ -578,7 +573,7 @@ def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_ind
         )
         state.validator_balances[block_proposer_index] += whistleblower_reward / (INCLUDER_REWARD_QUOTIENT + 1)
     state.validator_balances[index] -= whistleblower_reward
-    validator.penalized_epoch = get_current_epoch(state)
+    validator.slashed_epoch = get_current_epoch(state)
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
 ```
 
@@ -669,7 +664,7 @@ def process_subkey_reveal(state: BeaconState,
     )
 
     if is_early_reveal:
-        assert state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state)
+        assert state.validator_registry[reveal.validator_index].slashed_epoch > get_current_epoch(state)
         slash_validator(state, reveal.validator_index, reveal.revealer_index)
         state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
     elif reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal and reveal.mask == ZERO_HASH:
@@ -711,8 +706,8 @@ def process_challenge(state: BeaconState,
     for c in state.custody_challenge_records:
         assert c.challenger_index != challenge.challenger_index
         assert c.responder_index != challenge.responder_index
-    # Can't challenge if you've been penalized
-    assert challenger.penalized_epoch == FAR_FUTURE_EPOCH
+    # Cannot challenge if you have been slashed
+    assert challenger.slashed is False
     # Make sure the revealed subkey is valid
     assert verify_custody_subkey_reveal(
         pubkey=state.validator_registry[responder_index].pubkey,
