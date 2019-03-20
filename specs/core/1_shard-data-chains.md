@@ -23,6 +23,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`BeaconState`](#beaconstate)
         - [Shard blocks](#shard-blocks)
             - [`ShardBlock`](#shardblock)
+            - [`ShardBlockHeader`](#shardblockheader)
             - [`ShardAttestation`](#shardattestation)
         - [Custody objects](#custody-objects)
             - [`DataChallenge`](#datachallenge)
@@ -39,7 +40,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
         - [Shard fork choice rule](#shard-fork-choice-rule)
         - [Shard attestation processing](#shard-attestation-processing)
-        - [Honest crosslink data root](#honest-crosslink-data-root)
     - [Updates to the beacon chain](#updates-to-the-beacon-chain)
         - [Helpers](#helpers)
             - [`get_data_challenge_record`](#get_data_challenge_record)
@@ -83,7 +83,6 @@ Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shards.
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `CROSSLINK_LOOKBACK` | 2**5 (= 32) | slots  | 3.2 minutes |
 | `MAX_DATA_CHALLENGE_DELAY` | 2**11 (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_LENGTH` | 2**11 (= 2,048) | epochs | ~9 days |
 | `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
@@ -389,50 +388,6 @@ def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttesta
         signature=shard_attestation.aggregate_signature,
         domain=get_domain(state, slot_to_epoch(header.slot), DOMAIN_SHARD_ATTESTER)
     )
-```
-
-### Honest crosslink data root
-
-A node should only sign an `attestation` if `attestation.crosslink_data_root` has been reccursively verified using `attestation.previous_crosslink.crosslink_data_root` up to genesis where `crosslink_data_root == ZERO_HASH`.
-
-If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink for which these conditions do NOT hold has been included, or a sufficient number of signatures have been included that during the next state recalculation, a crosslink will be registered.
-
-Let `store` be the store of observed block headers and bodies and let `get_shard_block_header(store, slot)` and `get_shard_block_body(store, slot)` return the canonical shard block header and body at the specified `slot`. The expected `get_shard_block_body` is then computed as:
-
-```python
-def compute_crosslink_data_root(state: BeaconState, store: Store) -> Bytes32:
-    start_slot = state.latest_crosslinks[shard].epoch * SLOTS_PER_EPOCH + SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK
-    end_slot = attestation.data.slot - attestation.data.slot % SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK
-
-    headers = []
-    bodies = []
-    for slot in range(start_slot, end_slot):
-        headers = get_shard_block_header(store, slot)
-        bodies = get_shard_block_body(store, slot)
-
-    return hash(
-        merkle_root(pad_to_power_of_2([
-            merkle_root_of_bytes(zpad(serialize(header), BYTES_PER_SHARD_BLOCK)) for header in headers
-        ])) +
-        merkle_root(pad_to_power_of_2([
-                merkle_root_of_bytes(body) for body in bodies
-        ]))
-    )
-```
-
-using the following helpers:
-
-```python
-def is_power_of_two(value: int) -> bool:
-    return (value > 0) and (value & (value - 1) == 0)
-
-def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
-    while not is_power_of_two(len(values)):
-        values += [b'\x00' * BYTES_PER_SHARD_BLOCK]
-    return values
-
-def merkle_root_of_bytes(data: bytes) -> bytes:
-    return merkle_root([data[i:i + 32] for i in range(0, len(data), 32)])
 ```
 
 ## Updates to the beacon chain
