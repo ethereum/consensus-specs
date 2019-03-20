@@ -26,10 +26,10 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`ShardAttestation`](#shardattestation)
         - [Custody objects](#custody-objects)
             - [`DataChallenge`](#datachallenge)
-            - [`BranchResponse`](#branchresponse)
             - [`DataChallengeRecord`](#datachallengerecord)
-            - [`CustodyChallengeRecord`](#custodychallengerecord)
             - [`CustodyChallenge`](#custodychallenge)
+            - [`CustodyChallengeRecord`](#custodychallengerecord)
+            - [`BranchResponse`](#branchresponse)
             - [`SubkeyReveal`](#subkeyreveal)
     - [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
         - [Helper functions](#helper-functions)
@@ -76,9 +76,8 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 
 | Name | Value |
 | - | - |
-| `BYTES_PER_SHARD_CHUNK` | `2**5` (= 32) |
-| `BYTES_PER_MIX_CHUNK` | `2**9` (= 512) |
 | `BYTES_PER_SHARD_BLOCK` | `2**14` (= 16,384) |
+| `BYTES_PER_MIX_CHUNK` | `2**9` (= 512) |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 | `EMPTY_PUBKEY` | `int_to_bytes48(0)` |
 
@@ -97,9 +96,9 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | Name | Value |
 | - | - |
 | `MAX_DATA_CHALLENGES` | `2**2` (= 4) |
-| `MAX_EARLY_SUBKEY_REVEALS` | `2**4` (= 16) |
 | `MAX_CUSTODY_CHALLENGES` | `2**1` (= 2) |
 | `MAX_BRANCH_RESPONSES` | `2**5` (= 32) |
+| `MAX_EARLY_SUBKEY_REVEALS` | `2**4` (= 16) |
 
 ### Signature domains
 
@@ -192,17 +191,6 @@ Add the following fields to the end of the specified container objects.
 }
 ```
 
-#### `BranchResponse`
-
-```python
-{
-    'challenge_id': 'uint64',
-    'data': ['byte', BYTES_PER_CHUNK],
-    'branch': ['bytes32'],
-    'data_index': 'uint64',
-}
-```
-
 #### `DataChallengeRecord`
 
 ```python
@@ -210,10 +198,23 @@ Add the following fields to the end of the specified container objects.
     'challenge_id': 'uint64',
     'challenger_index': 'uint64',
     'responder_index': 'uint64',
-    'root': 'bytes32',
-    'depth': 'uint64',
+    'data_root': 'bytes32',
     'deadline': 'uint64',
+    'depth': 'uint64',
     'data_index': 'uint64',
+}
+```
+
+#### `CustodyChallenge`
+
+```python
+{
+    'attestation': SlashableAttestation,
+    'challenger_index': 'uint64',
+    'responder_index': 'uint64',
+    'responder_subkey': 'bytes96',
+    'mix': 'bytes',
+    'signature': 'bytes96',
 }
 ```
 
@@ -225,22 +226,20 @@ Add the following fields to the end of the specified container objects.
     'challenger_index': 'uint64',
     'responder_index': 'uint64',
     'data_root': 'bytes32',
+    'deadline': 'uint64',
     'challenge_mix': 'bytes',
     'responder_subkey': 'bytes96',
-    'deadline': 'uint64',
 }
 ```
 
-#### `CustodyChallenge`
+#### `BranchResponse`
 
 ```python
 {
-    'attestation': SlashableAttestation,
-    'responder_index': 'uint64',
-    'challenger_index': 'uint64',
-    'responder_subkey': 'bytes96',
-    'mix': 'bytes',
-    'signature': 'bytes96',
+    'challenge_id': 'uint64',
+    'data': ['byte', BYTES_PER_CHUNK],
+    'branch': ['bytes32'],
+    'data_index': 'uint64',
 }
 ```
 
@@ -415,7 +414,7 @@ We define two helpers:
 def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
     zero_shard_block = b'\x00' * BYTES_PER_SHARD_BLOCK
     while not is_power_of_two(len(values)):
-        values = values + [zero_shard_block]
+        values += [zero_shard_block]
     return values
 ```
 
@@ -429,16 +428,12 @@ We define the function for computing the commitment as follows:
 ```python
 def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes32:
     return hash(
-        merkle_root(
-            pad_to_power_of_2([
-                merkle_root_of_bytes(zpad(serialize(h), BYTES_PER_SHARD_BLOCK)) for h in headers
-            ])
-        ) +
-        merkle_root(
-            pad_to_power_of_2([
+        merkle_root(pad_to_power_of_2([
+            merkle_root_of_bytes(zpad(serialize(h), BYTES_PER_SHARD_BLOCK)) for h in headers
+        ])) +
+        merkle_root(pad_to_power_of_2([
                 merkle_root_of_bytes(h) for h in bodies
-            ])
-        )
+        ]))
     )
 ```
 
@@ -505,33 +500,30 @@ def get_current_custody_period(state: BeaconState) -> int:
 #### `verify_custody_subkey_reveal`
 
 ```python
-def verify_custody_subkey_reveal(pubkey: bytes48,
-                                 subkey: bytes96,
-                                 mask: bytes32,
-                                 mask_pubkey: bytes48,
-                                 period: int) -> bool:
-    # Legitimate reveal: checking that the provided value actually is the subkey
-    if mask == ZERO_HASH:
-        pubkeys=[pubkey]
-        message_hashes=[hash(int_to_bytes8(period))]
-        
-    # Punitive early reveal: checking that the provided value is a valid masked subkey
-    # (masking done to prevent "stealing the reward" from a whistleblower by block proposers)
-    # Secure under the aggregate extraction infeasibility assumption described on page 11-12
-    # of https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf
+def verify_custody_subkey_reveal(state: BeaconState,
+                                 reveal: SubkeyReveal) -> bool
+    # Case 1: legitimate reveal
+    if reveal.mask == ZERO_HASH:
+        pubkeys=[state.validator_registry[reveal.validator_index].pubkey]
+        message_hashes=[hash_tree_root(reveal.period)]
+
+    # Case 2: punitive early reveal
+    # Masking prevents proposer stealing the whistleblower reward
+    # Secure under the aggregate extraction infeasibility assumption
+    # See pages 11-12 of https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf
     else:
-        pubkeys=[pubkey, mask_pubkey]
-        message_hashes=[hash(int_to_bytes8(period)), mask]
-        
-    return bls_multi_verify(
+        pubkeys.append(state.validator_registry[reveal.revealer_index].pubkey)
+        message_hashes.append(reveal.mask)
+
+    return bls_verify_multiple(
         pubkeys=pubkeys,
         message_hashes=message_hashes,
-        signature=subkey,
+        signature=reveal.subkey,
         domain=get_domain(
             fork=state.fork,
-            epoch=period * CUSTODY_PERIOD_LENGTH,
+            epoch=reveal.period * CUSTODY_PERIOD_LENGTH,
             domain_type=DOMAIN_CUSTODY_SUBKEY,
-        )
+        ),
     )
 ```
 
@@ -575,7 +567,7 @@ Add the following transactions to the per-block processing, in order the given b
 
 Verify that `len(block.body.data_challenges) <= MAX_DATA_CHALLENGES`.
 
-For each `challenge` in `block.body.data_challenges`, run:
+For each `challenge` in `block.body.data_challenges`, run the following function:
 
 ```python
 def process_data_challenge(state: BeaconState,
@@ -585,11 +577,11 @@ def process_data_challenge(state: BeaconState,
     assert state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_DATA_CHALLENGE_DELAY
     # Check the attestation is valid
     assert verify_slashable_attestation(state, challenge.attestation)
-    # Check that the responder participated
+    # Check the responder participated
     assert challenger.responder_index in challenge.attestation.validator_indices
     # Check the challenge is not a duplicate
     assert [
-        c for c in state.data_challenge_records if c.root == challenge.attestation.data.crosslink_data_root and
+        c for c in state.data_challenge_records if c.data_root == challenge.attestation.data.crosslink_data_root and
         c.data_index == challenge.data_index
     ] == []
     # Check validity of depth
@@ -599,7 +591,7 @@ def process_data_challenge(state: BeaconState,
     state.data_challenge_records.append(DataChallengeRecord(
         challenge_id=state.next_challenge_id,
         challenger_index=get_beacon_proposer_index(state, state.slot),
-        root=challenge.attestation.data.shard_chain_commitment,
+        data_root=challenge.attestation.data.shard_chain_commitment,
         depth=depth,
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE,
         data_index=challenge.data_index,
@@ -611,12 +603,12 @@ def process_data_challenge(state: BeaconState,
 
 Verify that `len(block.body.early_subkey_reveals) <= MAX_EARLY_SUBKEY_REVEALS`.
 
-For each `reveal` in `block.body.early_subkey_reveals`:
+For each `reveal` in `block.body.early_subkey_reveals`, run the following function:
 
 ```python
 def process_subkey_reveal(state: BeaconState,
                           reveal: SubkeyReveal) -> None:
-    assert verify_custody_subkey_reveal(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period, reveal.mask, state.validator_registry[reveal.revealer_index].pubkey)
+    assert verify_custody_subkey_reveal(reveal)
 
     # Either the reveal is of a future period, or it is of the current period and the validator is still active
     is_early_reveal = reveal.period > get_current_custody_period(state) or (
@@ -645,7 +637,7 @@ def process_subkey_reveal(state: BeaconState,
 
 Verify that `len(block.body.custody_challenges) <= MAX_CUSTODY_CHALLENGES`.
 
-For each `challenge` in `block.body.custody_challenges`, use the following function to process it:
+For each `challenge` in `block.body.custody_challenges`, run the following function:
 
 ```python
 def process_challenge(state: BeaconState,
@@ -661,7 +653,7 @@ def process_challenge(state: BeaconState,
     )
     # Verify the attestation
     assert verify_slashable_attestation(challenge.attestation, state)
-    # Check that the responder actually participated in the attestation
+    # Check the responder participated in the attestation
     assert challenge.responder_index in attestation.validator_indices
     # Any validator can be a challenger or responder of max 1 challenge at a time
     for c in state.custody_challenge_records:
@@ -670,11 +662,11 @@ def process_challenge(state: BeaconState,
     # Cannot challenge if you have been slashed
     assert challenger.slashed is False
     # Make sure the revealed subkey is valid
-    assert verify_custody_subkey_reveal(
-        pubkey=state.validator_registry[responder_index].pubkey,
+    assert verify_custody_subkey_reveal(SubkeyReveal(
+        validator_index=responder_index,
+        period=slot_to_custody_period(attestation.data.slot),
         subkey=challenge.responder_subkey,
-        period=slot_to_custody_period(attestation.data.slot)
-    )
+    ))
     # Verify that the attestation is still eligible for challenging
     min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.reveal_max_periods_late)
     assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
@@ -682,7 +674,7 @@ def process_challenge(state: BeaconState,
     mix_length = get_attestation_mix_chunk_count(challenge.attestation)
     verify_bitfield(challenge.mix, mix_length)
     attested_bit = get_bitfield_bit(attestation.custodyfield, attestation.validator_indices.index(responder_index))
-    assert attested_bit != get_bitfield_bit(challenge.mix, mix_length-1)
+    assert attested_bit != get_bitfield_bit(challenge.mix, mix_length - 1)
     # Create a new challenge object
     state.custody_challenge_records.append(CustodyChallengeRecord(
         challenge_id=state.next_challenge_id,
@@ -702,7 +694,7 @@ def process_challenge(state: BeaconState,
 
 Verify that `len(block.body.branch_responses) <= MAX_BRANCH_RESPONSES`.
 
-For each `response` in `block.body.branch_responses`, run:
+For each `response` in `block.body.branch_responses`, run the following function:
 
 ```python
 def process_branch_response(state: BeaconState,
@@ -725,7 +717,7 @@ def process_data_challenge_response(state: BeaconState,
         branch=response.branch,
         depth=challenge.depth,
         index=challenge.data_index,
-        root=challenge.root,
+        root=challenge.data_root,
     )
     # Check data index
     assert response.data_index == challenge.data_index
@@ -737,7 +729,7 @@ def process_data_challenge_response(state: BeaconState,
     state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
 ```
 
-A response to a custody challenge proves that a challenger's mix is invalid by pointing to one index where the mix appears to have been incorrectly constructed.
+A response to a custody challenge proves that a challenger's mix is invalid by pointing to an index where the mix is incorrect.
 
 ```python
 def process_custody_challenge_response(state: BeaconState,
@@ -745,9 +737,9 @@ def process_custody_challenge_response(state: BeaconState,
                                        challenge: CustodyChallengeRecord) -> None:
     challenge = get_custody_challenge_record(state, response.challenge_id)
     responder = state.validator_registry[challenge.responder_index]
-    # Check that the data index is valid
+    # Check the data index is valid
     assert response.data_index < len(challenge.mix)
-    # Check that the provided data is part of the attested data
+    # Check the provided data is part of the attested data
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.data),
         branch=response.branch,
@@ -755,13 +747,11 @@ def process_custody_challenge_response(state: BeaconState,
         index=response.data_index,
         root=challenge.data_root
     )
-    # Check the mix bit, assert that the response did identify an invalid
-    # data index in the challenge
+    # Check the mix bit (assert the response identified an invalid data index in the challenge)
     mix_bit = get_bitfield_bit(hash(challenge.responder_subkey + response.data), 0)
-    prev_bit = 0 if response.data_index == 0 else get_bitfield_bit(challenge.mix, response.data_index-1)
+    previous_bit = 0 if response.data_index == 0 else get_bitfield_bit(challenge.mix, response.data_index - 1)
     next_bit = get_bitfield_bit(challenge.mix, response.data_index)
-    assert prev_bit ^ mix_bit != next_bit
-    assert expected_depth > 0
+    assert previous_bit ^ mix_bit != next_bit
     # Resolve the challenge in the responder's favor
     slash_validator(state, challenge.challenger_index, challenge.responder_index)
     state.custody_challenge_records.remove(challenge)
@@ -776,24 +766,18 @@ def process_challenge_absences(state: BeaconState) -> None:
     """
     Iterate through the challenges and slash validators that missed their deadline.
     """
-    removes = []
     for challenge in state.data_challenge_records:
         if get_current_epoch(state) > challenge.deadline:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
-            removes.append(challenge)
-    for r in removes:
-        state.data_challenge_records.remove(r)
+            state.data_challenge_records.remove(challenge)
 
-    removes = []
     for challenge in state.custody_challenge_records:
         if get_current_epoch(state) > challenge.deadline:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
-            removes.append(challenge)
+            state.custody_challenge_records.remove(challenge)
         elif get_current_epoch(state) > state.validator_registry[challenge.responder_index].withdrawable_epoch:
             slash_validator(state, challenge.challenger_index, challenge.responder_index)
-            removes.append(challenge)
-    for r in removes:
-        state.custody_challenge_records.remove(r)
+            state.custody_challenge_records.remove(challenge)
 ```
 
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
