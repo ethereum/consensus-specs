@@ -84,7 +84,7 @@ return b"\x01" if value is True else b"\x00"
 The serialized representation of composite types is comprised of two binary segments.
 
 * The first section is *fixed size* for all types, containing the concatenation of *either* 
-    - The serialized representation of value for each of the *fixed size* types
+    - The serialized representation for each of the *fixed size* elements of value
     - The `"uint32"` serialized offset where the serialized representation of the *variable sized* type is located in the second section relative to the beginning of the first section.
 * The second section contains the concatenation of the serialized representations of **only** the *variable size* types.
     - This section is empty in the case of a purely *fixed size* type.
