@@ -122,7 +122,7 @@ section_1_offsets = [
 ]
 assert all(offset is None or offset < 2**32 for offset in section_1_offsets)
 
-# The first section is the concatenation of the serialized static size elements and offsets 
+# The first section is the concatenation of the serialized fixed size elements and offsets
 section_1_parts = [
     serialize(element) if is_fixed_size(element)
     else serialize(section_1_offsets[element_index])
