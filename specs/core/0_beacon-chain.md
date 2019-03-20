@@ -256,7 +256,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 
 ### Max transactions per block
@@ -789,7 +789,7 @@ def decrease_balance(state: BeaconState, index: int, delta: int) -> None:
 ```python
 def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
-    Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
+    Return `p(index)` in a pseudorandom permutation `p` of `0...list_size - 1` with ``seed`` as entropy.
 
     Utilizes 'swap or not' shuffling found in
     https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
@@ -1376,7 +1376,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
         state.validator_registry.append(validator)
         state.balances.append(0)
-        set_balance(state, len(state.validator_registry)-1, amount)
+        set_balance(state, len(state.validator_registry) - 1, amount)
     else:
         # Increase balance by deposit amount
         index = validator_pubkeys.index(pubkey)
