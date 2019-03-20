@@ -16,93 +16,56 @@ from tests.phase0.helpers import (
 pytestmark = pytest.mark.header
 
 
-def test_sucess(state):
-    pre_state = deepcopy(state)
-    block = build_empty_block_for_next_slot(pre_state)
+def prepare_state_for_header_processing(state):
+    cache_state(state)
+    advance_slot(state)
 
-    #
-    # setup pre_state to be ready for block transition
-    #
-    cache_state(pre_state)
-    advance_slot(pre_state)
 
-    post_state = deepcopy(pre_state)
+def run_block_header_processing(state, block, valid=True):
+    """
+    Run ``process_block_header`` returning the pre and post state.
+    If ``valid == False``, run expecting ``AssertionError``
+    """
+    prepare_state_for_header_processing(state)
+    post_state = deepcopy(state)
 
-    #
-    # test block header
-    #
+    if not valid:
+        with pytest.raises(AssertionError):
+            process_block_header(post_state, block)
+        return state, None
+
     process_block_header(post_state, block)
+    return state, post_state
 
-    return state, [block], post_state
+
+def test_success(state):
+    block = build_empty_block_for_next_slot(state)
+    pre_state, post_state = run_block_header_processing(state, block)
+    return state, block, post_state
 
 
 def test_invalid_slot(state):
-    pre_state = deepcopy(state)
+    block = build_empty_block_for_next_slot(state)
+    block.slot = state.slot + 2  # invalid slot
 
-    # mess up previous block root
-    block = build_empty_block_for_next_slot(pre_state)
-    block.previous_block_root = b'\12'*32
-
-    #
-    # setup pre_state advancing two slots to induce error
-    #
-    cache_state(pre_state)
-    advance_slot(pre_state)
-    advance_slot(pre_state)
-
-    post_state = deepcopy(pre_state)
-
-    #
-    # test block header
-    #
-    with pytest.raises(AssertionError):
-        process_block_header(post_state, block)
-
-    return state, [block], None
+    pre_state, post_state = run_block_header_processing(state, block, valid=False)
+    return pre_state, block, None
 
 
 def test_invalid_previous_block_root(state):
-    pre_state = deepcopy(state)
+    block = build_empty_block_for_next_slot(state)
+    block.previous_block_root = b'\12'*32  # invalid prev root
 
-    # mess up previous block root
-    block = build_empty_block_for_next_slot(pre_state)
-    block.previous_block_root = b'\12'*32
-
-    #
-    # setup pre_state to be ready for block transition
-    #
-    cache_state(pre_state)
-    advance_slot(pre_state)
-
-    post_state = deepcopy(pre_state)
-
-    #
-    # test block header
-    #
-    with pytest.raises(AssertionError):
-        process_block_header(post_state, block)
-
-    return state, [block], None
+    pre_state, post_state = run_block_header_processing(state, block, valid=False)
+    return pre_state, block, None
 
 
 def test_proposer_slashed(state):
-    pre_state = deepcopy(state)
-    proposer_index = get_beacon_proposer_index(pre_state, pre_state.slot + 1)
-    pre_state.validator_registry[proposer_index].slashed = True
-    block = build_empty_block_for_next_slot(pre_state)
+    # set proposer to slashed
+    proposer_index = get_beacon_proposer_index(state, state.slot + 1)
+    state.validator_registry[proposer_index].slashed = True
 
-    #
-    # setup pre_state to be ready for block transition
-    #
-    cache_state(pre_state)
-    advance_slot(pre_state)
+    block = build_empty_block_for_next_slot(state)
 
-    post_state = deepcopy(pre_state)
-
-    #
-    # test block header
-    #
-    with pytest.raises(AssertionError):
-        process_block_header(post_state, block)
-
-    return state, [block], None
+    pre_state, post_state = run_block_header_processing(state, block, valid=False)
+    return pre_state, block, None
