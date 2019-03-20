@@ -83,7 +83,6 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `BYTES_PER_SHARD_BLOCK` | `2**14` (= 16,384) |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 | `EMPTY_PUBKEY` | `int_to_bytes48(0)` |
-| `VALIDATOR_NULL` | `2**64 - 1` |
 
 ### Time parameters
 
@@ -396,18 +395,18 @@ def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttesta
 
     # Check attestations
     persistent_committee = get_persistent_committee(state, header.shard, header.slot)
-    assert verify_bitfield(header.participation_bitfield, len(persistent_committee))
+    assert verify_bitfield(shard_attestation.participation_bitfield, len(persistent_committee))
     for i in range(len(persistent_committee)):
         if not is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state)):
-            assert get_bitfield_bit(header.participation_bitfield, i) == 0b0
+            assert get_bitfield_bit(shard_attestation.participation_bitfield, i) == 0b0
     aggregate_pubkey = bls_aggregate_pubkeys([
         state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee)
-        if get_bitfield_bit(header.participation_bitfield, i) == 0b1
+        if get_bitfield_bit(shard_attestation.participation_bitfield, i) == 0b1
     ])
     assert bls_verify(
         pubkey=aggregate_pubkey,
         message_hash=header.previous_block_root,
-        signature=header.aggregate_signature,
+        signature=shard_attestation.aggregate_signature,
         domain=get_domain(state, slot_to_epoch(header.slot), DOMAIN_SHARD_ATTESTER)
     )
 ```
@@ -490,8 +489,8 @@ def get_attestation_epoch_length(attestation: Attestation) -> int:
 #### `get_attestation_chunk_count`
 
 ```python
-def get_attestation_chunk_acount(attestation:Attestation) -> int:
-    chunks_per_slot = BYTES_PER_SHARD_BLOCK // 32
+def get_attestation_chunk_count(attestation: Attestation) -> int:
+    chunks_per_slot = BYTES_PER_SHARD_BLOCK // BYTES_PER_SHARD_CHUNK
     return get_attestation_epoch_length(attestation) * EPOCH_LENGTH * chunks_per_slot
 ```
 
@@ -717,7 +716,7 @@ def process_challenge(state: BeaconState,
     # Verify that the attestation is still eligible for challenging
     min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.reveal_max_periods_late)
     assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
-    # Verify the mix's length and that its last bit is opposite the attested bit
+    # Verify the mix's length and that its last bit is the opposite of the attested bit
     mix_length = get_attestation_chunk_count(challenge.attestation) * BYTES_PER_SHARD_CHUNK // BYTES_PER_MIX_CHUNK
     verify_bitfield(challenge.mix, mix_length)
     attested_bit = get_bitfield_bit(attestation.custodyfield, attestation.validator_indices.index(responder_index))
@@ -733,7 +732,7 @@ def process_challenge(state: BeaconState,
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
     ))
     state.next_branch_challenge_id += 1
-    # Responder can't withdraw yet!
+    # Responder cannot withdraw yet!
     state.validator_registry[responder_index].withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
 
@@ -779,8 +778,7 @@ Add the following loop immediately below the `process_ejections` loop:
 ```python
 def process_challenge_absences(state: BeaconState) -> None:
     """
-    Iterate through the challenge list
-    and penalize validators with balance that did not answer challenges.
+    Iterate through the challenges and slash validators that missed their deadline.
     """
     for challenge in state.branch_challenge_records:
         if get_current_epoch(state) > challenge.deadline:
