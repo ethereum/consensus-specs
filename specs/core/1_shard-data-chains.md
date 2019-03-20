@@ -10,72 +10,72 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
 
 - [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
     - [Table of contents](#table-of-contents)
-        - [Introduction](#introduction)
-        - [Terminology](#terminology)
-        - [Constants](#constants)
-            - [Misc](#misc)
-            - [Time parameters](#time-parameters)
-            - [Max transactions per block](#max-transactions-per-block)
-            - [Signature domains](#signature-domains)
-- [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
-    - [Helper functions](#helper-functions)
+    - [Introduction](#introduction)
+    - [Constants](#constants)
+        - [Misc](#misc)
+        - [Time parameters](#time-parameters)
+        - [Max transactions per block](#max-transactions-per-block)
+        - [Signature domains](#signature-domains)
+    - [Data structures](#data-structures)
+        - [Phase 0 object updates](#phase-0-object-updates)
+            - [`Validator`](#validator)
+            - [`BeaconBlockBody`](#beaconblockbody)
+            - [`BeaconState`](#beaconstate)
+        - [Shard blocks](#shard-blocks)
+            - [`ShardBlock`](#shardblock)
+            - [`AttestedShardBlock`](#attestedshardblock)
+        - [Custody objects](#custody-objects)
+            - [`BranchChallenge`](#branchchallenge)
+            - [`BranchResponse`](#branchresponse)
+            - [`BranchChallengeRecord`](#branchchallengerecord)
+            - [`CustodyChallengeRecord`](#custodychallengerecord)
+            - [`CustodyChallenge`](#custodychallenge)
+            - [`CustodyResponse`](#custodyresponse)
+            - [`SubkeyReveal`](#subkeyreveal)
+    - [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
+        - [Helper functions](#helper-functions)
             - [`get_split_offset`](#get_split_offset)
             - [`get_shuffled_committee`](#get_shuffled_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
-    - [Data Structures](#data-structures)
-        - [Shard chain blocks](#shard-chain-blocks)
-    - [Shard block processing](#shard-block-processing)
+        - [Shard block processing](#shard-block-processing)
         - [Verifying shard block data](#verifying-shard-block-data)
         - [Verifying a crosslink](#verifying-a-crosslink)
         - [Shard block fork choice rule](#shard-block-fork-choice-rule)
-- [Updates to the beacon chain](#updates-to-the-beacon-chain)
-    - [Data structures](#data-structures)
-        - [`Validator`](#validator)
-        - [`BeaconBlockBody`](#beaconblockbody)
-        - [`BeaconState`](#beaconstate)
-        - [`BranchChallenge`](#branchchallenge)
-        - [`BranchResponse`](#branchresponse)
-        - [`BranchChallengeRecord`](#branchchallengerecord)
-        - [`CustodyChallengeRecord`](#custodychallengerecord)
-        - [`CustodyChallenge`](#custodychallenge)
-        - [`CustodyResponse`](#custodyresponse)
-        - [`SubkeyReveal`](#subkeyreveal)
-    - [Helpers](#helpers)
-        - [`get_branch_challenge_record_by_id`](#get_branch_challenge_record_by_id)
-        - [`get_custody_challenge_record_by_id`](#get_custody_challenge_record_by_id)
-        - [`get_attestation_epoch_length`](#get_attestation_epoch_length)
-        - [`get_attestation_chunk_count`](#get_attestation_chunk_count)
-        - [`epoch_to_custody_period`](#epoch_to_custody_period)
-        - [`slot_to_custody_period`](#slot_to_custody_period)
-        - [`get_current_custody_period`](#get_current_custody_period)
-        - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
-        - [`slash_validator`](#slash_validator)
-    - [Per-block processing](#per-block-processing)
-        - [Transactions](#transactions)
-            - [Branch challenges](#branch-challenges)
-            - [Branch responses](#branch-responses)
-            - [Subkey reveals](#subkey-reveals)
-            - [Interactive custody challenges](#interactive-custody-challenges)
-            - [Interactive custody challenge responses](#interactive-custody-challenge-responses)
-    - [Per-epoch processing](#per-epoch-processing)
-    - [One-time phase 1 initiation transition](#one-time-phase-1-initiation-transition)
+    - [Updates to the beacon chain](#updates-to-the-beacon-chain)
+        - [Helpers](#helpers)
+            - [`get_branch_challenge_record_by_id`](#get_branch_challenge_record_by_id)
+            - [`get_custody_challenge_record_by_id`](#get_custody_challenge_record_by_id)
+            - [`get_attestation_epoch_length`](#get_attestation_epoch_length)
+            - [`get_attestation_chunk_count`](#get_attestation_chunk_count)
+            - [`epoch_to_custody_period`](#epoch_to_custody_period)
+            - [`slot_to_custody_period`](#slot_to_custody_period)
+            - [`get_current_custody_period`](#get_current_custody_period)
+            - [`verify_custody_subkey_reveal`](#verify_custody_subkey_reveal)
+            - [`slash_validator`](#slash_validator)
+        - [Per-block processing](#per-block-processing)
+            - [Transactions](#transactions)
+                - [Branch challenges](#branch-challenges)
+                - [Branch responses](#branch-responses)
+                - [Subkey reveals](#subkey-reveals)
+                - [Custody challenges](#custody-challenges)
+                - [Custody responses](#custody-responses)
+        - [Per-epoch processing](#per-epoch-processing)
+        - [One-time phase 1 initiation transition](#one-time-phase-1-initiation-transition)
 
 <!-- /TOC -->
 
-### Introduction
+## Introduction
 
 This document represents the specification for Phase 1 of Ethereum 2.0 -- Shard Data Chains. Phase 1 depends on the implementation of [Phase 0 -- The Beacon Chain](0_beacon-chain.md).
 
-Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shard chains. Phase 1 is primarily concerned with the construction, validity, and consensus on the _data_ of these shard chains. Phase 1 does not specify shard chain state execution or account balances. This is left for future phases.
+Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shards. Phase 1 is primarily concerned with the construction, validity, and consensus on the _data_ of these shard chains. Phase 1 does not specify shard chain state execution or account balances. This is left for future phases.
 
-### Terminology
-
-### Constants
+## Constants
 
 Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
-#### Misc
+### Misc
 
 | Name | Value |
 | - | - |
@@ -86,7 +86,7 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `EMPTY_PUBKEY` | `int_to_bytes48(0)` |
 | `VALIDATOR_NULL` | `2**64 - 1` |
 
-#### Time parameters
+### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
@@ -96,28 +96,176 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 | `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
 | `CHALLENGE_RESPONSE_DEADLINE` | 2**14 (= 16,384) | epochs | ~73 days |
 
-#### Max transactions per block
+### Max transactions per block
 
 | Name | Value |
 | - | - |
 | `MAX_BRANCH_CHALLENGES` | `2**2` (= 4) |
 | `MAX_BRANCH_RESPONSES` | `2**4` (= 16) |
 | `MAX_EARLY_SUBKEY_REVEALS` | `2**4` (= 16) |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGES` | `2**1` (= 2) |
-| `MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES` | `2**4` (= 16) |
+| `MAX_CUSTODY_CHALLENGES` | `2**1` (= 2) |
+| `MAX_CUSTODY_RESPONSES` | `2**4` (= 16) |
 
-#### Signature domains
+### Signature domains
 
 | Name | Value |
 | - | - |
 | `DOMAIN_SHARD_PROPOSER` | `129` |
 | `DOMAIN_SHARD_ATTESTER` | `130` |
 | `DOMAIN_CUSTODY_SUBKEY` | `131` |
-| `DOMAIN_CUSTODY_INTERACTIVE` | `132` |
+| `DOMAIN_CUSTODY_CHALLENGE` | `132` |
 
-# Shard chains and crosslink data
+## Data structures
 
-## Helper functions
+### Phase 0 object updates
+
+Add the following fields to the end of the specified container objects.
+
+#### `Validator`
+
+```python
+    'next_subkey_to_reveal': 'uint64',
+    'reveal_max_periods_late': 'uint64',
+```
+
+#### `BeaconBlockBody`
+
+```python
+    'branch_challenges': [BranchChallenge],
+    'branch_responses': [BranchResponse],
+    'subkey_reveals': [SubkeyReveal],
+    'custody_challenges': [CustodyChallenge],
+    'custody_responses': [CustodyResponse],
+```
+
+#### `BeaconState`
+
+```python
+    'branch_challenge_records': [BranchChallengeRecord],
+    'next_branch_challenge_id': 'uint64',
+    'custody_challenge_records': [CustodyChallengeRecord],
+    'next_custody_challenge_id': 'uint64',
+```
+
+### Shard blocks
+
+#### `ShardBlock`
+
+```python
+{
+    'slot': 'uint64',
+    'shard': 'uint64',
+    'previous_block_root': 'bytes32',
+    'beacon_chain_reference': 'bytes32',
+    'data_root': 'bytes32'
+    'state_root': 'bytes32',
+    'signature': 'bytes96',
+}
+```
+
+#### `AttestedShardBlock`
+
+```python
+{
+    'shard_block': ShardBlock,
+    'participation_bitfield': 'bytes',
+    'aggregate_signature': 'bytes96',
+}
+```
+
+### Custody objects
+
+#### `BranchChallenge`
+
+```python
+{
+    'responder_index': 'uint64',
+    'data_index': 'uint64',
+    'attestation': SlashableAttestation,
+}
+```
+
+#### `BranchResponse`
+
+```python
+{
+    'challenge_id': 'uint64',
+    'data': 'bytes32',
+    'branch': ['bytes32'],
+}
+```
+
+#### `BranchChallengeRecord`
+
+```python
+{
+    'challenge_id': 'uint64',
+    'challenger_index': 'uint64',
+    'responder_index': 'uint64',
+    'root': 'bytes32',
+    'depth': 'uint64',
+    'deadline': 'uint64',
+    'data_index': 'uint64',
+}
+```
+
+#### `CustodyChallengeRecord`
+
+```python
+{
+    'challenge_id': 'uint64',
+    'challenger_index': 'uint64',
+    'responder_index': 'uint64',
+    # Initial data root
+    'data_root': 'bytes32',
+    # Challenger-provided mix data
+    'challenge_mix': 'bytes',
+    # Responder subkey
+    'responder_subkey': 'bytes96',
+    # Deadline to respond (as an epoch)
+    'deadline': 'uint64',
+}
+```
+
+#### `CustodyChallenge`
+
+```python
+{
+    'attestation': SlashableAttestation,
+    'responder_index': 'uint64',
+    'challenger_index': 'uint64',
+    'responder_subkey': 'bytes96',
+    'mix': 'bytes',
+    'signature': 'bytes96',
+}
+```
+
+#### `CustodyResponse`
+
+```python
+{
+    'challenge_id': 'uint64',
+    'position': 'uint64',
+    'data': ['byte', BYTES_PER_MIX_CHUNK],
+    'branch': ['bytes32']
+}
+```
+
+#### `SubkeyReveal`
+
+```python
+{
+    'validator_index': 'uint64',
+    'period': 'uint64',
+    'subkey': 'bytes96',
+    'mask': 'bytes32',
+    'revealer_index': 'uint64'
+}
+```
+
+## Shard chains and crosslink data
+
+### Helper functions
 
 #### `get_split_offset`
 
@@ -169,7 +317,6 @@ def get_persistent_committee(state: BeaconState,
     """
     Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
-        
     earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
     later_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
 
@@ -218,29 +365,7 @@ def get_shard_proposer_index(state: BeaconState,
     return None
 ```
 
-## Data Structures
-
-### Shard chain blocks
-
-A `ShardBlock` object has the following fields:
-
-```python
-{
-    'slot': 'uint64',
-    'shard': 'uint64',
-    'previous_block_root': 'bytes32',
-    'beacon_chain_reference': 'bytes32',
-    'data_root': 'bytes32'
-    'state_root': 'bytes32',  # placeholder for now
-    'signature': 'bytes96',
-    
-    # Attestation
-    'participation_bitfield': 'bytes',
-    'aggregate_signature': 'bytes96',
-}
-```
-
-## Shard block processing
+### Shard block processing
 
 For a `shard_block` on a shard to be processed by a node, the following conditions must be met:
 
@@ -252,15 +377,38 @@ To validate a block header on shard `shard_block.shard`, compute as follows:
 * Verify that `shard_block.beacon_chain_reference` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
 * Verify that `shard_block.beacon_chain_reference` is equal to or a descendant of the `shard_block.beacon_chain_reference` specified in the `ShardBlock` pointed to by `shard_block.previous_block_root`.
 * Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_reference`.
-* Let `persistent_committee = get_persistent_committee(state, shard_block.shard, shard_block.slot)`.
-* Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
-* For every `i in range(len(persistent_committee))` where `is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
-* Let `proposer_index = get_shard_proposer_index(state, shard_block.shard, shard_block.slot)`.
-* Verify that `proposer_index` is not `None`.
-* Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`.
-* Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_PROPOSER))` passes.
-* Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`.
-* Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.previous_block_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER))` passes.
+
+```python
+def verify_attesed_shard_block(state: BeaconState, attested_shard_block: AttestedShardBlock) -> None:
+    shard_block = attested_shard_block.shard_block
+
+    # Check proposer signature
+    proposer_index = get_shard_proposer_index(state, shard_block.shard, shard_block.slot)
+    assert proposer_index is not None
+    assert bls_verify(
+        pubkey=validators[proposer_index].pubkey,
+        message_hash=signed_root(shard_block),
+        signature=shard_block.signature,
+        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_PROPOSER)
+    )
+
+    # Check attestations
+    persistent_committee = get_persistent_committee(state, shard_block.shard, shard_block.slot)
+    assert verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))
+    for i in range(len(persistent_committee)):
+        if not is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state)):
+            assert get_bitfield_bit(shard_block.participation_bitfield, i) == 0b0
+    aggregate_pubkey = bls_aggregate_pubkeys([
+        state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee)
+        if get_bitfield_bit(shard_block.participation_bitfield, i) == 0b1
+    ])
+    assert bls_verify(
+        pubkey=aggregate_pubkey,
+        message_hash=shard_block.previous_block_root,
+        signature=shard_block.aggregate_signature,
+        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER)
+    )
+```
 
 ### Verifying shard block data
 
@@ -321,147 +469,25 @@ The `shard_chain_commitment` is only valid if it equals `compute_commitment(head
 
 The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (ie. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_reference` is the block in the main beacon chain at the specified `slot` should be considered (if the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot).
 
-# Updates to the beacon chain
+## Updates to the beacon chain
 
-## Data structures
+### Helpers
 
-### `Validator`
-
-Add fields to the end of the `Validator` container:
-
-```python
-    'next_subkey_to_reveal': 'uint64',
-    'reveal_max_periods_late': 'uint64',
-```
-
-### `BeaconBlockBody`
-
-Add fields to the end of the `BeaconBlockBody` container:
-
-```python
-    'branch_challenges': [BranchChallenge],
-    'branch_responses': [BranchResponse],
-    'subkey_reveals': [SubkeyReveal],
-    'custody_challenges': [CustodyChallenge],
-    'custody_responses': [CustodyResponse],
-```
-
-### `BeaconState`
-
-Add fields to the end of the `BeaconState` container:
-
-```python
-    'branch_challenge_records': [BranchChallengeRecord],
-    'next_branch_challenge_id': 'uint64',
-    'custody_challenge_records': [CustodyChallengeRecord],
-    'next_custody_challenge_id': 'uint64',
-```
-
-### `BranchChallenge`
-
-```python
-{
-    'responder_index': 'uint64',
-    'data_index': 'uint64',
-    'attestation': SlashableAttestation,
-}
-```
-
-### `BranchResponse`
-
-```python
-{
-    'challenge_id': 'uint64',
-    'data': 'bytes32',
-    'branch': ['bytes32'],
-}
-```
-
-### `BranchChallengeRecord`
-
-```python
-{
-    'challenge_id': 'uint64',
-    'challenger_index': 'uint64',
-    'responder_index': 'uint64',
-    'root': 'bytes32',
-    'depth': 'uint64',
-    'deadline': 'uint64',
-    'data_index': 'uint64',
-}
-```
-
-### `CustodyChallengeRecord`
-
-```python
-{
-    'challenge_id': 'uint64',
-    'challenger_index': 'uint64',
-    'responder_index': 'uint64',
-    # Initial data root
-    'data_root': 'bytes32',
-    # Challenger-provided mix data
-    'challenge_mix': 'bytes',
-    # Responder subkey
-    'responder_subkey': 'bytes96',
-    # Deadline to respond (as an epoch)
-    'deadline': 'uint64',
-}
-```
-
-### `CustodyChallenge`
-
-```python
-{
-    'attestation': SlashableAttestation,
-    'responder_index': 'uint64',
-    'challenger_index': 'uint64',
-    'responder_subkey': 'bytes96',
-    'mix': 'bytes',
-    'signature': 'bytes96',
-}
-```
-
-### `CustodyResponse`
-
-```python
-{
-    'challenge_id': 'uint64',
-    'position': 'uint64',
-    'data': ['byte', BYTES_PER_MIX_CHUNK],
-    'branch': ['bytes32']
-}
-```
-
-### `SubkeyReveal`
-
-```python
-{
-    'validator_index': 'uint64',
-    'period': 'uint64',
-    'subkey': 'bytes96',
-    'mask': 'bytes32',
-    'revealer_index': 'uint64'
-}
-```
-
-## Helpers
-
-### `get_branch_challenge_record_by_id`
+#### `get_branch_challenge_record_by_id`
 
 ```python
 def get_branch_challenge_record_by_id(state: BeaconState, id: int) -> BranchChallengeRecord:
     return [c for c in state.branch_challenges if c.challenge_id == id][0]
 ```
 
-### `get_custody_challenge_record_by_id`
+#### `get_custody_challenge_record_by_id`
 
 ```python
 def get_custody_challenge_record_by_id(state: BeaconState, id: int) -> BranchChallengeRecord:
     return [c for c in state.branch_challenges if c.challenge_id == id][0]
 ```
 
-### `get_attestation_epoch_length`
+#### `get_attestation_epoch_length`
 
 ```python
 def get_attestation_epoch_length(attestation: Attestation) -> int:
@@ -470,7 +496,7 @@ def get_attestation_epoch_length(attestation: Attestation) -> int:
     return end_epoch - start_epoch
 ```
 
-### `get_attestation_chunk_count`
+#### `get_attestation_chunk_count`
 
 ```python
 def get_attestation_chunk_acount(attestation:Attestation) -> int:
@@ -478,28 +504,28 @@ def get_attestation_chunk_acount(attestation:Attestation) -> int:
     return get_attestation_epoch_length(attestation) * EPOCH_LENGTH * chunks_per_slot
 ```
 
-### `epoch_to_custody_period`
+#### `epoch_to_custody_period`
 
 ```python
 def epoch_to_custody_period(epoch: Epoch) -> int:
     return epoch // CUSTODY_PERIOD_LENGTH
 ```
 
-### `slot_to_custody_period`
+#### `slot_to_custody_period`
 
 ```python
 def slot_to_custody_period(slot: Slot) -> int:
     return epoch_to_custody_period(slot_to_epoch(slot))
 ```
 
-### `get_current_custody_period`
+#### `get_current_custody_period`
 
 ```python
 def get_current_custody_period(state: BeaconState) -> int:
     return epoch_to_custody_period(get_current_epoch(state))
 ```
 
-### `verify_custody_subkey_reveal`
+#### `verify_custody_subkey_reveal`
 
 ```python
 def verify_custody_subkey_reveal(pubkey: bytes48,
@@ -532,7 +558,7 @@ def verify_custody_subkey_reveal(pubkey: bytes48,
     )
 ```
 
-### `slash_validator`
+#### `slash_validator`
 
 Change the definition of `slash_validator` as follows:
 
@@ -562,13 +588,13 @@ def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_ind
 
 The only change is that this introduces the possibility of a penalization where the "whistleblower" that takes credit is NOT the block proposer.
 
-## Per-block processing
+### Per-block processing
 
-### Transactions
+#### Transactions
 
 Add the following transactions to the per-block processing, in order the given below and after all other transactions in phase 0.
 
-#### Branch challenges
+##### Branch challenges
 
 Verify that `len(block.body.branch_challenges) <= MAX_BRANCH_CHALLENGES`.
 
@@ -604,7 +630,7 @@ def process_branch_challenge(state: BeaconState,
     state.next_branch_challenge_id += 1
 ```
 
-#### Branch responses
+##### Branch responses
 
 Verify that `len(block.body.branch_responses) <= MAX_BRANCH_RESPONSES`.
 
@@ -629,7 +655,7 @@ def process_branch_response(state: BeaconState,
     state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
 ```
 
-#### Subkey reveals
+##### Subkey reveals
 
 Verify that `len(block.body.early_subkey_reveals) <= MAX_EARLY_SUBKEY_REVEALS`.
 
@@ -653,9 +679,9 @@ In case (ii):
 * Set `state.validator_registry[reveal.validator_index].next_subkey_to_reveal += 1`
 * Set `state.validator_registry[reveal.validator_index].reveal_max_periods_late = max(state.validator_registry[reveal.validator_index].reveal_max_periods_late, get_current_period(state) - reveal.period)`.
 
-#### Interactive custody challenges
+##### Custody challenges
 
-Verify that `len(block.body.custody_challenges) <= MAX_INTERACTIVE_CUSTODY_CHALLENGES`.
+Verify that `len(block.body.custody_challenges) <= MAX_CUSTODY_CHALLENGES`.
 
 For each `challenge` in `block.body.custody_challenges`, use the following function to process it:
 
@@ -669,7 +695,7 @@ def process_challenge(state: BeaconState,
         message_hash=signed_root(challenge),
         pubkey=challenger.pubkey,
         signature=challenge.signature,
-        domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_INTERACTIVE)
+        domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_CHALLENGE)
     )
     # Verify the attestation
     assert verify_slashable_attestation(challenge.attestation, state)
@@ -710,11 +736,11 @@ def process_challenge(state: BeaconState,
     state.validator_registry[responder_index].withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
 
-#### Interactive custody challenge responses
+##### Custody responses
 
 A response proves that a challenger's mix is invalid by pointing to one index where the mix appears to have been incorrectly constructed.
 
-Verify that `len(block.body.custody_responses) <= MAX_INTERACTIVE_CUSTODY_CHALLENGE_RESPONSES`.
+Verify that `len(block.body.custody_responses) <= MAX_CUSTODY_RESPONSES`.
 
 For each `response` in `block.body.custody_responses`, use the following function to process it:
 
@@ -745,7 +771,7 @@ def process_response(state: BeaconState,
     state.custody_challenge_records.remove(challenge)
 ```
 
-## Per-epoch processing
+### Per-epoch processing
 
 Add the following loop immediately below the `process_ejections` loop:
 
@@ -785,7 +811,7 @@ def eligible(index):
         return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 ```
 
-## One-time phase 1 initiation transition
+### One-time phase 1 initiation transition
 
 Run the following on the fork block after per-slot processing and before per-block and per-epoch processing.
 
