@@ -17,7 +17,7 @@ clean:
 # runs a limited set of tests against a minimal config
 # run pytest with `-m` option to full suite
 test:
-	pytest -m "sanity and minimal_config" tests/
+	pytest -m minimal_config tests/
 
 
 $(BUILD_DIR)/phase0:

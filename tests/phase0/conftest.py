@@ -5,6 +5,7 @@ from build.phase0 import spec
 from tests.phase0.helpers import (
     privkeys_list,
     pubkeys_list,
+    pubkey_to_privkey,
     create_genesis_state,
 )
 
@@ -32,6 +33,11 @@ def privkeys():
 @pytest.fixture
 def pubkeys():
     return pubkeys_list
+
+
+@pytest.fixture
+def pub_to_priv():
+    return pubkey_to_privkey
 
 
 def overwrite_spec_config(config):
