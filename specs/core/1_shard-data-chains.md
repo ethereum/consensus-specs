@@ -390,7 +390,7 @@ def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttesta
 
 ```python
 def get_data_challenge_record(state: BeaconState, id: int) -> DataChallengeRecord:
-    records = [c for c in state.data_challenges if c.challenge_id == id]
+    records = [c for c in state.data_challenge_records if c.challenge_id == id]
     return records[0] if len(records) > 0 else None
 ```
 
@@ -398,7 +398,7 @@ def get_data_challenge_record(state: BeaconState, id: int) -> DataChallengeRecor
 
 ```python
 def get_custody_challenge_record(state: BeaconState, id: int) -> CustodyChallengeRecord:
-    records = [c for c in state.custody_challenges if c.challenge_id == id]
+    records = [c for c in state.custody_challenge_records if c.challenge_id == id]
     return records[0] if len(records) > 0 else None
 ```
 
