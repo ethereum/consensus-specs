@@ -259,20 +259,33 @@ For a `shard_block` on a shard to be processed by a node, the following conditio
 * The `ShardBlock` pointed to by `shard_block.parent_root` has already been processed and accepted
 * The signature for the block from the _proposer_ (see below for definition) of that block is included along with the block in the network message object
 
-To validate a block header on shard `shard_block.shard_id`, compute as follows:
+To validate a block header on shard `shard_block.shard_id`, use the following function, with the argument `beacon_block` being the most recent beacon block at the given slot and `beacon_state` being the post-state of the beacon chain at the given slot:
 
-* Verify that `shard_block.beacon_chain_ref` is the hash of a block in the (canonical) beacon chain with slot less than or equal to `slot`.
-* Verify that `shard_block.beacon_chain_ref` is equal to or a descendant of the `shard_block.beacon_chain_ref` specified in the `ShardBlock` pointed to by `shard_block.parent_root`.
-* Let `state` be the state of the beacon chain block referred to by `shard_block.beacon_chain_ref`.
-* Let `persistent_committee = get_persistent_committee(state, shard_block.shard_id, shard_block.slot)`.
-* Assert `verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))`
-* For every `i in range(len(persistent_committee))` where `is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state))` returns `False`, verify that `get_bitfield_bit(shard_block.participation_bitfield, i) == 0`
-* Let `proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)`.
-* Verify that `proposer_index` is not `None`.
-* Let `msg` be the `shard_block` but with `shard_block.signature` set to `[0, 0]`.
-* Verify that `bls_verify(pubkey=validators[proposer_index].pubkey, message_hash=hash(msg), signature=shard_block.signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_PROPOSER))` passes.
-* Let `group_public_key = bls_aggregate_pubkeys([state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee) if get_bitfield_bit(shard_block.participation_bitfield, i) is True])`.
-* Verify that `bls_verify(pubkey=group_public_key, message_hash=shard_block.parent_root, sig=shard_block.aggregate_signature, domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER))` passes.
+```python
+def process_shard_block(shard_block: ShardBlock, beacon_block: BeaconBlock, beacon_state: BeaconState):
+    assert shard_block.beacon_chain_ref == hash_tree_root(beacon_block)
+    # Compute persistent committee
+    persistent_committee = get_persistent_committee(beacon_state, shard_block.shard_id, shard_block.slot)
+    # Check bitfield
+    assert verify_bitfield(shard_block.participation_bitfield, len(persistent_committee))
+    for i, v in enumerate(persistent_committee):
+        if not is_active_validator(state.validator_registry[v], get_current_epoch(state)):
+            assert get_bitfield_bit(shard_block.participation_bitfield, i) == 0
+    # Check proposer
+    proposer_index = get_shard_proposer_index(state, shard_block.shard_id, shard_block.slot)
+    assert proposer_index is not None
+    # Verify signature
+    group_public_key = bls_aggregate_pubkeys([
+        state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee) if
+        get_bitfield_bit(shard_block.participation_bitfield, i) is True
+    ])
+    assert bls_verify(
+        pubkey=group_public_key,
+        message_hash=shard_block.parent_root,
+        signature=shard_block.aggregate_signature,
+        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER)
+    )
+```
 
 ### Verifying shard block data
 
@@ -283,11 +296,11 @@ At network layer, we expect a shard block header to be broadcast along with its 
 
 ### Verifying a crosslink
 
-A node should sign a crosslink only if the following conditions hold. **If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink for which these conditions do NOT hold has been included, or a sufficient number of signatures have been included that during the next state recalculation, a crosslink will be registered.**
+A node should sign a crosslink only if the following conditions hold. **If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink has been included where the `crosslink_data_root` points to invalid or unavailable data**.
 
 First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_root` for the same shard (unless `last_crosslink_root` equals zero, in which case we are at the genesis).
 
-Second, we verify the `shard_chain_commitment`.
+Second, we verify the `crosslink_data_root`.
 * Let `start_slot = state.latest_crosslinks[shard].epoch * SLOTS_PER_EPOCH + SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK`.
 * Let `end_slot = attestation.data.slot - attestation.data.slot % SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK`.
 * Let `length = end_slot - start_slot`, `headers[0] .... headers[length-1]` be the serialized block headers in the canonical shard chain from the verifer's point of view (note that this implies that `headers` and `bodies` have been checked for validity).
