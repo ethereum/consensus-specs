@@ -81,7 +81,7 @@ return b"\x01" if value is True else b"\x00"
 
 ### Composite Types (Vectors, Containers and Lists)
 
-The serialized representation of composite types is comprised of two binary segments.
+The serialized representation of composite types is comprised of two binary sections.
 
 * The first section is *fixed size* for all types, containing the concatenation of *either* 
     - The serialized representation for each of the *fixed size* elements of value
@@ -97,41 +97,35 @@ An implementation of the `serialize` function for `"Vector"`, `"Container"` and
 
 ```python
 # The second section is just the concatenation of the serialized *variable size* elements
-section_2_parts = [serialize(element) for element in value if is_variable_size(element)]
+section_2_parts = [
+    serialize(element) if is_variable_size(element)
+    else ''
+    for element in value
+]
 section_2_lengths = [len(part) for part in section_2_parts]
-section_2 ''.join(section_2_parts)
+section_2 = ''.join(section_2_parts)
 
-# Serialize the *fixed size* elements
-section_1_fixed_parts = [serialize(element) for element in value if is_fixed_size(element)]
-
-# Compute the length of the first section
-section_1_length = sum(len(part) for part in section_1_fixed_parts) + 4 * len(section_2_parts)
+# Compute the length of the first section (can also be extracted from the type directly)
+section_1_length = sum(
+    len(serialize(element)) if is_fixed_size(element)
+    else 4
+    for element in value
+)
 
 # Compute the offset values for each part of the second section
 section_1_offsets = [
-    section_1_length + sum(section_2_lengths[:index])
-    for index in range(len(section_2_parts))
+    section_1_length + sum(section_2_lengths[:element_index]) if is_variable_size(element)
+    else None
+    for element_index, element in enumerate(value)
 ]
-assert all(offset < 2**32 for offset in section_1_offsets)
+assert all(offset is None or offset < 2**32 for offset in section_1_offsets)
 
-# compute the appropriate indices for *fixed size* elements for the first section
-fixed_size_element_indices = [index for index, element in enumerate(value) if is_fixed_size(element)]
-
-# compute the appropriate indices for the offsets of the *variable size* elements
-variable_size_element_indices = [index for index, element in enumerate(value) if is_variable_size(element)]
-
-# create a list with placeholders for all values
-section_1_parts = [None] * len(value)
-
-# populate all of the serialized *fixed size* elements
-for index, data in zip(fixed_size_element_indices, section_1_fixed_parts):
-    section_1_parts[index] = data
-
-# populate all of the serialized offsets for the *variable size* elements
-for index, offset in zip(variable_size_element_indices, section_1_offsets):
-    section_1_parts[index] = serialize(offset)
-
-assert not any(part is None for part in section_1_parts)
+# The first section is the concatenation of the serialized static size elements and offsets 
+section_1_parts = [
+    serialize(element) if is_fixed_size(element)
+    else serialize(section_1_offsets[element_index])
+    for element_index, element in enumerate(value)
+]
 section_1 = ''.join(section_1_parts)
 
 return ''.join([section_1, section_2])
