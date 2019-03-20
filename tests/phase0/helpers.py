@@ -88,7 +88,7 @@ def build_empty_block_for_next_slot(state):
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
-    empty_block.previous_block_root = previous_block_header.hash_tree_root()
+    empty_block.previous_block_root = signed_root(previous_block_header)
     return empty_block
 
 
