@@ -44,8 +44,8 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [Shard block fork choice rule](#shard-block-fork-choice-rule)
     - [Updates to the beacon chain](#updates-to-the-beacon-chain)
         - [Helpers](#helpers)
-            - [`get_branch_challenge_record_by_id`](#get_branch_challenge_record_by_id)
-            - [`get_custody_challenge_record_by_id`](#get_custody_challenge_record_by_id)
+            - [`get_branch_challenge_record`](#get_branch_challenge_record)
+            - [`get_custody_challenge_record`](#get_custody_challenge_record)
             - [`get_attestation_epoch_length`](#get_attestation_epoch_length)
             - [`get_attestation_chunk_count`](#get_attestation_chunk_count)
             - [`epoch_to_custody_period`](#epoch_to_custody_period)
@@ -216,13 +216,9 @@ Add the following fields to the end of the specified container objects.
     'challenge_id': 'uint64',
     'challenger_index': 'uint64',
     'responder_index': 'uint64',
-    # Initial data root
     'data_root': 'bytes32',
-    # Challenger-provided mix data
     'challenge_mix': 'bytes',
-    # Responder subkey
     'responder_subkey': 'bytes96',
-    # Deadline to respond (as an epoch)
     'deadline': 'uint64',
 }
 ```
@@ -473,17 +469,17 @@ The fork choice rule for any shard is LMD GHOST using the shard chain attestatio
 
 ### Helpers
 
-#### `get_branch_challenge_record_by_id`
+#### `get_branch_challenge_record`
 
 ```python
-def get_branch_challenge_record_by_id(state: BeaconState, id: int) -> BranchChallengeRecord:
+def get_branch_challenge_record(state: BeaconState, id: int) -> BranchChallengeRecord:
     return [c for c in state.branch_challenges if c.challenge_id == id][0]
 ```
 
-#### `get_custody_challenge_record_by_id`
+#### `get_custody_challenge_record`
 
 ```python
-def get_custody_challenge_record_by_id(state: BeaconState, id: int) -> BranchChallengeRecord:
+def get_custody_challenge_record(state: BeaconState, id: int) -> BranchChallengeRecord:
     return [c for c in state.branch_challenges if c.challenge_id == id][0]
 ```
 
@@ -603,7 +599,7 @@ For each `challenge` in `block.body.branch_challenges`, run:
 ```python
 def process_branch_challenge(state: BeaconState,
                              challenge: BranchChallenge) -> None:
-    # Check that it's not too late to challenge
+    # Check it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY
     assert state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_BRANCH_CHALLENGE_DELAY
     # Check the attestation is valid
@@ -617,15 +613,15 @@ def process_branch_challenge(state: BeaconState,
     ] == []
     # Check validity of depth
     depth = log2(next_power_of_two(get_attestation_chunk_count(challenge.attestation)))
-    assert c.data_index < 2**depth
-    # Add new challenge
+    assert challenge.data_index < 2**depth
+    # Add new challenge record
     state.branch_challenge_records.append(BranchChallengeRecord(
         challenge_id=state.next_branch_challenge_id,
         challenger_index=get_beacon_proposer_index(state, state.slot),
         root=challenge.attestation.data.shard_chain_commitment,
         depth=depth,
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE,
-        data_index=challenge.data_index
+        data_index=challenge.data_index,
     ))
     state.next_branch_challenge_id += 1
 ```
@@ -639,13 +635,13 @@ For each `response` in `block.body.branch_responses`, run:
 ```python
 def process_branch_response(state: BeaconState,
                             response: BranchResponse) -> None:
-    challenge = get_branch_challenge_record_by_id(response.challenge_id)
+    challenge = get_branch_challenge_record(response.challenge_id)
     assert verify_merkle_branch(
         leaf=response.data,
         branch=response.branch,
         depth=challenge.depth,
         index=challenge.data_index,
-        root=challenge.root
+        root=challenge.root,
     )
     # Must wait at least ENTRY_EXIT_DELAY before responding to a branch challenge
     assert get_current_epoch(state) >= challenge.inclusion_epoch + ENTRY_EXIT_DELAY
@@ -661,23 +657,33 @@ Verify that `len(block.body.early_subkey_reveals) <= MAX_EARLY_SUBKEY_REVEALS`.
 
 For each `reveal` in `block.body.early_subkey_reveals`:
 
-* Verify that `verify_custody_subkey_reveal(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period, reveal.mask, state.validator_registry[reveal.revealer_index].pubkey)` returns `True`.
-* Let `is_early_reveal = reveal.period > get_current_custody_period(state) or (reveal.period == get_current_custody_period(state) and state.validator_registry[reveal.validator_index].exit_epoch > get_current_epoch(state))` (ie. either the reveal is of a future period, or it's of the current period and the validator is still active)
-* Verify that one of the following is true:
-    * (i) `is_early_reveal` is `True`
-    * (ii) `is_early_reveal` is `False` and `reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal` (revealing a past subkey, or a current subkey for a validator that has exited) and `reveal.mask == ZERO_HASH`
+```python
+def process_subkey_reveal(state: BeaconState,
+                          reveal: SubkeyReveal) -> None:
+    assert verify_custody_subkey_reveal(state.validator_registry[reveal.validator_index].pubkey, reveal.subkey, reveal.period, reveal.mask, state.validator_registry[reveal.revealer_index].pubkey)
 
-In case (i):
+    # Either the reveal is of a future period, or it is of the current period and the validator is still active
+    is_early_reveal = reveal.period > get_current_custody_period(state) or (
+        reveal.period == get_current_custody_period(state) and
+        state.validator_registry[reveal.validator_index].exit_epoch > get_current_epoch(state)
+    )
 
-* Verify that `state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state)`.
-* Run `slash_validator(state, reveal.validator_index, reveal.revealer_index)`.
-* Set `state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`
-
-In case (ii):
-
-* Determine the proposer `proposer_index = get_beacon_proposer_index(state, state.slot)` and set `state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT`.
-* Set `state.validator_registry[reveal.validator_index].next_subkey_to_reveal += 1`
-* Set `state.validator_registry[reveal.validator_index].reveal_max_periods_late = max(state.validator_registry[reveal.validator_index].reveal_max_periods_late, get_current_period(state) - reveal.period)`.
+    if is_early_reveal:
+        assert state.validator_registry[reveal.validator_index].penalized_epoch > get_current_epoch(state)
+        slash_validator(state, reveal.validator_index, reveal.revealer_index)
+        state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
+    elif reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal and reveal.mask == ZERO_HASH:
+        # Revealing a past subkey, or a current subkey for a validator that has exited
+        proposer_index = get_beacon_proposer_index(state, state.slot)
+        state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
+        state.validator_registry[reveal.validator_index].next_subkey_to_reveal += 1
+        state.validator_registry[reveal.validator_index].reveal_max_periods_late = max(
+            state.validator_registry[reveal.validator_index].reveal_max_periods_late,
+            get_current_period(state) - reveal.period
+        )
+    else:
+        assert False
+```
 
 ##### Custody challenges
 
@@ -747,7 +753,7 @@ For each `response` in `block.body.custody_responses`, use the following functio
 ```python
 def process_response(state: BeaconState,
                      response: CustodyResponse) -> None:
-    challenge = get_custody_challenge_record_by_id(state, response.challenge_id)
+    challenge = get_custody_challenge_record(state, response.challenge_id)
     responder = state.validator_registry[challenge.responder_index]
     # Check that the position is valid
     assert response.position < len(challenge.mix)
@@ -781,15 +787,15 @@ def process_challenge_absences(state: BeaconState) -> None:
     Iterate through the challenge list
     and penalize validators with balance that did not answer challenges.
     """
-    for c in state.branch_challenge_records:
-        if get_current_epoch(state) > c.deadline:
-            slash_validator(state, c.responder_index, c.challenger_index)
+    for challenge in state.branch_challenge_records:
+        if get_current_epoch(state) > challenge.deadline:
+            slash_validator(state, challenge.responder_index, challenge.challenger_index)
     
-    for c in state.custody_challenge_records:
-        if get_current_epoch(state) > c.deadline:
-            slash_validator(state, c.responder_index, c.challenger_index)
-        if get_current_epoch(state) > state.validator_registry[c.responder_index].withdrawable_epoch:
-            slash_validator(state, c.challenger_index, c.responder_index)
+    for challenge in state.custody_challenge_records:
+        if get_current_epoch(state) > challenge.deadline:
+            slash_validator(state, challenge.responder_index, challenge.challenger_index)
+        if get_current_epoch(state) > state.validator_registry[challenge.responder_index].withdrawable_epoch:
+            slash_validator(state, challenge.challenger_index, challenge.responder_index)
 ```
 
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
