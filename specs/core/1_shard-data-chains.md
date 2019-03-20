@@ -35,7 +35,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
     - [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
         - [Helper functions](#helper-functions)
             - [`get_split_offset`](#get_split_offset)
-            - [`get_shuffled_committee`](#get_shuffled_committee)
+            - [`get_period_committee`](#get_period_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
         - [Shard fork choice rule](#shard-fork-choice-rule)
@@ -267,25 +267,18 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
     return (list_size * index) // chunks
 ````
 
-#### `get_shuffled_committee`
+#### `get_period_committee`
 
 ```python
-def get_shuffled_committee(state: BeaconState,
-                           shard: Shard,
-                           committee_start_epoch: Epoch,
-                           index: int,
-                           committee_count: int) -> List[ValidatorIndex]:
+def get_period_committee(state: BeaconState,
+                         shard: Shard,
+                         committee_start_epoch: Epoch,
+                         index: int,
+                         committee_count: int) -> List[ValidatorIndex]:
     """
-    Return shuffled committee.
+    Return committee for a period. Used to construct persistent committees.
     """
-    active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
-    length = len(active_validator_indices)
-    start_offset = get_split_offset(length, SHARD_COUNT * committee_count, shard * committee_count + index)
-    end_offset = get_split_offset(length, SHARD_COUNT * committee_count, shard * committee_count + index + 1)
-    return [
-        active_validator_indices[get_permuted_index(index, length, generate_seed(state, committee_start_epoch))]
-        for i in range(start_offset, end_offset)
-    ]
+    return compute_committee(active_validator_indices, seed, shard * committee_count + index, SHARD_COUNT * committee_count)
 ```
 
 #### `get_persistent_committee`
@@ -308,8 +301,8 @@ def get_persistent_committee(state: BeaconState,
     ) + 1
     
     index = slot % committee_count
-    earlier_committee = get_shuffled_committee(state, shard, earlier_start_epoch, index, committee_count)
-    later_committee = get_shuffled_committee(state, shard, later_start_epoch, index, committee_count)
+    earlier_committee = get_period_committee(state, shard, earlier_start_epoch, index, committee_count)
+    later_committee = get_period_committee(state, shard, later_start_epoch, index, committee_count)
 
     def get_switchover_epoch(index):
         return bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) % PERSISTENT_COMMITTEE_PERIOD
@@ -375,15 +368,14 @@ def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttesta
     # Check attestations
     persistent_committee = get_persistent_committee(state, header.shard, header.slot)
     assert verify_bitfield(shard_attestation.participation_bitfield, len(persistent_committee))
-    for i in range(len(persistent_committee)):
-        if not is_active_validator(state.validator_registry[persistent_committee[i]], get_current_epoch(state)):
-            assert get_bitfield_bit(shard_attestation.participation_bitfield, i) == 0b0
-    aggregate_pubkey = bls_aggregate_pubkeys([
-        state.validator_registry[index].pubkey for i, index in enumerate(persistent_committee)
+    pubkeys = []
+    for i, index in enumerate(persistent_committee):
         if get_bitfield_bit(shard_attestation.participation_bitfield, i) == 0b1
-    ])
+            validator = state.validator_registry[index]
+            assert is_active_validator(validator, get_current_epoch(state))
+            pubkeys.append(validator.pubkey)
     assert bls_verify(
-        pubkey=aggregate_pubkey,
+        pubkey=bls_aggregate_pubkeys(pubkeys),
         message_hash=header.previous_block_root,
         signature=shard_attestation.aggregate_signature,
         domain=get_domain(state, slot_to_epoch(header.slot), DOMAIN_SHARD_ATTESTER)
