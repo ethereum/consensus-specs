@@ -37,14 +37,14 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`get_shuffled_committee`](#get_shuffled_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
-        - [Shard attestation processing](#shard-attestation-processing)
-        - [Verifying a crosslink](#verifying-a-crosslink)
         - [Shard fork choice rule](#shard-fork-choice-rule)
+        - [Shard attestation processing](#shard-attestation-processing)
+        - [Honest crosslink data root](#honest-crosslink-data-root)
     - [Updates to the beacon chain](#updates-to-the-beacon-chain)
         - [Helpers](#helpers)
             - [`get_data_challenge_record`](#get_data_challenge_record)
             - [`get_custody_challenge_record`](#get_custody_challenge_record)
-            - [`get_attestation_epoch_length`](#get_attestation_epoch_length)
+            - [`get_attestation_crosslink_length`](#get_attestation_crosslink_length)
             - [`get_attestation_mix_chunk_count`](#get_attestation_mix_chunk_count)
             - [`epoch_to_custody_period`](#epoch_to_custody_period)
             - [`slot_to_custody_period`](#slot_to_custody_period)
@@ -69,8 +69,6 @@ This document represents the specification for Phase 1 of Ethereum 2.0 -- Shard 
 Ethereum 2.0 consists of a central beacon chain along with `SHARD_COUNT` shards. Phase 1 is primarily concerned with the construction, validity, and consensus on the _data_ of these shard chains. Phase 1 does not specify shard chain state execution or account balances. This is left for future phases.
 
 ## Constants
-
-Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md#constants) in addition to the following:
 
 ### Misc
 
@@ -126,9 +124,9 @@ Add the following fields to the end of the specified container objects.
 
 ```python
     'data_challenges': [DataChallenge],
-    'subkey_reveals': [SubkeyReveal],
     'custody_challenges': [CustodyChallenge],
     'branch_responses': [BranchResponse],
+    'subkey_reveals': [SubkeyReveal],
 ```
 
 #### `BeaconState`
@@ -136,7 +134,7 @@ Add the following fields to the end of the specified container objects.
 ```python
     'data_challenge_records': [DataChallengeRecord],
     'custody_challenge_records': [CustodyChallengeRecord],
-    'next_challenge_id': 'uint64',
+    'challenge_index': 'uint64',
 ```
 
 ### Shard blocks
@@ -331,20 +329,18 @@ def get_persistent_committee(state: BeaconState,
 def get_shard_proposer_index(state: BeaconState,
                              shard: Shard,
                              slot: Slot) -> ValidatorIndex:
-    seed = hash(
-        state.current_shuffling_seed +
-        int_to_bytes8(shard) +
-        int_to_bytes8(slot)
-    )
+    # Randomly shift persistent committee
     persistent_committee = get_persistent_committee(state, shard, slot)
-    # Default proposer
-    index = bytes_to_int(seed[0:8]) % len(persistent_committee)
-    # If default proposer exits, try the other proposers in order; if all are exited
-    # return None (ie. no block can be proposed)
-    validators_to_try = persistent_committee[index:] + persistent_committee[:index]
-    for index in validators_to_try:
+    seed = hash(state.current_shuffling_seed + int_to_bytes8(shard) + int_to_bytes8(slot))
+    random_index = bytes_to_int(seed[0:8]) % len(persistent_committee)
+    persistent_committee = persistent_committee[random_index:] + persistent_committee[:random_index]
+
+    # Try to find an active proposer
+    for index in persistent_committee:
         if is_active_validator(state.validator_registry[index], get_current_epoch(state)):
             return index
+
+    # No block can be proposed if no validator is active
     return None
 ```
 
@@ -395,49 +391,49 @@ def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttesta
     )
 ```
 
-### Verifying a crosslink
+### Honest crosslink data root
 
-A node should sign a crosslink only if the following conditions hold. **If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink for which these conditions do NOT hold has been included, or a sufficient number of signatures have been included that during the next state recalculation, a crosslink will be registered.**
+A node should only sign an `attestation` if `attestation.crosslink_data_root` has been reccursively verified using `attestation.previous_crosslink.crosslink_data_root` up to genesis where `crosslink_data_root == ZERO_HASH`.
 
-First, the conditions must recursively apply to the crosslink referenced in `last_crosslink_root` for the same shard (unless `last_crosslink_root` equals zero, in which case we are at the genesis).
+If a node has the capability to perform the required level of verification, it should NOT follow chains on which a crosslink for which these conditions do NOT hold has been included, or a sufficient number of signatures have been included that during the next state recalculation, a crosslink will be registered.
 
-Second, we verify the `shard_chain_commitment`.
-* Let `start_slot = state.latest_crosslinks[shard].epoch * SLOTS_PER_EPOCH + SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK`.
-* Let `end_slot = attestation.data.slot - attestation.data.slot % SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK`.
-* Let `length = end_slot - start_slot`, `headers[0] .... headers[length-1]` be the serialized block headers in the canonical shard chain from the verifer's point of view (note that this implies that `headers` and `bodies` have been checked for validity).
-* Let `bodies[0] ... bodies[length-1]` be the bodies of the blocks.
-* Note: If there is a missing slot, then the header and body are the same as that of the block at the most recent slot that has a block.
-
-We define two helpers:
+Let `store` be the store of observed block headers and bodies and let `get_shard_block_header(store, slot)` and `get_shard_block_body(store, slot)` return the canonical shard block header and body at the specified `slot`. The expected `get_shard_block_body` is then computed as:
 
 ```python
-def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
-    zero_shard_block = b'\x00' * BYTES_PER_SHARD_BLOCK
-    while not is_power_of_two(len(values)):
-        values += [zero_shard_block]
-    return values
-```
+def compute_crosslink_data_root(state: BeaconState, store: Store) -> Bytes32:
+    start_slot = state.latest_crosslinks[shard].epoch * SLOTS_PER_EPOCH + SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK
+    end_slot = attestation.data.slot - attestation.data.slot % SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK
 
-```python
-def merkle_root_of_bytes(data: bytes) -> bytes:
-    return merkle_root([data[i:i + 32] for i in range(0, len(data), 32)])
-```
+    headers = []
+    bodies = []
+    for slot in range(start_slot, end_slot):
+        headers = get_shard_block_header(store, slot)
+        bodies = get_shard_block_body(store, slot)
 
-We define the function for computing the commitment as follows:
-
-```python
-def compute_commitment(headers: List[ShardBlock], bodies: List[bytes]) -> Bytes32:
     return hash(
         merkle_root(pad_to_power_of_2([
-            merkle_root_of_bytes(zpad(serialize(h), BYTES_PER_SHARD_BLOCK)) for h in headers
+            merkle_root_of_bytes(zpad(serialize(header), BYTES_PER_SHARD_BLOCK)) for header in headers
         ])) +
         merkle_root(pad_to_power_of_2([
-                merkle_root_of_bytes(h) for h in bodies
+                merkle_root_of_bytes(body) for body in bodies
         ]))
     )
 ```
 
-The `shard_chain_commitment` is only valid if it equals `compute_commitment(headers, bodies)`.
+using the following helpers:
+
+```python
+def is_power_of_two(value: int) -> bool:
+    return (value > 0) and (value & (value - 1) == 0)
+
+def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
+    while not is_power_of_two(len(values)):
+        values += [b'\x00' * BYTES_PER_SHARD_BLOCK]
+    return values
+
+def merkle_root_of_bytes(data: bytes) -> bytes:
+    return merkle_root([data[i:i + 32] for i in range(0, len(data), 32)])
+```
 
 ## Updates to the beacon chain
 
@@ -459,13 +455,13 @@ def get_custody_challenge_record(state: BeaconState, id: int) -> CustodyChalleng
     return records[0] if len(records) > 0 else None
 ```
 
-#### `get_attestation_epoch_length`
+#### `get_attestation_crosslink_length`
 
 ```python
-def get_attestation_epoch_length(attestation: Attestation) -> int:
+def get_attestation_crosslink_length(attestation: Attestation) -> int:
     start_epoch = attestation.data.latest_crosslink.epoch
     end_epoch = slot_to_epoch(attestation.data.slot)
-    return end_epoch - start_epoch
+    return min(MAX_CROSSLINK_EPOCHS, end_epoch - start_epoch)
 ```
 
 #### `get_attestation_mix_chunk_count`
@@ -473,7 +469,7 @@ def get_attestation_epoch_length(attestation: Attestation) -> int:
 ```python
 def get_attestation_mix_chunk_count(attestation: Attestation) -> int:
     chunks_per_slot = BYTES_PER_SHARD_BLOCK // BYTES_PER_MIX_CHUNK
-    return get_attestation_epoch_length(attestation) * EPOCH_LENGTH * chunks_per_slot
+    return get_attestation_crosslink_length(attestation) * EPOCH_LENGTH * chunks_per_slot
 ```
 
 #### `epoch_to_custody_period`
@@ -547,9 +543,9 @@ def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_ind
         state.validator_balances[block_proposer_index] += whistleblower_reward
     else:
         state.validator_balances[whistleblower_index] += (
-            whistleblower_reward * INCLUDER_REWARD_QUOTIENT / (INCLUDER_REWARD_QUOTIENT + 1)
+            whistleblower_reward * INCLUDER_REWARD_QUOTIENT // (INCLUDER_REWARD_QUOTIENT + 1)
         )
-        state.validator_balances[block_proposer_index] += whistleblower_reward / (INCLUDER_REWARD_QUOTIENT + 1)
+        state.validator_balances[block_proposer_index] += whistleblower_reward // (INCLUDER_REWARD_QUOTIENT + 1)
     state.validator_balances[index] -= whistleblower_reward
     validator.slashed_epoch = get_current_epoch(state)
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
@@ -580,23 +576,21 @@ def process_data_challenge(state: BeaconState,
     # Check the responder participated
     assert challenger.responder_index in challenge.attestation.validator_indices
     # Check the challenge is not a duplicate
-    assert [
-        c for c in state.data_challenge_records if c.data_root == challenge.attestation.data.crosslink_data_root and
-        c.data_index == challenge.data_index
-    ] == []
+    for c in state.data_challenge_records:
+        assert c.data_root != challenge.attestation.data.crosslink_data_root or c.data_index == challenge.data_index
     # Check validity of depth
     depth = log2(next_power_of_two(get_attestation_mix_chunk_count(challenge.attestation)))
     assert challenge.data_index < 2**depth
-    # Add new challenge record
+    # Add new data challenge record
     state.data_challenge_records.append(DataChallengeRecord(
-        challenge_id=state.next_challenge_id,
+        challenge_id=state.challenge_index,
         challenger_index=get_beacon_proposer_index(state, state.slot),
-        data_root=challenge.attestation.data.shard_chain_commitment,
+        data_root=challenge.attestation.data.compute_crosslink_data_root,
         depth=depth,
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE,
         data_index=challenge.data_index,
     ))
-    state.next_challenge_id += 1
+    state.challenge_index += 1
 ```
 
 ##### Subkey reveals
@@ -677,15 +671,15 @@ def process_challenge(state: BeaconState,
     assert attested_bit != get_bitfield_bit(challenge.mix, mix_length - 1)
     # Create a new challenge object
     state.custody_challenge_records.append(CustodyChallengeRecord(
-        challenge_id=state.next_challenge_id,
+        challenge_id=state.challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
-        data_root=challenge.attestation.custody_commitment,
+        data_root=challenge.attestation.crosslink_data_root,
         challenge_mix=challenge.mix,
         responder_subkey=responder_subkey,
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
     ))
-    state.next_challenge_id += 1
+    state.challenge_index += 1
     # Responder cannot withdraw yet!
     state.validator_registry[responder_index].withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
@@ -701,11 +695,13 @@ def process_branch_response(state: BeaconState,
                             response: BranchResponse) -> None:
     data_challenge = get_data_challenge_record(response.challenge_id)
     if data_challenge is not None:
-        process_data_challenge_response(state, response, data_challenge)
+        return process_data_challenge_response(state, response, data_challenge)
+
     custody_challenge = get_custody_challenge_record(response.challenge_id)
     if custody_challenge is not None:
-        process_custody_challenge_response(state, response, custody_challenge)
-    raise Exception("Branch response must respond to either data or custody challenge")
+        return process_custody_challenge_response(state, response, custody_challenge)
+
+    assert False
 ```
 
 ```python
@@ -745,7 +741,7 @@ def process_custody_challenge_response(state: BeaconState,
         branch=response.branch,
         depth=log2(next_power_of_two(len(challenge.mix))),
         index=response.data_index,
-        root=challenge.data_root
+        root=challenge.data_root,
     )
     # Check the mix bit (assert the response identified an invalid data index in the challenge)
     mix_bit = get_bitfield_bit(hash(challenge.responder_subkey + response.data), 0)
@@ -762,7 +758,7 @@ def process_custody_challenge_response(state: BeaconState,
 Add the following loop immediately below the `process_ejections` loop:
 
 ```python
-def process_challenge_absences(state: BeaconState) -> None:
+def process_challenge_deadlines(state: BeaconState) -> None:
     """
     Iterate through the challenges and slash validators that missed their deadline.
     """
@@ -815,5 +811,5 @@ Update the `BeaconState` to the new format and fill the new member values with:
 ```python
     'data_challenge_records': [],
     'custody_challenge_records': [],
-    'next_challenge_id': 0,
+    'challenge_index': 0,
 ```
