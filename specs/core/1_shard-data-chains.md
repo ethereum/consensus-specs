@@ -133,34 +133,20 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
   return (list_size * index) // chunks
 ````
 
-#### `get_shuffled_committee`
+#### `get_period_committee`
 
 ```python
-def get_shuffled_committee(state: BeaconState,
-                           shard: Shard,
-                           committee_start_epoch: Epoch,
-                           index: int,
-                           committee_count: int) -> List[ValidatorIndex]:
+def get_period_committee(state: BeaconState,
+                         shard: Shard,
+                         committee_start_epoch: Epoch,
+                         index: int,
+                         committee_count: int) -> List[ValidatorIndex]:
     """
-    Return shuffled committee.
+    Return committee for a period. Used to construct persistent committees.
     """
     active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
-    length = len(active_validator_indices)
     seed = generate_seed(state, committee_start_epoch)
-    start_offset = get_split_offset(
-        length,
-        SHARD_COUNT * committee_count,
-        shard * committee_count + index,
-    )
-    end_offset = get_split_offset(
-        length,
-        SHARD_COUNT * committee_count,
-        shard * committee_count + index + 1,
-    )
-    return [
-        active_validator_indices[get_permuted_index(i, length, seed)]
-        for i in range(start_offset, end_offset)
-    ]
+    return compute_committee(active_validator_indices, seed, shard * committee_count + index, SHARD_COUNT * committee_count)
 ```
 
 #### `get_persistent_committee`
@@ -184,8 +170,8 @@ def get_persistent_committee(state: BeaconState,
     ) + 1
     
     index = slot % committee_count
-    earlier_committee = get_shuffled_committee(state, shard, earlier_start_epoch, index, committee_count)
-    later_committee = get_shuffled_committee(state, shard, later_start_epoch, index, committee_count)
+    earlier_committee = get_period_committee(state, shard, earlier_start_epoch, index, committee_count)
+    later_committee = get_period_committee(state, shard, later_start_epoch, index, committee_count)
 
     def get_switchover_epoch(index):
         return (
