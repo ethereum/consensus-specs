@@ -779,6 +779,10 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
 
 ```python
 def get_split_offset(list_length: int, split_count: int, index: int) -> int:
+    """
+    Returns a value such that for a list L, chunk count k and index i,
+    split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i + 1)]
+    """
     return (list_length * index) // split_count
 ```
 
