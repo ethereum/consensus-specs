@@ -182,7 +182,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
-| `MAX_INDICES_PER_SLASHABLE_VOTE` | `2**12` (= 4,096) |
+| `MAX_SLASHABLE_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
@@ -1159,7 +1159,7 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
     if slashable_attestation.custody_bitfield != b'\x00' * len(slashable_attestation.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    if len(slashable_attestation.validator_indices) == 0:
+    if not (1 <= len(slashable_attestation.validator_indices) <= MAX_SLASHABLE_ATTESTATION_PARTICIPANTS):
         return False
 
     for i in range(len(slashable_attestation.validator_indices) - 1):
@@ -1167,9 +1167,6 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             return False
 
     if not verify_bitfield(slashable_attestation.custody_bitfield, len(slashable_attestation.validator_indices)):
-        return False
-
-    if len(slashable_attestation.validator_indices) > MAX_INDICES_PER_SLASHABLE_VOTE:
         return False
 
     custody_bit_0_indices = []
