@@ -51,8 +51,8 @@ and their corresponding responses are wrapped in a "response" structure:
 ```
 (
     id: uint64
-    is_error: boolean
-    result: Response
+    response_code: uint16
+    result: bytes
 )
 ```
 
@@ -61,11 +61,8 @@ If an error occurs, a variant of the response structure is returned:
 ```
 (
     id: uint64
-    is_error: boolean
-    result: (
-        code: uint16
-        data: bytes
-    )
+    response_code: uint16
+    result: bytes
 )
 ```
 
@@ -75,20 +72,21 @@ The details of the RPC-Over-`libp2p` protocol are similar to [JSON-RPC 2.0](http
 2. The `id` member in the response MUST be the same as the value of the `id` in the request.
 3. The `id` member MUST be unique within the context of a single connection. Monotonically increasing `id`s are RECOMMENDED.
 4. The `method_id` member is REQUIRED.
-5. The `result` member is required on success, and MUST NOT exist if there was an error.
-6. The `error` member is REQUIRED on errors, and MUST NOT exist if there wasn't an error.
-7. `is_error` MUST be `true` on errors, or `false` otherwise.
+5. The `result` member is REQUIRED on success.
+6. The `result` member is OPTIONAL on errors, and MAY contain additional information about the error.
+7. `response_code` MUST be `0` on success.
 
 Structuring RPC requests in this manner allows multiple calls and responses to be multiplexed over the same stream without switching. Note that this implies that responses MAY arrive in a different order than requests.
 
 The "method ID" fields in the below messages refer to the `method` field in the request structure above.
 
-The first 1,000 values in `error.code` are reserved for system use. The following error codes are predefined:
+The first 1,000 values in `response_code` are reserved for system use. The following response codes are predefined:
 
-1. `0`: Parse error.
-2. `10`: Invalid request.
-3. `20`: Method not found.
-4. `30`: Server error.
+1. `0`: No error.
+2. `10`: Parse error.
+2. `20`: Invalid request.
+3. `30`: Method not found.
+4. `40`: Server error.
 
 ### Alternative for Non-`libp2p` Clients
 
@@ -105,6 +103,7 @@ Since some clients are waiting for `libp2p` implementations in their respective 
 ```
 (
     network_id: uint8
+    chain_id: uint8
     latest_finalized_root: bytes32
     latest_finalized_epoch: uint64
     best_root: bytes32
@@ -168,6 +167,32 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MAY be o
 
 Clients MAY define custom goodbye reasons as long as the value is larger than `1000`.
 
+### Get Status
+
+**Method ID:** `2`
+
+**Request Body:**
+
+```
+(
+	sha: bytes32
+	user_agent: bytes
+	timestamp: uint64
+)
+```
+
+**Response Body:**
+
+```
+(
+	sha: bytes32
+	user_agent: bytes
+	timestamp: uint64
+)
+```
+
+Returns metadata about the remote node.
+
 ### Request Beacon Block Roots
 
 **Method ID:** `10`
@@ -195,7 +220,7 @@ Clients MAY define custom goodbye reasons as long as the value is larger than `1
 )
 ```
 
-Requests a list of block roots and slots from the peer. The `count` parameter MUST be less than or equal to `32768`.
+Requests a list of block roots and slots from the peer. The `count` parameter MUST be less than or equal to `32768`. The slots MUST be returned in ascending slot order.
 
 ### Beacon Block Headers
 
@@ -216,7 +241,7 @@ Requests a list of block roots and slots from the peer. The `count` parameter MU
 
 ```
 (
-    headers: []BlockHeader
+    headers: []BeaconBlockHeader
 )
 ```
 
