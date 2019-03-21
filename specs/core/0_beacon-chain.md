@@ -778,8 +778,12 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
 ### `get_split_offset`
 
 ```python
-def get_split_offset(list_length: int, split_count: int, index: int) -> int:
-    return (list_length * index) // split_count
+def get_split_offset(list_size: int, chunks: int, index: int) -> int:
+  """
+  Returns a value such that for a list L, chunk count k and index i,
+  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
+  """
+  return (list_size * index) // chunks
 ```
 
 ### `get_epoch_committee_count`
