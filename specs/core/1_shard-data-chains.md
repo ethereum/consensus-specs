@@ -41,8 +41,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
         - [Shard attestation processing](#shard-attestation-processing)
     - [Updates to the beacon chain](#updates-to-the-beacon-chain)
         - [Helpers](#helpers)
-            - [`get_data_challenge_record`](#get_data_challenge_record)
-            - [`get_custody_challenge_record`](#get_custody_challenge_record)
             - [`get_attestation_crosslink_length`](#get_attestation_crosslink_length)
             - [`get_attestation_mix_chunk_count`](#get_attestation_mix_chunk_count)
             - [`epoch_to_custody_period`](#epoch_to_custody_period)
@@ -233,7 +231,7 @@ Add the following fields to the end of the specified container objects.
 ```python
 {
     'challenge_id': 'uint64',
-    'data': ['byte', BYTES_PER_CHUNK],
+    'data': ['byte', BYTES_PER_MIX_CHUNK],
     'branch': ['bytes32'],
     'data_index': 'uint64',
 }
@@ -375,20 +373,6 @@ def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttesta
 ## Updates to the beacon chain
 
 ### Helpers
-
-#### `get_data_challenge_record`
-
-```python
-def get_data_challenge_record(state: BeaconState, id: int) -> DataChallengeRecord:
-    return next(c for c in state.data_challenge_records if c.challenge_id == id, None)
-```
-
-#### `get_custody_challenge_record`
-
-```python
-def get_custody_challenge_record(state: BeaconState, id: int) -> CustodyChallengeRecord:
-    return next(c for c in state.custody_challenge_records if c.challenge_id == id, None)
-```
 
 #### `get_attestation_crosslink_length`
 
@@ -627,11 +611,11 @@ For each `response` in `block.body.branch_responses`, run the following function
 ```python
 def process_branch_response(state: BeaconState,
                             response: BranchResponse) -> None:
-    data_challenge = get_data_challenge_record(state, response.challenge_id)
+    data_challenge = next(c for c in state.data_challenge_records if c.challenge_id == response.challenge_id, None)
     if data_challenge is not None:
         return process_data_challenge_response(state, response, data_challenge)
 
-    custody_challenge = get_custody_challenge_record(state, response.challenge_id)
+    custody_challenge = next(c for c in state.custody_challenge_records if c.challenge_id == response.challenge_id, None)
     if custody_challenge is not None:
         return process_custody_challenge_response(state, response, custody_challenge)
 
@@ -665,7 +649,6 @@ A response to a custody challenge proves that a challenger's mix is invalid by p
 def process_custody_challenge_response(state: BeaconState,
                                        response: BranchResponse,
                                        challenge: CustodyChallengeRecord) -> None:
-    challenge = get_custody_challenge_record(state, response.challenge_id)
     responder = state.validator_registry[challenge.responder_index]
     # Check the data index is valid
     assert response.data_index < len(challenge.mix)
