@@ -7,14 +7,18 @@ from build.phase0.utils.minimal_ssz import signed_root
 from build.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
+    ZERO_HASH,
     # SSZ
     AttestationData,
+    BeaconBlockHeader,
     Deposit,
     DepositInput,
     DepositData,
     Eth1Data,
+    ProposerSlashing,
     VoluntaryExit,
     # functions
+    get_active_validator_indices,
     get_block_root,
     get_current_epoch,
     get_domain,
@@ -199,3 +203,43 @@ def build_deposit(state,
     )
 
     return deposit, root, deposit_data_leaves
+
+
+def get_valid_proposer_slashing(state):
+    current_epoch = get_current_epoch(state)
+    validator_index = get_active_validator_indices(state.validator_registry, current_epoch)[-1]
+    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    slot = state.slot
+
+    header_1 = BeaconBlockHeader(
+        slot=slot,
+        previous_block_root=ZERO_HASH,
+        state_root=ZERO_HASH,
+        block_body_root=ZERO_HASH,
+        signature=EMPTY_SIGNATURE,
+    )
+    header_2 = deepcopy(header_1)
+    header_2.previous_block_root = b'\x02' * 32
+    header_2.slot = slot + 1
+
+    domain = get_domain(
+        fork=state.fork,
+        epoch=get_current_epoch(state),
+        domain_type=spec.DOMAIN_BEACON_BLOCK,
+    )
+    header_1.signature = bls.sign(
+        message_hash=signed_root(header_1),
+        privkey=privkey,
+        domain=domain,
+    )
+    header_2.signature = bls.sign(
+        message_hash=signed_root(header_2),
+        privkey=privkey,
+        domain=domain,
+    )
+
+    return ProposerSlashing(
+        proposer_index=validator_index,
+        header_1=header_1,
+        header_2=header_2,
+    )
