@@ -21,6 +21,7 @@ from build.phase0.spec import (
     # functions
     get_active_validator_indices,
     get_attestation_participants,
+    get_balance,
     get_block_root,
     get_crosslink_committees_at_slot,
     get_current_epoch,
@@ -28,6 +29,7 @@ from build.phase0.spec import (
     get_state_root,
     advance_slot,
     cache_state,
+    set_balance,
     verify_merkle_branch,
     hash,
 )
@@ -168,7 +170,7 @@ def test_proposer_slashing(state, pubkeys, privkeys):
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
-    assert test_state.validator_balances[validator_index] < state.validator_balances[validator_index]
+    assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
 
     return state, [block], test_state
 
@@ -203,7 +205,8 @@ def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
 
     state_transition(post_state, block)
     assert len(post_state.validator_registry) == len(state.validator_registry) + 1
-    assert len(post_state.validator_balances) == len(state.validator_balances) + 1
+    assert len(post_state.balances) == len(state.balances) + 1
+    assert get_balance(post_state, index) == spec.MAX_DEPOSIT_AMOUNT
     assert post_state.validator_registry[index].pubkey == pubkeys[index]
 
     return pre_state, [block], post_state
@@ -238,12 +241,12 @@ def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
     block = build_empty_block_for_next_slot(pre_state)
     block.body.deposits.append(deposit)
 
-    pre_balance = pre_state.validator_balances[validator_index]
+    pre_balance = get_balance(pre_state, validator_index)
     post_state = deepcopy(pre_state)
     state_transition(post_state, block)
     assert len(post_state.validator_registry) == len(pre_state.validator_registry)
-    assert len(post_state.validator_balances) == len(pre_state.validator_balances)
-    assert post_state.validator_balances[validator_index] == pre_balance + amount
+    assert len(post_state.balances) == len(pre_state.balances)
+    assert get_balance(post_state, validator_index) == pre_balance + amount
 
     return pre_state, [block], post_state
 
@@ -412,8 +415,8 @@ def test_transfer(state, pubkeys, privkeys):
     recipient_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]
-    amount = pre_state.validator_balances[sender_index]
-    pre_transfer_recipient_balance = pre_state.validator_balances[recipient_index]
+    amount = get_balance(pre_state, sender_index)
+    pre_transfer_recipient_balance = get_balance(pre_state, recipient_index)
     transfer = Transfer(
         sender=sender_index,
         recipient=recipient_index,
@@ -448,8 +451,8 @@ def test_transfer(state, pubkeys, privkeys):
     block.body.transfers.append(transfer)
     state_transition(post_state, block)
 
-    sender_balance = post_state.validator_balances[sender_index]
-    recipient_balance = post_state.validator_balances[recipient_index]
+    sender_balance = get_balance(post_state, sender_index)
+    recipient_balance = get_balance(post_state, recipient_index)
     assert sender_balance == 0
     assert recipient_balance == pre_transfer_recipient_balance + amount
 
@@ -465,7 +468,7 @@ def test_ejection(state):
     assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    pre_state.validator_balances[validator_index] = spec.EJECTION_BALANCE - 1
+    set_balance(pre_state, validator_index, spec.EJECTION_BALANCE - 1)
 
     post_state = deepcopy(pre_state)
     #
