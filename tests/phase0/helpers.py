@@ -13,6 +13,7 @@ from build.phase0.spec import (
     DepositInput,
     DepositData,
     Eth1Data,
+    VoluntaryExit,
     # functions
     get_block_root,
     get_current_epoch,
@@ -71,15 +72,27 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves):
 
 
 def create_genesis_state(num_validators, deposit_data_leaves):
-    initial_deposits, deposit_root = create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves)
+    initial_deposits, deposit_root = create_mock_genesis_validator_deposits(
+        num_validators,
+        deposit_data_leaves,
+    )
     return get_genesis_beacon_state(
         initial_deposits,
         genesis_time=0,
         genesis_eth1_data=Eth1Data(
             deposit_root=deposit_root,
+            deposit_count=len(initial_deposits),
             block_hash=spec.ZERO_HASH,
         ),
     )
+
+
+def force_registry_change_at_next_epoch(state):
+    # artificially trigger registry update at next epoch transition
+    state.finalized_epoch = get_current_epoch(state) - 1
+    for crosslink in state.latest_crosslinks:
+        crosslink.epoch = state.finalized_epoch
+    state.validator_registry_update_epoch = state.finalized_epoch - 1
 
 
 def build_empty_block_for_next_slot(state):
@@ -143,3 +156,46 @@ def build_attestation_data(state, slot, shard):
         crosslink_data_root=spec.ZERO_HASH,
         previous_crosslink=deepcopy(state.latest_crosslinks[shard]),
     )
+
+
+def build_voluntary_exit(state, epoch, validator_index, privkey):
+    voluntary_exit = VoluntaryExit(
+        epoch=epoch,
+        validator_index=validator_index,
+        signature=EMPTY_SIGNATURE,
+    )
+    voluntary_exit.signature = bls.sign(
+        message_hash=signed_root(voluntary_exit),
+        privkey=privkey,
+        domain=get_domain(
+            fork=state.fork,
+            epoch=epoch,
+            domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+        )
+    )
+
+    return voluntary_exit
+
+
+def build_deposit(state,
+                  deposit_data_leaves,
+                  pubkey,
+                  privkey,
+                  amount):
+    deposit_data = build_deposit_data(state, pubkey, privkey, amount)
+
+    item = hash(deposit_data.serialize())
+    index = len(deposit_data_leaves)
+    deposit_data_leaves.append(item)
+    tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
+    root = get_merkle_root((tuple(deposit_data_leaves)))
+    proof = list(get_merkle_proof(tree, item_index=index))
+    assert verify_merkle_branch(item, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH, index, root)
+
+    deposit = Deposit(
+        proof=list(proof),
+        index=index,
+        deposit_data=deposit_data,
+    )
+
+    return deposit, root, deposit_data_leaves

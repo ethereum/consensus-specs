@@ -37,22 +37,23 @@ Store = None
     code_lines += function_puller.get_lines(sourcefile)
 
     code_lines.append("""
-# Monkey patch validator shuffling cache
-_get_shuffling = get_shuffling
-shuffling_cache = {}
-def get_shuffling(seed: Bytes32,
-                  validators: List[Validator],
-                  epoch: Epoch) -> List[List[ValidatorIndex]]:
+# Monkey patch validator get committee code
+_compute_committee = compute_committee
+committee_cache = {}
+def compute_committee(validator_indices: List[ValidatorIndex],
+                      seed: Bytes32,
+                      index: int,
+                      total_committees: int) -> List[ValidatorIndex]:
 
-    param_hash = (seed, hash_tree_root(validators, [Validator]), epoch)
+    param_hash = (hash_tree_root(validator_indices), seed, index, total_committees)
 
-    if param_hash in shuffling_cache:
+    if param_hash in committee_cache:
         # print("Cache hit, epoch={0}".format(epoch))
-        return shuffling_cache[param_hash]
+        return committee_cache[param_hash]
     else:
         # print("Cache miss, epoch={0}".format(epoch))
-        ret = _get_shuffling(seed, validators, epoch)
-        shuffling_cache[param_hash] = ret
+        ret = _compute_committee(validator_indices, seed, index, total_committees)
+        committee_cache[param_hash] = ret
         return ret
 
 
