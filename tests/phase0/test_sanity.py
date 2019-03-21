@@ -46,6 +46,7 @@ from tests.phase0.helpers import (
     build_deposit_data,
     build_empty_block_for_next_slot,
     force_registry_change_at_next_epoch,
+    get_valid_proposer_slashing,
 )
 
 
@@ -117,42 +118,8 @@ def test_empty_epoch_transition_not_finalizing(state):
 
 def test_proposer_slashing(state, pubkeys, privkeys):
     test_state = deepcopy(state)
-    current_epoch = get_current_epoch(test_state)
-    validator_index = get_active_validator_indices(test_state.validator_registry, current_epoch)[-1]
-    privkey = privkeys[validator_index]
-    slot = spec.GENESIS_SLOT
-    header_1 = BeaconBlockHeader(
-        slot=slot,
-        previous_block_root=ZERO_HASH,
-        state_root=ZERO_HASH,
-        block_body_root=ZERO_HASH,
-        signature=EMPTY_SIGNATURE,
-    )
-    header_2 = deepcopy(header_1)
-    header_2.previous_block_root = b'\x02' * 32
-    header_2.slot = slot + 1
-
-    domain = get_domain(
-        fork=test_state.fork,
-        epoch=get_current_epoch(test_state),
-        domain_type=spec.DOMAIN_BEACON_BLOCK,
-    )
-    header_1.signature = bls.sign(
-        message_hash=signed_root(header_1),
-        privkey=privkey,
-        domain=domain,
-    )
-    header_2.signature = bls.sign(
-        message_hash=signed_root(header_2),
-        privkey=privkey,
-        domain=domain,
-    )
-
-    proposer_slashing = ProposerSlashing(
-        proposer_index=validator_index,
-        header_1=header_1,
-        header_2=header_2,
-    )
+    proposer_slashing = get_valid_proposer_slashing(state)
+    validator_index = proposer_slashing.proposer_index
 
     #
     # Add to state via block transition
