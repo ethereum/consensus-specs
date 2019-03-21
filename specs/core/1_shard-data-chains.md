@@ -145,7 +145,7 @@ Add the following fields to the end of the specified container objects.
     'slot': 'uint64',
     'shard': 'uint64',
     'previous_block_root': 'bytes32',
-    'beacon_chain_reference': 'bytes32',
+    'beacon_chain_root': 'bytes32',
     'data': ['byte', BYTES_PER_SHARD_BLOCK],
     'state_root': 'bytes32',
     'signature': 'bytes96',
@@ -159,7 +159,7 @@ Add the following fields to the end of the specified container objects.
     'slot': 'uint64',
     'shard': 'uint64',
     'previous_block_root': 'bytes32',
-    'beacon_chain_reference': 'bytes32',
+    'beacon_chain_root': 'bytes32',
     'data_root': 'bytes32',
     'state_root': 'bytes32',
     'signature': 'bytes96',
@@ -278,6 +278,8 @@ def get_period_committee(state: BeaconState,
     """
     Return committee for a period. Used to construct persistent committees.
     """
+    active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
+    seed = generate_seed(state, committee_start_epoch)
     return compute_committee(active_validator_indices, seed, shard * committee_count + index, SHARD_COUNT * committee_count)
 ```
 
@@ -340,16 +342,16 @@ def get_shard_proposer_index(state: BeaconState,
 
 For a `ShardBlockHeader` object `header` to be processed by a node the following conditions must be met:
 
-* The `header.previous_block_root` is the hash a of `ShardBlock` that has been processed and accepted.
-* The `header.beacon_chain_reference` is the hash of a `BeaconBlock` in the canonical beacon chain with slot less than or equal to `header.slot`.
-* The `header.beacon_chain_reference` is equal to or a descendant of the `beacon_chain_reference` specified in the `ShardBlock` pointed to by `header.previous_block_root`.
+* The `header.previous_block_root` is the root of `ShardBlock` that has been processed and accepted.
+* The `header.beacon_chain_root` is the root of a `BeaconBlock` in the canonical beacon chain with slot less than or equal to `header.slot`.
+* The `header.beacon_chain_root` is equal to or a descendant of the `beacon_chain_root` specified in the `ShardBlock` pointed to by `header.previous_block_root`.
 * The `ShardBlock` object `shard_block` with the same root as `header` has been downloaded.
 
-The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (i.e. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_reference` is the block in the main beacon chain at the specified `slot` should be considered. (If the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot.)
+The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (i.e. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_root` is the block in the main beacon chain at the specified `slot` should be considered. (If the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot.)
 
 ### Shard attestation processing
 
-Given a `shard_attestation` let `state` be the `BeaconState` referred to by `shard_attestation.header.beacon_chain_reference` and run `verify_shard_attestation(state, shard_attestation)`.
+Given a `shard_attestation` let `state` be the `BeaconState` referred to by `shard_attestation.header.beacon_chain_root` and run `verify_shard_attestation(state, shard_attestation)`.
 
 ```python
 def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttestation) -> None:
@@ -390,16 +392,14 @@ def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttesta
 
 ```python
 def get_data_challenge_record(state: BeaconState, id: int) -> DataChallengeRecord:
-    records = [c for c in state.data_challenge_records if c.challenge_id == id]
-    return records[0] if len(records) > 0 else None
+    return next(c for c in state.data_challenge_records if c.challenge_id == id, None)
 ```
 
 #### `get_custody_challenge_record`
 
 ```python
 def get_custody_challenge_record(state: BeaconState, id: int) -> CustodyChallengeRecord:
-    records = [c for c in state.custody_challenge_records if c.challenge_id == id]
-    return records[0] if len(records) > 0 else None
+    return next(c for c in state.custody_challenge_records if c.challenge_id == id, None)
 ```
 
 #### `get_attestation_crosslink_length`
@@ -446,15 +446,14 @@ def get_current_custody_period(state: BeaconState) -> int:
 def verify_custody_subkey_reveal(state: BeaconState,
                                  reveal: SubkeyReveal) -> bool
     # Case 1: legitimate reveal
-    if reveal.mask == ZERO_HASH:
-        pubkeys=[state.validator_registry[reveal.validator_index].pubkey]
-        message_hashes=[hash_tree_root(reveal.period)]
+    pubkeys = [state.validator_registry[reveal.validator_index].pubkey]
+    message_hashes = [hash_tree_root(reveal.period)]
 
-    # Case 2: punitive early reveal
+    # Case 2: masked punitive early reveal
     # Masking prevents proposer stealing the whistleblower reward
     # Secure under the aggregate extraction infeasibility assumption
     # See pages 11-12 of https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf
-    else:
+    if reveal.mask != ZERO_HASH:
         pubkeys.append(state.validator_registry[reveal.revealer_index].pubkey)
         message_hashes.append(reveal.mask)
 
@@ -475,7 +474,7 @@ def verify_custody_subkey_reveal(state: BeaconState,
 Change the definition of `slash_validator` as follows:
 
 ```python
-def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_index=None:ValidatorIndex) -> None:
+def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_index :ValidatorIndex=None) -> None:
     """
     Slash the validator of the given ``index``.
     Note that this function mutates ``state``.
@@ -640,11 +639,11 @@ For each `response` in `block.body.branch_responses`, run the following function
 ```python
 def process_branch_response(state: BeaconState,
                             response: BranchResponse) -> None:
-    data_challenge = get_data_challenge_record(response.challenge_id)
+    data_challenge = get_data_challenge_record(state, response.challenge_id)
     if data_challenge is not None:
         return process_data_challenge_response(state, response, data_challenge)
 
-    custody_challenge = get_custody_challenge_record(response.challenge_id)
+    custody_challenge = get_custody_challenge_record(state, response.challenge_id)
     if custody_challenge is not None:
         return process_custody_challenge_response(state, response, custody_challenge)
 
@@ -729,7 +728,7 @@ In `process_penalties_and_exits`, change the definition of `eligible` to the fol
 def eligible(index):
     validator = state.validator_registry[index]
     # Cannot exit if there are still open data challenges
-    if [c for c in state.data_challenge_records if c.responder_index == index] != []:
+    if len([c for c in state.data_challenge_records if c.responder_index == index]) > 0:
         return False
     # Cannot exit if you have not revealed all of your subkeys
     elif validator.next_subkey_to_reveal <= epoch_to_custody_period(validator.exit_epoch):
