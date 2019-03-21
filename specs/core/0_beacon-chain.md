@@ -1936,6 +1936,9 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
             proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
             rewards[proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        # Take away max rewards if we're not finalizing
+        if epochs_since_finality > 4:
+            penalties[index] += get_base_reward(state, index) * 4
     return [rewards, penalties]
 ```
 
