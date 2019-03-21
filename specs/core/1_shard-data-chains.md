@@ -19,7 +19,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [Signature domains](#signature-domains)
 - [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
     - [Helper functions](#helper-functions)
-            - [`get_split_offset`](#get_split_offset)
             - [`get_shuffled_committee`](#get_shuffled_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
@@ -121,17 +120,6 @@ Phase 1 depends upon all of the constants defined in [Phase 0](0_beacon-chain.md
 # Shard chains and crosslink data
 
 ## Helper functions
-
-#### `get_split_offset`
-
-````python
-def get_split_offset(list_size: int, chunks: int, index: int) -> int:
-  """
-  Returns a value such that for a list L, chunk count k and index i,
-  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
-  """
-  return (list_size * index) // chunks
-````
 
 #### `get_shuffled_committee`
 
