@@ -40,8 +40,8 @@ def get_later_start_epoch(slot: Slot) -> int:
     return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD
     
 def get_earlier_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> PeriodData:
-    period_start = get_earlier_start_epoch(header.slot)
-    validator_count = len(get_active_validator_indices(state, period_start))
+    period_start = get_earlier_start_epoch(block.slot)
+    validator_count = len(get_active_validator_indices(block.state, period_start))
     committee_count = validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE) + 1
     indices = get_shuffled_committee(block.state, shard_id, period_start, 0, committee_count)
     return PeriodData(
@@ -51,8 +51,8 @@ def get_earlier_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> Peri
     )
     
 def get_later_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> PeriodData:
-    period_start = get_later_start_epoch(header.slot)
-    validator_count = len(get_active_validator_indices(state, period_start))
+    period_start = get_later_start_epoch(block.slot)
+    validator_count = len(get_active_validator_indices(block.state, period_start))
     committee_count = validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE) + 1
     indices = get_shuffled_committee(block.state, shard_id, period_start, 0, committee_count)
     return PeriodData(
