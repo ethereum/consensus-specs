@@ -61,9 +61,9 @@
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`get_balance`](#get_balance)
-            - [`set_balance`](#set_balance)
-            - [`increase_balance`](#increase_balance)
-            - [`decrease_balance`](#decrease_balance)
+        - [`set_balance`](#set_balance)
+        - [`increase_balance`](#increase_balance)
+        - [`decrease_balance`](#decrease_balance)
         - [`get_permuted_index`](#get_permuted_index)
         - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
@@ -760,31 +760,32 @@ def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> L
 def get_balance(state: BeaconState, index: int) -> int:
     return state.balances[index]
 ```
-#### `set_balance`
 
-````python
+### `set_balance`
+
+```python
 def set_balance(state: BeaconState, index: int, balance: int) -> None:
     validator = state.validator_registry[index]
     HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
     if validator.high_balance > balance or validator.high_balance + 3 * HALF_INCREMENT < balance:
         validator.high_balance = balance - balance % HIGH_BALANCE_INCREMENT
     state.balances[index] = balance
-````
+```
 
-#### `increase_balance`
+### `increase_balance`
 
-````python
+```python
 def increase_balance(state: BeaconState, index: int, delta: int) -> None:
     set_balance(state, index, get_balance(state, index) + delta)
-````
+```
 
-#### `decrease_balance`
+### `decrease_balance`
 
-````python
+```python
 def decrease_balance(state: BeaconState, index: int, delta: int) -> None:
     cur_balance = get_balance(state, index)
     set_balance(state, index, cur_balance - delta if cur_balance >= delta else 0)
-````
+```
 
 ### `get_permuted_index`
 
