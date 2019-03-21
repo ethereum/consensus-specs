@@ -34,7 +34,6 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
             - [`SubkeyReveal`](#subkeyreveal)
     - [Shard chains and crosslink data](#shard-chains-and-crosslink-data)
         - [Helper functions](#helper-functions)
-            - [`get_split_offset`](#get_split_offset)
             - [`get_period_committee`](#get_period_committee)
             - [`get_persistent_committee`](#get_persistent_committee)
             - [`get_shard_proposer_index`](#get_shard_proposer_index)
@@ -255,17 +254,6 @@ Add the following fields to the end of the specified container objects.
 ## Shard chains and crosslink data
 
 ### Helper functions
-
-#### `get_split_offset`
-
-````python
-def get_split_offset(list_size: int, chunks: int, index: int) -> int:
-    """
-    Returns a value such that for a list L, chunk count k and index i,
-    split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i + 1)]
-    """
-    return (list_size * index) // chunks
-````
 
 #### `get_period_committee`
 
