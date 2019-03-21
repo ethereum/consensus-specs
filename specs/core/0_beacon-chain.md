@@ -2134,8 +2134,8 @@ def update_registry_and_shuffling_data(state: BeaconState) -> None:
         state.current_shuffling_epoch = next_epoch
         state.current_shuffling_start_shard = (
             state.current_shuffling_start_shard +
-            get_current_epoch_committee_count(state) % SHARD_COUNT
-        )
+            get_current_epoch_committee_count(state)
+        ) % SHARD_COUNT
         state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)
     else:
         # If processing at least one crosslink keeps failing, then reshuffle every power of two,
