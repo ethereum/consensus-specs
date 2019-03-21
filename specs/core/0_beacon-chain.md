@@ -60,6 +60,10 @@
         - [`get_epoch_start_slot`](#get_epoch_start_slot)
         - [`is_active_validator`](#is_active_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
+        - [`get_balance`](#get_balance)
+        - [`set_balance`](#set_balance)
+        - [`increase_balance`](#increase_balance)
+        - [`decrease_balance`](#decrease_balance)
         - [`get_permuted_index`](#get_permuted_index)
         - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
@@ -115,7 +119,7 @@
             - [Helper functions](#helper-functions-1)
             - [Justification](#justification)
             - [Crosslinks](#crosslinks)
-            - [Eth1 data](#eth1-data-1)
+            - [Eth1 data](#eth1-data)
             - [Rewards and penalties](#rewards-and-penalties)
                 - [Justification and finalization](#justification-and-finalization)
                 - [Crosslinks](#crosslinks-1)
@@ -128,7 +132,7 @@
         - [Per-block processing](#per-block-processing)
             - [Block header](#block-header)
             - [RANDAO](#randao)
-            - [Eth1 data](#eth1-data)
+            - [Eth1 data](#eth1-data-1)
             - [Transactions](#transactions)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
@@ -201,8 +205,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | - | - | :-: |
 | `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
-| `FORK_CHOICE_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 | `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
+| `HIGH_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 
 ### Initial values
 
@@ -252,7 +256,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1-1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 
 ### Max transactions per block
@@ -416,7 +420,6 @@ The types are defined topologically to aid in facilitating an executable version
     'signature': 'bytes96',
 }
 ```
-
 #### `Validator`
 
 ```python
@@ -435,6 +438,8 @@ The types are defined topologically to aid in facilitating an executable version
     'initiated_exit': 'bool',
     # Was the validator slashed
     'slashed': 'bool',
+    # Rounded balance
+    'high_balance': 'uint64'
 }
 ```
 
@@ -595,7 +600,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Validator registry
     'validator_registry': [Validator],
-    'validator_balances': ['uint64'],
+    'balances': ['uint64'],
     'validator_registry_update_epoch': 'uint64',
 
     # Randomness and committees
@@ -749,12 +754,45 @@ def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> L
     return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
 ```
 
+### `get_balance`
+
+```python
+def get_balance(state: BeaconState, index: int) -> int:
+    return state.balances[index]
+```
+
+### `set_balance`
+
+```python
+def set_balance(state: BeaconState, index: int, balance: int) -> None:
+    validator = state.validator_registry[index]
+    HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
+    if validator.high_balance > balance or validator.high_balance + 3 * HALF_INCREMENT < balance:
+        validator.high_balance = balance - balance % HIGH_BALANCE_INCREMENT
+    state.balances[index] = balance
+```
+
+### `increase_balance`
+
+```python
+def increase_balance(state: BeaconState, index: int, delta: int) -> None:
+    set_balance(state, index, get_balance(state, index) + delta)
+```
+
+### `decrease_balance`
+
+```python
+def decrease_balance(state: BeaconState, index: int, delta: int) -> None:
+    cur_balance = get_balance(state, index)
+    set_balance(state, index, cur_balance - delta if cur_balance >= delta else 0)
+```
+
 ### `get_permuted_index`
 
 ```python
 def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
-    Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
+    Return `p(index)` in a pseudorandom permutation `p` of `0...list_size - 1` with ``seed`` as entropy.
 
     Utilizes 'swap or not' shuffling found in
     https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
@@ -1082,7 +1120,7 @@ def get_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
-    return min(state.validator_balances[index], MAX_DEPOSIT_AMOUNT)
+    return min(get_balance(state, index), MAX_DEPOSIT_AMOUNT)
 ```
 
 ### `get_total_balance`
@@ -1326,14 +1364,17 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             initiated_exit=False,
             slashed=False,
+            high_balance=0
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
         state.validator_registry.append(validator)
-        state.validator_balances.append(amount)
+        state.balances.append(0)
+        set_balance(state, len(state.validator_registry) - 1, amount)
     else:
         # Increase balance by deposit amount
-        state.validator_balances[validator_pubkeys.index(pubkey)] += amount
+        index = validator_pubkeys.index(pubkey)
+        increase_balance(state, index, amount)
 ```
 
 ### Routines for updating validator status
@@ -1395,8 +1436,8 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
 
     whistleblower_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
-    state.validator_balances[whistleblower_index] += whistleblower_reward
-    state.validator_balances[index] -= whistleblower_reward
+    increase_balance(state, whistleblower_index, whistleblower_reward)
+    decrease_balance(state, index, whistleblower_reward)
     validator.slashed = True
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
 ```
@@ -1517,7 +1558,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Validator registry
         validator_registry=[],
-        validator_balances=[],
+        balances=[],
         validator_registry_update_epoch=GENESIS_EPOCH,
 
         # Randomness and committees
@@ -1632,9 +1673,12 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         for validator_index in active_validator_indices
     ]
 
+    # Use the rounded-balance-with-hysteresis supplied by the protocol for fork
+    # choice voting. This reduces the number of recomputations that need to be
+    # made for optimized implementations that precompute and save data
     def get_vote_count(block: BeaconBlock) -> int:
         return sum(
-            get_effective_balance(start_state.validator_balances[validator_index]) // FORK_CHOICE_BALANCE_INCREMENT
+            start_state.validator_registry[validator_index].high_balance
             for validator_index, target in attestation_targets
             if get_ancestor(store, target, block.slot) == block
         )
@@ -2025,10 +2069,10 @@ def apply_rewards(state: BeaconState) -> None:
     deltas1 = get_justification_and_finalization_deltas(state)
     deltas2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
-        state.validator_balances[i] = max(
+        set_balance(state, i, max(
             0,
-            state.validator_balances[i] + deltas1[0][i] + deltas2[0][i] - deltas1[1][i] - deltas2[1][i]
-        )
+            get_balance(state, i) + deltas1[0][i] + deltas2[0][i] - deltas1[1][i] - deltas2[1][i]
+        ))
 ```
 
 #### Ejections
@@ -2042,7 +2086,7 @@ def process_ejections(state: BeaconState) -> None:
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
     for index in get_active_validator_indices(state.validator_registry, get_current_epoch(state)):
-        if state.validator_balances[index] < EJECTION_BALANCE:
+        if get_balance(state, index) < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 ```
 
@@ -2085,7 +2129,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch == FAR_FUTURE_EPOCH and state.validator_balances[index] >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_epoch == FAR_FUTURE_EPOCH and get_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
@@ -2170,7 +2214,7 @@ def process_slashings(state: BeaconState) -> None:
                 get_effective_balance(state, index) * min(total_penalties * 3, total_balance) // total_balance,
                 get_effective_balance(state, index) // MIN_PENALTY_QUOTIENT
             )
-            state.validator_balances[index] -= penalty
+            decrease_balance(state, index, penalty)
 ```
 
 ```python
@@ -2476,12 +2520,12 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     Note that this function mutates ``state``.
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
-    assert state.validator_balances[transfer.sender] >= max(transfer.amount, transfer.fee)
+    assert get_balance(state, transfer.sender) >= max(transfer.amount, transfer.fee)
     # Verify that we have enough ETH to send, and that after the transfer the balance will be either
     # exactly zero or at least MIN_DEPOSIT_AMOUNT
     assert (
-        state.validator_balances[transfer.sender] == transfer.amount + transfer.fee or
-        state.validator_balances[transfer.sender] >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
+        get_balance(state, transfer.sender) == transfer.amount + transfer.fee or
+        get_balance(state, transfer.sender) >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
     )
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
@@ -2503,9 +2547,9 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
     )
     # Process the transfer
-    state.validator_balances[transfer.sender] -= transfer.amount + transfer.fee
-    state.validator_balances[transfer.recipient] += transfer.amount
-    state.validator_balances[get_beacon_proposer_index(state, state.slot)] += transfer.fee
+    decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
+    increase_balance(state, transfer.recipient, transfer.amount)
+    increase_balance(state, get_beacon_proposer_index(state, state.slot), transfer.fee)
 ```
 
 #### State root verification
