@@ -115,7 +115,7 @@
             - [Helper functions](#helper-functions-1)
             - [Justification](#justification)
             - [Crosslinks](#crosslinks)
-            - [Eth1 data](#eth1-data-1)
+            - [Eth1 data](#eth1-data)
             - [Rewards and penalties](#rewards-and-penalties)
                 - [Justification and finalization](#justification-and-finalization)
                 - [Crosslinks](#crosslinks-1)
@@ -128,7 +128,7 @@
         - [Per-block processing](#per-block-processing)
             - [Block header](#block-header)
             - [RANDAO](#randao)
-            - [Eth1 data](#eth1-data)
+            - [Eth1 data](#eth1-data-1)
             - [Transactions](#transactions)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
@@ -1896,7 +1896,8 @@ Note: When applying penalties in the following balance recalculations implemente
 
 ```python
 def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
+    current_epoch = get_current_epoch(state)
+    epochs_since_finality = current_epoch + 1 - state.finalized_epoch
     rewards = [0 for index in range(len(state.validator_registry))]
     penalties = [0 for index in range(len(state.validator_registry))]
     # Some helper variables
@@ -1907,38 +1908,42 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
     matching_head_attestations = get_previous_epoch_matching_head_attestations(state)
     matching_head_balance = get_attesting_balance(state, matching_head_attestations)
     eligible_validators = [
-        i for i,v in enumerate(state.validator_registry) if is_active_validator(v, get_current_epoch(state)) or
-        (v.slashed and get_current_epoch(state) < v.withdrawable_epoch)
+        index for index, validator in enumerate(state.validator_registry)
+        if (
+            is_active_validator(validator, current_epoch) or
+            (validator.slashed and current_epoch < validator.withdrawable_epoch)
+        )
     ]
     # Process rewards or penalties for all validators
     for index in eligible_validators:
+        base_reward = get_base_reward(state, index)
         # Expected FFG source
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
-            rewards[index] += get_base_reward(state, index) * total_attesting_balance // total_balance
+            rewards[index] += base_reward * total_attesting_balance // total_balance
             # Inclusion speed bonus
             rewards[index] += (
-                get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY //
+                base_reward * MIN_ATTESTATION_INCLUSION_DELAY //
                 inclusion_distance(state, index)
             )
         else:
-            penalties[index] += get_base_reward(state, index)
+            penalties[index] += base_reward
         # Expected FFG target
         if index in get_attesting_indices(state, boundary_attestations):
-            rewards[index] += get_base_reward(state, index) * boundary_attesting_balance // total_balance
+            rewards[index] += base_reward * boundary_attesting_balance // total_balance
         else:
             penalties[index] += get_inactivity_penalty(state, index, epochs_since_finality)
         # Expected head
         if index in get_attesting_indices(state, matching_head_attestations):
-            rewards[index] += get_base_reward(state, index) * matching_head_balance // total_balance
+            rewards[index] += base_reward * matching_head_balance // total_balance
         else:
-            penalties[index] += get_base_reward(state, index)
+            penalties[index] += base_reward
         # Proposer bonus
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
             proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-            rewards[proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+            rewards[proposer_index] += base_reward // ATTESTATION_INCLUSION_REWARD_QUOTIENT
         # Take away max rewards if we're not finalizing
         if epochs_since_finality > 4:
-            penalties[index] += get_base_reward(state, index) * 4
+            penalties[index] += base_reward * 4
     return [rewards, penalties]
 ```
 
