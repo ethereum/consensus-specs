@@ -1243,10 +1243,9 @@ def verify_standalone_attestation(state: BeaconState, standalone_attestation: St
     if not (1 <= len(standalone_attestation.validator_indices) <= MAX_ATTESTATION_PARTICIPANTS):
         return False
 
-    for i in range(len(standalone_attestation.validator_indices) - 1):
-        if standalone_attestation.validator_indices[i] >= standalone_attestation.validator_indices[i + 1]:
-            return False
-
+    if standalone_attestation.validator_indices != sorted(standalone_attestation.validator_indices):
+        return False
+    
     if not verify_bitfield(standalone_attestation.custody_bitfield, len(standalone_attestation.validator_indices)):
         return False
 
