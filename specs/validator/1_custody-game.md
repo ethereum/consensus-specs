@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Custody
+# Ethereum 2.0 Phase 1 -- Custody Game
 
 **NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the [Python proof-of-concept implementation](https://github.com/ethereum/beacon_chain).
 
@@ -6,7 +6,7 @@
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Custody](#ethereum-20-phase-1----custody)
+- [Ethereum 2.0 Phase 1 -- Custody Game](#ethereum-20-phase-1----custody)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
@@ -47,7 +47,7 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support custody, building upon the [phase 0](0_beacon-chain.md) specification.
+This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support the shard data custody game, building upon the [phase 0](0_beacon-chain.md) specification.
 
 ## Constants
 
