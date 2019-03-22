@@ -458,13 +458,20 @@ def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_ind
     block_proposer_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
     if whistleblower_index is None:
-        state.validator_balances[block_proposer_index] += whistleblower_reward
+        increase_balance(state, block_proposer_index, whistleblower_reward)
     else:
-        state.validator_balances[whistleblower_index] += (
-            whistleblower_reward * INCLUDER_REWARD_QUOTIENT // (INCLUDER_REWARD_QUOTIENT + 1)
+        increase_balance(
+            state,
+            whistleblower_index,
+            whistleblower_reward * INCLUDER_REWARD_QUOTIENT // (INCLUDER_REWARD_QUOTIENT + 1),
         )
-        state.validator_balances[block_proposer_index] += whistleblower_reward // (INCLUDER_REWARD_QUOTIENT + 1)
-    state.validator_balances[index] -= whistleblower_reward
+        increase_balance(
+            state,
+            block_proposer_index,
+            whistleblower_reward // (INCLUDER_REWARD_QUOTIENT + 1),
+        )
+
+    decrease_balance(state, index, whistleblower_reward)
     validator.slashed_epoch = get_current_epoch(state)
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
 ```
@@ -528,14 +535,15 @@ def process_subkey_reveal(state: BeaconState,
         state.validator_registry[reveal.validator_index].exit_epoch > get_current_epoch(state)
     )
 
+    reward = base_reward(state, index) // MINOR_REWARD_QUOTIENT
     if is_early_reveal:
         assert state.validator_registry[reveal.validator_index].slashed_epoch > get_current_epoch(state)
         slash_validator(state, reveal.validator_index, reveal.revealer_index)
-        state.validator_balances[reveal.revealer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
+        increase_balance(state, reveal.revealer_index, reward)
     elif reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal and reveal.mask == ZERO_HASH:
         # Revealing a past subkey, or a current subkey for a validator that has exited
         proposer_index = get_beacon_proposer_index(state, state.slot)
-        state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
+        increase_balance(state, proposer_index, reward)
         state.validator_registry[reveal.validator_index].next_subkey_to_reveal += 1
         state.validator_registry[reveal.validator_index].reveal_max_periods_late = max(
             state.validator_registry[reveal.validator_index].reveal_max_periods_late,
@@ -640,7 +648,7 @@ def process_data_challenge_response(state: BeaconState,
     state.data_challenge_records.remove(challenge)
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state, state.slot)
-    state.validator_balances[proposer_index] += base_reward(state, index) // MINOR_REWARD_QUOTIENT
+    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 
 A response to a custody challenge proves that a challenger's mix is invalid by pointing to an index where the mix is incorrect.
