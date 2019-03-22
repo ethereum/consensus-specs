@@ -5,6 +5,7 @@ import build.phase0.spec as spec
 
 from build.phase0.spec import (
     Deposit,
+    get_balance,
     process_deposit,
 )
 from tests.phase0.helpers import (
@@ -38,8 +39,9 @@ def test_success(state, deposit_data_leaves, pubkeys, privkeys):
     process_deposit(post_state, deposit)
 
     assert len(post_state.validator_registry) == len(state.validator_registry) + 1
-    assert len(post_state.validator_balances) == len(state.validator_balances) + 1
+    assert len(post_state.balances) == len(state.balances) + 1
     assert post_state.validator_registry[index].pubkey == pubkeys[index]
+    assert get_balance(post_state, index) == spec.MAX_DEPOSIT_AMOUNT
     assert post_state.deposit_index == post_state.latest_eth1_data.deposit_count
 
     return pre_state, deposit, post_state
@@ -62,16 +64,16 @@ def test_success_top_up(state, deposit_data_leaves, pubkeys, privkeys):
 
     pre_state.latest_eth1_data.deposit_root = root
     pre_state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
-    pre_balance = pre_state.validator_balances[validator_index]
+    pre_balance = get_balance(pre_state, validator_index)
 
     post_state = deepcopy(pre_state)
 
     process_deposit(post_state, deposit)
 
     assert len(post_state.validator_registry) == len(state.validator_registry)
-    assert len(post_state.validator_balances) == len(state.validator_balances)
+    assert len(post_state.balances) == len(state.balances)
     assert post_state.deposit_index == post_state.latest_eth1_data.deposit_count
-    assert post_state.validator_balances[validator_index] == pre_balance + amount
+    assert get_balance(post_state, validator_index) == pre_balance + amount
 
     return pre_state, deposit, post_state
 
