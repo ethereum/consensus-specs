@@ -1,6 +1,18 @@
-# Beacon chain light client syncing
+# Beacon Chain Light Client Syncing
 
-One of the design goals of the eth2 beacon chain is light-client friendlines, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
+__NOTICE__: This document is a work-in-progress for researchers and implementers. One of the design goals of the eth2 beacon chain is light-client friendlines, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
+
+## Table of Contents
+
+<!-- TOC -->
+- [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
+    - [Table of Contents](#table-of-contents)
+    - [Light client state](#light-client-state)
+    - [Updating the shuffled committee](#updating-the-shuffled-committee)
+    - [Computing the current committee](#computing-the-current-committee)  
+    - [Verifying blocks](#verifying-blocks)      
+<!-- /TOC -->
+
 
 ### Preliminaries
 
@@ -40,8 +52,8 @@ def get_later_start_epoch(slot: Slot) -> int:
     return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD
     
 def get_earlier_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> PeriodData:
-    period_start = get_earlier_start_epoch(header.slot)
-    validator_count = len(get_active_validator_indices(state, period_start))
+    period_start = get_earlier_start_epoch(block.slot)
+    validator_count = len(get_active_validator_indices(block.state, period_start))
     committee_count = validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE) + 1
     indices = get_shuffled_committee(block.state, shard_id, period_start, 0, committee_count)
     return PeriodData(
@@ -51,8 +63,8 @@ def get_earlier_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> Peri
     )
     
 def get_later_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> PeriodData:
-    period_start = get_later_start_epoch(header.slot)
-    validator_count = len(get_active_validator_indices(state, period_start))
+    period_start = get_later_start_epoch(block.slot)
+    validator_count = len(get_active_validator_indices(block.state, period_start))
     committee_count = validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE) + 1
     indices = get_shuffled_committee(block.state, shard_id, period_start, 0, committee_count)
     return PeriodData(
