@@ -2048,12 +2048,8 @@ def compute_inactivity_leak_deltas(state: BeaconState) -> Tuple[List[Gwei], List
 
 ```python
 def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    # deltas[0] for rewards
-    # deltas[1] for penalties
-    deltas = [
-        [0 for index in range(len(state.validator_registry))],
-        [0 for index in range(len(state.validator_registry))]
-    ]
+    rewards = [0 for index in range(len(state.validator_registry))]
+    penalties = [0 for index in range(len(state.validator_registry))]
     previous_epoch_start_slot = get_epoch_start_slot(get_previous_epoch(state))
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     for slot in range(previous_epoch_start_slot, current_epoch_start_slot):
@@ -2063,10 +2059,10 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             total_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:
                 if index in participants:
-                    deltas[0][index] += get_base_reward(state, index) * participating_balance // total_balance
+                    rewards[index] += get_base_reward(state, index) * participating_balance // total_balance
                 else:
-                    deltas[1][index] += get_base_reward(state, index)
-    return deltas
+                    penalties[index] += get_base_reward(state, index)
+    return [rewards, penalties]
 ```
 
 #### Apply rewards
@@ -2075,13 +2071,17 @@ Run the following:
 
 ```python
 def apply_rewards(state: BeaconState) -> None:
-    deltas1 = get_justification_and_finalization_deltas(state)
-    deltas2 = get_crosslink_deltas(state)
+    rewards1, penalties1 = get_justification_and_finalization_deltas(state)
+    rewards2, penalties2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
-        set_balance(state, i, max(
-            0,
-            get_balance(state, i) + deltas1[0][i] + deltas2[0][i] - deltas1[1][i] - deltas2[1][i]
-        ))
+        set_balance(
+            state,
+            i,
+            max(
+                0,
+                get_balance(state, i) + rewards1[i] + rewards2[i] - penalties1[i] - penalties2[i],
+            ),
+        )
 ```
 
 #### Ejections
