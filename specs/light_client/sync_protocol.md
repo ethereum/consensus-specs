@@ -1,6 +1,18 @@
-# Beacon chain light client syncing
+# Beacon Chain Light Client Syncing
 
-One of the design goals of the eth2 beacon chain is light-client friendlines, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
+__NOTICE__: This document is a work-in-progress for researchers and implementers. One of the design goals of the eth2 beacon chain is light-client friendlines, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
+
+## Table of Contents
+
+<!-- TOC -->
+- [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
+    - [Table of Contents](#table-of-contents)
+    - [Light client state](#light-client-state)
+    - [Updating the shuffled committee](#updating-the-shuffled-committee)
+    - [Computing the current committee](#computing-the-current-committee)  
+    - [Verifying blocks](#verifying-blocks)      
+<!-- /TOC -->
+
 
 ### Preliminaries
 
