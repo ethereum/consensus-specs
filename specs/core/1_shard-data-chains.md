@@ -113,7 +113,7 @@ Add the following fields to the end of the specified container objects.
 
 ```python
     'next_subkey_to_reveal': 'uint64',
-    'reveal_max_periods_late': 'uint64',
+    'max_reveal_lateness': 'uint64',
 ```
 
 #### `BeaconBlockBody`
@@ -241,11 +241,11 @@ Add the following fields to the end of the specified container objects.
 
 ```python
 {
-    'validator_index': 'uint64',
+    'revealer_index': 'uint64',
     'period': 'uint64',
     'subkey': 'bytes96',
+    'masker_index': 'uint64'
     'mask': 'bytes32',
-    'revealer_index': 'uint64'
 }
 ```
 
@@ -418,7 +418,7 @@ def get_current_custody_period(state: BeaconState) -> int:
 def verify_custody_subkey_reveal(state: BeaconState,
                                  reveal: SubkeyReveal) -> bool
     # Case 1: legitimate reveal
-    pubkeys = [state.validator_registry[reveal.validator_index].pubkey]
+    pubkeys = [state.validator_registry[reveal.revealer_index].pubkey]
     message_hashes = [hash_tree_root(reveal.period)]
 
     # Case 2: masked punitive early reveal
@@ -426,7 +426,7 @@ def verify_custody_subkey_reveal(state: BeaconState,
     # Secure under the aggregate extraction infeasibility assumption
     # See pages 11-12 of https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf
     if reveal.mask != ZERO_HASH:
-        pubkeys.append(state.validator_registry[reveal.revealer_index].pubkey)
+        pubkeys.append(state.validator_registry[reveal.masker_index].pubkey)
         message_hashes.append(reveal.mask)
 
     return bls_verify_multiple(
@@ -455,23 +455,16 @@ def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_ind
     validator = state.validator_registry[index]
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
     
-    block_proposer_index = get_beacon_proposer_index(state, state.slot)
+    proposer_index = get_beacon_proposer_index(state, state.slot)
     whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
     if whistleblower_index is None:
-        increase_balance(state, block_proposer_index, whistleblower_reward)
+        increase_balance(state, proposer_index, whistleblower_reward)
     else:
-        increase_balance(
-            state,
-            whistleblower_index,
-            whistleblower_reward * INCLUDER_REWARD_QUOTIENT // (INCLUDER_REWARD_QUOTIENT + 1),
-        )
-        increase_balance(
-            state,
-            block_proposer_index,
-            whistleblower_reward // (INCLUDER_REWARD_QUOTIENT + 1),
-        )
+        proposer_share = whistleblower_reward // INCLUDER_REWARD_QUOTIENT  # TODO: Define INCLUDER_REWARD_QUOTIENT
+        increase_balance(state, proposer_index, proposer_share)
+        increase_balance(state, whistleblower_index, whistleblower_reward - proposer_share)
 
-    decrease_balance(state, index, whistleblower_reward)
+    decrease_balance(state, index, whistleblower_reward)        
     validator.slashed_epoch = get_current_epoch(state)
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
 ```
@@ -528,29 +521,26 @@ For each `reveal` in `block.body.early_subkey_reveals`, run the following functi
 def process_subkey_reveal(state: BeaconState,
                           reveal: SubkeyReveal) -> None:
     assert verify_custody_subkey_reveal(reveal)
+    revealer = state.validator_registry[reveal.revealer_index]
 
-    # Either the reveal is of a future period, or it is of the current period and the validator is still active
-    is_early_reveal = reveal.period > get_current_custody_period(state) or (
-        reveal.period == get_current_custody_period(state) and
-        state.validator_registry[reveal.validator_index].exit_epoch > get_current_epoch(state)
-    )
+    # Case 1: Non-early non-punitive mon-masked reveal
+    if reveal.mask == ZERO_HASH:
+        assert reveal.period == revealer.next_subkey_to_reveal
+        # Revealer is active or exited
+        assert is_active_validator(revealer) or revealer.exit_epoch > get_current_epoch(state)
+        revealer.next_subkey_to_reveal += 1
+        revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, get_current_period(state) - reveal.period)
 
-    reward = base_reward(state, index) // MINOR_REWARD_QUOTIENT
-    if is_early_reveal:
-        assert state.validator_registry[reveal.validator_index].slashed_epoch > get_current_epoch(state)
-        slash_validator(state, reveal.validator_index, reveal.revealer_index)
-        increase_balance(state, reveal.revealer_index, reward)
-    elif reveal.period == state.validator_registry[reveal.validator_index].next_subkey_to_reveal and reveal.mask == ZERO_HASH:
-        # Revealing a past subkey, or a current subkey for a validator that has exited
-        proposer_index = get_beacon_proposer_index(state, state.slot)
-        increase_balance(state, proposer_index, reward)
-        state.validator_registry[reveal.validator_index].next_subkey_to_reveal += 1
-        state.validator_registry[reveal.validator_index].reveal_max_periods_late = max(
-            state.validator_registry[reveal.validator_index].reveal_max_periods_late,
-            get_current_period(state) - reveal.period
-        )
+    # Case 2: Early punitive masked reveal
     else:
-        assert False
+        assert reveal.period > get_current_custody_period(state)
+        assert revealer.slashed is False
+        slash_validator(state, reveal.revealer_index, reveal.masker_index)
+        increase_balance(state, reveal.masker_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
+
+    proposer_index = get_beacon_proposer_index(state, state.slot)
+    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
+
 ```
 
 ##### Custody challenges
@@ -583,12 +573,12 @@ def process_challenge(state: BeaconState,
     assert challenger.slashed is False
     # Make sure the revealed subkey is valid
     assert verify_custody_subkey_reveal(SubkeyReveal(
-        validator_index=responder_index,
+        revealer_index=challenge.responder_index,
         period=slot_to_custody_period(attestation.data.slot),
         subkey=challenge.responder_subkey,
     ))
     # Verify that the attestation is still eligible for challenging
-    min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.reveal_max_periods_late)
+    min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.max_reveal_lateness)
     assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
     # Verify the mix's length and that its last bit is the opposite of the attested bit
     mix_length = get_attestation_mix_chunk_count(challenge.attestation)
@@ -728,7 +718,7 @@ For all `validator` in `ValidatorRegistry`, update it to the new format and fill
 
 ```python
     'next_subkey_to_reveal': get_current_custody_period(state),
-    'reveal_max_periods_late': 0,
+    'max_reveal_lateness': 0,
 ```
 
 Update the `BeaconState` to the new format and fill the new member values with:
