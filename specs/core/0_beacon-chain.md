@@ -1220,7 +1220,7 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
 ```python
 def convert_to_standalone(state: BeaconState, attestation: Attestation):
     """
-    Converts an attestation to (almost) standalone-verifiable form
+    Convert an attestation to (almost) standalone-verifiable form
     """
     return StandaloneAttestation(
         validator_indices=get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield),
