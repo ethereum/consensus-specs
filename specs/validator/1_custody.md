@@ -58,7 +58,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `BYTES_PER_SHARD_BLOCK` | `2**14` (= 16,384) |
 | `BYTES_PER_MIX_CHUNK` | `2**9` (= 512) |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
-| `EMPTY_PUBKEY` | `int_to_bytes48(0)` |
 
 ### Time parameters
 
@@ -66,7 +65,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - | :-: | :-: |
 | `MAX_DATA_CHALLENGE_DELAY` | 2**11 (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_LENGTH` | 2**11 (= 2,048) | epochs | ~9 days |
-| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
 | `CHALLENGE_RESPONSE_DEADLINE` | 2**14 (= 16,384) | epochs | ~73 days |
 
 ### Max transactions per block
@@ -82,10 +80,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_PROPOSER` | `129` |
-| `DOMAIN_SHARD_ATTESTER` | `130` |
-| `DOMAIN_CUSTODY_SUBKEY` | `131` |
-| `DOMAIN_CUSTODY_CHALLENGE` | `132` |
+| `DOMAIN_CUSTODY_SUBKEY` | `6` |
+| `DOMAIN_CUSTODY_CHALLENGE` | `7` |
 
 ## Data structures
 
