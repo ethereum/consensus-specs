@@ -1886,7 +1886,7 @@ def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_sin
     if epochs_since_finality <= 4:
         extra_penalty = 0
     else:
-        extra_penalty = get_effective_balance(state, index) * min(epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
+        extra_penalty = get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
     return get_base_reward(state, index) + extra_penalty
 ```
 
