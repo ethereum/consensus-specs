@@ -396,8 +396,6 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Amount in Gwei
     'amount': 'uint64',
-    # Timestamp from deposit contract
-    'timestamp': 'uint64',
     # Deposit input
     'deposit_input': DepositInput,
 }
@@ -677,7 +675,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ```python
 def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
     """
-    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``. 
+    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``.
     """
     return BeaconBlockHeader(
         slot=block.slot,
@@ -761,7 +759,7 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
     assert index < list_size
     assert list_size <= 2**40
-    
+
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
@@ -1282,7 +1280,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     deposit_input = deposit.deposit_data.deposit_input
 
     # Should equal 8 bytes for deposit_data.amount +
-    #              8 bytes for deposit_data.timestamp +
     #              176 bytes for deposit_data.deposit_input
     # It should match the deposit_data in the eth1.0 deposit contract
     serialized_deposit_data = serialize(deposit.deposit_data)
@@ -1409,7 +1406,7 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     state.validator_balances[whistleblower_index] += whistleblower_reward
     state.validator_balances[index] -= whistleblower_reward
     validator.slashed = True
-    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
+    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH
 ```
 
 #### `prepare_validator_for_withdrawal`
