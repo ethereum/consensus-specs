@@ -28,7 +28,7 @@
             - [`Eth1DataVote`](#eth1datavote)
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
-            - [`SlashableAttestation`](#slashableattestation)
+            - [`StandaloneAttestation`](#standaloneattestation)
             - [`DepositInput`](#depositinput)
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
@@ -90,7 +90,8 @@
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
-        - [`verify_slashable_attestation`](#verify_slashable_attestation)
+        - [`convert_to_standalone`](#convert_to_standalone)
+        - [`verify_standalone_attestation`](#verify_standalone_attestation)
         - [`is_double_vote`](#is_double_vote)
         - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
@@ -187,7 +188,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
-| `MAX_SLASHABLE_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
+| `MAX_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
@@ -369,7 +370,7 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
-#### `SlashableAttestation`
+#### `StandaloneAttestation`
 
 ```python
 {
@@ -489,10 +490,10 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # First slashable attestation
-    'slashable_attestation_1': SlashableAttestation,
-    # Second slashable attestation
-    'slashable_attestation_2': SlashableAttestation,
+    # First attestation
+    'attestation_1': StandaloneAttestation,
+    # Second attestation
+    'attestation_2': StandaloneAttestation,
 }
 ```
 
@@ -1116,7 +1117,7 @@ def get_attestation_participants(state: BeaconState,
         aggregation_bit = get_bitfield_bit(bitfield, i)
         if aggregation_bit == 0b1:
             participants.append(validator_index)
-    return participants
+    return sorted(participants)
 ```
 
 ### `is_power_of_two`
@@ -1214,30 +1215,45 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
     return True
 ```
 
-### `verify_slashable_attestation`
+### `convert_to_standalone`
 
 ```python
-def verify_slashable_attestation(state: BeaconState, slashable_attestation: SlashableAttestation) -> bool:
+def convert_to_standalone(state: BeaconState, attestation: Attestation):
     """
-    Verify validity of ``slashable_attestation`` fields.
+    Converts an attestation to (almost) standalone-verifiable form
     """
-    if slashable_attestation.custody_bitfield != b'\x00' * len(slashable_attestation.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
+    return StandaloneAttestation(
+        validator_indices=get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield),
+        data=attestation.data,
+        custody_bitfield=attestation.custody_bitfield,
+        aggregate_signature=attestation.aggregate_signature
+    )
+```
+
+### `verify_standalone_attestation`
+
+```python
+def verify_standalone_attestation(state: BeaconState, standalone_attestation: StandaloneAttestation) -> bool:
+    """
+    Verify validity of ``standalone_attestation`` fields.
+    """
+    if standalone_attestation.custody_bitfield != b'\x00' * len(standalone_attestation.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    if not (1 <= len(slashable_attestation.validator_indices) <= MAX_SLASHABLE_ATTESTATION_PARTICIPANTS):
+    if not (1 <= len(standalone_attestation.validator_indices) <= MAX_ATTESTATION_PARTICIPANTS):
         return False
 
-    for i in range(len(slashable_attestation.validator_indices) - 1):
-        if slashable_attestation.validator_indices[i] >= slashable_attestation.validator_indices[i + 1]:
+    for i in range(len(standalone_attestation.validator_indices) - 1):
+        if standalone_attestation.validator_indices[i] >= standalone_attestation.validator_indices[i + 1]:
             return False
 
-    if not verify_bitfield(slashable_attestation.custody_bitfield, len(slashable_attestation.validator_indices)):
+    if not verify_bitfield(standalone_attestation.custody_bitfield, len(standalone_attestation.validator_indices)):
         return False
 
     custody_bit_0_indices = []
     custody_bit_1_indices = []
-    for i, validator_index in enumerate(slashable_attestation.validator_indices):
-        if get_bitfield_bit(slashable_attestation.custody_bitfield, i) == 0b0:
+    for i, validator_index in enumerate(standalone_attestation.validator_indices):
+        if get_bitfield_bit(standalone_attestation.custody_bitfield, i) == 0b0:
             custody_bit_0_indices.append(validator_index)
         else:
             custody_bit_1_indices.append(validator_index)
@@ -1248,11 +1264,11 @@ def verify_slashable_attestation(state: BeaconState, slashable_attestation: Slas
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=slashable_attestation.data, custody_bit=0b1)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=standalone_attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=standalone_attestation.data, custody_bit=0b1)),
         ],
-        signature=slashable_attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(slashable_attestation.data.slot), DOMAIN_ATTESTATION),
+        signature=standalone_attestation.aggregate_signature,
+        domain=get_domain(state.fork, slot_to_epoch(standalone_attestation.data.slot), DOMAIN_ATTESTATION),
     )
 ```
 
@@ -2408,16 +2424,16 @@ def process_attester_slashing(state: BeaconState,
     Process ``AttesterSlashing`` transaction.
     Note that this function mutates ``state``.
     """
-    attestation1 = attester_slashing.slashable_attestation_1
-    attestation2 = attester_slashing.slashable_attestation_2
+    attestation1 = attester_slashing.attestation_1
+    attestation2 = attester_slashing.attestation_2
     # Check that the attestations are conflicting
     assert attestation1.data != attestation2.data
     assert (
         is_double_vote(attestation1.data, attestation2.data) or
         is_surround_vote(attestation1.data, attestation2.data)
     )
-    assert verify_slashable_attestation(state, attestation1)
-    assert verify_slashable_attestation(state, attestation2)
+    assert verify_standalone_attestation(state, attestation1)
+    assert verify_standalone_attestation(state, attestation2)
     slashable_indices = [
         index for index in attestation1.validator_indices
         if (
@@ -2462,18 +2478,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         ),
     }
 
-    # Check custody bits [to be generalised in phase 1]
-    assert attestation.custody_bitfield == b'\x00' * len(attestation.custody_bitfield)
-
-    # Check aggregate signature [to be generalised in phase 1]
-    participants = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
-    assert len(participants) != 0
-    assert bls_verify(
-        pubkey=bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in participants]),
-        message_hash=hash_tree_root(AttestationDataAndCustodyBit(data=attestation.data, custody_bit=0b0)),
-        signature=attestation.aggregate_signature,
-        domain=get_domain(state.fork, target_epoch, DOMAIN_ATTESTATION),
-    )
+    # Check signature and bitfields
+    assert verify_standalone_attestation(state, convert_to_standalone(state, attestation))
 
     # Cache pending attestation
     pending_attestation = PendingAttestation(
