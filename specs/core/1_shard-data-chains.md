@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Shard Data Chains
+# Ethereum 2.0 Phase 1 -- Shards Data Chains
 
 __NOTICE__: This document is a work-in-progress for researchers and implementers.
 
@@ -6,7 +6,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
+- [Ethereum 2.0 Phase 1 -- Shards Data Chains](#ethereum-20-phase-1----shard-data-chains)
     - [Table of Contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
@@ -28,7 +28,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 ## Introduction
 
-This document represents the expected behavior of an "honest validator" with respect to Phase 1 of the Ethereum 2.0 protocol.
+This document document the shard fork choice rule in Phase 1 of Ethereum 2.0.
 
 ## Constants
 
