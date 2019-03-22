@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Shards Data Chains
+# Ethereum 2.0 Phase 1 -- Shard Data Chains
 
 __NOTICE__: This document is a work-in-progress for researchers and implementers.
 
@@ -6,11 +6,12 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Shards Data Chains](#ethereum-20-phase-1----shard-data-chains)
+- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
     - [Table of Contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
         - [Time parameters](#time-parameters)
+        - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
@@ -36,6 +37,14 @@ This document represents the expected behavior of an "honest validator" with res
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `CROSSLINK_LOOKBACK` | 2**5 (= 32) | slots  | 3.2 minutes |
+| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
+
+### Signature domains
+
+| Name | Value |
+| - | - |
+| `DOMAIN_SHARD_PROPOSER` | `128` |
+| `DOMAIN_SHARD_ATTESTER` | `129` |
 
 ## Data structures
 
