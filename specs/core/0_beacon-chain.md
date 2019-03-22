@@ -770,14 +770,21 @@ def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> L
 ### `get_balance`
 
 ```python
-def get_balance(state: BeaconState, index: int) -> int:
+def get_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    """
+    Return the balance for a validator with the given ``index``.
+    """
     return state.balances[index]
 ```
 
 ### `set_balance`
 
 ```python
-def set_balance(state: BeaconState, index: int, balance: int) -> None:
+def set_balance(state: BeaconState, index: ValidatorIndex, balance: Gwei) -> None:
+    """
+    Set the balance for a validator with the given ``index`` in both ``BeaconState``
+    and validator's rounded balance ``high_balance``.
+    """
     validator = state.validator_registry[index]
     HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
     if validator.high_balance > balance or validator.high_balance + 3 * HALF_INCREMENT < balance:
@@ -788,16 +795,23 @@ def set_balance(state: BeaconState, index: int, balance: int) -> None:
 ### `increase_balance`
 
 ```python
-def increase_balance(state: BeaconState, index: int, delta: int) -> None:
+def increase_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> None:
+    """
+    Increase the balance for a validator with the given ``index`` by ``delta``.
+    """
     set_balance(state, index, get_balance(state, index) + delta)
 ```
 
 ### `decrease_balance`
 
 ```python
-def decrease_balance(state: BeaconState, index: int, delta: int) -> None:
-    cur_balance = get_balance(state, index)
-    set_balance(state, index, cur_balance - delta if cur_balance >= delta else 0)
+def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> None:
+    """
+    Decrease the balance for a validator with the given ``index`` by ``delta``.
+    Set to ``0`` when underflow.
+    """
+    current_balance = get_balance(state, index)
+    set_balance(state, index, current_balance - delta if current_balance >= delta else 0)
 ```
 
 ### `get_permuted_index`
