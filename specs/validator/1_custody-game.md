@@ -6,7 +6,7 @@
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Custody Game](#ethereum-20-phase-1----custody)
+- [Ethereum 2.0 Phase 1 -- Custody Game](#ethereum-20-phase-1----custody-game)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
