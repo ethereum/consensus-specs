@@ -42,7 +42,7 @@ At the current stage, Phase 1, while fundamentally feature-complete, is still su
     - [Updates to the beacon chain](#updates-to-the-beacon-chain)
         - [Helpers](#helpers)
             - [`get_attestation_crosslink_length`](#get_attestation_crosslink_length)
-            - [`get_attestation_mix_chunk_count`](#get_attestation_mix_chunk_count)
+            - [`get_mix_length_from_attestation`](#get_mix_length_from_attestation)
             - [`epoch_to_custody_period`](#epoch_to_custody_period)
             - [`slot_to_custody_period`](#slot_to_custody_period)
             - [`get_current_custody_period`](#get_current_custody_period)
@@ -383,10 +383,10 @@ def get_attestation_crosslink_length(attestation: Attestation) -> int:
     return min(MAX_CROSSLINK_EPOCHS, end_epoch - start_epoch)
 ```
 
-#### `get_attestation_mix_chunk_count`
+#### `get_mix_length_from_attestation`
 
 ```python
-def get_attestation_mix_chunk_count(attestation: Attestation) -> int:
+def get_mix_length_from_attestation(attestation: Attestation) -> int:
     chunks_per_slot = BYTES_PER_SHARD_BLOCK // BYTES_PER_MIX_CHUNK
     return get_attestation_crosslink_length(attestation) * EPOCH_LENGTH * chunks_per_slot
 ```
@@ -497,7 +497,7 @@ def process_data_challenge(state: BeaconState,
     for c in state.data_challenge_records:
         assert c.data_root != challenge.attestation.data.crosslink_data_root or c.data_index == challenge.data_index
     # Check validity of depth
-    depth = log2(next_power_of_two(get_attestation_mix_chunk_count(challenge.attestation)))
+    depth = log2(next_power_of_two(get_mix_length_from_attestation(challenge.attestation)))
     assert challenge.data_index < 2**depth
     # Add new data challenge record
     state.data_challenge_records.append(DataChallengeRecord(
@@ -523,7 +523,7 @@ def process_subkey_reveal(state: BeaconState,
     assert verify_custody_subkey_reveal(reveal)
     revealer = state.validator_registry[reveal.revealer_index]
 
-    # Case 1: Non-early non-punitive mon-masked reveal
+    # Case 1: non-early non-punitive non-masked reveal
     if reveal.mask == ZERO_HASH:
         assert reveal.period == revealer.next_subkey_to_reveal
         # Revealer is active or exited
@@ -550,28 +550,28 @@ Verify that `len(block.body.custody_challenges) <= MAX_CUSTODY_CHALLENGES`.
 For each `challenge` in `block.body.custody_challenges`, run the following function:
 
 ```python
-def process_challenge(state: BeaconState,
+def process_custody_challenge(state: BeaconState,
                       challenge: CustodyChallenge) -> None:
     challenger = state.validator_registry[challenge.challenger_index]
     responder = state.validator_registry[challenge.responder_index]
-    # Verify the signature
+    # Verify the challenge signature
     assert bls_verify(
         message_hash=signed_root(challenge),
         pubkey=challenger.pubkey,
         signature=challenge.signature,
         domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_CHALLENGE)
     )
-    # Verify the attestation
+    # Verify the challenged attestation
     assert verify_slashable_attestation(challenge.attestation, state)
     # Check the responder participated in the attestation
     assert challenge.responder_index in attestation.validator_indices
-    # Any validator can be a challenger or responder of max 1 challenge at a time
-    for c in state.custody_challenge_records:
-        assert c.challenger_index != challenge.challenger_index
-        assert c.responder_index != challenge.responder_index
-    # Cannot challenge if you have been slashed
+    # A validator can be the challenger or responder for at most one challenge at a time
+    for challenge_record in state.custody_challenge_records:
+        assert challenge_record.challenger_index != challenge.challenger_index
+        assert challenge_record.responder_index != challenge.responder_index
+    # Cannot challenge if slashed
     assert challenger.slashed is False
-    # Make sure the revealed subkey is valid
+    # Verify the revealed subkey
     assert verify_custody_subkey_reveal(SubkeyReveal(
         revealer_index=challenge.responder_index,
         period=slot_to_custody_period(attestation.data.slot),
@@ -580,12 +580,12 @@ def process_challenge(state: BeaconState,
     # Verify that the attestation is still eligible for challenging
     min_challengeable_epoch = responder.exit_epoch - CUSTODY_PERIOD_LENGTH * (1 + responder.max_reveal_lateness)
     assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
-    # Verify the mix's length and that its last bit is the opposite of the attested bit
-    mix_length = get_attestation_mix_chunk_count(challenge.attestation)
+    # Verify the mix's length and that its last bit is the opposite of the custody bit
+    mix_length = get_mix_length_from_attestation(challenge.attestation)
     verify_bitfield(challenge.mix, mix_length)
-    attested_bit = get_bitfield_bit(attestation.custodyfield, attestation.validator_indices.index(responder_index))
-    assert attested_bit != get_bitfield_bit(challenge.mix, mix_length - 1)
-    # Create a new challenge object
+    custody_bit = get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index))
+    assert custody_bit != get_bitfield_bit(challenge.mix, mix_length - 1)
+    # Create a new challenge record
     state.custody_challenge_records.append(CustodyChallengeRecord(
         challenge_id=state.challenge_index,
         challenger_index=challenge.challenger_index,
@@ -596,7 +596,7 @@ def process_challenge(state: BeaconState,
         deadline=get_current_epoch(state) + CHALLENGE_RESPONSE_DEADLINE
     ))
     state.challenge_index += 1
-    # Responder cannot withdraw yet!
+    # Postpone responder withdrawability
     state.validator_registry[responder_index].withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
 
