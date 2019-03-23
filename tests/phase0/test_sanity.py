@@ -227,22 +227,18 @@ def test_attestation(state, pubkeys, privkeys):
     crosslink_committees = get_crosslink_committees_at_slot(state, slot)
     crosslink_committee = [committee for committee, _shard in crosslink_committees if _shard == attestation_data.shard][0]
 
-    committee_size = len(crosslink_committee)
-    bitfield_length = (committee_size + 7) // 8
-    aggregation_bitfield = b'\x01' + b'\x00' * (bitfield_length - 1)
-    custody_bitfield = b'\x00' * bitfield_length
+    # Select the first validator to be the attester
+    participants = [crosslink_committee[0]]
+    aggregation_bitfield_length = (len(crosslink_committee) + 7) // 8
+    custody_bitfield_length = (len(participants) + 7) // 8
+    aggregation_bitfield = b'\x01' + b'\x00' * (aggregation_bitfield_length - 1)
+    custody_bitfield = b'\x00' * custody_bitfield_length
     attestation = Attestation(
         aggregation_bitfield=aggregation_bitfield,
         data=attestation_data,
         custody_bitfield=custody_bitfield,
         aggregate_signature=EMPTY_SIGNATURE,
     )
-    participants = get_attestation_participants(
-        test_state,
-        attestation.data,
-        attestation.aggregation_bitfield,
-    )
-    assert len(participants) == 1
 
     validator_index = participants[0]
     privkey = privkeys[validator_index]
