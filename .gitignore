@@ -4,3 +4,15 @@
 /.pytest_cache
 
 build/
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+
+# Sphinx
+docs/_build
+docs/modules.rst
+docs/*.internal.rst
+docs/*.utils.rst
+docs/*._utils.*
