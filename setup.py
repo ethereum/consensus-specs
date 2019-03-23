@@ -54,7 +54,7 @@ setup(
     setup_requires=['setuptools-markdown'],
     python_requires='>=3.6, <4',
     extras_require=extras_require,
-    py_modules=['eth2-specs'],
+    py_modules=['eth2_specs'],
     # license="MIT",
     zip_safe=False,
     keywords='ethereum',
