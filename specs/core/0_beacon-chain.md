@@ -1449,7 +1449,7 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
 #### `slash_validator`
 
 ```python
-def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whitleblower_index: ValidatorIndex=None) -> None:
+def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex=None) -> None:
     """
     Slash the validator with index ``slashed_index``.
     Note that this function mutates ``state``.
@@ -1461,12 +1461,12 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whitleblo
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
 
     proposer_index = get_beacon_proposer_index(state, state.slot)
-    if whileblower_index is None:
-        whileblower_index = proposer_index
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
     whistleblowing_reward = slashed_balance // WHISTLEBLOWING_REWARD_QUOTIENT
     proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
     increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whitleblower_index, whistleblowing_reward - proposer_reward)
+    increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
     decrease_balance(state, slashed_index, whistleblower_reward)
 ```
 
