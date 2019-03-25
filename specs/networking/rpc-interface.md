@@ -103,7 +103,7 @@ Since some clients are waiting for `libp2p` implementations in their respective 
 ```
 (
     network_id: uint8
-    chain_id: uint8
+    chain_id: uint64
     latest_finalized_root: bytes32
     latest_finalized_epoch: uint64
     best_root: bytes32
