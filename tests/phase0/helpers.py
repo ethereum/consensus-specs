@@ -31,18 +31,20 @@ from build.phase0.utils.merkle_minimal import (
 )
 
 
-privkeys_list = [i + 1 for i in range(1000)]
-pubkeys_list = [bls.privtopub(privkey) for privkey in privkeys_list]
-pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys_list, pubkeys_list)}
+privkeys = [i + 1 for i in range(1000)]
+pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
+pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
 
 
-def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves):
+def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
+    if not deposit_data_leaves:
+        deposit_data_leaves = []
     deposit_timestamp = 0
     proof_of_possession = b'\x33' * 96
 
     deposit_data_list = []
     for i in range(num_validators):
-        pubkey = pubkeys_list[i]
+        pubkey = pubkeys[i]
         deposit_data = DepositData(
             amount=spec.MAX_DEPOSIT_AMOUNT,
             timestamp=deposit_timestamp,
@@ -71,7 +73,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves):
     return genesis_validator_deposits, root
 
 
-def create_genesis_state(num_validators, deposit_data_leaves):
+def create_genesis_state(num_validators, deposit_data_leaves=None):
     initial_deposits, deposit_root = create_mock_genesis_validator_deposits(
         num_validators,
         deposit_data_leaves,

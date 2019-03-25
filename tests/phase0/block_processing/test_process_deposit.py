@@ -4,11 +4,13 @@ import pytest
 import build.phase0.spec as spec
 
 from build.phase0.spec import (
-    Deposit,
+    ZERO_HASH,
     process_deposit,
 )
 from tests.phase0.helpers import (
     build_deposit,
+    privkeys,
+    pubkeys,
 )
 
 
@@ -16,8 +18,10 @@ from tests.phase0.helpers import (
 pytestmark = pytest.mark.voluntary_exits
 
 
-def test_success(state, deposit_data_leaves, pubkeys, privkeys):
+def test_success(state):
     pre_state = deepcopy(state)
+    # fill previous deposits with zero-hash
+    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     index = len(deposit_data_leaves)
     pubkey = pubkeys[index]
@@ -45,8 +49,9 @@ def test_success(state, deposit_data_leaves, pubkeys, privkeys):
     return pre_state, deposit, post_state
 
 
-def test_success_top_up(state, deposit_data_leaves, pubkeys, privkeys):
+def test_success_top_up(state):
     pre_state = deepcopy(state)
+    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     validator_index = 0
     amount = spec.MAX_DEPOSIT_AMOUNT // 4
@@ -76,8 +81,10 @@ def test_success_top_up(state, deposit_data_leaves, pubkeys, privkeys):
     return pre_state, deposit, post_state
 
 
-def test_wrong_index(state, deposit_data_leaves, pubkeys, privkeys):
+def test_wrong_index(state):
     pre_state = deepcopy(state)
+    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
+
 
     index = len(deposit_data_leaves)
     pubkey = pubkeys[index]
@@ -104,8 +111,9 @@ def test_wrong_index(state, deposit_data_leaves, pubkeys, privkeys):
     return pre_state, deposit, None
 
 
-def test_bad_merkle_proof(state, deposit_data_leaves, pubkeys, privkeys):
+def test_bad_merkle_proof(state):
     pre_state = deepcopy(state)
+    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     index = len(deposit_data_leaves)
     pubkey = pubkeys[index]
