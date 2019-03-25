@@ -29,7 +29,6 @@
     - [Helpers](#helpers)
         - [`get_attestation_chunk_count`](#get_attestation_chunk_count)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
-        - [`slot_to_custody_period`](#slot_to_custody_period)
         - [`get_current_custody_period`](#get_current_custody_period)
         - [`verify_custody_reveal`](#verify_custody_reveal)
         - [`slash_validator`](#slash_validator)
@@ -61,9 +60,9 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `MAX_DATA_CHALLENGE_DELAY` | 2**11 (= 2,048) | epochs | ~9 days |
-| `EPOCHS_PER_CUSTODY_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
-| `CUSTODY_RESPONSE_DEADLINE` | 2**14 (= 16,384) | epochs | ~73 days |
+| `MAX_DATA_CHALLENGE_DELAY` | `2**11` (= 2,048) | epochs | ~9 days |
+| `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
+| `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 
 ### Max transactions per block
 
@@ -85,7 +84,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ### Phase 0 updates
 
-Add the following fields to the end of the specified container objects. Fields of type `uint64` are initialized to `0`, and list fields are initialized to `[]`.
+Add the following fields to the end of the specified container objects. Fields of type `uint64` are initialized to `0` and list fields are initialized to `[]`.
 
 #### `Validator`
 
@@ -118,7 +117,7 @@ Add the following fields to the end of the specified container objects. Fields o
 ```python
 {
     'responder_index': ValidatorIndex,
-    'data_index': 'uint64',
+    'chunk_index': 'uint64',
     'attestation': Attestation,
 }
 ```
@@ -130,10 +129,10 @@ Add the following fields to the end of the specified container objects. Fields o
     'challenge_index': 'uint64',
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
-    'crosslink_data_root': 'bytes32',
     'deadline': 'uint64',
+    'crosslink_data_root': 'bytes32',
     'depth': 'uint64',
-    'data_index': 'uint64',
+    'chunk_index': 'uint64',
 }
 ```
 
@@ -157,8 +156,8 @@ Add the following fields to the end of the specified container objects. Fields o
     'challenge_index': 'uint64',
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
-    'crosslink_data_root': Hash,
     'deadline': Epoch,
+    'crosslink_data_root': Hash,
     'mix': 'bytes',
     'responder_subkey': BLSSignature,
 }
@@ -171,7 +170,7 @@ Add the following fields to the end of the specified container objects. Fields o
     'challenge_index': 'uint64',
     'data': ['byte', BYTES_PER_CHUNK],
     'branch': [Hash],
-    'data_index': 'uint64',
+    'chunk_index': 'uint64',
 }
 ```
 
@@ -205,13 +204,6 @@ def get_attestation_chunk_count(attestation: Attestation) -> int:
 ```python
 def epoch_to_custody_period(epoch: Epoch) -> int:
     return epoch // EPOCHS_PER_CUSTODY_PERIOD
-```
-
-### `slot_to_custody_period`
-
-```python
-def slot_to_custody_period(slot: Slot) -> int:
-    return epoch_to_custody_period(slot_to_epoch(slot))
 ```
 
 ### `get_current_custody_period`
@@ -332,17 +324,17 @@ def process_data_challenge(state: BeaconState,
     # Verify it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_DATA_CHALLENGE_DELAY
     assert state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_DATA_CHALLENGE_DELAY
-    # Verify the responder participated
+    # Verify the responder participated in the attestation
     assert challenger.responder_index in challenge.attestation.validator_indices
     # Verify the challenge is not a duplicate
     for record in state.data_challenge_records:
         assert (
             record.crosslink_data_root != challenge.attestation.data.crosslink_crosslink_data_root or
-            record.data_index != challenge.data_index
+            record.chunk_index != challenge.chunk_index
         )
     # Verify depth
-    depth = log2(next_power_of_two(get_attestation_chunk_count(challenge.attestation)))
-    assert challenge.data_index < 2**depth
+    depth = math.log2(next_power_of_two(get_attestation_chunk_count(challenge.attestation)))
+    assert challenge.chunk_index < 2**depth
     # Add new data challenge record
     state.data_challenge_records.append(DataChallengeRecord(
         challenge_index=state.challenge_index,
@@ -350,7 +342,7 @@ def process_data_challenge(state: BeaconState,
         crosslink_data_root=challenge.attestation.data.crosslink_crosslink_data_root,
         depth=depth,
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
-        data_index=challenge.data_index,
+        chunk_index=challenge.chunk_index,
     ))
     state.challenge_index += 1
 ```
@@ -389,7 +381,7 @@ def process_mix_challenge(state: BeaconState,
     # Verify the responder subkey
     assert verify_custody_reveal(CustodyReveal(
         revealer_index=challenge.responder_index,
-        period=slot_to_custody_period(attestation.data.slot),
+        period=epoch_to_custody_period(slot_to_epoch(attestation.data.slot)),
         subkey=challenge.responder_subkey,
     ))
     # Verify the mix's length and that its last bit is the opposite of the custody bit
@@ -440,11 +432,11 @@ def process_data_challenge_response(state: BeaconState,
         leaf=hash_tree_root(response.data),
         branch=response.branch,
         depth=challenge.depth,
-        index=challenge.data_index,
+        index=challenge.chunk_index,
         root=challenge.crosslink_data_root,
     )
     # Check data index
-    assert response.data_index == challenge.data_index
+    assert response.chunk_index == challenge.chunk_index
     # Must wait at least ENTRY_EXIT_DELAY before responding to a branch challenge
     assert get_current_epoch(state) >= challenge.inclusion_epoch + ENTRY_EXIT_DELAY
     state.data_challenge_records.remove(challenge)
@@ -455,25 +447,24 @@ def process_data_challenge_response(state: BeaconState,
 
 ```python
 def process_mix_challenge_response(state: BeaconState,
-                                       response: CustodyResponse,
-                                       challenge: MixChallengeRecord) -> None:
-    responder = state.validator_registry[challenge.responder_index]
+                                   response: CustodyResponse,
+                                   challenge: MixChallengeRecord) -> None:
     # Check the data index is valid
-    assert response.data_index < len(challenge.mix)
+    assert response.chunk_index < len(challenge.mix)
     # Check the provided data is part of the attested data
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.data),
         branch=response.branch,
-        depth=log2(next_power_of_two(len(challenge.mix))),
-        index=response.data_index,
+        depth=math.log2(next_power_of_two(len(challenge.mix))),
+        index=response.chunk_index,
         root=challenge.crosslink_data_root,
     )
     # Check the mix bit (assert the response identified an invalid data index in the challenge)
     mix_bit = get_bitfield_bit(hash(challenge.responder_subkey + response.data), 0)
-    previous_bit = 0 if response.data_index == 0 else get_bitfield_bit(challenge.mix, response.data_index - 1)
-    next_bit = get_bitfield_bit(challenge.mix, response.data_index)
+    previous_bit = 0 if response.chunk_index == 0 else get_bitfield_bit(challenge.mix, response.chunk_index - 1)
+    next_bit = get_bitfield_bit(challenge.mix, response.chunk_index)
     assert previous_bit ^ mix_bit != next_bit
-    # Resolve the challenge in the responder's favor
+    # Resolve the challenge in favour of the responder
     slash_validator(state, challenge.challenger_index, challenge.responder_index)
     state.mix_challenge_records.remove(challenge)
 ```
