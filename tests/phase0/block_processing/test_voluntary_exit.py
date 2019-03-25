@@ -10,6 +10,7 @@ from build.phase0.spec import (
 )
 from tests.phase0.helpers import (
     build_voluntary_exit,
+    pubkey_to_privkey,
 )
 
 
@@ -17,7 +18,7 @@ from tests.phase0.helpers import (
 pytestmark = pytest.mark.voluntary_exits
 
 
-def test_success(state, pub_to_priv):
+def test_success(state):
     pre_state = deepcopy(state)
     #
     # setup pre_state
@@ -30,7 +31,7 @@ def test_success(state, pub_to_priv):
     #
     current_epoch = get_current_epoch(pre_state)
     validator_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
-    privkey = pub_to_priv[pre_state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[pre_state.validator_registry[validator_index].pubkey]
 
     voluntary_exit = build_voluntary_exit(
         pre_state,
@@ -52,11 +53,11 @@ def test_success(state, pub_to_priv):
     return pre_state, voluntary_exit, post_state
 
 
-def test_validator_not_active(state, pub_to_priv):
+def test_validator_not_active(state):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     validator_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
-    privkey = pub_to_priv[pre_state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[pre_state.validator_registry[validator_index].pubkey]
 
     #
     # setup pre_state
@@ -79,7 +80,7 @@ def test_validator_not_active(state, pub_to_priv):
     return pre_state, voluntary_exit, None
 
 
-def test_validator_already_exited(state, pub_to_priv):
+def test_validator_already_exited(state):
     pre_state = deepcopy(state)
     #
     # setup pre_state
@@ -89,7 +90,7 @@ def test_validator_already_exited(state, pub_to_priv):
 
     current_epoch = get_current_epoch(pre_state)
     validator_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
-    privkey = pub_to_priv[pre_state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[pre_state.validator_registry[validator_index].pubkey]
 
     # but validator already has exited
     pre_state.validator_registry[validator_index].exit_epoch = current_epoch + 2
@@ -110,7 +111,7 @@ def test_validator_already_exited(state, pub_to_priv):
     return pre_state, voluntary_exit, None
 
 
-def test_validator_already_initiated_exit(state, pub_to_priv):
+def test_validator_already_initiated_exit(state):
     pre_state = deepcopy(state)
     #
     # setup pre_state
@@ -120,7 +121,7 @@ def test_validator_already_initiated_exit(state, pub_to_priv):
 
     current_epoch = get_current_epoch(pre_state)
     validator_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
-    privkey = pub_to_priv[pre_state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[pre_state.validator_registry[validator_index].pubkey]
 
     # but validator already has initiated exit
     pre_state.validator_registry[validator_index].initiated_exit = True
@@ -141,14 +142,14 @@ def test_validator_already_initiated_exit(state, pub_to_priv):
     return pre_state, voluntary_exit, None
 
 
-def test_validator_not_active_long_enough(state, pub_to_priv):
+def test_validator_not_active_long_enough(state):
     pre_state = deepcopy(state)
     #
     # setup pre_state
     #
     current_epoch = get_current_epoch(pre_state)
     validator_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
-    privkey = pub_to_priv[pre_state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[pre_state.validator_registry[validator_index].pubkey]
 
     # but validator already has initiated exit
     pre_state.validator_registry[validator_index].initiated_exit = True

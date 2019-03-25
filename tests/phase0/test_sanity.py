@@ -47,6 +47,8 @@ from tests.phase0.helpers import (
     build_empty_block_for_next_slot,
     force_registry_change_at_next_epoch,
     get_valid_proposer_slashing,
+    privkeys,
+    pubkeys,
 )
 
 
@@ -116,7 +118,7 @@ def test_empty_epoch_transition_not_finalizing(state):
     return state, [block], test_state
 
 
-def test_proposer_slashing(state, pubkeys, privkeys):
+def test_proposer_slashing(state):
     test_state = deepcopy(state)
     proposer_slashing = get_valid_proposer_slashing(state)
     validator_index = proposer_slashing.proposer_index
@@ -142,9 +144,9 @@ def test_proposer_slashing(state, pubkeys, privkeys):
     return state, [block], test_state
 
 
-def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
+def test_deposit_in_block(state):
     pre_state = deepcopy(state)
-    test_deposit_data_leaves = deepcopy(deposit_data_leaves)
+    test_deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     index = len(test_deposit_data_leaves)
     pubkey = pubkeys[index]
@@ -179,9 +181,9 @@ def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
     return pre_state, [block], post_state
 
 
-def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
+def test_deposit_top_up(state):
     pre_state = deepcopy(state)
-    test_deposit_data_leaves = deepcopy(deposit_data_leaves)
+    test_deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     validator_index = 0
     amount = spec.MAX_DEPOSIT_AMOUNT // 4
@@ -218,7 +220,7 @@ def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
     return pre_state, [block], post_state
 
 
-def test_attestation(state, pubkeys, privkeys):
+def test_attestation(state):
     test_state = deepcopy(state)
     slot = state.slot
     shard = state.current_shuffling_start_shard
@@ -287,7 +289,7 @@ def test_attestation(state, pubkeys, privkeys):
     return state, [attestation_block, epoch_block], test_state
 
 
-def test_voluntary_exit(state, pubkeys, privkeys):
+def test_voluntary_exit(state):
     pre_state = deepcopy(state)
     validator_index = get_active_validator_indices(
         pre_state.validator_registry,
@@ -375,7 +377,7 @@ def test_no_exit_churn_too_long_since_change(state):
     return pre_state, [block], post_state
 
 
-def test_transfer(state, pubkeys, privkeys):
+def test_transfer(state):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     sender_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
