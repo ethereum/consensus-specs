@@ -29,7 +29,6 @@
     - [Helpers](#helpers)
         - [`get_attestation_chunk_count`](#get_attestation_chunk_count)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
-        - [`get_current_custody_period`](#get_current_custody_period)
         - [`verify_custody_reveal`](#verify_custody_reveal)
         - [`slash_validator`](#slash_validator)
     - [Per-block processing](#per-block-processing)
@@ -195,7 +194,7 @@ def get_attestation_chunk_count(attestation: Attestation) -> int:
     attestation_start_epoch = attestation.data.latest_crosslink.epoch
     attestation_end_epoch = slot_to_epoch(attestation.data.slot)
     attestation_crosslink_length = min(MAX_CROSSLINK_EPOCHS, end_epoch - start_epoch)
-    chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * EPOCH_LENGTH // BYTES_PER_CHUNK
+    chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CHUNK
     return attestation_crosslink_length * chunks_per_epoch
 ```
 
@@ -204,13 +203,6 @@ def get_attestation_chunk_count(attestation: Attestation) -> int:
 ```python
 def epoch_to_custody_period(epoch: Epoch) -> int:
     return epoch // EPOCHS_PER_CUSTODY_PERIOD
-```
-
-### `get_current_custody_period`
-
-```python
-def get_current_custody_period(state: BeaconState) -> int:
-    return epoch_to_custody_period(get_current_epoch(state))
 ```
 
 ### `verify_custody_reveal`
@@ -300,7 +292,7 @@ def process_custody_reveal(state: BeaconState,
 
     # Case 2: Early punitive masked reveal
     else:
-        assert reveal.period > get_current_custody_period(state)
+        assert reveal.period > epoch_to_custody_period(get_current_epoch(state))
         assert revealer.slashed is False
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
         increase_balance(state, reveal.masker_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
