@@ -1467,7 +1467,7 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
     increase_balance(state, proposer_index, proposer_reward)
     increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
-    decrease_balance(state, slashed_index, whistleblower_reward)
+    decrease_balance(state, slashed_index, whistleblowing_reward)
 ```
 
 #### `prepare_validator_for_withdrawal`
