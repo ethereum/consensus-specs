@@ -30,7 +30,6 @@
         - [`get_attestation_chunk_count`](#get_attestation_chunk_count)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
         - [`verify_custody_reveal`](#verify_custody_reveal)
-        - [`slash_validator`](#slash_validator)
     - [Per-block processing](#per-block-processing)
         - [Transactions](#transactions)
             - [Custody reveals](#custody-reveals)
@@ -233,36 +232,6 @@ def verify_custody_reveal(state: BeaconState,
         ),
     )
 ```
-
-### `slash_validator`
-
-Change the definition of `slash_validator` as follows:
-
-```python
-def slash_validator(state: BeaconState, index: ValidatorIndex, whistleblower_index: ValidatorIndex=None) -> None:
-    """
-    Slash the validator of the given ``index``.
-    Note that this function mutates ``state``.
-    """
-    exit_validator(state, index)
-    validator = state.validator_registry[index]
-    state.latest_slashed_balances[get_current_epoch(state) % LATEST_PENALIZED_EXIT_LENGTH] += get_effective_balance(state, index)
-    
-    proposer_index = get_beacon_proposer_index(state, state.slot)
-    whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
-    if whistleblower_index is None:
-        increase_balance(state, proposer_index, whistleblower_reward)
-    else:
-        proposer_share = whistleblower_reward // INCLUDER_REWARD_QUOTIENT  # TODO: Define INCLUDER_REWARD_QUOTIENT
-        increase_balance(state, proposer_index, proposer_share)
-        increase_balance(state, whistleblower_index, whistleblower_reward - proposer_share)
-
-    decrease_balance(state, index, whistleblower_reward)        
-    validator.slashed_epoch = get_current_epoch(state)
-    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_PENALIZED_EXIT_LENGTH
-```
-
-The only change is that this introduces the possibility of a penalization where the "whistleblower" that takes credit is NOT the block proposer.
 
 ## Per-block processing
 
