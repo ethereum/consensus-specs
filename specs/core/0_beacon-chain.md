@@ -891,13 +891,9 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                     slot: Slot,
-                                     registry_change: bool=False) -> List[Tuple[List[ValidatorIndex], Shard]]:
+                                     slot: Slot) -> List[Tuple[List[ValidatorIndex], Shard]]:
     """
     Return the list of ``(committee, shard)`` tuples for the ``slot``.
-
-    Note: There are two possible shufflings for crosslink committees for a
-    ``slot`` in the next epoch -- with and without a `registry_change`
     """
     epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
@@ -2339,7 +2335,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Check target epoch, source epoch, and source root
     target_epoch = slot_to_epoch(attestation.data.slot)
     assert (target_epoch, attestation.data.source_epoch, attestation.data.source_root) in {
-        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root), 
+        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root),
     }
 

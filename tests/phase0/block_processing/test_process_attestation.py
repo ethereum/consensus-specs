@@ -43,7 +43,6 @@ def run_attestation_processing(state, attestation, valid=True):
     else:
         assert len(post_state.previous_epoch_attestations) == len(state.previous_epoch_attestations) + 1
 
-
     return state, post_state
 
 
