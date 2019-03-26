@@ -68,9 +68,7 @@
         - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`compute_committee`](#compute_committee)
-        - [`get_previous_epoch_committee_count`](#get_previous_epoch_committee_count)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
-        - [`get_next_epoch_committee_count`](#get_next_epoch_committee_count)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_state_root`](#get_state_root)
@@ -80,7 +78,6 @@
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
         - [`get_attestation_participants`](#get_attestation_participants)
-        - [`is_power_of_two`](#is_power_of_two)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_effective_balance`](#get_effective_balance)
@@ -236,6 +233,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
+| `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) |
+
+* `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
+
 
 ### State list lengths
 
@@ -594,12 +595,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
-    'previous_shuffling_start_shard': 'uint64',
-    'current_shuffling_start_shard': 'uint64',
-    'previous_shuffling_epoch': 'uint64',
-    'current_shuffling_epoch': 'uint64',
-    'previous_shuffling_seed': 'bytes32',
-    'current_shuffling_seed': 'bytes32',
+    'latest_start_shard': 'uint64',
 
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
@@ -877,20 +873,6 @@ def compute_committee(validator_indices: List[ValidatorIndex],
 
 **Note**: this definition and the next few definitions are highly inefficient as algorithms as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
-### `get_previous_epoch_committee_count`
-
-```python
-def get_previous_epoch_committee_count(state: BeaconState) -> int:
-    """
-    Return the number of committees in the previous epoch of the given ``state``.
-    """
-    previous_active_validators = get_active_validator_indices(
-        state.validator_registry,
-        state.previous_shuffling_epoch,
-    )
-    return get_epoch_committee_count(len(previous_active_validators))
-```
-
 ### `get_current_epoch_committee_count`
 
 ```python
@@ -900,36 +882,18 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
     """
     current_active_validators = get_active_validator_indices(
         state.validator_registry,
-        state.current_shuffling_epoch,
+        get_current_epoch(state),
     )
     return get_epoch_committee_count(len(current_active_validators))
-```
-
-### `get_next_epoch_committee_count`
-
-```python
-def get_next_epoch_committee_count(state: BeaconState) -> int:
-    """
-    Return the number of committees in the next epoch of the given ``state``.
-    """
-    next_active_validators = get_active_validator_indices(
-        state.validator_registry,
-        get_current_epoch(state) + 1,
-    )
-    return get_epoch_committee_count(len(next_active_validators))
 ```
 
 ### `get_crosslink_committees_at_slot`
 
 ```python
 def get_crosslink_committees_at_slot(state: BeaconState,
-                                     slot: Slot,
-                                     registry_change: bool=False) -> List[Tuple[List[ValidatorIndex], Shard]]:
+                                     slot: Slot) -> List[Tuple[List[ValidatorIndex], Shard]]:
     """
     Return the list of ``(committee, shard)`` tuples for the ``slot``.
-
-    Note: There are two possible shufflings for crosslink committees for a
-    ``slot`` in the next epoch -- with and without a `registry_change`
     """
     epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
@@ -937,40 +901,24 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     next_epoch = current_epoch + 1
 
     assert previous_epoch <= epoch <= next_epoch
+    indices = get_active_validator_indices(
+        state.validator_registry,
+        epoch,
+    )
+    committees_per_epoch = get_epoch_committee_count(len(indices))
 
     if epoch == current_epoch:
-        committees_per_epoch = get_current_epoch_committee_count(state)
-        seed = state.current_shuffling_seed
-        shuffling_epoch = state.current_shuffling_epoch
-        shuffling_start_shard = state.current_shuffling_start_shard
+        start_shard = state.latest_start_shard
     elif epoch == previous_epoch:
-        committees_per_epoch = get_previous_epoch_committee_count(state)
-        seed = state.previous_shuffling_seed
-        shuffling_epoch = state.previous_shuffling_epoch
-        shuffling_start_shard = state.previous_shuffling_start_shard
+        start_shard = (state.latest_start_shard - committees_per_epoch) % SHARD_COUNT
     elif epoch == next_epoch:
-        epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
-        if registry_change:
-            committees_per_epoch = get_next_epoch_committee_count(state)
-            seed = generate_seed(state, next_epoch)
-            shuffling_epoch = next_epoch
-            current_committees_per_epoch = get_current_epoch_committee_count(state)
-            shuffling_start_shard = (state.current_shuffling_start_shard + current_committees_per_epoch) % SHARD_COUNT
-        elif epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
-            committees_per_epoch = get_next_epoch_committee_count(state)
-            seed = generate_seed(state, next_epoch)
-            shuffling_epoch = next_epoch
-            shuffling_start_shard = state.current_shuffling_start_shard
-        else:
-            committees_per_epoch = get_current_epoch_committee_count(state)
-            seed = state.current_shuffling_seed
-            shuffling_epoch = state.current_shuffling_epoch
-            shuffling_start_shard = state.current_shuffling_start_shard
+        current_epoch_committees = get_current_epoch_committee_count(state)
+        start_shard = (state.latest_start_shard + current_epoch_committees) % SHARD_COUNT
 
-    indices = get_active_validator_indices(state.validator_registry, shuffling_epoch)
     committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
     offset = slot % SLOTS_PER_EPOCH
-    slot_start_shard = (shuffling_start_shard + committees_per_slot * offset) % SHARD_COUNT
+    slot_start_shard = (start_shard + committees_per_slot * offset) % SHARD_COUNT
+    seed = generate_seed(state, epoch)
 
     return [
         (
@@ -1112,16 +1060,6 @@ def get_attestation_participants(state: BeaconState,
         if aggregation_bit == 0b1:
             participants.append(validator_index)
     return participants
-```
-
-### `is_power_of_two`
-
-```python
-def is_power_of_two(value: int) -> bool:
-    """
-    Check if ``value`` is a power of two integer.
-    """
-    return (value > 0) and (value & (value - 1) == 0)
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
@@ -1573,12 +1511,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Randomness and committees
         latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
-        previous_shuffling_start_shard=GENESIS_START_SHARD,
-        current_shuffling_start_shard=GENESIS_START_SHARD,
-        previous_shuffling_epoch=GENESIS_EPOCH - 1,
-        current_shuffling_epoch=GENESIS_EPOCH,
-        previous_shuffling_seed=ZERO_HASH,
-        current_shuffling_seed=ZERO_HASH,
+        latest_start_shard=GENESIS_START_SHARD,
 
         # Finality
         previous_epoch_attestations=[],
@@ -1618,7 +1551,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
         state.latest_active_index_roots[index] = genesis_active_index_root
-    state.current_shuffling_seed = generate_seed(state, GENESIS_EPOCH)
 
     return state
 ```
@@ -1893,7 +1825,7 @@ Run the following function:
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    previous_epoch = current_epoch - 1
+    previous_epoch = max(current_epoch - 1, GENESIS_EPOCH)
     next_epoch = current_epoch + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
@@ -1902,7 +1834,7 @@ def process_crosslinks(state: BeaconState) -> None:
             total_balance = get_total_balance(state, crosslink_committee)
             if 3 * participating_balance >= 2 * total_balance:
                 state.latest_crosslinks[shard] = Crosslink(
-                    epoch=slot_to_epoch(slot),
+                    epoch=min(slot_to_epoch(slot), state.latest_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
                     crosslink_data_root=winning_root
                 )
 ```
@@ -2103,22 +2035,6 @@ def process_ejections(state: BeaconState) -> None:
 #### Validator registry and shuffling seed data
 
 ```python
-def should_update_validator_registry(state: BeaconState) -> bool:
-    # Must have finalized a new block
-    if state.finalized_epoch <= state.validator_registry_update_epoch:
-        return False
-    # Must have processed new crosslinks on all shards of the current epoch
-    shards_to_check = [
-        (state.current_shuffling_start_shard + i) % SHARD_COUNT
-        for i in range(get_current_epoch_committee_count(state))
-    ]
-    for shard in shards_to_check:
-        if state.latest_crosslinks[shard].epoch <= state.validator_registry_update_epoch:
-            return False
-    return True
-```
-
-```python
 def update_validator_registry(state: BeaconState) -> None:
     """
     Update validator registry.
@@ -2171,30 +2087,14 @@ def update_validator_registry(state: BeaconState) -> None:
 Run the following function:
 
 ```python
-def update_registry_and_shuffling_data(state: BeaconState) -> None:
-    # First set previous shuffling data to current shuffling data
-    state.previous_shuffling_epoch = state.current_shuffling_epoch
-    state.previous_shuffling_start_shard = state.current_shuffling_start_shard
-    state.previous_shuffling_seed = state.current_shuffling_seed
-    current_epoch = get_current_epoch(state)
-    next_epoch = current_epoch + 1
+def update_registry(state: BeaconState) -> None:
     # Check if we should update, and if so, update
-    if should_update_validator_registry(state):
+    if state.finalized_epoch > state.validator_registry_update_epoch:
         update_validator_registry(state)
-        # If we update the registry, update the shuffling data and shards as well
-        state.current_shuffling_epoch = next_epoch
-        state.current_shuffling_start_shard = (
-            state.current_shuffling_start_shard +
-            get_current_epoch_committee_count(state)
-        ) % SHARD_COUNT
-        state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)
-    else:
-        # If processing at least one crosslink keeps failing, then reshuffle every power of two,
-        # but don't update the current_shuffling_start_shard
-        epochs_since_last_registry_update = current_epoch - state.validator_registry_update_epoch
-        if epochs_since_last_registry_update > 1 and is_power_of_two(epochs_since_last_registry_update):
-            state.current_shuffling_epoch = next_epoch
-            state.current_shuffling_seed = generate_seed(state, state.current_shuffling_epoch)
+    state.latest_start_shard = (
+        state.latest_start_shard +
+        get_current_epoch_committee_count(state)
+    ) % SHARD_COUNT
 ```
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
@@ -2435,7 +2335,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Check target epoch, source epoch, and source root
     target_epoch = slot_to_epoch(attestation.data.slot)
     assert (target_epoch, attestation.data.source_epoch, attestation.data.source_root) in {
-        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root), 
+        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root),
     }
 
@@ -2445,7 +2345,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         attestation.data.previous_crosslink,  # Case 1: latest crosslink matches previous crosslink
         Crosslink(                            # Case 2: latest crosslink matches current crosslink
             crosslink_data_root=attestation.data.crosslink_data_root,
-            epoch=target_epoch,
+            epoch=min(slot_to_epoch(attestation.data.slot),
+                      attestation.data.previous_crosslink.epoch + MAX_CROSSLINK_EPOCHS)
         ),
     }
 
