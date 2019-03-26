@@ -209,13 +209,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` |
 | `GENESIS_SLOT` | `2**32` |
 | `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
-| `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
 | `ZERO_HASH` | `int_to_bytes32(0)` |
-| `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
 
 * `GENESIS_SLOT` should be at least as large in terms of time as the largest of the time parameters or state list lengths below (ie. it should be at least as large as any value measured in slots, and at least `SLOTS_PER_EPOCH` times as large as any value measured in epochs).
@@ -669,15 +666,13 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ```python
 def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
     """
-    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``. 
+    Return the block header corresponding to a block.
+    Both ``state_root`` and ``signature`` are set to the their initial values.
     """
     return BeaconBlockHeader(
         slot=block.slot,
         previous_block_root=block.previous_block_root,
-        state_root=ZERO_HASH,
         block_body_root=hash_tree_root(block.body),
-        # signed_root(block) is used for block id purposes so signature is a stub
-        signature=EMPTY_SIGNATURE,
     )
 ```
 
@@ -1311,9 +1306,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            initiated_exit=False,
-            slashed=False,
-            high_balance=0
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
@@ -1457,35 +1449,8 @@ When enough full deposits have been made to the deposit contract, an `Eth2Genesi
     * `genesis_eth1_data.deposit_count` is the `deposit_count` contained in the `Eth2Genesis` log.
     * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
-* Let `genesis_block = get_empty_block()`.
+* Let `genesis_block = BeaconBlock(slot=GENESIS_SLOT)`.
 * Set `genesis_block.state_root = hash_tree_root(genesis_state)`.
-
-```python
-def get_empty_block() -> BeaconBlock:
-    """
-    Get an empty ``BeaconBlock``.
-    """
-    return BeaconBlock(
-        slot=GENESIS_SLOT,
-        previous_block_root=ZERO_HASH,
-        state_root=ZERO_HASH,
-        body=BeaconBlockBody(
-            randao_reveal=EMPTY_SIGNATURE,
-            eth1_data=Eth1Data(
-                deposit_root=ZERO_HASH,
-                deposit_count=0,
-                block_hash=ZERO_HASH,
-            ),
-            proposer_slashings=[],
-            attester_slashings=[],
-            attestations=[],
-            deposits=[],
-            voluntary_exits=[],
-            transfers=[],
-        ),
-        signature=EMPTY_SIGNATURE,
-    )
-```
 
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
@@ -1498,45 +1463,22 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Misc
         slot=GENESIS_SLOT,
         genesis_time=genesis_time,
-        fork=Fork(
-            previous_version=GENESIS_FORK_VERSION,
-            current_version=GENESIS_FORK_VERSION,
-            epoch=GENESIS_EPOCH,
-        ),
+        fork=Fork(epoch=GENESIS_EPOCH),
 
         # Validator registry
-        validator_registry=[],
-        balances=[],
         validator_registry_update_epoch=GENESIS_EPOCH,
 
-        # Randomness and committees
-        latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
-        latest_start_shard=GENESIS_START_SHARD,
-
         # Finality
-        previous_epoch_attestations=[],
-        current_epoch_attestations=[],
         previous_justified_epoch=GENESIS_EPOCH - 1,
         current_justified_epoch=GENESIS_EPOCH,
-        previous_justified_root=ZERO_HASH,
-        current_justified_root=ZERO_HASH,
-        justification_bitfield=0,
         finalized_epoch=GENESIS_EPOCH,
-        finalized_root=ZERO_HASH,
 
         # Recent state
-        latest_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
-        latest_block_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
-        latest_state_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
-        latest_active_index_roots=Vector([ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)]),
-        latest_slashed_balances=Vector([0 for _ in range(LATEST_SLASHED_EXIT_LENGTH)]),
-        latest_block_header=get_temporary_block_header(get_empty_block()),
-        historical_roots=[],
+        latest_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH) for _ in range(SHARD_COUNT)]),
+        latest_block_header=get_temporary_block_header(genesis_block),
 
         # Ethereum 1.0 chain data
         latest_eth1_data=genesis_eth1_data,
-        eth1_data_votes=[],
-        deposit_index=0,
     )
 
     # Process genesis deposits
