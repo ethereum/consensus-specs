@@ -163,7 +163,7 @@ def test_deposit_in_block(state):
     deposit = Deposit(
         proof=list(proof),
         index=index,
-        deposit_data=deposit_data,
+        data=deposit_data,
     )
 
     pre_state.latest_eth1_data.deposit_root = root
@@ -202,7 +202,7 @@ def test_deposit_top_up(state):
     deposit = Deposit(
         proof=list(proof),
         index=merkle_index,
-        deposit_data=deposit_data,
+        data=deposit_data,
     )
 
     pre_state.latest_eth1_data.deposit_root = root

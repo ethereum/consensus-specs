@@ -12,7 +12,6 @@ from build.phase0.spec import (
     AttestationData,
     BeaconBlockHeader,
     Deposit,
-    DepositInput,
     DepositData,
     Eth1Data,
     ProposerSlashing,
@@ -43,21 +42,17 @@ pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkey
 def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
     if not deposit_data_leaves:
         deposit_data_leaves = []
-    deposit_timestamp = 0
     proof_of_possession = b'\x33' * 96
 
     deposit_data_list = []
     for i in range(num_validators):
         pubkey = pubkeys[i]
         deposit_data = DepositData(
+            pubkey=pubkey,
+            # insecurely use pubkey as withdrawal key as well
+            withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
             amount=spec.MAX_DEPOSIT_AMOUNT,
-            timestamp=deposit_timestamp,
-            deposit_input=DepositInput(
-                pubkey=pubkey,
-                # insecurely use pubkey as withdrawal key as well
-                withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
-                proof_of_possession=proof_of_possession,
-            ),
+            proof_of_possession=proof_of_possession,
         )
         item = hash(deposit_data.serialize())
         deposit_data_leaves.append(item)
@@ -72,7 +67,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
         genesis_validator_deposits.append(Deposit(
             proof=list(get_merkle_proof(tree, item_index=i)),
             index=i,
-            deposit_data=deposit_data_list[i]
+            data=deposit_data_list[i]
         ))
     return genesis_validator_deposits, root
 
@@ -112,14 +107,15 @@ def build_empty_block_for_next_slot(state):
 
 
 def build_deposit_data(state, pubkey, privkey, amount):
-    deposit_input = DepositInput(
+    deposit_data = DepositData(
         pubkey=pubkey,
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
+        amount=amount,
         proof_of_possession=EMPTY_SIGNATURE,
     )
     proof_of_possession = bls.sign(
-        message_hash=signed_root(deposit_input),
+        message_hash=signed_root(deposit_data),
         privkey=privkey,
         domain=get_domain(
             state.fork,
@@ -127,12 +123,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
             spec.DOMAIN_DEPOSIT,
         )
     )
-    deposit_input.proof_of_possession = proof_of_possession
-    deposit_data = DepositData(
-        amount=amount,
-        timestamp=0,
-        deposit_input=deposit_input,
-    )
+    deposit_data.proof_of_possession = proof_of_possession
     return deposit_data
 
 
@@ -201,7 +192,7 @@ def build_deposit(state,
     deposit = Deposit(
         proof=list(proof),
         index=index,
-        deposit_data=deposit_data,
+        data=deposit_data,
     )
 
     return deposit, root, deposit_data_leaves
