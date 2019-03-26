@@ -259,6 +259,7 @@ def process_custody_reveal(state: BeaconState,
                            reveal: CustodyReveal) -> None:
     assert verify_custody_reveal(state, reveal)
     revealer = state.validator_registry[reveal.revealer_index]
+    current_custody_period = epoch_to_custody_period(get_current_epoch(state))
 
     # Case 1: non-masked non-punitive non-early reveal
     if reveal.mask == ZERO_HASH:
@@ -266,17 +267,15 @@ def process_custody_reveal(state: BeaconState,
         # Revealer is active or exited
         assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
         revealer.custody_reveal_index += 1
-        revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, get_current_period(state) - reveal.period)
+        revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, current_custody_period - reveal.period)
+        proposer_index = get_beacon_proposer_index(state, state.slot)
+        increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 
     # Case 2: masked punitive early reveal
     else:
-        assert reveal.period > epoch_to_custody_period(get_current_epoch(state))
+        assert reveal.period > current_custody_period
         assert revealer.slashed is False
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
-
-    proposer_index = get_beacon_proposer_index(state, state.slot)
-    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
-
 ```
 
 #### Chunk challenges
@@ -292,7 +291,8 @@ def process_chunk_challenge(state: BeaconState,
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
-    assert state.validator_registry[challenge.responder_index].exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
+    responder = state.validator_registry[challenge.responder_index]
+    assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
     attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
@@ -315,6 +315,8 @@ def process_chunk_challenge(state: BeaconState,
         chunk_index=challenge.chunk_index,
     ))
     state.challenge_index += 1
+    # Postpone responder withdrawability
+    responder.withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
 
 #### Bit challenges
