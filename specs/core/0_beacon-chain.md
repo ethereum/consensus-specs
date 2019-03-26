@@ -1800,7 +1800,8 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
     all_attestations = state.current_epoch_attestations + state.previous_epoch_attestations
     valid_attestations = [
-        a for a in all_attestations if a.data.previous_crosslink == state.latest_crosslinks[shard]
+        a for a in all_attestations 
+        if a.data.shard == shard and a.data.previous_crosslink == state.latest_crosslinks[shard]
     ]
     all_roots = [a.data.crosslink_data_root for a in valid_attestations]
 
