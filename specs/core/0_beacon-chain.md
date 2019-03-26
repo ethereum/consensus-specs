@@ -28,7 +28,7 @@
             - [`Eth1DataVote`](#eth1datavote)
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
-            - [`StandaloneAttestation`](#standaloneattestation)
+            - [`IndexedAttestation`](#indexedattestation)
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`Validator`](#validator)
@@ -86,8 +86,8 @@
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
-        - [`convert_to_standalone`](#convert_to_standalone)
-        - [`verify_standalone_attestation`](#verify_standalone_attestation)
+        - [`convert_to_indexed`](#convert_to_indexed)
+        - [`verify_indexed_attestation`](#verify_indexed_attestation)
         - [`is_double_vote`](#is_double_vote)
         - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
@@ -370,7 +370,7 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
-#### `StandaloneAttestation`
+#### `IndexedAttestation`
 
 ```python
 {
@@ -480,9 +480,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # First attestation
-    'attestation_1': StandaloneAttestation,
+    'attestation_1': IndexedAttestation,
     # Second attestation
-    'attestation_2': StandaloneAttestation,
+    'attestation_2': IndexedAttestation,
 }
 ```
 
@@ -1148,14 +1148,14 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
     return True
 ```
 
-### `convert_to_standalone`
+### `convert_to_indexed`
 
 ```python
-def convert_to_standalone(state: BeaconState, attestation: Attestation):
+def convert_to_indexed(state: BeaconState, attestation: Attestation):
     """
-    Convert an attestation to (almost) standalone-verifiable form
+    Convert an attestation to (almost) indexed-verifiable form
     """
-    return StandaloneAttestation(
+    return IndexedAttestation(
         validator_indices=get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield),
         data=attestation.data,
         custody_bitfield=attestation.custody_bitfield,
@@ -1163,29 +1163,29 @@ def convert_to_standalone(state: BeaconState, attestation: Attestation):
     )
 ```
 
-### `verify_standalone_attestation`
+### `verify_indexed_attestation`
 
 ```python
-def verify_standalone_attestation(state: BeaconState, standalone_attestation: StandaloneAttestation) -> bool:
+def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
-    Verify validity of ``standalone_attestation`` fields.
+    Verify validity of ``indexed_attestation`` fields.
     """
-    if standalone_attestation.custody_bitfield != b'\x00' * len(standalone_attestation.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
+    if indexed_attestation.custody_bitfield != b'\x00' * len(indexed_attestation.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    if not (1 <= len(standalone_attestation.validator_indices) <= MAX_ATTESTATION_PARTICIPANTS):
+    if not (1 <= len(indexed_attestation.validator_indices) <= MAX_ATTESTATION_PARTICIPANTS):
         return False
 
-    if standalone_attestation.validator_indices != sorted(standalone_attestation.validator_indices):
+    if indexed_attestation.validator_indices != sorted(indexed_attestation.validator_indices):
         return False
     
-    if not verify_bitfield(standalone_attestation.custody_bitfield, len(standalone_attestation.validator_indices)):
+    if not verify_bitfield(indexed_attestation.custody_bitfield, len(indexed_attestation.validator_indices)):
         return False
 
     custody_bit_0_indices = []
     custody_bit_1_indices = []
-    for i, validator_index in enumerate(standalone_attestation.validator_indices):
-        if get_bitfield_bit(standalone_attestation.custody_bitfield, i) == 0b0:
+    for i, validator_index in enumerate(indexed_attestation.validator_indices):
+        if get_bitfield_bit(indexed_attestation.custody_bitfield, i) == 0b0:
             custody_bit_0_indices.append(validator_index)
         else:
             custody_bit_1_indices.append(validator_index)
@@ -1196,11 +1196,11 @@ def verify_standalone_attestation(state: BeaconState, standalone_attestation: St
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
         message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=standalone_attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=standalone_attestation.data, custody_bit=0b1)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
-        signature=standalone_attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(standalone_attestation.data.slot), DOMAIN_ATTESTATION),
+        signature=indexed_attestation.aggregate_signature,
+        domain=get_domain(state.fork, slot_to_epoch(indexed_attestation.data.slot), DOMAIN_ATTESTATION),
     )
 ```
 
@@ -2318,8 +2318,8 @@ def process_attester_slashing(state: BeaconState,
         is_double_vote(attestation1.data, attestation2.data) or
         is_surround_vote(attestation1.data, attestation2.data)
     )
-    assert verify_standalone_attestation(state, attestation1)
-    assert verify_standalone_attestation(state, attestation2)
+    assert verify_indexed_attestation(state, attestation1)
+    assert verify_indexed_attestation(state, attestation2)
     slashable_indices = [
         index for index in attestation1.validator_indices
         if (
@@ -2366,7 +2366,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     }
 
     # Check signature and bitfields
-    assert verify_standalone_attestation(state, convert_to_standalone(state, attestation))
+    assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))
 
     # Cache pending attestation
     pending_attestation = PendingAttestation(
