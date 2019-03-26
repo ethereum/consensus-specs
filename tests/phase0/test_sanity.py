@@ -11,23 +11,19 @@ from build.phase0.spec import (
     EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
-    Attestation,
-    AttestationDataAndCustodyBit,
-    BeaconBlockHeader,
     Deposit,
     Transfer,
-    ProposerSlashing,
     VoluntaryExit,
     # functions
     get_active_validator_indices,
-    get_attestation_participants,
+    get_balance,
     get_block_root,
-    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_state_root,
     advance_slot,
     cache_state,
+    set_balance,
     verify_merkle_branch,
     hash,
 )
@@ -40,10 +36,13 @@ from build.phase0.utils.merkle_minimal import (
     get_merkle_root,
 )
 from tests.phase0.helpers import (
-    build_attestation_data,
     build_deposit_data,
     build_empty_block_for_next_slot,
     force_registry_change_at_next_epoch,
+    get_valid_attestation,
+    get_valid_proposer_slashing,
+    privkeys,
+    pubkeys,
 )
 
 
@@ -113,44 +112,10 @@ def test_empty_epoch_transition_not_finalizing(state):
     return state, [block], test_state
 
 
-def test_proposer_slashing(state, pubkeys, privkeys):
+def test_proposer_slashing(state):
     test_state = deepcopy(state)
-    current_epoch = get_current_epoch(test_state)
-    validator_index = get_active_validator_indices(test_state.validator_registry, current_epoch)[-1]
-    privkey = privkeys[validator_index]
-    slot = spec.GENESIS_SLOT
-    header_1 = BeaconBlockHeader(
-        slot=slot,
-        previous_block_root=ZERO_HASH,
-        state_root=ZERO_HASH,
-        block_body_root=ZERO_HASH,
-        signature=EMPTY_SIGNATURE,
-    )
-    header_2 = deepcopy(header_1)
-    header_2.previous_block_root = b'\x02' * 32
-    header_2.slot = slot + 1
-
-    domain = get_domain(
-        fork=test_state.fork,
-        epoch=get_current_epoch(test_state),
-        domain_type=spec.DOMAIN_BEACON_BLOCK,
-    )
-    header_1.signature = bls.sign(
-        message_hash=signed_root(header_1),
-        privkey=privkey,
-        domain=domain,
-    )
-    header_2.signature = bls.sign(
-        message_hash=signed_root(header_2),
-        privkey=privkey,
-        domain=domain,
-    )
-
-    proposer_slashing = ProposerSlashing(
-        proposer_index=validator_index,
-        header_1=header_1,
-        header_2=header_2,
-    )
+    proposer_slashing = get_valid_proposer_slashing(state)
+    validator_index = proposer_slashing.proposer_index
 
     #
     # Add to state via block transition
@@ -168,14 +133,14 @@ def test_proposer_slashing(state, pubkeys, privkeys):
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
-    assert test_state.validator_balances[validator_index] < state.validator_balances[validator_index]
+    assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
 
     return state, [block], test_state
 
 
-def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
+def test_deposit_in_block(state):
     pre_state = deepcopy(state)
-    test_deposit_data_leaves = deepcopy(deposit_data_leaves)
+    test_deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     index = len(test_deposit_data_leaves)
     pubkey = pubkeys[index]
@@ -192,7 +157,7 @@ def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
     deposit = Deposit(
         proof=list(proof),
         index=index,
-        deposit_data=deposit_data,
+        data=deposit_data,
     )
 
     pre_state.latest_eth1_data.deposit_root = root
@@ -203,15 +168,16 @@ def test_deposit_in_block(state, deposit_data_leaves, pubkeys, privkeys):
 
     state_transition(post_state, block)
     assert len(post_state.validator_registry) == len(state.validator_registry) + 1
-    assert len(post_state.validator_balances) == len(state.validator_balances) + 1
+    assert len(post_state.balances) == len(state.balances) + 1
+    assert get_balance(post_state, index) == spec.MAX_DEPOSIT_AMOUNT
     assert post_state.validator_registry[index].pubkey == pubkeys[index]
 
     return pre_state, [block], post_state
 
 
-def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
+def test_deposit_top_up(state):
     pre_state = deepcopy(state)
-    test_deposit_data_leaves = deepcopy(deposit_data_leaves)
+    test_deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     validator_index = 0
     amount = spec.MAX_DEPOSIT_AMOUNT // 4
@@ -230,7 +196,7 @@ def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
     deposit = Deposit(
         proof=list(proof),
         index=merkle_index,
-        deposit_data=deposit_data,
+        data=deposit_data,
     )
 
     pre_state.latest_eth1_data.deposit_root = root
@@ -238,59 +204,19 @@ def test_deposit_top_up(state, pubkeys, privkeys, deposit_data_leaves):
     block = build_empty_block_for_next_slot(pre_state)
     block.body.deposits.append(deposit)
 
-    pre_balance = pre_state.validator_balances[validator_index]
+    pre_balance = get_balance(pre_state, validator_index)
     post_state = deepcopy(pre_state)
     state_transition(post_state, block)
     assert len(post_state.validator_registry) == len(pre_state.validator_registry)
-    assert len(post_state.validator_balances) == len(pre_state.validator_balances)
-    assert post_state.validator_balances[validator_index] == pre_balance + amount
+    assert len(post_state.balances) == len(pre_state.balances)
+    assert get_balance(post_state, validator_index) == pre_balance + amount
 
     return pre_state, [block], post_state
 
 
-def test_attestation(state, pubkeys, privkeys):
+def test_attestation(state):
     test_state = deepcopy(state)
-    slot = state.slot
-    shard = state.current_shuffling_start_shard
-    attestation_data = build_attestation_data(state, slot, shard)
-
-    crosslink_committees = get_crosslink_committees_at_slot(state, slot)
-    crosslink_committee = [committee for committee, _shard in crosslink_committees if _shard == attestation_data.shard][0]
-
-    committee_size = len(crosslink_committee)
-    bitfield_length = (committee_size + 7) // 8
-    aggregation_bitfield = b'\x01' + b'\x00' * (bitfield_length - 1)
-    custody_bitfield = b'\x00' * bitfield_length
-    attestation = Attestation(
-        aggregation_bitfield=aggregation_bitfield,
-        data=attestation_data,
-        custody_bitfield=custody_bitfield,
-        aggregate_signature=EMPTY_SIGNATURE,
-    )
-    participants = get_attestation_participants(
-        test_state,
-        attestation.data,
-        attestation.aggregation_bitfield,
-    )
-    assert len(participants) == 1
-
-    validator_index = participants[0]
-    privkey = privkeys[validator_index]
-
-    message_hash = AttestationDataAndCustodyBit(
-        data=attestation.data,
-        custody_bit=0b0,
-    ).hash_tree_root()
-
-    attestation.aggregation_signature = bls.sign(
-        message_hash=message_hash,
-        privkey=privkey,
-        domain=get_domain(
-            fork=test_state.fork,
-            epoch=get_current_epoch(test_state),
-            domain_type=spec.DOMAIN_ATTESTATION,
-        )
-    )
+    attestation = get_valid_attestation(state)
 
     #
     # Add to state via block transition
@@ -317,7 +243,7 @@ def test_attestation(state, pubkeys, privkeys):
     return state, [attestation_block, epoch_block], test_state
 
 
-def test_voluntary_exit(state, pubkeys, privkeys):
+def test_voluntary_exit(state):
     pre_state = deepcopy(state)
     validator_index = get_active_validator_indices(
         pre_state.validator_registry,
@@ -405,15 +331,15 @@ def test_no_exit_churn_too_long_since_change(state):
     return pre_state, [block], post_state
 
 
-def test_transfer(state, pubkeys, privkeys):
+def test_transfer(state):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     sender_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
     recipient_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]
-    amount = pre_state.validator_balances[sender_index]
-    pre_transfer_recipient_balance = pre_state.validator_balances[recipient_index]
+    amount = get_balance(pre_state, sender_index)
+    pre_transfer_recipient_balance = get_balance(pre_state, recipient_index)
     transfer = Transfer(
         sender=sender_index,
         recipient=recipient_index,
@@ -448,8 +374,8 @@ def test_transfer(state, pubkeys, privkeys):
     block.body.transfers.append(transfer)
     state_transition(post_state, block)
 
-    sender_balance = post_state.validator_balances[sender_index]
-    recipient_balance = post_state.validator_balances[recipient_index]
+    sender_balance = get_balance(post_state, sender_index)
+    recipient_balance = get_balance(post_state, recipient_index)
     assert sender_balance == 0
     assert recipient_balance == pre_transfer_recipient_balance + amount
 
@@ -465,7 +391,7 @@ def test_ejection(state):
     assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    pre_state.validator_balances[validator_index] = spec.EJECTION_BALANCE - 1
+    set_balance(pre_state, validator_index, spec.EJECTION_BALANCE - 1)
 
     post_state = deepcopy(pre_state)
     #

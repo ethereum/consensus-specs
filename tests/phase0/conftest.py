@@ -3,9 +3,6 @@ import pytest
 from build.phase0 import spec
 
 from tests.phase0.helpers import (
-    privkeys_list,
-    pubkeys_list,
-    pubkey_to_privkey,
     create_genesis_state,
 )
 
@@ -23,21 +20,6 @@ MINIMAL_CONFIG = {
     "LATEST_ACTIVE_INDEX_ROOTS_LENGTH": 64,
     "LATEST_SLASHED_EXIT_LENGTH": 64,
 }
-
-
-@pytest.fixture
-def privkeys():
-    return privkeys_list
-
-
-@pytest.fixture
-def pubkeys():
-    return pubkeys_list
-
-
-@pytest.fixture
-def pub_to_priv():
-    return pubkey_to_privkey
 
 
 def overwrite_spec_config(config):

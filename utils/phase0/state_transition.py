@@ -95,7 +95,7 @@ def process_epoch_transition(state: BeaconState) -> None:
     spec.maybe_reset_eth1_period(state)
     spec.apply_rewards(state)
     spec.process_ejections(state)
-    spec.update_registry_and_shuffling_data(state)
+    spec.update_registry(state)
     spec.process_slashings(state)
     spec.process_exit_queue(state)
     spec.finish_epoch_update(state)
