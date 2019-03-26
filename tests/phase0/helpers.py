@@ -9,17 +9,20 @@ from build.phase0.spec import (
     EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
+    Attestation,
     AttestationData,
+    AttestationDataAndCustodyBit,
     BeaconBlockHeader,
     Deposit,
-    DepositInput,
     DepositData,
     Eth1Data,
     ProposerSlashing,
     VoluntaryExit,
     # functions
     get_active_validator_indices,
+    get_attestation_participants,
     get_block_root,
+    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_empty_block,
@@ -35,27 +38,25 @@ from build.phase0.utils.merkle_minimal import (
 )
 
 
-privkeys_list = [i + 1 for i in range(1000)]
-pubkeys_list = [bls.privtopub(privkey) for privkey in privkeys_list]
-pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys_list, pubkeys_list)}
+privkeys = [i + 1 for i in range(1000)]
+pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
+pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
 
 
-def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves):
-    deposit_timestamp = 0
+def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
+    if not deposit_data_leaves:
+        deposit_data_leaves = []
     proof_of_possession = b'\x33' * 96
 
     deposit_data_list = []
     for i in range(num_validators):
-        pubkey = pubkeys_list[i]
+        pubkey = pubkeys[i]
         deposit_data = DepositData(
+            pubkey=pubkey,
+            # insecurely use pubkey as withdrawal key as well
+            withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
             amount=spec.MAX_DEPOSIT_AMOUNT,
-            timestamp=deposit_timestamp,
-            deposit_input=DepositInput(
-                pubkey=pubkey,
-                # insecurely use pubkey as withdrawal key as well
-                withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
-                proof_of_possession=proof_of_possession,
-            ),
+            proof_of_possession=proof_of_possession,
         )
         item = hash(deposit_data.serialize())
         deposit_data_leaves.append(item)
@@ -70,12 +71,12 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves):
         genesis_validator_deposits.append(Deposit(
             proof=list(get_merkle_proof(tree, item_index=i)),
             index=i,
-            deposit_data=deposit_data_list[i]
+            data=deposit_data_list[i]
         ))
     return genesis_validator_deposits, root
 
 
-def create_genesis_state(num_validators, deposit_data_leaves):
+def create_genesis_state(num_validators, deposit_data_leaves=None):
     initial_deposits, deposit_root = create_mock_genesis_validator_deposits(
         num_validators,
         deposit_data_leaves,
@@ -105,19 +106,20 @@ def build_empty_block_for_next_slot(state):
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
-    empty_block.previous_block_root = previous_block_header.hash_tree_root()
+    empty_block.previous_block_root = signed_root(previous_block_header)
     return empty_block
 
 
 def build_deposit_data(state, pubkey, privkey, amount):
-    deposit_input = DepositInput(
+    deposit_data = DepositData(
         pubkey=pubkey,
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
+        amount=amount,
         proof_of_possession=EMPTY_SIGNATURE,
     )
     proof_of_possession = bls.sign(
-        message_hash=signed_root(deposit_input),
+        message_hash=signed_root(deposit_data),
         privkey=privkey,
         domain=get_domain(
             state.fork,
@@ -125,12 +127,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
             spec.DOMAIN_DEPOSIT,
         )
     )
-    deposit_input.proof_of_possession = proof_of_possession
-    deposit_data = DepositData(
-        amount=amount,
-        timestamp=0,
-        deposit_input=deposit_input,
-    )
+    deposit_data.proof_of_possession = proof_of_possession
     return deposit_data
 
 
@@ -199,7 +196,7 @@ def build_deposit(state,
     deposit = Deposit(
         proof=list(proof),
         index=index,
-        deposit_data=deposit_data,
+        data=deposit_data,
     )
 
     return deposit, root, deposit_data_leaves
@@ -243,3 +240,49 @@ def get_valid_proposer_slashing(state):
         header_1=header_1,
         header_2=header_2,
     )
+
+
+def get_valid_attestation(state, slot=None):
+    if slot is None:
+        slot = state.slot
+    shard = state.latest_start_shard
+    attestation_data = build_attestation_data(state, slot, shard)
+
+    crosslink_committees = get_crosslink_committees_at_slot(state, slot)
+    crosslink_committee = [committee for committee, _shard in crosslink_committees if _shard == attestation_data.shard][0]
+
+    committee_size = len(crosslink_committee)
+    bitfield_length = (committee_size + 7) // 8
+    aggregation_bitfield = b'\x01' + b'\x00' * (bitfield_length - 1)
+    custody_bitfield = b'\x00' * bitfield_length
+    attestation = Attestation(
+        aggregation_bitfield=aggregation_bitfield,
+        data=attestation_data,
+        custody_bitfield=custody_bitfield,
+        aggregate_signature=EMPTY_SIGNATURE,
+    )
+    participants = get_attestation_participants(
+        state,
+        attestation.data,
+        attestation.aggregation_bitfield,
+    )
+    assert len(participants) == 1
+
+    validator_index = participants[0]
+    privkey = privkeys[validator_index]
+
+    message_hash = AttestationDataAndCustodyBit(
+        data=attestation.data,
+        custody_bit=0b0,
+    ).hash_tree_root()
+
+    attestation.aggregation_signature = bls.sign(
+        message_hash=message_hash,
+        privkey=privkey,
+        domain=get_domain(
+            fork=state.fork,
+            epoch=get_current_epoch(state),
+            domain_type=spec.DOMAIN_ATTESTATION,
+        )
+    )
+    return attestation
