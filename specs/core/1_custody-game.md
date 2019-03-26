@@ -309,9 +309,10 @@ def process_chunk_challenge(state: BeaconState,
     state.chunk_challenge_records.append(ChunkChallengeRecord(
         challenge_index=state.challenge_index,
         challenger_index=get_beacon_proposer_index(state, state.slot),
+        responder_index=challenge.responder_index
+        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         crosslink_data_root=challenge.attestation.data.crosslink_data_root,
         depth=depth,
-        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         chunk_index=challenge.chunk_index,
     ))
     state.challenge_index += 1
@@ -373,10 +374,10 @@ def process_bit_challenge(state: BeaconState,
         challenge_index=state.challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
+        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE
         crosslink_data_root=challenge.attestation.crosslink_data_root,
         chunk_bits=challenge.chunk_bits,
         responder_subkey=challenge.responder_subkey,
-        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE
     ))
     state.challenge_index += 1
     # Postpone responder withdrawability
