@@ -1869,10 +1869,11 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 
 ```python
 def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_since_finality: int) -> Gwei:
-    return (
-        get_base_reward(state, index) +
-        get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
-    )
+    if epochs_since_finality <= 4:
+        extra_penalty = 0
+    else:
+        extra_penalty = get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
+    return get_base_reward(state, index) + extra_penalty
 ```
 
 Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
@@ -1881,23 +1882,10 @@ Note: When applying penalties in the following balance recalculations implemente
 
 ```python
 def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
-    if epochs_since_finality <= 4:
-        return compute_normal_justification_and_finalization_deltas(state)
-    else:
-        return compute_inactivity_leak_deltas(state)
-```
-
-When blocks are finalizing normally...
-
-```python
-def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    # deltas[0] for rewards
-    # deltas[1] for penalties
-    deltas = [
-        [0 for index in range(len(state.validator_registry))],
-        [0 for index in range(len(state.validator_registry))]
-    ]
+    current_epoch = get_current_epoch(state)
+    epochs_since_finality = current_epoch + 1 - state.finalized_epoch
+    rewards = [0 for index in range(len(state.validator_registry))]
+    penalties = [0 for index in range(len(state.validator_registry))]
     # Some helper variables
     boundary_attestations = get_previous_epoch_boundary_attestations(state)
     boundary_attesting_balance = get_attesting_balance(state, boundary_attestations)
@@ -1905,76 +1893,44 @@ def compute_normal_justification_and_finalization_deltas(state: BeaconState) -> 
     total_attesting_balance = get_attesting_balance(state, state.previous_epoch_attestations)
     matching_head_attestations = get_previous_epoch_matching_head_attestations(state)
     matching_head_balance = get_attesting_balance(state, matching_head_attestations)
+    eligible_validators = [
+        index for index, validator in enumerate(state.validator_registry)
+        if (
+            is_active_validator(validator, current_epoch) or
+            (validator.slashed and current_epoch < validator.withdrawable_epoch)
+        )
+    ]
     # Process rewards or penalties for all validators
-    for index in get_active_validator_indices(state.validator_registry, get_previous_epoch(state)):
+    for index in eligible_validators:
+        base_reward = get_base_reward(state, index)
         # Expected FFG source
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
-            deltas[0][index] += get_base_reward(state, index) * total_attesting_balance // total_balance
+            rewards[index] += base_reward * total_attesting_balance // total_balance
             # Inclusion speed bonus
-            deltas[0][index] += (
-                get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY //
+            rewards[index] += (
+                base_reward * MIN_ATTESTATION_INCLUSION_DELAY //
                 inclusion_distance(state, index)
             )
         else:
-            deltas[1][index] += get_base_reward(state, index)
+            penalties[index] += base_reward
         # Expected FFG target
         if index in get_attesting_indices(state, boundary_attestations):
-            deltas[0][index] += get_base_reward(state, index) * boundary_attesting_balance // total_balance
+            rewards[index] += base_reward * boundary_attesting_balance // total_balance
         else:
-            deltas[1][index] += get_base_reward(state, index)
+            penalties[index] += get_inactivity_penalty(state, index, epochs_since_finality)
         # Expected head
         if index in get_attesting_indices(state, matching_head_attestations):
-            deltas[0][index] += get_base_reward(state, index) * matching_head_balance // total_balance
+            rewards[index] += base_reward * matching_head_balance // total_balance
         else:
-            deltas[1][index] += get_base_reward(state, index)
+            penalties[index] += base_reward
         # Proposer bonus
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
             proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-            deltas[0][proposer_index] += get_base_reward(state, index) // ATTESTATION_INCLUSION_REWARD_QUOTIENT
-    return deltas
-```
-
-When blocks are not finalizing normally...
-
-```python
-def compute_inactivity_leak_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    # deltas[0] for rewards
-    # deltas[1] for penalties
-    deltas = [
-        [0 for index in range(len(state.validator_registry))],
-        [0 for index in range(len(state.validator_registry))]
-    ]
-    boundary_attestations = get_previous_epoch_boundary_attestations(state)
-    matching_head_attestations = get_previous_epoch_matching_head_attestations(state)
-    active_validator_indices = get_active_validator_indices(state.validator_registry, get_previous_epoch(state))
-    epochs_since_finality = get_current_epoch(state) + 1 - state.finalized_epoch
-    for index in active_validator_indices:
-        if index not in get_attesting_indices(state, state.previous_epoch_attestations):
-            deltas[1][index] += get_inactivity_penalty(state, index, epochs_since_finality)
-        else:
-            # If a validator did attest, apply a small penalty for getting attestations included late
-            deltas[0][index] += (
-                get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY //
-                inclusion_distance(state, index)
-            )
-            deltas[1][index] += get_base_reward(state, index)
-        if index not in get_attesting_indices(state, boundary_attestations):
-            deltas[1][index] += get_inactivity_penalty(state, index, epochs_since_finality)
-        if index not in get_attesting_indices(state, matching_head_attestations):
-            deltas[1][index] += get_base_reward(state, index)
-    # Penalize slashed-but-inactive validators as though they were active but offline
-    for index in range(len(state.validator_registry)):
-        eligible = (
-            index not in active_validator_indices and
-            state.validator_registry[index].slashed and
-            get_current_epoch(state) < state.validator_registry[index].withdrawable_epoch
-        )
-        if eligible:
-            deltas[1][index] += (
-                2 * get_inactivity_penalty(state, index, epochs_since_finality) +
-                get_base_reward(state, index)
-            )
-    return deltas
+            rewards[proposer_index] += base_reward // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+        # Take away max rewards if we're not finalizing
+        if epochs_since_finality > 4:
+            penalties[index] += base_reward * 4
+    return [rewards, penalties]
 ```
 
 ##### Crosslinks

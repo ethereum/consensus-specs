@@ -108,6 +108,8 @@ def test_empty_epoch_transition_not_finalizing(state):
 
     assert test_state.slot == block.slot
     assert test_state.finalized_epoch < get_current_epoch(test_state) - 4
+    for index in range(len(test_state.validator_registry)):
+        assert get_balance(test_state, index) < get_balance(state, index)
 
     return state, [block], test_state
 
