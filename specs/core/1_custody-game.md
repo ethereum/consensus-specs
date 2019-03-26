@@ -15,17 +15,17 @@
         - [Max transactions per block](#max-transactions-per-block)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
+        - [Custody objects](#custody-objects)
+            - [`ChunkChallenge`](#chunkchallenge)
+            - [`BitChallenge`](#bitchallenge)
+            - [`ChunkChallengeRecord`](#chunkchallengerecord)
+            - [`BitChallengeRecord`](#bitchallengerecord)
+            - [`CustodyResponse`](#custodyresponse)
+            - [`CustodyReveal`](#custodyreveal)
         - [Phase 0 updates](#phase-0-updates)
             - [`Validator`](#validator)
             - [`BeaconState`](#beaconstate)
             - [`BeaconBlockBody`](#beaconblockbody)
-        - [Custody objects](#custody-objects)
-            - [`ChunkChallenge`](#chunkchallenge)
-            - [`ChunkChallengeRecord`](#chunkchallengerecord)
-            - [`BitChallenge`](#bitchallenge)
-            - [`BitChallengeRecord`](#bitchallengerecord)
-            - [`CustodyResponse`](#custodyresponse)
-            - [`CustodyReveal`](#custodyreveal)
     - [Helpers](#helpers)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_chunk_bit`](#get_chunk_bit)
@@ -52,7 +52,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value |
 | - | - |
 | `BYTES_PER_SHARD_BLOCK` | `2**14` (= 16,384) |
-| `BYTES_PER_CHUNK` | `2**9` (= 512) |
+| `BYTES_PER_CUSTODY_CHUNK` | `2**9` (= 512) |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 
 ### Time parameters
@@ -81,9 +81,85 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ## Data structures
 
+### Custody objects
+
+#### `ChunkChallenge`
+
+```python
+{
+    'responder_index': ValidatorIndex,
+    'attestation': Attestation,
+    'chunk_index': 'uint64',
+}
+```
+
+#### `BitChallenge`
+
+```python
+{
+    'responder_index': ValidatorIndex,
+    'attestation': Attestation,
+    'challenger_index': ValidatorIndex,
+    'responder_subkey': BLSSignature,
+    'chunk_bits': Bitfield,
+    'signature': BLSSignature,
+}
+```
+
+#### `ChunkChallengeRecord`
+
+```python
+{
+    'challenge_index': 'uint64',
+    'challenger_index': ValidatorIndex,
+    'responder_index': ValidatorIndex,
+    'deadline': Epoch,
+    'crosslink_data_root': Hash,
+    'depth': 'uint64',
+    'chunk_index': 'uint64',
+}
+```
+
+#### `BitChallengeRecord`
+
+```python
+{
+    'challenge_index': 'uint64',
+    'challenger_index': ValidatorIndex,
+    'responder_index': ValidatorIndex,
+    'deadline': Epoch,
+    'crosslink_data_root': Hash,
+    'chunk_bits': Bitfield,
+    'responder_subkey': BLSSignature,
+}
+```
+
+#### `CustodyResponse`
+
+```python
+{
+    'challenge_index': 'uint64',
+    'chunk_index': 'uint64',
+    'chunk': ['byte', BYTES_PER_CUSTODY_CHUNK],
+    'branch': [Hash],
+}
+```
+
+#### `CustodyReveal`
+
+```python
+{
+    'revealer_index': ValidatorIndex,
+    'period': 'uint64',
+    'subkey': BLSSignature,
+    'masker_index': ValidatorIndex,
+    'mask': Hash,
+}
+```
+
 ### Phase 0 updates
 
-Add the following fields to the end of the specified container objects. Fields of type `uint64` are initialized to `0` and list fields are initialized to `[]`.
+Add the following fields to the end of the specified container objects. Fields with underlying type `uint64` are initialized to `0` and list fields are initialized to `[]`.
 
 #### `Validator`
 
@@ -109,82 +185,6 @@ Add the following fields to the end of the specified container objects. Fields o
     'custody_responses': [CustodyResponse],
 ```
 
-### Custody objects
-
-#### `ChunkChallenge`
-
-```python
-{
-    'responder_index': ValidatorIndex,
-    'attestation': Attestation,
-    'chunk_index': 'uint64',
-}
-```
-
-#### `ChunkChallengeRecord`
-
-```python
-{
-    'challenge_index': 'uint64',
-    'challenger_index': ValidatorIndex,
-    'responder_index': ValidatorIndex,
-    'deadline': Epoch,
-    'crosslink_data_root': Hash,
-    'depth': 'uint64',
-    'chunk_index': 'uint64',
-}
-```
-
-#### `BitChallenge`
-
-```python
-{
-    'responder_index': ValidatorIndex,
-    'attestation': Attestation,
-    'challenger_index': ValidatorIndex,
-    'responder_subkey': BLSSignature,
-    'chunk_bits': Bitfield,
-    'signature': BLSSignature,
-}
-```
-
-#### `BitChallengeRecord`
-
-```python
-{
-    'challenge_index': 'uint64',
-    'challenger_index': ValidatorIndex,
-    'responder_index': ValidatorIndex,
-    'deadline': Epoch,
-    'crosslink_data_root': Hash,
-    'chunk_bits': Bitfield,
-    'responder_subkey': BLSSignature,
-}
-```
-
-#### `CustodyResponse`
-
-```python
-{
-    'challenge_index': 'uint64',
-    'chunk_index': 'uint64',
-    'chunk': ['byte', BYTES_PER_CHUNK],
-    'branch': [Hash],
-}
-```
-
-#### `CustodyReveal`
-
-```python
-{
-    'revealer_index': ValidatorIndex,
-    'period': 'uint64',
-    'subkey': BLSSignature,
-    'masker_index': ValidatorIndex,
-    'mask': Hash,
-}
-```
-
 ## Helpers
 
 ### `get_crosslink_chunk_count`
@@ -194,7 +194,7 @@ def get_crosslink_chunk_count(attestation: Attestation) -> int:
     crosslink_start_epoch = attestation.data.latest_crosslink.epoch
     crosslink_end_epoch = slot_to_epoch(attestation.data.slot)
     crosslink_crosslink_length = min(MAX_CROSSLINK_EPOCHS, end_epoch - start_epoch)
-    chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CHUNK
+    chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK
     return crosslink_crosslink_length * chunks_per_epoch
 ```
 
@@ -202,7 +202,7 @@ def get_crosslink_chunk_count(attestation: Attestation) -> int:
 
 ```python
 def get_chunk_bit(subkey: BLSSignature, chunk: bytes) -> bool:
-    # TODO: Replace with something MPC-friendly, e.g. Legendre symbol
+    # TODO: Replace with something MPC-friendly, e.g. the Legendre symbol
     return get_bitfield_bit(hash(challenge.responder_subkey + chunk), 0)
 ```
 
@@ -217,7 +217,7 @@ def epoch_to_custody_period(epoch: Epoch) -> int:
 
 ```python
 def verify_custody_reveal(state: BeaconState,
-                          reveal: CustodyReveal) -> bool
+                          reveal: CustodyReveal) -> bool:
     # Case 1: non-masked non-punitive non-early reveal
     pubkeys = [state.validator_registry[reveal.revealer_index].pubkey]
     message_hashes = [hash_tree_root(reveal.period)]
@@ -257,7 +257,7 @@ For each `reveal` in `block.body.custody_reveals`, run the following function:
 ```python
 def process_custody_reveal(state: BeaconState,
                            reveal: CustodyReveal) -> None:
-    assert verify_custody_reveal(reveal)
+    assert verify_custody_reveal(state, reveal)
     revealer = state.validator_registry[reveal.revealer_index]
 
     # Case 1: non-masked non-punitive non-early reveal
@@ -273,7 +273,6 @@ def process_custody_reveal(state: BeaconState,
         assert reveal.period > epoch_to_custody_period(get_current_epoch(state))
         assert revealer.slashed is False
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
-        increase_balance(state, reveal.masker_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 
     proposer_index = get_beacon_proposer_index(state, state.slot)
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
@@ -293,9 +292,10 @@ def process_chunk_challenge(state: BeaconState,
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
-    assert state.validator_registry[responder_index].exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
+    assert state.validator_registry[challenge.responder_index].exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
-    assert challenger.responder_index in challenge.attestation.validator_indices
+    attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    assert challenge.responder_index in attesters
     # Verify the challenge is not a duplicate
     for record in state.chunk_challenge_records:
         assert (
@@ -329,39 +329,42 @@ def process_bit_challenge(state: BeaconState,
     # Verify challenge signature
     challenger = state.validator_registry[challenge.challenger_index]
     assert bls_verify(
-        message_hash=signed_root(challenge),
         pubkey=challenger.pubkey,
+        message_hash=signed_root(challenge),
         signature=challenge.signature,
-        domain=get_domain(state, get_current_epoch(state), DOMAIN_BIT_CHALLENGES)
+        domain=get_domain(state, get_current_epoch(state), DOMAIN_BIT_CHALLENGES),
     )
     # Verify the challenger is not slashed
     assert challenger.slashed is False
-    # Verify attestation
+    # Verify the attestation
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
     min_challengeable_epoch = responder.exit_epoch - EPOCHS_PER_CUSTODY_PERIOD * (1 + responder.max_reveal_lateness)
     assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
     # Verify the responder participated in the attestation
-    assert challenge.responder_index in attestation.validator_indices
+    attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    assert challenge.responder_index in attesters
     # A validator can be the challenger or responder for at most one challenge at a time
     for challenge_record in state.bit_challenge_records:
         assert challenge_record.challenger_index != challenge.challenger_index
         assert challenge_record.responder_index != challenge.responder_index
     # Verify the responder subkey
-    assert verify_custody_reveal(CustodyReveal(
+    assert verify_custody_reveal(state, CustodyReveal(
         revealer_index=challenge.responder_index,
         period=epoch_to_custody_period(slot_to_epoch(attestation.data.slot)),
         subkey=challenge.responder_subkey,
+        masker_index=0,
+        mask=ZERO_HASH,
     ))
     # Verify the chunk bits count
     chunk_bits_count = get_crosslink_chunk_count(challenge.attestation)
-    verify_bitfield(challenge.chunk_bits, chunk_bits_count)
+    assert verify_bitfield(challenge.chunk_bits, chunk_bits_count)
     # Verify the xor of the chunk bits does not equal the custody bit
     chunk_bits_xor = 0b0
     for i in range(chunk_bits_count):
         chunk_bits_xor ^ get_bitfield_bit(challenge.chunk_bits, i)
-    custody_bit = get_bitfield_bit(attestation.custody_bitfield, attestation.validator_indices.index(responder_index))
+    custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
     assert custody_bit != chunk_bits_xor
     # Add new bit challenge record
     state.bit_challenge_records.append(BitChallengeRecord(
@@ -409,7 +412,7 @@ def process_chunk_challenge_response(state: BeaconState,
         leaf=hash_tree_root(response.chunk),
         branch=response.branch,
         depth=challenge.depth,
-        index=challenge.chunk_index,
+        index=response.chunk_index,
         root=challenge.crosslink_data_root,
     )
     # Clear the challenge
@@ -423,9 +426,9 @@ def process_chunk_challenge_response(state: BeaconState,
 def process_bit_challenge_response(state: BeaconState,
                                    response: CustodyResponse,
                                    challenge: BitChallengeRecord) -> None:
-    # Check the chunk index
+    # Verify chunk index
     assert response.chunk_index < len(challenge.chunk_bits)
-    # Check the chunk matches the crosslink data root
+    # Verify the chunk matches the crosslink data root
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.branch,
@@ -433,10 +436,11 @@ def process_bit_challenge_response(state: BeaconState,
         index=response.chunk_index,
         root=challenge.crosslink_data_root,
     )
-    # Check the chunk bit does not match the challenge chunk bit
+    # Verify the chunk bit does not match the challenge chunk bit
     assert get_chunk_bit(challenge.responder_subkey, response.chunk) != get_bitfield_bit(challenge.chunk_bits, response.chunk_index)
     # Clear the challenge
     state.bit_challenge_records.remove(challenge)
+    # Slash challenger
     slash_validator(state, challenge.challenger_index, challenge.responder_index)
 ```
 
