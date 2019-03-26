@@ -1061,23 +1061,23 @@ def generate_seed(state: BeaconState,
 
 ```python
 def get_beacon_proposer_index(state: BeaconState,
-                              slot: Slot,
-                              registry_change: bool=False) -> ValidatorIndex:
+                              slot: Slot) -> ValidatorIndex:
     """
     Return the beacon proposer index for the ``slot``.
+    Due to proposer selection being based upon the validator balances during
+    the epoch in question, this can only be run for the current epoch.
     """
-    epoch = slot_to_epoch(slot)
     current_epoch = get_current_epoch(state)
-    previous_epoch = get_previous_epoch(state)
-    next_epoch = current_epoch + 1
+    assert slot_to_epoch(slot) == current_epoch
 
-    assert previous_epoch <= epoch <= next_epoch
-
-    first_committee, _ = get_crosslink_committees_at_slot(state, slot, registry_change)[0]
+    first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
     i = 0
     while True:
-        rand_byte = hash(generate_seed(get_current_epoch(state)) + int_to_bytes8(i // 32))[i % 32]
-        candidate = first_committee[(epoch + i) % len(first_committee)]
+        rand_byte = hash(
+            generate_seed(state, current_epoch) +
+            int_to_bytes8(i // 32)
+        )[i % 32]
+        candidate = first_committee[(current_epoch + i) % len(first_committee)]
         if get_effective_balance(state, candidate) * 256 > MAX_DEPOSIT_AMOUNT * rand_byte:
             return candidate
         i += 1
