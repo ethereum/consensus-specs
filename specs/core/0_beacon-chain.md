@@ -52,7 +52,6 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signed_root`](#signed_root)
-        - [`get_temporary_block_header`](#get_temporary_block_header)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -660,21 +659,6 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ### `signed_root`
 
 `def signed_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
-
-### `get_temporary_block_header`
-
-```python
-def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
-    """
-    Return the block header corresponding to a block.
-    Both ``state_root`` and ``signature`` are set to the their initial values.
-    """
-    return BeaconBlockHeader(
-        slot=block.slot,
-        previous_block_root=block.previous_block_root,
-        block_body_root=hash_tree_root(block.body),
-    )
-```
 
 ### `slot_to_epoch`
 
@@ -1449,8 +1433,7 @@ When enough full deposits have been made to the deposit contract, an `Eth2Genesi
     * `genesis_eth1_data.deposit_count` is the `deposit_count` contained in the `Eth2Genesis` log.
     * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
-* Let `genesis_block = BeaconBlock(slot=GENESIS_SLOT)`.
-* Set `genesis_block.state_root = hash_tree_root(genesis_state)`.
+* Let `genesis_block = BeaconBlock(slot=GENESIS_SLOT, state_root=hash_tree_root(genesis_state))`.
 
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
@@ -1475,7 +1458,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Recent state
         latest_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH) for _ in range(SHARD_COUNT)]),
-        latest_block_header=get_temporary_block_header(genesis_block),
+        latest_block_header=BeaconBlockHeader(slot=GENESIS_SLOT),
 
         # Ethereum 1.0 chain data
         latest_eth1_data=genesis_eth1_data,
@@ -2102,7 +2085,11 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the parent matches
     assert block.previous_block_root == signed_root(state.latest_block_header)
     # Save current block as the new latest block
-    state.latest_block_header = get_temporary_block_header(block)
+    state.latest_block_header = BeaconBlockHeader(
+        slot=block.slot,
+        previous_block_root=block.previous_block_root,
+        block_body_root=hash_tree_root(block.body),
+    )
     # Verify proposer is not slashed
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     assert not proposer.slashed
