@@ -905,21 +905,20 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     next_epoch = current_epoch + 1
 
     assert previous_epoch <= epoch <= next_epoch
-    active_validator_indices = get_active_validator_indices(
+    indices = get_active_validator_indices(
         state.validator_registry,
         epoch,
     )
-    committees_per_epoch = get_epoch_committee_count(len(active_validator_indices))
+    committees_per_epoch = get_epoch_committee_count(len(indices))
 
     if epoch == current_epoch:
         start_shard = state.latest_start_shard
     elif epoch == previous_epoch:
-        start_shard = (state.latest_start_shard - SLOTS_PER_EPOCH * committees_per_epoch) % SHARD_COUNT
+        start_shard = (state.latest_start_shard - committees_per_epoch) % SHARD_COUNT
     elif epoch == next_epoch:
         current_epoch_committees = get_current_epoch_committee_count(state)
-        start_shard = (state.latest_start_shard + EPOCH_LENGTH * current_epoch_committees) % SHARD_COUNT
+        start_shard = (state.latest_start_shard + current_epoch_committees) % SHARD_COUNT
 
-    indices = get_active_validator_indices(state.validator_registry, epoch)
     committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
     offset = slot % SLOTS_PER_EPOCH
     slot_start_shard = (start_shard + committees_per_slot * offset) % SHARD_COUNT
@@ -1830,7 +1829,7 @@ Run the following function:
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    previous_epoch = current_epoch - 1
+    previous_epoch = max(current_epoch - 1, GENESIS_EPOCH)
     next_epoch = current_epoch + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):

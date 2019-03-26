@@ -11,19 +11,13 @@ from build.phase0.spec import (
     EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
-    Attestation,
-    AttestationDataAndCustodyBit,
-    BeaconBlockHeader,
     Deposit,
     Transfer,
-    ProposerSlashing,
     VoluntaryExit,
     # functions
     get_active_validator_indices,
-    get_attestation_participants,
     get_balance,
     get_block_root,
-    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_state_root,
@@ -42,10 +36,10 @@ from build.phase0.utils.merkle_minimal import (
     get_merkle_root,
 )
 from tests.phase0.helpers import (
-    build_attestation_data,
     build_deposit_data,
     build_empty_block_for_next_slot,
     force_registry_change_at_next_epoch,
+    get_valid_attestation,
     get_valid_proposer_slashing,
     privkeys,
     pubkeys,
@@ -222,47 +216,7 @@ def test_deposit_top_up(state):
 
 def test_attestation(state):
     test_state = deepcopy(state)
-    slot = state.slot
-    shard = state.latest_start_shard
-    attestation_data = build_attestation_data(state, slot, shard)
-
-    crosslink_committees = get_crosslink_committees_at_slot(state, slot)
-    crosslink_committee = [committee for committee, _shard in crosslink_committees if _shard == attestation_data.shard][0]
-
-    committee_size = len(crosslink_committee)
-    bitfield_length = (committee_size + 7) // 8
-    aggregation_bitfield = b'\x01' + b'\x00' * (bitfield_length - 1)
-    custody_bitfield = b'\x00' * bitfield_length
-    attestation = Attestation(
-        aggregation_bitfield=aggregation_bitfield,
-        data=attestation_data,
-        custody_bitfield=custody_bitfield,
-        aggregate_signature=EMPTY_SIGNATURE,
-    )
-    participants = get_attestation_participants(
-        test_state,
-        attestation.data,
-        attestation.aggregation_bitfield,
-    )
-    assert len(participants) == 1
-
-    validator_index = participants[0]
-    privkey = privkeys[validator_index]
-
-    message_hash = AttestationDataAndCustodyBit(
-        data=attestation.data,
-        custody_bit=0b0,
-    ).hash_tree_root()
-
-    attestation.aggregation_signature = bls.sign(
-        message_hash=message_hash,
-        privkey=privkey,
-        domain=get_domain(
-            fork=test_state.fork,
-            epoch=get_current_epoch(test_state),
-            domain_type=spec.DOMAIN_ATTESTATION,
-        )
-    )
+    attestation = get_valid_attestation(state)
 
     #
     # Add to state via block transition
