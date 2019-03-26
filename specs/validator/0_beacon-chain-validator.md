@@ -182,15 +182,15 @@ epoch_signature = bls_sign(
 
 * Let `D` be the set of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
     * `vote.eth1_data.block_hash` is the hash of an eth1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_data`.
+    * `vote.eth1_data.deposit_count` is the deposit count of the eth1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
     * `vote.eth1_data.deposit_root` is the deposit root of the eth1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
 * If `D` is empty:
     * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`'th ancestor of the head of the canonical eth1.0 chain.
-    * Let `deposit_root` be the deposit root of the eth1.0 deposit contract in the post-state of the block referenced by `block_hash`
+    * Let `deposit_root` and `deposit_count` be the deposit root and deposit count of the eth1.0 deposit contract in the post-state of the block referenced by `block_hash`
+    * Let `best_vote_data = Eth1Data(block_hash=block_hash, deposit_root=deposit_root, deposit_count=deposit_count)`.
 * If `D` is nonempty:
-    * Let `best_vote` be the member of `D` that has the highest `vote.vote_count`, breaking ties by favoring block hashes with higher associated block height.
-    * Let `block_hash = best_vote.eth1_data.block_hash`.
-    * Let `deposit_root = best_vote.eth1_data.deposit_root`.
-* Set `block.eth1_data = Eth1Data(deposit_root=deposit_root, block_hash=block_hash)`.
+    * Let `best_vote_data` be the `eth1_data` of the member of `D` that has the highest `vote.vote_count`, breaking ties by favoring block hashes with higher associated block height.
+* Set `block.eth1_data = best_vote_data`.
 
 ##### Signature
 
@@ -212,25 +212,25 @@ block_signature = bls_sign(
 
 ##### Proposer slashings
 
-Up to `MAX_PROPOSER_SLASHINGS` [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposerslashing) objects can be included in the `block`. The proposer slashings must satisfy the verification conditions found in [proposer slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposer-slashings-1). The validator receives a small "whistleblower" reward for each proposer slashing found and included.
+Up to `MAX_PROPOSER_SLASHINGS` [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposerslashing) objects can be included in the `block`. The proposer slashings must satisfy the verification conditions found in [proposer slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposer-slashings). The validator receives a small "whistleblower" reward for each proposer slashing found and included.
 
 ##### Attester slashings
 
-Up to `MAX_ATTESTER_SLASHINGS` [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attesterslashing) objects can be included in the `block`. The attester slashings must satisfy the verification conditions found in [Attester slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attester-slashings-1). The validator receives a small "whistleblower" reward for each attester slashing found and included.
+Up to `MAX_ATTESTER_SLASHINGS` [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attesterslashing) objects can be included in the `block`. The attester slashings must satisfy the verification conditions found in [Attester slashings processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attester-slashings). The validator receives a small "whistleblower" reward for each attester slashing found and included.
 
 ##### Attestations
 
-Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations-1). To maximize profit, the validator should attempt to gather aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
+Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. The attestations added must satisfy the verification conditions found in [attestation processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestations). To maximize profit, the validator should attempt to gather aggregate attestations that include singular attestations from the largest number of validators whose signatures from the same epoch have not previously been added on chain.
 
 ##### Deposits
 
-Up to `MAX_DEPOSITS` [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) objects can be included in the `block`. These deposits are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposits-1).
+If there are any unprocessed deposits for the existing `state.latest_eth1_data` (i.e. `state.latest_eth1_data.deposit_count > state.deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.  These [`deposits`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposits).
 
 The `proof` for each deposit must be constructed against the deposit root contained in `state.latest_eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `latest_eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
 ##### Voluntary exits
 
-Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#exits-1).
+Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntary-exits).
 
 ### Attestations
 
