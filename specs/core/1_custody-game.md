@@ -456,16 +456,10 @@ def process_challenge_deadlines(state: BeaconState) -> None:
         if get_current_epoch(state) > challenge.deadline:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
             state.chunk_challenge_records.remove(challenge)
-        elif get_current_epoch(state) > state.validator_registry[challenge.responder_index].withdrawable_epoch:
-            slash_validator(state, challenge.challenger_index, challenge.responder_index)
-            state.chunk_challenge_records.remove(challenge)
 
     for challenge in state.bit_challenge_records:
         if get_current_epoch(state) > challenge.deadline:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
-            state.bit_challenge_records.remove(challenge)
-        elif get_current_epoch(state) > state.validator_registry[challenge.responder_index].withdrawable_epoch:
-            slash_validator(state, challenge.challenger_index, challenge.responder_index)
             state.bit_challenge_records.remove(challenge)
 ```
 
