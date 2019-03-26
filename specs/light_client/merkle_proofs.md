@@ -158,24 +158,30 @@ def verify_multi_proof(root, indices, leaves, proof):
 
 We define:
 
-#### `MerklePartialLeaf`
-
-```python
-{
-    "path": ["uint64"],
-    "value": "bytes32"
-}
-```
-
 #### `MerklePartial`
 
 
 ```python
 {
     "root": "bytes32",
-    "values": [MerklePartialLeaf],
+    "indices": ["uint64"],
+    "values": ["bytes32"],
     "proof": ["bytes32"]
 }
+```
+
+#### `merkle_partial_from_paths`
+
+```python
+def merkle_partial_from_paths(obj, paths):
+    indices = set()
+    for path in paths:
+        indices = indices.union(get_generalized_indices(obj, path))
+    return MerklePartial(
+        root=hash_tree_root(obj),
+        indices=indices,
+        values= mk_multi_proof
+    )
 ```
 
 #### Proofs for execution
