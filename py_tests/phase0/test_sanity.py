@@ -3,10 +3,10 @@ from copy import deepcopy
 import pytest
 
 from py_ecc import bls
-import build.phase0.spec as spec
+import eth2.phase0.spec as spec
 
-from build.phase0.utils.minimal_ssz import signed_root
-from build.phase0.spec import (
+from eth2.utils.minimal_ssz import signed_root
+from eth2.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
     ZERO_HASH,
@@ -27,15 +27,15 @@ from build.phase0.spec import (
     verify_merkle_branch,
     hash,
 )
-from build.phase0.state_transition import (
+from eth2.phase0.state_transition import (
     state_transition,
 )
-from build.phase0.utils.merkle_minimal import (
+from eth2.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
     get_merkle_proof,
     get_merkle_root,
 )
-from tests.phase0.helpers import (
+from .helpers import (
     build_deposit_data,
     build_empty_block_for_next_slot,
     force_registry_change_at_next_epoch,

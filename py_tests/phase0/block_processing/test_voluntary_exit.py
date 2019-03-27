@@ -1,14 +1,14 @@
 from copy import deepcopy
 import pytest
 
-import build.phase0.spec as spec
+import eth2.phase0.spec as spec
 
-from build.phase0.spec import (
+from eth2.phase0.spec import (
     get_active_validator_indices,
     get_current_epoch,
     process_voluntary_exit,
 )
-from tests.phase0.helpers import (
+from ..helpers import (
     build_voluntary_exit,
     pubkey_to_privkey,
 )

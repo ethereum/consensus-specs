@@ -56,7 +56,7 @@ define build_yaml_tests
 	# Activate the venv, this is where dependencies are installed for the generator
 	. $(GENERATOR_VENVS_DIR)$(1)bin/activate
 	# Install all the necessary requirements
-	pip3 install -r $(GENERATOR_DIR)$(1)requirements.txt --user
+	pip3 install -r $(GENERATOR_DIR)$(1)requirements.txt
 
 	# Run the generator. The generator is assumed to have an "main.py" file.
 	# We output to the tests dir (generator program should accept a "-p <filepath>" argument.

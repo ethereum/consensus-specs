@@ -1,18 +1,17 @@
 from copy import deepcopy
 import pytest
 
-import build.phase0.spec as spec
+import eth2.phase0.spec as spec
 
-from build.phase0.state_transition import (
+from eth2.phase0.state_transition import (
     state_transition,
 )
-from build.phase0.spec import (
-    ZERO_HASH,
+from eth2.phase0.spec import (
     get_current_epoch,
     process_attestation,
     slot_to_epoch,
 )
-from tests.phase0.helpers import (
+from ..helpers import (
     build_empty_block_for_next_slot,
     get_valid_attestation,
 )

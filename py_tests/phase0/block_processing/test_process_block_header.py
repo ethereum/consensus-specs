@@ -2,13 +2,13 @@ from copy import deepcopy
 import pytest
 
 
-from build.phase0.spec import (
+from eth2.phase0.spec import (
     get_beacon_proposer_index,
     cache_state,
     advance_slot,
     process_block_header,
 )
-from tests.phase0.helpers import (
+from ..helpers import (
     build_empty_block_for_next_slot,
 )
 

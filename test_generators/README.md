@@ -62,7 +62,7 @@ eth-utils==1.4.1
 
 Install all the necessary requirements (re-run when you add more):
 ```bash
-pip3 install -r requirements.txt --user
+pip3 install -r requirements.txt
 ```
 
 And write your initial test generator, extending the base generator:

@@ -9,3 +9,4 @@ build/
 output/
 
 yaml_tests/
+.pytest_cache

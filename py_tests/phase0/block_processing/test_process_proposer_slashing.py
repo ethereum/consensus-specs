@@ -1,13 +1,13 @@
 from copy import deepcopy
 import pytest
 
-import build.phase0.spec as spec
-from build.phase0.spec import (
+import eth2.phase0.spec as spec
+from eth2.phase0.spec import (
     get_balance,
     get_current_epoch,
     process_proposer_slashing,
 )
-from tests.phase0.helpers import (
+from ..helpers import (
     get_valid_proposer_slashing,
 )
 

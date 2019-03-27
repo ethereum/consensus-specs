@@ -4,3 +4,4 @@ oyaml==0.7
 pycryptodome==3.7.3
 py_ecc>=1.6.0
 pytest>=3.6,<3.7
+../pyspec

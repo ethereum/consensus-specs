@@ -1,8 +1,8 @@
 import pytest
 
-from build.phase0 import spec
+from eth2.phase0 import spec
 
-from tests.phase0.helpers import (
+from .helpers import (
     create_genesis_state,
 )
 
