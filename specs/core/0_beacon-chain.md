@@ -77,6 +77,7 @@
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
+        - [`get_crosslink_committee_for_attestation`](#get_crosslink_committee_for_attestation)
         - [`get_attestation_participants`](#get_attestation_participants)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
         - [`bytes_to_int`](#bytes_to_int)
@@ -85,6 +86,7 @@
         - [`get_fork_version`](#get_fork_version)
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
+        - [`set_bitfield_bit`](#set_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`verify_indexed_attestation`](#verify_indexed_attestation)
@@ -1037,6 +1039,20 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
     return value == root
 ```
 
+### `get_crosslink_committee_for_attestation`
+
+```python
+def get_crosslink_committee_for_attestation(state: BeaconState,
+                                        attestation_data: AttestationData) -> List[ValidatorIndex]:
+    # Find the committee in the list with the desired shard
+    crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
+
+    assert attestation_data.shard in [shard for _, shard in crosslink_committees]
+    crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
+
+    return crosslink_committee
+```
+
 ### `get_attestation_participants`
 
 ```python
@@ -1046,11 +1062,7 @@ def get_attestation_participants(state: BeaconState,
     """
     Return the participant indices corresponding to ``attestation_data`` and ``bitfield``.
     """
-    # Find the committee in the list with the desired shard
-    crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
-
-    assert attestation_data.shard in [shard for _, shard in crosslink_committees]
-    crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
+    crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
 
     assert verify_bitfield(bitfield, len(crosslink_committee))
 
@@ -1060,7 +1072,7 @@ def get_attestation_participants(state: BeaconState,
         aggregation_bit = get_bitfield_bit(bitfield, i)
         if aggregation_bit == 0b1:
             participants.append(validator_index)
-    return sorted(participants)
+    return participants
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
@@ -1130,6 +1142,22 @@ def get_bitfield_bit(bitfield: bytes, i: int) -> int:
     return (bitfield[i // 8] >> (i % 8)) % 2
 ```
 
+### `set_bitfield_bit`
+
+```python
+def set_bitfield_bit(bitfield: bytes, i: int) -> int:
+    """
+    Set the bit in ``bitfield`` at position ``i`` to ``1``.
+    """
+    byte_index = i // 8
+    bit_index = i % 8
+    return (
+        bitfield[:byte_index] +
+        bytes([bitfield[byte_index] | (1 << bit_index)]) +
+        bitfield[byte_index+1:]
+    )
+```
+
 ### `verify_bitfield`
 
 ```python
@@ -1155,10 +1183,21 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation):
     """
     Convert an attestation to (almost) indexed-verifiable form
     """
+    attesting_indices = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+
+    # reconstruct custody bitfield for the truncated attesting_indices
+    custody_bit_1_indices = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
+    custody_bitfield = b'\x00' * ((len(attesting_indices) + 7) // 8)
+
+    crosslink_committee = get_crosslink_committee_for_attestation(state, attestation.data)
+    for i, validator_index in enumerate(crosslink_committee):
+        if get_bitfield_bit(attestation.custody_bitfield, i):
+            custody_bitfield = set_bitfield_bit(custody_bitfield, attesting_indices.index(validator_index))
+
     return IndexedAttestation(
-        validator_indices=get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield),
+        validator_indices=attesting_indices,
         data=attestation.data,
-        custody_bitfield=attestation.custody_bitfield,
+        custody_bitfield=custody_bitfield,
         aggregate_signature=attestation.aggregate_signature
     )
 ```
@@ -1176,9 +1215,6 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     if not (1 <= len(indexed_attestation.validator_indices) <= MAX_ATTESTATION_PARTICIPANTS):
         return False
 
-    if indexed_attestation.validator_indices != sorted(indexed_attestation.validator_indices):
-        return False
-    
     if not verify_bitfield(indexed_attestation.custody_bitfield, len(indexed_attestation.validator_indices)):
         return False
 
@@ -2318,6 +2354,11 @@ def process_attester_slashing(state: BeaconState,
         is_double_vote(attestation1.data, attestation2.data) or
         is_surround_vote(attestation1.data, attestation2.data)
     )
+
+    # check that indices are sorted
+    assert attestation1.validator_indices == sorted(attestation1.validator_indices)
+    assert attestation2.validator_indices == sorted(attestation2.validator_indices)
+
     assert verify_indexed_attestation(state, attestation1)
     assert verify_indexed_attestation(state, attestation2)
     slashable_indices = [
