@@ -1,12 +1,10 @@
 from . import spec
 
 
-from typing import (  # noqa: F401
+from typing import (
     Any,
     Callable,
-    List,
-    NewType,
-    Tuple,
+    List
 )
 
 from .spec import (

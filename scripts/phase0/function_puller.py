@@ -27,6 +27,10 @@ def get_lines(file_name):
                 code_lines.append('%s = SSZType({' % current_name)
                 processing_typedef = True
             elif pulling_from is not None:
+                # Add some whitespace between functions
+                if line[:3] == 'def':
+                    code_lines.append("")
+                    code_lines.append("")
                 code_lines.append(line)
             elif pulling_from is None and len(line) > 0 and line[0] == '|':
                 row = line[1:].split('|')

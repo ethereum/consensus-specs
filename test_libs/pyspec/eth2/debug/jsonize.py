@@ -1,4 +1,4 @@
-from shared_eth2.minimal_ssz import hash_tree_root
+from eth2.utils.minimal_ssz import hash_tree_root
 
 
 def jsonize(value, typ, include_hash_tree_roots=False):

@@ -4,15 +4,8 @@ import function_puller
 
 def build_spec(sourcefile, outfile):
     code_lines = []
-
-    code_lines.append("from build.phase0.utils.minimal_ssz import *")
-    code_lines.append("from build.phase0.utils.bls_stub import *")
-    for i in (1, 2, 3, 4, 8, 32, 48, 96):
-        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
-    code_lines.append("SLOTS_PER_EPOCH = 64")  # stub, will get overwritten by real var
-    code_lines.append("def slot_to_epoch(x): return x // SLOTS_PER_EPOCH")
-
     code_lines.append("""
+    
 from typing import (
     Any,
     Callable,
@@ -20,6 +13,20 @@ from typing import (
     NewType,
     Tuple,
 )
+from eth2.utils.minimal_ssz import *
+from eth2.utils.bls_stub import *
+
+
+    """)
+    for i in (1, 2, 3, 4, 8, 32, 48, 96):
+        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
+
+    code_lines.append("""
+# stub, will get overwritten by real var
+SLOTS_PER_EPOCH = 64
+
+
+def slot_to_epoch(x): return x // SLOTS_PER_EPOCH
 
 
 Slot = NewType('Slot', int)  # uint64
@@ -40,6 +47,8 @@ Store = None
 # Monkey patch validator get committee code
 _compute_committee = compute_committee
 committee_cache = {}
+
+
 def compute_committee(validator_indices: List[ValidatorIndex],
                       seed: Bytes32,
                       index: int,
@@ -60,6 +69,8 @@ def compute_committee(validator_indices: List[ValidatorIndex],
 # Monkey patch hash cache
 _hash = hash
 hash_cache = {}
+
+
 def hash(x):
     if x in hash_cache:
         return hash_cache[x]
