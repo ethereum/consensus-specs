@@ -1,7 +1,11 @@
 *.pyc
 /__pycache__
-/venv
+venv
+.venvs
+.venv
 /.pytest_cache
 
 build/
 output/
+
+yaml_tests/
