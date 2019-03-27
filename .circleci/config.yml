@@ -1,5 +1,4 @@
-# Python CircleCI 2.0 configuration file
-version: 2
+version: 2.1
 jobs:
   build:
     docker:
@@ -8,34 +7,82 @@ jobs:
 
     steps:
       - checkout
-      # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+      - run:
+          name: Build phase0 spec
+          command: make phase0
 
       - run:
-          name: install dependencies
-          command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install -r requirements.txt
-      - run:
-          name: build phase0 spec
-          command: make build/phase0
-
-      - save_cache:
-          paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
-
-      - run:
-          name: run tests
+          name: run py-tests
           command: |
             . venv/bin/activate
             pytest tests
 
+      - run:
+          name: Generate YAML tests
+          command: make yaml_tests
+
       - store_artifacts:
           path: test-reports
           destination: test-reports
+
+      - run:
+          name: Save YAML tests for deployment
+          command: |
+            mkdir /tmp/workspace
+            cp -r yaml_tests /tmp/workspace/
+            git log -1 >> /tmp/workspace/latest_commit_message
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - yaml_tests
+            - latest_commit_message
+  commit:
+    docker:
+      - image: circleci/python:3.6
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - add_ssh_keys:
+          fingerprints:
+            - "01:85:b6:36:96:a6:84:72:e4:9b:4e:38:ee:21:97:fa"
+      - run:
+          name: Checkout test repository
+          command: |
+            ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+            git clone git@github.com:ethereum/eth2.0-tests.git
+      - run:
+          name: Commit and push generated YAML tests
+          command: |
+            cd eth2.0-tests
+            git config user.name 'eth2TestGenBot'
+            git config user.email '47188154+eth2TestGenBot@users.noreply.github.com'
+            for filename in /tmp/workspace/yaml_tests/*; do
+              rm -rf $(basename $filename)
+              cp -r $filename .
+            done
+            git add .
+            if git diff --cached --exit-code >& /dev/null; then
+              echo "No changes to commit"
+            else
+              echo -e "Update generated tests\n\nLatest commit message from eth2.0-specs:\n" > commit_message
+              cat /tmp/workspace/latest_commit_message >> commit_message
+              git commit -F commit_message
+              git push origin master
+            fi
+workflows:
+  version: 2.1
+
+  build_and_commit:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/
+      - commit:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
