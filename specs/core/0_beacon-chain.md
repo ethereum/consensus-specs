@@ -2430,7 +2430,7 @@ def verify_block_state_root(state: BeaconState, block: BeaconBlock) -> None:
 
 # References
 
-This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely that, informative.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
+This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely helpful information.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
 
 ## Normative
 
