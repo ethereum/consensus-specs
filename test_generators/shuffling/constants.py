@@ -1,0 +1,6 @@
+SLOTS_PER_EPOCH = 2**6  # 64 slots, 6.4 minutes
+FAR_FUTURE_EPOCH = 2**64 - 1  # uint64 max
+SHARD_COUNT = 2**10  # 1024
+TARGET_COMMITTEE_SIZE = 2**7  # 128 validators
+ACTIVATION_EXIT_DELAY = 2**2  # 4 epochs
+SHUFFLE_ROUND_COUNT = 90

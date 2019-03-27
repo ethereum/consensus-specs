@@ -1,0 +1,4 @@
+eth-hash[pycryptodome]==0.2.0
+eth-typing==2.0.0
+eth-utils==1.4.1
+PyYAML==4.2b1
