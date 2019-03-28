@@ -253,8 +253,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value |
 | - | - |
 | `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
-| `ATTESTATION_INCLUSION_REWARD_QUOTIENT` | `2**3` (= 8) |
+| `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
+| `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
@@ -1398,21 +1398,25 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
 #### `slash_validator`
 
 ```python
-def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
+def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex=None) -> None:
     """
-    Slash the validator with index ``index``.
+    Slash the validator with index ``slashed_index``.
     Note that this function mutates ``state``.
     """
-    validator = state.validator_registry[index]
-    exit_validator(state, index)
-    state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += get_effective_balance(state, index)
+    exit_validator(state, slashed_index)
+    state.validator_registry[slashed_index].slashed = True
+    state.validator_registry[slashed_index].withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH
+    slashed_balance = get_effective_balance(state, slashed_index)
+    state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
 
-    whistleblower_index = get_beacon_proposer_index(state, state.slot)
-    whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
-    increase_balance(state, whistleblower_index, whistleblower_reward)
-    decrease_balance(state, index, whistleblower_reward)
-    validator.slashed = True
-    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
+    proposer_index = get_beacon_proposer_index(state, state.slot)
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
+    whistleblowing_reward = slashed_balance // WHISTLEBLOWING_REWARD_QUOTIENT
+    proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
+    increase_balance(state, proposer_index, proposer_reward)
+    increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
+    decrease_balance(state, slashed_index, whistleblowing_reward)
 ```
 
 #### `prepare_validator_for_withdrawal`
@@ -1951,7 +1955,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         # Proposer bonus
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
             proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-            rewards[proposer_index] += base_reward // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+            rewards[proposer_index] += base_reward // PROPOSER_REWARD_QUOTIENT
         # Take away max rewards if we're not finalizing
         if epochs_since_finality > 4:
             penalties[index] += base_reward * 4
