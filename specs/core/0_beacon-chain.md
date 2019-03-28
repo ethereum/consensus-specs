@@ -1309,10 +1309,10 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
+            activation_eligibility_epoch=FAR_FUTURE_EPOCH,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            initiated_exit=False,
             slashed=False,
             high_balance=0
         )
@@ -1973,7 +1973,7 @@ def process_ejections(state: BeaconState) -> None:
     Iterate through the validator registry
     and deposit or eject active validators with sufficiently high or low balances
     """
-    for index, validator in enumeratE(state.validator_registry):
+    for index, validator in enumerate(state.validator_registry):
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
             state.activation_eligibility_epoch = get_current_epoch(state) 
         if is_active(validator, get_current_epoch(state)) and get_balance(state, index) < EJECTION_BALANCE:
@@ -2284,8 +2284,6 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     assert is_active_validator(validator, get_current_epoch(state))
     # Verify the validator has not yet exited
     assert validator.exit_epoch == FAR_FUTURE_EPOCH
-    # Verify the validator has not initiated an exit
-    assert validator.initiated_exit is False
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= exit.epoch
     # Verify the validator has been active long enough
