@@ -135,7 +135,7 @@ def test_non_empty_custody_bitfield(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.custody_bitfield = b'\x01' + attestation.custody_bitfield[1:]
+    attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield)
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 
