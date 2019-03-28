@@ -7,9 +7,19 @@ With this executable spec,
  test-generators can easily create test-vectors for client implementations,
  and the spec itself can be verified to be consistent and coherent, through sanity tests implemented with pytest.
 
+## Building
+
+All the dynamic parts of the spec can be build at once with `make pyspec`.
+
+Alternatively, you can build a sub-set of the pyspec: `make phase0`.
+
+Or, to build a single file, specify the path, e.g. `make test_libs/pyspec/eth2/phase0/spec.py`
+
+## Contributing
+
 Contributions are welcome, but consider implementing your idea as part of the spec itself first.
 The pyspec is not a replacement.
-If you see opportunity to include any of the `utils/` code in the spec,
+If you see opportunity to include any of the `eth2/utils/` code in the spec,
  please submit an issue or PR.
 
 ## License
