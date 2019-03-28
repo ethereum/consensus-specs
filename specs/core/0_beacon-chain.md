@@ -1573,7 +1573,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
-Beacon block production is significantly different because of the proof-of-stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this dynamic requires each node to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
+Beacon block production is significantly different because of the proof-of-stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
 
 ### Beacon chain fork choice rule
 
