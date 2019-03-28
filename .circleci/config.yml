@@ -8,14 +8,12 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Build phase0 spec
-          command: make phase0
+          name: Build pyspec
+          command: make pyspec
 
       - run:
           name: run py-tests
-          command: |
-            . venv/bin/activate
-            pytest tests
+          command: make test
 
       - run:
           name: Generate YAML tests

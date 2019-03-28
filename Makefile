@@ -2,7 +2,7 @@ SPEC_DIR = ./specs
 SCRIPT_DIR = ./scripts
 TEST_LIBS_DIR = ./test_libs
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-
+PY_TEST_DIR = ./py_tests
 YAML_TEST_DIR = ./yaml_tests
 GENERATOR_DIR = ./test_generators
 GENERATOR_VENVS_DIR = $(GENERATOR_DIR)/.venvs
@@ -29,9 +29,8 @@ clean:
 yaml_tests: $(YAML_TEST_TARGETS)
 
 # runs a limited set of tests against a minimal config
-# run pytest with `-m` option to full suite
 test: $(PY_SPEC_TARGETS)
-	pytest -m minimal_config tests/
+	cd $(PY_TEST_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; pytest -m minimal_config .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_TARGETS)

@@ -8,6 +8,12 @@ There are ideas to port these tests to the YAML test suite,
 
 ## How to run tests
 
+### Automated
+
+Run `make test` from the root of the spec repository.
+
+### Manual
+
 From within the py_tests folder:
 
 Install dependencies:
