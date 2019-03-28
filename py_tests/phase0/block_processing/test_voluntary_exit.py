@@ -8,7 +8,7 @@ from eth2.phase0.spec import (
     get_current_epoch,
     process_voluntary_exit,
 )
-from ..helpers import (
+from phase0.helpers import (
     build_voluntary_exit,
     pubkey_to_privkey,
 )

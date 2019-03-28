@@ -11,7 +11,7 @@ from eth2.phase0.spec import (
     process_attestation,
     slot_to_epoch,
 )
-from ..helpers import (
+from phase0.helpers import (
     build_empty_block_for_next_slot,
     get_valid_attestation,
 )

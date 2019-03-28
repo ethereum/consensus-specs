@@ -46,9 +46,9 @@ Simply open up the generator (not all at once) of choice in your favorite IDE/ed
 
 ```bash
 # Create a virtual environment (any venv/.venv/.venvs is git-ignored)
-python3 -m venv .venv
+python3 -m venv venv
 # Activate the venv, this is where dependencies are installed for the generator
-. .venv/bin/activate
+. venv/bin/activate
 ```
 
 Now that you have a virtual environment, write your generator.
@@ -57,8 +57,13 @@ It's recommended to extend the base-generator.
 Create a `requirements.txt` in the root of your generator directory:
 ```
 eth-utils==1.4.1
-../test_libs/gen_helpers
+../../test_libs/gen_helpers
 ```
+And optionally, to include pyspec, add:
+```
+../../test_libs/pyspec
+```
+Note: make sure to run `make pyspec` from the root of the specs repository, to build the pyspec requirement.
 
 Install all the necessary requirements (re-run when you add more):
 ```bash

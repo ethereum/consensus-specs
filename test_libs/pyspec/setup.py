@@ -1,9 +1,8 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(
     name='pyspec',
-    version='1.0',
-    packages=['eth2.debug', 'eth2.phase0', 'eth2.utils'],
+    packages=find_packages(),
     install_requires=[
         "eth-utils>=1.3.0,<2",
         "eth-typing>=2.1.0,<3.0.0",

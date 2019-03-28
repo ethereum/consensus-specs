@@ -7,7 +7,7 @@ from eth2.phase0.spec import (
     get_current_epoch,
     process_proposer_slashing,
 )
-from ..helpers import (
+from phase0.helpers import (
     get_valid_proposer_slashing,
 )
 

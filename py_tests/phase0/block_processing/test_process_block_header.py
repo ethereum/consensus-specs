@@ -8,7 +8,7 @@ from eth2.phase0.spec import (
     advance_slot,
     process_block_header,
 )
-from ..helpers import (
+from phase0.helpers import (
     build_empty_block_for_next_slot,
 )
 

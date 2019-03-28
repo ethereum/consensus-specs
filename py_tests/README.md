@@ -13,9 +13,10 @@ From within the py_tests folder:
 Install dependencies:
 ```bash
 python3 -m venv venv
-. py_tests/venv/bin/activate
+. venv/bin/activate
 pip3 install -r requirements.txt
 ```
+Note: make sure to run `make pyspec` from the root of the specs repository, to build the pyspec requirement.
 
 Run the tests:
 ```
