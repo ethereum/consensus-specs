@@ -250,7 +250,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
+| `BASE_REWARD_QUOTIENT` | `2**10` (= 1024) |
 | `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `ATTESTATION_INCLUSION_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
