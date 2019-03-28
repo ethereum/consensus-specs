@@ -12,12 +12,12 @@ jobs:
           command: make pyspec
 
       - run:
-          name: run py-tests
+          name: Run py-tests
           command: make test
 
       - run:
           name: Generate YAML tests
-          command: make yaml_tests
+          command: make gen_yaml_tests
 
       - store_artifacts:
           path: test-reports

@@ -10,13 +10,13 @@ GENERATOR_DIR = ./test_generators
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/)))
 # Map this list of generator paths to a list of test output paths
 YAML_TEST_TARGETS = $(patsubst $(GENERATOR_DIR)/%, $(YAML_TEST_DIR)/%, $(GENERATORS))
-GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%/venv, $(GENERATORS))
+GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
 
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2/phase0/spec.py
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS)
 
 
-.PHONY: clean all test yaml_tests pyspec phase0
+.PHONY: clean all test gen_yaml_tests pyspec phase0
 
 all: $(YAML_TEST_DIR) $(YAML_TEST_TARGETS) $(PY_SPEC_ALL_TARGETS)
 
@@ -30,11 +30,11 @@ clean:
 gen_yaml_tests: $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
 # runs a limited set of tests against a minimal config
-test: $(PY_SPEC_TARGETS)
+test: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_TEST_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; pytest -m minimal_config .
 
 # "make pyspec" to create the pyspec for all phases.
-pyspec: $(PY_SPEC_TARGETS)
+pyspec: $(PY_SPEC_ALL_TARGETS)
 
 # "make phase0" to create pyspec for phase0
 phase0: $(PY_SPEC_PHASE_0_TARGETS)
