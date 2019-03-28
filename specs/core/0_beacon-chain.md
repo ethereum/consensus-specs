@@ -596,7 +596,7 @@ The types are defined topologically to aid in facilitating an executable version
     
     # Exit queue
     'exit_epoch': 'uint64',
-    'exit_queue_filled': 'uint64'
+    'exit_queue_filled': 'uint64',
 
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
@@ -1974,9 +1974,10 @@ def process_ejections(state: BeaconState) -> None:
     and deposit or eject active validators with sufficiently high or low balances
     """
     for index, validator in enumerate(state.validator_registry):
+        balance = get_balance(state, index)
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
             state.activation_eligibility_epoch = get_current_epoch(state) 
-        if is_active(validator, get_current_epoch(state)) and get_balance(state, index) < EJECTION_BALANCE:
+        if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 ```
 
@@ -1986,12 +1987,13 @@ Run the following function:
 
 ```python
 def update_registry(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
     # Check if we should update, and if so, update
     if state.finalized_epoch > state.validator_registry_update_epoch:
         # Validator indices that could be activated
         indices_for_activation = sorted(
             filter(
-                lambda index: state.validator_registry[index].activation_epoch == FAR_FUTURE_EPOCH
+                lambda index: state.validator_registry[index].activation_epoch == FAR_FUTURE_EPOCH,
                 get_active_validator_indices(state.validator_registry, current_epoch),
             ),
             key=lambda index: state.validator_registry[index].activation_eligibility_epoch
