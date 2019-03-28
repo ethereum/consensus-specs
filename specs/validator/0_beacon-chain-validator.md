@@ -152,7 +152,7 @@ _Note:_ there might be "skipped" slots between the `parent` and `block`. These s
 
 ##### Parent root
 
-Set `block.previous_block_root = hash_tree_root(parent)`.
+Set `block.previous_block_root = signed_root(parent)`.
 
 ##### State root
 
@@ -255,11 +255,11 @@ Set `attestation_data.shard = shard` where `shard` is the shard associated with 
 
 ##### Beacon block root
 
-Set `attestation_data.beacon_block_root = hash_tree_root(head_block)`.
+Set `attestation_data.beacon_block_root = signed_root(head_block)`.
 
 ##### Target root
 
-Set `attestation_data.target_root = hash_tree_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary.
+Set `attestation_data.target_root = signed_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary.
 
 _Note:_ This can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
