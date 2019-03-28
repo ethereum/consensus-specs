@@ -17,7 +17,7 @@ pre-requisites:
 
 ### Cleaning
 
-This removes the existing virtual environments (`/test_generators/.venvs/`), and generated tests (`/yaml_tests/`).
+This removes the existing virtual environments (`/test_generators/<generator>/venv`), and generated tests (`/yaml_tests/`).
 
 ```bash
 make clean 
@@ -28,7 +28,7 @@ make clean
 This runs all the generators.
 
 ```bash
-make all
+make gen_yaml_tests
 ```
 
 ### Running a single generator
@@ -37,7 +37,7 @@ The make file auto-detects generators in the `test_generators/` directory,
  and provides a tests-gen target for each generator, see example.
 
 ```bash
-make ./tests/shuffling/
+make ./yaml_tests/shuffling/
 ```
 
 ## Developing a generator
@@ -45,6 +45,7 @@ make ./tests/shuffling/
 Simply open up the generator (not all at once) of choice in your favorite IDE/editor, and run:
 
 ```bash
+# From the root of the generator directory:
 # Create a virtual environment (any venv/.venv/.venvs is git-ignored)
 python3 -m venv venv
 # Activate the venv, this is where dependencies are installed for the generator
@@ -143,20 +144,11 @@ Note: you do not have to change the makefile.
 However, if necessary (e.g. not using python, or mixing in other languages), submit an issue, and it can be a special case.
 Do note that generators should be easy to maintain, lean, and based on the spec.
 
-All of this should be done in a pull request to the master branch.
-
-To deploy new tests to the testing repository:
-
-1. Create a release tag with a new version number on Github.
-2. Increment either the:
- - major version, to indicate a change in the general testing format
- - minor version, if a new test generator has been added
- - path version, in other cases.
 
 ## How to remove a test generator
 
 If a test generator is not needed anymore, undo the steps described above and make a new release:
 
-1. remove the generator folder
+1. remove the generator directory
 2. remove the generated tests in the `eth2.0-tests` repository by opening a PR there.
 3. make a new release

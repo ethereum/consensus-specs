@@ -68,5 +68,6 @@ $(YAML_TEST_DIR):
 	mkdir -p $@
 
 # For any target within the tests dir, build it using the build_yaml_tests function.
-$(YAML_TEST_DIR)%:
+# (creation of output dir is a dependency)
+$(YAML_TEST_DIR)%: $(YAML_TEST_DIR)
 	$(call build_yaml_tests,$*)
