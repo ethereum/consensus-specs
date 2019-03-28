@@ -1,6 +1,6 @@
-# Ethereum 2.0 Phase 1 -- Shards Data Chains
+# Ethereum 2.0 Phase 1 -- Shard Data Chains
 
-__NOTICE__: This document is a work-in-progress for researchers and implementers.
+**NOTICE**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of Contents
 
@@ -10,9 +10,11 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
     - [Table of Contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
+        - [Misc](#misc)
         - [Time parameters](#time-parameters)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
+        - [`ShardBlockBody`](#shardblockbody)
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
         - [`ShardAttestation`](#shardattestation)
@@ -20,23 +22,37 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
         - [`get_period_committee`](#get_period_committee)
         - [`get_persistent_committee`](#get_persistent_committee)
         - [`get_shard_proposer_index`](#get_shard_proposer_index)
-    - [Crosslink data root](#crosslink-data-root)
+        - [`get_shard_header`](#get_shard_header)
+        - [`verify_shard_attestation_signature`](#verify_shard_attestation_signature)
+        - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
+    - [Object validity](#object-validity)
+        - [Shard blocks](#shard-blocks)
+        - [Shard attestations](#shard-attestations)
+        - [Beacon attestations](#beacon-attestations)
     - [Shard fork choice rule](#shard-fork-choice-rule)
-    - [Shard attestation processing](#shard-attestation-processing)
 
 <!-- /TOC -->
 
 ## Introduction
 
-This document document the shard fork choice rule in Phase 1 of Ethereum 2.0.
+This document describes the shard data layer and the shard fork choice rule in Phase 1 of Ethereum 2.0.
 
 ## Constants
+
+### Misc
+
+| Name | Value |
+| - | - |
+| `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
+| `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
+| `PHASE_1_GENESIS_EPOCH` | **TBD** |
+| `PHASE_1_GENESIS_SLOT` | get_epoch_start_slot(PHASE_1_GENESIS_EPOCH) |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `CROSSLINK_LOOKBACK` | 2**5 (= 32) | slots  | 3.2 minutes |
+| `CROSSLINK_LOOKBACK` | 2**0 (= 1) | epochs  | 6.2 minutes |
 | `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
 
 ### Signature domains
@@ -48,17 +64,24 @@ This document document the shard fork choice rule in Phase 1 of Ethereum 2.0.
 
 ## Data structures
 
+### `ShardBlockBody`
+
+```python
+['byte', BYTES_PER_SHARD_BLOCK_BODY]
+```
+
 ### `ShardBlock`
 
 ```python
 {
-    'slot': 'uint64',
-    'shard': 'uint64',
-    'previous_block_root': 'bytes32',
-    'beacon_chain_root': 'bytes32',
-    'data': ['byte', BYTES_PER_SHARD_BLOCK],
-    'state_root': 'bytes32',
-    'signature': 'bytes96',
+    'slot': Slot,
+    'shard': Shard,
+    'beacon_chain_root': Hash,
+    'previous_block_root': Hash,
+    'data': ShardBlockBody,
+    'state_root': Hash,
+    'attestations': [ShardAttestation],
+    'signature': BLSSignature,
 }
 ```
 
@@ -66,13 +89,14 @@ This document document the shard fork choice rule in Phase 1 of Ethereum 2.0.
 
 ```python
 {
-    'slot': 'uint64',
-    'shard': 'uint64',
-    'previous_block_root': 'bytes32',
-    'beacon_chain_root': 'bytes32',
-    'data_root': 'bytes32',
-    'state_root': 'bytes32',
-    'signature': 'bytes96',
+    'slot': Slot,
+    'shard': Shard,
+    'beacon_chain_root': Hash,
+    'previous_block_root': Hash,
+    'body_root': Hash,
+    'state_root': Hash,
+    'attestations': [ShardAttestation],
+    'signature': BLSSignature,
 }
 ```
 
@@ -80,9 +104,13 @@ This document document the shard fork choice rule in Phase 1 of Ethereum 2.0.
 
 ```python
 {
-    'header': ShardBlockHeader,
-    'participation_bitfield': 'bytes',
-    'aggregate_signature': 'bytes96',
+    'data': {
+        'slot': Slot,
+        'shard': Shard,
+        'shard_block_root': Hash,
+    },
+    'aggregation_bitfield': Bitfield,
+    'aggregate_signature': BLSSignature,
 }
 ```
 
@@ -101,7 +129,12 @@ def get_period_committee(state: BeaconState,
     """
     active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
     seed = generate_seed(state, committee_start_epoch)
-    return compute_committee(active_validator_indices, seed, shard * committee_count + index, SHARD_COUNT * committee_count)
+    return compute_committee(
+        validator_indices=active_validator_indices,
+        seed=seed,
+        index=shard * committee_count + index,
+        total_committees=SHARD_COUNT * committee_count,
+    )
 ```
 
 ### `get_persistent_committee`
@@ -150,7 +183,7 @@ def get_shard_proposer_index(state: BeaconState,
     random_index = bytes_to_int(seed[0:8]) % len(persistent_committee)
     persistent_committee = persistent_committee[random_index:] + persistent_committee[:random_index]
 
-    # Try to find an active proposer
+    # Search for an active proposer
     for index in persistent_committee:
         if is_active_validator(state.validator_registry[index], get_current_epoch(state)):
             return index
@@ -159,90 +192,203 @@ def get_shard_proposer_index(state: BeaconState,
     return None
 ```
 
-## Crosslink data root
-
-A node should only sign an `attestation` if `attestation.crosslink_data_root` has been reccursively verified for availability using `attestation.previous_crosslink.crosslink_data_root` up to genesis where `crosslink_data_root == ZERO_HASH`.
-
-Let `store` be the store of observed block headers and bodies and let `get_shard_block_header(store, slot)` and `get_shard_block_body(store, slot)` return the canonical shard block header and body at the specified `slot`. The expected `get_shard_block_body` is then computed as:
+### `get_shard_header`
 
 ```python
-def compute_crosslink_data_root(state: BeaconState, store: Store) -> Bytes32:
-    start_slot = state.latest_crosslinks[shard].epoch * SLOTS_PER_EPOCH + SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK
-    end_slot = attestation.data.slot - attestation.data.slot % SLOTS_PER_EPOCH - CROSSLINK_LOOKBACK
-
-    headers = []
-    bodies = []
-    for slot in range(start_slot, end_slot):
-        headers = get_shard_block_header(store, slot)
-        bodies = get_shard_block_body(store, slot)
-
-    return hash(
-        merkle_root(pad_to_power_of_2([
-            merkle_root_of_bytes(zpad(serialize(header), BYTES_PER_SHARD_BLOCK)) for header in headers
-        ])) +
-        merkle_root(pad_to_power_of_2([
-                merkle_root_of_bytes(body) for body in bodies
-        ]))
+def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
+    return ShardBlockHeader(
+        slot: block.slot,
+        shard: block.shard,
+        beacon_chain_root: block.beacon_chain_root,
+        previous_block_root: block.previous_block_root,
+        body_root: hash_tree_root(block.body),
+        state_root: block.state_root,
+        attestations: block.attestations,
+        signature: block.signature,
     )
 ```
 
-using the following helpers:
+### `verify_shard_attestation_signature`
 
 ```python
-def is_power_of_two(value: int) -> bool:
-    return (value > 0) and (value & (value - 1) == 0)
-
-def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
-    while not is_power_of_two(len(values)):
-        values += [b'\x00' * BYTES_PER_SHARD_BLOCK]
-    return values
-
-def merkle_root_of_bytes(data: bytes) -> bytes:
-    return merkle_root([data[i:i + 32] for i in range(0, len(data), 32)])
-```
-
-## Shard fork choice rule
-
-For a `ShardBlockHeader` object `header` to be processed by a node the following conditions must be met:
-
-* The `header.previous_block_root` is the root of `ShardBlock` that has been processed and accepted.
-* The `header.beacon_chain_root` is the root of a `BeaconBlock` in the canonical beacon chain with slot less than or equal to `header.slot`.
-* The `header.beacon_chain_root` is equal to or a descendant of the `beacon_chain_root` specified in the `ShardBlock` pointed to by `header.previous_block_root`.
-* The `ShardBlock` object `shard_block` with the same root as `header` has been downloaded.
-
-The fork choice rule for any shard is LMD GHOST using the shard chain attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (i.e. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_root` is the block in the main beacon chain at the specified `slot` should be considered. (If the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot.)
-
-## Shard attestation processing
-
-Given a `shard_attestation` let `state` be the `BeaconState` referred to by `shard_attestation.header.beacon_chain_root` and run `verify_shard_attestation(state, shard_attestation)`.
-
-```python
-def verify_shard_attestation(state: BeaconState, shard_attestation: ShardAttestation) -> None:
-    header = shard_attestation.header
-
-    # Check proposer signature
-    proposer_index = get_shard_proposer_index(state, header.shard, header.slot)
-    assert proposer_index is not None
-    assert bls_verify(
-        pubkey=validators[proposer_index].pubkey,
-        message_hash=signed_root(header),
-        signature=header.signature,
-        domain=get_domain(state, slot_to_epoch(header.slot), DOMAIN_SHARD_PROPOSER)
-    )
-
-    # Check attestations
-    persistent_committee = get_persistent_committee(state, header.shard, header.slot)
-    assert verify_bitfield(shard_attestation.participation_bitfield, len(persistent_committee))
+def verify_shard_attestation_signature(state: BeaconState,
+                                       attestation: ShardAttestation) -> None:
+    data = attestation.data
+    persistent_committee = get_persistent_committee(state, data.shard, data.slot)
+    assert verify_bitfield(attestation.aggregation_bitfield, len(persistent_committee))
     pubkeys = []
     for i, index in enumerate(persistent_committee):
-        if get_bitfield_bit(shard_attestation.participation_bitfield, i) == 0b1
+        if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b1
             validator = state.validator_registry[index]
             assert is_active_validator(validator, get_current_epoch(state))
             pubkeys.append(validator.pubkey)
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(pubkeys),
-        message_hash=header.previous_block_root,
-        signature=shard_attestation.aggregate_signature,
-        domain=get_domain(state, slot_to_epoch(header.slot), DOMAIN_SHARD_ATTESTER)
+        message_hash=data.shard_block_root,
+        signature=attestation.aggregate_signature,
+        domain=get_domain(state, slot_to_epoch(data.slot), DOMAIN_SHARD_ATTESTER)
     )
 ```
+
+### `compute_crosslink_data_root`
+
+```python
+def compute_crosslink_data_root(blocks: List[ShardBlock]) -> Hash:
+    def is_power_of_two(value: int) -> bool:
+        return (value > 0) and (value & (value - 1) == 0)
+
+    def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
+        while not is_power_of_two(len(values)):
+            values += [b'\x00' * BYTES_PER_SHARD_BLOCK_BODY]
+        return values
+
+    def merkle_root_of_bytes(data: bytes) -> bytes:
+        return merkle_root([data[i:i + 32] for i in range(0, len(data), 32)])
+
+    return hash(
+        merkle_root(pad_to_power_of_2([
+            merkle_root_of_bytes(zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)) for block in blocks
+        ])) +
+        merkle_root(pad_to_power_of_2([
+                merkle_root_of_bytes(block.body) for block in blocks
+        ]))
+    )
+```
+
+## Object validity
+
+### Shard blocks
+
+Let:
+
+* `beacon_blocks` be the `BeaconBlock` list such that `beacon_blocks[slot]` is the canonical `BeaconBlock` at slot `slot`
+* `beacon_state` be the canonical `BeaconState` after processing `beacon_blocks[-1]`
+* `valid_shard_blocks` be the list of valid `ShardBlock`, recursively defined
+* `unix_time` be the current unix time
+* `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
+
+```python
+def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
+                         beacon_state: BeaconState,
+                         valid_shard_blocks: List[ShardBlock],
+                         unix_time: uint64,
+                         candidate: ShardBlock) -> bool
+    # Check if block is already determined valid
+    for _, block in enumerate(valid_shard_blocks):
+        if candidate == block:
+            return True
+
+    # Check slot number
+    assert block.slot >= PHASE_1_GENESIS_SLOT
+    assert unix_time >= beacon_state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT
+
+    # Check shard number
+    assert block.shard <= SHARD_COUNT
+
+    # Check beacon block
+    beacon_block = beacon_blocks[block.slot]
+    assert block.beacon_block_root == signed_root(beacon_block)
+    assert beacon_block.slot <= block.slot:
+
+    # Check state root
+    assert block.state_root == ZERO_HASH  # [to be removed in phase 2]
+
+    # Check parent block
+    if block.slot == PHASE_1_GENESIS_SLOT:
+        assert candidate.previous_block_root == ZERO_HASH
+    else:
+        parent = next(block for block in valid_shard_blocks if signed_root(block) == candidate.previous_block_root, None)
+        assert parent != None
+        assert parent.shard == block.shard and parent.slot < block.slot
+        assert signed_root(beacon_blocks[parent.slot]) == parent.beacon_chain_root
+
+    # Check attestations
+    assert len(block.attestations) <= MAX_SHARD_ATTESTIONS
+    for _, attestation in enumerate(block.attestations):
+        assert max(GENESIS_SHARD_SLOT, block.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
+        assert attesation.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY
+        verify_shard_attestation_signature(beacon_state, attestation)
+
+    # Check signature
+    proposer_index = get_shard_proposer_index(beacon_state, block.shard, block.slot)
+    assert proposer_index is not None
+    assert bls_verify(
+        pubkey=validators[proposer_index].pubkey,
+        message_hash=signed_root(block),
+        signature=block.signature,
+        domain=get_domain(beacon_state, slot_to_epoch(block.slot), DOMAIN_SHARD_PROPOSER)
+    )
+
+    return True
+```
+
+### Shard attestations
+
+Let:
+
+* `valid_shard_blocks` be the list of valid `ShardBlock`
+* `beacon_state` be the canonical `BeaconState`
+* `candidate` be a candidate `ShardAttestation` for which validity is to be determined by running `is_valid_shard_attestation`
+
+```python
+def is_valid_shard_attestation(valid_shard_blocks: List[ShardBlock],
+                               beacon_state: BeaconState,
+                               candidate: Attestation) -> bool:
+    # Check shard block
+    block = next(block for block in valid_shard_blocks if signed_root(block) == candidate.attestation.data.shard_block_root, None)
+    assert block != None
+    assert block.slot == attestation.data.slot
+    assert block.shard == attestation.data.shard
+
+    # Check signature
+    verify_shard_attestation_signature(beacon_state, attestation)
+
+    return True
+```
+
+### Beacon attestations
+
+Let:
+
+* `shard` be a valid `Shard`
+* `shard_blocks` be the `ShardBlock` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `shard` at slot `slot`
+* `beacon_state` be the canonical `BeaconState`
+* `valid_attestations` be the list of valid `Attestation`, recursively defined
+* `candidate` be a candidate `Attestation` which is valid under phase 0 rules, and for which validity is to be determined under phase 1 rules by running `is_valid_beacon_attestation`
+
+```python
+def is_valid_beacon_attestation(shard: Shard,
+                                shard_blocks: List[ShardBlock],
+                                beacon_state: BeaconState,
+                                valid_attestations: List[Attestation],
+                                candidate: Attestation) -> bool:
+    # Check if attestation is already determined valid
+    for _, attestation in enumerate(valid_attestations):
+        if candidate == attestation:
+            return True
+
+    # Check previous attestation
+    if candidate.data.previous_crosslink.epoch <= PHASE_1_GENESIS_EPOCH:
+        assert candidate.data.previous_crosslink.crosslink_data_root == ZERO_HASH
+    else:
+        previous_attestation = next(
+            attestation for attestation in valid_attestations if
+            attestation.data.crosslink_data_root == candidate.data.previous_crosslink.crosslink_data_root
+        , None)
+        assert previous_attestation != None
+        assert candidate.data.previous_attestation.epoch < slot_to_epoch(candidate.data.slot)
+
+    # Check crosslink data root
+    start_epoch = state.latest_crosslinks[shard].epoch
+    end_epoch = min(slot_to_epoch(candidate.data.slot) - CROSSLINK_LOOKBACK, start_epoch + MAX_CROSSLINK_EPOCHS)
+    blocks = []
+    for slot in range(start_epoch * SLOTS_PER_EPOCH, end_epoch * SLOTS_PER_EPOCH):
+        blocks.append(shard_blocks[slot])
+    assert candidate.data.crosslink_data_root == compute_crosslink_data_root(blocks)
+
+    return True
+```
+
+## Shard fork choice rule
+
+The fork choice rule for any shard is LMD GHOST using the shard attestations of the persistent committee and the beacon chain attestations of the crosslink committee currently assigned to that shard, but instead of being rooted in the genesis it is rooted in the block referenced in the most recent accepted crosslink (i.e. `state.crosslinks[shard].shard_block_root`). Only blocks whose `beacon_chain_root` is the block in the main beacon chain at the specified `slot` should be considered. (If the beacon chain skips a slot, then the block at that slot is considered to be the block in the beacon chain at the highest slot lower than a slot.)
