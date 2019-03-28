@@ -255,7 +255,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
-
 ### Max transactions per block
 
 | Name | Value |
@@ -1433,7 +1432,7 @@ When enough full deposits have been made to the deposit contract, an `Eth2Genesi
     * `genesis_eth1_data.deposit_count` is the `deposit_count` contained in the `Eth2Genesis` log.
     * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
 * Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
-* Let `genesis_block = BeaconBlock(slot=GENESIS_SLOT, state_root=hash_tree_root(genesis_state))`.
+* Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ```python
 def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
@@ -1442,27 +1441,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     """
     Get the genesis ``BeaconState``.
     """
-    state = BeaconState(
-        # Misc
-        slot=GENESIS_SLOT,
-        genesis_time=genesis_time,
-        fork=Fork(epoch=GENESIS_EPOCH),
-
-        # Validator registry
-        validator_registry_update_epoch=GENESIS_EPOCH,
-
-        # Finality
-        previous_justified_epoch=GENESIS_EPOCH - 1,
-        current_justified_epoch=GENESIS_EPOCH,
-        finalized_epoch=GENESIS_EPOCH,
-
-        # Recent state
-        latest_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH) for _ in range(SHARD_COUNT)]),
-        latest_block_header=BeaconBlockHeader(slot=GENESIS_SLOT),
-
-        # Ethereum 1.0 chain data
-        latest_eth1_data=genesis_eth1_data,
-    )
+    state = BeaconState(genesis_time=genesis_time, latest_eth1_data=genesis_eth1_data)
 
     # Process genesis deposits
     for deposit in genesis_validator_deposits:
