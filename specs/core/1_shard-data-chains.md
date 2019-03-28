@@ -297,10 +297,13 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
     if block.slot == PHASE_1_GENESIS_SLOT:
         assert candidate.previous_block_root == ZERO_HASH
     else:
-        parent = next(block for block in valid_shard_blocks if signed_root(block) == candidate.previous_block_root, None)
-        assert parent != None
-        assert parent.shard == block.shard and parent.slot < block.slot
-        assert signed_root(beacon_blocks[parent.slot]) == parent.beacon_chain_root
+        parent_block = next(
+            block for block in valid_shard_blocks if
+            signed_root(block) == candidate.previous_block_root
+        , None)
+        assert parent_block != None
+        assert parent_block.shard == block.shard and parent_block.slot < block.slot
+        assert signed_root(beacon_blocks[parent_block.slot]) == parent_block.beacon_chain_root
 
     # Check attestations
     assert len(block.attestations) <= MAX_SHARD_ATTESTIONS
@@ -335,10 +338,13 @@ def is_valid_shard_attestation(valid_shard_blocks: List[ShardBlock],
                                beacon_state: BeaconState,
                                candidate: Attestation) -> bool:
     # Check shard block
-    block = next(block for block in valid_shard_blocks if signed_root(block) == candidate.attestation.data.shard_block_root, None)
-    assert block != None
-    assert block.slot == attestation.data.slot
-    assert block.shard == attestation.data.shard
+    shard_block = next(
+        block for block in valid_shard_blocks if
+        signed_root(block) == candidate.attestation.data.shard_block_root
+    , None)
+    assert shard_block != None
+    assert shard_block.slot == attestation.data.slot
+    assert shard_block.shard == attestation.data.shard
 
     # Check signature
     verify_shard_attestation_signature(beacon_state, attestation)
