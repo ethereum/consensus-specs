@@ -86,7 +86,6 @@
         - [`get_fork_version`](#get_fork_version)
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
-        - [`set_bitfield_bit`](#set_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`verify_indexed_attestation`](#verify_indexed_attestation)
@@ -1139,22 +1138,6 @@ def get_bitfield_bit(bitfield: bytes, i: int) -> int:
     Extract the bit in ``bitfield`` at position ``i``.
     """
     return (bitfield[i // 8] >> (i % 8)) % 2
-```
-
-### `set_bitfield_bit`
-
-```python
-def set_bitfield_bit(bitfield: bytes, i: int) -> int:
-    """
-    Set the bit in ``bitfield`` at position ``i`` to ``1``.
-    """
-    byte_index = i // 8
-    bit_index = i % 8
-    return (
-        bitfield[:byte_index] +
-        bytes([bitfield[byte_index] | (1 << bit_index)]) +
-        bitfield[byte_index+1:]
-    )
 ```
 
 ### `verify_bitfield`
