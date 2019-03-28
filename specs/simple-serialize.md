@@ -12,7 +12,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
-    - [Vectors, containers, lists](#vectors-containers-lists)
+    - [Containers, lists](#containers-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -33,10 +33,8 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ### Composite types
 
-* **container**: ordered heterogenous collection of values
+* **container**: ordered fixed-length heterogenous collection of values
     * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
-* **vector**: ordered fixed-length homogeneous collection of values
-    * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
 * **list**: ordered variable-length homogenous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
 
@@ -46,6 +44,7 @@ We recursively define "variable-size" types to be lists and all types that conta
 
 For convenience we alias:
 
+* `[type, N]` to `{"value_1": type, "value_2": type, ..., "value_N": type}`, referred to as **vector** (an ordered fixed-length homogenous collection of values)
 * `"byte"` to `"uint8"` (this is a basic type)
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
@@ -70,7 +69,7 @@ assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### Vectors, containers, lists
+### Containers, lists
 
 If `value` is fixed-size:
 
@@ -101,9 +100,9 @@ We first define helper functions:
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
-* `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects
+* `merkleize(pack(value))` if `value` is a basic object or a container of only basic objects
 * `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
-* `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
+* `merkleize([hash_tree_root(element) for element in value])` if `value` is a container of not only basic objects
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
 
 ## Self-signed containers
