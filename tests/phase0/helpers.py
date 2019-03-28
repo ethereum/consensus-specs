@@ -280,7 +280,6 @@ def get_valid_attestation(state, slot=None):
             )
         )
 
-
     attestation.aggregation_signature = bls.aggregate_signatures(signatures)
     return attestation
 
