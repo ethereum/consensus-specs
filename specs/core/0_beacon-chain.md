@@ -98,9 +98,7 @@
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`activate_validator`](#activate_validator)
             - [`initiate_validator_exit`](#initiate_validator_exit)
-            - [`exit_validator`](#exit_validator)
             - [`slash_validator`](#slash_validator)
-            - [`prepare_validator_for_withdrawal`](#prepare_validator_for_withdrawal)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
@@ -121,8 +119,8 @@
                 - [Justification and finalization](#justification-and-finalization)
                 - [Crosslinks](#crosslinks-1)
             - [Apply rewards](#apply-rewards)
-            - [Ejections](#ejections)
-            - [Validator registry and shuffling seed data](#validator-registry-and-shuffling-seed-data)
+            - [Balance-driven status transitions](#balance-driven-status-transitions)
+            - [Validator registry and start shard](#validator-registry-and-start-shard)
             - [Slashings and exit queue](#slashings-and-exit-queue)
             - [Final updates](#final-updates)
         - [Per-slot processing](#per-slot-processing)
@@ -182,7 +180,6 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | - | - |
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_BALANCE_CHURN_QUOTIENT` | `2**5` (= 32) |
 | `MAX_SLASHABLE_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
 | `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
@@ -418,14 +415,14 @@ The types are defined topologically to aid in facilitating an executable version
     'pubkey': 'bytes48',
     # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
+    # Epoch when became eligible for activation
+    'activation_eligibility_epoch': 'uint64',
     # Epoch when validator activated
     'activation_epoch': 'uint64',
     # Epoch when validator exited
     'exit_epoch': 'uint64',
     # Epoch when validator is eligible to withdraw
     'withdrawable_epoch': 'uint64',
-    # Did the validator initiate an exit
-    'initiated_exit': 'bool',
     # Was the validator slashed
     'slashed': 'bool',
     # Rounded balance
@@ -596,6 +593,10 @@ The types are defined topologically to aid in facilitating an executable version
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
     'latest_start_shard': 'uint64',
+    
+    # Exit queue
+    'exit_epoch': 'uint64',
+    'exit_queue_filled': 'uint64'
 
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
@@ -1352,22 +1353,20 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    validator.initiated_exit = True
-```
-
-#### `exit_validator`
-
-```python
-def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
-    """
-    Exit the validator with the given ``index``.
-    Note that this function mutates ``state``.
-    """
-    validator = state.validator_registry[index]
-
-    # Update validator exit epoch if not previously exited
+    # Operation is a no-op if validator is already in the queue
     if validator.exit_epoch == FAR_FUTURE_EPOCH:
-        validator.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+        # Update exit queue counters
+        if state.exit_epoch < get_delayed_activation_exit_epoch(get_current_epoch(state)):
+            state.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+        if state.exit_queue_filled >= MAX_EXIT_DEQUEUES_PER_EPOCH:
+            state.exit_epoch += 1
+            state.exit_queue_filled = 0
+        # Set validator exit epoch and withdrawable epoch
+        if validator.exit_epoch > state.exit_epoch:
+            validator.exit_epoch = state.exit_epoch
+            validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        # Extend queue
+        state.exit_queue_filled += 1
 ```
 
 #### `slash_validator`
@@ -1379,7 +1378,7 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-    exit_validator(state, index)
+    initiate_validator_exit(state, index)
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += get_effective_balance(state, index)
 
     whistleblower_index = get_beacon_proposer_index(state, state.slot)
@@ -1388,19 +1387,6 @@ def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
     decrease_balance(state, index, whistleblower_reward)
     validator.slashed = True
     validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
-```
-
-#### `prepare_validator_for_withdrawal`
-
-```python
-def prepare_validator_for_withdrawal(state: BeaconState, index: ValidatorIndex) -> None:
-    """
-    Set the validator with the given ``index`` as withdrawable
-    ``MIN_VALIDATOR_WITHDRAWABILITY_DELAY`` after the current epoch.
-    Note that this function mutates ``state``.
-    """
-    validator = state.validator_registry[index]
-    validator.withdrawable_epoch = get_current_epoch(state) + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 ```
 
 ## Ethereum 1.0 deposit contract
@@ -1512,6 +1498,10 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Randomness and committees
         latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
         latest_start_shard=GENESIS_START_SHARD,
+        
+        # Exit queue
+        exit_epoch=GENESIS_EPOCH,
+        exit_queue_filled=0,
 
         # Finality
         previous_epoch_attestations=[],
@@ -1690,16 +1680,16 @@ def get_previous_total_balance(state: BeaconState) -> Gwei:
 ```
 
 ```python
-def get_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
+def get_unslashed_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
     output = set()
     for a in attestations:
         output = output.union(get_attestation_participants(state, a.data, a.aggregation_bitfield))
-    return sorted(list(output))
+    return sorted(filter(lambda index: not state.validator_registry[index].is_slashed, list(output)))
 ```
 
 ```python
 def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestation]) -> Gwei:
-    return get_total_balance(state, get_attesting_indices(state, attestations))
+    return get_total_balance(state, get_unslashed_attesting_indices(state, attestations))
 ```
 
 ```python
@@ -1747,7 +1737,7 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple
     # lexicographically higher hash
     winning_root = max(all_roots, key=lambda r: (get_attesting_balance(state, get_attestations_for(r)), r))
 
-    return winning_root, get_attesting_indices(state, get_attestations_for(winning_root))
+    return winning_root, get_unslashed_attesting_indices(state, get_attestations_for(winning_root))
 ```
 
 ```python
@@ -1904,7 +1894,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
     for index in eligible_validators:
         base_reward = get_base_reward(state, index)
         # Expected FFG source
-        if index in get_attesting_indices(state, state.previous_epoch_attestations):
+        if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
             rewards[index] += base_reward * total_attesting_balance // total_balance
             # Inclusion speed bonus
             rewards[index] += (
@@ -1914,17 +1904,17 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         else:
             penalties[index] += base_reward
         # Expected FFG target
-        if index in get_attesting_indices(state, boundary_attestations):
+        if index in get_unslashed_attesting_indices(state, boundary_attestations):
             rewards[index] += base_reward * boundary_attesting_balance // total_balance
         else:
             penalties[index] += get_inactivity_penalty(state, index, epochs_since_finality)
         # Expected head
-        if index in get_attesting_indices(state, matching_head_attestations):
+        if index in get_unslashed_attesting_indices(state, matching_head_attestations):
             rewards[index] += base_reward * matching_head_balance // total_balance
         else:
             penalties[index] += base_reward
         # Proposer bonus
-        if index in get_attesting_indices(state, state.previous_epoch_attestations):
+        if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
             proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
             rewards[proposer_index] += base_reward // ATTESTATION_INCLUSION_REWARD_QUOTIENT
         # Take away max rewards if we're not finalizing
@@ -1973,72 +1963,24 @@ def apply_rewards(state: BeaconState) -> None:
         )
 ```
 
-#### Ejections
+#### Balance-driven status transitions
 
-Run `process_ejections(state)`.
+Run `process_balance_driven_status_transitions(state)`.
 
 ```python
 def process_ejections(state: BeaconState) -> None:
     """
     Iterate through the validator registry
-    and eject active validators with balance below ``EJECTION_BALANCE``.
+    and deposit or eject active validators with sufficiently high or low balances
     """
-    for index in get_active_validator_indices(state.validator_registry, get_current_epoch(state)):
-        if get_balance(state, index) < EJECTION_BALANCE:
+    for index, validator in enumeratE(state.validator_registry):
+        if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
+            state.activation_eligibility_epoch = get_current_epoch(state) 
+        if is_active(validator, get_current_epoch(state)) and get_balance(state, index) < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 ```
 
-#### Validator registry and shuffling seed data
-
-```python
-def update_validator_registry(state: BeaconState) -> None:
-    """
-    Update validator registry.
-    Note that this function mutates ``state``.
-    """
-    current_epoch = get_current_epoch(state)
-    # The active validators
-    active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)
-    # The total effective balance of active validators
-    total_balance = get_total_balance(state, active_validator_indices)
-
-    # The maximum balance churn in Gwei (for deposits and exits separately)
-    max_balance_churn = max(
-        MAX_DEPOSIT_AMOUNT,
-        total_balance // (2 * MAX_BALANCE_CHURN_QUOTIENT)
-    )
-
-    # Activate validators within the allowable balance churn
-    balance_churn = 0
-    for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch == FAR_FUTURE_EPOCH and get_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
-            # Check the balance churn would be within the allowance
-            balance_churn += get_effective_balance(state, index)
-            if balance_churn > max_balance_churn:
-                break
-
-            # Activate validator
-            activate_validator(state, index, is_genesis=False)
-
-    # Exit validators within the allowable balance churn
-    if current_epoch < state.validator_registry_update_epoch + LATEST_SLASHED_EXIT_LENGTH:
-        balance_churn = (
-            state.latest_slashed_balances[state.validator_registry_update_epoch % LATEST_SLASHED_EXIT_LENGTH] -
-            state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
-        )
-
-        for index, validator in enumerate(state.validator_registry):
-            if validator.exit_epoch == FAR_FUTURE_EPOCH and validator.initiated_exit:
-                # Check the balance churn would be within the allowance
-                balance_churn += get_effective_balance(state, index)
-                if balance_churn > max_balance_churn:
-                    break
-
-                # Exit validator
-                exit_validator(state, index)
-
-    state.validator_registry_update_epoch = current_epoch
-```
+#### Validator registry and start shard
 
 Run the following function:
 
@@ -2046,7 +1988,18 @@ Run the following function:
 def update_registry(state: BeaconState) -> None:
     # Check if we should update, and if so, update
     if state.finalized_epoch > state.validator_registry_update_epoch:
-        update_validator_registry(state)
+        # Validator indices that could be activated
+        indices_for_activation = sorted(
+            filter(
+                lambda index: state.validator_registry[index].activation_epoch == FAR_FUTURE_EPOCH
+                get_active_validator_indices(state.validator_registry, current_epoch),
+            ),
+            key=lambda index: state.validator_registry[index].activation_eligibility_epoch
+        )
+        for index in indices_for_activation[:MAX_EXIT_DEQUEUES_PER_EPOCH]:
+            activate_validator(state, index, is_genesis=False)
+
+    state.validator_registry_update_epoch = current_epoch
     state.latest_start_shard = (
         state.latest_start_shard +
         get_current_epoch_committee_count(state)
@@ -2057,7 +2010,7 @@ def update_registry(state: BeaconState) -> None:
 
 #### Slashings and exit queue
 
-Run `process_slashings(state)` and `process_exit_queue(state)`:
+Run `process_slashings(state)`:
 
 ```python
 def process_slashings(state: BeaconState) -> None:
@@ -2081,30 +2034,6 @@ def process_slashings(state: BeaconState) -> None:
                 get_effective_balance(state, index) // MIN_PENALTY_QUOTIENT
             )
             decrease_balance(state, index, penalty)
-```
-
-```python
-def process_exit_queue(state: BeaconState) -> None:
-    """
-    Process the exit queue.
-    Note that this function mutates ``state``.
-    """
-    def eligible(index):
-        validator = state.validator_registry[index]
-        # Filter out dequeued validators
-        if validator.withdrawable_epoch != FAR_FUTURE_EPOCH:
-            return False
-        # Dequeue if the minimum amount of time has passed
-        else:
-            return get_current_epoch(state) >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
-    eligible_indices = filter(eligible, list(range(len(state.validator_registry))))
-    # Sort in order of exit epoch, and validators that exit within the same epoch exit in order of validator index
-    sorted_indices = sorted(eligible_indices, key=lambda index: state.validator_registry[index].exit_epoch)
-    for dequeues, index in enumerate(sorted_indices):
-        if dequeues >= MAX_EXIT_DEQUEUES_PER_EPOCH:
-            break
-        prepare_validator_for_withdrawal(state, index)
 ```
 
 #### Final updates
