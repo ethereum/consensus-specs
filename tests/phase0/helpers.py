@@ -95,7 +95,7 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
 def force_registry_change_at_next_epoch(state):
     # artificially trigger registry update at next epoch transition
     state.finalized_epoch = get_current_epoch(state) - 1
-    for crosslink in state.latest_crosslinks:
+    for crosslink in state.current_epoch_crosslinks:
         crosslink.epoch = state.finalized_epoch
     state.validator_registry_update_epoch = state.finalized_epoch - 1
 
@@ -155,7 +155,7 @@ def build_attestation_data(state, slot, shard):
         source_root=justified_block_root,
         target_root=epoch_boundary_root,
         crosslink_data_root=spec.ZERO_HASH,
-        previous_crosslink=deepcopy(state.latest_crosslinks[shard]),
+        previous_crosslink=deepcopy(state.current_epoch_crosslinks[shard]),
     )
 
 

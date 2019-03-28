@@ -55,7 +55,7 @@ def test_success(state):
     return pre_state, attestation, post_state
 
 
-def test_success_prevous_epoch(state):
+def test_success_previous_epoch(state):
     attestation = get_valid_attestation(state)
     block = build_empty_block_for_next_slot(state)
     block.slot = state.slot + spec.SLOTS_PER_EPOCH
@@ -124,9 +124,21 @@ def test_bad_previous_crosslink(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    state.latest_crosslinks[attestation.data.shard].epoch += 10
+    state.previous_epoch_crosslinks[attestation.data.shard].epoch += 10
+    state.current_epoch_crosslinks[attestation.data.shard].epoch += 11
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
+
+    return pre_state, attestation, post_state
+
+
+def test_previous_crosslink_is_outdated(state):
+    attestation = get_valid_attestation(state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    state.current_epoch_crosslinks[attestation.data.shard].epoch += 10
+
+    pre_state, post_state = run_attestation_processing(state, attestation, True)
 
     return pre_state, attestation, post_state
 
