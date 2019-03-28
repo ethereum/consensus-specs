@@ -109,6 +109,12 @@ if __name__ == "__main__":
 
 ```
 
+And to use the pyspec:
+
+```
+from eth2.phase0 import spec
+```
+
 Recommendations:
 - you can have more than just 1 generator, e.g. ` gen_runner.run_generator("foo", [bar_test_suite, abc_test_suite, example_test_suite])`
 - you can concatenate lists of test cases, if you don't want to split it up in suites.
