@@ -10,3 +10,6 @@ output/
 
 yaml_tests/
 .pytest_cache
+
+# Dynamically built from Markdown spec
+test_libs/pyspec/eth2/phase0/spec.py
