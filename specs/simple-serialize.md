@@ -83,13 +83,21 @@ return b"\x01" if value is True else b"\x00"
 
 The serialized representation of composite types is comprised of two binary sections.
 
-* The first section is *fixed size* for all types, containing the concatenation of
-    - The serialized representation for each of the *fixed size* elements from the value
-    - The `"uint32"` serialized offset where the serialized representation of the *variable sized* elements from the value are located in the second section.
-* The second section contains the concatenation of the serialized representations of **only** the *variable size* types.
+* The first section is the concatenation of a mixture of either the serialized representation for *fixed size* elements **or** a serialized offset value for *variable size* elements.
+    - All *fixed size* elements are represented in this section as their serialized representation.
+    - All *variable size* elements are represented in this section with a `"uint32"` serialized offset where the serialized representation of the element is located in the second section.
+        - offsets are relative to the beginning of the beginning of the entire serialized representation (the start of the first section)
+* The second section is the concatenation of the serialized representations of **only** the *variable size* types.
     - This section is empty in the case of a purely *fixed size* type.
 
-> **NOTE**: Offsets are relative to the beginning of the beginning of the entire serialized representation (the start of the first section)
+
+Offset values are subject to the following validity rules:
+
+- For Vector and Container types:
+    - The first offset **must** be equal to the length of the first section.
+- For all types:
+    - Offsets **MAY NOT** be less than any previous offset.
+    - Offsets **MUST** be less than `2**32`
 
 
 #### `"vector"`, `"container"` and `"list"`
