@@ -377,11 +377,10 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Validator indices
-    'validator_indices': ['uint64'],
+    'custody_bit_0_indices': ['uint64'],
+    'custody_bit_1_indices': ['uint64'],
     # Attestation data
     'data': AttestationData,
-    # Custody bitfield
-    'custody_bitfield': 'bytes',
     # Aggregate signature
     'aggregate_signature': 'bytes96',
 }
@@ -1060,7 +1059,7 @@ def get_attestation_participants(state: BeaconState,
                                  attestation_data: AttestationData,
                                  bitfield: bytes) -> List[ValidatorIndex]:
     """
-    Return the participant indices corresponding to ``attestation_data`` and ``bitfield``.
+    Return the sorted participant indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
 
@@ -1072,7 +1071,7 @@ def get_attestation_participants(state: BeaconState,
         aggregation_bit = get_bitfield_bit(bitfield, i)
         if aggregation_bit == 0b1:
             participants.append(validator_index)
-    return participants
+    return sorted(participants)
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
@@ -1184,20 +1183,13 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation):
     Convert an attestation to (almost) indexed-verifiable form
     """
     attesting_indices = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
-
-    # reconstruct custody bitfield for the truncated attesting_indices
     custody_bit_1_indices = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
-    custody_bitfield = b'\x00' * ((len(attesting_indices) + 7) // 8)
-
-    crosslink_committee = get_crosslink_committee_for_attestation(state, attestation.data)
-    for i, validator_index in enumerate(crosslink_committee):
-        if get_bitfield_bit(attestation.custody_bitfield, i):
-            custody_bitfield = set_bitfield_bit(custody_bitfield, attesting_indices.index(validator_index))
+    custody_bit_0_indices = [index for index in attesting_indices if index not in custody_bit_1_indices]
 
     return IndexedAttestation(
-        validator_indices=attesting_indices,
+        custody_bit_0_indices=custody_bit_0_indices,
+        custody_bit_1_indices=custody_bit_1_indices,
         data=attestation.data,
-        custody_bitfield=custody_bitfield,
         aggregate_signature=attestation.aggregate_signature
     )
 ```
@@ -1209,22 +1201,21 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     """
     Verify validity of ``indexed_attestation`` fields.
     """
-    if indexed_attestation.custody_bitfield != b'\x00' * len(indexed_attestation.custody_bitfield):  # [TO BE REMOVED IN PHASE 1]
+    custody_bit_0_indices = indexed_attestation.custody_bit_0_indices
+    custody_bit_1_indices = indexed_attestation.custody_bit_1_indices
+
+    if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    if not (1 <= len(indexed_attestation.validator_indices) <= MAX_ATTESTATION_PARTICIPANTS):
+    total_attesting_indices = len(custody_bit_0_indices + custody_bit_1_indices)
+    if not (1 <= total_attesting_indices <= MAX_ATTESTATION_PARTICIPANTS):
         return False
 
-    if not verify_bitfield(indexed_attestation.custody_bitfield, len(indexed_attestation.validator_indices)):
+    if custody_bit_0_indices != sorted(custody_bit_0_indices):
         return False
 
-    custody_bit_0_indices = []
-    custody_bit_1_indices = []
-    for i, validator_index in enumerate(indexed_attestation.validator_indices):
-        if get_bitfield_bit(indexed_attestation.custody_bitfield, i) == 0b0:
-            custody_bit_0_indices.append(validator_index)
-        else:
-            custody_bit_1_indices.append(validator_index)
+    if custody_bit_1_indices != sorted(custody_bit_1_indices):
+        return False
 
     return bls_verify_multiple(
         pubkeys=[
@@ -2354,10 +2345,6 @@ def process_attester_slashing(state: BeaconState,
         is_double_vote(attestation1.data, attestation2.data) or
         is_surround_vote(attestation1.data, attestation2.data)
     )
-
-    # check that indices are sorted
-    assert attestation1.validator_indices == sorted(attestation1.validator_indices)
-    assert attestation2.validator_indices == sorted(attestation2.validator_indices)
 
     assert verify_indexed_attestation(state, attestation1)
     assert verify_indexed_attestation(state, attestation2)
