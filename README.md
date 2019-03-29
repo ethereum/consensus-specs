@@ -25,3 +25,21 @@ The following are the broad design goals for Ethereum 2.0:
 * to select all components such that they are either quantum secure or can be easily swapped out for quantum secure counterparts when available
 * to utilize crypto and design techniques that allow for a large participation of validators in total and per unit time
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
+
+## Testing
+In order to run spec CI tests you should have `python3` installed on your machine.
+
+Run following commands to isntall dependencies:
+```bash
+python3 -m venv venv
+. venv/bin/activate
+pip install -r requirements.txt
+```
+
+Build the spec and run tests:
+```bash
+make clean && make phase0/build
+pytest tests
+```
+
+When work is done use `deactivate` command to exit `venv`.
