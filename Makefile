@@ -12,18 +12,18 @@ GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/)))
 YAML_TEST_TARGETS = $(patsubst $(GENERATOR_DIR)/%, $(YAML_TEST_DIR)/%, $(GENERATORS))
 GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
 
-PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2/phase0/spec.py
+PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/pyspec/phase0/spec.py
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS)
 
 
 .PHONY: clean all test gen_yaml_tests pyspec phase0
 
-all: $(YAML_TEST_DIR) $(YAML_TEST_TARGETS) $(PY_SPEC_ALL_TARGETS)
+all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
 clean:
 	rm -rf $(YAML_TEST_DIR)
 	rm -rf $(GENERATOR_VENVS)
-	rm -rf $(PY_TEST_DIR)/venv
+	rm -rf $(PY_TEST_DIR)/venv $(PY_TEST_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
 
 # "make gen_yaml_tests" to run generators
@@ -40,7 +40,7 @@ pyspec: $(PY_SPEC_ALL_TARGETS)
 phase0: $(PY_SPEC_PHASE_0_TARGETS)
 
 
-$(PY_SPEC_DIR)/eth2/phase0/spec.py:
+$(PY_SPEC_DIR)/pyspec/phase0/spec.py:
 	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@
 
 
