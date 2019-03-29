@@ -22,12 +22,14 @@ from build.phase0.spec import (
     get_active_validator_indices,
     get_attestation_participants,
     get_block_root,
+    get_crosslink_committee_for_attestation,
     get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_empty_block,
     get_epoch_start_slot,
     get_genesis_beacon_state,
+    slot_to_epoch,
     verify_merkle_branch,
     hash,
 )
@@ -248,12 +250,11 @@ def get_valid_attestation(state, slot=None):
     shard = state.latest_start_shard
     attestation_data = build_attestation_data(state, slot, shard)
 
-    crosslink_committees = get_crosslink_committees_at_slot(state, slot)
-    crosslink_committee = [committee for committee, _shard in crosslink_committees if _shard == attestation_data.shard][0]
+    crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
 
     committee_size = len(crosslink_committee)
     bitfield_length = (committee_size + 7) // 8
-    aggregation_bitfield = b'\x01' + b'\x00' * (bitfield_length - 1)
+    aggregation_bitfield = b'\xC0' + b'\x00' * (bitfield_length - 1)
     custody_bitfield = b'\x00' * bitfield_length
     attestation = Attestation(
         aggregation_bitfield=aggregation_bitfield,
@@ -266,23 +267,35 @@ def get_valid_attestation(state, slot=None):
         attestation.data,
         attestation.aggregation_bitfield,
     )
-    assert len(participants) == 1
+    assert len(participants) == 2
 
-    validator_index = participants[0]
-    privkey = privkeys[validator_index]
+    signatures = []
+    for validator_index in participants:
+        privkey = privkeys[validator_index]
+        signatures.append(
+            get_attestation_signature(
+                state,
+                attestation.data,
+                privkey
+            )
+        )
 
+    attestation.aggregation_signature = bls.aggregate_signatures(signatures)
+    return attestation
+
+
+def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0):
     message_hash = AttestationDataAndCustodyBit(
-        data=attestation.data,
-        custody_bit=0b0,
+        data=attestation_data,
+        custody_bit=custody_bit,
     ).hash_tree_root()
 
-    attestation.aggregation_signature = bls.sign(
+    return bls.sign(
         message_hash=message_hash,
         privkey=privkey,
         domain=get_domain(
             fork=state.fork,
-            epoch=get_current_epoch(state),
+            epoch=slot_to_epoch(attestation_data.slot),
             domain_type=spec.DOMAIN_ATTESTATION,
         )
     )
-    return attestation
