@@ -1381,15 +1381,19 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     # Operation is a no-op if validator is already in the queue
     if validator.exit_epoch == FAR_FUTURE_EPOCH:
         # Update exit queue counters
-        if state.exit_epoch < get_delayed_activation_exit_epoch(get_current_epoch(state)):
-            state.exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+        delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+        if state.exit_epoch < delayed_activation_exit_epoch:
+            state.exit_epoch = delayed_activation_exit_epoch
+
         if state.exit_queue_filled >= MAX_EXIT_DEQUEUES_PER_EPOCH:
             state.exit_epoch += 1
             state.exit_queue_filled = 0
+
         # Set validator exit epoch and withdrawable epoch
         if validator.exit_epoch > state.exit_epoch:
             validator.exit_epoch = state.exit_epoch
             validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+
         # Extend queue
         state.exit_queue_filled += 1
 ```
@@ -1402,7 +1406,7 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     Slash the validator with index ``slashed_index``.
     Note that this function mutates ``state``.
     """
-    initiate_validator_exit(state, index)
+    initiate_validator_exit(state, slashed_index)
     state.validator_registry[slashed_index].slashed = True
     state.validator_registry[slashed_index].withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH
     slashed_balance = get_effective_balance(state, slashed_index)
@@ -1997,7 +2001,7 @@ def apply_rewards(state: BeaconState) -> None:
 Run `process_balance_driven_status_transitions(state)`.
 
 ```python
-def process_ejections(state: BeaconState) -> None:
+def process_balance_driven_status_transitions(state: BeaconState) -> None:
     """
     Iterate through the validator registry
     and deposit or eject active validators with sufficiently high or low balances
@@ -2005,7 +2009,8 @@ def process_ejections(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         balance = get_balance(state, index)
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
-            state.activation_eligibility_epoch = get_current_epoch(state) 
+            state.activation_eligibility_epoch = get_current_epoch(state)
+
         if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 ```
