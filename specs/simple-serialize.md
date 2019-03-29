@@ -33,9 +33,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ### Composite types
 
-* **container**: ordered fixed-length heterogenous collection of values
+* **container**: ordered fixed-length homogeneous or heterogeneous collection of values
     * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
-* **list**: ordered variable-length homogenous collection of values
+* **list**: ordered variable-length homogeneous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
 
 We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
@@ -44,7 +44,7 @@ We recursively define "variable-size" types to be lists and all types that conta
 
 For convenience we alias:
 
-* `[type, N]` to `{"value_1": type, "value_2": type, ..., "value_N": type}`, referred to as **vector** (an ordered fixed-length homogenous collection of values)
+* `[type, N]` to `{"value_1": type, "value_2": type, ..., "value_N": type}`, referred to as **vector** (a homogeneous container)
 * `"byte"` to `"uint8"` (this is a basic type)
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
@@ -100,9 +100,9 @@ We first define helper functions:
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
-* `merkleize(pack(value))` if `value` is a basic object or a container of only basic objects
+* `merkleize(pack(value))` if `value` is a basic object or a homogeneous container of basic objects
 * `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
-* `merkleize([hash_tree_root(element) for element in value])` if `value` is a container of not only basic objects
+* `merkleize([hash_tree_root(element) for element in value])` if `value` is a container which is either heterogeneous or homogeneous of composite objects
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
 
 ## Self-signed containers
