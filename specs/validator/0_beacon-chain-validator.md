@@ -273,7 +273,7 @@ _Note:_ This is a stub for phase 0.
 
 ##### Latest crosslink
 
-Set `attestation_data.previous_crosslink = head_state.current_epoch_crosslinks[shard]`.
+Set `attestation_data.source_crosslink = head_state.current_epoch_crosslinks[shard]`.
 
 ##### Source epoch
 

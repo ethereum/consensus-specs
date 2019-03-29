@@ -354,7 +354,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Crosslink vote
     'shard': 'uint64',
-    'previous_crosslink': Crosslink,
+    'source_crosslink': Crosslink,
     'crosslink_data_root': 'bytes32',
 }
 ```
@@ -1733,12 +1733,12 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 
 ```python
 def get_winning_root_and_participants(state: BeaconState, shard: Shard, epoch: Epoch) -> Tuple[Bytes32, List[ValidatorIndex]]:
-    previous_crosslinks = state.current_epoch_crosslinks if epoch == slot_to_epoch(state.slot) else state.previous_epoch_crosslinks
+    source_crosslinks = state.current_epoch_crosslinks if epoch == slot_to_epoch(state.slot) else state.previous_epoch_crosslinks
     attestations = state.current_epoch_attestations if epoch == slot_to_epoch(state.slot) else state.previous_epoch_attestations
 
     valid_attestations = [
         a for a in attestations 
-        if a.data.shard == shard and a.data.previous_crosslink == previous_crosslinks[shard]
+        if a.data.shard == shard and a.data.source_crosslink == source_crosslinks[shard]
     ]
     all_roots = [a.data.crosslink_data_root for a in valid_attestations]
 
@@ -2334,11 +2334,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Check crosslink data
     assert attestation.data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
     valid_crosslinks = {
-        attestation.data.previous_crosslink,  # Case 1: latest crosslink matches previous crosslink
+        attestation.data.source_crosslink,    # Case 1: latest crosslink matches previous crosslink
         Crosslink(                            # Case 2: latest crosslink matches current crosslink
             crosslink_data_root=attestation.data.crosslink_data_root,
             epoch=min(slot_to_epoch(attestation.data.slot),
-                      attestation.data.previous_crosslink.epoch + MAX_CROSSLINK_EPOCHS)
+                      attestation.data.source_crosslink.epoch + MAX_CROSSLINK_EPOCHS)
         ),
     }
     assert (

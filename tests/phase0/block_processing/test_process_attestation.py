@@ -120,7 +120,7 @@ def test_non_zero_crosslink_data_root(state):
     return pre_state, attestation, post_state
 
 
-def test_bad_previous_crosslink(state):
+def test_bad_source_crosslink(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
@@ -132,7 +132,7 @@ def test_bad_previous_crosslink(state):
     return pre_state, attestation, post_state
 
 
-def test_previous_crosslink_is_outdated(state):
+def test_source_crosslink_is_outdated(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
