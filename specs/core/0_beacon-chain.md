@@ -2004,7 +2004,7 @@ def process_ejections(state: BeaconState) -> None:
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
     for index in get_active_validator_indices(state.validator_registry, get_current_epoch(state)):
-        if get_effective_balance(state, index) < EJECTION_BALANCE:
+        if get_effective_balance(state, index) <= EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 ```
 
