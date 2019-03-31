@@ -277,7 +277,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_BLOCK` | `0` |
+| `DOMAIN_BEACON_PROPOSER` | `0` |
 | `DOMAIN_RANDAO` | `1` |
 | `DOMAIN_ATTESTATION` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
@@ -2185,7 +2185,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     assert not proposer.slashed
     # Verify proposer signature
-    assert bls_verify(proposer.pubkey, signed_root(block), block.signature, get_domain(state, DOMAIN_BEACON_BLOCK))
+    assert bls_verify(proposer.pubkey, signed_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
 ```
 
 #### RANDAO
@@ -2239,7 +2239,7 @@ def process_proposer_slashing(state: BeaconState,
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_BLOCK, slot_to_epoch(header.slot))
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, slot_to_epoch(header.slot))
         assert bls_verify(proposer.pubkey, signed_root(header), header.signature, domain)
     slash_validator(state, proposer_slashing.proposer_index)
 ```
