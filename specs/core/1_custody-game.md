@@ -160,7 +160,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'chunk': ['byte', BYTES_PER_CUSTODY_CHUNK],
     'data_branch': [Hash],
     'chunk_bits_branch': [Hash],
-    'chunk_bits_leaf': Hash
+    'chunk_bits_leaf': Hash,
 }
 ```
 
