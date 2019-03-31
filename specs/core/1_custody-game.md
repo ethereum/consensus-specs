@@ -464,7 +464,6 @@ def process_bit_challenge_response(state: BeaconState,
         index=response.chunk_index // 256,
         root=challenge.chunk_bits_root
     )
-    assert hash(subroot + int_to_bytes32(len(challenge.chunk_count) // 8))
     # Verify the chunk bit does not match the challenge chunk bit
     assert get_custody_chunk_bit(challenge.responder_key, response.chunk) != get_bitfield_bit(challenge.chunk_bits_leaf, response.chunk_index % 256)
     # Clear the challenge
