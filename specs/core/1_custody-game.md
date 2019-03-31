@@ -460,7 +460,7 @@ def process_bit_challenge_response(state: BeaconState,
     assert verify_merkle_branch(
         leaf=response.chunk_bits_leaf,
         branch=response.chunk_bits_branch,
-        depth=math.log2(next_power_of_two(len(challenge.chunk_count)) // 256),
+        depth=math.log2(next_power_of_two(challenge.chunk_count) // 256),
         index=response.chunk_index // 256,
         root=challenge.chunk_bits_root
     )
