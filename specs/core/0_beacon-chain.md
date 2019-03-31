@@ -1390,9 +1390,8 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
             state.exit_queue_filled = 0
 
         # Set validator exit epoch and withdrawable epoch
-        if validator.exit_epoch > state.exit_epoch:
-            validator.exit_epoch = state.exit_epoch
-            validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        validator.exit_epoch = state.exit_epoch
+        validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 
         # Extend queue
         state.exit_queue_filled += 1
