@@ -396,7 +396,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Amount in Gwei
     'amount': 'uint64',
     # Container self-signature
-    'proof_of_possession': 'bytes96',
+    'signature': 'bytes96',
 }
 ```
 
@@ -1123,7 +1123,7 @@ def get_fork_version(fork: Fork,
 ```python
 def get_domain(state: BeaconState,
                domain_type: int,
-               epoch=None: int) -> int:
+               epoch: int=None) -> int:
     """
     Get the domain number that represents the fork meta and signature domain.
     """
@@ -1316,8 +1316,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     amount = deposit.data.amount
 
     if pubkey not in validator_pubkeys:
-        # Verify the proof of possession
-        if not bls_verify(pubkey, signed_root(deposit.data), deposit.data.proof_of_possession, get_domain(state, DOMAIN_DEPOSIT)):
+        # Verify the deposit signature (proof of possession)
+        if not bls_verify(pubkey, signed_root(deposit.data), deposit.data.signature, get_domain(state, DOMAIN_DEPOSIT)):
             return
 
         # Add new validator
