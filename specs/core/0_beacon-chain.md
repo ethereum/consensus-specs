@@ -1121,13 +1121,14 @@ def get_fork_version(fork: Fork,
 ### `get_domain`
 
 ```python
-def get_domain(fork: Fork,
-               epoch: Epoch,
-               domain_type: int) -> int:
+def get_domain(state: BeaconState,
+               domain_type: int,
+               epoch=None: int) -> int:
     """
     Get the domain number that represents the fork meta and signature domain.
     """
-    return bytes_to_int(get_fork_version(fork, epoch) + int_to_bytes4(domain_type))
+    epoch_of_message = get_current_epoch(state) if epoch is None else epoch
+    return bytes_to_int(get_fork_version(fork, epoch_of_message) + int_to_bytes4(domain_type))
 ```
 
 ### `get_bitfield_bit`
@@ -1210,7 +1211,7 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
         signature=indexed_attestation.aggregate_signature,
-        domain=get_domain(state.fork, slot_to_epoch(indexed_attestation.data.slot), DOMAIN_ATTESTATION),
+        domain=get_domain(state, DOMAIN_ATTESTATION, slot_to_epoch(indexed_attestation.data.slot)),
     )
 ```
 
@@ -1316,17 +1317,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
     if pubkey not in validator_pubkeys:
         # Verify the proof of possession
-        proof_is_valid = bls_verify(
-            pubkey=pubkey,
-            message_hash=signed_root(deposit.data),
-            signature=deposit.data.proof_of_possession,
-            domain=get_domain(
-                state.fork,
-                get_current_epoch(state),
-                DOMAIN_DEPOSIT,
-            )
-        )
-        if not proof_is_valid:
+        if not bls_verify(pubkey, signed_root(deposit.data), deposit.data.proof_of_possession, get_domain(state, DOMAIN_DEPOSIT)):
             return
 
         # Add new validator
@@ -2194,12 +2185,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     assert not proposer.slashed
     # Verify proposer signature
-    assert bls_verify(
-        pubkey=proposer.pubkey,
-        message_hash=signed_root(block),
-        signature=block.signature,
-        domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BEACON_BLOCK)
-    )
+    assert bls_verify(proposer.pubkey, signed_root(block), block.signature, get_domain(state, DOMAIN_BEACON_BLOCK))
 ```
 
 #### RANDAO
@@ -2208,12 +2194,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 def process_randao(state: BeaconState, block: BeaconBlock) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
     # Verify that the provided randao value is valid
-    assert bls_verify(
-        pubkey=proposer.pubkey,
-        message_hash=hash_tree_root(get_current_epoch(state)),
-        signature=block.body.randao_reveal,
-        domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_RANDAO)
-    )
+    assert bls_verify(proposer.pubkey, hash_tree_root(get_current_epoch(state)), block.body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix it in
     state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
         xor(get_randao_mix(state, get_current_epoch(state)),
@@ -2258,12 +2239,8 @@ def process_proposer_slashing(state: BeaconState,
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        assert bls_verify(
-            pubkey=proposer.pubkey,
-            message_hash=signed_root(header),
-            signature=header.signature,
-            domain=get_domain(state.fork, slot_to_epoch(header.slot), DOMAIN_BEACON_BLOCK)
-        )
+        domain = get_domain(state, DOMAIN_BEACON_BLOCK, slot_to_epoch(header.slot))
+        assert bls_verify(proposer.pubkey, signed_root(header), header.signature, domain)
     slash_validator(state, proposer_slashing.proposer_index)
 ```
 
@@ -2382,12 +2359,8 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Verify the validator has been active long enough
     assert get_current_epoch(state) - validator.activation_epoch >= PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
-    assert bls_verify(
-        pubkey=validator.pubkey,
-        message_hash=signed_root(exit),
-        signature=exit.signature,
-        domain=get_domain(state.fork, exit.epoch, DOMAIN_VOLUNTARY_EXIT)
-    )
+    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch)
+    assert bls_verify(validator.pubkey, signed_root(exit), exit.signature, domain)
     # Initiate exit
     initiate_validator_exit(state, exit.validator_index)
 ```
@@ -2427,12 +2400,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid
-    assert bls_verify(
-        pubkey=transfer.pubkey,
-        message_hash=signed_root(transfer),
-        signature=transfer.signature,
-        domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
-    )
+    assert bls_verify(transfer.pubkey, signed_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
     # Process the transfer
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
