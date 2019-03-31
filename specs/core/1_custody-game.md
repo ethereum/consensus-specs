@@ -279,6 +279,11 @@ def process_custody_reveal(state: BeaconState,
     # Case 1: non-masked non-punitive non-early reveal
     if reveal.mask == ZERO_HASH:
         assert reveal.period == epoch_to_custody_period(revealer.activation_epoch) + revealer.custody_reveal_index
+        min_reveal_slot = (
+            EPOCHS_PER_CUSTODY_PERIOD * reveal.period +
+            get_switchover_epoch(state, get_current_epoch(state), reveal.revealer_index)
+        )
+        assert state.slot >= min_reveal_slot
         # Revealer is active or exited
         assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
         revealer.custody_reveal_index += 1
@@ -288,7 +293,7 @@ def process_custody_reveal(state: BeaconState,
 
     # Case 2: masked punitive early reveal
     else:
-        assert reveal.period > current_custody_period
+        assert reveal.period >= current_custody_period
         assert revealer.slashed is False
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
 ```
