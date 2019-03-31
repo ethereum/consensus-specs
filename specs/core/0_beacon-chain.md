@@ -430,7 +430,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Was the validator slashed
     'slashed': 'bool',
     # Rounded balance
-    'high_balance': 'uint64'
+    'rounded_balance': 'uint64'
 }
 ```
 
@@ -769,12 +769,12 @@ def get_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
 def set_balance(state: BeaconState, index: ValidatorIndex, balance: Gwei) -> None:
     """
     Set the balance for a validator with the given ``index`` in both ``BeaconState``
-    and validator's rounded balance ``high_balance``.
+    and validator's rounded balance ``rounded_balance``.
     """
     validator = state.validator_registry[index]
     HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
-    if validator.high_balance > balance or validator.high_balance + 3 * HALF_INCREMENT < balance:
-        validator.high_balance = balance - balance % HIGH_BALANCE_INCREMENT
+    if validator.rounded_balance > balance or validator.rounded_balance + 3 * HALF_INCREMENT < balance:
+        validator.rounded_balance = balance - balance % HIGH_BALANCE_INCREMENT
     state.balances[index] = balance
 ```
 
@@ -902,10 +902,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     next_epoch = current_epoch + 1
 
     assert previous_epoch <= epoch <= next_epoch
-    indices = get_active_validator_indices(
-        state.validator_registry,
-        epoch,
-    )
+    indices = get_active_validator_indices(state.validator_registry, epoch)
     committees_per_epoch = get_epoch_committee_count(len(indices))
 
     if epoch == current_epoch:
@@ -1091,7 +1088,7 @@ def get_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
-    return min(get_balance(state, index), MAX_DEPOSIT_AMOUNT)
+    return min(state.validator_registry[index].rounded_balance, MAX_DEPOSIT_AMOUNT)
 ```
 
 ### `get_total_balance`
@@ -1338,7 +1335,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             initiated_exit=False,
             slashed=False,
-            high_balance=0
+            rounded_balance=0
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
@@ -1649,7 +1646,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     # made for optimized implementations that precompute and save data
     def get_vote_count(block: BeaconBlock) -> int:
         return sum(
-            start_state.validator_registry[validator_index].high_balance
+            start_state.validator_registry[validator_index].rounded_balance
             for validator_index, target in attestation_targets
             if get_ancestor(store, target, block.slot) == block
         )
@@ -1992,14 +1989,8 @@ def apply_rewards(state: BeaconState) -> None:
     rewards1, penalties1 = get_justification_and_finalization_deltas(state)
     rewards2, penalties2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
-        set_balance(
-            state,
-            i,
-            max(
-                0,
-                get_balance(state, i) + rewards1[i] + rewards2[i] - penalties1[i] - penalties2[i],
-            ),
-        )
+        increase_balance(state, i, rewards1[i] + rewards2[i])
+        decrease_balance(state, i, penalties1[i] + penalties2[i])
 ```
 
 #### Ejections
@@ -2013,7 +2004,7 @@ def process_ejections(state: BeaconState) -> None:
     and eject active validators with balance below ``EJECTION_BALANCE``.
     """
     for index in get_active_validator_indices(state.validator_registry, get_current_epoch(state)):
-        if get_balance(state, index) < EJECTION_BALANCE:
+        if get_effective_balance(state, index) < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 ```
 
@@ -2040,7 +2031,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch == FAR_FUTURE_EPOCH and get_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_epoch == FAR_FUTURE_EPOCH and get_effective_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
