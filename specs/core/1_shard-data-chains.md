@@ -20,6 +20,7 @@
         - [`ShardAttestation`](#shardattestation)
     - [Helper functions](#helper-functions)
         - [`get_period_committee`](#get_period_committee)
+        - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_persistent_committee`](#get_persistent_committee)
         - [`get_shard_proposer_index`](#get_shard_proposer_index)
         - [`get_shard_header`](#get_shard_header)
@@ -137,6 +138,14 @@ def get_period_committee(state: BeaconState,
     )
 ```
 
+### `get_switchover_epoch`
+
+```python
+def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex):
+    earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
+    return bytes_to_int(hash(generate_seed(state, earlier_start_epoch) + bytes3(index))[0:8]) % PERSISTENT_COMMITTEE_PERIOD
+```
+
 ### `get_persistent_committee`
 
 ```python
@@ -146,6 +155,7 @@ def get_persistent_committee(state: BeaconState,
     """
     Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
+    epoch = slot_to_epoch(epoch)
     earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
     later_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
 
@@ -160,14 +170,11 @@ def get_persistent_committee(state: BeaconState,
     earlier_committee = get_period_committee(state, shard, earlier_start_epoch, index, committee_count)
     later_committee = get_period_committee(state, shard, later_start_epoch, index, committee_count)
 
-    def get_switchover_epoch(index):
-        return bytes_to_int(hash(earlier_seed + bytes3(index))[0:8]) % PERSISTENT_COMMITTEE_PERIOD
-
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(list(set(
-        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
-        [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
+        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)] +
+        [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
     )))
 ```
 
