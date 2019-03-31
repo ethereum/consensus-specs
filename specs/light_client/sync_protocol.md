@@ -1,8 +1,18 @@
-**NOTICE**: This document is a work-in-progress for researchers and implementers.
+# Beacon Chain Light Client Syncing
 
-# Beacon chain light client syncing
+__NOTICE__: This document is a work-in-progress for researchers and implementers. One of the design goals of the eth2 beacon chain is light-client friendlines, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
 
-One of the design goals of the eth2 beacon chain is light-client friendlines, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
+## Table of Contents
+
+<!-- TOC -->
+- [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
+    - [Table of Contents](#table-of-contents)
+    - [Light client state](#light-client-state)
+    - [Updating the shuffled committee](#updating-the-shuffled-committee)
+    - [Computing the current committee](#computing-the-current-committee)  
+    - [Verifying blocks](#verifying-blocks)      
+<!-- /TOC -->
+
 
 ### Preliminaries
 
@@ -112,6 +122,7 @@ def compute_committee(header: BeaconBlockHeader,
             bytes_to_int(hash(validator_memory.earlier_period_data.seed + bytes3(index))[0:8]) %
             PERSISTENT_COMMITTEE_PERIOD
         )
+
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(list(set(
@@ -158,4 +169,5 @@ def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: Val
         domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER)
     )
 ```
+
 The size of this proof is only 200 (header) + 96 (signature) + 16 (bitfield) + 352 (shard block) = 664 bytes. It can be reduced further by replacing `ShardBlock` with `MerklePartial(lambda x: x.beacon_chain_ref, ShardBlock)`, which would cut off ~220 bytes.

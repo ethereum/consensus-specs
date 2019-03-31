@@ -12,7 +12,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
-    - [Tuples, containers, lists](#tuples-containers-lists)
+    - [Vectors, containers, lists](#vectors-containers-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -34,11 +34,13 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 ### Composite types
 
 * **container**: ordered heterogenous collection of values
-    * key-pair curly bracket notation `{}`, e.g. `{'foo': "uint64", 'bar': "bool"}`
-* **tuple**: ordered fixed-length homogeneous collection of values
+    * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
+* **vector**: ordered fixed-length homogeneous collection of values
     * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
 * **list**: ordered variable-length homogenous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
+
+We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
 
 ### Aliases
 
@@ -54,34 +56,34 @@ We recursively define the `serialize` function which consumes an object `value` 
 
 *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, etc.) objects implicitly carry their type.
 
-### `uintN`
+### `"uintN"`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
-return value.to_bytes(N // 8, 'little')
+return value.to_bytes(N // 8, "little")
 ```
 
-### `bool`
+### `"bool"`
 
 ```python
 assert value in (True, False)
-return b'\x01' if value is True else b'\x00'
+return b"\x01" if value is True else b"\x00"
 ```
 
-### Tuples, containers, lists
+### Vectors, containers, lists
 
-If `value` is fixed-length (i.e. does not embed a list):
+If `value` is fixed-size:
 
 ```python
-return ''.join([serialize(element) for element in value])
+return "".join([serialize(element) for element in value])
 ```
 
-If `value` is variable-length (i.e. embeds a list):
+If `value` is variable-size:
 
 ```python
-serialized_bytes = ''.join([serialize(element) for element in value])
+serialized_bytes = "".join([serialize(element) for element in value])
 assert len(serialized_bytes) < 2**(8 * BYTES_PER_LENGTH_PREFIX)
-serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, 'little')
+serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, "little")
 return serialized_length + serialized_bytes
 ```
 
@@ -99,9 +101,9 @@ We first define helper functions:
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
-* `merkleize(pack(value))` if `value` is a basic object or a tuple of basic objects
+* `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects
 * `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
-* `merkleize([hash_tree_root(element) for element in value])` if `value` is a tuple of composite objects or a container
+* `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
 
 ## Self-signed containers
