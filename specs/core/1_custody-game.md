@@ -279,7 +279,7 @@ def process_custody_reveal(state: BeaconState,
     # Case 1: non-masked non-punitive non-early reveal
     if reveal.mask == ZERO_HASH:
         assert reveal.period == epoch_to_custody_period(revealer.activation_epoch) + revealer.custody_reveal_index
-        min_reveal_slot = (
+        min_reveal_epoch = (
             EPOCHS_PER_CUSTODY_PERIOD * reveal.period +
             get_switchover_epoch(state, get_current_epoch(state), reveal.revealer_index)
         )
