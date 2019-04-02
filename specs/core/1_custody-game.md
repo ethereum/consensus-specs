@@ -293,11 +293,11 @@ def process_custody_reveal(state: BeaconState,
                            reveal: CustodyKeyReveal) -> None:
     assert verify_custody_key(state, reveal)
     revealer = state.validator_registry[reveal.revealer_index]
-    validators_current_custody_reveal_period = get_validators_current_custody_reveal_period(state, reveal.revealer_index)
+    validators_next_custody_reveal_period = validator.latest_custody_reveal_period + 1
 
     # Case 1: non-masked non-punitive non-early reveal
     if reveal.mask == ZERO_HASH:
-        assert reveal.period == validators_current_custody_reveal_period
+        assert reveal.period == validators_next_custody_reveal_period
         # Revealer is active or exited, but not withdrawn
         assert is_slashable_validator(revealer, get_current_epoch(state))
         revealer.latest_custody_reveal_period += 1
@@ -307,7 +307,7 @@ def process_custody_reveal(state: BeaconState,
 
     # Case 2: masked punitive early reveal
     else:
-        assert reveal.period > validators_current_custody_reveal_period
+        assert reveal.period >= validators_next_custody_reveal_period
         assert is_slashable_validator(revealer)
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
 ```
