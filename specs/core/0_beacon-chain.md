@@ -83,7 +83,6 @@
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_effective_balance`](#get_effective_balance)
         - [`get_total_balance`](#get_total_balance)
-        - [`get_fork_version`](#get_fork_version)
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
@@ -1104,31 +1103,18 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
     return sum([get_effective_balance(state, i) for i in validators])
 ```
 
-### `get_fork_version`
-
-```python
-def get_fork_version(fork: Fork,
-                     epoch: Epoch) -> bytes:
-    """
-    Return the fork version of the given ``epoch``.
-    """
-    if epoch < fork.epoch:
-        return fork.previous_version
-    else:
-        return fork.current_version
-```
-
 ### `get_domain`
 
 ```python
 def get_domain(state: BeaconState,
                domain_type: int,
-               epoch: int=None) -> int:
+               message_epoch: int=None) -> int:
     """
-    Get the domain number that represents the fork meta and signature domain.
+    Return the signature domain (fork version concatenated with domain type) of a message.
     """
-    epoch_of_message = get_current_epoch(state) if epoch is None else epoch
-    return bytes_to_int(get_fork_version(fork, epoch_of_message) + int_to_bytes4(domain_type))
+    epoch = get_current_epoch(state) if message_epoch is None else message_epoch
+    fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
+    return bytes_to_int(fork_version + int_to_bytes4(domain_type))
 ```
 
 ### `get_bitfield_bit`
