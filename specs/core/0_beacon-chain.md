@@ -2291,10 +2291,12 @@ def process_attester_slashing(state: BeaconState,
 
     assert verify_indexed_attestation(state, attestation1)
     assert verify_indexed_attestation(state, attestation2)
+    validator_indices_1 = attestation1.custody_bit_0_indices + attestation1.custody_bit_1_indices
+    validator_indices_2 = attestation2.custody_bit_0_indices + attestation2.custody_bit_1_indices
     slashable_indices = [
-        index for index in attestation1.validator_indices
+        index for index in validator_indices_1
         if (
-            index in attestation2.validator_indices and
+            index in validator_indices_2 and
             is_slashable_validator(state.validator_registry[index], get_current_epoch(state))
         )
     ]

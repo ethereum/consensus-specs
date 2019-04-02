@@ -40,6 +40,7 @@ from tests.phase0.helpers import (
     build_empty_block_for_next_slot,
     force_registry_change_at_next_epoch,
     get_valid_attestation,
+    get_valid_attester_slashing,
     get_valid_proposer_slashing,
     privkeys,
     pubkeys,
@@ -138,6 +139,33 @@ def test_proposer_slashing(state):
     assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
 
     return state, [block], test_state
+
+
+def test_attester_slashing(state):
+    test_state = deepcopy(state)
+    attester_slashing = get_valid_attester_slashing(state)
+    validator_index = attester_slashing.attestation_1.custody_bit_0_indices[0]
+
+    #
+    # Add to state via block transition
+    #
+    block = build_empty_block_for_next_slot(test_state)
+    block.body.attester_slashings.append(attester_slashing)
+    state_transition(test_state, block)
+
+    assert not state.validator_registry[validator_index].initiated_exit
+    assert not state.validator_registry[validator_index].slashed
+
+    slashed_validator = test_state.validator_registry[validator_index]
+    assert not slashed_validator.initiated_exit
+    assert slashed_validator.slashed
+    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
+    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
+    # lost whistleblower reward
+    assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
+
+    return state, [block], test_state
+
 
 
 def test_deposit_in_block(state):
