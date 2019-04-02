@@ -167,7 +167,6 @@ def test_attester_slashing(state):
     return state, [block], test_state
 
 
-
 def test_deposit_in_block(state):
     pre_state = deepcopy(state)
     test_deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)

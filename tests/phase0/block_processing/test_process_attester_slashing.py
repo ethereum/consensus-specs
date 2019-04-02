@@ -83,6 +83,7 @@ def test_no_double_or_surround(state):
 
     return pre_state, attester_slashing, post_state
 
+
 def test_participants_already_slashed(state):
     attester_slashing = get_valid_attester_slashing(state)
 
