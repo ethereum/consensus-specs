@@ -283,7 +283,7 @@ def process_custody_reveal(state: BeaconState,
             EPOCHS_PER_CUSTODY_PERIOD * reveal.period +
             get_switchover_epoch(state, get_current_epoch(state), reveal.revealer_index)
         )
-        assert state.slot >= min_reveal_slot
+        assert get_current_epoch(state) >= min_reveal_epoch
         # Revealer is active or exited
         assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
         revealer.custody_reveal_index += 1
