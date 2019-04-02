@@ -372,12 +372,15 @@ def process_bit_challenge(state: BeaconState,
         domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_BIT_CHALLENGE),
     )
     # Verify the challenger is not slashed
-    assert challenger.slashed is False
+    assert is_slashable_validator(challenger)
     # Verify the attestation
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
     assert responder.latest_custody_reveal_period > epoch_to_custody_period(slot_to_epoch(challenge.attestation.data.slot))
+    # Verify that the challenge is not too far in the future
+    assert (slot_to_epoch(challenge.attestation.data.slot) 
+        <= slot_to_epoch(state.slot) + MAX_CHUNK_CHALLENGE_DELAY + CUSTODY_RESPONSE_DEADLINE)
     # Verify the responder participated in the attestation
     attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
@@ -518,6 +521,9 @@ def eligible(index) -> bool:
     validator = state.validator_registry[index]
     # Cannot exit if there are still open chunk challenges
     if len([record for record in state.custody_chunk_challenge_records if record.responder_index == index]) > 0:
+        return False
+    # Cannot exit if there are still open bit challenges
+    if len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
         return False
     # Cannot exit if you have not revealed all of your custody keys
     elif validator.latest_custody_reveal_period <= epoch_to_custody_period(validator.exit_epoch):
