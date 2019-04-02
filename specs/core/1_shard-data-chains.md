@@ -155,7 +155,7 @@ def get_persistent_committee(state: BeaconState,
     """
     Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
-    epoch = slot_to_epoch(epoch)
+    epoch = slot_to_epoch(slot)
     earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
     later_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD
 
