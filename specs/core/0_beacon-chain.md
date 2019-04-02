@@ -2123,6 +2123,8 @@ def process_exit_queue(state: BeaconState) -> None:
         # Filter out dequeued validators
         if validator.withdrawable_epoch != FAR_FUTURE_EPOCH:
             return False
+        elif validator.exit_epoch == FAR_FUTURE_EPOCH:
+            return False
         # Dequeue if the minimum amount of time has passed
         else:
             return get_current_epoch(state) >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
