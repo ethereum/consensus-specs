@@ -610,7 +610,8 @@ The types are defined topologically to aid in facilitating an executable version
     'finalized_root': 'bytes32',
 
     # Recent state
-    'latest_crosslinks': [Crosslink, SHARD_COUNT],
+    'current_crosslinks': [Crosslink, SHARD_COUNT],
+    'previous_crosslinks': [Crosslink, SHARD_COUNT],
     'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
@@ -1554,7 +1555,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         finalized_root=ZERO_HASH,
 
         # Recent state
-        latest_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
+        current_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
+        previous_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
         latest_block_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
         latest_state_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
         latest_active_index_roots=Vector([ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)]),
@@ -1758,10 +1760,14 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 **Note**: Total balances computed for the previous epoch might be marginally different than the actual total balances during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
 ```python
-def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
+def get_winning_root_and_participants(state: BeaconState, slot: Slot, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
     all_attestations = state.current_epoch_attestations + state.previous_epoch_attestations
+    crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
+
     valid_attestations = [
-        a for a in all_attestations if a.data.previous_crosslink == state.latest_crosslinks[shard]
+        a for a in all_attestations
+        if a.data.previous_crosslink == crosslinks[shard] and
+        a.data.shard == shard and a.data.slot == slot
     ]
     all_roots = [a.data.crosslink_data_root for a in valid_attestations]
 
@@ -1856,16 +1862,20 @@ def process_crosslinks(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     previous_epoch = max(current_epoch - 1, GENESIS_EPOCH)
     next_epoch = current_epoch + 1
+    next_previous_crosslinks = [crosslink for crosslink in state.current_crosslinks]
+
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
-            winning_root, participants = get_winning_root_and_participants(state, shard)
+            winning_root, participants = get_winning_root_and_participants(state, slot, shard)
             participating_balance = get_total_balance(state, participants)
             total_balance = get_total_balance(state, crosslink_committee)
             if 3 * participating_balance >= 2 * total_balance:
-                state.latest_crosslinks[shard] = Crosslink(
-                    epoch=min(slot_to_epoch(slot), state.latest_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
-                    crosslink_data_root=winning_root
+                state.current_crosslinks[shard] = Crosslink(
+                    epoch=min(slot_to_epoch(slot), state.current_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
+                    crosslink_data_root=winning_root,
                 )
+
+    state.previous_crosslinks = next_previous_crosslinks
 ```
 
 #### Eth1 data
@@ -1972,7 +1982,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     for slot in range(previous_epoch_start_slot, current_epoch_start_slot):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
-            winning_root, participants = get_winning_root_and_participants(state, shard)
+            winning_root, participants = get_winning_root_and_participants(state, slot, shard)
             participating_balance = get_total_balance(state, participants)
             total_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:
@@ -2327,14 +2337,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Check crosslink data
     assert attestation.data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
-    assert state.latest_crosslinks[attestation.data.shard] in {
-        attestation.data.previous_crosslink,  # Case 1: latest crosslink matches previous crosslink
-        Crosslink(                            # Case 2: latest crosslink matches current crosslink
-            crosslink_data_root=attestation.data.crosslink_data_root,
-            epoch=min(slot_to_epoch(attestation.data.slot),
-                      attestation.data.previous_crosslink.epoch + MAX_CROSSLINK_EPOCHS)
-        ),
-    }
+    crosslinks = state.current_crosslinks if slot_to_epoch(attestation.data.slot) == get_current_epoch(state) else state.previous_crosslinks
+    assert crosslinks[attestation.data.shard] == attestation.data.previous_crosslink
 
     # Check signature and bitfields
     assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))

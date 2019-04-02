@@ -24,6 +24,7 @@ from build.phase0.spec import (
     advance_slot,
     cache_state,
     set_balance,
+    slot_to_epoch,
     verify_merkle_branch,
     hash,
 )
@@ -254,6 +255,7 @@ def test_voluntary_exit(state):
 
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    pre_state.finalized_epoch = slot_to_epoch(pre_state.slot) - 3
     # artificially trigger registry update at next epoch transition
     force_registry_change_at_next_epoch(pre_state)
 
@@ -309,12 +311,12 @@ def test_no_exit_churn_too_long_since_change(state):
     #
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    # artificially trigger registry update at next epoch transition
-    force_registry_change_at_next_epoch(pre_state)
     # make epochs since registry update greater than LATEST_SLASHED_EXIT_LENGTH
     pre_state.validator_registry_update_epoch = (
         get_current_epoch(pre_state) - spec.LATEST_SLASHED_EXIT_LENGTH
     )
+    # artificially trigger registry update at next epoch transition
+    force_registry_change_at_next_epoch(pre_state)
     # set validator to have previously initiated exit
     pre_state.validator_registry[validator_index].initiated_exit = True
 

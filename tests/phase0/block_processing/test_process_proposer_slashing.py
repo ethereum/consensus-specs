@@ -11,7 +11,7 @@ from tests.phase0.helpers import (
     get_valid_proposer_slashing,
 )
 
-# mark entire file as 'header'
+# mark entire file as 'proposer_slashings'
 pytestmark = pytest.mark.proposer_slashings
 
 

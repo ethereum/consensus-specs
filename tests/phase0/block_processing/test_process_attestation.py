@@ -124,7 +124,7 @@ def test_bad_previous_crosslink(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    state.latest_crosslinks[attestation.data.shard].epoch += 10
+    state.current_crosslinks[attestation.data.shard].epoch += 10
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 
