@@ -489,7 +489,8 @@ Run `process_reveal_deadlines(state)` immediately after `process_ejections(state
 ```python
 def process_reveal_deadlines(state) -> None:
     for idx, validator in enumerate(state.validator_registry):
-        if validator.latest_custody_reveal_period + 1 < get_validators_current_custody_reveal_period(state, idx):
+        if (validator.latest_custody_reveal_period + CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD 
+            < get_validators_current_custody_reveal_period(state, idx)):
             slash_validator(state, idx)
 ```
 
