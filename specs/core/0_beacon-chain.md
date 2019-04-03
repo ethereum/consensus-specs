@@ -18,7 +18,7 @@
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Max transactions per block](#max-transactions-per-block)
+        - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [Misc dependencies](#misc-dependencies)
@@ -34,7 +34,7 @@
             - [`Validator`](#validator)
             - [`PendingAttestation`](#pendingattestation)
             - [`HistoricalBatch`](#historicalbatch)
-        - [Beacon transactions](#beacon-transactions)
+        - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
             - [`Attestation`](#attestation)
@@ -132,7 +132,7 @@
             - [Block header](#block-header)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data-1)
-            - [Transactions](#transactions)
+            - [Operations](#operations)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
                 - [Attestations](#attestations)
@@ -261,8 +261,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
-
-### Max transactions per block
+### Max operations per block
 
 | Name | Value |
 | - | - |
@@ -460,7 +459,7 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
-### Beacon transactions
+### Beacon operations
 
 #### `ProposerSlashing`
 
@@ -1187,6 +1186,9 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     """
     custody_bit_0_indices = indexed_attestation.custody_bit_0_indices
     custody_bit_1_indices = indexed_attestation.custody_bit_1_indices
+
+    # ensure no duplicate indices across custody bits
+    assert len(set(custody_bit_0_indices).intersection(set(custody_bit_1_indices))) == 0
 
     if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
         return False
@@ -2243,7 +2245,7 @@ def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
     state.eth1_data_votes.append(Eth1DataVote(eth1_data=block.body.eth1_data, vote_count=1))
 ```
 
-#### Transactions
+#### Operations
 
 ##### Proposer slashings
 
@@ -2255,7 +2257,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`, run the followi
 def process_proposer_slashing(state: BeaconState,
                               proposer_slashing: ProposerSlashing) -> None:
     """
-    Process ``ProposerSlashing`` transaction.
+    Process ``ProposerSlashing`` operation.
     Note that this function mutates ``state``.
     """
     proposer = state.validator_registry[proposer_slashing.proposer_index]
@@ -2286,7 +2288,7 @@ For each `attester_slashing` in `block.body.attester_slashings`, run the followi
 def process_attester_slashing(state: BeaconState,
                               attester_slashing: AttesterSlashing) -> None:
     """
-    Process ``AttesterSlashing`` transaction.
+    Process ``AttesterSlashing`` operation.
     Note that this function mutates ``state``.
     """
     attestation1 = attester_slashing.attestation_1
@@ -2300,10 +2302,12 @@ def process_attester_slashing(state: BeaconState,
 
     assert verify_indexed_attestation(state, attestation1)
     assert verify_indexed_attestation(state, attestation2)
+    attesting_indices_1 = attestation1.custody_bit_0_indices + attestation1.custody_bit_1_indices
+    attesting_indices_2 = attestation2.custody_bit_0_indices + attestation2.custody_bit_1_indices
     slashable_indices = [
-        index for index in attestation1.validator_indices
+        index for index in attesting_indices_1
         if (
-            index in attestation2.validator_indices and
+            index in attesting_indices_2 and
             is_slashable_validator(state.validator_registry[index], get_current_epoch(state))
         )
     ]
@@ -2321,7 +2325,7 @@ For each `attestation` in `block.body.attestations`, run the following function:
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     """
-    Process ``Attestation`` transaction.
+    Process ``Attestation`` operation.
     Note that this function mutates ``state``.
     """
     assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
@@ -2370,7 +2374,7 @@ For each `exit` in `block.body.voluntary_exits`, run the following function:
 ```python
 def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
-    Process ``VoluntaryExit`` transaction.
+    Process ``VoluntaryExit`` operation.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[exit.validator_index]
@@ -2406,7 +2410,7 @@ For each `transfer` in `block.body.transfers`, run the following function:
 ```python
 def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     """
-    Process ``Transfer`` transaction.
+    Process ``Transfer`` operation.
     Note that this function mutates ``state``.
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
