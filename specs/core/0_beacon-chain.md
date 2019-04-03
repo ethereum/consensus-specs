@@ -178,6 +178,9 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Constants
 
+Note: the default main-net values for the constants are included here for illustrative purposes.
+The different configurations for main-net, test-nets, and yaml-based testing can be found in the `configs/contants/` directory.
+
 ### Misc
 
 | Name | Value |
