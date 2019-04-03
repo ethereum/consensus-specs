@@ -135,7 +135,7 @@ The constants configurations are located in:
 And copied by CI for testing purposes to:
 
 ```
-<tests repo root>/configs/contants/<config name>.yaml
+<tests repo root>/configs/constants/<config name>.yaml
 ```
 
 
