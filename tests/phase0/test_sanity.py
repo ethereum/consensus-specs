@@ -17,6 +17,7 @@ from build.phase0.spec import (
     # functions
     get_active_validator_indices,
     get_balance,
+    get_beacon_proposer_index,
     get_block_root,
     get_current_epoch,
     get_domain,
@@ -163,6 +164,13 @@ def test_attester_slashing(state):
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
     assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
+
+    proposer_index = get_beacon_proposer_index(test_state, test_state.slot)
+    # gained whistleblower reward
+    assert (
+        get_balance(test_state, proposer_index) >
+        get_balance(state, proposer_index)
+    )
 
     return state, [block], test_state
 
