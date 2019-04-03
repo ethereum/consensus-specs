@@ -76,7 +76,7 @@ State-transition test suites may want to just declare forks that are being cover
 
 ### Test completeness
 
-We want tests to be independent from any sync-data. If one wants to run a test, the input data should be available from the YAML.
+Tests should be independent of any sync-data. If one wants to run a test, the input data should be available from the YAML.
 The aim is to provide clients with a well-defined scope of work to run a particular set of test-suites.
 
 - Clients that are complete are expected to contribute to testing, seeking for better resources to get conformance with the spec, and other clients.
