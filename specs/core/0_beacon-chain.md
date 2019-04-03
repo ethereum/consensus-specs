@@ -1162,7 +1162,7 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
 ```python
 def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedAttestation:
     """
-    Convert an ``attestation`` to (almost) indexed-verifiable form.
+    Convert ``attestation`` to (almost) indexed-verifiable form.
     """
     attesting_indices = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_indices = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
