@@ -170,20 +170,6 @@ We define:
 }
 ```
 
-#### `merkle_partial_from_paths`
-
-```python
-def merkle_partial_from_paths(obj, paths):
-    indices = set()
-    for path in paths:
-        indices = indices.union(get_generalized_indices(obj, path))
-    return MerklePartial(
-        root=hash_tree_root(obj),
-        indices=indices,
-        values= mk_multi_proof
-    )
-```
-
 #### Proofs for execution
 
 We define `MerklePartial(f, arg1, arg2..., focus=0)` as being a `MerklePartial` object wrapping a Merkle multiproof of the set of nodes in the hash tree of the SSZ object `arg[focus]` that is needed to authenticate the parts of the object needed to compute `f(arg1, arg2...)`.
