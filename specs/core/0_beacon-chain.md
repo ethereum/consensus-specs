@@ -589,7 +589,6 @@ The types are defined topologically to aid in facilitating an executable version
     # Validator registry
     'validator_registry': [Validator],
     'balances': ['uint64'],
-    'validator_registry_update_epoch': 'uint64',
 
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
@@ -1525,7 +1524,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Validator registry
         validator_registry=[],
         balances=[],
-        validator_registry_update_epoch=GENESIS_EPOCH,
 
         # Randomness and committees
         latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
@@ -2022,7 +2020,11 @@ Run the following function:
 def update_registry(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     # Check if we should update, and if so, update
-    if state.finalized_epoch > state.validator_registry_update_epoch:
+
+    activations_since_finalization = len([index in state.validator_registry if
+        state.validator_registry[index].activation_epoch > state.finalized_epoch + ACTIVATION_EXIT_DELAY
+    ])
+    if MAX_EXIT_DEQUEUES_PER_EPOCH > activations_since_finalization:
         # Validator indices that could be activated
         indices_for_activation = sorted(
             filter(
@@ -2031,10 +2033,9 @@ def update_registry(state: BeaconState) -> None:
             ),
             key=lambda index: state.validator_registry[index].activation_eligibility_epoch
         )
-        for index in indices_for_activation[:MAX_EXIT_DEQUEUES_PER_EPOCH]:
+        for index in indices_for_activation[:MAX_EXIT_DEQUEUES_PER_EPOCH - activations_since_finalization]:
             activate_validator(state, index, is_genesis=False)
 
-    state.validator_registry_update_epoch = current_epoch
     state.latest_start_shard = (
         state.latest_start_shard +
         get_current_epoch_committee_count(state)
