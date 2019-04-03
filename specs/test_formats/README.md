@@ -113,7 +113,6 @@ Separation of configuration and tests aims to:
 \**: Some clients prefer compile-time constants and optimizations.
 They should compile for each configuration once, and run the corresponding tests per build target.
 
-
 ## Fork-timeline
 
 A fork timeline is (preferably) loaded in as a configuration object into a client, as opposed to the constants configuration:
