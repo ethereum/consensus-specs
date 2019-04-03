@@ -1186,6 +1186,9 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     custody_bit_0_indices = indexed_attestation.custody_bit_0_indices
     custody_bit_1_indices = indexed_attestation.custody_bit_1_indices
 
+    # ensure no duplicate indices across custody bits
+    assert len(set(custody_bit_0_indices).intersection(set(custody_bit_1_indices))) == 0
+
     if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
@@ -2290,10 +2293,12 @@ def process_attester_slashing(state: BeaconState,
 
     assert verify_indexed_attestation(state, attestation1)
     assert verify_indexed_attestation(state, attestation2)
+    attesting_indices_1 = attestation1.custody_bit_0_indices + attestation1.custody_bit_1_indices
+    attesting_indices_2 = attestation2.custody_bit_0_indices + attestation2.custody_bit_1_indices
     slashable_indices = [
-        index for index in attestation1.validator_indices
+        index for index in attesting_indices_1
         if (
-            index in attestation2.validator_indices and
+            index in attesting_indices_2 and
             is_slashable_validator(state.validator_registry[index], get_current_epoch(state))
         )
     ]
