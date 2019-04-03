@@ -1,7 +1,5 @@
 """
 BLS test vectors generator
-Usage:
-    "python tgen_bls path/to/output.yml"
 """
 
 # Standard library
@@ -10,12 +8,10 @@ from typing import Tuple
 
 # Third-party
 import yaml
+from py_ecc import bls
 
 # Ethereum
 from eth_utils import int_to_big_endian, big_endian_to_int
-
-# Local imports
-from py_ecc import bls
 
 
 def int_to_hex(n: int) -> str:

@@ -18,3 +18,4 @@ The base unit is bytes48 of which only 381 bits are used
 ## Comments
 
 Compared to Zcash, Ethereum specs always requires the compressed form (c_flag / most significant bit always set).
+Also note that pubkeys and privkeys are reversed.
