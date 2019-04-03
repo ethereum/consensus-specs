@@ -354,7 +354,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Crosslink vote
     'shard': 'uint64',
-    'previous_crosslink': Crosslink,
+    'source_crosslink': Crosslink,
     'crosslink_data_root': 'bytes32',
 }
 ```
@@ -2325,27 +2325,26 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` operation.
     Note that this function mutates ``state``.
     """
-    assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
-    assert attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
+    data = attestation.data
+    assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= data.slot
+    assert data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
-    # Check target epoch, source epoch, and source root
-    target_epoch = slot_to_epoch(attestation.data.slot)
-    assert (target_epoch, attestation.data.source_epoch, attestation.data.source_root) in {
-        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root),
-        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root),
+    # Check target epoch, source epoch, source root, and source crosslink
+    target_epoch = slot_to_epoch(data.slot)
+    assert (target_epoch, data.source_epoch, data.source_root, data.source_crosslink) in {
+        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, state.current_crosslinks[data.shard]),
+        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, state.previous_crosslinks[data.shard]),
     }
 
-    # Check crosslink data
-    assert attestation.data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
-    crosslinks = state.current_crosslinks if slot_to_epoch(attestation.data.slot) == get_current_epoch(state) else state.previous_crosslinks
-    assert crosslinks[attestation.data.shard] == attestation.data.previous_crosslink
+    # Check crosslink data root
+    assert data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
 
     # Check signature and bitfields
     assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))
 
     # Cache pending attestation
     pending_attestation = PendingAttestation(
-        data=attestation.data,
+        data=data,
         aggregation_bitfield=attestation.aggregation_bitfield,
         custody_bitfield=attestation.custody_bitfield,
         inclusion_slot=state.slot
