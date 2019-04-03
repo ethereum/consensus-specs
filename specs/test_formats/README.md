@@ -130,7 +130,7 @@ Note that phases are considered to be "super forks",
 The constants configurations are located in:
 
 ```
-<specs repo root>/configs/contants/<config name>.yaml
+<specs repo root>/configs/constants/<config name>.yaml
 ```
 
 And copied by CI for testing purposes to:
