@@ -12,6 +12,7 @@ from pyspec.phase0.spec import (
     Attestation,
     AttestationData,
     AttestationDataAndCustodyBit,
+    AttesterSlashing,
     BeaconBlockHeader,
     Deposit,
     DepositData,
@@ -19,6 +20,7 @@ from pyspec.phase0.spec import (
     ProposerSlashing,
     VoluntaryExit,
     # functions
+    convert_to_indexed,
     get_active_validator_indices,
     get_attestation_participants,
     get_block_root,
@@ -241,6 +243,17 @@ def get_valid_proposer_slashing(state):
         proposer_index=validator_index,
         header_1=header_1,
         header_2=header_2,
+    )
+
+
+def get_valid_attester_slashing(state):
+    attestation_1 = get_valid_attestation(state)
+    attestation_2 = deepcopy(attestation_1)
+    attestation_2.data.target_root = b'\x01'*32
+
+    return AttesterSlashing(
+        attestation_1=convert_to_indexed(state, attestation_1),
+        attestation_2=convert_to_indexed(state, attestation_2),
     )
 
 

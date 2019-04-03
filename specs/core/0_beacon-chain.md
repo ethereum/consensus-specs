@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-**NOTICE**: This document is a work-in-progress for researchers and implementers. It reflects recent spec changes and takes precedence over the Python proof-of-concept implementation [[python-poc]](#ref-python-poc).
+**NOTICE**: This document is a work in progress for researchers and implementers. It reflects recent spec changes and takes precedence over the Python proof-of-concept implementation [[python-poc]](#ref-python-poc).
 
 ## Table of contents
 <!-- TOC -->
@@ -18,7 +18,7 @@
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Max transactions per block](#max-transactions-per-block)
+        - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [Misc dependencies](#misc-dependencies)
@@ -34,7 +34,7 @@
             - [`Validator`](#validator)
             - [`PendingAttestation`](#pendingattestation)
             - [`HistoricalBatch`](#historicalbatch)
-        - [Beacon transactions](#beacon-transactions)
+        - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
             - [`Attestation`](#attestation)
@@ -132,7 +132,7 @@
             - [Block header](#block-header)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data-1)
-            - [Transactions](#transactions)
+            - [Operations](#operations)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
                 - [Attestations](#attestations)
@@ -151,9 +151,9 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0 the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and after a queuing process. Exit is either voluntary or done forcibly as a penalty for misbehavior.
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0, the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 
-The primary source of load on the beacon chain is "attestations". Attestations are availability votes for a shard block, and simultaneously proof of stake votes for a beacon block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
+The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block and proof-of-stake votes for a beacon block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
 ## Notation
 
@@ -161,20 +161,20 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Terminology
 
-* **Validator** <a id="dfn-validator"></a> - a registered participant in the beacon chain. You can become one by sending Ether into the Ethereum 1.0 deposit contract.
+* **Validator** <a id="dfn-validator"></a> - a registered participant in the beacon chain. You can become one by sending ether into the Ethereum 1.0 deposit contract.
 * **Active validator** <a id="dfn-active-validator"></a> - an active participant in the Ethereum 2.0 consensus invited to, among other things, propose and attest to blocks and vote for crosslinks.
 * **Committee** - a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
-* **Proposer** - the [validator](#dfn-validator) that creates a beacon chain block
+* **Proposer** - the [validator](#dfn-validator) that creates a beacon chain block.
 * **Attester** - a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
 * **Beacon chain** - the central PoS chain that is the base of the sharding system.
 * **Shard chain** - one of the chains on which user transactions take place and account data is stored.
 * **Block root** - a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
-* **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain, which can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
-* **Slot** - a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations
-* **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation
-* **Finalized**, **justified** - see Casper FFG finalization [[casper-ffg]](#ref-casper-ffg)
-* **Withdrawal period** - the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable
-* **Genesis time** - the Unix time of the genesis beacon chain block at slot 0
+* **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain that can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
+* **Slot** - a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations.
+* **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation.
+* **Finalized**, **justified** - see Casper FFG finalization [[casper-ffg]](#ref-casper-ffg).
+* **Withdrawal period** - the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable.
+* **Genesis time** - the Unix time of the genesis beacon chain block at slot 0.
 
 ## Constants
 
@@ -253,16 +253,15 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | Name | Value |
 | - | - |
 | `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
-| `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
-| `ATTESTATION_INCLUSION_REWARD_QUOTIENT` | `2**3` (= 8) |
+| `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
+| `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
-
-### Max transactions per block
+### Max operations per block
 
 | Name | Value |
 | - | - |
@@ -460,7 +459,7 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
-### Beacon transactions
+### Beacon operations
 
 #### `ProposerSlashing`
 
@@ -872,7 +871,7 @@ def compute_committee(validator_indices: List[ValidatorIndex],
     ]
 ```
 
-**Note**: this definition and the next few definitions are highly inefficient as algorithms as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
+**Note**: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
 ### `get_current_epoch_committee_count`
 
@@ -1187,6 +1186,9 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     custody_bit_0_indices = indexed_attestation.custody_bit_0_indices
     custody_bit_1_indices = indexed_attestation.custody_bit_1_indices
 
+    # ensure no duplicate indices across custody bits
+    assert len(set(custody_bit_0_indices).intersection(set(custody_bit_1_indices))) == 0
+
     if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
@@ -1398,21 +1400,25 @@ def exit_validator(state: BeaconState, index: ValidatorIndex) -> None:
 #### `slash_validator`
 
 ```python
-def slash_validator(state: BeaconState, index: ValidatorIndex) -> None:
+def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex=None) -> None:
     """
-    Slash the validator with index ``index``.
+    Slash the validator with index ``slashed_index``.
     Note that this function mutates ``state``.
     """
-    validator = state.validator_registry[index]
-    exit_validator(state, index)
-    state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += get_effective_balance(state, index)
+    exit_validator(state, slashed_index)
+    state.validator_registry[slashed_index].slashed = True
+    state.validator_registry[slashed_index].withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH
+    slashed_balance = get_effective_balance(state, slashed_index)
+    state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
 
-    whistleblower_index = get_beacon_proposer_index(state, state.slot)
-    whistleblower_reward = get_effective_balance(state, index) // WHISTLEBLOWER_REWARD_QUOTIENT
-    increase_balance(state, whistleblower_index, whistleblower_reward)
-    decrease_balance(state, index, whistleblower_reward)
-    validator.slashed = True
-    validator.withdrawable_epoch = get_current_epoch(state) + LATEST_SLASHED_EXIT_LENGTH 
+    proposer_index = get_beacon_proposer_index(state, state.slot)
+    if whistleblower_index is None:
+        whistleblower_index = proposer_index
+    whistleblowing_reward = slashed_balance // WHISTLEBLOWING_REWARD_QUOTIENT
+    proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
+    increase_balance(state, proposer_index, proposer_reward)
+    increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
+    decrease_balance(state, slashed_index, whistleblowing_reward)
 ```
 
 #### `prepare_validator_for_withdrawal`
@@ -1451,7 +1457,7 @@ Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSI
 
 ### `Eth2Genesis` log
 
-When sufficiently many full deposits have been made the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
+When a sufficient amount of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
 * `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
@@ -1582,13 +1588,13 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
 ## Beacon chain processing
 
-The beacon chain is the system chain for Ethereum 2.0. The main responsibilities of the beacon chain are:
+The beacon chain is the system chain for Ethereum 2.0. The main responsibilities of the beacon chain are as follows:
 
 * Store and maintain the registry of [validators](#dfn-validator)
 * Process crosslinks (see above)
 * Process its per-block consensus, as well as the finality gadget
 
-Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Clients download and process blocks, and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with Ethereum 1.0, and because it is a proof-of-stake chain, there are differences.
+Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Clients download and process blocks and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with Ethereum 1.0, and because it is a proof-of-stake chain, there are differences.
 
 For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
 
@@ -1598,7 +1604,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
-Beacon block production is significantly different because of the proof of stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block, and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
+Beacon block production is significantly different because of the proof-of-stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
 
 ### Beacon chain fork choice rule
 
@@ -1660,7 +1666,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
 
 ## Beacon chain state transition function
 
-We now define the state transition function. At a high level the state transition is made up of four parts:
+We now define the state transition function. At a high level, the state transition is made up of four parts:
 
 1. State caching, which happens at the start of every slot.
 2. The per-epoch transitions, which happens at the start of the first slot of every epoch.
@@ -1668,7 +1674,7 @@ We now define the state transition function. At a high level the state transitio
 4. The per-block transitions, which happens at every block.
 
 Transition section notes:
-* The state caching, caches the state root of the previous slot.
+* The state caching caches the state root of the previous slot.
 * The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
 * The per-slot transitions focus on the slot counter and block roots records updates.
 * The per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
@@ -1901,7 +1907,7 @@ def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_sin
     return get_base_reward(state, index) + extra_penalty
 ```
 
-Note: When applying penalties in the following balance recalculations implementers should make sure the `uint64` does not underflow.
+Note: When applying penalties in the following balance recalculations, implementers should make sure the `uint64` does not underflow.
 
 ##### Justification and finalization
 
@@ -1951,7 +1957,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         # Proposer bonus
         if index in get_attesting_indices(state, state.previous_epoch_attestations):
             proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-            rewards[proposer_index] += base_reward // ATTESTATION_INCLUSION_REWARD_QUOTIENT
+            rewards[proposer_index] += base_reward // PROPOSER_REWARD_QUOTIENT
         # Take away max rewards if we're not finalizing
         if epochs_since_finality > 4:
             penalties[index] += base_reward * 4
@@ -2230,7 +2236,7 @@ def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
     state.eth1_data_votes.append(Eth1DataVote(eth1_data=block.body.eth1_data, vote_count=1))
 ```
 
-#### Transactions
+#### Operations
 
 ##### Proposer slashings
 
@@ -2242,7 +2248,7 @@ For each `proposer_slashing` in `block.body.proposer_slashings`, run the followi
 def process_proposer_slashing(state: BeaconState,
                               proposer_slashing: ProposerSlashing) -> None:
     """
-    Process ``ProposerSlashing`` transaction.
+    Process ``ProposerSlashing`` operation.
     Note that this function mutates ``state``.
     """
     proposer = state.validator_registry[proposer_slashing.proposer_index]
@@ -2273,7 +2279,7 @@ For each `attester_slashing` in `block.body.attester_slashings`, run the followi
 def process_attester_slashing(state: BeaconState,
                               attester_slashing: AttesterSlashing) -> None:
     """
-    Process ``AttesterSlashing`` transaction.
+    Process ``AttesterSlashing`` operation.
     Note that this function mutates ``state``.
     """
     attestation1 = attester_slashing.attestation_1
@@ -2287,10 +2293,12 @@ def process_attester_slashing(state: BeaconState,
 
     assert verify_indexed_attestation(state, attestation1)
     assert verify_indexed_attestation(state, attestation2)
+    attesting_indices_1 = attestation1.custody_bit_0_indices + attestation1.custody_bit_1_indices
+    attesting_indices_2 = attestation2.custody_bit_0_indices + attestation2.custody_bit_1_indices
     slashable_indices = [
-        index for index in attestation1.validator_indices
+        index for index in attesting_indices_1
         if (
-            index in attestation2.validator_indices and
+            index in attesting_indices_2 and
             is_slashable_validator(state.validator_registry[index], get_current_epoch(state))
         )
     ]
@@ -2308,7 +2316,7 @@ For each `attestation` in `block.body.attestations`, run the following function:
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     """
-    Process ``Attestation`` transaction.
+    Process ``Attestation`` operation.
     Note that this function mutates ``state``.
     """
     assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
@@ -2363,7 +2371,7 @@ For each `exit` in `block.body.voluntary_exits`, run the following function:
 ```python
 def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
-    Process ``VoluntaryExit`` transaction.
+    Process ``VoluntaryExit`` operation.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[exit.validator_index]
@@ -2399,7 +2407,7 @@ For each `transfer` in `block.body.transfers`, run the following function:
 ```python
 def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     """
-    Process ``Transfer`` transaction.
+    Process ``Transfer`` operation.
     Note that this function mutates ``state``.
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
@@ -2446,7 +2454,7 @@ def verify_block_state_root(state: BeaconState, block: BeaconBlock) -> None:
 
 # References
 
-This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely that, information.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
+This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely helpful information.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
 
 ## Normative
 
