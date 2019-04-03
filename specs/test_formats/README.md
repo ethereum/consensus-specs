@@ -22,11 +22,14 @@ The particular formats of specific types of tests (test suites) are defined in s
 ## Glossary
 
 - `generator`: a program that outputs one or more `suite` files.
+  - A generator should only output one `type` of test.
+  - A generator is free to output multiple `suite` files, optionally with different `handler`s.
 - `type`: the specialization of one single `generator`.
 - `suite`: a YAML file with:
   - a header: describes the `suite`, and defines what the `suite` is for
   - a list of test cases
-- `runner`: where a generator is a "producer", this is the 1-to-1 "consumer". A `runner` focuses on one `type`.
+- `runner`: where a generator is a *"producer"*, this is the *"consumer"**.
+  - A `runner` focuses on *only one* `type`, and each type has *only one* `runner`.
 - `handler`: a `runner` may be too limited sometimes, you may have a `suite` with a specific focus that requires a different format.
   To facilitate this, you specify a `handler`: the runner can deal with the format by using the specified handler.
   Using a `handler` in a `runner` is optional.
