@@ -1041,7 +1041,7 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 
 ```python
 def get_crosslink_committee_for_attestation(state: BeaconState,
-                                        attestation_data: AttestationData) -> List[ValidatorIndex]:
+                                            attestation_data: AttestationData) -> List[ValidatorIndex]:
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
 
@@ -1766,10 +1766,7 @@ def get_winning_root_and_participants(state: BeaconState, slot: Slot, shard: Sha
     attestations = state.current_epoch_attestations if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_epoch_attestations
     crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
 
-    valid_attestations = [
-        a for a in attestations
-        if a.data.previous_crosslink == crosslinks[shard] and a.data.shard == shard
-    ]
+    valid_attestations = [a for a in attestations if a.data.shard == shard]
     all_roots = [a.data.crosslink_data_root for a in valid_attestations]
 
     # handle when no attestations for shard available
