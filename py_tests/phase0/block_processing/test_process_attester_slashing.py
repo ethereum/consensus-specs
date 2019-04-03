@@ -1,8 +1,8 @@
 from copy import deepcopy
 import pytest
 
-import pyspec.phase0.spec as spec
-from pyspec.phase0.spec import (
+import eth2spec.phase0.spec as spec
+from eth2spec.phase0.spec import (
     get_balance,
     get_beacon_proposer_index,
     process_attester_slashing,

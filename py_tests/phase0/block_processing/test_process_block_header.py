@@ -2,7 +2,7 @@ from copy import deepcopy
 import pytest
 
 
-from pyspec.phase0.spec import (
+from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
     cache_state,
     advance_slot,

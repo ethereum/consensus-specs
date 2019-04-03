@@ -1,4 +1,4 @@
-from pyspec.utils.minimal_ssz import hash_tree_root
+from eth2spec.utils.minimal_ssz import hash_tree_root
 
 
 def jsonize(value, typ, include_hash_tree_roots=False):

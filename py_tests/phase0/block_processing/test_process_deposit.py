@@ -1,9 +1,9 @@
 from copy import deepcopy
 import pytest
 
-import pyspec.phase0.spec as spec
+import eth2spec.phase0.spec as spec
 
-from pyspec.phase0.spec import (
+from eth2spec.phase0.spec import (
     get_balance,
     ZERO_HASH,
     process_deposit,

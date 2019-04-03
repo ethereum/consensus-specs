@@ -113,7 +113,7 @@ if __name__ == "__main__":
 And to use the pyspec:
 
 ```
-from pyspec.phase0 import spec
+from eth2spec.phase0 import spec
 ```
 
 Recommendations:

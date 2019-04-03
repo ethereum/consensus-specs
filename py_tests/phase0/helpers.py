@@ -2,9 +2,9 @@ from copy import deepcopy
 
 from py_ecc import bls
 
-import pyspec.phase0.spec as spec
-from pyspec.utils.minimal_ssz import signed_root
-from pyspec.phase0.spec import (
+import eth2spec.phase0.spec as spec
+from eth2spec.utils.minimal_ssz import signed_root
+from eth2spec.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
     ZERO_HASH,
@@ -35,7 +35,7 @@ from pyspec.phase0.spec import (
     verify_merkle_branch,
     hash,
 )
-from pyspec.utils.merkle_minimal import (
+from eth2spec.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
     get_merkle_proof,
     get_merkle_root,

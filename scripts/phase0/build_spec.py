@@ -13,8 +13,8 @@ from typing import (
     NewType,
     Tuple,
 )
-from pyspec.utils.minimal_ssz import *
-from pyspec.utils.bls_stub import *
+from eth2spec.utils.minimal_ssz import *
+from eth2spec.utils.bls_stub import *
 
 
     """)

@@ -1,12 +1,12 @@
 from copy import deepcopy
 import pytest
 
-import pyspec.phase0.spec as spec
+import eth2spec.phase0.spec as spec
 
-from pyspec.phase0.state_transition import (
+from eth2spec.phase0.state_transition import (
     state_transition,
 )
-from pyspec.phase0.spec import (
+from eth2spec.phase0.spec import (
     get_current_epoch,
     process_attestation,
     slot_to_epoch,

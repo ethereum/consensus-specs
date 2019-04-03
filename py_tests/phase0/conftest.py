@@ -1,6 +1,6 @@
 import pytest
 
-from pyspec.phase0 import spec
+from eth2spec.phase0 import spec
 
 from .helpers import (
     create_genesis_state,
