@@ -172,7 +172,7 @@ def build_attestation_data(state, slot, shard):
         source_root=justified_block_root,
         target_root=epoch_boundary_root,
         crosslink_data_root=spec.ZERO_HASH,
-        previous_crosslink=deepcopy(crosslinks[shard]),
+        source_crosslink=deepcopy(crosslinks[shard]),
     )
 
 
