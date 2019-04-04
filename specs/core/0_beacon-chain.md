@@ -1041,9 +1041,12 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 ```python
 def get_crosslink_committee_for_attestation(state: BeaconState,
                                         attestation_data: AttestationData) -> List[ValidatorIndex]:
-    # Find the committee in the list with the desired shard
+    """
+    Return the crosslink committee corresponding to ``attestation_data``.
+    """                                        
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
-
+    
+    # Find the committee in the list with the desired shard
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
 
