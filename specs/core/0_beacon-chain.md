@@ -1764,7 +1764,6 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 ```python
 def get_winning_root_and_participants(state: BeaconState, slot: Slot, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
     attestations = state.current_epoch_attestations if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_epoch_attestations
-    crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
 
     valid_attestations = [a for a in attestations if a.data.shard == shard]
     all_roots = [a.data.crosslink_data_root for a in valid_attestations]
@@ -1860,7 +1859,6 @@ def process_crosslinks(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     previous_epoch = max(current_epoch - 1, GENESIS_EPOCH)
     next_epoch = current_epoch + 1
-    next_previous_crosslinks = [crosslink for crosslink in state.current_crosslinks]
 
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
@@ -1873,7 +1871,7 @@ def process_crosslinks(state: BeaconState) -> None:
                     crosslink_data_root=winning_root,
                 )
 
-    state.previous_crosslinks = next_previous_crosslinks
+    state.previous_crosslinks = state.current_crosslinks
 ```
 
 #### Eth1 data
