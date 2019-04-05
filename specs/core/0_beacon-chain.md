@@ -37,6 +37,7 @@
         - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
+            - [`RandaoRevealSlashing`](#randaorevealslashing)
             - [`Attestation`](#attestation)
             - [`Deposit`](#deposit)
             - [`VoluntaryExit`](#voluntaryexit)
@@ -267,6 +268,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | - | - |
 | `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16) |
 | `MAX_ATTESTER_SLASHINGS` | `2**0` (= 1) |
+| `MAX_RANDAO_REVEAL_SLASHINGS` | `2**0` (= 1) |
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
@@ -485,6 +487,18 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
+#### `RandaoRevealSlashing`
+
+```python
+{
+    'revealer_index': ValidatorIndex,
+    'epoch': 'uint64',
+    'reveal': 'bytes96',
+    'masker_index': ValidatorIndex,
+    'mask': 'bytes32',
+}
+```
+
 #### `Attestation`
 
 ```python
@@ -557,6 +571,7 @@ The types are defined topologically to aid in facilitating an executable version
     'eth1_data': Eth1Data,
     'proposer_slashings': [ProposerSlashing],
     'attester_slashings': [AttesterSlashing],
+    'randao_reveal_slashings': [RandaoRevealSlashing],
     'attestations': [Attestation],
     'deposits': [Deposit],
     'voluntary_exits': [VoluntaryExit],
@@ -1509,6 +1524,7 @@ def get_empty_block() -> BeaconBlock:
             ),
             proposer_slashings=[],
             attester_slashings=[],
+            randao_reveal_slashings=[],
             attestations=[],
             deposits=[],
             voluntary_exits=[],
@@ -2305,6 +2321,41 @@ def process_attester_slashing(state: BeaconState,
     assert len(slashable_indices) >= 1
     for index in slashable_indices:
         slash_validator(state, index)
+```
+
+##### Attester slashings
+
+Verify that `len(block.body.randao_reveal_slashings) <= MAX_RANDAO_REVEAL_SLASHINGS`.
+
+For each `randao_reveal_slashing` in `block.body.randao_reveal_slashings`, run the following function:
+
+```python
+def process_randao_reveal_slashing(state: BeaconState,
+                              randao_reveal_slashing: RandaoRevealSlashing) -> None:
+    """
+    Process ``RandaoRevealSlashing`` operation.
+    Note that this function mutates ``state``.
+    """
+    pubkeys = [state.validator_registry[randao_reveal_slashing.revealer_index].pubkey, state.validator_registry[randao_reveal_slashing.masker_index].pubkey]
+    message_hashes = [hash_tree_root(randao_reveal_slashing.epoch), reveal.mask]
+
+    assert bls_verify_multiple(
+        pubkeys=pubkeys,
+        message_hashes=message_hashes,
+        signature=randao_reveal_slashing.reveal,
+        domain=get_domain(
+            fork=state.fork,
+            epoch=randao_reveal_slashing.epoch,
+            domain_type=DOMAIN_RANDAO,
+        ),
+    )
+
+    assert randao_reveal_slashing.epoch < get_current_epoch(state)
+
+   
+    assert revealer.slashed is False
+
+    slash_validator(state, randao_reveal_slashing.revealer_index, randao_reveal_slashing.masker_index)
 ```
 
 ##### Attestations
