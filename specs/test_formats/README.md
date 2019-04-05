@@ -64,7 +64,7 @@ There are two types of fork-data:
 2) coverage: what forks are covered by a test?
 
 The first is neat to have as a separate form: we prevent duplication, and can run with different presets
- (e.g. fork timeline for a minimal local test, for a public testnet, or for main-net)
+ (e.g. fork timeline for a minimal local test, for a public testnet, or for mainnet)
 
 The second is still somewhat ambiguous: some tests may want cover multiple forks, and can do so in different ways:
 - run one test, transitioning from one to the other
@@ -110,7 +110,7 @@ Separation of configuration and tests aims to:
 - prevent duplication of a minimal set of tests
 - make all tests easy to upgrade when a new config constant is introduced.
 - clearly define which constants to use
-- share-able between clients, for cross-client short or long lived test-nets
+- share-able between clients, for cross-client short or long lived testnets
 - minimize the amounts of different constants permutations to compile as a client. \**
  
 \**: Some clients prefer compile-time constants and optimizations.
