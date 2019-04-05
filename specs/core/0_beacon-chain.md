@@ -1042,9 +1042,13 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 ```python
 def get_crosslink_committee_for_attestation(state: BeaconState,
                                             attestation_data: AttestationData) -> List[ValidatorIndex]:
+    """
+    Return the crosslink committee corresponding to ``attestation_data``.
+    """
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
 
+    # Find the committee in the list with the desired shard
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
 
@@ -1161,9 +1165,9 @@ def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
 ### `convert_to_indexed`
 
 ```python
-def convert_to_indexed(state: BeaconState, attestation: Attestation):
+def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedAttestation:
     """
-    Convert an attestation to (almost) indexed-verifiable form
+    Convert ``attestation`` to (almost) indexed-verifiable form.
     """
     attesting_indices = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_indices = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
@@ -1173,7 +1177,7 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation):
         custody_bit_0_indices=custody_bit_0_indices,
         custody_bit_1_indices=custody_bit_1_indices,
         data=attestation.data,
-        aggregate_signature=attestation.aggregate_signature
+        aggregate_signature=attestation.aggregate_signature,
     )
 ```
 

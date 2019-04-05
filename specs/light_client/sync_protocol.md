@@ -47,26 +47,15 @@ We add a data type `PeriodData` and four helpers:
 ```python
 def get_earlier_start_epoch(slot: Slot) -> int:
     return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD * 2
-
+    
 def get_later_start_epoch(slot: Slot) -> int:
     return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD
     
-def get_earlier_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> PeriodData:
-    period_start = get_earlier_start_epoch(block.slot)
-    validator_count = len(get_active_validator_indices(block.state, period_start))
+def get_period_data(block: ExtendedBeaconBlock, shard_id: Shard, later: bool) -> PeriodData:
+    period_start = get_later_start_epoch(header.slot) if later else get_earlier_start_epoch(header.slot)
+    validator_count = len(get_active_validator_indices(state, period_start))
     committee_count = validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE) + 1
-    indices = get_shuffled_committee(block.state, shard_id, period_start, 0, committee_count)
-    return PeriodData(
-        validator_count,
-        generate_seed(block.state, period_start),
-        [block.state.validator_registry[i] for i in indices]
-    )
-    
-def get_later_period_data(block: ExtendedBeaconBlock, shard_id: Shard) -> PeriodData:
-    period_start = get_later_start_epoch(block.slot)
-    validator_count = len(get_active_validator_indices(block.state, period_start))
-    committee_count = validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE) + 1
-    indices = get_shuffled_committee(block.state, shard_id, period_start, 0, committee_count)
+    indices = get_period_committee(block.state, shard_id, period_start, 0, committee_count)
     return PeriodData(
         validator_count,
         generate_seed(block.state, period_start),
@@ -80,18 +69,18 @@ A light client will keep track of:
 
 * A random `shard_id` in `[0...SHARD_COUNT-1]` (selected once and retained forever)
 * A block header that they consider to be finalized (`finalized_header`) and do not expect to revert.
-* `later_period_data = get_maximal_later_committee(finalized_header, shard_id)`
-* `earlier_period_data = get_maximal_earlier_committee(finalized_header, shard_id)`
+* `later_period_data = get_period_data(finalized_header, shard_id, later=True)`
+* `earlier_period_data = get_period_data(finalized_header, shard_id, later=False)`
 
 We use the struct `validator_memory` to keep track of these variables.
 
 ### Updating the shuffled committee
 
-If a client's `validator_memory.finalized_header` changes so that `header.slot // PERSISTENT_COMMITTEE_PERIOD` increases, then the client can ask the network for a `new_committee_proof = MerklePartial(get_maximal_later_committee, validator_memory.finalized_header, shard_id)`. It can then compute:
+If a client's `validator_memory.finalized_header` changes so that `header.slot // PERSISTENT_COMMITTEE_PERIOD` increases, then the client can ask the network for a `new_committee_proof = MerklePartial(get_period_data, validator_memory.finalized_header, shard_id, later=True)`. It can then compute:
 
 ```python
 earlier_period_data = later_period_data
-later_period_data = get_later_period_data(new_committee_proof, finalized_header, shard_id)
+later_period_data = get_period_data(new_committee_proof, finalized_header, shard_id, later=True)
 ```
 
 The maximum size of a proof is `128 * ((22-7) * 32 + 110) = 75520` bytes for validator records and `(22-7) * 32 + 128 * 8 = 1504` for the active index proof (much smaller because the relevant active indices are all beside each other in the Merkle tree). This needs to be done once per `PERSISTENT_COMMITTEE_PERIOD` epochs (2048 epochs / 9 days), or ~38 bytes per epoch.
@@ -106,13 +95,13 @@ def compute_committee(header: BeaconBlockHeader,
                       
     earlier_validator_count = validator_memory.earlier_period_data.validator_count
     later_validator_count = validator_memory.later_period_data.validator_count
-    earlier_committee = validator_memory.earlier_period_data.committee
-    later_committee = validator_memory.later_period_data.committee
+    maximal_earlier_committee = validator_memory.earlier_period_data.committee
+    maximal_later_committee = validator_memory.later_period_data.committee
     earlier_start_epoch = get_earlier_start_epoch(header.slot)
     later_start_epoch = get_later_start_epoch(header.slot)
     epoch = slot_to_epoch(header.slot)
     
-    actual_committee_count = max(
+    committee_count = max(
         earlier_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
         later_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
     ) + 1
