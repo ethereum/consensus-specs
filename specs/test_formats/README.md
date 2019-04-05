@@ -124,9 +124,6 @@ A fork timeline is (preferably) loaded in as a configuration object into a clien
  - we may decide on a slot number for a fork based on external events (e.g. Eth1 log event),
     a client should be able to activate a fork dynamically.
 
-Note that phases are considered to be "super forks",
- i.e. they will just have a fork name, and be more heavy on changes.
-
 ## Config sourcing
 
 The constants configurations are located in:
