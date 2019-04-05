@@ -136,6 +136,7 @@
             - [Operations](#operations)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
+                - [Randao reveal slashings](#randao-reveal-slashings)
                 - [Attestations](#attestations)
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
@@ -2326,7 +2327,7 @@ def process_attester_slashing(state: BeaconState,
         slash_validator(state, index)
 ```
 
-##### Attester slashings
+##### Randao reveal slashings
 
 Verify that `len(block.body.randao_reveal_slashings) <= MAX_RANDAO_REVEAL_SLASHINGS`.
 
@@ -2334,13 +2335,18 @@ For each `randao_reveal_slashing` in `block.body.randao_reveal_slashings`, run t
 
 ```python
 def process_randao_reveal_slashing(state: BeaconState,
-                              randao_reveal_slashing: RandaoRevealSlashing) -> None:
+                                   randao_reveal_slashing: RandaoRevealSlashing) -> None:
     """
     Process ``RandaoRevealSlashing`` operation.
     Note that this function mutates ``state``.
     """
-    pubkeys = [state.validator_registry[randao_reveal_slashing.revealer_index].pubkey, state.validator_registry[randao_reveal_slashing.masker_index].pubkey]
-    message_hashes = [hash_tree_root(randao_reveal_slashing.epoch), reveal.mask]
+    revealer = state.validator_registry[randao_reveal_slashing.revealer_index]
+    masker = state.validator_registry[randao_reveal_slashing.masker_index]
+    pubkeys = [revealer.pubkey, masker.pubkey]
+    message_hashes = [
+        hash_tree_root(randao_reveal_slashing.epoch),
+        randao_reveal_slashing.mask,
+    ]
 
     assert bls_verify_multiple(
         pubkeys=pubkeys,
@@ -2353,9 +2359,7 @@ def process_randao_reveal_slashing(state: BeaconState,
         ),
     )
 
-    assert randao_reveal_slashing.epoch < get_current_epoch(state)
-
-   
+    assert randao_reveal_slashing.epoch > get_current_epoch(state)
     assert revealer.slashed is False
 
     slash_validator(state, randao_reveal_slashing.revealer_index, randao_reveal_slashing.masker_index)

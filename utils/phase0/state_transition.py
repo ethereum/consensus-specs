@@ -48,6 +48,13 @@ def process_operations(state: BeaconState, block: BeaconBlock) -> None:
 
     process_operation_type(
         state,
+        block.body.randao_reveal_slashings,
+        spec.MAX_RANDAO_REVEAL_SLASHINGS,
+        spec.process_randao_reveal_slashing,
+    )
+
+    process_operation_type(
+        state,
         block.body.attestations,
         spec.MAX_ATTESTATIONS,
         spec.process_attestation,

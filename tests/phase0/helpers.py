@@ -18,6 +18,7 @@ from build.phase0.spec import (
     DepositData,
     Eth1Data,
     ProposerSlashing,
+    RandaoRevealSlashing,
     VoluntaryExit,
     # functions
     convert_to_indexed,
@@ -31,6 +32,7 @@ from build.phase0.spec import (
     get_empty_block,
     get_epoch_start_slot,
     get_genesis_beacon_state,
+    hash_tree_root,
     slot_to_epoch,
     verify_merkle_branch,
     hash,
@@ -254,6 +256,42 @@ def get_valid_attester_slashing(state):
     return AttesterSlashing(
         attestation_1=convert_to_indexed(state, attestation_1),
         attestation_2=convert_to_indexed(state, attestation_2),
+    )
+
+
+def get_valid_randao_reveal_slashing(state, epoch=None):
+    current_epoch = get_current_epoch(state)
+    revealer_index = get_active_validator_indices(state.validator_registry, current_epoch)[-1]
+    masker_index = get_active_validator_indices(state.validator_registry, current_epoch)[0]
+
+    if epoch is None:
+        epoch = current_epoch + 2
+
+    reveal = bls.sign(
+        message_hash=hash_tree_root(epoch),
+        privkey=pubkey_to_privkey[state.validator_registry[revealer_index].pubkey],
+        domain=get_domain(
+            fork=state.fork,
+            epoch=epoch,
+            domain_type=spec.DOMAIN_RANDAO,
+        ),
+    )
+    mask = bls.sign(
+        message_hash=hash_tree_root(epoch),
+        privkey=pubkey_to_privkey[state.validator_registry[masker_index].pubkey],
+        domain=get_domain(
+            fork=state.fork,
+            epoch=epoch,
+            domain_type=spec.DOMAIN_RANDAO,
+        ),
+    )
+
+    return RandaoRevealSlashing(
+        revealer_index=revealer_index,
+        epoch=epoch,
+        reveal=reveal,
+        masker_index=masker_index,
+        mask=mask,
     )
 
 
