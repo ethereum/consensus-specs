@@ -93,7 +93,7 @@ title: <required, string, short, one line> -- Display name for the test suite
 summary: <required, string, average, 1-3 lines> -- Summarizes the test suite
 forks_timeline: <required, string, reference to a fork definition file, without extension> -- Used to determine the forking timeline
 forks: <required, list of strings> -- Runner decides what to do: run for each fork, or run for all at once, each fork transition, etc.
-  - ... <required, string, first the phase name, then the spec version>
+  - ... <required, string, first the fork name, then the spec version>
 config: <required, string, reference to a config file, without extension> -- Used to determine which set of constants to run (possibly compile time) with
 runner: <required, string, no spaces, python-like naming format> *MUST be consistent with folder structure*
 handler: <optional, string, no spaces, python-like naming format> *MUST be consistent with folder structure*
