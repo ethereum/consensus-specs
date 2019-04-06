@@ -1664,6 +1664,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         children = get_children(store, head)
         if len(children) == 0:
             return head
+        # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda x: (get_vote_count(x), hash_tree_root(x)))
 ```
 
