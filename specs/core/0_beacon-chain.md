@@ -122,8 +122,8 @@
                 - [Crosslinks](#crosslinks-1)
             - [Apply rewards](#apply-rewards)
             - [Balance-driven status transitions](#balance-driven-status-transitions)
-            - [Validator registry and start shard](#validator-registry-and-start-shard)
-            - [Slashings and exit queue](#slashings-and-exit-queue)
+            - [Activation queue and start shard](#activation-queue-and-start-shard)
+            - [Slashings](#slashings)
             - [Final updates](#final-updates)
         - [Per-slot processing](#per-slot-processing)
         - [Per-block processing](#per-block-processing)
@@ -2013,7 +2013,7 @@ def process_balance_driven_status_transitions(state: BeaconState) -> None:
             initiate_validator_exit(state, index)
 ```
 
-#### Validator registry and start shard
+#### Activation queue and start shard
 
 Run the following function:
 
@@ -2021,7 +2021,8 @@ Run the following function:
 def update_registry(state: BeaconState) -> None:
     activation_queue = sorted([validator in enumerate(validators) if
         validator.activation_epoch == FAR_FUTURE_EPOCH and
-        validator.activation_eligibility_epoch > get_delayed_activation_exit_epoch(state.finalized_epoch)
+        validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
+        validator.activation_eligibility_epoch > state.finalized_epoch
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
 
     for index in activation_queue[:MAX_ACTIVATIONS_PER_FINALIZED_EPOCH]:
@@ -2033,7 +2034,7 @@ def update_registry(state: BeaconState) -> None:
     ) % SHARD_COUNT
 ```
 
-#### Slashings and exit queue
+#### Slashings
 
 Run `process_slashings(state)`:
 
