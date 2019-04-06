@@ -831,11 +831,11 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
 
 ```python
 def get_split_offset(list_size: int, chunks: int, index: int) -> int:
-  """
-  Returns a value such that for a list L, chunk count k and index i,
-  split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
-  """
-  return (list_size * index) // chunks
+    """
+    Returns a value such that for a list L, chunk count k and index i,
+    split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
+    """
+    return (list_size * index) // chunks
 ```
 
 ### `get_epoch_committee_count`
@@ -1042,7 +1042,7 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 
 ```python
 def get_crosslink_committee_for_attestation(state: BeaconState,
-                                        attestation_data: AttestationData) -> List[ValidatorIndex]:
+                                            attestation_data: AttestationData) -> List[ValidatorIndex]:
     # Find the committee in the list with the desired shard
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
 
@@ -1565,7 +1565,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         process_deposit(state, deposit)
 
     # Process genesis activations
-    for validator_index in state.validator_registry:
+    for validator_index in range(len(state.validator_registry)):
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, is_genesis=True)
 
@@ -2019,7 +2019,8 @@ Run the following function:
 
 ```python
 def update_registry(state: BeaconState) -> None:
-    activation_queue = sorted([validator for _, validator in enumerate(validators) if
+    activation_queue = sorted([
+        validator for validator in state.validator_registry if
         validator.activation_epoch == FAR_FUTURE_EPOCH and
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_eligibility_epoch > state.finalized_epoch
