@@ -1721,7 +1721,7 @@ def get_unslashed_attesting_indices(state: BeaconState, attestations: List[Pendi
     output = set()
     for a in attestations:
         output = output.union(get_attestation_participants(state, a.data, a.aggregation_bitfield))
-    return sorted(filter(lambda index: not state.validator_registry[index].is_slashed, list(output)))
+    return sorted(filter(lambda index: not state.validator_registry[index].slashed, list(output)))
 ```
 
 ```python
