@@ -128,11 +128,9 @@ def test_proposer_slashing(state):
     block.body.proposer_slashings.append(proposer_slashing)
     state_transition(test_state, block)
 
-    assert not state.validator_registry[validator_index].initiated_exit
     assert not state.validator_registry[validator_index].slashed
 
     slashed_validator = test_state.validator_registry[validator_index]
-    assert not slashed_validator.initiated_exit
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
@@ -154,11 +152,9 @@ def test_attester_slashing(state):
     block.body.attester_slashings.append(attester_slashing)
     state_transition(test_state, block)
 
-    assert not state.validator_registry[validator_index].initiated_exit
     assert not state.validator_registry[validator_index].slashed
 
     slashed_validator = test_state.validator_registry[validator_index]
-    assert not slashed_validator.initiated_exit
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
@@ -316,9 +312,7 @@ def test_voluntary_exit(state):
     initiate_exit_block.body.voluntary_exits.append(voluntary_exit)
     state_transition(post_state, initiate_exit_block)
 
-    assert not pre_state.validator_registry[validator_index].initiated_exit
-    assert post_state.validator_registry[validator_index].initiated_exit
-    assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert post_state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     #
     # Process within epoch transition
@@ -350,8 +344,6 @@ def test_no_exit_churn_too_long_since_change(state):
     pre_state.validator_registry_update_epoch = (
         get_current_epoch(pre_state) - spec.LATEST_SLASHED_EXIT_LENGTH
     )
-    # set validator to have previously initiated exit
-    pre_state.validator_registry[validator_index].initiated_exit = True
 
     post_state = deepcopy(pre_state)
 
@@ -362,8 +354,10 @@ def test_no_exit_churn_too_long_since_change(state):
     block.slot += spec.SLOTS_PER_EPOCH
     state_transition(post_state, block)
 
-    assert post_state.validator_registry_update_epoch == get_current_epoch(post_state) - 1
+    assert post_state.validator_registry[validator_index].activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
     assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert post_state.exit_queue_filled == pre_state.exit_queue_filled
+    assert post_state.exit_epoch == pre_state.exit_epoch
 
     return pre_state, [block], post_state
 
@@ -419,7 +413,7 @@ def test_transfer(state):
     return pre_state, [block], post_state
 
 
-def test_ejection(state):
+def test_balance_driven_status_transitions(state):
     pre_state = deepcopy(state)
 
     current_epoch = get_current_epoch(pre_state)
@@ -438,7 +432,7 @@ def test_ejection(state):
     block.slot += spec.SLOTS_PER_EPOCH
     state_transition(post_state, block)
 
-    assert post_state.validator_registry[validator_index].initiated_exit == True
+    assert post_state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     return pre_state, [block], post_state
 

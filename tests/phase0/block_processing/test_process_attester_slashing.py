@@ -31,7 +31,6 @@ def run_attester_slashing_processing(state, attester_slashing, valid=True):
 
     slashed_index = attester_slashing.attestation_1.custody_bit_0_indices[0]
     slashed_validator = post_state.validator_registry[slashed_index]
-    assert not slashed_validator.initiated_exit
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH

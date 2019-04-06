@@ -25,7 +25,6 @@ from build.phase0.spec import (
     get_attestation_participants,
     get_block_root,
     get_crosslink_committee_for_attestation,
-    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_empty_block,
@@ -249,7 +248,7 @@ def get_valid_proposer_slashing(state):
 def get_valid_attester_slashing(state):
     attestation_1 = get_valid_attestation(state)
     attestation_2 = deepcopy(attestation_1)
-    attestation_2.data.target_root = b'\x01'*32
+    attestation_2.data.target_root = b'\x01' * 32
 
     return AttesterSlashing(
         attestation_1=convert_to_indexed(state, attestation_1),
