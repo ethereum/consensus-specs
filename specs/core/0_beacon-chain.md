@@ -183,7 +183,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
-| `MAX_EXIT_DEQUEUES_PER_EPOCH` | `2**2` (= 4) |
+| `MAX_EXITS_PER_EPOCH` | `2**2` (= 4) |
+| `MAX_ACTIVATIONS_PER_FINALIZED_EPOCH` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -1384,7 +1385,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
         if state.exit_epoch < delayed_activation_exit_epoch:
             state.exit_epoch = delayed_activation_exit_epoch
 
-        if state.exit_queue_filled >= MAX_EXIT_DEQUEUES_PER_EPOCH:
+        if state.exit_queue_filled >= MAX_EXITS_PER_EPOCH:
             state.exit_epoch += 1
             state.exit_queue_filled = 0
 
@@ -2018,31 +2019,19 @@ Run the following function:
 
 ```python
 def update_registry(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    # Check if we should update, and if so, update
+    activation_queue = sorted([validator in enumerate(validators) if
+        validator.activation_epoch == FAR_FUTURE_EPOCH and
+        validator.activation_eligibility_epoch > get_delayed_activation_exit_epoch(state.finalized_epoch)
+    ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
 
-    activations_since_finalization = len([index in state.validator_registry if
-        state.validator_registry[index].activation_epoch > state.finalized_epoch + ACTIVATION_EXIT_DELAY
-    ])
-    if MAX_EXIT_DEQUEUES_PER_EPOCH > activations_since_finalization:
-        # Validator indices that could be activated
-        indices_for_activation = sorted(
-            filter(
-                lambda index: state.validator_registry[index].activation_epoch == FAR_FUTURE_EPOCH,
-                get_active_validator_indices(state.validator_registry, current_epoch),
-            ),
-            key=lambda index: state.validator_registry[index].activation_eligibility_epoch
-        )
-        for index in indices_for_activation[:MAX_EXIT_DEQUEUES_PER_EPOCH - activations_since_finalization]:
-            activate_validator(state, index, is_genesis=False)
+    for index in activation_queue[:MAX_ACTIVATIONS_PER_FINALIZED_EPOCH]:
+        activate_validator(state, index, is_genesis=False) 
 
     state.latest_start_shard = (
         state.latest_start_shard +
         get_current_epoch_committee_count(state)
     ) % SHARD_COUNT
 ```
-
-**Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
 
 #### Slashings and exit queue
 
