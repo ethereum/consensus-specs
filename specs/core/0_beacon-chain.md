@@ -1371,7 +1371,11 @@ def activate_validator(state: BeaconState, index: ValidatorIndex, is_genesis: bo
     """
     validator = state.validator_registry[index]
 
-    validator.activation_epoch = GENESIS_EPOCH if is_genesis else get_delayed_activation_exit_epoch(get_current_epoch(state))
+    if is_genesis:
+        validator.activation_eligibility_epoch = GENESIS_EPOCH
+        validator.activation_epoch = GENESIS_EPOCH
+    else:
+        validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### `initiate_validator_exit`
@@ -2027,9 +2031,8 @@ Run the following function:
 def update_registry(state: BeaconState) -> None:
     activation_queue = sorted([
         validator for validator in state.validator_registry if
-        validator.activation_epoch == FAR_FUTURE_EPOCH and
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
-        validator.activation_eligibility_epoch > state.finalized_epoch
+        validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
 
     for index in activation_queue[:MAX_ACTIVATIONS_PER_FINALIZED_EPOCH]:
