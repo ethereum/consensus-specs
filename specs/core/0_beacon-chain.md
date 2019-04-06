@@ -1565,7 +1565,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         process_deposit(state, deposit)
 
     # Process genesis activations
-    for validator_index, _ in enumerate(state.validator_registry):
+    for validator_index in state.validator_registry:
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, is_genesis=True)
 
@@ -2019,7 +2019,7 @@ Run the following function:
 
 ```python
 def update_registry(state: BeaconState) -> None:
-    activation_queue = sorted([validator in enumerate(validators) if
+    activation_queue = sorted([validator for _, validator in enumerate(validators) if
         validator.activation_epoch == FAR_FUTURE_EPOCH and
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_eligibility_epoch > state.finalized_epoch
