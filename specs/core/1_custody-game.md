@@ -13,7 +13,7 @@
     - [Constants](#constants)
         - [Misc](#misc)
         - [Time parameters](#time-parameters)
-        - [Max transactions per block](#max-transactions-per-block)
+        - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [Custody objects](#custody-objects)
@@ -33,7 +33,7 @@
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
         - [`verify_custody_key`](#verify_custody_key)
     - [Per-block processing](#per-block-processing)
-        - [Transactions](#transactions)
+        - [Operations](#operations)
             - [Custody reveals](#custody-reveals)
             - [Chunk challenges](#chunk-challenges)
             - [Bit challenges](#bit-challenges)
@@ -79,7 +79,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 
-### Max transactions per block
+### Max operations per block
 
 | Name | Value |
 | - | - |
@@ -259,9 +259,9 @@ def verify_custody_key(state: BeaconState, reveal: CustodyKeyReveal) -> bool:
 
 ## Per-block processing
 
-### Transactions
+### Operations
 
-Add the following transactions to the per-block processing, in order the given below and after all other transactions in phase 0.
+Add the following operations to the per-block processing, in order the given below and after all other operations in phase 0.
 
 #### Custody reveals
 
