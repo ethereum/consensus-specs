@@ -55,6 +55,13 @@ def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
         default=False,
         help="if set overwrite test files if they exist",
     )
+    parser.add_argument(
+        "-c",
+        "--configs-path",
+        dest="configs_path",
+        default=True,
+        help="specify the path of the configs directory (containing constants_presets and fork_timelines)",
+    )
 
     args = parser.parse_args()
     output_dir = args.output_dir
@@ -66,8 +73,9 @@ def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
     yaml = YAML(pure=True)
 
     print(f"Generating tests for {generator_name}, creating {len(suite_creators)} test suite files...")
+    print(f"Reading config presets and fork timelines from {args.configs_path}")
     for suite_creator in suite_creators:
-        suite = suite_creator()
+        suite = suite_creator(args.configs_path)
 
         filename = make_filename_for_test(suite)
         path = output_dir / filename
