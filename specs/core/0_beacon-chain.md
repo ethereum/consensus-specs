@@ -178,6 +178,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Constants
 
+Note: the default mainnet values for the constants are included here for spec-design purposes.
+The different configurations for mainnet, testnets, and yaml-based testing can be found in the `configs/constant_presets/` directory.
+These configurations are updated for releases, but may be out of sync during `dev` changes.
+
 ### Misc
 
 | Name | Value |
@@ -1667,6 +1671,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         children = get_children(store, head)
         if len(children) == 0:
             return head
+        # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda x: (get_vote_count(x), hash_tree_root(x)))
 ```
 
