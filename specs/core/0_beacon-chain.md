@@ -178,6 +178,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Constants
 
+Note: the default mainnet values for the constants are included here for spec-design purposes.
+The different configurations for mainnet, testnets, and yaml-based testing can be found in the `configs/constant_presets/` directory.
+These configurations are updated for releases, but may be out of sync during `dev` changes.
+
 ### Misc
 
 | Name | Value |
