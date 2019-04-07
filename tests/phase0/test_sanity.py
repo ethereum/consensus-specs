@@ -39,7 +39,6 @@ from build.phase0.utils.merkle_minimal import (
 from tests.phase0.helpers import (
     build_deposit_data,
     build_empty_block_for_next_slot,
-    force_registry_change_at_next_epoch,
     get_valid_attestation,
     get_valid_attester_slashing,
     get_valid_proposer_slashing,
@@ -285,8 +284,6 @@ def test_voluntary_exit(state):
 
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    # artificially trigger registry update at next epoch transition
-    force_registry_change_at_next_epoch(pre_state)
 
     post_state = deepcopy(pre_state)
 
@@ -338,12 +335,6 @@ def test_no_exit_churn_too_long_since_change(state):
     #
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    # artificially trigger registry update at next epoch transition
-    force_registry_change_at_next_epoch(pre_state)
-    # make epochs since registry update greater than LATEST_SLASHED_EXIT_LENGTH
-    pre_state.validator_registry_update_epoch = (
-        get_current_epoch(pre_state) - spec.LATEST_SLASHED_EXIT_LENGTH
-    )
 
     post_state = deepcopy(pre_state)
 

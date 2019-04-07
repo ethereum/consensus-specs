@@ -95,14 +95,6 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
     )
 
 
-def force_registry_change_at_next_epoch(state):
-    # artificially trigger registry update at next epoch transition
-    state.finalized_epoch = get_current_epoch(state) - 1
-    for crosslink in state.latest_crosslinks:
-        crosslink.epoch = state.finalized_epoch
-    state.validator_registry_update_epoch = state.finalized_epoch - 1
-
-
 def build_empty_block_for_next_slot(state):
     empty_block = get_empty_block()
     empty_block.slot = state.slot + 1
