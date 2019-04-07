@@ -14,5 +14,12 @@ def load_presets(configs_dir, presets_name) -> Dict[str, Any]:
     :return: Dictionary, mapping of constant-name -> constant-value
     """
     path = Path(join(configs_dir, 'constant_presets', presets_name+'.yaml'))
-    yaml = YAML(typ='safe')
-    return yaml.load(path)
+    yaml = YAML(typ='base')
+    loaded = yaml.load(path)
+    out = dict()
+    for k, v in loaded.items():
+        if v.startswith("0x"):
+            out[k] = bytes.fromhex(v[2:])
+        else:
+            out[k] = int(v)
+    return out

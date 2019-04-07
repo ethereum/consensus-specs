@@ -90,6 +90,7 @@ def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
         file_mode = "w"
 
     yaml = YAML(pure=True)
+    yaml.default_flow_style = None
 
     print(f"Generating tests for {generator_name}, creating {len(suite_creators)} test suite files...")
     print(f"Reading config presets and fork timelines from {args.configs_path}")
@@ -98,7 +99,8 @@ def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
 
         handler_output_dir = Path(output_dir) / Path(handler)
         try:
-            handler_output_dir.mkdir()
+            if not handler_output_dir.exists():
+                handler_output_dir.mkdir()
         except FileNotFoundError as e:
             sys.exit(f'Error when creating handler dir {handler} for test "{suite["title"]}" ({e})')
 

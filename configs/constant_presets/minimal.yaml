@@ -22,7 +22,7 @@ SHUFFLE_ROUND_COUNT: 90
 # Deposit contract
 # ---------------------------------------------------------------
 # **TBD**
-DEPOSIT_CONTRACT_ADDRESS: 0x1234567890123567890123456789012357890
+DEPOSIT_CONTRACT_ADDRESS: 0x12345678901235678901234567890123567890
 # 2**5 ` (= 32)
 DEPOSIT_CONTRACT_TREE_DEPTH: 32
 
@@ -62,8 +62,8 @@ SLOTS_PER_EPOCH: 8
 MIN_SEED_LOOKAHEAD: 1
 # 2**2 ` (= 4) epochs 25.6 minutes
 ACTIVATION_EXIT_DELAY: 4
-# 2**4 ` (= 16) epochs ~1.7 hours
-EPOCHS_PER_ETH1_VOTING_PERIOD: 16
+# [customized] higher frequency new deposits from eth1 for testing
+EPOCHS_PER_ETH1_VOTING_PERIOD: 2
 # [customized] smaller state
 SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**8 ` (= 256) epochs ~27 hours

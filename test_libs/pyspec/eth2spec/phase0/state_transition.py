@@ -99,13 +99,17 @@ def process_epoch_transition(state: BeaconState) -> None:
     spec.finish_epoch_update(state)
 
 
-def state_transition(state: BeaconState,
-                     block: BeaconBlock,
-                     verify_state_root: bool=False) -> BeaconState:
-    while state.slot < block.slot:
+def state_transition_to(state: BeaconState, up_to: int) -> BeaconState:
+    while state.slot < up_to:
         spec.cache_state(state)
         if (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0:
             process_epoch_transition(state)
         spec.advance_slot(state)
-        if block.slot == state.slot:
-            process_block(state, block, verify_state_root)
+
+
+def state_transition(state: BeaconState,
+                     block: BeaconBlock,
+                     verify_state_root: bool=False) -> BeaconState:
+    state_transition_to(state, block.slot)
+    process_block(state, block, verify_state_root)
+
