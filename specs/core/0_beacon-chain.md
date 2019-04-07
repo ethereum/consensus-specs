@@ -2082,10 +2082,12 @@ def update_registry(state: BeaconState) -> None:
     # Check if we should update, and if so, update
     if state.finalized_epoch > state.validator_registry_update_epoch:
         update_validator_registry(state)
-    state.latest_start_shard = (
-        state.latest_start_shard +
-        get_current_epoch_committee_count(state)
-    ) % SHARD_COUNT
+
+    if get_current_epoch_committee_count(state) == SHARD_COUNT:
+        state.latest_start_shard += SHARD_COUNT // SLOTS_PER_EPOCH  # Homogenizing offset
+    else:
+        state.latest_start_shard += get_current_epoch_committee_count(state)
+    state.latest_start_shard %= SHARD_COUNT
 ```
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
