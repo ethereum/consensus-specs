@@ -69,6 +69,7 @@
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`compute_committee`](#compute_committee)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
+        - [`get_epoch_start_shard`](#get_epoch_start_shard)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_state_root`](#get_state_root)
@@ -873,6 +874,20 @@ def compute_committee(validator_indices: List[ValidatorIndex],
 
 **Note**: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
+### `get_previous_epoch_committee_count`
+
+```python
+def get_previous_epoch_committee_count(state: BeaconState) -> int:
+    """
+    Return the number of committees in the previous epoch of the given ``state``.
+    """
+    previous_active_validators = get_active_validator_indices(
+        state.validator_registry,
+        get_previous_epoch(state),
+    )
+    return get_epoch_committee_count(len(previous_active_validators))
+```
+
 ### `get_current_epoch_committee_count`
 
 ```python
@@ -885,6 +900,35 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
         get_current_epoch(state),
     )
     return get_epoch_committee_count(len(current_active_validators))
+```
+
+### `get_epoch_start_shard`
+
+```python
+def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
+    current_epoch = get_current_epoch(state)
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = current_epoch + 1
+
+    assert previous_epoch <= epoch <= next_epoch
+
+    if epoch == current_epoch:
+        return state.latest_start_shard
+
+    if epoch == previous_epoch:
+        committees_per_epoch = get_previous_epoch_committee_count(state)
+    elif epoch == next_epoch:
+        committees_per_epoch = get_current_epoch_committee_count(state)
+
+    if committees_per_epoch == SHARD_COUNT:
+        start_shard_diff = SHARD_COUNT // SLOTS_PER_EPOCH  # Homogenizing offset
+    else:
+        start_shard_diff = committees_per_epoch
+
+    if epoch == previous_epoch:
+        return (state.latest_start_shard - start_shard_diff) % SHARD_COUNT
+    else:
+        return (state.latest_start_shard + start_shard_diff) % SHARD_COUNT
 ```
 
 ### `get_crosslink_committees_at_slot`
@@ -901,20 +945,14 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     next_epoch = current_epoch + 1
 
     assert previous_epoch <= epoch <= next_epoch
+
     indices = get_active_validator_indices(
         state.validator_registry,
         epoch,
     )
     committees_per_epoch = get_epoch_committee_count(len(indices))
 
-    if epoch == current_epoch:
-        start_shard = state.latest_start_shard
-    elif epoch == previous_epoch:
-        start_shard = (state.latest_start_shard - committees_per_epoch) % SHARD_COUNT
-    elif epoch == next_epoch:
-        current_epoch_committees = get_current_epoch_committee_count(state)
-        start_shard = (state.latest_start_shard + current_epoch_committees) % SHARD_COUNT
-
+    start_shard = get_epoch_start_shard(state, epoch)
     committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
     offset = slot % SLOTS_PER_EPOCH
     slot_start_shard = (start_shard + committees_per_slot * offset) % SHARD_COUNT
@@ -2083,11 +2121,7 @@ def update_registry(state: BeaconState) -> None:
     if state.finalized_epoch > state.validator_registry_update_epoch:
         update_validator_registry(state)
 
-    if get_current_epoch_committee_count(state) == SHARD_COUNT:
-        state.latest_start_shard += SHARD_COUNT // SLOTS_PER_EPOCH  # Homogenizing offset
-    else:
-        state.latest_start_shard += get_current_epoch_committee_count(state)
-    state.latest_start_shard %= SHARD_COUNT
+    state.latest_start_shard = get_epoch_start_shard(state, get_current_epoch(state) + 1)
 ```
 
 **Invariant**: the active index root that is hashed into the shuffling seed actually is the `hash_tree_root` of the validator set that is used for that epoch.
