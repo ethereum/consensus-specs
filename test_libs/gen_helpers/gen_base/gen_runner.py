@@ -1,5 +1,5 @@
 import argparse
-import pathlib
+from pathlib import Path
 import sys
 from typing import List
 
@@ -10,20 +10,38 @@ from ruamel.yaml import (
 from gen_base.gen_typing import TestSuiteCreator
 
 
-def make_filename_for_test(test):
-    title = test["title"]
-    filename = title.lower().replace(" ", "_") + ".yaml"
-    return pathlib.Path(filename)
-
-
 def validate_output_dir(path_str):
-    path = pathlib.Path(path_str)
+    path = Path(path_str)
 
     if not path.exists():
         raise argparse.ArgumentTypeError("Output directory must exist")
 
     if not path.is_dir():
         raise argparse.ArgumentTypeError("Output path must lead to a directory")
+
+    return path
+
+
+def validate_configs_dir(path_str):
+    path = Path(path_str)
+
+    if not path.exists():
+        raise argparse.ArgumentTypeError("Configs directory must exist")
+
+    if not path.is_dir():
+        raise argparse.ArgumentTypeError("Config path must lead to a directory")
+
+    if not Path(path, "constant_presets").exists():
+        raise argparse.ArgumentTypeError("Constant Presets directory must exist")
+
+    if not Path(path, "constant_presets").is_dir():
+        raise argparse.ArgumentTypeError("Constant Presets path must lead to a directory")
+
+    if not Path(path, "fork_timelines").exists():
+        raise argparse.ArgumentTypeError("Fork Timelines directory must exist")
+
+    if not Path(path, "fork_timelines").is_dir():
+        raise argparse.ArgumentTypeError("Fork Timelines path must lead to a directory")
 
     return path
 
@@ -59,7 +77,8 @@ def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
         "-c",
         "--configs-path",
         dest="configs_path",
-        default=True,
+        required=True,
+        type=validate_configs_dir,
         help="specify the path of the configs directory (containing constants_presets and fork_timelines)",
     )
 
@@ -75,13 +94,18 @@ def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
     print(f"Generating tests for {generator_name}, creating {len(suite_creators)} test suite files...")
     print(f"Reading config presets and fork timelines from {args.configs_path}")
     for suite_creator in suite_creators:
-        suite = suite_creator(args.configs_path)
+        (output_name, handler, suite) = suite_creator(args.configs_path)
 
-        filename = make_filename_for_test(suite)
-        path = output_dir / filename
+        handler_output_dir = Path(output_dir) / Path(handler)
+        try:
+            handler_output_dir.mkdir()
+        except FileNotFoundError as e:
+            sys.exit(f'Error when creating handler dir {handler} for test "{suite["title"]}" ({e})')
+
+        out_path = handler_output_dir / Path(output_name + '.yaml')
 
         try:
-            with path.open(file_mode) as f:
+            with out_path.open(file_mode) as f:
                 yaml.dump(suite, f)
         except IOError as e:
             sys.exit(f'Error when dumping test "{suite["title"]}" ({e})')
