@@ -36,7 +36,7 @@ The particular formats of specific types of tests (test suites) are defined in s
 - `case`: a test case, an entry in the `test_cases` list of a `suite`. A case can be anything in general, 
   but its format should be well-defined in the documentation corresponding to the `type` (and `handler`).\
   A test has the same exact configuration and fork context as the other entries in the `case` list of its `suite`.
-- `forks_timeline`: a fork timeline definition, a YAML file containing a key for each fork-name, and a slot number as value.
+- `forks_timeline`: a fork timeline definition, a YAML file containing a key for each fork-name, and an epoch number as value.
 
 ## Test format philosophy
 
@@ -44,8 +44,8 @@ The particular formats of specific types of tests (test suites) are defined in s
 
 After long discussion, the following types of configured constants were identified:
 - Never changing: genesis data
-- Changing, but reliant on old value: e.g. a slot time may change, but if you want to do the conversion 
-  `(genesis data, timestamp) -> slot number` you end up needing both constants.
+- Changing, but reliant on old value: e.g. an epoch time may change, but if you want to do the conversion 
+  `(genesis data, timestamp) -> epoch number` you end up needing both constants.
 - Changing, but kept around during fork transition: finalization may take a while,
   e.g. an executable has to deal with new deposits and old deposits at the same time. Another example may be economic constants.
 - Additional, back-wards compatible: new constants are introduced for later phases
@@ -119,9 +119,9 @@ They should compile for each configuration once, and run the corresponding tests
 ## Fork-timeline
 
 A fork timeline is (preferably) loaded in as a configuration object into a client, as opposed to the constants configuration:
- - we do not allocate or optimize any code based on slot numbers
+ - we do not allocate or optimize any code based on epoch numbers
  - when we transition from one fork to the other, it is preferred to stay online.
- - we may decide on a slot number for a fork based on external events (e.g. Eth1 log event),
+ - we may decide on an epoch number for a fork based on external events (e.g. Eth1 log event),
     a client should be able to activate a fork dynamically.
 
 ## Config sourcing
