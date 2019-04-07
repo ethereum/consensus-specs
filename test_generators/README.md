@@ -98,32 +98,32 @@ def generate_example_test_cases():
         yield example_test_case(i)
 
 
-def example_minimal_suite(configs_path: str) -> gen_typing.TestSuite:
+def example_minimal_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
     presets = loader.load_presets(configs_path, 'minimal')
     spec.apply_constants_preset(presets)
 
-    return gen_suite.render_suite(
+    return ("mini", "core", gen_suite.render_suite(
         title="example_minimal",
         summary="Minimal example suite, testing bar.",
         forks_timeline="testing",
         forks=["phase0"],
         config="minimal",
         handler="main",
-        test_cases=generate_example_test_cases())
+        test_cases=generate_example_test_cases()))
 
 
-def example_mainnet_suite(configs_path: str) -> gen_typing.TestSuite:
+def example_mainnet_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
     presets = loader.load_presets(configs_path, 'mainnet')
     spec.apply_constants_preset(presets)
 
-    return gen_suite.render_suite(
+    return ("full", "core", gen_suite.render_suite(
         title="example_main_net",
         summary="Main net based example suite.",
         forks_timeline= "mainnet",
         forks=["phase0"],
         config="testing",
         handler="main",
-        test_cases=generate_example_test_cases())
+        test_cases=generate_example_test_cases()))
 
 
 if __name__ == "__main__":
