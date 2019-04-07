@@ -354,7 +354,6 @@ def test_no_exit_churn_too_long_since_change(state):
     block.slot += spec.SLOTS_PER_EPOCH
     state_transition(post_state, block)
 
-    assert post_state.validator_registry[validator_index].activation_eligibility_epoch == spec.FAR_FUTURE_EPOCH
     assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert post_state.exit_queue_filled == pre_state.exit_queue_filled
     assert post_state.exit_epoch == pre_state.exit_epoch
