@@ -107,14 +107,16 @@ test_cases: <list, values being maps defining a test case each>
 
 A configuration is a separate YAML file.
 Separation of configuration and tests aims to:
-- prevent duplication of a minimal set of tests
-- make all tests easy to upgrade when a new config constant is introduced.
-- clearly define which constants to use
-- share-able between clients, for cross-client short or long lived testnets
-- minimize the amounts of different constants permutations to compile as a client. \**
- 
-\**: Some clients prefer compile-time constants and optimizations.
-They should compile for each configuration once, and run the corresponding tests per build target.
+- Prevent duplication of configuration
+- Make all tests easy to upgrade (e.g. when a new config constant is introduced)
+- Clearly define which constants to use
+- Shareable between clients, for cross-client short or long lived testnets
+- Minimize the amounts of different constants permutations to compile as a client.
+  Note: Some clients prefer compile-time constants and optimizations.
+  They should compile for each configuration once, and run the corresponding tests per build target.
+
+The format is described in `configs/constant_presets`.
+
 
 ## Fork-timeline
 
@@ -124,18 +126,20 @@ A fork timeline is (preferably) loaded in as a configuration object into a clien
  - we may decide on an epoch number for a fork based on external events (e.g. Eth1 log event),
     a client should be able to activate a fork dynamically.
 
+The format is described in `configs/fork_timelines`.
+
 ## Config sourcing
 
 The constants configurations are located in:
 
 ```
-<specs repo root>/configs/constants/<config name>.yaml
+<specs repo root>/configs/constant_presets/<config name>.yaml
 ```
 
 And copied by CI for testing purposes to:
 
 ```
-<tests repo root>/configs/constants/<config name>.yaml
+<tests repo root>/configs/constant_presets/<config name>.yaml
 ```
 
 

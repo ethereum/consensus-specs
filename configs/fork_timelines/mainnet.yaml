@@ -1,0 +1,12 @@
+# Mainnet fork timeline
+
+# Equal to GENESIS_EPOCH
+phase0: 67108864
+
+# Example 1:
+# phase0_funny_fork_name: 67116000
+
+# Example 2:
+# Should be equal to PHASE_1_GENESIS_EPOCH
+# (placeholder in example value here)
+# phase1: 67163000
