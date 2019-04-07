@@ -2,13 +2,14 @@ import sys
 import function_puller
 
 
-def build_spec(sourcefile, outfile):
+def build_phase0_spec(sourcefile, outfile):
     code_lines = []
     code_lines.append("""
     
 from typing import (
     Any,
     Callable,
+    Dict,
     List,
     NewType,
     Tuple,
@@ -41,7 +42,7 @@ Any = None
 Store = None
     """)
 
-    code_lines += function_puller.get_lines(sourcefile)
+    code_lines += function_puller.get_spec(sourcefile)
 
     code_lines.append("""
 # Monkey patch validator get committee code
@@ -78,7 +79,16 @@ def hash(x):
         ret = _hash(x)
         hash_cache[x] = ret
         return ret
-    """)
+
+# Access to overwrite spec constants based on configuration
+def apply_constants_preset(preset: Dict[str, Any]):
+    global_vars = globals()
+    for k, v in preset:
+        global_vars[k] = v
+
+    # Deal with derived constants
+    GENESIS_EPOCH = slot_to_epoch(GENESIS_SLOT)
+""")
 
     with open(outfile, 'w') as out:
         out.write("\n".join(code_lines))
@@ -86,5 +96,6 @@ def hash(x):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("Error: spec source and outfile must defined")
-    build_spec(sys.argv[1], sys.argv[2])
+        print("Usage: <source phase0> <output phase0 pyspec>")
+    build_phase0_spec(sys.argv[1], sys.argv[2])
+
