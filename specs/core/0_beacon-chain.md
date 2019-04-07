@@ -69,6 +69,7 @@
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`compute_committee`](#compute_committee)
         - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
+        - [`get_shard_delta`](#get_shard_delta)
         - [`get_epoch_start_shard`](#get_epoch_start_shard)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
@@ -874,20 +875,6 @@ def compute_committee(validator_indices: List[ValidatorIndex],
 
 **Note**: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
-### `get_previous_epoch_committee_count`
-
-```python
-def get_previous_epoch_committee_count(state: BeaconState) -> int:
-    """
-    Return the number of committees in the previous epoch of the given ``state``.
-    """
-    previous_active_validators = get_active_validator_indices(
-        state.validator_registry,
-        get_previous_epoch(state),
-    )
-    return get_epoch_committee_count(len(previous_active_validators))
-```
-
 ### `get_current_epoch_committee_count`
 
 ```python
@@ -902,6 +889,14 @@ def get_current_epoch_committee_count(state: BeaconState) -> int:
     return get_epoch_committee_count(len(current_active_validators))
 ```
 
+### `get_shard_delta`
+
+```python
+def get_shard_delta(active_validator_count: int) -> int:
+    committee_count = get_epoch_committee_count(active_validator_count)
+    return min(committee_count, SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
+```
+
 ### `get_epoch_start_shard`
 
 ```python
@@ -912,23 +907,18 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 
     assert previous_epoch <= epoch <= next_epoch
 
+    indices = get_active_validator_indices(
+        state.validator_registry,
+        epoch,
+    )
+    shard_delta = get_shard_delta(len(indices))
+
     if epoch == current_epoch:
         return state.latest_start_shard
-
-    if epoch == previous_epoch:
-        committees_per_epoch = get_previous_epoch_committee_count(state)
-    elif epoch == next_epoch:
-        committees_per_epoch = get_current_epoch_committee_count(state)
-
-    if committees_per_epoch == SHARD_COUNT:
-        start_shard_diff = SHARD_COUNT // SLOTS_PER_EPOCH  # Homogenizing offset
+    elif epoch == previous_epoch:
+        return (state.latest_start_shard - shard_delta) % SHARD_COUNT
     else:
-        start_shard_diff = committees_per_epoch
-
-    if epoch == previous_epoch:
-        return (state.latest_start_shard - start_shard_diff) % SHARD_COUNT
-    else:
-        return (state.latest_start_shard + start_shard_diff) % SHARD_COUNT
+        return (state.latest_start_shard + shard_delta) % SHARD_COUNT
 ```
 
 ### `get_crosslink_committees_at_slot`
