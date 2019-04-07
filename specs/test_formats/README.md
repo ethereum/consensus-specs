@@ -89,14 +89,14 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 ## Test Suite
 
 ```
-title: <required, string, short, one line> -- Display name for the test suite
-summary: <required, string, average, 1-3 lines> -- Summarizes the test suite
-forks_timeline: <required, string, reference to a fork definition file, without extension> -- Used to determine the forking timeline
-forks: <required, list of strings> -- Runner decides what to do: run for each fork, or run for all at once, each fork transition, etc.
-  - ... <required, string, first the fork name, then the spec version>
-config: <required, string, reference to a config file, without extension> -- Used to determine which set of constants to run (possibly compile time) with
-runner: <required, string, no spaces, python-like naming format> *MUST be consistent with folder structure*
-handler: <optional, string, no spaces, python-like naming format> *MUST be consistent with folder structure*
+title: <string, short, one line> -- Display name for the test suite
+summary: <string, average, 1-3 lines> -- Summarizes the test suite
+forks_timeline: <string, reference to a fork definition file, without extension> -- Used to determine the forking timeline
+forks: <list of strings> -- Runner decides what to do: run for each fork, or run for all at once, each fork transition, etc.
+  - ... <string, first the fork name, then the spec version>
+config: <string, reference to a config file, without extension> -- Used to determine which set of constants to run (possibly compile time) with
+runner: <string, no spaces, python-like naming format> *MUST be consistent with folder structure*
+handler: <string, no spaces, python-like naming format> *MUST be consistent with folder structure*
 
 test_cases: <list, values being maps defining a test case each>
    ...
@@ -163,7 +163,7 @@ To prevent parsing of hundreds of different YAML files to test a specific test t
 ```
 .                        <--- root of eth2.0 tests repository
 ├── bls                  <--- collection of handler for a specific test-runner, example runner: "bls"
-│   ├── signing          <--- collection of test suites for a specific handler, example handler: "signing". If no handler, use a dummy folder "main"
+│   ├── signing          <--- collection of test suites for a specific handler, example handler: "signing". If no multiple handlers, use a dummy folder (e.g. "main"), and specify that in the yaml.
 │   │   ├── sign_msg.yml <--- an entry list of test suites
 │   │   ...              <--- more suite files (optional)
 │   ...                  <--- more handlers
