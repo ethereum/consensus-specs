@@ -2429,8 +2429,8 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
     # Verify sender and receipient are not active
-    assert not is_active_validator(transfer.sender)
-    assert not is_active_validator(transfer.recipient)
+    assert not is_active_validator(state.validator_registry[transfer.sender])
+    assert not is_active_validator(state.validator_registry[transfer.recipient])
     # Verify that the pubkey is valid
     assert (
         state.validator_registry[transfer.sender].withdrawal_credentials ==
