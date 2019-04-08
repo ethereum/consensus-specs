@@ -360,7 +360,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Crosslink vote
     'shard': 'uint64',
-    'source_crosslink_root': 'bytes32',
+    'previous_crosslink_root': 'bytes32',
     'crosslink_data_root': 'bytes32',
 }
 ```
@@ -1777,7 +1777,7 @@ def get_winning_root_and_participants(state: BeaconState, slot: Slot, shard: Sha
     attestations = state.current_epoch_attestations if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_epoch_attestations
 
     valid_attestations = [a for a in attestations if a.data.shard == shard]
-    all_roots = [(a.data.crosslink_data_root, a.data.source_crosslink_root) for a in valid_attestations]
+    all_roots = [(a.data.crosslink_data_root, a.data.previous_crosslink_root) for a in valid_attestations]
 
     # handle when no attestations for shard available
     if len(all_roots) == 0:
@@ -1995,7 +1995,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     for slot in range(previous_epoch_start_slot, current_epoch_start_slot):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
-            winning_root, _, participants = get_winning_root_and_participants(state, slot, shard)
+            winning_root, previous_crosslink_root, participants = get_winning_root_and_participants(state, slot, shard)
             participating_balance = get_total_balance(state, participants)
             total_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:
@@ -2346,7 +2346,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Check target epoch, source epoch, source root, and source crosslink
     target_epoch = slot_to_epoch(data.slot)
-    assert (target_epoch, data.source_epoch, data.source_root, data.source_crosslink_root) in {
+    assert (target_epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
         (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
     }
