@@ -5,7 +5,7 @@ import pytest
 from py_ecc import bls
 import build.phase0.spec as spec
 
-from build.phase0.utils.minimal_ssz import signed_root
+from build.phase0.utils.minimal_ssz import signing_root
 from build.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
@@ -300,7 +300,7 @@ def test_voluntary_exit(state):
         signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
-        message_hash=signed_root(voluntary_exit),
+        message_hash=signing_root(voluntary_exit),
         privkey=privkeys[validator_index],
         domain=get_domain(
             fork=pre_state.fork,
@@ -387,7 +387,7 @@ def test_transfer(state):
         signature=EMPTY_SIGNATURE,
     )
     transfer.signature = bls.sign(
-        message_hash=signed_root(transfer),
+        message_hash=signing_root(transfer),
         privkey=transfer_privkey,
         domain=get_domain(
             fork=pre_state.fork,

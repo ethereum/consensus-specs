@@ -205,7 +205,7 @@ def truncate(container):
     return truncated_class(**kwargs)
 
 
-def signed_root(container):
+def signing_root(container):
     return hash_tree_root(truncate(container))
 
 
