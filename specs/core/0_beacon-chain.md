@@ -2428,16 +2428,9 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     )
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
-    # Only withdrawn or not-yet-activated accounts can transfer
-    assert (
-        get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
-        state.validator_registry[transfer.sender].activation_epoch == FAR_FUTURE_EPOCH
-    )
-    # Verify that the validator recieving the transfer is either withdrawn or not-yet-activated
-    assert (
-        get_current_epoch(state) >= state.validator_registry[transfer.recipient].withdrawable_epoch or
-        state.validator_registry[transfer.recipient].activation_epoch == FAR_FUTURE_EPOCH
-    )
+    # Verify sender and receipient are not active
+    assert not is_active_validator(transfer.sender)
+    assert not is_active_validator(transfer.recipient)
     # Verify that the pubkey is valid
     assert (
         state.validator_registry[transfer.sender].withdrawal_credentials ==

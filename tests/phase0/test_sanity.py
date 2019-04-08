@@ -15,6 +15,7 @@ from build.phase0.spec import (
     Transfer,
     VoluntaryExit,
     # functions
+    is_active_validator,
     get_active_validator_indices,
     get_balance,
     get_beacon_proposer_index,
@@ -372,7 +373,7 @@ def test_transfer(state):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     sender_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
-    recipient_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
+    recipient_index = next(filter(lambda v: not is_active_validator(v, current_epoch),pre_state.validator_registry))
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]
     amount = get_balance(pre_state, sender_index)
