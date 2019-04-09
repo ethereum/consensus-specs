@@ -233,9 +233,9 @@ def epoch_to_custody_period(epoch: Epoch) -> int:
 ### `replace_empty_or_append`
 
 ```python
-def replace_empty_or_append(list: List[Any], empty_element: Any, new_element: Any) -> int:
+def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
     for i in range(len(list)):
-        if list[i] == empty_element:
+        if list[i] == empty(typeof(new_element)):
             list[i] = new_element
             return i
     list.append(new_element)
@@ -343,11 +343,7 @@ def process_chunk_challenge(state: BeaconState,
         depth=depth,
         chunk_index=challenge.chunk_index,
     )
-    replace_empty_or_append(
-        list=state.custody_chunk_challenge_records,
-        empty_element=CustodyChunkChallengeRecord(),
-        new_element=new_record
-    )
+    replace_empty_or_append(state.custody_chunk_challenge_records, new_record)
 
     state.custody_challenge_index += 1
     # Postpone responder withdrawability
@@ -413,11 +409,7 @@ def process_bit_challenge(state: BeaconState,
         chunk_bits=challenge.chunk_bits,
         responder_key=challenge.responder_key,
     )
-    replace_empty_or_append(
-        list=state.custody_bit_challenge_records,
-        empty_element=CustodyBitChallengeRecord(),
-        new_element=new_record
-    )
+    replace_empty_or_append(state.custody_bit_challenge_records, new_record)
     state.custody_challenge_index += 1
     # Postpone responder withdrawability
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH
