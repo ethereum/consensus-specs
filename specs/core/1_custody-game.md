@@ -31,7 +31,6 @@
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
-        - [`get_validators_current_custody_reveal_period`](#get_validators_current_custody_reveal_period)
         - [`verify_custody_key`](#verify_custody_key)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
@@ -40,9 +39,6 @@
             - [Bit challenges](#bit-challenges)
             - [Custody responses](#custody-responses)
     - [Per-epoch processing](#per-epoch-processing)
-        -[Handling of custody-related deadlines](#handling_of_custody-related_deadlines)
-        -[Miscellaneous processing](#miscellaneous_processing)
-
 
 <!-- /TOC -->
 
@@ -184,12 +180,8 @@ Add the following fields to the end of the specified container objects. Fields w
 #### `Validator`
 
 ```python
-    '''
-    latest_custody_reveal_period is initialised to the custody period
-    (of the particular validator) *AFTER* which the validator was activated.
-    = get_validators_current_custody_reveal_period(...) + 1
-    '''
-    'latest_custody_reveal_period': 'uint64',
+    'custody_reveal_index': 'uint64',
+    'max_reveal_lateness': 'uint64',
 ```
 
 #### `BeaconState`
@@ -237,17 +229,6 @@ def epoch_to_custody_period(epoch: Epoch) -> int:
     return epoch // EPOCHS_PER_CUSTODY_PERIOD
 ```
 
-### `get_validators_current_custody_reveal_period`
-
-```python
-def get_validators_current_custody_reveal_period(state: BeaconState, validator_index: ValidatorIndex) -> int:
-    '''
-    Note: This function implicitly requires that validators are not removed from the
-    validator set in fewer than EPOCHS_PER_CUSTODY_PERIOD epochs
-    '''
-    return epoch_to_custody_period(get_current_epoch(state) + validator_index % EPOCHS_PER_CUSTODY_PERIOD)
-```
-
 ### `verify_custody_key`
 
 ```python
@@ -293,22 +274,22 @@ def process_custody_reveal(state: BeaconState,
                            reveal: CustodyKeyReveal) -> None:
     assert verify_custody_key(state, reveal)
     revealer = state.validator_registry[reveal.revealer_index]
-    validators_current_custody_reveal_period = get_validators_current_custody_reveal_period(state, reveal.revealer_index)
+    current_custody_period = epoch_to_custody_period(get_current_epoch(state))
 
     # Case 1: non-masked non-punitive non-early reveal
     if reveal.mask == ZERO_HASH:
-        assert reveal.period == validators_current_custody_reveal_period
-        # Revealer is active or exited, but not withdrawn
-        assert is_slashable_validator(revealer, get_current_epoch(state))
-        revealer.latest_custody_reveal_period += 1
-        # Reward block proposer
+        assert reveal.period == epoch_to_custody_period(revealer.activation_epoch) + revealer.custody_reveal_index
+        # Revealer is active or exited
+        assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
+        revealer.custody_reveal_index += 1
+        revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, current_custody_period - reveal.period)
         proposer_index = get_beacon_proposer_index(state, state.slot)
         increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 
     # Case 2: masked punitive early reveal
     else:
-        assert reveal.period > validators_current_custody_reveal_period
-        assert is_slashable_validator(revealer)
+        assert reveal.period > current_custody_period
+        assert revealer.slashed is False
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
 ```
 
@@ -343,7 +324,7 @@ def process_chunk_challenge(state: BeaconState,
     state.custody_chunk_challenge_records.append(CustodyChunkChallengeRecord(
         challenge_index=state.custody_challenge_index,
         challenger_index=get_beacon_proposer_index(state, state.slot),
-        responder_index=challenge.responder_index,
+        responder_index=challenge.responder_index
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         crosslink_data_root=challenge.attestation.data.crosslink_data_root,
         depth=depth,
@@ -377,7 +358,8 @@ def process_bit_challenge(state: BeaconState,
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
-    assert responder.latest_custody_reveal_period > epoch_to_custody_period(slot_to_epoch(challenge.attestation.data.slot))
+    min_challengeable_epoch = responder.exit_epoch - EPOCHS_PER_CUSTODY_PERIOD * (1 + responder.max_reveal_lateness)
+    assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
     # Verify the responder participated in the attestation
     attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
@@ -407,7 +389,7 @@ def process_bit_challenge(state: BeaconState,
         challenge_index=state.custody_challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
-        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
+        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE
         crosslink_data_root=challenge.attestation.crosslink_data_root,
         chunk_bits=challenge.chunk_bits,
         responder_key=challenge.responder_key,
@@ -482,18 +464,7 @@ def process_bit_challenge_response(state: BeaconState,
 
 ## Per-epoch processing
 
-### Handling of custody-related deadlines
-
-Run `process_reveal_deadlines(state)` immediately after `process_ejections(state)`:
-
-```python
-def process_reveal_deadlines(state) -> None:
-    for idx, validator in enumerate(state.validator_registry):
-        if validator.latest_custody_reveal_period + 1 < get_validators_current_custody_reveal_period(state, idx):
-            slash_validator(state, idx)
-```
-
-Run `process_challenge_deadlines(state)` immediately after `process_reveal_deadlines(state)`:
+Run `process_challenge_deadlines(state)` immediately after `process_ejections(state)`:
 
 ```python
 def process_challenge_deadlines(state: BeaconState) -> None:
@@ -508,18 +479,16 @@ def process_challenge_deadlines(state: BeaconState) -> None:
             state.custody_bit_challenge_records.remove(challenge)
 ```
 
-### Miscellaneous processing
-
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
 
 ```python
-def eligible(index) -> bool:
+def eligible(index):
     validator = state.validator_registry[index]
     # Cannot exit if there are still open chunk challenges
     if len([record for record in state.custody_chunk_challenge_records if record.responder_index == index]) > 0:
         return False
     # Cannot exit if you have not revealed all of your custody keys
-    elif validator.latest_custody_reveal_period <= epoch_to_custody_period(validator.exit_epoch):
+    elif epoch_to_custody_period(revealer.activation_epoch) + validator.custody_reveal_index <= epoch_to_custody_period(validator.exit_epoch):
         return False
     # Cannot exit if you already have
     elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
