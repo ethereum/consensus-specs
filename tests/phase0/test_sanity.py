@@ -28,6 +28,7 @@ from build.phase0.spec import (
     set_balance,
     verify_merkle_branch,
     hash,
+    exit_validator,
 )
 from build.phase0.state_transition import (
     state_transition,
@@ -372,8 +373,10 @@ def test_no_exit_churn_too_long_since_change(state):
 def test_transfer(state):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
+    # Configure pre_state for test
+    pre_state.validator_registry[0].exit_epoch = current_epoch
     sender_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
-    recipient_index = next(filter(lambda v: not is_active_validator(v, current_epoch),pre_state.validator_registry))
+    recipient_index = [i for i, v in enumerate(pre_state.validator_registry) if not is_active_validator(v, current_epoch)][0]
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]
     amount = get_balance(pre_state, sender_index)
