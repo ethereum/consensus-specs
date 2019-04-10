@@ -30,6 +30,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 * `"uintN"`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 * `"bool"`: `True` or `False`
+* '"null"': `Null`
 
 ### Composite types
 
@@ -39,6 +40,8 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
     * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
 * **list**: ordered variable-length homogenous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
+* **option**: option type containing one of the given subtypes
+    * round bracket notation `(type1, type2, ...)`, e.g. `("uint64", "null")`
 
 We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
 
@@ -70,7 +73,13 @@ assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### Vectors, containers, lists
+### `"null"`
+
+```python
+return b""
+```
+
+### Vectors, containers, lists, options
 
 If `value` is fixed-size:
 
@@ -87,6 +96,17 @@ serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, "lit
 return serialized_length + serialized_bytes
 ```
 
+If `value` is an option type:
+
+Define value as an object that has properties `value.value` with the contained value, and `value.type_index` which indexes the type.
+
+```python
+serialized_bytes = serialize(value.value)
+serialized_type_index = value.type_index.to_bytes(BYTES_PER_LENGTH_PREFIX, "little")
+return serialized_length + serialized_bytes
+```
+
+
 ## Deserialization
 
 Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
@@ -98,6 +118,7 @@ We first define helper functions:
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
+* `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
@@ -105,6 +126,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
+* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of option type
 
 ## Self-signed containers
 
