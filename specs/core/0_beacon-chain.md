@@ -666,7 +666,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 ### `signing_root`
 
-`def signing_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
+`def signing_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#self-signed-containers) to compute signing messages.
 
 ### `get_temporary_block_header`
 
