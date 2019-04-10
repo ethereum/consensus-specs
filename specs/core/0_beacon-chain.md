@@ -208,6 +208,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | - | - | :-: |
 | `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 | `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
+| `MAX_EFFECTIVE_BALANCE` | `2**6 * 10**9` (= 64,000,000,000 | Gwei |
 | `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
 | `HIGH_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 
@@ -1097,7 +1098,7 @@ def get_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
-    return min(get_balance(state, index), MAX_DEPOSIT_AMOUNT)
+    return min(get_balance(state, index), MAX_EFFECTIVE_BALANCE)
 ```
 
 ### `get_total_balance`
@@ -1583,7 +1584,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
     # Process genesis activations
     for validator_index, _ in enumerate(state.validator_registry):
-        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
+        if get_effective_balance(state, validator_index) == MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, is_genesis=True)
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
@@ -2050,7 +2051,7 @@ def update_validator_registry(state: BeaconState) -> None:
     # Activate validators within the allowable balance churn
     balance_churn = 0
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_epoch == FAR_FUTURE_EPOCH and get_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_epoch == FAR_FUTURE_EPOCH and get_balance(state, index) == MAX_DEPOSIT_AMOUNT:
             # Check the balance churn would be within the allowance
             balance_churn += get_effective_balance(state, index)
             if balance_churn > max_balance_churn:
