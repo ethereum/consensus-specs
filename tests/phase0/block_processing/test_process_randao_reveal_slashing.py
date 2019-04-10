@@ -81,6 +81,17 @@ def test_reveal_with_custody_padding_minus_one(state):
 
     return pre_state, randao_reveal_slashing, post_state
 
+def test_double_reveal(state):
+    
+    randao_reveal_slashing1 = get_valid_randao_reveal_slashing(state, get_current_epoch(state) + RANDAO_SLASHING_EPOCHS + 1)
+    pre_state, intermediate_state = run_randao_reveal_slashing_processing(state, randao_reveal_slashing1)
+    
+    randao_reveal_slashing2 = get_valid_randao_reveal_slashing(intermediate_state, get_current_epoch(pre_state) + RANDAO_SLASHING_EPOCHS + 1)
+    intermediate_state_, post_state = run_randao_reveal_slashing_processing(intermediate_state, randao_reveal_slashing2, False)
+
+
+    return pre_state, [randao_reveal_slashing1, randao_reveal_slashing2], post_state
+
 def test_revealer_is_slashed(state):
     randao_reveal_slashing = get_valid_randao_reveal_slashing(state, get_current_epoch(state))
     state.validator_registry[randao_reveal_slashing.revealer_index].slashed = True
