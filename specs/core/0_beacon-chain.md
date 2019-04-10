@@ -2433,7 +2433,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
         state.validator_registry[transfer.sender].activation_epoch == FAR_FUTURE_EPOCH
     )
-    # Verify that the receipient is not active
+    # Verify that the recipient is not active
     assert not is_active_validator(state.validator_registry[transfer.recipient], get_current_epoch(state))
     # Verify that the pubkey is valid
     assert (
