@@ -16,7 +16,7 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 Accompanying documents can be found in [specs](specs) and include
 * [SimpleSerialize (SSZ) spec](specs/simple-serialize.md)
 * [BLS signature verification](specs/bls_signature.md)
-* [General test format](specs/test-format.md)
+* [General test format](specs/test_formats/README.md)
 * [Honest validator implementation doc](specs/validator/0_beacon-chain-validator.md)
 * [Merkle proof formats](specs/light_client/merkle_proofs.md)
 * [Light client syncing protocol](specs/light_client/sync_protocol.md)
