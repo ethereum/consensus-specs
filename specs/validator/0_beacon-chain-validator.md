@@ -101,7 +101,7 @@ In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW 
 To submit a deposit:
 
 * Pack the validator's [initialization parameters](#initialization) into `deposit_input`, a [`DepositInput`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#depositinput) SSZ object.
-* Let `proof_of_possession` be the result of `bls_sign` of the `signed_root(deposit_input)` with `domain=DOMAIN_DEPOSIT`.
+* Let `proof_of_possession` be the result of `bls_sign` of the `signing_root(deposit_input)` with `domain=DOMAIN_DEPOSIT`.
 * Set `deposit_input.proof_of_possession = proof_of_possession`.
 * Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_DEPOSIT_AMOUNT`.
 * Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `deposit` along with `serialize(deposit_input)` as the singular `bytes` input along with a deposit `amount` in Gwei.
@@ -152,7 +152,7 @@ _Note:_ there might be "skipped" slots between the `parent` and `block`. These s
 
 ##### Parent root
 
-Set `block.previous_block_root = signed_root(parent)`.
+Set `block.previous_block_root = signing_root(parent)`.
 
 ##### State root
 
@@ -199,7 +199,7 @@ Set `block.signature = block_signature` where `block_signature` is defined as:
 ```python
 block_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
-    message_hash=signed_root(block),
+    message_hash=signing_root(block),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
         epoch=slot_to_epoch(block.slot),
@@ -255,11 +255,11 @@ Set `attestation_data.shard = shard` where `shard` is the shard associated with 
 
 ##### Beacon block root
 
-Set `attestation_data.beacon_block_root = signed_root(head_block)`.
+Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 ##### Target root
 
-Set `attestation_data.target_root = signed_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary.
+Set `attestation_data.target_root = signing_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary.
 
 _Note:_ This can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
