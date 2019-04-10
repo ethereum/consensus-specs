@@ -91,8 +91,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value |
 | - | - |
-| `DOMAIN_CUSTODY_KEY_REVEAL` | `6` |
-| `DOMAIN_CUSTODY_BIT_CHALLENGE` | `7` |
+| `DOMAIN_CUSTODY_BIT_CHALLENGE` | `6` |
 
 ## Data structures
 
@@ -248,7 +247,7 @@ def verify_custody_key(state: BeaconState, reveal: CustodyKeyReveal) -> bool:
         domain=get_domain(
             fork=state.fork,
             epoch=epoch_to_sign * EPOCHS_PER_CUSTODY_PERIOD,
-            domain_type=DOMAIN_CUSTODY_KEY_REVEAL,
+            domain_type=DOMAIN_RANDAO,
         ),
     )
 ```
