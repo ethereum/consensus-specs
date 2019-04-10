@@ -3,7 +3,7 @@ from copy import deepcopy
 from py_ecc import bls
 
 import eth2spec.phase0.spec as spec
-from eth2spec.utils.minimal_ssz import signed_root
+from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
@@ -110,7 +110,7 @@ def build_empty_block_for_next_slot(state):
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
-    empty_block.previous_block_root = signed_root(previous_block_header)
+    empty_block.previous_block_root = signing_root(previous_block_header)
     return empty_block
 
 
@@ -123,7 +123,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
         proof_of_possession=EMPTY_SIGNATURE,
     )
     proof_of_possession = bls.sign(
-        message_hash=signed_root(deposit_data),
+        message_hash=signing_root(deposit_data),
         privkey=privkey,
         domain=get_domain(
             state.fork,
@@ -170,7 +170,7 @@ def build_voluntary_exit(state, epoch, validator_index, privkey):
         signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
-        message_hash=signed_root(voluntary_exit),
+        message_hash=signing_root(voluntary_exit),
         privkey=privkey,
         domain=get_domain(
             fork=state.fork,
@@ -229,12 +229,12 @@ def get_valid_proposer_slashing(state):
         domain_type=spec.DOMAIN_BEACON_BLOCK,
     )
     header_1.signature = bls.sign(
-        message_hash=signed_root(header_1),
+        message_hash=signing_root(header_1),
         privkey=privkey,
         domain=domain,
     )
     header_2.signature = bls.sign(
-        message_hash=signed_root(header_2),
+        message_hash=signing_root(header_2),
         privkey=privkey,
         domain=domain,
     )

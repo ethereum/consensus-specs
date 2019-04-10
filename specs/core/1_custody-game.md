@@ -348,7 +348,7 @@ def process_bit_challenge(state: BeaconState,
     challenger = state.validator_registry[challenge.challenger_index]
     assert bls_verify(
         pubkey=challenger.pubkey,
-        message_hash=signed_root(challenge),
+        message_hash=signing_root(challenge),
         signature=challenge.signature,
         domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_BIT_CHALLENGE),
     )
