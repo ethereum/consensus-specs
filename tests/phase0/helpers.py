@@ -8,6 +8,7 @@ from build.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
     ZERO_HASH,
+    CUSTODY_PERIOD_TO_RANDAO_PADDING,
     # SSZ
     Attestation,
     AttestationData,
@@ -265,7 +266,7 @@ def get_valid_randao_reveal_slashing(state, epoch=None):
     masker_index = get_active_validator_indices(state.validator_registry, current_epoch)[0]
 
     if epoch is None:
-        epoch = current_epoch + 2
+        epoch = current_epoch + CUSTODY_PERIOD_TO_RANDAO_PADDING
 
     reveal = bls.sign(
         message_hash=hash_tree_root(epoch),

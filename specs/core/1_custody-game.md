@@ -76,7 +76,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `MAX_CHUNK_CHALLENGE_DELAY` | `2**11` (= 2,048) | epochs | ~9 days |
-| `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 
 ### Max operations per block
@@ -168,8 +167,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'revealer_index': ValidatorIndex,
     'period': 'uint64',
     'key': BLSSignature,
-    'masker_index': ValidatorIndex,
-    'mask': Hash,
 }
 ```
 
@@ -229,21 +226,20 @@ def epoch_to_custody_period(epoch: Epoch) -> int:
     return epoch // EPOCHS_PER_CUSTODY_PERIOD
 ```
 
+### `get_randao_epoch_for_custody_period`
+
+```python
+def get_randao_epoch_for_custody_period(period: int) -> Epoch:
+    return period * EPOCHS_PER_CUSTODY_PERIOD + CUSTODY_PERIOD_TO_RANDAO_PADDING
+```
+
 ### `verify_custody_key`
 
 ```python
 def verify_custody_key(state: BeaconState, reveal: CustodyKeyReveal) -> bool:
-    # Case 1: non-masked non-punitive non-early reveal
+    epoch_to_sign = get_randao_epoch_for_custody_period(reveal.period)
     pubkeys = [state.validator_registry[reveal.revealer_index].pubkey]
-    message_hashes = [hash_tree_root(reveal.period)]
-
-    # Case 2: masked punitive early reveal
-    # Masking prevents proposer stealing the whistleblower reward
-    # Secure under the aggregate extraction infeasibility assumption
-    # See pages 11-12 of https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf
-    if reveal.mask != ZERO_HASH:
-        pubkeys.append(state.validator_registry[reveal.masker_index].pubkey)
-        message_hashes.append(reveal.mask)
+    message_hashes = [hash_tree_root(epoch_to_sign)]
 
     return bls_verify_multiple(
         pubkeys=pubkeys,
@@ -251,7 +247,7 @@ def verify_custody_key(state: BeaconState, reveal: CustodyKeyReveal) -> bool:
         signature=reveal.key,
         domain=get_domain(
             fork=state.fork,
-            epoch=reveal.period * EPOCHS_PER_CUSTODY_PERIOD,
+            epoch=epoch_to_sign * EPOCHS_PER_CUSTODY_PERIOD,
             domain_type=DOMAIN_CUSTODY_KEY_REVEAL,
         ),
     )
@@ -276,21 +272,13 @@ def process_custody_reveal(state: BeaconState,
     revealer = state.validator_registry[reveal.revealer_index]
     current_custody_period = epoch_to_custody_period(get_current_epoch(state))
 
-    # Case 1: non-masked non-punitive non-early reveal
-    if reveal.mask == ZERO_HASH:
-        assert reveal.period == epoch_to_custody_period(revealer.activation_epoch) + revealer.custody_reveal_index
-        # Revealer is active or exited
-        assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
-        revealer.custody_reveal_index += 1
-        revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, current_custody_period - reveal.period)
-        proposer_index = get_beacon_proposer_index(state, state.slot)
-        increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
-
-    # Case 2: masked punitive early reveal
-    else:
-        assert reveal.period > current_custody_period
-        assert revealer.slashed is False
-        slash_validator(state, reveal.revealer_index, reveal.masker_index)
+    assert reveal.period == epoch_to_custody_period(revealer.activation_epoch) + revealer.custody_reveal_index
+    # Revealer is active or exited
+    assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
+    revealer.custody_reveal_index += 1
+    revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, current_custody_period - reveal.period)
+    proposer_index = get_beacon_proposer_index(state, state.slot)
+    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 
 #### Chunk challenges

@@ -238,6 +238,10 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) |
+| `RANDAO_SLASHING_EPOCHS` | `2` | epochs | 12.8 minutes |
+| `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
+| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**6` (= 64) | epochs | ~6.8 hours |
+
 
 * `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
@@ -259,6 +263,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
+| `RANDAO_REVEAL_PENALTY_QUOTIENT` | `2**7` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
@@ -432,7 +437,9 @@ The types are defined topologically to aid in facilitating an executable version
     # Was the validator slashed
     'slashed': 'bool',
     # Rounded balance
-    'high_balance': 'uint64'
+    'high_balance': 'uint64',
+    # Future RANDAO reveals already exposed 
+    'exposed_randao_reveals': ['uint64'],
 }
 ```
 
@@ -1359,7 +1366,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             initiated_exit=False,
             slashed=False,
-            high_balance=0
+            high_balance=0,
+            exposed_randao_reveals=[],
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
@@ -2187,6 +2195,12 @@ def finish_epoch_update(state: BeaconState) -> None:
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
+
+    # Clean up exposed RANDAO reveals
+    for index, validator in enumerate(state.validator_registry):
+        for reveal_index, reveal_epoch in enumerate(validator.exposed_randao_reveals):
+            if reveal_epoch <= current_epoch:
+                del validator.exposed_randao_reveals[reveal_index]
 ```
 
 ### Per-slot processing
@@ -2348,6 +2362,10 @@ def process_randao_reveal_slashing(state: BeaconState,
         randao_reveal_slashing.mask,
     ]
 
+    assert randao_reveal_slashing.epoch >= get_current_epoch(state) + RANDAO_SLASHING_EPOCHS
+    assert revealer.slashed is False
+    assert randao_reveal_slashing.epoch not in state.validator_registry[randao_reveal_slashing.revealer_index].exposed_randao_reveals
+
     assert bls_verify_multiple(
         pubkeys=pubkeys,
         message_hashes=message_hashes,
@@ -2359,10 +2377,22 @@ def process_randao_reveal_slashing(state: BeaconState,
         ),
     )
 
-    assert randao_reveal_slashing.epoch > get_current_epoch(state)
-    assert revealer.slashed is False
+    if randao_reveal_slashing.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
+        # Replacement for custody reveal slashing
+        slash_validator(state, randao_reveal_slashing.revealer_index, randao_reveal_slashing.masker_index)
+    else:
+        # Only a small penalty for RANDAO reveal that does not interfere with the custody period
+        penalty = get_effective_balance(state, randao_reveal_slashing.revealer_index) // RANDAO_REVEAL_PENALTY_QUOTIENT
+        proposer_index = get_beacon_proposer_index(state, state.slot)
+        whistleblower_index = randao_reveal_slashing.masker_index
+        whistleblowing_reward = penalty // WHISTLEBLOWING_REWARD_QUOTIENT
+        proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
+        increase_balance(state, proposer_index, proposer_reward)
+        increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
+        decrease_balance(state, randao_reveal_slashing.revealer_index, penalty)
+        state.validator_registry[randao_reveal_slashing.revealer_index].exposed_randao_reveals.append(randao_reveal_slashing.epoch)
 
-    slash_validator(state, randao_reveal_slashing.revealer_index, randao_reveal_slashing.masker_index)
+
 ```
 
 ##### Attestations

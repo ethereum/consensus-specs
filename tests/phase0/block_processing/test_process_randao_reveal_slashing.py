@@ -6,6 +6,8 @@ from build.phase0.spec import (
     get_balance,
     get_current_epoch,
     process_randao_reveal_slashing,
+    RANDAO_SLASHING_EPOCHS,
+    CUSTODY_PERIOD_TO_RANDAO_PADDING
 )
 from tests.phase0.helpers import (
     get_valid_randao_reveal_slashing,
@@ -31,9 +33,10 @@ def run_randao_reveal_slashing_processing(state, randao_reveal_slashing, valid=T
 
     slashed_validator = post_state.validator_registry[randao_reveal_slashing.revealer_index]
     assert not slashed_validator.initiated_exit
-    assert slashed_validator.slashed
-    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
-    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
+    if randao_reveal_slashing.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
+        assert slashed_validator.slashed
+        assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
+        assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
     assert (
         get_balance(post_state, randao_reveal_slashing.revealer_index) <
@@ -66,9 +69,20 @@ def test_reveal_from_past_epoch(state):
 
     return pre_state, randao_reveal_slashing, post_state
 
+def test_reveal_with_custody_padding(state):
+    randao_reveal_slashing = get_valid_randao_reveal_slashing(state, get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING)
+    pre_state, post_state = run_randao_reveal_slashing_processing(state, randao_reveal_slashing, True)
+
+    return pre_state, randao_reveal_slashing, post_state
+
+def test_reveal_with_custody_padding_minus_one(state):
+    randao_reveal_slashing = get_valid_randao_reveal_slashing(state, get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING - 1)
+    pre_state, post_state = run_randao_reveal_slashing_processing(state, randao_reveal_slashing, True)
+
+    return pre_state, randao_reveal_slashing, post_state
 
 def test_revealer_is_slashed(state):
-    randao_reveal_slashing = get_valid_randao_reveal_slashing(state)
+    randao_reveal_slashing = get_valid_randao_reveal_slashing(state, get_current_epoch(state))
     state.validator_registry[randao_reveal_slashing.revealer_index].slashed = True
 
     pre_state, post_state = run_randao_reveal_slashing_processing(state, randao_reveal_slashing, False)
