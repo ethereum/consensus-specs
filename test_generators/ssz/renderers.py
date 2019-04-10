@@ -91,12 +91,3 @@ def render_test_case(*, sedes, valid, value=None, serial=None, description=None,
     if description is not None:
         yield description
     yield "tags", tags
-
-
-@to_dict
-def render_test(*, title, summary, fork, test_cases):
-    yield "title", title,
-    if summary is not None:
-        yield "summary", summary
-    yield "fork", fork
-    yield "test_cases", test_cases

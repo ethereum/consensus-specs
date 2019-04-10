@@ -9,7 +9,6 @@ from ssz.sedes import (
     UInt,
 )
 from renderers import (
-    render_test,
     render_test_case,
 )
 
@@ -23,39 +22,6 @@ RANDOM_TEST_CASES_PER_LENGTH = 3
 
 def get_random_bytes(length):
     return bytes(random.randint(0, 255) for _ in range(length))
-
-
-def generate_uint_bounds_test():
-    test_cases = generate_uint_bounds_test_cases() + generate_uint_out_of_bounds_test_cases()
-
-    return render_test(
-        title="UInt Bounds",
-        summary="Integers right at or beyond the bounds of the allowed value range",
-        fork="phase0-0.2.0",
-        test_cases=test_cases,
-    )
-
-
-def generate_uint_random_test():
-    test_cases = generate_random_uint_test_cases()
-
-    return render_test(
-        title="UInt Random",
-        summary="Random integers chosen uniformly over the allowed value range",
-        fork="phase0-0.2.0",
-        test_cases=test_cases,
-    )
-
-
-def generate_uint_wrong_length_test():
-    test_cases = generate_uint_wrong_length_test_cases()
-
-    return render_test(
-        title="UInt Wrong Length",
-        summary="Serialized integers that are too short or too long",
-        fork="phase0-0.2.0",
-        test_cases=test_cases,
-    )
 
 
 @to_tuple

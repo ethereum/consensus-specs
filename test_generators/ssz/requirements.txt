@@ -1,2 +1,4 @@
-ruamel.yaml==0.15.87
+eth-utils==1.4.1
+../../test_libs/gen_helpers
+../../test_libs/config_helpers
 ssz==0.1.0a2

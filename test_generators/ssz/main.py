@@ -1,84 +1,42 @@
-import argparse
-import pathlib
-import sys
-
-from ruamel.yaml import (
-    YAML,
+from uint_test_cases import (
+    generate_random_uint_test_cases,
+    generate_uint_wrong_length_test_cases,
+    generate_uint_bounds_test_cases,
+    generate_uint_out_of_bounds_test_cases
 )
 
-from uint_test_generators import (
-    generate_uint_bounds_test,
-    generate_uint_random_test,
-    generate_uint_wrong_length_test,
-)
+from gen_base import gen_runner, gen_suite, gen_typing
 
-test_generators = [
-    generate_uint_random_test,
-    generate_uint_wrong_length_test,
-    generate_uint_bounds_test,
-]
+def ssz_random_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("uint_random", "core", gen_suite.render_suite(
+        title="UInt Random",
+        summary="Random integers chosen uniformly over the allowed value range",
+        forks_timeline= "mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="core",
+        test_cases=generate_random_uint_test_cases()))
 
+def ssz_wrong_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("uint_wrong_length", "core", gen_suite.render_suite(
+        title="UInt Wrong Length",
+        summary="Serialized integers that are too short or too long",
+        forks_timeline= "mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="core",
+        test_cases=generate_uint_wrong_length_test_cases()))
 
-def make_filename_for_test(test):
-    title = test["title"]
-    filename = title.lower().replace(" ", "_") + ".yaml"
-    return pathlib.Path(filename)
-
-
-def validate_output_dir(path_str):
-    path = pathlib.Path(path_str)
-
-    if not path.exists():
-        raise argparse.ArgumentTypeError("Output directory must exist")
-
-    if not path.is_dir():
-        raise argparse.ArgumentTypeError("Output path must lead to a directory")
-
-    return path
-
-
-parser = argparse.ArgumentParser(
-    prog="gen-ssz-tests",
-    description="Generate YAML test files for SSZ and tree hashing",
-)
-parser.add_argument(
-    "-o",
-    "--output-dir",
-    dest="output_dir",
-    required=True,
-    type=validate_output_dir,
-    help="directory into which the generated YAML files will be dumped"
-)
-parser.add_argument(
-    "-f",
-    "--force",
-    action="store_true",
-    default=False,
-    help="if set overwrite test files if they exist",
-)
+def ssz_uint_bounds_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("uint_bounds", "core", gen_suite.render_suite(
+        title="UInt Bounds",
+        summary="Integers right at or beyond the bounds of the allowed value range",
+        forks_timeline= "mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="core",
+        test_cases=generate_uint_bounds_test_cases() + generate_uint_out_of_bounds_test_cases()))
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    output_dir = args.output_dir
-    if not args.force:
-        file_mode = "x"
-    else:
-        file_mode = "w"
-
-    yaml = YAML(pure=True)
-
-    print(f"generating {len(test_generators)} test files...")
-    for test_generator in test_generators:
-        test = test_generator()
-
-        filename = make_filename_for_test(test)
-        path = output_dir / filename
-
-        try:
-            with path.open(file_mode) as f:
-                yaml.dump(test, f)
-        except IOError as e:
-            sys.exit(f'Error when dumping test "{test["title"]}" ({e})')
-
-    print("done.")
+    gen_runner.run_generator("ssz", [ssz_random_uint_suite, ssz_wrong_uint_suite, ssz_uint_bounds_suite])
