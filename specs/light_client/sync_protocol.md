@@ -5,16 +5,19 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 ## Table of Contents
 
 <!-- TOC -->
+
 - [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
     - [Table of Contents](#table-of-contents)
-    - [Light client state](#light-client-state)
-    - [Updating the shuffled committee](#updating-the-shuffled-committee)
-    - [Computing the current committee](#computing-the-current-committee)  
-    - [Verifying blocks](#verifying-blocks)      
+    - [Preliminaries](#preliminaries)
+        - [Light client state](#light-client-state)
+        - [Updating the shuffled committee](#updating-the-shuffled-committee)
+    - [Computing the current committee](#computing-the-current-committee)
+    - [Verifying blocks](#verifying-blocks)
+
 <!-- /TOC -->
 
 
-### Preliminaries
+## Preliminaries
 
 We define an "expansion" of an object as an object where a field in an object that is meant to represent the `hash_tree_root` of another object is replaced by the object. Note that defining expansions is not a consensus-layer-change; it is merely a "re-interpretation" of the object. Particularly, the `hash_tree_root` of an expansion of an object is identical to that of the original object, and we can define expansions where, given a complete history, it is always possible to compute the expansion of any object in the history. The opposite of an expansion is a "summary" (eg. `BeaconBlockHeader` is a summary of `BeaconBlock`).
 
@@ -85,7 +88,7 @@ later_period_data = get_period_data(new_committee_proof, finalized_header, shard
 
 The maximum size of a proof is `128 * ((22-7) * 32 + 110) = 75520` bytes for validator records and `(22-7) * 32 + 128 * 8 = 1504` for the active index proof (much smaller because the relevant active indices are all beside each other in the Merkle tree). This needs to be done once per `PERSISTENT_COMMITTEE_PERIOD` epochs (2048 epochs / 9 days), or ~38 bytes per epoch.
 
-### Computing the current committee
+## Computing the current committee
 
 Here is a helper to compute the committee at a slot given the maximal earlier and later committees:
 
@@ -134,16 +137,16 @@ def compute_committee(header: BeaconBlockHeader,
 
 Note that this method makes use of the fact that the committee for any given shard always starts and ends at the same validator index independently of the committee count (this is because the validator set is split into `SHARD_COUNT * committee_count` slices but the first slice of a shard is a multiple `committee_count * i`, so the start of the slice is `n * committee_count * i // (SHARD_COUNT * committee_count) = n * i // SHARD_COUNT`, using the slightly nontrivial algebraic identity `(x * a) // ab == x // b`).
 
-### Verifying blocks
+## Verifying blocks
 
 If a client wants to update its `finalized_header` it asks the network for a `BlockValidityProof`, which is simply:
 
 ```python
 {
-    'header': BlockHeader,
+    'header': BeaconBlockHeader,
     'shard_aggregate_signature': 'bytes96',
     'shard_bitfield': 'bytes',
-    'shard_parent_block': ShardBlock
+    'shard_parent_block': ShardBlock,
 }
 ```
 

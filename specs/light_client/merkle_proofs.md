@@ -47,33 +47,33 @@ y_data_root  len(y)
 We can now define a concept of a "path", a way of describing a function that takes as input an SSZ object and outputs some specific (possibly deeply nested) member. For example, `foo -> foo.x` is a path, as are `foo -> len(foo.y)` and `foo -> foo.y[5].w`. We'll describe paths as lists, which can have two representations. In "human-readable form", they are `["x"]`, `["y", "__len__"]` and `["y", 5, "w"]` respectively. In "encoded form", they are lists of `uint64` values, in these cases (assuming the fields of `foo` in order are `x` then `y`, and `w` is the first field of `y[i]`) `[0]`, `[1, 2**64-1]`, `[1, 5, 0]`.
 
 ```python
-def path_to_encoded_form(obj: Any, path: List[str or int]) -> List[int]:
+def path_to_encoded_form(obj: Any, path: List[Union[str, int]]) -> List[int]:
     if len(path) == 0:
         return []
-    if isinstance(path[0], "__len__"):
+    elif isinstance(path[0], "__len__"):
         assert len(path) == 1
         return [LENGTH_FLAG]
     elif isinstance(path[0], str) and hasattr(obj, "fields"):
         return [list(obj.fields.keys()).index(path[0])] + path_to_encoded_form(getattr(obj, path[0]), path[1:])
-    elif isinstance(obj, (StaticList, DynamicList)):
+    elif isinstance(obj, (Vector, List)):
         return [path[0]] + path_to_encoded_form(obj[path[0]], path[1:])
     else:
         raise Exception("Unknown type / path")
 ```
 
-We can now define a function `get_generalized_indices(object: Any, path: List[int], root=1: int) -> int` that converts an object and a path to a set of generalized indices (note that for constant-sized objects, there is only one generalized index and it only depends on the path, but for dynamically sized objects the indices may depend on the object itself too). For dynamically-sized objects, the set of indices will have more than one member because of the need to access an array's length to determine the correct generalized index for some array access.
+We can now define a function `get_generalized_indices(object: Any, path: List[int], root: int=1) -> List[int]` that converts an object and a path to a set of generalized indices (note that for constant-sized objects, there is only one generalized index and it only depends on the path, but for dynamically sized objects the indices may depend on the object itself too). For dynamically-sized objects, the set of indices will have more than one member because of the need to access an array's length to determine the correct generalized index for some array access.
 
 ```python
-def get_generalized_indices(obj: Any, path: List[int], root=1) -> List[int]:
+def get_generalized_indices(obj: Any, path: List[int], root: int=1) -> List[int]:
     if len(path) == 0:
         return [root]
-    elif isinstance(obj, StaticList):
+    elif isinstance(obj, Vector):
         items_per_chunk = (32 // len(serialize(x))) if isinstance(x, int) else 1
         new_root = root * next_power_of_2(len(obj) // items_per_chunk) + path[0] // items_per_chunk
         return get_generalized_indices(obj[path[0]], path[1:], new_root)
-    elif isinstance(obj, DynamicList) and path[0] == LENGTH_FLAG:
+    elif isinstance(obj, List) and path[0] == LENGTH_FLAG:
         return [root * 2 + 1]
-    elif isinstance(obj, DynamicList) and isinstance(path[0], int):
+    elif isinstance(obj, List) and isinstance(path[0], int):
         assert path[0] < len(obj)
         items_per_chunk = (32 // len(serialize(x))) if isinstance(x, int) else 1
         new_root = root * 2 * next_power_of_2(len(obj) // items_per_chunk) + path[0] // items_per_chunk
@@ -137,19 +137,19 @@ Generating a proof is simply a matter of taking the node of the SSZ hash tree wi
 Here is the verification function:
 
 ```python
-def verify_multi_proof(root, indices, leaves, proof):
+def verify_multi_proof(root: Bytes32, indices: List[int], leaves: List[Bytes32], proof: List[bytes]):
     tree = {}
     for index, leaf in zip(indices, leaves):
         tree[index] = leaf
     for index, proofitem in zip(get_proof_indices(indices), proof):
         tree[index] = proofitem
-    indexqueue = sorted(tree.keys())[:-1]
+    index_queue = sorted(tree.keys())[:-1]
     i = 0
-    while i < len(indexqueue):
-        index = indexqueue[i]
-        if index >= 2 and index^1 in tree:
-            tree[index//2] = hash(tree[index - index%2] + tree[index - index%2 + 1])
-            indexqueue.append(index//2)
+    while i < len(index_queue):
+        index = index_queue[i]
+        if index >= 2 and index ^ 1 in tree:
+            tree[index // 2] = hash(tree[index - index % 2] + tree[index - index % 2 + 1])
+            index_queue.append(index // 2)
         i += 1
     return (indices == []) or (1 in tree and tree[1] == root)
 ```
@@ -158,7 +158,7 @@ def verify_multi_proof(root, indices, leaves, proof):
 
 We define:
 
-#### `MerklePartial`
+#### `SSZMerklePartial`
 
 
 ```python
@@ -172,6 +172,6 @@ We define:
 
 #### Proofs for execution
 
-We define `MerklePartial(f, arg1, arg2..., focus=0)` as being a `MerklePartial` object wrapping a Merkle multiproof of the set of nodes in the hash tree of the SSZ object `arg[focus]` that is needed to authenticate the parts of the object needed to compute `f(arg1, arg2...)`.
+We define `MerklePartial(f, arg1, arg2..., focus=0)` as being a `SSZMerklePartial` object wrapping a Merkle multiproof of the set of nodes in the hash tree of the SSZ object `arg[focus]` that is needed to authenticate the parts of the object needed to compute `f(arg1, arg2...)`.
 
-Ideally, any function which accepts an SSZ object should also be able to accept a `MerklePartial` object as a substitute.
+Ideally, any function which accepts an SSZ object should also be able to accept a `SSZMerklePartial` object as a substitute.
