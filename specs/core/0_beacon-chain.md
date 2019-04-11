@@ -702,7 +702,8 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
     Return the previous epoch of the given ``state``.
     """
-    return get_current_epoch(state) - 1
+    current_epoch = get_current_epoch(state)
+    return (current_epoch - 1) if current_epoch > GENESIS_EPOCH else current_epoch
 ```
 
 ### `get_current_epoch`
@@ -2338,6 +2339,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Check target epoch, source epoch, and source root
     target_epoch = slot_to_epoch(attestation.data.slot)
+
     assert (target_epoch, attestation.data.source_epoch, attestation.data.source_root) in {
         (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root),
