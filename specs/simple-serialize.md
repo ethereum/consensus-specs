@@ -103,7 +103,7 @@ Define value as an object that has properties `value.value` with the contained v
 ```python
 serialized_bytes = serialize(value.value)
 serialized_type_index = value.type_index.to_bytes(BYTES_PER_LENGTH_PREFIX, "little")
-return serialized_length + serialized_bytes
+return serialized_type_index + serialized_bytes
 ```
 
 
