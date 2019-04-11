@@ -67,8 +67,8 @@
         - [`get_permuted_index`](#get_permuted_index)
         - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
+        - [`get_shard_delta`](#get_shard_delta)
         - [`compute_committee`](#compute_committee)
-        - [`get_current_epoch_committee_count`](#get_current_epoch_committee_count)
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_state_root`](#get_state_root)
@@ -843,17 +843,25 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
 ### `get_epoch_committee_count`
 
 ```python
-def get_epoch_committee_count(active_validator_count: int) -> int:
+def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
     """
     Return the number of committees in one epoch.
     """
+    active_validators = get_active_validator_indices(state.validator_registry, epoch)
     return max(
         1,
         min(
             SHARD_COUNT // SLOTS_PER_EPOCH,
-            active_validator_count // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
+            len(active_validators) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
         )
     ) * SLOTS_PER_EPOCH
+```
+
+### `get_shard_delta`
+
+```python
+def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
+    return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
 
 ### `compute_committee`
@@ -877,20 +885,6 @@ def compute_committee(validator_indices: List[ValidatorIndex],
 
 **Note**: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
-### `get_current_epoch_committee_count`
-
-```python
-def get_current_epoch_committee_count(state: BeaconState) -> int:
-    """
-    Return the number of committees in the current epoch of the given ``state``.
-    """
-    current_active_validators = get_active_validator_indices(
-        state.validator_registry,
-        get_current_epoch(state),
-    )
-    return get_epoch_committee_count(len(current_active_validators))
-```
-
 ### `get_crosslink_committees_at_slot`
 
 ```python
@@ -909,16 +903,17 @@ def get_crosslink_committees_at_slot(state: BeaconState,
         state.validator_registry,
         epoch,
     )
-    committees_per_epoch = get_epoch_committee_count(len(indices))
 
     if epoch == current_epoch:
         start_shard = state.latest_start_shard
     elif epoch == previous_epoch:
-        start_shard = (state.latest_start_shard - committees_per_epoch) % SHARD_COUNT
+        previous_shard_delta = get_shard_delta(state, previous_epoch)
+        start_shard = (state.latest_start_shard - previous_shard_delta) % SHARD_COUNT
     elif epoch == next_epoch:
-        current_epoch_committees = get_current_epoch_committee_count(state)
-        start_shard = (state.latest_start_shard + current_epoch_committees) % SHARD_COUNT
+        current_shard_delta = get_shard_delta(state, current_epoch)
+        start_shard = (state.latest_start_shard + current_shard_delta) % SHARD_COUNT
 
+    committees_per_epoch = get_epoch_committee_count(state, epoch)
     committees_per_slot = committees_per_epoch // SLOTS_PER_EPOCH
     offset = slot % SLOTS_PER_EPOCH
     slot_start_shard = (start_shard + committees_per_slot * offset) % SHARD_COUNT
@@ -2088,7 +2083,7 @@ def update_registry(state: BeaconState) -> None:
         update_validator_registry(state)
     state.latest_start_shard = (
         state.latest_start_shard +
-        get_current_epoch_committee_count(state)
+        get_shard_delta(state, get_current_epoch(state))
     ) % SHARD_COUNT
 ```
 
