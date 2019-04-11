@@ -2,16 +2,14 @@
 BLS test vectors generator
 """
 
-# Standard library
-import sys
 from typing import Tuple
 
-# Third-party
-import yaml
-from py_ecc import bls
+from eth_utils import (
+    to_tuple, int_to_big_endian
+)
+from gen_base import gen_runner, gen_suite, gen_typing
 
-# Ethereum
-from eth_utils import int_to_big_endian, big_endian_to_int
+from py_ecc import bls
 
 
 def int_to_hex(n: int) -> str:
@@ -34,9 +32,9 @@ DOMAINS = [
 ]
 
 MESSAGES = [
-    b'\x00' * 32,
-    b'\x56' * 32,
-    b'\xab' * 32,
+    bytes(b'\x00' * 32),
+    bytes(b'\x56' * 32),
+    bytes(b'\xab' * 32),
 ]
 
 PRIVKEYS = [
@@ -80,109 +78,160 @@ def hash_message_compressed(msg: bytes, domain: int) -> Tuple[str, str]:
     return [int_to_hex(z1), int_to_hex(z2)]
 
 
-if __name__ == '__main__':
 
-    # Order not preserved - https://github.com/yaml/pyyaml/issues/110
-    metadata = {
-        'title': 'BLS signature and aggregation tests',
-        'summary': 'Test vectors for BLS signature',
-        'test_suite': 'bls',
-        'fork': 'phase0-0.5.0',
-    }
-
-    case01_message_hash_G2_uncompressed = []
+@to_tuple
+def case01_message_hash_G2_uncompressed():
     for msg in MESSAGES:
         for domain in DOMAINS:
-            case01_message_hash_G2_uncompressed.append({
-                'input': {'message': '0x' + msg.hex(), 'domain': int_to_hex(domain)},
+            yield {
+                'input': {
+                    'message': '0x' + msg.hex(),
+                    'domain': int_to_hex(domain)
+                },
                 'output': hash_message(msg, domain)
-            })
+            }
 
-    case02_message_hash_G2_compressed = []
+@to_tuple
+def case02_message_hash_G2_compressed():
     for msg in MESSAGES:
         for domain in DOMAINS:
-            case02_message_hash_G2_compressed.append({
-                'input': {'message': '0x' + msg.hex(), 'domain': int_to_hex(domain)},
+            yield {
+                'input': {
+                    'message': '0x' + msg.hex(),
+                    'domain': int_to_hex(domain)
+                },
                 'output': hash_message_compressed(msg, domain)
-            })
+            }
 
-    case03_private_to_public_key = []
-    #  Used in later cases
+@to_tuple
+def case03_private_to_public_key():
     pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
-    #  Used in public key aggregation
     pubkeys_serial = ['0x' + pubkey.hex() for pubkey in pubkeys]
-    case03_private_to_public_key = [
-        {
+    for privkey, pubkey_serial in zip(PRIVKEYS, pubkeys_serial):
+        yield {
             'input': int_to_hex(privkey),
             'output': pubkey_serial,
         }
-        for privkey, pubkey_serial in zip(PRIVKEYS, pubkeys_serial)
-    ]
 
-    case04_sign_messages = []
-    sigs = []  # used in verify
+@to_tuple
+def case04_sign_messages():
     for privkey in PRIVKEYS:
         for message in MESSAGES:
             for domain in DOMAINS:
                 sig = bls.sign(message, privkey, domain)
-                case04_sign_messages.append({
+                yield {
                     'input': {
                         'privkey': int_to_hex(privkey),
                         'message': '0x' + message.hex(),
                         'domain': int_to_hex(domain)
                     },
                     'output': '0x' + sig.hex()
-                })
-                sigs.append(sig)
+                }
 
-    # TODO: case05_verify_messages: Verify messages signed in case04
-    # It takes too long, empty for now
+# TODO: case05_verify_messages: Verify messages signed in case04
+# It takes too long, empty for now
 
-    case06_aggregate_sigs = []
+
+@to_tuple
+def case06_aggregate_sigs():
     for domain in DOMAINS:
         for message in MESSAGES:
-            sigs = []
-            for privkey in PRIVKEYS:
-                sig = bls.sign(message, privkey, domain)
-                sigs.append(sig)
-            case06_aggregate_sigs.append({
+            sigs = [bls.sign(message, privkey, domain) for privkey in PRIVKEYS]
+            yield {
                 'input': ['0x' + sig.hex() for sig in sigs],
                 'output': '0x' + bls.aggregate_signatures(sigs).hex(),
-            })
+            }
 
-    case07_aggregate_pubkeys = [
-        {
-            'input': pubkeys_serial,
-            'output': '0x' + bls.aggregate_pubkeys(pubkeys).hex(),
-        }
-    ]
+@to_tuple
+def case07_aggregate_pubkeys():
+    pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
+    pubkeys_serial = ['0x' + pubkey.hex() for pubkey in pubkeys]
+    yield {
+        'input': pubkeys_serial,
+        'output': '0x' + bls.aggregate_pubkeys(pubkeys).hex(),
+    }
 
-    # TODO
-    # Aggregate verify
 
-    # TODO
-    # Proof-of-possession
+# TODO
+# Aggregate verify
 
-    with open(sys.argv[2] + "test_bls.yml", 'w') as outfile:
-        # Dump at top level
-        yaml.dump(metadata, outfile, default_flow_style=False)
-        # default_flow_style will unravel "ValidatorRecord" and "committee" line,
-        # exploding file size
-        yaml.dump(
-            {'case01_message_hash_G2_uncompressed': case01_message_hash_G2_uncompressed},
-            outfile,
-        )
-        yaml.dump(
-            {'case02_message_hash_G2_compressed': case02_message_hash_G2_compressed},
-            outfile,
-        )
-        yaml.dump(
-            {'case03_private_to_public_key': case03_private_to_public_key},
-            outfile,
-        )
-        yaml.dump({'case04_sign_messages': case04_sign_messages}, outfile)
+# TODO
+# Proof-of-possession
 
-        # Too time consuming to generate
-        # yaml.dump({'case05_verify_messages': case05_verify_messages}, outfile)
-        yaml.dump({'case06_aggregate_sigs': case06_aggregate_sigs}, outfile)
-        yaml.dump({'case07_aggregate_pubkeys': case07_aggregate_pubkeys}, outfile)
+
+def bls_msg_hash_uncompressed_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("g2_uncompressed", "msg_hash", gen_suite.render_suite(
+        title="BLS G2 Uncompressed msg hash",
+        summary="BLS G2 Uncompressed msg hash",
+        forks_timeline="mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="msg_hash",
+        test_cases=case01_message_hash_G2_uncompressed()))
+
+
+def bls_msg_hash_compressed_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("g2_compressed", "msg_hash", gen_suite.render_suite(
+        title="BLS G2 Compressed msg hash",
+        summary="BLS G2 Compressed msg hash",
+        forks_timeline="mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="msg_hash",
+        test_cases=case02_message_hash_G2_compressed()))
+
+
+
+def bls_priv_to_pub_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("priv_to_pub", "priv_to_pub", gen_suite.render_suite(
+        title="BLS private key to pubkey",
+        summary="BLS Convert private key to public key",
+        forks_timeline="mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="priv_to_pub",
+        test_cases=case03_private_to_public_key()))
+
+
+def bls_sign_msg_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("sign_msg", "sign_msg", gen_suite.render_suite(
+        title="BLS sign msg",
+        summary="BLS Sign a message",
+        forks_timeline="mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="sign_msg",
+        test_cases=case04_sign_messages()))
+
+
+def bls_aggregate_sigs_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("aggregate_sigs", "aggregate_sigs", gen_suite.render_suite(
+        title="BLS aggregate sigs",
+        summary="BLS Aggregate signatures",
+        forks_timeline="mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="aggregate_sigs",
+        test_cases=case06_aggregate_sigs()))
+
+
+def bls_aggregate_pubkeys_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+    return ("aggregate_pubkeys", "aggregate_pubkeys", gen_suite.render_suite(
+        title="BLS aggregate pubkeys",
+        summary="BLS Aggregate public keys",
+        forks_timeline="mainnet",
+        forks=["phase0"],
+        config="mainnet",
+        handler="aggregate_pubkeys",
+        test_cases=case07_aggregate_pubkeys()))
+
+
+if __name__ == "__main__":
+    gen_runner.run_generator("shuffling", [
+        bls_msg_hash_compressed_suite,
+        bls_msg_hash_uncompressed_suite,
+        bls_priv_to_pub_suite,
+        bls_sign_msg_suite,
+        bls_aggregate_sigs_suite,
+        bls_aggregate_pubkeys_suite
+    ])
