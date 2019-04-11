@@ -5,6 +5,7 @@ PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 PY_TEST_DIR = ./py_tests
 YAML_TEST_DIR = ./yaml_tests
 GENERATOR_DIR = ./test_generators
+CONFIGS_DIR = ./configs
 
 # Collect a list of generator names
 GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/)))
@@ -57,7 +58,7 @@ define build_yaml_tests
 	# 3) Install all the necessary requirements
 	# 4) Run the generator. The generator is assumed to have an "main.py" file.
 	# 5) We output to the tests dir (generator program should accept a "-o <filepath>" argument.
-	cd $(GENERATOR_DIR)$(1); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; python3 main.py -o $(CURRENT_DIR)/$(YAML_TEST_DIR)$(1)
+	cd $(GENERATOR_DIR)$(1); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; python3 main.py -o $(CURRENT_DIR)/$(YAML_TEST_DIR)$(1) -c $(CURRENT_DIR)/$(CONFIGS_DIR)
 
 	$(info generator $(1) finished)
 endef

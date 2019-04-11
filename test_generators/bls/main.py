@@ -227,7 +227,7 @@ def bls_aggregate_pubkeys_suite(configs_path: str) -> gen_typing.TestSuiteOutput
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("shuffling", [
+    gen_runner.run_generator("bls", [
         bls_msg_hash_compressed_suite,
         bls_msg_hash_uncompressed_suite,
         bls_priv_to_pub_suite,
