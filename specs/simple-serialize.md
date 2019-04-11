@@ -30,7 +30,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 * `"uintN"`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 * `"bool"`: `True` or `False`
-* '"null"': `Null`
+* `"null"`: `None`
+
+The type `"null"` is only legal as one of several type in a `union` type.
 
 ### Composite types
 
@@ -40,7 +42,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
     * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
 * **list**: ordered variable-length homogenous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
-* **option**: option type containing one of the given subtypes
+* **union**: union type containing one of the given subtypes
     * round bracket notation `(type1, type2, ...)`, e.g. `("uint64", "null")`
 
 We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
@@ -79,7 +81,7 @@ return b"\x01" if value is True else b"\x00"
 return b""
 ```
 
-### Vectors, containers, lists, options
+### Vectors, containers, lists, unions
 
 If `value` is fixed-size:
 
@@ -96,7 +98,7 @@ serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, "lit
 return serialized_length + serialized_bytes
 ```
 
-If `value` is an option type:
+If `value` is an union type:
 
 Define value as an object that has properties `value.value` with the contained value, and `value.type_index` which indexes the type.
 
@@ -126,7 +128,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
-* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of option type
+* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
 
 ## Self-signed containers
 
