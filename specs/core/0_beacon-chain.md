@@ -216,8 +216,8 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value |
 | - | - |
 | `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` |
-| `GENESIS_SLOT` | `2**32` |
-| `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
+| `GENESIS_SLOT` | `0` |
+| `GENESIS_EPOCH` | `0` |
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
 | `ZERO_HASH` | `int_to_bytes32(0)` |
@@ -1044,12 +1044,12 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 
 ```python
 def get_crosslink_committee_for_attestation(state: BeaconState,
-                                        attestation_data: AttestationData) -> List[ValidatorIndex]:
+                                            attestation_data: AttestationData) -> List[ValidatorIndex]:
     """
     Return the crosslink committee corresponding to ``attestation_data``.
-    """                                        
+    """
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
-    
+
     # Find the committee in the list with the desired shard
     assert attestation_data.shard in [shard for _, shard in crosslink_committees]
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
@@ -1554,7 +1554,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Finality
         previous_epoch_attestations=[],
         current_epoch_attestations=[],
-        previous_justified_epoch=GENESIS_EPOCH - 1,
+        previous_justified_epoch=GENESIS_EPOCH,
         current_justified_epoch=GENESIS_EPOCH,
         previous_justified_root=ZERO_HASH,
         current_justified_root=ZERO_HASH,
@@ -1814,6 +1814,9 @@ Run the following function:
 
 ```python
 def update_justification_and_finalization(state: BeaconState) -> None:
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
     new_justified_epoch = state.current_justified_epoch
     new_finalized_epoch = state.finalized_epoch
 
@@ -1864,7 +1867,7 @@ Run the following function:
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    previous_epoch = max(current_epoch - 1, GENESIS_EPOCH)
+    previous_epoch = current_epoch if current_epoch == GENESIS_EPOCH else get_previous_epoch(state)
     next_epoch = current_epoch + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
@@ -1999,6 +2002,9 @@ Run the following:
 
 ```python
 def apply_rewards(state: BeaconState) -> None:
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
     rewards1, penalties1 = get_justification_and_finalization_deltas(state)
     rewards2, penalties2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):

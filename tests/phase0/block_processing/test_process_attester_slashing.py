@@ -9,6 +9,7 @@ from build.phase0.spec import (
 )
 from tests.phase0.helpers import (
     get_valid_attester_slashing,
+    next_epoch,
 )
 
 # mark entire file as 'attester_slashing'
@@ -59,6 +60,8 @@ def test_success_double(state):
 
 
 def test_success_surround(state):
+    next_epoch(state)
+    state.current_justified_epoch += 1
     attester_slashing = get_valid_attester_slashing(state)
 
     # set attestion1 to surround attestation 2

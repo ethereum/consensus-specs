@@ -4,6 +4,9 @@ from py_ecc import bls
 
 import build.phase0.spec as spec
 from build.phase0.utils.minimal_ssz import signing_root
+from build.phase0.state_transition import (
+    state_transition,
+)
 from build.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
@@ -144,7 +147,7 @@ def build_attestation_data(state, slot, shard):
     if epoch_start_slot == slot:
         epoch_boundary_root = block_root
     else:
-        get_block_root(state, epoch_start_slot)
+        epoch_boundary_root = get_block_root(state, epoch_start_slot)
 
     if slot < epoch_start_slot:
         justified_block_root = state.previous_justified_root
@@ -260,7 +263,7 @@ def get_valid_attester_slashing(state):
 def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
-    shard = state.latest_start_shard
+    shard = state.latest_start_shard + slot % spec.SLOTS_PER_EPOCH
     attestation_data = build_attestation_data(state, slot, shard)
 
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
@@ -312,3 +315,9 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
             domain_type=spec.DOMAIN_ATTESTATION,
         )
     )
+
+
+def next_epoch(state):
+    block = build_empty_block_for_next_slot(state)
+    block.slot += spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
+    state_transition(state, block)
