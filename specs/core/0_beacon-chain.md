@@ -51,7 +51,7 @@
         - [`xor`](#xor)
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
-        - [`signed_root`](#signed_root)
+        - [`signing_root`](#signing_root)
         - [`get_temporary_block_header`](#get_temporary_block_header)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
@@ -664,9 +664,9 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 
 `def hash_tree_root(object: SSZSerializable) -> Bytes32` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#tree-hash).
 
-### `signed_root`
+### `signing_root`
 
-`def signed_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/simple-serialize.md#signed-roots) to compute signed messages.
+`def signing_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#self-signed-containers) to compute signing messages.
 
 ### `get_temporary_block_header`
 
@@ -680,7 +680,7 @@ def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
         previous_block_root=block.previous_block_root,
         state_root=ZERO_HASH,
         block_body_root=hash_tree_root(block.body),
-        # signed_root(block) is used for block id purposes so signature is a stub
+        # signing_root(block) is used for block id purposes so signature is a stub
         signature=EMPTY_SIGNATURE,
     )
 ```
@@ -1322,7 +1322,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Verify the proof of possession
         proof_is_valid = bls_verify(
             pubkey=pubkey,
-            message_hash=signed_root(deposit.data),
+            message_hash=signing_root(deposit.data),
             signature=deposit.data.proof_of_possession,
             domain=get_domain(
                 state.fork,
@@ -1702,7 +1702,7 @@ def cache_state(state: BeaconState) -> None:
         state.latest_block_header.state_root = previous_slot_state_root
 
     # store latest known block for previous slot
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = signed_root(state.latest_block_header)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = signing_root(state.latest_block_header)
 ```
 
 ### Per-epoch processing
@@ -2192,7 +2192,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
     # Verify that the parent matches
-    assert block.previous_block_root == signed_root(state.latest_block_header)
+    assert block.previous_block_root == signing_root(state.latest_block_header)
     # Save current block as the new latest block
     state.latest_block_header = get_temporary_block_header(block)
     # Verify proposer is not slashed
@@ -2201,7 +2201,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify proposer signature
     assert bls_verify(
         pubkey=proposer.pubkey,
-        message_hash=signed_root(block),
+        message_hash=signing_root(block),
         signature=block.signature,
         domain=get_domain(state.fork, get_current_epoch(state), DOMAIN_BEACON_BLOCK)
     )
@@ -2265,7 +2265,7 @@ def process_proposer_slashing(state: BeaconState,
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
         assert bls_verify(
             pubkey=proposer.pubkey,
-            message_hash=signed_root(header),
+            message_hash=signing_root(header),
             signature=header.signature,
             domain=get_domain(state.fork, slot_to_epoch(header.slot), DOMAIN_BEACON_BLOCK)
         )
@@ -2391,7 +2391,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Verify signature
     assert bls_verify(
         pubkey=validator.pubkey,
-        message_hash=signed_root(exit),
+        message_hash=signing_root(exit),
         signature=exit.signature,
         domain=get_domain(state.fork, exit.epoch, DOMAIN_VOLUNTARY_EXIT)
     )
@@ -2436,7 +2436,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Verify that the signature is valid
     assert bls_verify(
         pubkey=transfer.pubkey,
-        message_hash=signed_root(transfer),
+        message_hash=signing_root(transfer),
         signature=transfer.signature,
         domain=get_domain(state.fork, slot_to_epoch(transfer.slot), DOMAIN_TRANSFER)
     )
