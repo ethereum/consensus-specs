@@ -1817,10 +1817,8 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     new_justified_epoch = state.current_justified_epoch
     new_finalized_epoch = state.finalized_epoch
 
-    # Rotate the justification bitfield up one epoch to make room for the current epoch
-    state.justification_bitfield <<= 1
-    # Python var length integers: justification bitfield is 64 bits, and may not be bigger (for SSZ serialization)
-    state.justification_bitfield &= (1 << 64) - 1
+    # Rotate the justification bitfield up one epoch to make room for the current epoch (and limit to 64 bits)
+    state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
     # If the previous epoch gets justified, fill the second last bit
     previous_boundary_attesting_balance = get_attesting_balance(state, get_previous_epoch_boundary_attestations(state))
     if previous_boundary_attesting_balance * 3 >= get_previous_total_balance(state) * 2:
