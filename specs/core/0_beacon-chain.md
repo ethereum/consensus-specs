@@ -2083,7 +2083,7 @@ def update_registry(state: BeaconState) -> None:
         update_validator_registry(state)
     state.latest_start_shard = (
         state.latest_start_shard +
-        get_epoch_committee_count(state, get_current_epoch(state))
+        get_shard_delta(state, get_current_epoch(state))
     ) % SHARD_COUNT
 ```
 
