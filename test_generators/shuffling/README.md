@@ -1,16 +1,16 @@
-# Shuffling Test Generator
+# Shuffling Tests
 
-```
-2018 Status Research & Development GmbH
-Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+Tests for the swap-or-not shuffling in ETH 2.0.
 
-This work uses public domain work under CC0 from the Ethereum Foundation
-https://github.com/ethereum/eth2.0-specs
-```
+For implementers, possible test runners implementing testing can include:
+1) just test permute-index, run it for each index `i` in `range(count)`, and check against expected `output[i]` (default spec implementation)
+2) test un-permute-index (the reverse lookup. Implemented by running the shuffling rounds in reverse: from `round_count-1` to `0`)
+3) test the optimized complete shuffle, where all indices are shuffled at once, test output in one go.
+4) test complete shuffle in reverse (reverse rounds, same as 2)
 
-
-This file implements a test vectors generator for the shuffling algorithm described in the Ethereum
-[specs](https://github.com/ethereum/eth2.0-specs/blob/2983e68f0305551083fac7fcf9330c1fc9da3411/specs/core/0_beacon-chain.md#get_new_shuffling)
-
-Utilizes 'swap or not' shuffling found in [An Enciphering Scheme Based on a Card Shuffle](https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf).  
-See the `Generalized domain` algorithm on page 3.
+Tips for initial shuffling write:
+- run with `round_count = 1` first, do the same with pyspec.
+- start with permute index
+- optimized shuffling implementations:
+  - vitalik, Python: https://github.com/ethereum/eth2.0-specs/pull/576#issue-250741806
+  - protolambda, Go: https://github.com/protolambda/eth2-shuffle
