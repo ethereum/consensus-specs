@@ -75,7 +75,13 @@ The second is still somewhat ambiguous: some tests may want cover multiple forks
 There is a common factor here however: the options are exclusive, and give a clear idea on what test suites need to be ran to cover testing for a specific fork.
 The way this list of forks is interpreted, is up to the test-runner:
 State-transition test suites may want to just declare forks that are being covered in the test suite,
- whereas shuffling test suites may want to declare a list of forks to test the shuffling algorithm for individually. 
+ whereas shuffling test suites may want to declare a list of forks to test the shuffling algorithm for individually.
+
+Test-formats specify the following `forks` interpretation rules:
+
+- `collective`: the test suite applies to all specified forks, and only needs to run once
+- `individual`: the test suite should be ran against every fork
+- more types may be specified with future test types.
 
 ### Test completeness
 

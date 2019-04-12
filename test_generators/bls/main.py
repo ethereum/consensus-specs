@@ -160,7 +160,7 @@ def case07_aggregate_pubkeys():
 
 
 def bls_msg_hash_uncompressed_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("g2_uncompressed", "msg_hash_uncompressed", gen_suite.render_suite(
+    return ("g2_uncompressed", "msg_hash_g2_uncompressed", gen_suite.render_suite(
         title="BLS G2 Uncompressed msg hash",
         summary="BLS G2 Uncompressed msg hash",
         forks_timeline="mainnet",
@@ -171,7 +171,7 @@ def bls_msg_hash_uncompressed_suite(configs_path: str) -> gen_typing.TestSuiteOu
 
 
 def bls_msg_hash_compressed_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("g2_compressed", "msg_hash_compressed", gen_suite.render_suite(
+    return ("g2_compressed", "msg_hash_g2_compressed", gen_suite.render_suite(
         title="BLS G2 Compressed msg hash",
         summary="BLS G2 Compressed msg hash",
         forks_timeline="mainnet",
