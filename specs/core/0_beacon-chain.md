@@ -1194,7 +1194,7 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    total_attesting_indices = len(custody_bit_0_indices + custody_bit_1_indices)
+    total_attesting_indices = len(custody_bit_0_indices) + len(custody_bit_1_indices)
     if not (1 <= total_attesting_indices <= MAX_ATTESTATION_PARTICIPANTS):
         return False
 
