@@ -139,10 +139,6 @@
                 - [Voluntary exits](#voluntary-exits)
                 - [Transfers](#transfers)
             - [State root verification](#state-root-verification)
-- [References](#references)
-    - [Normative](#normative)
-    - [Informative](#informative)
-- [Copyright](#copyright)
 
 <!-- /TOC -->
 
@@ -171,7 +167,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 * **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain that can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
 * **Slot** - a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations.
 * **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation.
-* **Finalized**, **justified** - see Casper FFG finalization [[casper-ffg]](#ref-casper-ffg).
+* **Finalized**, **justified** - see the [Casper FFG paper](https://arxiv.org/abs/1710.09437).
 * **Withdrawal period** - the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable.
 * **Genesis time** - the Unix time of the genesis beacon chain block at slot 0.
 
@@ -2453,17 +2449,3 @@ Verify the block's `state_root` by running the following function:
 def verify_block_state_root(state: BeaconState, block: BeaconBlock) -> None:
     assert block.state_root == hash_tree_root(state)
 ```
-
-# References
-
-This section is divided into Normative and Informative references.  Normative references are those that must be read in order to implement this specification, while Informative references are merely helpful information.  An example of the former might be the details of a required consensus algorithm, and an example of the latter might be a pointer to research that demonstrates why a particular consensus algorithm might be better suited for inclusion in the standard than another.
-
-## Normative
-
-## Informative
-<a id="ref-casper-ffg"></a> _**casper-ffg**_ </br> &nbsp; _Casper the Friendly Finality Gadget_. V. Buterin and V. Griffith. URL: https://arxiv.org/abs/1710.09437
-
-<a id="ref-python-poc"></a> _**python-poc**_ </br> &nbsp; _Python proof-of-concept implementation_. Ethereum Foundation. URL: https://github.com/ethereum/trinity/tree/master/eth2
-
-# Copyright
-Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
