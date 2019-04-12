@@ -15,7 +15,7 @@ from renderers import (
 random.seed(0)
 
 
-BIT_SIZES = [i for i in range(8, 512 + 1, 8)]
+BIT_SIZES = [8, 16, 32, 64, 128, 256]
 RANDOM_TEST_CASES_PER_BIT_SIZE = 10
 RANDOM_TEST_CASES_PER_LENGTH = 3
 
