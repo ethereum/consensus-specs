@@ -1039,7 +1039,7 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 
 ```python
 def get_crosslink_committee_for_attestation(state: BeaconState,
-                                        attestation_data: AttestationData) -> List[ValidatorIndex]:
+                                            attestation_data: AttestationData) -> List[ValidatorIndex]:
     """
     Return the crosslink committee corresponding to ``attestation_data``.
     """                                        
