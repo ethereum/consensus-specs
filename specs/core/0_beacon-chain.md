@@ -1366,14 +1366,16 @@ Note: All functions in this section mutate `state`.
 #### `activate_validator`
 
 ```python
-def activate_validator(state: BeaconState, index: ValidatorIndex, is_genesis: bool) -> None:
+def activate_validator(state: BeaconState, index: ValidatorIndex) -> None:
     """
     Activate the validator of the given ``index``.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-
-    validator.activation_epoch = GENESIS_EPOCH if is_genesis else get_delayed_activation_exit_epoch(get_current_epoch(state))
+    if state.slot == GENESIS_SLOT:
+        validator.activation_epoch = GENESIS_EPOCH
+    else: 
+        validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### `initiate_validator_exit`
@@ -1583,7 +1585,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     # Process genesis activations
     for validator_index, _ in enumerate(state.validator_registry):
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
-            activate_validator(state, validator_index, is_genesis=True)
+            activate_validator(state, validator_index)
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
@@ -1865,9 +1867,8 @@ Run the following function:
 
 ```python
 def process_crosslinks(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    previous_epoch = current_epoch if current_epoch == GENESIS_EPOCH else get_previous_epoch(state)
-    next_epoch = current_epoch + 1
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = get_current_epoch(state) + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
@@ -2062,7 +2063,7 @@ def update_validator_registry(state: BeaconState) -> None:
                 break
 
             # Activate validator
-            activate_validator(state, index, is_genesis=False)
+            activate_validator(state, index)
 
     # Exit validators within the allowable balance churn
     if current_epoch < state.validator_registry_update_epoch + LATEST_SLASHED_EXIT_LENGTH:
