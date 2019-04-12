@@ -96,7 +96,6 @@
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
-        - [`process_deposit`](#process_deposit)
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`activate_validator`](#activate_validator)
             - [`initiate_validator_exit`](#initiate_validator_exit)
@@ -1285,75 +1284,6 @@ def get_delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
 
 `bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, defined in the [BLS Signature spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md#bls_aggregate_pubkeys).
 
-### `process_deposit`
-
-Used to add a [validator](#dfn-validator) or top up an existing [validator](#dfn-validator)'s balance by some `deposit` amount:
-
-```python
-def process_deposit(state: BeaconState, deposit: Deposit) -> None:
-    """
-    Process a deposit from Ethereum 1.0.
-    Note that this function mutates ``state``.
-    """
-    # Deposits must be processed in order
-    assert deposit.index == state.deposit_index
-
-    # Verify the Merkle branch
-    merkle_branch_is_valid = verify_merkle_branch(
-        leaf=hash(serialize(deposit.data)),  # 48 + 32 + 8 + 96 = 184 bytes serialization
-        proof=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH,
-        index=deposit.index,
-        root=state.latest_eth1_data.deposit_root,
-    )
-    assert merkle_branch_is_valid
-
-    # Increment the next deposit index we are expecting. Note that this
-    # needs to be done here because while the deposit contract will never
-    # create an invalid Merkle branch, it may admit an invalid deposit
-    # object, and we need to be able to skip over it
-    state.deposit_index += 1
-
-    validator_pubkeys = [v.pubkey for v in state.validator_registry]
-    pubkey = deposit.data.pubkey
-    amount = deposit.data.amount
-
-    if pubkey not in validator_pubkeys:
-        # Verify the proof of possession
-        proof_is_valid = bls_verify(
-            pubkey=pubkey,
-            message_hash=signing_root(deposit.data),
-            signature=deposit.data.proof_of_possession,
-            domain=get_domain(
-                state.fork,
-                get_current_epoch(state),
-                DOMAIN_DEPOSIT,
-            )
-        )
-        if not proof_is_valid:
-            return
-
-        # Add new validator
-        validator = Validator(
-            pubkey=pubkey,
-            withdrawal_credentials=deposit.data.withdrawal_credentials,
-            activation_epoch=FAR_FUTURE_EPOCH,
-            exit_epoch=FAR_FUTURE_EPOCH,
-            withdrawable_epoch=FAR_FUTURE_EPOCH,
-            initiated_exit=False,
-            slashed=False,
-            high_balance=0
-        )
-
-        # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
-        state.validator_registry.append(validator)
-        state.balances.append(0)
-        set_balance(state, len(state.validator_registry) - 1, amount)
-    else:
-        # Increase balance by deposit amount
-        index = validator_pubkeys.index(pubkey)
-        increase_balance(state, index, amount)
-```
 
 ### Routines for updating validator status
 
@@ -2363,7 +2293,76 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.
 
-For each `deposit` in `block.body.deposits`, run `process_deposit(state, deposit)`.
+For each `deposit` in `block.body.deposits`, run the following function:
+
+```python
+def process_deposit(state: BeaconState, deposit: Deposit) -> None:
+    """
+    Process a deposit from Ethereum 1.0.
+    Used to add a validator or top up an existing validator's
+    balance by some ``deposit`` amount.
+
+    Note that this function mutates ``state``.
+    """
+    # Deposits must be processed in order
+    assert deposit.index == state.deposit_index
+
+    # Verify the Merkle branch
+    merkle_branch_is_valid = verify_merkle_branch(
+        leaf=hash(serialize(deposit.data)),  # 48 + 32 + 8 + 96 = 184 bytes serialization
+        proof=deposit.proof,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH,
+        index=deposit.index,
+        root=state.latest_eth1_data.deposit_root,
+    )
+    assert merkle_branch_is_valid
+
+    # Increment the next deposit index we are expecting. Note that this
+    # needs to be done here because while the deposit contract will never
+    # create an invalid Merkle branch, it may admit an invalid deposit
+    # object, and we need to be able to skip over it
+    state.deposit_index += 1
+
+    validator_pubkeys = [v.pubkey for v in state.validator_registry]
+    pubkey = deposit.data.pubkey
+    amount = deposit.data.amount
+
+    if pubkey not in validator_pubkeys:
+        # Verify the proof of possession
+        proof_is_valid = bls_verify(
+            pubkey=pubkey,
+            message_hash=signing_root(deposit.data),
+            signature=deposit.data.proof_of_possession,
+            domain=get_domain(
+                state.fork,
+                get_current_epoch(state),
+                DOMAIN_DEPOSIT,
+            )
+        )
+        if not proof_is_valid:
+            return
+
+        # Add new validator
+        validator = Validator(
+            pubkey=pubkey,
+            withdrawal_credentials=deposit.data.withdrawal_credentials,
+            activation_epoch=FAR_FUTURE_EPOCH,
+            exit_epoch=FAR_FUTURE_EPOCH,
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
+            initiated_exit=False,
+            slashed=False,
+            high_balance=0
+        )
+
+        # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
+        state.validator_registry.append(validator)
+        state.balances.append(0)
+        set_balance(state, len(state.validator_registry) - 1, amount)
+    else:
+        # Increase balance by deposit amount
+        index = validator_pubkeys.index(pubkey)
+        increase_balance(state, index, amount)
+```
 
 ##### Voluntary exits
 
