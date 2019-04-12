@@ -9,7 +9,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL", NOT", "SHOULD", 
 
 # Dependencies
 
-This specification assumes familiarity with the [Messaging](./messaging.md), [Node Identification](./node-identification), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
+This specification assumes familiarity with the [Messaging](./messaging.md), [Node Identification](./node-identification.md), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
 
 # Specification
 
