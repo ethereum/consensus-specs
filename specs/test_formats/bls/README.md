@@ -1,6 +1,6 @@
-# BLS test suite
+# BLS tests
 
-A test suite for BLS. Primarily geared towards verifying the *integration* of any BLS library.
+A test type for BLS. Primarily geared towards verifying the *integration* of any BLS library.
 We do not recommend to roll your own crypto, or use an untested BLS library.
 
 The BLS test suite runner has the following handlers:
