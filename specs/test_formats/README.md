@@ -17,7 +17,16 @@ This document defines the YAML format and structure used for ETH 2.0 testing.
 
 Ethereum 2.0 uses YAML as the format for all cross client tests. This document describes at a high level the general format to which all test files should conform.
 
+### Test-case formats
+
 The particular formats of specific types of tests (test suites) are defined in separate documents.
+
+Test formats:
+- [`bls`](./bls/README.md)
+- [`operations`](./operations/README.md)
+- [`shuffling`](./shuffling/README.md)
+- [`ssz`](./ssz/README.md)
+- More formats are planned, see tracking issues for CI/testing
 
 ## Glossary
 
@@ -167,11 +176,14 @@ To prevent parsing of hundreds of different YAML files to test a specific test t
  or even more specific, just a handler, tests should be structured in the following nested form: 
 
 ```
-.                        <--- root of eth2.0 tests repository
-├── bls                  <--- collection of handler for a specific test-runner, example runner: "bls"
-│   ├── signing          <--- collection of test suites for a specific handler, example handler: "signing". If no multiple handlers, use a dummy folder (e.g. "main"), and specify that in the yaml.
-│   │   ├── sign_msg.yml <--- an entry list of test suites
-│   │   ...              <--- more suite files (optional)
-│   ...                  <--- more handlers
-...                      <--- more test types
+.                             <--- root of eth2.0 tests repository
+├── bls                       <--- collection of handler for a specific test-runner, example runner: "bls"
+│   ├── verify_msg            <--- collection of test suites for a specific handler, example handler: "verify_msg". If no multiple handlers, use a dummy folder (e.g. "core"), and specify that in the yaml.
+│   │   ├── verify_valid.yml    .
+│   │   ├── special_cases.yml   . a list of test suites
+│   │   ├── domains.yml         .
+│   │   ├── invalid.yml         .
+│   │   ...                   <--- more suite files (optional)
+│   ...                       <--- more handlers
+...                           <--- more test types
 ```
