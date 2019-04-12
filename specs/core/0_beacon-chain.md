@@ -224,8 +224,6 @@ These configurations are updated for releases, but may be out of sync during `de
 | `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
 
-* `GENESIS_SLOT` should be at least as large in terms of time as the largest of the time parameters or state list lengths below (ie. it should be at least as large as any value measured in slots, and at least `SLOTS_PER_EPOCH` times as large as any value measured in epochs).
-
 ### Time parameters
 
 | Name | Value | Unit | Duration |
@@ -1608,7 +1606,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.previous_block_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
+* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
@@ -2334,8 +2332,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` operation.
     Note that this function mutates ``state``.
     """
-    assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
-    assert attestation.data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
+    assert attestation.data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation.data.slot + SLOTS_PER_EPOCH
 
     # Check target epoch, source epoch, and source root
     target_epoch = slot_to_epoch(attestation.data.slot)
