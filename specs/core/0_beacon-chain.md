@@ -1603,9 +1603,9 @@ We now define the state transition function. At a high level, the state transiti
 4. The per-block transitions, which happens at every block.
 
 Transition section notes:
-* The state caching caches the state root of the previous slot.
+* The state caching caches the state root of the previous slot and updates block and state roots records.
 * The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
-* The per-slot transitions focus on the slot counter and block roots records updates.
+* The per-slot transitions focus on the slot counter.
 * The per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
 
 Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
