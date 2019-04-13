@@ -86,10 +86,10 @@ variable_lengths = [len(part) if part != None else 0 for part in variable_parts]
 assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_PREFIX * BITS_PER_BYTE)
 offsets = [sum(fixed_lengths) + sum(variable_lengths[:i]) for i in range(len(value))]
 
-# Interleave offsets in fixed parts
+# Interleave offsets with fixed parts
 fixed_parts = [part if part != None else offsets[i] for i, part in enumerate(fixed_parts)]
 
-# Return the of fixed parts (with interleaved offsets) followed by variable parts
+# Return the fixed parts (with offsets interleaved) followed by variable parts
 return "".join(fixed_parts + variable_parts)
 ```
 
