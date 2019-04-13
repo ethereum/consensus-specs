@@ -12,7 +12,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
-    - [Vectors, containers, lists](#vectors-containers-lists)
+    - [Containers, vectors, lists](#containers-vectors-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -71,7 +71,7 @@ assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### Vectors, containers, lists
+### Containers, vectors, lists
 
 ```python
 # Reccursively serialize
