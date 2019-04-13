@@ -38,13 +38,13 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
         - [Attestations](#attestations-1)
             - [Attestation data](#attestation-data)
                 - [Slot](#slot-1)
-                - [Shard](#shard)
                 - [Beacon block root](#beacon-block-root)
-                - [Target root](#target-root)
-                - [Crosslink data root](#crosslink-data-root)
-                - [Latest crosslink](#latest-crosslink)
                 - [Source epoch](#source-epoch)
                 - [Source root](#source-root)
+                - [Target root](#target-root)
+                - [Shard](#shard)
+                - [Previous crosslink root](#previous-crosslink-root)
+                - [Crosslink data root](#crosslink-data-root)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bitfield](#aggregation-bitfield)
@@ -250,13 +250,17 @@ First the validator should construct `attestation_data`, an [`AttestationData`](
 
 Set `attestation_data.slot = head_state.slot`.
 
-##### Shard
-
-Set `attestation_data.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
-
 ##### Beacon block root
 
 Set `attestation_data.beacon_block_root = signing_root(head_block)`.
+
+##### Source epoch
+
+Set `attestation_data.source_epoch = head_state.justified_epoch`.
+
+##### Source root
+
+Set `attestation_data.source_root = head_state.current_justified_root`.
 
 ##### Target root
 
@@ -266,23 +270,19 @@ _Note:_ This can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
 * Set `epoch_boundary = head if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
 
+##### Shard
+
+Set `attestation_data.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
+
+##### Previous crosslink root
+
+Set `attestation_data.previous_crosslink_root = hash_tree_root(head_state.current_crosslinks[shard])`.
+
 ##### Crosslink data root
 
 Set `attestation_data.crosslink_data_root = ZERO_HASH`.
 
 _Note:_ This is a stub for phase 0.
-
-##### Latest crosslink
-
-Set `attestation_data.previous_crosslink = head_state.latest_crosslinks[shard]`.
-
-##### Source epoch
-
-Set `attestation_data.source_epoch = head_state.justified_epoch`.
-
-##### Source root
-
-Set `attestation_data.source_root = head_state.current_justified_root`.
 
 #### Construct attestation
 
