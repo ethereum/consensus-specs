@@ -1311,23 +1311,26 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
+
     # Operation is a no-op if validator is already in the queue
-    if validator.exit_epoch == FAR_FUTURE_EPOCH:
-        # Update exit queue counters
-        delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
-        if state.exit_epoch < delayed_activation_exit_epoch:
-            state.exit_epoch = delayed_activation_exit_epoch
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
 
-        if state.exit_queue_filled >= MAX_EXITS_PER_EPOCH:
-            state.exit_epoch += 1
-            state.exit_queue_filled = 0
+    # Update exit queue counters
+    delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+    if state.exit_epoch < delayed_activation_exit_epoch:
+        state.exit_epoch = delayed_activation_exit_epoch
 
-        # Set validator exit epoch and withdrawable epoch
-        validator.exit_epoch = state.exit_epoch
-        validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    if state.exit_queue_filled >= MAX_EXITS_PER_EPOCH:
+        state.exit_epoch += 1
+        state.exit_queue_filled = 0
 
-        # Extend queue
-        state.exit_queue_filled += 1
+    # Set validator exit epoch and withdrawable epoch
+    validator.exit_epoch = state.exit_epoch
+    validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+
+    # Extend queue
+    state.exit_queue_filled += 1
 ```
 
 #### `slash_validator`
