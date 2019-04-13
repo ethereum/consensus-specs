@@ -87,7 +87,7 @@ assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BIT
 offsets = [sum(fixed_lengths + variable_lengths[:i]) for i in range(len(value))]
 fixed_parts = [part if part != None else offsets[i] for i, part in enumerate(fixed_parts)]
 
-# Return the fixed parts (with offsets interleaved) followed by variable parts
+# Return the fixed parts (with offsets interleaved) followed by the variable parts
 return "".join(fixed_parts + variable_parts)
 ```
 
