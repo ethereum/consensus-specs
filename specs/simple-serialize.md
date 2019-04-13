@@ -12,7 +12,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
-    - [Vectors, containers, lists](#composite-types-vectors-containers-and-lists)
+    - [Vectors, containers, lists](#vectors-containers-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -22,8 +22,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 | Name | Value | Description |
 |-|-|-|
-| `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk.
+| `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk. |
 | `BYTES_PER_LENGTH_PREFIX` | `4` | Number of bytes per serialized length prefix. |
+| `BITS_PER_BYTE` | `8` | Number of bits per byte. |
 
 ## Typing
 ### Basic types
@@ -56,96 +57,45 @@ We recursively define the `serialize` function which consumes an object `value` 
 
 > *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, `is_fixed_size`, `is_variable_size` etc.) objects implicitly carry their type.
 
-### Basic Types
-
-For basic types the `serialize` function is defined as follows.
-
-#### `"uintN"`
-
-A byte string of width  `N // 8` containing the little-endian encode integer.
+### `"uintN"`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
 return value.to_bytes(N // 8, "little")
 ```
 
-#### `"bool"`
-
-* The byte `\x00` **if** the value is `False`
-* The byte `\x01` **if** the value is `True`
+### `"bool"`
 
 ```python
 assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### Composite Types (Vectors, Containers and Lists)
-
-The serialized representation of composite types is comprised of two binary sections.
-
-* The first section is the concatenation of a mixture of either the serialized representation for *fixed size* elements **or** a serialized offset value for *variable size* elements.
-    - All *fixed size* elements are represented in this section as their serialized representation.
-    - All *variable size* elements are represented in this section with a `"uint32"` serialized offset where the serialized representation of the element is located in the second section.
-        - offsets are relative to the beginning of the beginning of the entire serialized representation (the start of the first section)
-* The second section is the concatenation of the serialized representations of **only** the *variable size* types.
-    - This section is empty in the case of a purely *fixed size* type.
-
-
-Offset values are subject to the following validity rules:
-
-- For Vector and Container types:
-    - The first offset **must** be equal to the length of the first section.
-- For all types:
-    - Offsets **MAY NOT** be less than any previous offset.
-    - Offsets **MUST** be less than `2**32`
-
-
-#### `"vector"`, `"container"` and `"list"`
-
-Below is an illustrative implementation of the `serialize` function for `"Vector"`,
-`"Container"` and `"List"` types.
+### Vectors, containers, lists
 
 ```python
-# The second section is just the concatenation of the serialized *variable size* elements
-section_2_parts = [
-    serialize(element) if is_variable_size(element)
-    else ''
-    for element in value
-]
-section_2_lengths = [len(part) for part in section_2_parts]
-section_2 = ''.join(section_2_parts)
+# Reccursively serialize fixed-size elements
+fixed_parts = [serialize(element) if is_fixed_size(element) else None for element in value]
+fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_PREFIX for part in fixed_parts]
 
-# Compute the length of the first section (can also be extracted from the type directly)
-section_1_length = sum(
-    len(serialize(element)) if is_fixed_size(element)
-    else 4
-    for element in value
-)
+# Reccursively serialize variable-size elements
+variable_parts = [serialize(element) if is_variable_size(element) else None for element in value]
+variable_lengths = [len(part) if part != None else 0 for part in variable_parts]
 
-# Compute the offset values for each part of the second section
-section_1_offsets = [
-    section_1_length + sum(section_2_lengths[:element_index]) if is_variable_size(element)
-    else None
-    for element_index, element in enumerate(value)
-]
-assert all(offset is None or offset < 2**32 for offset in section_1_offsets)
+# Compute offsets of variable-size elements
+assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_PREFIX * BITS_PER_BYTE)
+offsets = [sum(fixed_lengths) + sum(variable_lengths[:i]) for i in range(len(value))]
 
-# The first section is the concatenation of the serialized fixed size elements and offsets
-section_1_parts = [
-    serialize(element) if is_fixed_size(element)
-    else serialize(section_1_offsets[element_index])
-    for element_index, element in enumerate(value)
-]
-section_1 = ''.join(section_1_parts)
+# Interleave offsets in fixed parts
+fixed_parts = [part if part != None else offsets[i] for i, part in enumerate(fixed_parts)]
 
-return ''.join([section_1, section_2])
+# Return the of fixed parts (with interleaved offsets) followed by variable parts
+return "".join(fixed_parts + variable_parts)
 ```
-
 
 ## Deserialization
 
 Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
-
 
 ## Merkleization
 
