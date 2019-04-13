@@ -20,10 +20,10 @@ In a binary Merkle tree, we define a "generalized index" of a node as `2**depth 
 Note that the generalized index has the convenient property that the two children of node `k` are `2k` and `2k+1`, and also that it equals the position of a node in the linear representation of the Merkle tree that's computed by this function:
 
 ```python
-def merkle_tree(leaves):
+def merkle_tree(leaves: List[Bytes32]) -> List[Bytes32]:
     o = [0] * len(leaves) + leaves
-    for i in range(len(leaves)-1, 0, -1):
-        o[i] = hash(o[i*2] + o[i*2+1])
+    for i in range(len(leaves) - 1, 0, -1):
+        o[i] = hash(o[i * 2] + o[i * 2 + 1])
     return o
 ```
 
@@ -102,8 +102,8 @@ x x . . . . x *
 Here is code for creating and verifying a multiproof. First a helper:
 
 ```python
-def log2(x):
-    return 0 if x == 1 else 1 + log2(x//2)
+def log2(x: int) -> int:
+    return 0 if x == 1 else 1 + log2(x // 2)
 ```
 
 First, a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
@@ -111,7 +111,7 @@ First, a method for computing the generalized indices of the auxiliary tree node
 ```python
 def get_proof_indices(tree_indices: List[int]) -> List[int]:
     # Get all indices touched by the proof
-    maximal_indices = set({})
+    maximal_indices = set()
     for i in tree_indices:
         x = i
         while x > 1:
@@ -119,7 +119,7 @@ def get_proof_indices(tree_indices: List[int]) -> List[int]:
             x //= 2
     maximal_indices = tree_indices + sorted(list(maximal_indices))[::-1]
     # Get indices that cannot be recalculated from earlier indices
-    redundant_indices = set({})
+    redundant_indices = set()
     proof = []
     for index in maximal_indices:
         if index not in redundant_indices:
@@ -130,19 +130,19 @@ def get_proof_indices(tree_indices: List[int]) -> List[int]:
                     break
                 index //= 2
     return [i for i in proof if i not in tree_indices]
-````
+```
 
 Generating a proof is simply a matter of taking the node of the SSZ hash tree with the union of the given generalized indices for each index given by `get_proof_indices`, and outputting the list of nodes in the same order.
 
 Here is the verification function:
 
 ```python
-def verify_multi_proof(root: Bytes32, indices: List[int], leaves: List[Bytes32], proof: List[bytes]):
+def verify_multi_proof(root: Bytes32, indices: List[int], leaves: List[Bytes32], proof: List[bytes]) -> bool:
     tree = {}
     for index, leaf in zip(indices, leaves):
         tree[index] = leaf
-    for index, proofitem in zip(get_proof_indices(indices), proof):
-        tree[index] = proofitem
+    for index, proof_item in zip(get_proof_indices(indices), proof):
+        tree[index] = proof_item
     index_queue = sorted(tree.keys())[:-1]
     i = 0
     while i < len(index_queue):
