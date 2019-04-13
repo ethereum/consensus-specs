@@ -99,14 +99,7 @@ x x . . . . x *
 
 . are unused nodes, * are used nodes, x are the values we are trying to prove. Notice how despite being a multiproof for 3 values, it requires only 3 auxiliary nodes, only one node more than would be required to prove a single value. Normally the efficiency gains are not quite that extreme, but the savings relative to individual Merkle proofs are still significant. As a rule of thumb, a multiproof for k nodes at the same level of an n-node tree has size `k * (n/k + log(n/k))`.
 
-Here is code for creating and verifying a multiproof. First a helper:
-
-```python
-def log2(x: int) -> int:
-    return 0 if x == 1 else 1 + log2(x // 2)
-```
-
-First, a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
+Here is code for creating and verifying a multiproof. First, a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
 
 ```python
 def get_proof_indices(tree_indices: List[int]) -> List[int]:
