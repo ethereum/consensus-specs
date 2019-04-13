@@ -1917,6 +1917,13 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     for slot in range(previous_epoch_start_slot, current_epoch_start_slot):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, previous_crosslink_root, participants = get_winning_root_and_participants(state, slot, shard)
+
+            # do not count as success if winning_root did not or cannot form a chain
+            attempted_crosslink = Crosslink(epoch=slot_to_epoch(slot), crosslink_data_root=winning_root, previous_crosslink_root=previous_crosslink_root)
+            current_crosslink_root = hash_tree_root(state.current_crosslinks[shard])
+            if not current_crosslink_root in {previous_crosslink_root, hash_tree_root(attempted_crosslink) }:
+                participants = []
+
             participating_balance = get_total_balance(state, participants)
             total_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:

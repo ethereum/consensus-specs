@@ -7,12 +7,9 @@ from build.phase0.state_transition import (
     state_transition,
 )
 from build.phase0.spec import (
-    ZERO_HASH,
     cache_state,
-    get_crosslink_committee_for_attestation,
-    get_current_epoch,
+    get_crosslink_deltas,
     process_crosslinks,
-    slot_to_epoch,
 )
 from tests.phase0.helpers import (
     add_attestation_to_state,
@@ -20,6 +17,7 @@ from tests.phase0.helpers import (
     fill_aggregate_attestation,
     get_valid_attestation,
     next_epoch,
+    next_slot,
     set_bitfield_bit,
 )
 
@@ -102,8 +100,11 @@ def test_double_late_crosslink(state):
     next_epoch(state)
     add_attestation_to_state(state, attestation_1, state.slot + 1)
 
-    state.slot = attestation_1.data.slot + spec.SLOTS_PER_EPOCH
-    attestation_2 = get_valid_attestation(state)
+    for slot in range(spec.SLOTS_PER_EPOCH):
+        attestation_2 = get_valid_attestation(state)
+        if attestation_2.data.shard == attestation_1.data.shard:
+            break
+        next_slot(state)
     fill_aggregate_attestation(state, attestation_2)
 
     # add attestation_2 in the next epoch after attestation_1 has
@@ -115,13 +116,15 @@ def test_double_late_crosslink(state):
     assert len(state.current_epoch_attestations) == 0
 
     pre_state, post_state = run_process_crosslinks(state)
+    crosslink_deltas = get_crosslink_deltas(state)
 
-    shard_1 = attestation_1.data.shard
-    shard_2 = attestation_2.data.shard
-    assert shard_1 == shard_2
-    shard = shard_1
+    shard = attestation_2.data.shard
+    slot = attestation_2.data.slot
 
     # ensure that the current crosslinks were not updated by the second attestation
     assert post_state.previous_crosslinks[shard] == post_state.current_crosslinks[shard]
+    # ensure no reward, only penalties for the failed crosslink
+    assert crosslink_deltas[0][slot % spec.SLOTS_PER_EPOCH] == 0
+    assert crosslink_deltas[1][slot % spec.SLOTS_PER_EPOCH] > 0
 
     return pre_state, post_state

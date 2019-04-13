@@ -274,7 +274,7 @@ def get_valid_attester_slashing(state):
 def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
-    shard = state.latest_start_shard + slot % spec.SLOTS_PER_EPOCH
+    shard = (state.latest_start_shard + slot) % spec.SLOTS_PER_EPOCH
     attestation_data = build_attestation_data(state, slot, shard)
 
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
@@ -338,6 +338,11 @@ def add_attestation_to_state(state, attestation, slot):
     block = build_empty_block_for_next_slot(state)
     block.slot = slot
     block.body.attestations.append(attestation)
+    state_transition(state, block)
+
+
+def next_slot(state):
+    block = build_empty_block_for_next_slot(state)
     state_transition(state, block)
 
 
