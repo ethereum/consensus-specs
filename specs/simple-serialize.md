@@ -23,7 +23,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 | Name | Value | Description |
 |-|-|-|
 | `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk. |
-| `BYTES_PER_LENGTH_PREFIX` | `4` | Number of bytes per serialized length prefix. |
+| `BYTES_PER_LENGTH_OFFSET` | `4` | Number of bytes per serialized length prefix. |
 | `BITS_PER_BYTE` | `8` | Number of bits per byte. |
 
 ## Typing
@@ -79,9 +79,9 @@ fixed_parts = [serialize(element) if is_fixed_size(element) else None for elemen
 variable_parts = [serialize(element) if is_variable_size(element) else None for element in value]
 
 # Compute and check lengths
-fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_PREFIX for part in fixed_parts]
+fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts]
 variable_lengths = [len(part) if part != None else 0 for part in variable_parts]
-assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_PREFIX * BITS_PER_BYTE)
+assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
 
 # Compute offsets of variable-size elements, and interleave with fixed parts
 offsets = [sum(fixed_lengths) + sum(variable_lengths[:i]) for i in range(len(value))]
