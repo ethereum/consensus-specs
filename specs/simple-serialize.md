@@ -83,11 +83,11 @@ fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part
 variable_lengths = [len(part) for part in variable_parts]
 assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
 
-# Compute offsets of variable-size parts and interleave offsets with fixed-size parts
+# Interleave offsets of variable-size parts with fixed-size parts
 offsets = [sum(fixed_lengths + variable_lengths[:i]) for i in range(len(value))]
 fixed_parts = [part if part != None else serialize(offsets[i]) for i, part in enumerate(fixed_parts)]
 
-# Return the fixed-size parts (with offsets interleaved) followed by the variable-size parts
+# Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
 return "".join(fixed_parts + variable_parts)
 ```
 
