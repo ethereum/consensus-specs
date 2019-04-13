@@ -16,11 +16,11 @@ clean:
 
 # runs a limited set of tests against a minimal config
 # run pytest with `-m` option to full suite
-test:
+test: all
 	pytest -m minimal_config tests/
 
 
-$(BUILD_DIR)/phase0:
+$(BUILD_DIR)/phase0: $(SPEC_DIR)/core/0_beacon-chain.md $(SCRIPT_DIR)/phase0/*.py $(UTILS_DIR)/phase0/*.py
 	mkdir -p $@
 	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@/spec.py
 	mkdir -p $@/utils
