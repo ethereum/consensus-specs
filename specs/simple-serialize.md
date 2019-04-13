@@ -84,7 +84,7 @@ variable_lengths = [len(part) if part != None else 0 for part in variable_parts]
 assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
 
 # Compute offsets of variable-size elements, and interleave with fixed parts
-offsets = [sum(fixed_lengths) + sum(variable_lengths[:i]) for i in range(len(value))]
+offsets = [sum(fixed_lengths + variable_lengths[:i]) for i in range(len(value))]
 fixed_parts = [part if part != None else offsets[i] for i, part in enumerate(fixed_parts)]
 
 # Return the fixed parts (with offsets interleaved) followed by variable parts
