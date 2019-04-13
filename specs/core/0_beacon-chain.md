@@ -1867,9 +1867,9 @@ Run the following function:
 
 ```python
 def process_crosslinks(state: BeaconState) -> None:
-    start_epoch = get_previous_epoch(state)
+    previous_epoch = get_previous_epoch(state)
     next_epoch = get_current_epoch(state) + 1
-    for slot in range(get_epoch_start_slot(start_epoch), get_epoch_start_slot(next_epoch)):
+    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, participants = get_winning_root_and_participants(state, shard)
             participating_balance = get_total_balance(state, participants)
