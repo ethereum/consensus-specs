@@ -76,11 +76,11 @@ return b"\x01" if value is True else b"\x00"
 ```python
 # Reccursively serialize
 fixed_parts = [serialize(element) if is_fixed_size(element) else None for element in value]
-variable_parts = [serialize(element) if is_variable_size(element) else None for element in value]
+variable_parts = [serialize(element) if is_variable_size(element) else "" for element in value]
 
 # Compute and check lengths
 fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts]
-variable_lengths = [len(part) if part != None else 0 for part in variable_parts]
+variable_lengths = [len(part) for part in variable_parts]
 assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
 
 # Compute offsets of variable-size parts and interleave offsets with fixed parts
