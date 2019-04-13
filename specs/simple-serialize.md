@@ -55,7 +55,7 @@ For convenience we alias:
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
-> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, `is_fixed_size`, `is_variable_size` etc.) objects implicitly carry their type.
+> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, `is_fixed_size`, `is_variable_size`, etc.) objects implicitly carry their type.
 
 ### `"uintN"`
 
