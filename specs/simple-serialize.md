@@ -23,7 +23,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 | Name | Value | Description |
 |-|-|-|
 | `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk. |
-| `BYTES_PER_LENGTH_OFFSET` | `4` | Number of bytes per serialized length prefix. |
+| `BYTES_PER_LENGTH_OFFSET` | `4` | Number of bytes per serialized length offset. |
 | `BITS_PER_BYTE` | `8` | Number of bits per byte. |
 
 ## Typing
