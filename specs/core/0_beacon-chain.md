@@ -1920,8 +1920,8 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
 
             # do not count as success if winning_root did not or cannot form a chain
             attempted_crosslink = Crosslink(epoch=slot_to_epoch(slot), crosslink_data_root=winning_root, previous_crosslink_root=previous_crosslink_root)
-            current_crosslink_root = hash_tree_root(state.current_crosslinks[shard])
-            if not current_crosslink_root in {previous_crosslink_root, hash_tree_root(attempted_crosslink) }:
+            actual_crosslink_root = hash_tree_root(state.previous_crosslinks[shard])
+            if not actual_crosslink_root in {previous_crosslink_root, hash_tree_root(attempted_crosslink)}:
                 participants = []
 
             participating_balance = get_total_balance(state, participants)

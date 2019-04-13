@@ -81,10 +81,15 @@ def test_single_crosslink_update_from_previous_epoch(state):
     assert len(state.previous_epoch_attestations) == 1
 
     pre_state, post_state = run_process_crosslinks(state)
+    crosslink_deltas = get_crosslink_deltas(state)
 
     shard = attestation.data.shard
     assert post_state.previous_crosslinks[shard] != post_state.current_crosslinks[shard]
     assert pre_state.current_crosslinks[shard] != post_state.current_crosslinks[shard]
+    # ensure rewarded
+    slot = attestation.data.slot
+    assert crosslink_deltas[0][slot % spec.SLOTS_PER_EPOCH] > 0
+    assert crosslink_deltas[1][slot % spec.SLOTS_PER_EPOCH] == 0
 
     return pre_state, post_state
 
