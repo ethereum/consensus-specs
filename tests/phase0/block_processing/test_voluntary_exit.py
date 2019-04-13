@@ -76,7 +76,11 @@ def test_success_exit_queue(state):
             privkey,
         )
 
-        _, post_state = run_voluntary_exit_processing(post_state, voluntary_exit)
+        pre_state, post_state = run_voluntary_exit_processing(post_state, voluntary_exit)
+        assert post_state.exit_queue_filled > pre_state.exit_queue_filled
+        assert post_state.exit_epoch >= pre_state.exit_epoch
+
+    assert post_state.exit_epoch == pre_state.exit_epoch
 
     # exit an additional validator
     validator_index = get_active_validator_indices(state.validator_registry,current_epoch)[-1]
@@ -94,6 +98,9 @@ def test_success_exit_queue(state):
         post_state.validator_registry[validator_index].exit_epoch ==
         post_state.validator_registry[initial_indices[0]].exit_epoch + 1
     )
+    assert post_state.exit_queue_filled == 1
+    assert post_state.exit_epoch == pre_state.exit_epoch + 1
+
 
     return pre_state, voluntary_exit, post_state
 
