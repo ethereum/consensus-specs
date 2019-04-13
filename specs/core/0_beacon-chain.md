@@ -1462,7 +1462,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Randomness and committees
         latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
         latest_start_shard=GENESIS_START_SHARD,
-        
+
         # Exit queue
         exit_epoch=GENESIS_EPOCH,
         exit_queue_filled=0,
@@ -2271,6 +2271,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
+            activation_eligibility_epoch=FAR_FUTURE_EPOCH,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
