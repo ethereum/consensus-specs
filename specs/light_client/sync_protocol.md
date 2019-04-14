@@ -75,7 +75,7 @@ A light client will keep track of:
 * `later_period_data = get_period_data(finalized_header, shard_id, later=True)`
 * `earlier_period_data = get_period_data(finalized_header, shard_id, later=False)`
 
-We use the struct `validator_memory` to keep track of these variables.
+We use the struct `ValidatorMemory` to keep track of these variables.
 
 ### Updating the shuffled committee
 
