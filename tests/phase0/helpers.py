@@ -25,7 +25,6 @@ from build.phase0.spec import (
     get_attestation_participants,
     get_block_root,
     get_crosslink_committee_for_attestation,
-    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_empty_block,
@@ -94,14 +93,6 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
             block_hash=spec.ZERO_HASH,
         ),
     )
-
-
-def force_registry_change_at_next_epoch(state):
-    # artificially trigger registry update at next epoch transition
-    state.finalized_epoch = get_current_epoch(state) - 1
-    for crosslink in state.latest_crosslinks:
-        crosslink.epoch = state.finalized_epoch
-    state.validator_registry_update_epoch = state.finalized_epoch - 1
 
 
 def build_empty_block_for_next_slot(state):
@@ -208,7 +199,7 @@ def build_deposit(state,
 
 def get_valid_proposer_slashing(state):
     current_epoch = get_current_epoch(state)
-    validator_index = get_active_validator_indices(state.validator_registry, current_epoch)[-1]
+    validator_index = get_active_validator_indices(state, current_epoch)[-1]
     privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
     slot = state.slot
 
@@ -249,7 +240,7 @@ def get_valid_proposer_slashing(state):
 def get_valid_attester_slashing(state):
     attestation_1 = get_valid_attestation(state)
     attestation_2 = deepcopy(attestation_1)
-    attestation_2.data.target_root = b'\x01'*32
+    attestation_2.data.target_root = b'\x01' * 32
 
     return AttesterSlashing(
         attestation_1=convert_to_indexed(state, attestation_1),
