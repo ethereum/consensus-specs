@@ -292,11 +292,8 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Previous fork version
     'previous_version': 'bytes4',
-    # Current fork version
     'current_version': 'bytes4',
-    # Fork epoch number
     'epoch': 'uint64',
 }
 ```
@@ -305,9 +302,7 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Epoch number
     'epoch': 'uint64',
-    # Shard data since the previous crosslink
     'crosslink_data_root': 'bytes32',
 }
 ```
@@ -316,11 +311,8 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Root of the deposit tree
     'deposit_root': 'bytes32',
-    # Total number of deposits
     'deposit_count': 'uint64',
-    # Block hash
     'block_hash': 'bytes32',
 }
 ```
@@ -329,9 +321,7 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Data being voted for
     'eth1_data': Eth1Data,
-    # Vote count
     'vote_count': 'uint64',
 }
 ```
@@ -360,9 +350,7 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Attestation data
     'data': AttestationData,
-    # Custody bit
     'custody_bit': 'bool',
 }
 ```
@@ -371,12 +359,9 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Validator indices
     'custody_bit_0_indices': ['uint64'],
     'custody_bit_1_indices': ['uint64'],
-    # Attestation data
     'data': AttestationData,
-    # Aggregate signature
     'aggregate_signature': 'bytes96',
 }
 ```
@@ -385,13 +370,9 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # BLS pubkey
     'pubkey': 'bytes48',
-    # Withdrawal credentials
     'withdrawal_credentials': 'bytes32',
-    # Amount in Gwei
     'amount': 'uint64',
-    # Container self-signature
     'proof_of_possession': 'bytes96',
 }
 ```
@@ -411,22 +392,17 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # BLS public key
+    # Fields relevant to light clients
     'pubkey': 'bytes48',
-    # Withdrawal credentials
-    'withdrawal_credentials': 'bytes32',
-    # Epoch when became eligible for activation
-    'activation_eligibility_epoch': 'uint64',
-    # Epoch when validator activated
-    'activation_epoch': 'uint64',
-    # Epoch when validator exited
-    'exit_epoch': 'uint64',
-    # Epoch when validator is eligible to withdraw
-    'withdrawable_epoch': 'uint64',
-    # Was the validator slashed
+    'high_balance': 'uint64',
     'slashed': 'bool',
-    # Rounded balance
-    'high_balance': 'uint64'
+    
+    # Other fields
+    'activation_epoch': 'uint64',
+    'exit_epoch': 'uint64',
+    'activation_eligibility_epoch': 'uint64',
+    'withdrawable_epoch': 'uint64',
+    'withdrawal_credentials': 'bytes32',
 }
 ```
 
@@ -434,13 +410,9 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
-    # Attestation data
     'data': AttestationData,
-    # Custody bitfield
     'custody_bitfield': 'bytes',
-    # Inclusion slot
     'inclusion_slot': 'uint64',
 }
 ```
@@ -449,9 +421,7 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Block roots
     'block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
-    # State roots
     'state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
 }
 ```
@@ -462,11 +432,8 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Proposer index
     'proposer_index': 'uint64',
-    # First block header
     'header_1': BeaconBlockHeader,
-    # Second block header
     'header_2': BeaconBlockHeader,
 }
 ```
@@ -475,9 +442,7 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # First attestation
     'attestation_1': IndexedAttestation,
-    # Second attestation
     'attestation_2': IndexedAttestation,
 }
 ```
@@ -486,13 +451,9 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Attester aggregation bitfield
     'aggregation_bitfield': 'bytes',
-    # Attestation data
     'data': AttestationData,
-    # Custody bitfield
     'custody_bitfield': 'bytes',
-    # BLS aggregate signature
     'aggregate_signature': 'bytes96',
 }
 ```
@@ -501,11 +462,8 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Branch in the deposit tree
     'proof': ['bytes32', DEPOSIT_CONTRACT_TREE_DEPTH],
-    # Index in the deposit tree
     'index': 'uint64',
-    # Data
     'data': DepositData,
 }
 ```
@@ -514,11 +472,8 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Minimum epoch for processing exit
     'epoch': 'uint64',
-    # Index of the exiting validator
     'validator_index': 'uint64',
-    # Validator signature
     'signature': 'bytes96',
 }
 ```
@@ -527,19 +482,12 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Sender index
     'sender': 'uint64',
-    # Recipient index
     'recipient': 'uint64',
-    # Amount in Gwei
     'amount': 'uint64',
-    # Fee in Gwei for block proposer
     'fee': 'uint64',
-    # Inclusion slot
     'slot': 'uint64',
-    # Sender withdrawal pubkey
     'pubkey': 'bytes48',
-    # Sender signature
     'signature': 'bytes96',
 }
 ```
@@ -552,6 +500,8 @@ The types are defined topologically to aid in facilitating an executable version
 {
     'randao_reveal': 'bytes96',
     'eth1_data': Eth1Data,
+
+    # Operations
     'proposer_slashings': [ProposerSlashing],
     'attester_slashings': [AttesterSlashing],
     'attestations': [Attestation],
@@ -565,7 +515,6 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Header
     'slot': 'uint64',
     'previous_block_root': 'bytes32',
     'state_root': 'bytes32',
@@ -580,22 +529,35 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
-    # Misc
-    'slot': 'uint64',
+    # Versioning
     'genesis_time': 'uint64',
-    'fork': Fork,  # For versioning hard forks
+    'slot': 'uint64',
+    'fork': Fork,
 
-    # Validator registry
+    # Roots
+    'latest_block_header': BeaconBlockHeader,
+    'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
+    'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
+    'historical_roots': ['bytes32'],
+
+    # Registry
     'validator_registry': [Validator],
     'balances': ['uint64'],
+    'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],
 
-    # Randomness and committees
+    # Shuffling
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
+    'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
     'latest_start_shard': 'uint64',
-    
-    # Finality
+
+    # Crosslinks
+    'latest_crosslinks': [Crosslink, SHARD_COUNT],
+
+    # Attestations
     'previous_epoch_attestations': [PendingAttestation],
     'current_epoch_attestations': [PendingAttestation],
+
+    # Finality
     'previous_justified_epoch': 'uint64',
     'current_justified_epoch': 'uint64',
     'previous_justified_root': 'bytes32',
@@ -604,19 +566,10 @@ The types are defined topologically to aid in facilitating an executable version
     'finalized_epoch': 'uint64',
     'finalized_root': 'bytes32',
 
-    # Recent state
-    'latest_crosslinks': [Crosslink, SHARD_COUNT],
-    'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
-    'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
-    'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
-    'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],  # Balances slashed at every withdrawal period
-    'latest_block_header': BeaconBlockHeader,  # `latest_block_header.state_root == ZERO_HASH` temporarily
-    'historical_roots': ['bytes32'],
-
-    # Ethereum 1.0 chain data
+    # Eth1
     'latest_eth1_data': Eth1Data,
     'eth1_data_votes': [Eth1DataVote],
-    'deposit_index': 'uint64',
+    'eth1_deposit_index': 'uint64',
 }
 ```
 
@@ -1486,7 +1439,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Ethereum 1.0 chain data
         latest_eth1_data=genesis_eth1_data,
         eth1_data_votes=[],
-        deposit_index=0,
+        eth1_deposit_index=0,
     )
 
     # Process genesis deposits
@@ -2212,7 +2165,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Deposits
 
-Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.
+Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.eth1_deposit_index)`.
 
 For each `deposit` in `block.body.deposits`, run the following function:
 
@@ -2226,7 +2179,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     Note that this function mutates ``state``.
     """
     # Deposits must be processed in order
-    assert deposit.index == state.deposit_index
+    assert deposit.index == state.eth1_deposit_index
 
     # Verify the Merkle branch
     merkle_branch_is_valid = verify_merkle_branch(
@@ -2242,7 +2195,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     # needs to be done here because while the deposit contract will never
     # create an invalid Merkle branch, it may admit an invalid deposit
     # object, and we need to be able to skip over it
-    state.deposit_index += 1
+    state.eth1_deposit_index += 1
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit.data.pubkey
