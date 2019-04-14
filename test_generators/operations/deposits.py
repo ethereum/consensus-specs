@@ -91,7 +91,7 @@ def valid_deposit():
     new_dep, state, leaves = build_deposit_for_index(10, 10)
     state.latest_eth1_data.deposit_root = get_merkle_root(tuple(leaves))
     state.latest_eth1_data.deposit_count = len(leaves)
-    yield 'case', 'valid deposit to add new validator'
+    yield 'description', 'valid deposit to add new validator'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
     spec.process_deposit(state, new_dep)
@@ -103,7 +103,7 @@ def valid_topup():
     new_dep, state, leaves = build_deposit_for_index(10, 3)
     state.latest_eth1_data.deposit_root = get_merkle_root(tuple(leaves))
     state.latest_eth1_data.deposit_count = len(leaves)
-    yield 'case', 'valid deposit to top-up existing validator'
+    yield 'description', 'valid deposit to top-up existing validator'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
     spec.process_deposit(state, new_dep)
@@ -118,7 +118,7 @@ def invalid_deposit_index():
     # Mess up deposit index, 1 too small
     state.deposit_index = 9
 
-    yield 'case', 'invalid deposit index'
+    yield 'description', 'invalid deposit index'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
     yield 'post', None
@@ -131,7 +131,7 @@ def invalid_deposit_proof():
     # Make deposit proof invalid (at bottom of proof)
     new_dep.proof[-1] = spec.ZERO_HASH
 
-    yield 'case', 'invalid deposit proof'
+    yield 'description', 'invalid deposit proof'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
     yield 'post', None

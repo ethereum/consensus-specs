@@ -5,10 +5,10 @@ A deposit is a form of an operation (or "transaction"), modifying the state.
 ## Test case format
 
 ```yaml
-case: string      -- description of test case, purely for debugging purposes
-pre: BeaconState  -- state before applying the deposit
-deposit: Deposit  -- the deposit
-post: BeaconState -- state after applying the deposit. No value if deposit processing is aborted.
+description: string  -- description of test case, purely for debugging purposes
+pre: BeaconState     -- state before applying the deposit
+deposit: Deposit     -- the deposit
+post: BeaconState    -- state after applying the deposit. No value if deposit processing is aborted.
 ```
 
 ## Condition
