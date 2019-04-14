@@ -179,7 +179,7 @@ def test_deposit_in_block(state):
     privkey = privkeys[index]
     deposit_data = build_deposit_data(pre_state, pubkey, privkey, spec.MAX_DEPOSIT_AMOUNT)
 
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
@@ -218,7 +218,7 @@ def test_deposit_top_up(state):
     deposit_data = build_deposit_data(pre_state, pubkey, privkey, amount)
 
     merkle_index = len(test_deposit_data_leaves)
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
