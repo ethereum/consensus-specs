@@ -184,6 +184,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
+| `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -236,7 +237,6 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MAX_FULL_CHURN_EPOCHS` | `2**22` (= 4,194,304) | epochs | ~9 months |
 
 * `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
-
 
 ### State list lengths
 
@@ -746,11 +746,11 @@ def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
 ### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(validators: List[Validator], epoch: Epoch) -> List[ValidatorIndex]:
+def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex]:
     """
-    Get indices of active validators from ``validators``.
+    Get active validator indices at ``epoch``.
     """
-    return [i for i, v in enumerate(validators) if is_active_validator(v, epoch)]
+    return [i for i, v in enumerate(state.validator_registry) if is_active_validator(v, epoch)]
 ```
 
 ### `get_balance`
@@ -844,7 +844,7 @@ def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
     """
     Return the number of committees in one epoch.
     """
-    active_validators = get_active_validator_indices(state.validator_registry, epoch)
+    active_validators = get_active_validator_indices(state, epoch)
     return max(
         1,
         min(
@@ -896,10 +896,7 @@ def get_crosslink_committees_at_slot(state: BeaconState,
     next_epoch = current_epoch + 1
 
     assert previous_epoch <= epoch <= next_epoch
-    indices = get_active_validator_indices(
-        state.validator_registry,
-        epoch,
-    )
+    indices = get_active_validator_indices(state, epoch)
 
     if epoch == current_epoch:
         start_shard = state.latest_start_shard
@@ -1276,7 +1273,7 @@ def get_delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
 def get_churn_limit(state: BeaconState) -> int:
     return max(
         MIN_PER_EPOCH_CHURN_LIMIT,
-        MAX_FULL_CHURN_EPOCHS // len(get_active_validator_indices(state, get_current_epoch(state)))
+        len(get_active_validator_indices(state, get_current_epoch(state))) // CHURN_LIMIT_QUOTIENT
     )
 ```
 
@@ -1517,7 +1514,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
             activate_validator(state, validator_index, is_genesis=True)
 
-    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state.validator_registry, GENESIS_EPOCH))
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
         state.latest_active_index_roots[index] = genesis_active_index_root
 
@@ -1651,12 +1648,12 @@ We define some helper functions utilized when processing an epoch transition:
 
 ```python
 def get_current_total_balance(state: BeaconState) -> Gwei:
-    return get_total_balance(state, get_active_validator_indices(state.validator_registry, get_current_epoch(state)))
+    return get_total_balance(state, get_active_validator_indices(state, get_current_epoch(state)))
 ```
 
 ```python
 def get_previous_total_balance(state: BeaconState) -> Gwei:
-    return get_total_balance(state, get_active_validator_indices(state.validator_registry, get_previous_epoch(state)))
+    return get_total_balance(state, get_active_validator_indices(state, get_previous_epoch(state)))
 ```
 
 ```python
@@ -1994,7 +1991,7 @@ def process_slashings(state: BeaconState) -> None:
     Note that this function mutates ``state``.
     """
     current_epoch = get_current_epoch(state)
-    active_validator_indices = get_active_validator_indices(state.validator_registry, current_epoch)
+    active_validator_indices = get_active_validator_indices(state, current_epoch)
     total_balance = get_total_balance(state, active_validator_indices)
 
     # Compute `total_penalties`
@@ -2022,7 +2019,7 @@ def finish_epoch_update(state: BeaconState) -> None:
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
     state.latest_active_index_roots[index_root_position] = hash_tree_root(
-        get_active_validator_indices(state.validator_registry, next_epoch + ACTIVATION_EXIT_DELAY)
+        get_active_validator_indices(state, next_epoch + ACTIVATION_EXIT_DELAY)
     )
     # Set total slashed balances
     state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = (
