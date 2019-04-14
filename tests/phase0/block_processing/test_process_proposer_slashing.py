@@ -30,7 +30,6 @@ def run_proposer_slashing_processing(state, proposer_slashing, valid=True):
     process_proposer_slashing(post_state, proposer_slashing)
 
     slashed_validator = post_state.validator_registry[proposer_slashing.proposer_index]
-    assert not slashed_validator.initiated_exit
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH

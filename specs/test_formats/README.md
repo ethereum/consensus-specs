@@ -7,7 +7,7 @@ This document defines the YAML format and structure used for ETH 2.0 testing.
 * [About](#about)
 * [Glossary](#glossary)
 * [Test format philosophy](#test-format-philosophy)
-* [Test Suite](#yaml-suite)
+* [Test Suite](#test-suite)
 * [Config](#config)
 * [Fork-timeline](#fork-timeline)
 * [Config sourcing](#config-sourcing)
@@ -28,7 +28,7 @@ The particular formats of specific types of tests (test suites) are defined in s
 - `suite`: a YAML file with:
   - a header: describes the `suite`, and defines what the `suite` is for
   - a list of test cases
-- `runner`: where a generator is a *"producer"*, this is the *"consumer"**.
+- `runner`: where a generator is a *"producer"*, this is the *"consumer"*.
   - A `runner` focuses on *only one* `type`, and each type has *only one* `runner`.
 - `handler`: a `runner` may be too limited sometimes, you may have a `suite` with a specific focus that requires a different format.
   To facilitate this, you specify a `handler`: the runner can deal with the format by using the specified handler.
@@ -84,7 +84,7 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 
 - Clients that are complete are expected to contribute to testing, seeking for better resources to get conformance with the spec, and other clients.
 - Clients that are not complete in functionality can choose to ignore suites that use certain test-runners, or specific handlers of these test-runners.
-- Clients that are on older versions can test there work based on older releases of the generated tests, and catch up with newer releases when possible.
+- Clients that are on older versions can test their work based on older releases of the generated tests, and catch up with newer releases when possible.
 
 ## Test Suite
 

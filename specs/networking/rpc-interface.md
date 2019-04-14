@@ -9,7 +9,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL", NOT", "SHOULD", 
 
 # Dependencies
 
-This specification assumes familiarity with the [Messaging](./messaging.md), [Node Identification](./node-identification), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
+This specification assumes familiarity with the [Messaging](./messaging.md), [Node Identification](./node-identification.md), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
 
 # Specification
 
@@ -26,7 +26,7 @@ Message body schemas are notated like this:
 
 Embedded types are serialized as SSZ Containers unless otherwise noted.
 
-All referenced data structures can be found in the [0-beacon-chain](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#data-structures) specification.
+All referenced data structures can be found in the [0-beacon-chain](../core/0_beacon-chain.md#data-structures) specification.
 
 ## `libp2p` Protocol Names
 
