@@ -1706,7 +1706,7 @@ def inclusion_slot(state: BeaconState, attestations: List[Attestation], validato
     return min([
         a.inclusion_slot for a in attestations if
         validator_index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
-    ])
+    ] + [GENESIS_SLOT])
 ```
 
 ```python
@@ -2198,19 +2198,17 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.current_epoch_attestations.append(pending_attestation)
     else:
         state.previous_epoch_attestations.append(pending_attestation)
+
 ```
 
-Run `process_proposer_attestation_rewards(block.body.attestations)`.
+Run `process_proposer_attestation_rewards(state)`.
 
 ```python
-def process_proposer_attestation_rewards(state: BeaconState, attestations: List[Attestation]) -> None:
+def process_proposer_attestation_rewards(state: BeaconState) -> None:
     proposer_index = get_beacon_proposer_index(state, state.slot)
-    previous_attestations = [a for a in attestations if slot_to_epoch(a.data.slot) == get_previous_epoch(state)]
-    current_attestations = [a for a in attestations if slot_to_epoch(a.data.slot) == get_current_epoch(state)]
-
-    for block_attestations, pending_attestations in zip([previous_attestations, current_attestations], [state.previous_epoch_attestations, state.current_epoch_attestations]):
-        for index in get_unslashed_attesting_indices(state, block_attestations):
-            if inclusion_slot(state, pending_attestations, index) == state.slot:
+    for attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
+        for index in get_unslashed_attesting_indices(state, attestations):
+            if inclusion_slot(state, attestations, index) == state.slot:
                 increase_balance(state, proposer_index, get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
 ```
 
