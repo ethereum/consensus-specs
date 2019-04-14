@@ -1320,17 +1320,18 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
-    # Compute exit queue parameters
-    exit_queue_epoch = sorted([validator.exit_epoch for validator in state.validator_registry if
-        validator.exit_epoch != FAR_FUTURE_EPOCH
-    ].append(GENESIS_EPOCH), key=lambda index: state.validator_registry[index].exit_epoch)[-1]
+    # Compute exit queue parameters (pad with GENESIS_EPOCH in case empty)
+    exit_queue_epoch = sorted([
+        validator.exit_epoch for validator in state.validator_registry
+        if validator.exit_epoch != FAR_FUTURE_EPOCH
+    ] + [GENESIS_EPOCH])[-1]
 
     delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
     if exit_queue_epoch < delayed_activation_exit_epoch:
         exit_queue_epoch = delayed_activation_exit_epoch
 
     exit_queue_churn = len([v for v in state.validator_registry if v.exit_epoch == exit_queue_epoch])
-    if exit_queue_churn > get_churn_limit(state):
+    if exit_queue_churn >= get_churn_limit(state):
         exit_queue_epoch += 1
 
     # Set validator exit epoch and withdrawable epoch

@@ -346,8 +346,6 @@ def test_no_exit_churn_too_long_since_change(state):
     state_transition(post_state, block)
 
     assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert post_state.exit_queue_churn == pre_state.exit_queue_churn
-    assert post_state.exit_queue_epoch == pre_state.exit_queue_epoch
 
     return pre_state, [block], post_state
 
