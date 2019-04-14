@@ -40,7 +40,6 @@ from build.phase0.utils.merkle_minimal import (
 from tests.phase0.helpers import (
     build_deposit_data,
     build_empty_block_for_next_slot,
-    force_registry_change_at_next_epoch,
     get_valid_attestation,
     get_valid_attester_slashing,
     get_valid_proposer_slashing,
@@ -129,11 +128,9 @@ def test_proposer_slashing(state):
     block.body.proposer_slashings.append(proposer_slashing)
     state_transition(test_state, block)
 
-    assert not state.validator_registry[validator_index].initiated_exit
     assert not state.validator_registry[validator_index].slashed
 
     slashed_validator = test_state.validator_registry[validator_index]
-    assert not slashed_validator.initiated_exit
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
@@ -155,11 +152,9 @@ def test_attester_slashing(state):
     block.body.attester_slashings.append(attester_slashing)
     state_transition(test_state, block)
 
-    assert not state.validator_registry[validator_index].initiated_exit
     assert not state.validator_registry[validator_index].slashed
 
     slashed_validator = test_state.validator_registry[validator_index]
-    assert not slashed_validator.initiated_exit
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
@@ -284,15 +279,12 @@ def test_attestation(state):
 def test_voluntary_exit(state):
     pre_state = deepcopy(state)
     validator_index = get_active_validator_indices(
-        pre_state.validator_registry,
+        pre_state,
         get_current_epoch(pre_state)
     )[-1]
 
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    pre_state.finalized_epoch = slot_to_epoch(pre_state.slot) - 3
-    # artificially trigger registry update at next epoch transition
-    force_registry_change_at_next_epoch(pre_state)
 
     post_state = deepcopy(pre_state)
 
@@ -318,9 +310,7 @@ def test_voluntary_exit(state):
     initiate_exit_block.body.voluntary_exits.append(voluntary_exit)
     state_transition(post_state, initiate_exit_block)
 
-    assert not pre_state.validator_registry[validator_index].initiated_exit
-    assert post_state.validator_registry[validator_index].initiated_exit
-    assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert post_state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     #
     # Process within epoch transition
@@ -334,47 +324,11 @@ def test_voluntary_exit(state):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
-def test_no_exit_churn_too_long_since_change(state):
-    pre_state = deepcopy(state)
-    validator_index = get_active_validator_indices(
-        pre_state.validator_registry,
-        get_current_epoch(pre_state)
-    )[-1]
-
-    #
-    # setup pre_state
-    #
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-    # make epochs since registry update greater than LATEST_SLASHED_EXIT_LENGTH
-    pre_state.validator_registry_update_epoch = (
-        get_current_epoch(pre_state) - spec.LATEST_SLASHED_EXIT_LENGTH
-    )
-    # artificially trigger registry update at next epoch transition
-    force_registry_change_at_next_epoch(pre_state)
-    # set validator to have previously initiated exit
-    pre_state.validator_registry[validator_index].initiated_exit = True
-
-    post_state = deepcopy(pre_state)
-
-    #
-    # Process registry change but ensure no exit
-    #
-    block = build_empty_block_for_next_slot(post_state)
-    block.slot += spec.SLOTS_PER_EPOCH
-    state_transition(post_state, block)
-
-    assert post_state.validator_registry_update_epoch == get_current_epoch(post_state) - 1
-    assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-
-    return pre_state, [block], post_state
-
-
 def test_transfer(state):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
-    sender_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
-    recipient_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
+    sender_index = get_active_validator_indices(pre_state, current_epoch)[-1]
+    recipient_index = get_active_validator_indices(pre_state, current_epoch)[0]
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]
     amount = get_balance(pre_state, sender_index)
@@ -421,11 +375,11 @@ def test_transfer(state):
     return pre_state, [block], post_state
 
 
-def test_ejection(state):
+def test_balance_driven_status_transitions(state):
     pre_state = deepcopy(state)
 
     current_epoch = get_current_epoch(pre_state)
-    validator_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
+    validator_index = get_active_validator_indices(pre_state, current_epoch)[-1]
 
     assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
@@ -440,7 +394,7 @@ def test_ejection(state):
     block.slot += spec.SLOTS_PER_EPOCH
     state_transition(post_state, block)
 
-    assert post_state.validator_registry[validator_index].initiated_exit == True
+    assert post_state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     return pre_state, [block], post_state
 
