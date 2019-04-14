@@ -1702,21 +1702,21 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple
 ```
 
 ```python
-def earliest_attestation(state: BeaconState, validator_index: ValidatorIndex) -> PendingAttestation:
+def earliest_attestation(state: BeaconState, attestations: List[Attestation], validator_index: ValidatorIndex) -> PendingAttestation:
     return min([
-        a for a in state.previous_epoch_attestations if
+        a for a in attestations if
         validator_index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
     ], key=lambda a: a.inclusion_slot)
 ```
 
 ```python
-def inclusion_slot(state: BeaconState, validator_index: ValidatorIndex) -> Slot:
-    return earliest_attestation(state, validator_index).inclusion_slot
+def inclusion_slot(state: BeaconState, attestations: List[Attestation], validator_index: ValidatorIndex) -> Slot:
+    return earliest_attestation(state, attestations, validator_index).inclusion_slot
 ```
 
 ```python
-def inclusion_distance(state: BeaconState, validator_index: ValidatorIndex) -> int:
-    attestation = earliest_attestation(state, validator_index)
+def inclusion_distance(state: BeaconState, attestations: List[Attestation], validator_index: ValidatorIndex) -> int:
+    attestation = earliest_attestation(state, attestations, validator_index)
     return attestation.inclusion_slot - attestation.data.slot
 ```
 
@@ -1860,7 +1860,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
             # Inclusion speed bonus
             rewards[index] += (
                 base_reward * MIN_ATTESTATION_INCLUSION_DELAY //
-                inclusion_distance(state, index)
+                inclusion_distance(state, state.previous_epoch_attestations, index)
             )
         else:
             penalties[index] += base_reward
@@ -1874,10 +1874,6 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
             rewards[index] += base_reward * matching_head_balance // total_balance
         else:
             penalties[index] += base_reward
-        # Proposer bonus
-        if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
-            proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-            rewards[proposer_index] += base_reward // PROPOSER_REWARD_QUOTIENT
         # Take away max rewards if we're not finalizing
         if epochs_since_finality > 4:
             penalties[index] += base_reward * 4
@@ -2208,6 +2204,22 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.current_epoch_attestations.append(pending_attestation)
     else:
         state.previous_epoch_attestations.append(pending_attestation)
+
+```
+
+Run `process_proposer_attestation_rewards(block.body.attestations)`.
+
+```python
+def process_proposer_attestation_rewards(state: BeaconState, attestations: List[Attestation]) -> None:
+    proposer_index = get_beacon_proposer_index(state, state.slot)
+    previous_attestations = [a for a in attestations if slot_to_epoch(a.data.slot) == get_previous_epoch(state)]
+    current_attestations = [a for a in attestations if slot_to_epoch(a.data.slot) == get_current_epoch(state)]
+
+    for block_attestations, pending_attestations in zip([previous_attestations, current_attestations], [state.previous_epoch_attestations, state.current_epoch_attestations]):
+        for index in get_unslashed_attesting_indices(state, block_attestations):
+            base_reward = get_base_reward(state, index)
+            if inclusion_slot(state, pending_attestations, index) == state.slot:
+                increase_balance(state, proposer_index, base_reward // PROPOSER_REWARD_QUOTIENT)
 ```
 
 ##### Deposits

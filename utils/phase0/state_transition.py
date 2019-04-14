@@ -12,6 +12,7 @@ from typing import (  # noqa: F401
 from .spec import (
     BeaconState,
     BeaconBlock,
+    process_proposer_attestation_rewards,
 )
 
 
@@ -52,6 +53,7 @@ def process_operations(state: BeaconState, block: BeaconBlock) -> None:
         spec.MAX_ATTESTATIONS,
         spec.process_attestation,
     )
+    process_proposer_attestation_rewards(state, block.body.attestations)
 
     assert len(block.body.deposits) == expected_deposit_count(state)
     process_operation_type(
