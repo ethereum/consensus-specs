@@ -984,25 +984,17 @@ def generate_seed(state: BeaconState,
 ### `get_beacon_proposer_index`
 
 ```python
-def get_beacon_proposer_index(state: BeaconState,
-                              slot: Slot) -> ValidatorIndex:
+def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
-    Return the beacon proposer index for the ``slot``.
-    Due to proposer selection being based upon the validator balances during
-    the epoch in question, this can only be run for the current epoch.
+    Return the beacon proposer index.
     """
     current_epoch = get_current_epoch(state)
-    assert slot_to_epoch(slot) == current_epoch
-
-    first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
+    first_committee, _ = get_crosslink_committees_at_slot(state, state.slot)[0]
     i = 0
     while True:
-        rand_byte = hash(
-            generate_seed(state, current_epoch) +
-            int_to_bytes8(i // 32)
-        )[i % 32]
+        random_byte = hash(generate_seed(state, current_epoch) + int_to_bytes8(i // 32))[i % 32]
         candidate = first_committee[(current_epoch + i) % len(first_committee)]
-        if get_effective_balance(state, candidate) * 256 > MAX_DEPOSIT_AMOUNT * rand_byte:
+        if get_effective_balance(state, candidate) * 256 > MAX_DEPOSIT_AMOUNT * random_byte:
             return candidate
         i += 1
 ```
@@ -1344,7 +1336,7 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     slashed_balance = get_effective_balance(state, slashed_index)
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
 
-    proposer_index = get_beacon_proposer_index(state, state.slot)
+    proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
     whistleblowing_reward = slashed_balance // WHISTLEBLOWING_REWARD_QUOTIENT
@@ -2037,7 +2029,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Save current block as the new latest block
     state.latest_block_header = get_temporary_block_header(block)
     # Verify proposer is not slashed
-    proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
+    proposer = state.validator_registry[get_beacon_proposer_index(state)]
     assert not proposer.slashed
     # Verify proposer signature
     assert bls_verify(
@@ -2052,7 +2044,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_randao(state: BeaconState, block: BeaconBlock) -> None:
-    proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
+    proposer = state.validator_registry[get_beacon_proposer_index(state)]
     # Verify that the provided randao value is valid
     assert bls_verify(
         pubkey=proposer.pubkey,
@@ -2205,7 +2197,7 @@ Run `process_proposer_attestation_rewards(state)`.
 
 ```python
 def process_proposer_attestation_rewards(state: BeaconState) -> None:
-    proposer_index = get_beacon_proposer_index(state, state.slot)
+    proposer_index = get_beacon_proposer_index(state)
     for attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
         for index in get_unslashed_attesting_indices(state, attestations):
             if inclusion_slot(state, attestations, index) == state.slot:
@@ -2366,7 +2358,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Process the transfer
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
-    increase_balance(state, get_beacon_proposer_index(state, state.slot), transfer.fee)
+    increase_balance(state, get_beacon_proposer_index(state), transfer.fee)
 ```
 
 #### State root verification
