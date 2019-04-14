@@ -14,7 +14,8 @@ def ssz_random_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline= "mainnet",
         forks=["phase0"],
         config="mainnet",
-        handler="core",
+        runner="ssz",
+        handler="uint",
         test_cases=generate_random_uint_test_cases()))
 
 def ssz_wrong_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
@@ -24,7 +25,8 @@ def ssz_wrong_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline= "mainnet",
         forks=["phase0"],
         config="mainnet",
-        handler="core",
+        runner="ssz",
+        handler="uint",
         test_cases=generate_uint_wrong_length_test_cases()))
 
 def ssz_uint_bounds_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
@@ -34,7 +36,8 @@ def ssz_uint_bounds_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline= "mainnet",
         forks=["phase0"],
         config="mainnet",
-        handler="core",
+        runner="ssz",
+        handler="uint",
         test_cases=generate_uint_bounds_test_cases() + generate_uint_out_of_bounds_test_cases()))
 
 

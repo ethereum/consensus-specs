@@ -9,6 +9,7 @@ def render_suite(*,
                  title: str, summary: str,
                  forks_timeline: str, forks: Iterable[str],
                  config: str,
+                 runner: str,
                  handler: str,
                  test_cases: Iterable[TestCase]):
     yield "title", title
@@ -16,5 +17,6 @@ def render_suite(*,
     yield "forks_timeline", forks_timeline,
     yield "forks", forks
     yield "config", config
+    yield "runner", runner
     yield "handler", handler
     yield "test_cases", test_cases

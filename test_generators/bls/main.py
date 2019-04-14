@@ -166,6 +166,7 @@ def bls_msg_hash_uncompressed_suite(configs_path: str) -> gen_typing.TestSuiteOu
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
+        runner="bls",
         handler="msg_hash_uncompressed",
         test_cases=case01_message_hash_G2_uncompressed()))
 
@@ -177,6 +178,7 @@ def bls_msg_hash_compressed_suite(configs_path: str) -> gen_typing.TestSuiteOutp
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
+        runner="bls",
         handler="msg_hash_compressed",
         test_cases=case02_message_hash_G2_compressed()))
 
@@ -189,6 +191,7 @@ def bls_priv_to_pub_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
+        runner="bls",
         handler="priv_to_pub",
         test_cases=case03_private_to_public_key()))
 
@@ -200,6 +203,7 @@ def bls_sign_msg_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
+        runner="bls",
         handler="sign_msg",
         test_cases=case04_sign_messages()))
 
@@ -211,6 +215,7 @@ def bls_aggregate_sigs_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
+        runner="bls",
         handler="aggregate_sigs",
         test_cases=case06_aggregate_sigs()))
 
@@ -222,6 +227,7 @@ def bls_aggregate_pubkeys_suite(configs_path: str) -> gen_typing.TestSuiteOutput
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
+        runner="bls",
         handler="aggregate_pubkeys",
         test_cases=case07_aggregate_pubkeys()))
 

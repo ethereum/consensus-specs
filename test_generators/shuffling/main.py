@@ -30,6 +30,7 @@ def mini_shuffling_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline="testing",
         forks=["phase0"],
         config="minimal",
+        runner="shuffling",
         handler="core",
         test_cases=shuffling_test_cases()))
 
@@ -44,6 +45,7 @@ def full_shuffling_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
+        runner="shuffling",
         handler="core",
         test_cases=shuffling_test_cases()))
 

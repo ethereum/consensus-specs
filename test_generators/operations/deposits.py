@@ -155,7 +155,8 @@ def mini_deposits_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline="testing",
         forks=["phase0"],
         config="minimal",
-        handler="core",
+        runner="operations",
+        handler="deposits",
         test_cases=deposit_cases()))
 
 
@@ -169,5 +170,6 @@ def full_deposits_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         forks_timeline="mainnet",
         forks=["phase0"],
         config="mainnet",
-        handler="core",
+        runner="operations",
+        handler="deposits",
         test_cases=deposit_cases()))
