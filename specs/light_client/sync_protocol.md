@@ -9,6 +9,13 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 - [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
     - [Table of Contents](#table-of-contents)
     - [Preliminaries](#preliminaries)
+        - [Expansions](#expansions)
+        - [`get_active_validator_indices`](#get_active_validator_indices)
+        - [`MerklePartial`](#merklepartial)
+        - [`PeriodData`](#perioddata)
+        - [`get_earlier_start_epoch`](#get_earlier_start_epoch)
+        - [`get_later_start_epoch`](#get_later_start_epoch)
+        - [`get_period_data`](#get_period_data)
         - [Light client state](#light-client-state)
         - [Updating the shuffled committee](#updating-the-shuffled-committee)
     - [Computing the current committee](#computing-the-current-committee)
@@ -16,28 +23,34 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 <!-- /TOC -->
 
-
 ## Preliminaries
+
+### Expansions
 
 We define an "expansion" of an object as an object where a field in an object that is meant to represent the `hash_tree_root` of another object is replaced by the object. Note that defining expansions is not a consensus-layer-change; it is merely a "re-interpretation" of the object. Particularly, the `hash_tree_root` of an expansion of an object is identical to that of the original object, and we can define expansions where, given a complete history, it is always possible to compute the expansion of any object in the history. The opposite of an expansion is a "summary" (eg. `BeaconBlockHeader` is a summary of `BeaconBlock`).
 
 We define two expansions:
 
-* `ExtendedBeaconBlock`, which is identical to a `BeaconBlock` except `state_root` is replaced with the corresponding `state: ExtendedBeaconState`
-* `ExtendedBeaconState`, which is identical to a `BeaconState` except `latest_active_index_roots: List[Bytes32]` is replaced by `latest_active_indices: List[List[ValidatorIndex]]`, where `BeaconState.latest_active_index_roots[i] = hash_tree_root(ExtendedBeaconState.latest_active_indices[i])`
+* `ExtendedBeaconState`, which is identical to a `BeaconState` except `latest_active_index_roots: List[Bytes32]` is replaced by `latest_active_indices: List[List[ValidatorIndex]]`, where `BeaconState.latest_active_index_roots[i] = hash_tree_root(ExtendedBeaconState.latest_active_indices[i])`.
+* `ExtendedBeaconBlock`, which is identical to a `BeaconBlock` except `state_root` is replaced with the corresponding `state: ExtendedBeaconState`.
+
+### `get_active_validator_indices`
 
 Note that there is now a new way to compute `get_active_validator_indices`:
 
 ```python
-def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex]:
+def get_active_validator_indices(state: ExtendedBeaconState, epoch: Epoch) -> List[ValidatorIndex]:
     return state.latest_active_indices[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
 ```
 
 Note that it takes `state` instead of `state.validator_registry` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
 
+
+### `MerklePartial`
+
 A `MerklePartial(f, *args)` is an object that contains a minimal Merkle proof needed to compute `f(*args)`. A `MerklePartial` can be used in place of a regular SSZ object, though a computation would return an error if it attempts to access part of the object that is not contained in the proof.
 
-We add a data type `PeriodData` and four helpers:
+### `PeriodData`
 
 ```python
 {
@@ -47,13 +60,23 @@ We add a data type `PeriodData` and four helpers:
 }
 ```
 
+### `get_earlier_start_epoch`
+
 ```python
 def get_earlier_start_epoch(slot: Slot) -> int:
     return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD * 2
-    
+```
+
+### `get_later_start_epoch`
+
+```python
 def get_later_start_epoch(slot: Slot) -> int:
     return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD
-    
+```
+
+### `get_period_data`
+
+```python
 def get_period_data(block: ExtendedBeaconBlock, shard_id: Shard, later: bool) -> PeriodData:
     period_start = get_later_start_epoch(header.slot) if later else get_earlier_start_epoch(header.slot)
     validator_count = len(get_active_validator_indices(state, period_start))
@@ -62,7 +85,7 @@ def get_period_data(block: ExtendedBeaconBlock, shard_id: Shard, later: bool) ->
     return PeriodData(
         validator_count,
         generate_seed(block.state, period_start),
-        [block.state.validator_registry[i] for i in indices]
+        [block.state.validator_registry[i] for i in indices],
     )
 ```
 
@@ -114,7 +137,7 @@ def compute_committee(header: BeaconBlockHeader,
             SHARD_COUNT * committee_count,
             validator_memory.shard_id * committee_count + (1 if end else 0),
         )
-                                
+                       
     actual_earlier_committee = maximal_earlier_committee[
         0:get_offset(earlier_validator_count, True) - get_offset(earlier_validator_count, False)
     ]
@@ -123,15 +146,15 @@ def compute_committee(header: BeaconBlockHeader,
     ]
     def get_switchover_epoch(index):
         return (
-            bytes_to_int(hash(validator_memory.earlier_period_data.seed + bytes3(index))[0:8]) %
+            bytes_to_int(hash(validator_memory.earlier_period_data.seed + int_to_bytes3(index))[0:8]) %
             PERSISTENT_COMMITTEE_PERIOD
         )
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(list(set(
-        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
-        [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
+        [i for i in actual_earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
+        [i for i in actual_later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )))
 ```
 
@@ -154,23 +177,23 @@ The verification procedure is as follows:
 
 ```python
 def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: ValidatorMemory) -> bool:
-    assert proof.shard_parent_block.beacon_chain_ref == hash_tree_root(proof.header)
+    assert proof.shard_parent_block.beacon_chain_root == hash_tree_root(proof.header)
     committee = compute_committee(proof.header, validator_memory)
     # Verify that we have >=50% support
-    support_balance = sum([c.high_balance for i, c in enumerate(committee) if get_bitfield_bit(proof.shard_bitfield, i) is True])
-    total_balance = sum([c.high_balance for i, c in enumerate(committee)]
+    support_balance = sum([v.high_balance for i, v in enumerate(committee) if get_bitfield_bit(proof.shard_bitfield, i) is True])
+    total_balance = sum([v.high_balance for i, v in enumerate(committee)])
     assert support_balance * 2 > total_balance
     # Verify shard attestations
     group_public_key = bls_aggregate_pubkeys([
-        v.pubkey for v, index in enumerate(committee) if
-        get_bitfield_bit(proof.shard_bitfield, i) is True
+        v.pubkey for v, index in enumerate(committee)
+        if get_bitfield_bit(proof.shard_bitfield, index) is True
     ])
     assert bls_verify(
         pubkey=group_public_key,
         message_hash=hash_tree_root(shard_parent_block),
-        signature=shard_aggregate_signature,
-        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER)
+        signature=proof.shard_aggregate_signature,
+        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER),
     )
 ```
 
-The size of this proof is only 200 (header) + 96 (signature) + 16 (bitfield) + 352 (shard block) = 664 bytes. It can be reduced further by replacing `ShardBlock` with `MerklePartial(lambda x: x.beacon_chain_ref, ShardBlock)`, which would cut off ~220 bytes.
+The size of this proof is only 200 (header) + 96 (signature) + 16 (bitfield) + 352 (shard block) = 664 bytes. It can be reduced further by replacing `ShardBlock` with `MerklePartial(lambda x: x.beacon_chain_root, ShardBlock)`, which would cut off ~220 bytes.
