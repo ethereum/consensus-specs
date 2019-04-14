@@ -534,11 +534,16 @@ The types are defined topologically to aid in facilitating an executable version
     'slot': 'uint64',
     'fork': Fork,
 
-    # Roots
+    # History
     'latest_block_header': BeaconBlockHeader,
     'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'historical_roots': ['bytes32'],
+
+    # Eth1
+    'latest_eth1_data': Eth1Data,
+    'eth1_data_votes': [Eth1DataVote],
+    'eth1_deposit_index': 'uint64',
 
     # Registry
     'validator_registry': [Validator],
@@ -550,26 +555,22 @@ The types are defined topologically to aid in facilitating an executable version
     'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
     'latest_start_shard': 'uint64',
 
-    # Crosslinks
-    'latest_crosslinks': [Crosslink, SHARD_COUNT],
-
     # Attestations
     'previous_epoch_attestations': [PendingAttestation],
     'current_epoch_attestations': [PendingAttestation],
 
+    # Crosslinks
+    'previous_epoch_crosslinks': [Crosslink, SHARD_COUNT],
+    'current_epoch_crosslinks': [Crosslink, SHARD_COUNT],
+
     # Finality
-    'previous_justified_epoch': 'uint64',
-    'current_justified_epoch': 'uint64',
-    'previous_justified_root': 'bytes32',
-    'current_justified_root': 'bytes32',
     'justification_bitfield': 'uint64',
+    'previous_justified_epoch': 'uint64',
+    'previous_justified_root': 'bytes32',
+    'current_justified_epoch': 'uint64',
+    'current_justified_root': 'bytes32',
     'finalized_epoch': 'uint64',
     'finalized_root': 'bytes32',
-
-    # Eth1
-    'latest_eth1_data': Eth1Data,
-    'eth1_data_votes': [Eth1DataVote],
-    'eth1_deposit_index': 'uint64',
 }
 ```
 
