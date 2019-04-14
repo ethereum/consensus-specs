@@ -1360,7 +1360,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositData`.
+The deposit contract has a single `deposit` function which takes as argument the `DepositData` fields.
 
 ### Withdrawal credentials
 
