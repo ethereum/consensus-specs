@@ -1276,7 +1276,7 @@ def get_delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
 def get_churn_limit(state: BeaconState) -> int:
     return max(
         MIN_PER_EPOCH_CHURN_LIMIT,
-        MAX_FULL_CHURN_EPOCHS // len(get_active_validators(state, get_current_epoch(state)))
+        MAX_FULL_CHURN_EPOCHS // len(get_active_validator_indices(state, get_current_epoch(state)))
     )
 ```
 
