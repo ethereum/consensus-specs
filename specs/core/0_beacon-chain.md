@@ -2416,8 +2416,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         get_balance(state, transfer.sender) == transfer.amount + transfer.fee or
         get_balance(state, transfer.sender) >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
     )
-    # Since the sender may decide to send to themselves, and lose a fee to the proposer (could be someone else), 
-    #  the above invariant may be broken. Hence, disallow transfers to yourself.
+    # No self-transfers (to enforce >= MIN_DEPOSIT_AMOUNT or zero balance invariant)
     assert transfer.sender != transfer.recipient
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
