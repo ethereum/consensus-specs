@@ -1937,7 +1937,7 @@ def process_balance_driven_status_transitions(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         balance = get_balance(state, index)
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
-            state.activation_eligibility_epoch = get_current_epoch(state)
+            validator.activation_eligibility_epoch = get_current_epoch(state)
 
         if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
