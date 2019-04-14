@@ -93,6 +93,7 @@
         - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
         - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
+        - [`get_churn_limit`](#get_churn_limit)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
@@ -182,8 +183,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
-| `MAX_EXITS_PER_EPOCH` | `2**2` (= 4) |
-| `MAX_ACTIVATIONS_PER_FINALIZED_EPOCH` | `2**2` (= 4) |
+| `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -233,6 +233,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) | epochs | ~7 hours |
+| `MAX_FULL_CHURN_EPOCHS` | `2**22` (= 4,194,304) | epochs | ~9 months |
 
 * `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
@@ -1269,6 +1270,15 @@ def get_delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
     return epoch + 1 + ACTIVATION_EXIT_DELAY
 ```
 
+### `get_churn_limit`
+
+```python
+def get_churn_limit(state: BeaconState) -> int:
+    return max(
+        MIN_PER_EPOCH_CHURN_LIMIT,
+        MAX_FULL_CHURN_EPOCHS // len(get_active_validators(state, get_current_epoch(state)))
+    )
+
 ### `bls_verify`
 
 `bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
@@ -1321,7 +1331,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if state.exit_epoch < delayed_activation_exit_epoch:
         state.exit_epoch = delayed_activation_exit_epoch
 
-    if state.exit_queue_filled >= MAX_EXITS_PER_EPOCH:
+    if state.exit_queue_filled >= get_churn_limit(state):
         state.exit_epoch += 1
         state.exit_queue_filled = 0
 
@@ -1962,7 +1972,7 @@ def update_registry(state: BeaconState) -> None:
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
 
-    for index in activation_queue[:MAX_ACTIVATIONS_PER_FINALIZED_EPOCH]:
+    for index in activation_queue[:get_churn_limit(state)]:
         activate_validator(state, index, is_genesis=False) 
 
     state.latest_start_shard = (
