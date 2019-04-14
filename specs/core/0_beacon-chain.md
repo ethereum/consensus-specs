@@ -1950,7 +1950,7 @@ Run the following function:
 ```python
 def update_registry(state: BeaconState) -> None:
     activation_queue = sorted([
-        validator for validator in state.validator_registry if
+        index for index, validator in enumerate(state.validator_registry) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
