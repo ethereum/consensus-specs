@@ -43,7 +43,7 @@ We add a data type `PeriodData` and four helpers:
 {
     'validator_count': 'uint64',
     'seed': 'bytes32',
-    'committee': [Validator]
+    'committee': [Validator],
 }
 ```
 
@@ -94,8 +94,7 @@ Here is a helper to compute the committee at a slot given the maximal earlier an
 
 ```python
 def compute_committee(header: BeaconBlockHeader,
-                      validator_memory: ValidatorMemory):
-                      
+                      validator_memory: ValidatorMemory) -> List[ValidatorIndex]:
     earlier_validator_count = validator_memory.earlier_period_data.validator_count
     later_validator_count = validator_memory.later_period_data.validator_count
     maximal_earlier_committee = validator_memory.earlier_period_data.committee
@@ -108,11 +107,13 @@ def compute_committee(header: BeaconBlockHeader,
         earlier_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
         later_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
     ) + 1
-    
-    def get_offset(count, end:bool):
-        return get_split_offset(count,
-                                SHARD_COUNT * committee_count,
-                                validator_memory.shard_id * committee_count + (1 if end else 0))
+
+    def get_offset(count: int, end: bool) -> int:
+        return get_split_offset(
+            count,
+            SHARD_COUNT * committee_count,
+            validator_memory.shard_id * committee_count + (1 if end else 0),
+        )
                                 
     actual_earlier_committee = maximal_earlier_committee[
         0:get_offset(earlier_validator_count, True) - get_offset(earlier_validator_count, False)
@@ -132,7 +133,6 @@ def compute_committee(header: BeaconBlockHeader,
         [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )))
-                    
 ```
 
 Note that this method makes use of the fact that the committee for any given shard always starts and ends at the same validator index independently of the committee count (this is because the validator set is split into `SHARD_COUNT * committee_count` slices but the first slice of a shard is a multiple `committee_count * i`, so the start of the slice is `n * committee_count * i // (SHARD_COUNT * committee_count) = n * i // SHARD_COUNT`, using the slightly nontrivial algebraic identity `(x * a) // ab == x // b`).
