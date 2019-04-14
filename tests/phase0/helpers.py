@@ -199,7 +199,7 @@ def build_deposit(state,
 
 def get_valid_proposer_slashing(state):
     current_epoch = get_current_epoch(state)
-    validator_index = get_active_validator_indices(state.validator_registry, current_epoch)[-1]
+    validator_index = get_active_validator_indices(state, current_epoch)[-1]
     privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
     slot = state.slot
 

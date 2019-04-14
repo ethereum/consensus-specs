@@ -278,7 +278,7 @@ def test_attestation(state):
 def test_voluntary_exit(state):
     pre_state = deepcopy(state)
     validator_index = get_active_validator_indices(
-        pre_state.validator_registry,
+        pre_state,
         get_current_epoch(pre_state)
     )[-1]
 
@@ -326,7 +326,7 @@ def test_voluntary_exit(state):
 def test_no_exit_churn_too_long_since_change(state):
     pre_state = deepcopy(state)
     validator_index = get_active_validator_indices(
-        pre_state.validator_registry,
+        pre_state,
         get_current_epoch(pre_state)
     )[-1]
 
@@ -346,8 +346,8 @@ def test_no_exit_churn_too_long_since_change(state):
     state_transition(post_state, block)
 
     assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert post_state.exit_queue_filled == pre_state.exit_queue_filled
-    assert post_state.exit_epoch == pre_state.exit_epoch
+    assert post_state.exit_queue_churn == pre_state.exit_queue_churn
+    assert post_state.exit_queue_epoch == pre_state.exit_queue_epoch
 
     return pre_state, [block], post_state
 
@@ -355,8 +355,8 @@ def test_no_exit_churn_too_long_since_change(state):
 def test_transfer(state):
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
-    sender_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
-    recipient_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[0]
+    sender_index = get_active_validator_indices(pre_state, current_epoch)[-1]
+    recipient_index = get_active_validator_indices(pre_state, current_epoch)[0]
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]
     amount = get_balance(pre_state, sender_index)
@@ -407,7 +407,7 @@ def test_balance_driven_status_transitions(state):
     pre_state = deepcopy(state)
 
     current_epoch = get_current_epoch(pre_state)
-    validator_index = get_active_validator_indices(pre_state.validator_registry, current_epoch)[-1]
+    validator_index = get_active_validator_indices(pre_state, current_epoch)[-1]
 
     assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
