@@ -2204,7 +2204,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.current_epoch_attestations.append(pending_attestation)
     else:
         state.previous_epoch_attestations.append(pending_attestation)
-
 ```
 
 Run `process_proposer_attestation_rewards(block.body.attestations)`.
