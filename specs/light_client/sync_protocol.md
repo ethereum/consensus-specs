@@ -125,7 +125,7 @@ def compute_committee(header: BeaconBlockHeader,
     earlier_start_epoch = get_earlier_start_epoch(header.slot)
     later_start_epoch = get_later_start_epoch(header.slot)
     epoch = slot_to_epoch(header.slot)
-    
+
     committee_count = max(
         earlier_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
         later_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
@@ -137,7 +137,7 @@ def compute_committee(header: BeaconBlockHeader,
             SHARD_COUNT * committee_count,
             validator_memory.shard_id * committee_count + (1 if end else 0),
         )
-                       
+
     actual_earlier_committee = maximal_earlier_committee[
         0:get_offset(earlier_validator_count, True) - get_offset(earlier_validator_count, False)
     ]
