@@ -595,8 +595,8 @@ The types are defined topologically to aid in facilitating an executable version
     'latest_start_shard': 'uint64',
     
     # Exit queue
-    'exit_epoch': 'uint64',
-    'exit_queue_filled': 'uint64',
+    'exit_queue_epoch': 'uint64',
+    'exit_queue_churn': 'uint64',
 
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
@@ -1329,19 +1329,20 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Update exit queue counters
     delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
-    if state.exit_epoch < delayed_activation_exit_epoch:
-        state.exit_epoch = delayed_activation_exit_epoch
+    if state.exit_queue_epoch < delayed_activation_exit_epoch:
+        state.exit_queue_epoch = delayed_activation_exit_epoch
+        state.exit_queue_churn = 0
 
-    if state.exit_queue_filled >= get_churn_limit(state):
-        state.exit_epoch += 1
-        state.exit_queue_filled = 0
+    state.exit_queue_churn += 1
+    if state.exit_queue_churn > get_churn_limit(state):
+        state.exit_queue_epoch += 1
+        state.exit_queue_churn = 0
 
     # Set validator exit epoch and withdrawable epoch
-    validator.exit_epoch = state.exit_epoch
+    validator.exit_epoch = state.exit_queue_epoch
     validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 
     # Extend queue
-    state.exit_queue_filled += 1
 ```
 
 #### `slash_validator`
@@ -1478,8 +1479,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_start_shard=GENESIS_START_SHARD,
 
         # Exit queue
-        exit_epoch=GENESIS_EPOCH,
-        exit_queue_filled=0,
+        exit_queue_epoch=GENESIS_EPOCH,
+        exit_queue_churn=0,
 
         # Finality
         previous_epoch_attestations=[],
