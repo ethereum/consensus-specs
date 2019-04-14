@@ -1760,7 +1760,7 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
     if (bitfield >> 0) % 4 == 0b11 and current_justified_epoch == get_current_epoch(state) - 1:
         state.finalized_epoch = current_justified_epoch
-    if state.finalized_epoch in (state.previous_justified_epoch, state.current_justified_epoch):
+    if state.finalized_epoch in (previous_justified_epoch, current_justified_epoch):
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
 ```
 
