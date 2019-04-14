@@ -53,7 +53,7 @@ def get_spec(file_name) -> List[str]:
                         if c not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789':
                             eligible = False
                     if eligible:
-                        code_lines.append(row[0] + ' = ' + (row[1].replace('**TBD**', '0x1234567890123567890123456789012357890')))
+                        code_lines.append(row[0] + ' = ' + (row[1].replace('**TBD**', '0x1234567890123456789012345678901234567890')))
     # Build type-def re-initialization
     code_lines.append('')
     code_lines.append('def init_SSZ_types():')
