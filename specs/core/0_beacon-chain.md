@@ -1278,6 +1278,7 @@ def get_churn_limit(state: BeaconState) -> int:
         MIN_PER_EPOCH_CHURN_LIMIT,
         MAX_FULL_CHURN_EPOCHS // len(get_active_validators(state, get_current_epoch(state)))
     )
+```
 
 ### `bls_verify`
 
