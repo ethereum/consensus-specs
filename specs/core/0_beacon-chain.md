@@ -2333,14 +2333,6 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
     assert get_balance(state, transfer.sender) >= max(transfer.amount, transfer.fee)
-    # Verify that we have enough ETH to send, and that after the transfer the balance will be either
-    # exactly zero or at least MIN_DEPOSIT_AMOUNT
-    assert (
-        get_balance(state, transfer.sender) == transfer.amount + transfer.fee or
-        get_balance(state, transfer.sender) >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
-    )
-    # No self-transfers (to enforce >= MIN_DEPOSIT_AMOUNT or zero balance invariant)
-    assert transfer.sender != transfer.recipient
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
     # Only withdrawn or not-yet-deposited accounts can transfer
@@ -2364,6 +2356,9 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
     increase_balance(state, get_beacon_proposer_index(state, state.slot), transfer.fee)
+    # Verify balances are not dust
+    assert not (0 < get_balance(state, transfer.sender) < MIN_DEPOSIT_AMOUNT)
+    assert not (0 < get_balance(state, transfer.recipient) < MIN_DEPOSIT_AMOUNT)
 ```
 
 #### State root verification
