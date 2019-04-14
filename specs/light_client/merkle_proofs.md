@@ -1,12 +1,26 @@
 **NOTICE**: This document is a work-in-progress for researchers and implementers.
 
-### Constants
+## Table of Contents
+<!-- TOC -->
+
+- [Table of Contents](#table-of-contents)
+- [Constants](#constants)
+- [Generalized Merkle tree index](#generalized-merkle-tree-index)
+- [SSZ object to index](#ssz-object-to-index)
+- [Merkle multiproofs](#merkle-multiproofs)
+- [MerklePartial](#merklepartial)
+    - [`SSZMerklePartial`](#sszmerklepartial)
+    - [Proofs for execution](#proofs-for-execution)
+
+<!-- /TOC -->
+
+## Constants
 
 | Name | Value |
 | - | - |
 | `LENGTH_FLAG` | `2**64 - 1` | 
 
-### Generalized Merkle tree index
+## Generalized Merkle tree index
 
 In a binary Merkle tree, we define a "generalized index" of a node as `2**depth + index`. Visually, this looks as follows:
 
@@ -29,7 +43,7 @@ def merkle_tree(leaves: List[Bytes32]) -> List[Bytes32]:
 
 We will define Merkle proofs in terms of generalized indices.
 
-### SSZ object to index
+## SSZ object to index
 
 We can describe the hash tree of any SSZ object, rooted in `hash_tree_root(object)`, as a binary Merkle tree whose depth may vary. For example, an object `{x: bytes32, y: List[uint64]}` would look as follows:
 
@@ -86,7 +100,7 @@ def get_generalized_indices(obj: Any, path: List[int], root: int=1) -> List[int]
         raise Exception("Unknown type / path")
 ```
 
-### Merkle multiproofs
+## Merkle multiproofs
 
 We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree needed to fully authenticate that a set of nodes actually are part of a Merkle tree with some specified root, at a particular set of generalized indices. For example, here is the Merkle multiproof for positions 0, 1, 6 in an 8-node Merkle tree (ie. generalized indices 8, 9, 14):
 
@@ -147,11 +161,11 @@ def verify_multi_proof(root: Bytes32, indices: List[int], leaves: List[Bytes32],
     return (indices == []) or (1 in tree and tree[1] == root)
 ```
 
-### MerklePartial
+## MerklePartial
 
 We define:
 
-#### `SSZMerklePartial`
+### `SSZMerklePartial`
 
 
 ```python
@@ -163,7 +177,7 @@ We define:
 }
 ```
 
-#### Proofs for execution
+### Proofs for execution
 
 We define `MerklePartial(f, arg1, arg2..., focus=0)` as being a `SSZMerklePartial` object wrapping a Merkle multiproof of the set of nodes in the hash tree of the SSZ object `arg[focus]` that is needed to authenticate the parts of the object needed to compute `f(arg1, arg2...)`.
 
