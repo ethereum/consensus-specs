@@ -594,10 +594,6 @@ The types are defined topologically to aid in facilitating an executable version
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
     'latest_start_shard': 'uint64',
     
-    # Exit queue
-    'exit_queue_epoch': 'uint64',
-    'exit_queue_churn': 'uint64',
-
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
     'current_epoch_attestations': [PendingAttestation],
@@ -1324,19 +1320,21 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
-    # Update exit queue counters
-    delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
-    if state.exit_queue_epoch < delayed_activation_exit_epoch:
-        state.exit_queue_epoch = delayed_activation_exit_epoch
-        state.exit_queue_churn = 0
+    # Compute exit queue parameters
+    exit_queue_epoch = sorted([validator.exit_epoch for validator in state.validator_registry if
+        validator.exit_epoch != FAR_FUTURE_EPOCH
+    ].append(GENESIS_EPOCH), key=lambda index: state.validator_registry[index].exit_epoch)[-1]
 
-    state.exit_queue_churn += 1
-    if state.exit_queue_churn > get_churn_limit(state):
-        state.exit_queue_epoch += 1
-        state.exit_queue_churn = 0
+    delayed_activation_exit_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+    if exit_queue_epoch < delayed_activation_exit_epoch:
+        exit_queue_epoch = delayed_activation_exit_epoch
+
+    exit_queue_churn = len([v for v in state.validator_registry if v.exit_epoch == exit_queue_epoch])
+    if exit_queue_churn > get_churn_limit(state):
+        exit_queue_epoch += 1
 
     # Set validator exit epoch and withdrawable epoch
-    validator.exit_epoch = state.exit_queue_epoch
+    validator.exit_epoch = exit_queue_epoch
     validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 
     # Extend queue
@@ -1474,10 +1472,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Randomness and committees
         latest_randao_mixes=Vector([ZERO_HASH for _ in range(LATEST_RANDAO_MIXES_LENGTH)]),
         latest_start_shard=GENESIS_START_SHARD,
-
-        # Exit queue
-        exit_queue_epoch=GENESIS_EPOCH,
-        exit_queue_churn=0,
 
         # Finality
         previous_epoch_attestations=[],
