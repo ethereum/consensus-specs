@@ -3,7 +3,7 @@
 Operations (or "transactions" in previous spec iterations),
  are atomic changes to the state, introduced by embedding in blocks.
 
-This generators provides a series of test suites, divided into handler, for each operation type.
+This generator provides a series of test suites, divided into handler, for each operation type.
 A operation test-runner can consume these operation test-suites,
  and handle different kinds of operations by processing the cases using the specified test handler.
 
