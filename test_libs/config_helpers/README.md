@@ -12,7 +12,7 @@ configs_path = 'configs/'
 
 import preset_loader
 from eth2spec.phase0 import spec
-my_presets = preset_loader.load_presets(configs_path, 'main_net')
+my_presets = preset_loader.load_presets(configs_path, 'mainnet')
 spec.apply_constants_preset(my_presets)
 ```
 
