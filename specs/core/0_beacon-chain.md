@@ -1729,9 +1729,10 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     # Process justifications
     current_justified_epoch = state.current_justified_epoch
     previous_justified_epoch = state.previous_justified_epoch
+    bitfield = state.justification_bitfield
     state.previous_justified_epoch = state.current_justified_epoch
     state.previous_justified_root = state.current_justified_root
-    state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
+    state.justification_bitfield = (bitfield << 1) % 2**64
     # If the previous epoch gets justified, fill the second last bit
     previous_boundary_attesting_balance = get_attesting_balance(state, get_previous_epoch_boundary_attestations(state))
     if previous_boundary_attesting_balance * 3 >= get_previous_total_balance(state) * 2:
@@ -1746,7 +1747,6 @@ def update_justification_and_finalization(state: BeaconState) -> None:
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
 
     # Process finalizations
-    bitfield = state.justification_bitfield
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
     if (bitfield >> 1) % 8 == 0b111 and previous_justified_epoch == get_current_epoch(state) - 3:
         state.finalized_epoch = previous_justified_epoch
