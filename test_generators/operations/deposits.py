@@ -58,11 +58,12 @@ def build_deposit(state,
         index=index,
         data=deposit_data,
     )
+    assert spec.verify_merkle_branch(item, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH, index, get_merkle_root(tuple(deposit_data_leaves)))
 
     return deposit
 
 
-def build_deposit_for_index(initial_validator_count: int, index: int) -> Tuple[spec.Deposit, spec.BeaconState, List[spec.Bytes32]]:
+def build_deposit_for_index(initial_validator_count: int, index: int) -> Tuple[spec.Deposit, spec.BeaconState]:
     genesis_deposits = genesis.create_deposits(
         keys.pubkeys[:initial_validator_count],
         keys.withdrawal_creds[:initial_validator_count]
@@ -83,14 +84,12 @@ def build_deposit_for_index(initial_validator_count: int, index: int) -> Tuple[s
     state.latest_eth1_data.deposit_root = get_merkle_root(tuple(deposit_data_leaves))
     state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
 
-    return deposit, state, deposit_data_leaves
+    return deposit, state
 
 
 @to_dict
 def valid_deposit():
-    new_dep, state, leaves = build_deposit_for_index(10, 10)
-    state.latest_eth1_data.deposit_root = get_merkle_root(tuple(leaves))
-    state.latest_eth1_data.deposit_count = len(leaves)
+    new_dep, state = build_deposit_for_index(10, 10)
     yield 'description', 'valid deposit to add new validator'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
@@ -100,9 +99,7 @@ def valid_deposit():
 
 @to_dict
 def valid_topup():
-    new_dep, state, leaves = build_deposit_for_index(10, 3)
-    state.latest_eth1_data.deposit_root = get_merkle_root(tuple(leaves))
-    state.latest_eth1_data.deposit_count = len(leaves)
+    new_dep, state = build_deposit_for_index(10, 3)
     yield 'description', 'valid deposit to top-up existing validator'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
@@ -112,9 +109,7 @@ def valid_topup():
 
 @to_dict
 def invalid_deposit_index():
-    new_dep, state, leaves = build_deposit_for_index(10, 10)
-    state.latest_eth1_data.deposit_root = get_merkle_root(tuple(leaves))
-    state.latest_eth1_data.deposit_count = len(leaves)
+    new_dep, state = build_deposit_for_index(10, 10)
     # Mess up deposit index, 1 too small
     state.deposit_index = 9
 
@@ -125,9 +120,7 @@ def invalid_deposit_index():
 
 @to_dict
 def invalid_deposit_proof():
-    new_dep, state, leaves = build_deposit_for_index(10, 10)
-    state.latest_eth1_data.deposit_root = get_merkle_root(tuple(leaves))
-    state.latest_eth1_data.deposit_count = len(leaves)
+    new_dep, state = build_deposit_for_index(10, 10)
     # Make deposit proof invalid (at bottom of proof)
     new_dep.proof[-1] = spec.ZERO_HASH
 
