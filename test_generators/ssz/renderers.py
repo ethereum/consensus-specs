@@ -77,7 +77,7 @@ def render_test_case(*, sedes, valid, value=None, serial=None, description=None,
             raise ValueError("For valid test cases, both value and ssz must be present")
     else:
         if value_and_serial_given:
-            raise ValueError("For invalid test cases, either value or ssz must not be present")
+            raise ValueError("For invalid test cases, one of either value or ssz must not be present")
 
     if tags is None:
         tags = []
