@@ -1814,7 +1814,17 @@ def maybe_reset_eth1_period(state: BeaconState) -> None:
 First, we define some additional helpers:
 
 ```python
+def get_base_reward_from_total_balance(state: BeaconState, total_balance: Gwei, index: ValidatorIndex) -> Gwei:
+    if total_balance == 0:
+        return 0
+
+    adjusted_quotient = integer_squareroot(total_balance) // BASE_REWARD_QUOTIENT
+    return get_effective_balance(state, index) // adjusted_quotient // 5
+```
+
+```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    return get_base_reward_from_total_balance(state, get_previous_total_balance(state), index)
     if get_previous_total_balance(state) == 0:
         return 0
 
@@ -2219,7 +2229,11 @@ def process_proposer_attestation_rewards(state: BeaconState, block_attestations:
     for pending_attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
         for index in get_unslashed_attesting_indices(state, block_attestations):
             if inclusion_slot(state, pending_attestations, index) == state.slot:
-                increase_balance(state, proposer_index, get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
+                reward = (
+                    get_base_reward_from_total_balance(state, get_current_total_balance(state), index) //
+                    PROPOSER_REWARD_QUOTIENT
+                )
+                increase_balance(state, proposer_index, reward)
 ```
 
 ##### Deposits

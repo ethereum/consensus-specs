@@ -260,6 +260,9 @@ def test_attestation(state):
 
     assert len(test_state.current_epoch_attestations) == len(state.current_epoch_attestations) + 1
 
+    proposer_index = get_beacon_proposer_index(test_state)
+    assert test_state.balances[proposer_index] > state.balances[proposer_index]
+
     #
     # Epoch transition should move to previous_epoch_attestations
     #
