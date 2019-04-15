@@ -10,6 +10,7 @@ from typing import (
 from .spec import (
     BeaconState,
     BeaconBlock,
+    Slot
 )
 
 
@@ -98,7 +99,7 @@ def process_epoch_transition(state: BeaconState) -> None:
     spec.finish_epoch_update(state)
 
 
-def state_transition_to(state: BeaconState, up_to: int) -> BeaconState:
+def state_transition_to(state: BeaconState, up_to: Slot) -> BeaconState:
     while state.slot < up_to:
         spec.cache_state(state)
         if (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0:
