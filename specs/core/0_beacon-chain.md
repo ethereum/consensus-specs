@@ -1947,7 +1947,7 @@ def process_balance_driven_status_transitions(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         balance = get_balance(state, index)
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
-            state.activation_eligibility_epoch = get_current_epoch(state)
+            validator.activation_eligibility_epoch = get_current_epoch(state)
 
         if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
@@ -1960,7 +1960,7 @@ Run the following function:
 ```python
 def update_registry(state: BeaconState) -> None:
     activation_queue = sorted([
-        validator for validator in state.validator_registry if
+        index for index, validator in enumerate(state.validator_registry) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
@@ -2297,7 +2297,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            initiated_exit=False,
             slashed=False,
             high_balance=0
         )
@@ -2360,14 +2359,6 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
     assert get_balance(state, transfer.sender) >= max(transfer.amount, transfer.fee)
-    # Verify that we have enough ETH to send, and that after the transfer the balance will be either
-    # exactly zero or at least MIN_DEPOSIT_AMOUNT
-    assert (
-        get_balance(state, transfer.sender) == transfer.amount + transfer.fee or
-        get_balance(state, transfer.sender) >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
-    )
-    # No self-transfers (to enforce >= MIN_DEPOSIT_AMOUNT or zero balance invariant)
-    assert transfer.sender != transfer.recipient
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
     # Only withdrawn or not-yet-deposited accounts can transfer
@@ -2391,6 +2382,9 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
     increase_balance(state, get_beacon_proposer_index(state), transfer.fee)
+    # Verify balances are not dust
+    assert not (0 < get_balance(state, transfer.sender) < MIN_DEPOSIT_AMOUNT)
+    assert not (0 < get_balance(state, transfer.recipient) < MIN_DEPOSIT_AMOUNT)
 ```
 
 #### State root verification
