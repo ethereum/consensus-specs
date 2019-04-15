@@ -15,7 +15,3 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 ## Condition
 
 The `priv_to_pub` handler should compute the public key for the given private key `input`, and the result should match the expected `output`.
-
-## Forks
-
-Forks-interpretation: `collective` 

@@ -17,7 +17,3 @@ All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `
 ## Condition
 
 The `msg_hash_g2_compressed` handler should hash the `message`, with the given `domain`, to G2 with compression, and the result should match the expected `output`.
-
-## Forks
-
-Forks-interpretation: `collective` 

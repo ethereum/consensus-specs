@@ -75,22 +75,11 @@ There are two types of fork-data:
 The first is neat to have as a separate form: we prevent duplication, and can run with different presets
  (e.g. fork timeline for a minimal local test, for a public testnet, or for mainnet)
 
-The second is still somewhat ambiguous: some tests may want cover multiple forks, and can do so in different ways:
-- run one test, transitioning from one to the other
-- run the same test for both
-- run a test for every transition from one fork to the other
-- more
-
-There is a common factor here however: the options are exclusive, and give a clear idea on what test suites need to be ran to cover testing for a specific fork.
-The way this list of forks is interpreted, is up to the test-runner:
-State-transition test suites may want to just declare forks that are being covered in the test suite,
- whereas shuffling test suites may want to declare a list of forks to test the shuffling algorithm for individually.
-
-Test-formats specify the following `forks` interpretation rules:
-
-- `collective`: the test suite applies to all specified forks, and only needs to run once
-- `individual`: the test suite should be ran against every fork
-- more types may be specified with future test types.
+The second does not affect the result of the tests, it just states what is covered by the tests,
+ so that the right suites can be executed to see coverage for a certain fork.
+For some types of tests, it may be beneficial to ensure it runs exactly the same, with any given fork "active".
+Test-formats can be explicit on the need to repeat a test with different forks being "active",
+ but generally tests run only once.
 
 ### Test completeness
 
@@ -107,8 +96,7 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 title: <string, short, one line> -- Display name for the test suite
 summary: <string, average, 1-3 lines> -- Summarizes the test suite
 forks_timeline: <string, reference to a fork definition file, without extension> -- Used to determine the forking timeline
-forks: <list of strings> -- Runner decides what to do: run for each fork, or run for all at once, each fork transition, etc.
-  - ... <string, first the fork name, then the spec version>
+forks: <list of strings> -- Defines the coverage. Test-runner code may decide to re-run with the different forks "activated", when applicable.
 config: <string, reference to a config file, without extension> -- Used to determine which set of constants to run (possibly compile time) with
 runner: <string, no spaces, python-like naming format> *MUST be consistent with folder structure*
 handler: <string, no spaces, python-like naming format> *MUST be consistent with folder structure*

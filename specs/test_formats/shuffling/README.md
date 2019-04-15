@@ -30,7 +30,3 @@ Seed is the raw shuffling seed, passed to permute-index (or optimized shuffling 
 
 The resulting list should match the expected output `shuffled` after shuffling the implied input, using the given `seed`.
 
-## Forks
-
-Forks-interpretation: `collective` 
-

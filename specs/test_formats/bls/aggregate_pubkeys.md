@@ -15,7 +15,3 @@ output: BLS Pubkey -- expected output, single BLS pubkey
 ## Condition
 
 The `aggregate_pubkeys` handler should aggregate the keys in the `input`, and the result should match the expected `output`.
-
-## Forks
-
-Forks-interpretation: `collective` 
