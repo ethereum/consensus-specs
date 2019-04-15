@@ -116,7 +116,13 @@ def invalid_deposit_index():
     yield 'description', 'invalid deposit index'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
-    yield 'post', None
+    try:
+        spec.process_deposit(state, new_dep)
+    except AssertionError:
+        # expected
+        yield 'post', None
+        return
+    raise Exception('invalid_deposit_index has unexpectedly allowed deposit')
 
 
 @to_dict
@@ -128,7 +134,13 @@ def invalid_deposit_proof():
     yield 'description', 'invalid deposit proof'
     yield 'pre', encode(state, spec.BeaconState)
     yield 'deposit', encode(new_dep, spec.Deposit)
-    yield 'post', None
+    try:
+        spec.process_deposit(state, new_dep)
+    except AssertionError:
+        # expected
+        yield 'post', None
+        return
+    raise Exception('invalid_deposit_index has unexpectedly allowed deposit')
 
 
 @to_tuple
