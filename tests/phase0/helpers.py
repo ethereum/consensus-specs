@@ -3,7 +3,7 @@ from copy import deepcopy
 from py_ecc import bls
 
 import build.phase0.spec as spec
-from build.phase0.utils.minimal_ssz import signed_root
+from build.phase0.utils.minimal_ssz import signing_root
 from build.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
@@ -27,7 +27,6 @@ from build.phase0.spec import (
     get_attestation_participants,
     get_block_root,
     get_crosslink_committee_for_attestation,
-    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_empty_block,
@@ -99,21 +98,13 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
     )
 
 
-def force_registry_change_at_next_epoch(state):
-    # artificially trigger registry update at next epoch transition
-    state.finalized_epoch = get_current_epoch(state) - 1
-    for crosslink in state.latest_crosslinks:
-        crosslink.epoch = state.finalized_epoch
-    state.validator_registry_update_epoch = state.finalized_epoch - 1
-
-
 def build_empty_block_for_next_slot(state):
     empty_block = get_empty_block()
     empty_block.slot = state.slot + 1
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
-    empty_block.previous_block_root = signed_root(previous_block_header)
+    empty_block.previous_block_root = signing_root(previous_block_header)
     return empty_block
 
 
@@ -126,7 +117,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
         proof_of_possession=EMPTY_SIGNATURE,
     )
     proof_of_possession = bls.sign(
-        message_hash=signed_root(deposit_data),
+        message_hash=signing_root(deposit_data),
         privkey=privkey,
         domain=get_domain(
             state.fork,
@@ -173,7 +164,7 @@ def build_voluntary_exit(state, epoch, validator_index, privkey):
         signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
-        message_hash=signed_root(voluntary_exit),
+        message_hash=signing_root(voluntary_exit),
         privkey=privkey,
         domain=get_domain(
             fork=state.fork,
@@ -211,7 +202,7 @@ def build_deposit(state,
 
 def get_valid_proposer_slashing(state):
     current_epoch = get_current_epoch(state)
-    validator_index = get_active_validator_indices(state.validator_registry, current_epoch)[-1]
+    validator_index = get_active_validator_indices(state, current_epoch)[-1]
     privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
     slot = state.slot
 
@@ -232,12 +223,12 @@ def get_valid_proposer_slashing(state):
         domain_type=spec.DOMAIN_BEACON_BLOCK,
     )
     header_1.signature = bls.sign(
-        message_hash=signed_root(header_1),
+        message_hash=signing_root(header_1),
         privkey=privkey,
         domain=domain,
     )
     header_2.signature = bls.sign(
-        message_hash=signed_root(header_2),
+        message_hash=signing_root(header_2),
         privkey=privkey,
         domain=domain,
     )
@@ -252,7 +243,7 @@ def get_valid_proposer_slashing(state):
 def get_valid_attester_slashing(state):
     attestation_1 = get_valid_attestation(state)
     attestation_2 = deepcopy(attestation_1)
-    attestation_2.data.target_root = b'\x01'*32
+    attestation_2.data.target_root = b'\x01' * 32
 
     return AttesterSlashing(
         attestation_1=convert_to_indexed(state, attestation_1),

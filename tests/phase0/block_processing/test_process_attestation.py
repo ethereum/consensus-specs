@@ -7,7 +7,6 @@ from build.phase0.state_transition import (
     state_transition,
 )
 from build.phase0.spec import (
-    ZERO_HASH,
     get_current_epoch,
     process_attestation,
     slot_to_epoch,
@@ -102,7 +101,7 @@ def test_bad_source_root(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.source_root = b'\x42'*32
+    attestation.data.source_root = b'\x42' * 32
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 
@@ -113,7 +112,7 @@ def test_non_zero_crosslink_data_root(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.crosslink_data_root = b'\x42'*32
+    attestation.data.crosslink_data_root = b'\x42' * 32
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 
