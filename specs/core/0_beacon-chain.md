@@ -2356,7 +2356,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             slashed=False,
-            high_balance=0
+            high_balance=0,
+            exposed_randao_reveals=[],
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
