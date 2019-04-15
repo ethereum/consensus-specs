@@ -118,6 +118,7 @@ def invalid_deposit_index():
     yield 'deposit', encode(new_dep, spec.Deposit)
     yield 'post', None
 
+
 @to_dict
 def invalid_deposit_proof():
     new_dep, state = build_deposit_for_index(10, 10)
