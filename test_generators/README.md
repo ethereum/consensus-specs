@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
 Recommendations:
 - you can have more than just 1 suite creator, e.g. ` gen_runner.run_generator("foo", [bar_test_suite, abc_test_suite, example_test_suite])`
-- you can concatenate lists of test cases, if you don't want to split it up in suites.
+- you can concatenate lists of test cases, if you don't want to split it up in suites, however make sure they could be run with one handler.
 - you can split your suite creators into different python files/packages, good for code organization.
 - use config "minimal" for performance. But also implement a suite with the default config where necessary. 
 - you may be able to write your test suite creator in a way where it does not make assumptions on constants.
