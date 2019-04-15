@@ -1,6 +1,6 @@
 # Eth2.0 Test Generators
 
-This directory of contains all the generators for YAML tests, consumed by Eth 2.0 client implementations.
+This directory contains all the generators for YAML tests, consumed by Eth 2.0 client implementations.
 
 Any issues with the generators and/or generated tests should be filed
  in the repository that hosts the generator outputs, here: [ethereum/eth2.0-tests](https://github.com/ethereum/eth2.0-tests/).
