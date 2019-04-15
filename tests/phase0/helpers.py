@@ -19,7 +19,7 @@ from build.phase0.spec import (
     DepositData,
     Eth1Data,
     ProposerSlashing,
-    RandaoRevealSlashing,
+    RandaoKeyReveal,
     VoluntaryExit,
     # functions
     convert_to_indexed,
@@ -251,7 +251,7 @@ def get_valid_attester_slashing(state):
     )
 
 
-def get_valid_randao_reveal_slashing(state, epoch=None):
+def get_valid_randao_key_reveal(state, epoch=None):
     current_epoch = get_current_epoch(state)
     revealer_index = get_active_validator_indices(state, current_epoch)[-1]
     masker_index = get_active_validator_indices(state, current_epoch)[0]
@@ -278,7 +278,7 @@ def get_valid_randao_reveal_slashing(state, epoch=None):
         ),
     )
 
-    return RandaoRevealSlashing(
+    return RandaoKeyReveal(
         revealer_index=revealer_index,
         epoch=epoch,
         reveal=reveal,

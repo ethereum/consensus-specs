@@ -22,7 +22,6 @@
             - [`CustodyChunkChallengeRecord`](#custodychunkchallengerecord)
             - [`CustodyBitChallengeRecord`](#custodybitchallengerecord)
             - [`CustodyResponse`](#custodyresponse)
-            - [`CustodyKeyReveal`](#custodykeyreveal)
         - [Phase 0 container updates](#phase-0-container-updates)
             - [`Validator`](#validator)
             - [`BeaconState`](#beaconstate)
@@ -159,16 +158,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 }
 ```
 
-#### `CustodyKeyReveal`
-
-```python
-{
-    'revealer_index': ValidatorIndex,
-    'period': 'uint64',
-    'key': BLSSignature,
-}
-```
-
 ### Phase 0 container updates
 
 Add the following fields to the end of the specified container objects. Fields with underlying type `uint64` are initialized to `0` and list fields are initialized to `[]`.
@@ -191,7 +180,6 @@ Add the following fields to the end of the specified container objects. Fields w
 #### `BeaconBlockBody`
 
 ```python
-    'custody_key_reveals': [CustodyKeyReveal],
     'custody_chunk_challenges': [CustodyChunkChallenge],
     'custody_bit_challenges': [CustodyBitChallenge],
     'custody_responses': [CustodyResponse],
@@ -235,7 +223,7 @@ def get_randao_epoch_for_custody_period(period: int) -> Epoch:
 ### `verify_custody_key`
 
 ```python
-def verify_custody_key(state: BeaconState, reveal: CustodyKeyReveal) -> bool:
+def verify_custody_key(state: BeaconState, reveal: RandaoKeyReveal) -> bool:
     epoch_to_sign = get_randao_epoch_for_custody_period(reveal.period)
     pubkeys = [state.validator_registry[reveal.revealer_index].pubkey]
     message_hashes = [hash_tree_root(epoch_to_sign)]
@@ -260,13 +248,11 @@ Add the following operations to the per-block processing, in order the given bel
 
 #### Custody reveals
 
-Verify that `len(block.body.custody_key_reveals) <= MAX_CUSTODY_KEY_REVEALS`.
-
-For each `reveal` in `block.body.custody_key_reveals`, run the following function:
+Replace process_custody_reveal from phase 0 with this function:
 
 ```python
 def process_custody_reveal(state: BeaconState,
-                           reveal: CustodyKeyReveal) -> None:
+                           reveal: RandaoKeyReveal) -> None:
     assert verify_custody_key(state, reveal)
     revealer = state.validator_registry[reveal.revealer_index]
     current_custody_period = epoch_to_custody_period(get_current_epoch(state))
@@ -355,7 +341,7 @@ def process_bit_challenge(state: BeaconState,
         assert record.challenger_index != challenge.challenger_index
         assert record.responder_index != challenge.responder_index
     # Verify the responder key
-    assert verify_custody_key(state, CustodyKeyReveal(
+    assert verify_custody_key(state, RandaoKeyReveal(
         revealer_index=challenge.responder_index,
         period=epoch_to_custody_period(slot_to_epoch(attestation.data.slot)),
         key=challenge.responder_key,
