@@ -160,7 +160,7 @@ def test_attester_slashing(state):
     # lost whistleblower reward
     assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
 
-    proposer_index = get_beacon_proposer_index(test_state, test_state.slot)
+    proposer_index = get_beacon_proposer_index(test_state)
     # gained whistleblower reward
     assert (
         get_balance(test_state, proposer_index) >

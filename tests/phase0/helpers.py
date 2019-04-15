@@ -4,6 +4,9 @@ from py_ecc import bls
 
 import build.phase0.spec as spec
 from build.phase0.utils.minimal_ssz import signing_root
+from build.phase0.state_transition import (
+    state_transition,
+)
 from build.phase0.spec import (
     # constants
     EMPTY_SIGNATURE,
@@ -303,3 +306,8 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
             domain_type=spec.DOMAIN_ATTESTATION,
         )
     )
+
+
+def next_slot(state):
+    block = build_empty_block_for_next_slot(state)
+    state_transition(state, block)

@@ -1694,16 +1694,34 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple
 ```
 
 ```python
-def inclusion_slot(state: BeaconState, attestations: List[Attestation], validator_index: ValidatorIndex) -> Slot:
-    return min([
-        a.inclusion_slot for a in attestations if
-        validator_index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
-    ] + [GENESIS_SLOT])
+def attestations_for_validator(state: BeaconState, pending_attestations: List[PendingAttestation], validator_index: ValidatorIndex) -> PendingAttestation:
+    """
+    Return ``attestations`` from ``pending_attestations`` in which ``validator_index`` is a participant.
+    These ``attestations`` are sorted by ``inclusion_slot``.
+    """
+    return sorted([
+        a for a in pending_attestations
+        if validator_index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
+    ], key=lambda a: a.inclusion_slot)
 ```
 
 ```python
-def inclusion_distance(state: BeaconState, attestations: List[Attestation], validator_index: ValidatorIndex) -> int:
-    return inclusion_slot(state, attestations, validator_index) - attestation.data.slot
+def inclusion_slot(state: BeaconState, pending_attestations: List[PendingAttestation], validator_index: ValidatorIndex) -> Slot:
+    """
+    Return earliest slot in which ``validator_index`` was included in ``pending_attestations``.
+    If ``validator_index`` is not in ``pending_attestations``, return ``GENESIS_SLOT``.
+    """
+    validator_attestations = attestations_for_validator(state, pending_attestations, validator_index)
+    if len(validator_attestations) == 0:
+        return GENESIS_SLOT
+
+    return min([a.inclusion_slot for a in validator_attestations])
+```
+
+```python
+def inclusion_distance(state: BeaconState, pending_attestations: List[PendingAttestation], validator_index: ValidatorIndex) -> int:
+    attestation = attestations_for_validator(state, pending_attestations, validator_index)[0]
+    return attestation.inclusion_slot - attestation.data.slot
 ```
 
 #### Justification
@@ -2196,11 +2214,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 Run `process_proposer_attestation_rewards(state)`.
 
 ```python
-def process_proposer_attestation_rewards(state: BeaconState) -> None:
+def process_proposer_attestation_rewards(state: BeaconState, block_attestations: List[Attestation]) -> None:
     proposer_index = get_beacon_proposer_index(state)
-    for attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
-        for index in get_unslashed_attesting_indices(state, attestations):
-            if inclusion_slot(state, attestations, index) == state.slot:
+    for pending_attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
+        for index in get_unslashed_attesting_indices(state, block_attestations):
+            if inclusion_slot(state, pending_attestations, index) == state.slot:
                 increase_balance(state, proposer_index, get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
 ```
 
