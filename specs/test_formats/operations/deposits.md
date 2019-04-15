@@ -15,4 +15,4 @@ post: BeaconState    -- state after applying the deposit. No value if deposit pr
 
 A `deposits` handler of the `operations` should process these cases, 
  calling the implementation of the `process_deposit(state, deposit)` functionality described in the spec.
-The resulting state should match the expected `post` state, or no change if the `post` state is left blank.
+The resulting state should match the expected `post` state, or if the `post` state is left blank, the handler should reject the inputs as invalid.
