@@ -30,7 +30,7 @@ def generate_random_uint_test_cases():
         sedes = UInt(bit_size)
 
         for _ in range(RANDOM_TEST_CASES_PER_BIT_SIZE):
-            value = random.randrange(0, 2 ** bit_size)
+            value = random.randrange(0, 2**bit_size)
             serial = ssz.encode(value, sedes)
             # note that we need to create the tags in each loop cycle, otherwise ruamel will use
             # YAML references which makes the resulting file harder to read
