@@ -18,6 +18,7 @@ def ssz_random_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         handler="uint",
         test_cases=generate_random_uint_test_cases()))
 
+
 def ssz_wrong_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
     return ("uint_wrong_length", "uint", gen_suite.render_suite(
         title="UInt Wrong Length",
