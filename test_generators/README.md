@@ -63,7 +63,7 @@ eth-utils==1.4.1
 ../../test_libs/pyspec
 ```
 The config helper and pyspec is optional, but preferred. We encourage generators to derive tests from the spec itself, to prevent code duplication and outdated tests.
-Applying configurations to the spec is easy, and enables you to create test suites with different contexts.
+Applying configurations to the spec is simple, and enables you to create test suites with different contexts.
 
 Note: make sure to run `make pyspec` from the root of the specs repository, to build the pyspec requirement.
 
