@@ -99,7 +99,7 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 
 - Clients that are complete are expected to contribute to testing, seeking for better resources to get conformance with the spec, and other clients.
 - Clients that are not complete in functionality can choose to ignore suites that use certain test-runners, or specific handlers of these test-runners.
-- Clients that are on older versions can test there work based on older releases of the generated tests, and catch up with newer releases when possible.
+- Clients that are on older versions can test their work based on older releases of the generated tests, and catch up with newer releases when possible.
 
 ## Test Suite
 

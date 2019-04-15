@@ -15,8 +15,8 @@ from phase0.helpers import (
 )
 
 
-# mark entire file as 'voluntary_exits'
-pytestmark = pytest.mark.voluntary_exits
+# mark entire file as 'deposits'
+pytestmark = pytest.mark.deposits
 
 
 def test_success(state):

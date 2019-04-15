@@ -92,10 +92,9 @@ def process_epoch_transition(state: BeaconState) -> None:
     spec.process_crosslinks(state)
     spec.maybe_reset_eth1_period(state)
     spec.apply_rewards(state)
-    spec.process_ejections(state)
+    spec.process_balance_driven_status_transitions(state)
     spec.update_registry(state)
     spec.process_slashings(state)
-    spec.process_exit_queue(state)
     spec.finish_epoch_update(state)
 
 
