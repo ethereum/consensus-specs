@@ -30,6 +30,7 @@ def ssz_wrong_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
         handler="uint",
         test_cases=generate_uint_wrong_length_test_cases()))
 
+
 def ssz_uint_bounds_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
     return ("uint_bounds", "uint", gen_suite.render_suite(
         title="UInt Bounds",
