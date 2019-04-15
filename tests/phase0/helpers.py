@@ -253,8 +253,8 @@ def get_valid_attester_slashing(state):
 
 def get_valid_randao_reveal_slashing(state, epoch=None):
     current_epoch = get_current_epoch(state)
-    revealer_index = get_active_validator_indices(state.validator_registry, current_epoch)[-1]
-    masker_index = get_active_validator_indices(state.validator_registry, current_epoch)[0]
+    revealer_index = get_active_validator_indices(state, current_epoch)[-1]
+    masker_index = get_active_validator_indices(state, current_epoch)[0]
 
     if epoch is None:
         epoch = current_epoch + CUSTODY_PERIOD_TO_RANDAO_PADDING

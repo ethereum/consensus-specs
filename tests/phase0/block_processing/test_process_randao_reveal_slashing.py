@@ -32,7 +32,7 @@ def run_randao_reveal_slashing_processing(state, randao_reveal_slashing, valid=T
     process_randao_reveal_slashing(post_state, randao_reveal_slashing)
 
     slashed_validator = post_state.validator_registry[randao_reveal_slashing.revealer_index]
-    assert not slashed_validator.initiated_exit
+
     if randao_reveal_slashing.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
         assert slashed_validator.slashed
         assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
