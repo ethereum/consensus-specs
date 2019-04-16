@@ -1781,7 +1781,7 @@ Run the following function:
 def maybe_reset_eth1_period(state: BeaconState) -> None:
     if state.slot % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         for eth1_data in state.eth1_data_votes:
-            if eth1_data != Eth1Data() and state.eth_data_votes.count(eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+            if state.eth_data_votes.count(eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
                 state.latest_eth1_data = eth1_data
         state.eth1_data_votes = []
 ```
@@ -2062,7 +2062,7 @@ def process_randao(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
-    state.eth1_data_votes[state.slot % SLOTS_PER_ETH1_VOTING_PERIOD] = block.body.eth1_data
+    state.eth1_data_votes.append(block.body.eth1_data)
 ```
 
 #### Operations
