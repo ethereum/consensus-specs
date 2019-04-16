@@ -7,7 +7,8 @@ from build.phase0.spec import (
     get_current_epoch,
     process_randao_key_reveal,
     RANDAO_PENALTY_EPOCHS,
-    CUSTODY_PERIOD_TO_RANDAO_PADDING
+    CUSTODY_PERIOD_TO_RANDAO_PADDING,
+    RANDAO_PENALTY_MAX_FUTURE_EPOCHS,
 )
 from tests.phase0.helpers import (
     get_valid_randao_key_reveal,
@@ -31,7 +32,7 @@ def run_randao_key_reveal_processing(state, randao_key_reveal, valid=True):
 
     process_randao_key_reveal(post_state, randao_key_reveal)
 
-    slashed_validator = post_state.validator_registry[randao_key_reveal.revealer_index]
+    slashed_validator = post_state.validator_registry[randao_key_reveal.revealed_index]
 
     if randao_key_reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
         assert slashed_validator.slashed
@@ -40,8 +41,8 @@ def run_randao_key_reveal_processing(state, randao_key_reveal, valid=True):
     # lost whistleblower reward
     # FIXME: Currently broken because get_base_reward in genesis epoch is 0
     #assert (
-    #    get_balance(post_state, randao_key_reveal.revealer_index) <
-    #    get_balance(state, randao_key_reveal.revealer_index)
+    #    get_balance(post_state, randao_key_reveal.revealed_index) <
+    #    get_balance(state, randao_key_reveal.revealed_index)
     #)
 
     return state, post_state
@@ -94,7 +95,14 @@ def test_double_reveal(state):
 
 def test_revealer_is_slashed(state):
     randao_key_reveal = get_valid_randao_key_reveal(state, get_current_epoch(state))
-    state.validator_registry[randao_key_reveal.revealer_index].slashed = True
+    state.validator_registry[randao_key_reveal.revealed_index].slashed = True
+
+    pre_state, post_state = run_randao_key_reveal_processing(state, randao_key_reveal, False)
+
+    return pre_state, randao_key_reveal, post_state
+
+def test_far_future_epoch(state):
+    randao_key_reveal = get_valid_randao_key_reveal(state, get_current_epoch(state) + RANDAO_PENALTY_MAX_FUTURE_EPOCHS)
 
     pre_state, post_state = run_randao_key_reveal_processing(state, randao_key_reveal, False)
 

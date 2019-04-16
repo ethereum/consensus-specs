@@ -253,7 +253,7 @@ def get_valid_attester_slashing(state):
 
 def get_valid_randao_key_reveal(state, epoch=None):
     current_epoch = get_current_epoch(state)
-    revealer_index = get_active_validator_indices(state, current_epoch)[-1]
+    revealed_index = get_active_validator_indices(state, current_epoch)[-1]
     masker_index = get_active_validator_indices(state, current_epoch)[0]
 
     if epoch is None:
@@ -261,7 +261,7 @@ def get_valid_randao_key_reveal(state, epoch=None):
 
     reveal = bls.sign(
         message_hash=hash_tree_root(epoch),
-        privkey=pubkey_to_privkey[state.validator_registry[revealer_index].pubkey],
+        privkey=pubkey_to_privkey[state.validator_registry[revealed_index].pubkey],
         domain=get_domain(
             fork=state.fork,
             epoch=epoch,
@@ -279,7 +279,7 @@ def get_valid_randao_key_reveal(state, epoch=None):
     )
 
     return RandaoKeyReveal(
-        revealer_index=revealer_index,
+        revealed_index=revealed_index,
         epoch=epoch,
         reveal=reveal,
         masker_index=masker_index,
