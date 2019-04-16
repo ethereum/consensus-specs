@@ -37,6 +37,6 @@ The following are the broad design goals for Ethereum 2.0:
 
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](test_generators/README.md)
-* [Executable Python Spec](test_libs/eth2spec/README.md)
+* [Executable Python Spec](test_libs/pyspec/README.md)
 * [Py-tests](py_tests/README.md)
 
