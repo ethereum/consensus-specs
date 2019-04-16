@@ -1,4 +1,4 @@
-# SimpleSerialiZe (SSZ)
+# SimpleSerialize (SSZ)
 
 This is a **work in progress** describing typing, serialization and Merkleization of Ethereum 2.0 objects.
 

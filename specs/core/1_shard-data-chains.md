@@ -317,8 +317,8 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
     assert len(block.attestations) <= MAX_SHARD_ATTESTIONS
     for _, attestation in enumerate(block.attestations):
         assert max(GENESIS_SHARD_SLOT, block.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
-        assert attesation.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY
-        assert attetation.data.shart == block.shard
+        assert attestation.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY
+        assert attestation.data.shard == block.shard
         verify_shard_attestation_signature(beacon_state, attestation)
 
     # Check signature
