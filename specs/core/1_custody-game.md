@@ -304,7 +304,7 @@ def process_custody_reveal(state: BeaconState,
         assert reveal.period == revealer.next_custody_reveal_period
         assert reveal.period < get_validators_custody_reveal_period(state, reveal.revealer_index)
         # Revealer is active or exited, but not withdrawn
-        assert is_slashable validator(revealer, get_current_epoch(state))
+        assert is_slashable_validator(revealer, get_current_epoch(state))
         # Decrement max reveal lateness if response is timely
         if reveal.period == get_validators_custody_reveal_period(state, reveal.revealer_index) - 1:
             revealer.max_reveal_lateness -=  MAX_REVEAL_LATENESS_DECREMENT
@@ -320,7 +320,7 @@ def process_custody_reveal(state: BeaconState,
     # Case 2: masked punitive early reveal
     else:
         assert reveal.period > validator.next_custody_reveal_period
-        assert is_slashable validator(revealer, get_current_epoch(state))
+        assert is_slashable_validator(revealer, get_current_epoch(state))
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
 ```
 
@@ -383,7 +383,7 @@ def process_bit_challenge(state: BeaconState,
         signature=challenge.signature,
         domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_BIT_CHALLENGE),
     )
-    assert is_slashable validator(challenger, get_current_epoch(state))
+    assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify the attestation
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
