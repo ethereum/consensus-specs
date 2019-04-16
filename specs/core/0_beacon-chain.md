@@ -1726,7 +1726,7 @@ Run the following function:
 
 ```python
 def update_justification_and_finalization(state: BeaconState) -> None:
-    previous_previous_justified_epoch = state.previous_justified_epoch
+    antepenultimate_justified_epoch = state.previous_justified_epoch
 
     # Process justifications
     state.previous_justified_epoch = state.current_justified_epoch
@@ -1744,23 +1744,23 @@ def update_justification_and_finalization(state: BeaconState) -> None:
         state.justification_bitfield |= (1 << 0)
 
     # Process finalizations
-    new_finalized_epoch = state.finalized_epoch
     bitfield = state.justification_bitfield
     current_epoch = get_current_epoch(state)
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if (bitfield >> 1) % 8 == 0b111 and previous_previous_justified_epoch == current_epoch - 3:
-        new_finalized_epoch = previous_previous_justified_epoch
+    if (bitfield >> 1) % 8 == 0b111 and antepenultimate_justified_epoch == current_epoch - 3:
+        state.finalized_epoch = antepenultimate_justified_epoch
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if (bitfield >> 1) % 4 == 0b11 and previous_previous_justified_epoch == current_epoch - 2:
-        new_finalized_epoch = previous_previous_justified_epoch
+    if (bitfield >> 1) % 4 == 0b11 and antepenultimate_justified_epoch == current_epoch - 2:
+        state.finalized_epoch = antepenultimate_justified_epoch
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
     if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_root == current_epoch - 2:
-        new_finalized_epoch = state.previous_justified_root
+        state.finalized_epoch = state.previous_justified_root
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
     if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_root == current_epoch - 1:
-        new_finalized_epoch = state.previous_justified_root
-    if new_finalized_epoch != state.finalized_epoch:
-        state.finalized_epoch = new_finalized_epoch
+        state.finalized_epoch = state.previous_justified_root
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
 ```
 
