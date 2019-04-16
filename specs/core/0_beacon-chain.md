@@ -2053,7 +2053,7 @@ def process_randao(state: BeaconState, block: BeaconBlock) -> None:
 def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
     state.eth1_data_votes.append(block.body.eth1_data)
     for eth1_data in state.eth1_data_votes:
-        if state.eth_data_votes.count(eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+        if state.eth1_data_votes.count(eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
             state.latest_eth1_data = eth1_data
 ```
 
