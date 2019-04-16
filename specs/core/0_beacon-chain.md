@@ -1744,6 +1744,7 @@ def update_justification_and_finalization(state: BeaconState) -> None:
         state.justification_bitfield |= (1 << 0)
 
     # Process finalizations
+    new_finalized_epoch = state.finalized_epoch
     bitfield = state.justification_bitfield
     current_epoch = get_current_epoch(state)
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
