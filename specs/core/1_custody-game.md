@@ -283,7 +283,7 @@ def process_custody_reveal(state: BeaconState,
         assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
         revealer.custody_reveal_index += 1
         revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, current_custody_period - reveal.period)
-        proposer_index = get_beacon_proposer_index(state, state.slot)
+        proposer_index = get_beacon_proposer_index(state)
         increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 
     # Case 2: masked punitive early reveal
@@ -323,7 +323,7 @@ def process_chunk_challenge(state: BeaconState,
     # Add new chunk challenge record
     state.custody_chunk_challenge_records.append(CustodyChunkChallengeRecord(
         challenge_index=state.custody_challenge_index,
-        challenger_index=get_beacon_proposer_index(state, state.slot),
+        challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         crosslink_data_root=challenge.attestation.data.crosslink_data_root,
@@ -436,7 +436,7 @@ def process_chunk_challenge_response(state: BeaconState,
     # Clear the challenge
     state.custody_chunk_challenge_records.remove(challenge)
     # Reward the proposer
-    proposer_index = get_beacon_proposer_index(state, state.slot)
+    proposer_index = get_beacon_proposer_index(state)
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 
