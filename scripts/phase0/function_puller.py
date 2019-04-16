@@ -2,7 +2,7 @@ import sys
 from typing import List
 
 
-def get_spec(file_name) -> List[str]:
+def get_spec(file_name: str) -> List[str]:
     code_lines = []
     pulling_from = None
     current_name = None
