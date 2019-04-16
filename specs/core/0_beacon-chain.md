@@ -2256,8 +2256,8 @@ def process_randao_key_reveal(state: BeaconState,
         # Calculate penalty
         max_proposer_slot_reward = (
             get_base_reward(state, randao_key_reveal.revealed_index) *
-            len(get_active_validator_indices(state, get_current_epoch(state))) //
             SLOTS_PER_EPOCH //
+            len(get_active_validator_indices(state, get_current_epoch(state))) //
             PROPOSER_REWARD_QUOTIENT
         )
         penalty = max_proposer_slot_reward * RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE
