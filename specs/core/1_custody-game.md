@@ -239,7 +239,9 @@ def epoch_to_custody_period(epoch: Epoch) -> int:
 ### `get_validators_custody_reveal_period`
 
  ```python
-def get_validators_custody_reveal_period(state: BeaconState, validator_index: ValidatorIndex, epoch: Epoch=None) -> int:
+def get_validators_custody_reveal_period(state: BeaconState,
+                                         validator_index: ValidatorIndex,
+                                         epoch: Epoch=None) -> int:
     '''
     This function returns the reveal period for a given validator.
     If no epoch is supplied, the current epoch is assumed.
@@ -399,9 +401,9 @@ def process_bit_challenge(state: BeaconState,
     assert verify_custody_key(state, CustodyKeyReveal(
         revealer_index=challenge.responder_index,
         period=get_validators_custody_reveal_period(
-            state,
-            challenge.responder_index,
-            slot_to_epoch(attestation.data.slot)),
+            state=state,
+            index=challenge.responder_index,
+            epoch=slot_to_epoch(attestation.data.slot)),
         key=challenge.responder_key,
         masker_index=0,
         mask=ZERO_HASH,
@@ -500,7 +502,7 @@ def process_bit_challenge_response(state: BeaconState,
  Run `process_reveal_deadlines(state)` immediately after `process_ejections(state)`:
 
  ```python
-def process_reveal_deadlines(state) -> None:
+def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         if (validator.latest_custody_reveal_period + \
             (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <\
@@ -526,7 +528,7 @@ def process_challenge_deadlines(state: BeaconState) -> None:
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
 
 ```python
-def eligible(index) -> bool:
+def eligible(state: BeaconState, index: ValidatorIndex) -> bool:
     validator = state.validator_registry[index]
     # Cannot exit if there are still open chunk challenges
     if len([record for record in state.custody_chunk_challenge_records if record.responder_index == index]) > 0:
@@ -535,7 +537,7 @@ def eligible(index) -> bool:
     if len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
         return False
     # Cannot exit if you have not revealed all of your custody keys
-    elif validator.next_custody_reveal_period < get_validators_custody_reveal_period(state, index,validator.exit_epoch):
+    elif validator.next_custody_reveal_period <= get_validators_custody_reveal_period(state, index,validator.exit_epoch):
         return False
     # Cannot exit if you already have
     elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
