@@ -504,7 +504,7 @@ def process_bit_challenge_response(state: BeaconState,
  ```python
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
-        if (validator.latest_custody_reveal_period + 
+        if (validator.latest_custody_reveal_period +
             (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <
             get_validators_current_custody_reveal_period(state, index)):
                 slash_validator(state, index)
