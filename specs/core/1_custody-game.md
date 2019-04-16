@@ -388,7 +388,7 @@ def process_bit_challenge(state: BeaconState,
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
-    assert (slot_to_epoch(challenge.attestation.data.slot) + responder.max_reveal_lateness <= 
+    assert (slot_to_epoch(challenge.attestation.data.slot) + responder.max_reveal_lateness <=
             get_validators_custody_reveal_period(state, challenge.responder_index))
     # Verify the responder participated in the attestation
     attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
