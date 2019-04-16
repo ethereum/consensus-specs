@@ -319,7 +319,7 @@ def process_custody_reveal(state: BeaconState,
 
     # Case 2: masked punitive early reveal
     else:
-        assert reveal.period > validator.next_custody_reveal_period
+        assert reveal.period >= get_validators_custody_reveal_period(state, reveal.revealer_index)
         assert is_slashable_validator(revealer, get_current_epoch(state))
         slash_validator(state, reveal.revealer_index, reveal.masker_index)
 ```
