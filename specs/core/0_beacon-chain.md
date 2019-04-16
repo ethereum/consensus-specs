@@ -1030,9 +1030,9 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
-            value = hash(proof[i] + value)
+            value = hash(proof[index] + value)
         else:
-            value = hash(value + proof[i])
+            value = hash(value + proof[index])
     return value == root
 ```
 
