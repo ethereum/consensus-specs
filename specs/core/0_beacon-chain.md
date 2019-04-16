@@ -237,6 +237,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) | epochs | ~7 hours |
 | `RANDAO_PENALTY_EPOCHS` | `2` | epochs | 12.8 minutes |
+| `RANDAO_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 
@@ -434,8 +435,6 @@ The types are defined topologically to aid in facilitating an executable version
     'slashed': 'bool',
     # Rounded balance
     'high_balance': 'uint64',
-    # Future RANDAO reveals already exposed 
-    'exposed_randao_reveals': ['uint64'],
 }
 ```
 
@@ -632,8 +631,13 @@ The types are defined topologically to aid in facilitating an executable version
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
     'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],  # Balances slashed at every withdrawal period
+
     'latest_block_header': BeaconBlockHeader,  # `latest_block_header.state_root == ZERO_HASH` temporarily
     'historical_roots': ['bytes32'],
+
+    # Future RANDAO reveals already exposed; contains the indices of the exposed validator
+    # at RANDAO reveal period % RANDAO_PENALTY_MAX_FUTURE_EPOCHS
+    'exposed_randao_reveals': [['uint64'], RANDAO_PENALTY_MAX_FUTURE_EPOCHS],
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
@@ -1506,6 +1510,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         latest_block_header=get_temporary_block_header(get_empty_block()),
         historical_roots=[],
 
+        exposed_randao_reveals=[[]] * RANDAO_PENALTY_MAX_FUTURE_EPOCHS,
+
         # Ethereum 1.0 chain data
         latest_eth1_data=genesis_eth1_data,
         eth1_data_votes=[],
@@ -2046,10 +2052,7 @@ def finish_epoch_update(state: BeaconState) -> None:
     state.current_epoch_attestations = []
 
     # Clean up exposed RANDAO reveals
-    for index, validator in enumerate(state.validator_registry):
-        for reveal_index, reveal_epoch in enumerate(validator.exposed_randao_reveals):
-            if reveal_epoch <= current_epoch:
-                del validator.exposed_randao_reveals[reveal_index]
+    state.exposed_randao_reveals[current_epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```
 
 ### Per-slot processing
@@ -2227,7 +2230,7 @@ def process_randao_key_reveal(state: BeaconState,
 
     assert randao_key_reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
     assert revealer.slashed is False
-    assert randao_key_reveal.epoch not in state.validator_registry[randao_key_reveal.revealer_index].exposed_randao_reveals
+    assert randao_key_reveal.revealer_index not in state.exposed_randao_reveals[randao_key_reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS]
 
     assert bls_verify_multiple(
         pubkeys=pubkeys,
@@ -2253,7 +2256,7 @@ def process_randao_key_reveal(state: BeaconState,
         increase_balance(state, proposer_index, proposer_reward)
         increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
         decrease_balance(state, randao_key_reveal.revealer_index, penalty)
-        state.validator_registry[randao_key_reveal.revealer_index].exposed_randao_reveals.append(randao_key_reveal.epoch)
+        state.exposed_randao_reveals[randao_key_reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS].append(randao_key_reveal.revealer_index)
 
 
 ```
@@ -2370,7 +2373,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             slashed=False,
             high_balance=0,
-            exposed_randao_reveals=[],
         )
 
         # Note: In phase 2 registry indices that have been withdrawn for a long time will be recycled.
