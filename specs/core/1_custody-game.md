@@ -388,8 +388,8 @@ def process_bit_challenge(state: BeaconState,
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
-    assert (slot_to_epoch(challenge.attestation.data.slot) + responder.max_reveal_lateness <= \
-        get_validators_custody_reveal_period(state, challenge.responder_index))
+    assert (slot_to_epoch(challenge.attestation.data.slot) + responder.max_reveal_lateness <= 
+            get_validators_custody_reveal_period(state, challenge.responder_index))
     # Verify the responder participated in the attestation
     attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
@@ -504,8 +504,8 @@ def process_bit_challenge_response(state: BeaconState,
  ```python
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
-        if (validator.latest_custody_reveal_period + \
-            (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <\
+        if (validator.latest_custody_reveal_period + 
+            (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <
             get_validators_current_custody_reveal_period(state, index)):
                 slash_validator(state, index)
 ```
