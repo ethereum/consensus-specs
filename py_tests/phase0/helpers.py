@@ -58,7 +58,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
             pubkey=pubkey,
             # insecurely use pubkey as withdrawal key as well
             withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
-            amount=spec.MAX_DEPOSIT_AMOUNT,
+            amount=spec.MAX_EFFECTIVE_BALANCE,
             proof_of_possession=proof_of_possession,
         )
         item = hash(deposit_data.serialize())
