@@ -134,7 +134,8 @@
             - [Operations](#operations)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
-                - [Randao reveal slashings](#randao-reveal-slashings)
+                - [Custody key reveals](#custody-key-reveals)
+                - [Randao key reveals](#randao-key-reveals)
                 - [Attestations](#attestations)
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
@@ -260,7 +261,6 @@ These configurations are updated for releases, but may be out of sync during `de
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
-| `RANDAO_REVEAL_PENALTY_QUOTIENT` | `2**7` (= 128) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
@@ -2197,7 +2197,6 @@ def process_attester_slashing(state: BeaconState,
 
 Placeholder for phase 1
 
-
 ```python
 def process_custody_reveal(state: BeaconState,
                            reveal: RandaoKeyReveal) -> None:
@@ -2247,8 +2246,14 @@ def process_randao_key_reveal(state: BeaconState,
         # Replacement for custody reveal slashing
         slash_validator(state, randao_key_reveal.revealer_index, randao_key_reveal.masker_index)
     else:
-        # Only a small penalty for RANDAO reveal that does not interfere with the custody period
-        penalty = get_effective_balance(state, randao_key_reveal.revealer_index) // RANDAO_REVEAL_PENALTY_QUOTIENT
+        # Only a small penalty proportional to proposer slot reward for RANDAO reveal that does not interfere with the custody period
+        max_proposer_slot_reward = (
+            get_base_reward(state, randao_key_reveal.revealer_index) *
+            len(get_active_validator_indices(state, get_current_epoch(state))) //
+            SLOTS_PER_EPOCH //
+            PROPOSER_REWARD_QUOTIENT
+        )
+        penalty = max_proposer_slot_reward * 2
         proposer_index = get_beacon_proposer_index(state, state.slot)
         whistleblower_index = randao_key_reveal.masker_index
         whistleblowing_reward = penalty // WHISTLEBLOWING_REWARD_QUOTIENT
