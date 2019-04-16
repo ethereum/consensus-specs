@@ -240,7 +240,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `RANDAO_PENALTY_EPOCHS` | `2` | epochs | 12.8 minutes |
 | `RANDAO_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
-| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
+| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**7` (= 128) | epochs | ~13 hours |
 
 * `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
