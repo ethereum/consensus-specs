@@ -44,4 +44,4 @@ def ssz_uint_bounds_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("ssz", [ssz_random_uint_suite, ssz_wrong_uint_suite, ssz_uint_bounds_suite])
+    gen_runner.run_generator("ssz_generic", [ssz_random_uint_suite, ssz_wrong_uint_suite, ssz_uint_bounds_suite])
