@@ -297,7 +297,7 @@ def process_custody_reveal(state: BeaconState,
                            reveal: CustodyKeyReveal) -> None:
     assert verify_custody_key(state, reveal)
     revealer = state.validator_registry[reveal.revealer_index]
-    
+
     # Case 1: non-masked non-punitive non-early reveal
     if reveal.mask == ZERO_HASH:
         # Reveals must be in order
