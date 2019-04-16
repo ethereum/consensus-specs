@@ -1694,34 +1694,14 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple
 ```
 
 ```python
-def attestations_for_validator(state: BeaconState, pending_attestations: List[PendingAttestation], validator_index: ValidatorIndex) -> PendingAttestation:
+def earliest_attestation(state: BeaconState, pending_attestations: List[PendingAttestation], validator_index: ValidatorIndex) -> PendingAttestation:
     """
-    Return ``attestations`` from ``pending_attestations`` in which ``validator_index`` is a participant.
-    These ``attestations`` are sorted by ``inclusion_slot``.
+    Return earliest attestation in ``pending_attestations`` where ``validator_index`` is a participant.
     """
-    return sorted([
+    return min([
         a for a in pending_attestations
         if validator_index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
     ], key=lambda a: a.inclusion_slot)
-```
-
-```python
-def inclusion_slot(state: BeaconState, pending_attestations: List[PendingAttestation], validator_index: ValidatorIndex) -> Slot:
-    """
-    Return earliest slot in which ``validator_index`` was included in ``pending_attestations``.
-    If ``validator_index`` is not in ``pending_attestations``, return ``GENESIS_SLOT``.
-    """
-    validator_attestations = attestations_for_validator(state, pending_attestations, validator_index)
-    if len(validator_attestations) == 0:
-        return GENESIS_SLOT
-
-    return min([a.inclusion_slot for a in validator_attestations])
-```
-
-```python
-def inclusion_distance(state: BeaconState, pending_attestations: List[PendingAttestation], validator_index: ValidatorIndex) -> int:
-    attestation = attestations_for_validator(state, pending_attestations, validator_index)[0]
-    return attestation.inclusion_slot - attestation.data.slot
 ```
 
 #### Justification
@@ -1867,10 +1847,9 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
             rewards[index] += base_reward * total_attesting_balance // total_balance
             # Inclusion speed bonus
-            rewards[index] += (
-                base_reward * MIN_ATTESTATION_INCLUSION_DELAY //
-                inclusion_distance(state, state.previous_epoch_attestations, index)
-            )
+            earliest_attestation = earliest_attestation(state, previous_epoch_attestations, index)
+            inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
+            rewards[index] += base_reward * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
         else:
             penalties[index] += base_reward
         # Expected FFG target
@@ -2213,7 +2192,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.current_epoch_attestations.append(pending_attestation)
     else:
         state.previous_epoch_attestations.append(pending_attestation)
-
 ```
 
 Run `process_proposer_attestation_rewards(state)`.
@@ -2223,12 +2201,10 @@ def process_proposer_attestation_rewards(state: BeaconState, block_attestations:
     proposer_index = get_beacon_proposer_index(state)
     for pending_attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
         for index in get_unslashed_attesting_indices(state, block_attestations):
-            if inclusion_slot(state, pending_attestations, index) == state.slot:
-                reward = (
-                    get_base_reward_from_total_balance(state, get_current_total_balance(state), index) //
-                    PROPOSER_REWARD_QUOTIENT
-                )
-                increase_balance(state, proposer_index, reward)
+            earliest_attestation = earliest_attestation(state, pending_attestations, validator_index)
+            if earliest_attestation.inclusion_slot == state.slot:
+                base_reward = get_base_reward_from_total_balance(state, get_current_total_balance(state), index)
+                increase_balance(state, proposer_index, base_reward // PROPOSER_REWARD_QUOTIENT)
 ```
 
 ##### Deposits
