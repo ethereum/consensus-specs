@@ -603,7 +603,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
-    'eth1_data_votes': ['bytes32', SLOTS_PER_ETH1_VOTING_PERIOD],
+    'eth1_data_votes': [Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD],
     'deposit_index': 'uint64',
 }
 ```
@@ -1473,7 +1473,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
         # Ethereum 1.0 chain data
         latest_eth1_data=genesis_eth1_data,
-        eth1_data_votes=Vector([ZERO_HASH for _ in range(SLOTS_PER_ETH1_VOTING_PERIOD)]),
+        eth1_data_votes=Vector([Eth1Data() for _ in range(SLOTS_PER_ETH1_VOTING_PERIOD)]),
         deposit_index=0,
     )
 
@@ -1781,8 +1781,9 @@ Run the following function:
 def maybe_reset_eth1_period(state: BeaconState) -> None:
     if state.slot % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         for eth1_data in state.eth1_data_votes:
-            if state.eth_data_votes.count(eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+            if eth1_data != Eth1Data() and state.eth_data_votes.count(eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
                 state.latest_eth1_data = eth1_data
+        state.eth1_data_votes = Vector([Eth1Data() for _ in range(SLOTS_PER_ETH1_VOTING_PERIOD)])
 ```
 
 #### Rewards and penalties
