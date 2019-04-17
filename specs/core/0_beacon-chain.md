@@ -1800,11 +1800,6 @@ def get_base_reward_from_total_balance(state: BeaconState, total_balance: Gwei, 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     return get_base_reward_from_total_balance(state, get_previous_total_balance(state), index)
-    if get_previous_total_balance(state) == 0:
-        return 0
-
-    adjusted_quotient = integer_squareroot(get_previous_total_balance(state)) // BASE_REWARD_QUOTIENT
-    return get_effective_balance(state, index) // adjusted_quotient // 5
 ```
 
 ```python
