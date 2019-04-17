@@ -7,6 +7,7 @@ With this executable spec,
  test-generators can easily create test-vectors for client implementations,
  and the spec itself can be verified to be consistent and coherent, through sanity tests implemented with pytest.
 
+
 ## Building
 
 All the dynamic parts of the spec can be build at once with `make pyspec`.
@@ -15,12 +16,42 @@ Alternatively, you can build a sub-set of the pyspec: `make phase0`.
 
 Or, to build a single file, specify the path, e.g. `make test_libs/pyspec/eth2spec/phase0/spec.py`
 
+
+## Py-tests
+
+These tests are not intended for client-consumption.
+These tests are sanity tests, to verify if the spec itself is consistent.
+
+### How to run tests
+
+#### Automated
+
+Run `make test` from the root of the spec repository.
+
+#### Manual
+
+From within the `pyspec` folder:
+
+Install dependencies:
+```bash
+python3 -m venv venv
+. venv/bin/activate
+pip3 install -r requirements.txt
+```
+Note: make sure to run `make pyspec` from the root of the specs repository,
+ to build the parts of the pyspec module derived from the markdown specs.
+
+Run the tests:
+```
+pytest -m minimal_config .
+```
+
+
 ## Contributing
 
 Contributions are welcome, but consider implementing your idea as part of the spec itself first.
 The pyspec is not a replacement.
-If you see opportunity to include any of the `pyspec/eth2spec/utils/` code in the spec,
- please submit an issue or PR.
+
 
 ## License
 

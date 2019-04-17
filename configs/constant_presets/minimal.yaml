@@ -63,7 +63,7 @@ MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs 25.6 minutes
 ACTIVATION_EXIT_DELAY: 4
 # [customized] higher frequency new deposits from eth1 for testing
-EPOCHS_PER_ETH1_VOTING_PERIOD: 2
+SLOTS_PER_ETH1_VOTING_PERIOD: 16
 # [customized] smaller state
 SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**8 (= 256) epochs ~27 hours

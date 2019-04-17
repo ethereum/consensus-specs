@@ -8,7 +8,7 @@ from eth2spec.phase0.spec import (
     advance_slot,
     process_block_header,
 )
-from phase0.helpers import (
+from tests.helpers import (
     build_empty_block_for_next_slot,
     next_slot,
 )
