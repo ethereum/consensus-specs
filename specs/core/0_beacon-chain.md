@@ -916,7 +916,7 @@ def get_block_root(state: BeaconState,
     return state.latest_block_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
-`get_block_root(_, s)` should always return `hash_tree_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
+`get_block_root(_, s)` should always return `signed_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
 ### `get_state_root`
 
