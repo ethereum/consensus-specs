@@ -62,8 +62,8 @@ SLOTS_PER_EPOCH: 64
 MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs 25.6 minutes
 ACTIVATION_EXIT_DELAY: 4
-# 2**4 (= 16) epochs ~1.7 hours
-EPOCHS_PER_ETH1_VOTING_PERIOD: 16
+# 2**10 (= 1,024) slots ~1.7 hours
+SLOTS_PER_ETH1_VOTING_PERIOD: 1024
 # 2**13 (= 8,192) slots ~13 hours
 SLOTS_PER_HISTORICAL_ROOT: 8192
 # 2**8 (= 256) epochs ~27 hours
