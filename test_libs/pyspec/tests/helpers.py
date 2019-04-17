@@ -2,6 +2,9 @@ from copy import deepcopy
 
 from py_ecc import bls
 
+from eth2spec.phase0.state_transition import (
+    state_transition,
+)
 import eth2spec.phase0.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
@@ -303,3 +306,8 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
             domain_type=spec.DOMAIN_ATTESTATION,
         )
     )
+
+
+def next_slot(state):
+    block = build_empty_block_for_next_slot(state)
+    state_transition(state, block)

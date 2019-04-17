@@ -10,7 +10,8 @@ from typing import (
 from .spec import (
     BeaconState,
     BeaconBlock,
-    Slot
+    Slot,
+    process_proposer_attestation_rewards,
 )
 
 
@@ -51,6 +52,7 @@ def process_operations(state: BeaconState, block: BeaconBlock) -> None:
         spec.MAX_ATTESTATIONS,
         spec.process_attestation,
     )
+    process_proposer_attestation_rewards(state)
 
     assert len(block.body.deposits) == expected_deposit_count(state)
     process_operation_type(
@@ -91,7 +93,6 @@ def process_block(state: BeaconState,
 def process_epoch_transition(state: BeaconState) -> None:
     spec.update_justification_and_finalization(state)
     spec.process_crosslinks(state)
-    spec.maybe_reset_eth1_period(state)
     spec.apply_rewards(state)
     spec.process_balance_driven_status_transitions(state)
     spec.update_registry(state)
@@ -112,4 +113,3 @@ def state_transition(state: BeaconState,
                      verify_state_root: bool=False) -> BeaconState:
     state_transition_to(state, block.slot)
     process_block(state, block, verify_state_root)
-

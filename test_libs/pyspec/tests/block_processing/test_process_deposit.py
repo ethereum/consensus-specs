@@ -8,7 +8,7 @@ from eth2spec.phase0.spec import (
     ZERO_HASH,
     process_deposit,
 )
-from phase0.helpers import (
+from tests.helpers import (
     build_deposit,
     privkeys,
     pubkeys,

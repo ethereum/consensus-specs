@@ -15,12 +15,12 @@ jobs:
           name: Run py-tests
           command: make test
 
-      - run:
-          name: Generate YAML tests
-          command: make gen_yaml_tests
-
-# TODO in future PR (after #851): decide on CI triggering of yaml tests building,
+# TODO see #928: decide on CI triggering of yaml tests building,
 #  and destination of output (new yaml tests LFS-configured repository)
+#
+#      - run:
+#          name: Generate YAML tests
+#          command: make gen_yaml_tests
 #
 #      - store_artifacts:
 #          path: test-reports
