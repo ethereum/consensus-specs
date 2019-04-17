@@ -1683,7 +1683,7 @@ def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple
 ```
 
 ```python
-def earliest_attestation(state: BeaconState, attestations: List[PendingAttestation], index: ValidatorIndex) -> PendingAttestation:
+def get_earliest_attestation(state: BeaconState, attestations: List[PendingAttestation], index: ValidatorIndex) -> PendingAttestation:
     return min([
         a for a in attestations if index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
     ], key=lambda a: a.inclusion_slot)
@@ -1827,7 +1827,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
             rewards[index] += base_reward * total_attesting_balance // total_balance
             # Inclusion speed bonus
-            earliest_attestation = earliest_attestation(state, state.previous_epoch_attestations, index)
+            earliest_attestation = get_earliest_attestation(state, state.previous_epoch_attestations, index)
             inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
             rewards[index] += base_reward * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
         else:
@@ -2172,11 +2172,12 @@ Run `process_proposer_attestation_rewards(state)`.
 
 ```python
 def process_proposer_attestation_rewards(state: BeaconState) -> None:
+    proposer_index = get_beacon_proposer_index(state)
     for pending_attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
         for index in get_unslashed_attesting_indices(state, pending_attestations):
-            if earliest_attestation(state, pending_attestations, index).inclusion_slot == state.slot:
+            if get_earliest_attestation(state, pending_attestations, index).inclusion_slot == state.slot:
                 base_reward = get_base_reward_from_total_balance(state, get_current_total_balance(state), index)
-                increase_balance(state, get_beacon_proposer_index(state), base_reward // PROPOSER_REWARD_QUOTIENT)
+                increase_balance(state, proposer_index, base_reward // PROPOSER_REWARD_QUOTIENT)
 ```
 
 ##### Deposits
