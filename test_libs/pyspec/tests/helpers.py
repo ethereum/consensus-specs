@@ -21,11 +21,13 @@ from eth2spec.phase0.spec import (
     DepositData,
     Eth1Data,
     ProposerSlashing,
+    Transfer,
     VoluntaryExit,
     # functions
     convert_to_indexed,
     get_active_validator_indices,
     get_attestation_participants,
+    get_balance,
     get_block_root,
     get_crosslink_committee_for_attestation,
     get_current_epoch,
@@ -291,6 +293,48 @@ def get_valid_attestation(state, slot=None):
     return attestation
 
 
+def get_valid_transfer(state, slot=None, sender_index=None, amount=None, fee=None):
+    if slot is None:
+        slot = state.slot
+    current_epoch = get_current_epoch(state)
+    if sender_index is None:
+        sender_index = get_active_validator_indices(state, current_epoch)[-1]
+    recipient_index = get_active_validator_indices(state, current_epoch)[0]
+    transfer_pubkey = pubkeys[-1]
+    transfer_privkey = privkeys[-1]
+
+    if fee is None:
+        fee = get_balance(state, sender_index) // 32
+    if amount is None:
+        amount = get_balance(state, sender_index) - fee
+
+    transfer = Transfer(
+        sender=sender_index,
+        recipient=recipient_index,
+        amount=amount,
+        fee=fee,
+        slot=slot,
+        pubkey=transfer_pubkey,
+        signature=EMPTY_SIGNATURE,
+    )
+    transfer.signature = bls.sign(
+        message_hash=signing_root(transfer),
+        privkey=transfer_privkey,
+        domain=get_domain(
+            fork=state.fork,
+            epoch=get_current_epoch(state),
+            domain_type=spec.DOMAIN_TRANSFER,
+        )
+    )
+
+    # ensure withdrawal_credentials reproducable
+    state.validator_registry[transfer.sender].withdrawal_credentials = (
+        spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(transfer.pubkey)[1:]
+    )
+
+    return transfer
+
+
 def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0):
     message_hash = AttestationDataAndCustodyBit(
         data=attestation_data,
@@ -310,4 +354,10 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
 
 def next_slot(state):
     block = build_empty_block_for_next_slot(state)
+    state_transition(state, block)
+
+
+def next_epoch(state):
+    block = build_empty_block_for_next_slot(state)
+    block.slot += spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     state_transition(state, block)

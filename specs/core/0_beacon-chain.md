@@ -2280,7 +2280,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert (
         get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
         state.validator_registry[transfer.sender].activation_epoch == FAR_FUTURE_EPOCH or
-        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= get_balance(transfer.sender)
+        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= get_balance(state, transfer.sender)
     )
     # Verify that the pubkey is valid
     assert (
