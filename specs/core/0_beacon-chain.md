@@ -379,7 +379,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
-    'aggregate_signature': 'bytes96',
+    'signature': 'bytes96',
 }
 ```
 
@@ -495,7 +495,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Custody bitfield
     'custody_bitfield': 'bytes',
     # BLS aggregate signature
-    'aggregate_signature': 'bytes96',
+    'signature': 'bytes96',
 }
 ```
 
@@ -1159,7 +1159,7 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation):
         custody_bit_0_indices=custody_bit_0_indices,
         custody_bit_1_indices=custody_bit_1_indices,
         data=attestation.data,
-        aggregate_signature=attestation.aggregate_signature
+        signature=attestation.signature
     )
 ```
 
@@ -1198,7 +1198,7 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
-        signature=indexed_attestation.aggregate_signature,
+        signature=indexed_attestation.signature,
         domain=get_domain(state, DOMAIN_ATTESTATION, slot_to_epoch(indexed_attestation.data.slot)),
     )
 ```
