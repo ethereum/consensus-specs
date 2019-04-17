@@ -32,7 +32,7 @@ gen_yaml_tests: $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
 # runs a limited set of tests against a minimal config
 test: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_TEST_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; pytest -m minimal_config .
+	cd $(PY_TEST_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; python -m pytest -m minimal_config .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
