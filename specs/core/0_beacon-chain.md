@@ -425,8 +425,6 @@ The types are defined topologically to aid in facilitating an executable version
     'aggregation_bitfield': 'bytes',
     # Attestation data
     'data': AttestationData,
-    # Custody bitfield
-    'custody_bitfield': 'bytes',
     # Inclusion slot
     'inclusion_slot': 'uint64',
 }
@@ -2130,7 +2128,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     pending_attestation = PendingAttestation(
         data=attestation.data,
         aggregation_bitfield=attestation.aggregation_bitfield,
-        custody_bitfield=attestation.custody_bitfield,
         inclusion_slot=state.slot
     )
     if target_epoch == get_current_epoch(state):
