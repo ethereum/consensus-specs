@@ -185,6 +185,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MAX_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
+| `BASE_REWARDS_PER_EPOCH` | `5` |
 | `SHUFFLE_ROUND_COUNT` | 90 |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -234,6 +235,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) | epochs | ~7 hours |
+| `MAX_FINALITY_LOOKBACK` | `2**2` (= 4) | epochs | 25.6 minutes |
 
 * `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
@@ -252,7 +254,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
 | `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
-| `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
+| `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
@@ -875,7 +877,7 @@ def compute_committee(validator_indices: List[ValidatorIndex],
     ]
 ```
 
-**Note**: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
+Note: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
 ### `get_crosslink_committees_at_slot`
 
@@ -1582,7 +1584,7 @@ Transition section notes:
 
 Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
-_Note_: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
+Note: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
 
 ### State caching
 
@@ -1612,30 +1614,20 @@ The steps below happen when `state.slot > GENESIS_SLOT and (state.slot + 1) % SL
 We define epoch transition helper functions:
 
 ```python
-def get_current_total_balance(state: BeaconState) -> Gwei:
-    return get_total_balance(state, get_active_validator_indices(state, get_current_epoch(state)))
-```
-
-```python
-def get_previous_total_balance(state: BeaconState) -> Gwei:
+def get_previous_epoch_total_balance(state: BeaconState) -> Gwei:
     return get_total_balance(state, get_active_validator_indices(state, get_previous_epoch(state)))
 ```
 
-```python
-def get_unslashed_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
-    output = set()
-    for a in attestations:
-        output = output.union(get_attestation_participants(state, a.data, a.aggregation_bitfield))
-    return sorted(filter(lambda index: not state.validator_registry[index].slashed, list(output)))
-```
+Note: The balance computed by `get_previous_epoch_total_balance` may be different to the actual total balance during the previous epoch transition. Due to the bounds on per-epoch validator churn and per-epoch rewards/penalties, the maximum balance difference is low and only marginally affects consensus safety.
 
 ```python
-def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestation]) -> Gwei:
-    return get_total_balance(state, get_unslashed_attesting_indices(state, attestations))
+def get_current_epoch_total_balance(state: BeaconState) -> Gwei:
+    return get_total_balance(state, get_active_validator_indices(state, get_current_epoch(state)))
 ```
 
+
 ```python
-def get_current_epoch_boundary_attestations(state: BeaconState) -> List[PendingAttestation]:
+def get_current_epoch_matching_target_attestations(state: BeaconState) -> List[PendingAttestation]:
     return [
         a for a in state.current_epoch_attestations
         if a.data.target_root == get_block_root(state, get_epoch_start_slot(get_current_epoch(state)))
@@ -1643,7 +1635,7 @@ def get_current_epoch_boundary_attestations(state: BeaconState) -> List[PendingA
 ```
 
 ```python
-def get_previous_epoch_boundary_attestations(state: BeaconState) -> List[PendingAttestation]:
+def get_previous_epoch_matching_target_attestations(state: BeaconState) -> List[PendingAttestation]:
     return [
         a for a in state.previous_epoch_attestations
         if a.data.target_root == get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
@@ -1658,7 +1650,18 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
     ]
 ```
 
-**Note**: Total balances computed for the previous epoch might be marginally different than the actual total balances during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
+```python
+def get_unslashed_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
+    output = set()
+    for a in attestations:
+        output = output.union(get_attestation_participants(state, a.data, a.aggregation_bitfield))
+    return sorted(filter(lambda index: not state.validator_registry[index].slashed, list(output)))
+```
+
+```python
+def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestation]) -> Gwei:
+    return get_total_balance(state, get_unslashed_attesting_indices(state, attestations))
+```
 
 ```python
 def get_winning_root_and_participants(state: BeaconState, shard: Shard) -> Tuple[Bytes32, List[ValidatorIndex]]:
@@ -1701,13 +1704,13 @@ def update_justification_and_finalization(state: BeaconState) -> None:
     state.previous_justified_epoch = state.current_justified_epoch
     state.previous_justified_root = state.current_justified_root
     state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
-    previous_boundary_attesting_balance = get_attesting_balance(state, get_previous_epoch_boundary_attestations(state))
-    if previous_boundary_attesting_balance * 3 >= get_previous_total_balance(state) * 2:
+    previous_epoch_matching_target_balance = get_attesting_balance(state, get_previous_epoch_matching_target_attestations(state))
+    if previous_epoch_matching_target_balance * 3 >= get_previous_epoch_total_balance(state) * 2:
         state.current_justified_epoch = get_previous_epoch(state)
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
         state.justification_bitfield |= (1 << 1)
-    current_boundary_attesting_balance = get_attesting_balance(state, get_current_epoch_boundary_attestations(state))
-    if current_boundary_attesting_balance * 3 >= get_current_total_balance(state) * 2:
+    current_epoch_matching_target_balance = get_attesting_balance(state, get_current_epoch_matching_target_attestations(state))
+    if current_epoch_matching_target_balance * 3 >= get_current_epoch_total_balance(state) * 2:
         state.current_justified_epoch = get_current_epoch(state)
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
         state.justification_bitfield |= (1 << 0)
@@ -1771,80 +1774,58 @@ def maybe_reset_eth1_period(state: BeaconState) -> None:
 
 #### Rewards and penalties
 
-First, we define some additional helpers:
+We first define a helper:
 
 ```python
-def get_base_reward_from_total_balance(state: BeaconState, total_balance: Gwei, index: ValidatorIndex) -> Gwei:
+def get_base_reward(state: BeaconState, total_balance: Gwei, index: ValidatorIndex) -> Gwei:
     if total_balance == 0:
         return 0
 
     adjusted_quotient = integer_squareroot(total_balance) // BASE_REWARD_QUOTIENT
-    return get_effective_balance(state, index) // adjusted_quotient // 5
+    return get_effective_balance(state, index) // adjusted_quotient // BASE_REWARDS_PER_EPOCH
 ```
-
-```python
-def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    return get_base_reward_from_total_balance(state, get_previous_total_balance(state), index)
-```
-
-```python
-def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_since_finality: int) -> Gwei:
-    if epochs_since_finality <= 4:
-        extra_penalty = 0
-    else:
-        extra_penalty = get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
-    return get_base_reward(state, index) + extra_penalty
-```
-
-Note: When applying penalties in the following balance recalculations, implementers should make sure the `uint64` does not underflow.
 
 ##### Justification and finalization
 
 ```python
 def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    current_epoch = get_current_epoch(state)
-    epochs_since_finality = current_epoch + 1 - state.finalized_epoch
-    rewards = [0 for index in range(len(state.validator_registry))]
-    penalties = [0 for index in range(len(state.validator_registry))]
-    # Some helper variables
-    boundary_attestations = get_previous_epoch_boundary_attestations(state)
-    boundary_attesting_balance = get_attesting_balance(state, boundary_attestations)
-    total_balance = get_previous_total_balance(state)
-    total_attesting_balance = get_attesting_balance(state, state.previous_epoch_attestations)
-    matching_head_attestations = get_previous_epoch_matching_head_attestations(state)
-    matching_head_balance = get_attesting_balance(state, matching_head_attestations)
+    previous_epoch = get_previous_epoch(state)
     eligible_validators = [
         index for index, validator in enumerate(state.validator_registry)
         if (
-            is_active_validator(validator, current_epoch) or
-            (validator.slashed and current_epoch < validator.withdrawable_epoch)
+            is_active_validator(validator, previous_epoch) or
+            (validator.slashed and previous_epoch < validator.withdrawable_epoch)
         )
     ]
-    # Process rewards or penalties for all validators
+    rewards = [0 for index in range(len(state.validator_registry))]
+    penalties = [0 for index in range(len(state.validator_registry))]
     for index in eligible_validators:
-        base_reward = get_base_reward(state, index)
-        # Expected FFG source
+        base_reward = get_base_reward(state, get_previous_epoch_total_balance(state), index)
+
+        # Micro-incentives for matching FFG source, matching FFG target, and matching head 
+        for attestations in (
+            state.previous_epoch_attestations,                      # Matching FFG source
+            get_previous_epoch_matching_target_attestations(state), # Matching FFG target
+            get_previous_epoch_matching_head_attestations(state),   # Matching head
+        ):
+            if index in get_unslashed_attesting_indices(state, attestations):
+                rewards[index] += base_reward * get_attesting_balance(state, attestations) // get_previous_epoch_total_balance(state)
+            else:
+                penalties[index] += base_reward
+
+        # Inclusion delay micro-penalty
         if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
-            rewards[index] += base_reward * total_attesting_balance // total_balance
-            # Inclusion speed bonus
             earliest_attestation = get_earliest_attestation(state, state.previous_epoch_attestations, index)
             inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
-            rewards[index] += base_reward * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
-        else:
-            penalties[index] += base_reward
-        # Expected FFG target
-        if index in get_unslashed_attesting_indices(state, boundary_attestations):
-            rewards[index] += base_reward * boundary_attesting_balance // total_balance
-        else:
-            penalties[index] += get_inactivity_penalty(state, index, epochs_since_finality)
-        # Expected head
-        if index in get_unslashed_attesting_indices(state, matching_head_attestations):
-            rewards[index] += base_reward * matching_head_balance // total_balance
-        else:
-            penalties[index] += base_reward
-        # Take away max rewards if we're not finalizing
-        if epochs_since_finality > 4:
-            penalties[index] += base_reward * 4
+            penalties[index] += base_reward * (1 - MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay)
+
+        # Inactivity penalty
+        epochs_since_finality = previous_epoch + 1 - state.finalized_epoch
+        if epochs_since_finality > MAX_FINALITY_LOOKBACK:
+            penalties[index] += BASE_REWARDS_PER_EPOCH * base_reward
+            if index not in get_unslashed_attesting_indices(state, get_previous_epoch_matching_target_attestations(state)):
+                penalties[index] += get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT
+
     return [rewards, penalties]
 ```
 
@@ -1862,10 +1843,11 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             participating_balance = get_total_balance(state, participants)
             total_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:
+                base_reward = get_base_reward(state, get_previous_epoch_total_balance(state), index)
                 if index in participants:
-                    rewards[index] += get_base_reward(state, index) * participating_balance // total_balance
+                    rewards[index] += base_reward * participating_balance // total_balance
                 else:
-                    penalties[index] += get_base_reward(state, index)
+                    penalties[index] += base_reward
     return [rewards, penalties]
 ```
 
@@ -2176,7 +2158,7 @@ def process_proposer_attestation_rewards(state: BeaconState) -> None:
     for pending_attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
         for index in get_unslashed_attesting_indices(state, pending_attestations):
             if get_earliest_attestation(state, pending_attestations, index).inclusion_slot == state.slot:
-                base_reward = get_base_reward_from_total_balance(state, get_current_total_balance(state), index)
+                base_reward = get_base_reward(state, get_current_epoch_total_balance(state), index)
                 increase_balance(state, proposer_index, base_reward // PROPOSER_REWARD_QUOTIENT)
 ```
 
