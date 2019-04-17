@@ -39,7 +39,7 @@ def run_attester_slashing_processing(state, attester_slashing, valid=True):
         get_balance(post_state, slashed_index) <
         get_balance(state, slashed_index)
     )
-    proposer_index = get_beacon_proposer_index(state, state.slot)
+    proposer_index = get_beacon_proposer_index(state)
     # gained whistleblower reward
     assert (
         get_balance(post_state, proposer_index) >
