@@ -25,7 +25,6 @@
             - [`Fork`](#fork)
             - [`Crosslink`](#crosslink)
             - [`Eth1Data`](#eth1data)
-            - [`Eth1DataVote`](#eth1datavote)
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
@@ -116,7 +115,6 @@
             - [Helper functions](#helper-functions-1)
             - [Justification](#justification)
             - [Crosslinks](#crosslinks)
-            - [Eth1 data](#eth1-data)
             - [Rewards and penalties](#rewards-and-penalties)
                 - [Justification and finalization](#justification-and-finalization)
                 - [Crosslinks](#crosslinks-1)
@@ -227,7 +225,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD` | `2**4` (= 16) | epochs | ~1.7 hours |
+| `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
@@ -320,17 +318,6 @@ The types are defined topologically to aid in facilitating an executable version
     'deposit_count': 'uint64',
     # Block hash
     'block_hash': 'bytes32',
-}
-```
-
-#### `Eth1DataVote`
-
-```python
-{
-    # Data being voted for
-    'eth1_data': Eth1Data,
-    # Vote count
-    'vote_count': 'uint64',
 }
 ```
 
@@ -613,7 +600,7 @@ The types are defined topologically to aid in facilitating an executable version
 
     # Ethereum 1.0 chain data
     'latest_eth1_data': Eth1Data,
-    'eth1_data_votes': [Eth1DataVote],
+    'eth1_data_votes': [Eth1Data],
     'deposit_index': 'uint64',
 }
 ```
@@ -1757,21 +1744,6 @@ def process_crosslinks(state: BeaconState) -> None:
                 )
 ```
 
-#### Eth1 data
-
-Run the following function:
-
-```python
-def maybe_reset_eth1_period(state: BeaconState) -> None:
-    if (get_current_epoch(state) + 1) % EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
-        for eth1_data_vote in state.eth1_data_votes:
-            # If a majority of all votes were for a particular eth1_data value,
-            # then set that as the new canonical value
-            if eth1_data_vote.vote_count * 2 > EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH:
-                state.latest_eth1_data = eth1_data_vote.eth1_data
-        state.eth1_data_votes = []
-```
-
 #### Rewards and penalties
 
 First, we define some additional helpers:
@@ -1964,6 +1936,9 @@ Run the following function:
 def finish_epoch_update(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
+    # Reset eth1 data votes
+    if state.slot % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
+        state.eth1_data_votes = []
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
     state.latest_active_index_roots[index_root_position] = hash_tree_root(
@@ -2045,13 +2020,9 @@ def process_randao(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
-    for eth1_data_vote in state.eth1_data_votes:
-        # If someone else has already voted for the same hash, add to its counter
-        if eth1_data_vote.eth1_data == block.body.eth1_data:
-            eth1_data_vote.vote_count += 1
-            return
-    # If we're seeing this hash for the first time, make a new counter
-    state.eth1_data_votes.append(Eth1DataVote(eth1_data=block.body.eth1_data, vote_count=1))
+    state.eth1_data_votes.append(block.body.eth1_data)
+    if state.eth1_data_votes.count(block.body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+        state.latest_eth1_data = block.body.eth1_data
 ```
 
 #### Operations

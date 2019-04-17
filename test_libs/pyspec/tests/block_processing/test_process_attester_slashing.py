@@ -7,7 +7,7 @@ from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
     process_attester_slashing,
 )
-from phase0.helpers import (
+from tests.helpers import (
     get_valid_attester_slashing,
     next_epoch,
 )

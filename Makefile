@@ -2,7 +2,6 @@ SPEC_DIR = ./specs
 SCRIPT_DIR = ./scripts
 TEST_LIBS_DIR = ./test_libs
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-PY_TEST_DIR = ./py_tests
 YAML_TEST_DIR = ./yaml_tests
 GENERATOR_DIR = ./test_generators
 CONFIGS_DIR = ./configs
@@ -24,7 +23,7 @@ all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 clean:
 	rm -rf $(YAML_TEST_DIR)
 	rm -rf $(GENERATOR_VENVS)
-	rm -rf $(PY_TEST_DIR)/venv $(PY_TEST_DIR)/.pytest_cache
+	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
 
 # "make gen_yaml_tests" to run generators
@@ -32,7 +31,7 @@ gen_yaml_tests: $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
 # runs a limited set of tests against a minimal config
 test: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_TEST_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; pytest -m minimal_config .
+	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; python -m pytest -m minimal_config .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
