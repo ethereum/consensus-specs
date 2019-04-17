@@ -369,24 +369,23 @@ def get_committee_assignment(
             return assignment
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the epoch of the slot in question and can not reliably be used to predict an epoch in advance.
+A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question and can not reliably be used to predict in advance.
 
 ```python
 def is_proposer_at_slot(state: BeaconState,
                         slot: Slot,
                         validator_index: ValidatorIndex) -> bool:
-    current_epoch = get_current_epoch(state)
-    assert slot_to_epoch(slot) == current_epoch
+    assert state.slot == slot
 
-    return get_beacon_proposer_index(state, slot) == validator_index
+    return get_beacon_proposer_index(state) == validator_index
 ```
 
-_Note_: If a validator is assigned to the 0th slot of an epoch, the validator must run an empty slot transition from the previous epoch into the 0th slot of the epoch to be able to check if they are a proposer at that slot.
+_Note_: To see if a validator is assigned to proposer during the slot, the validator must run an empty slot transition from the previous state to the current slot.
 
 
 ### Lookahead
 
-The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing which must checked during the epoch in question.
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing which must checked during the slot in question.
 
 `get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments which involves noting at which future slot one will have to attest and also which shard one should begin syncing (in phase 1+).
 

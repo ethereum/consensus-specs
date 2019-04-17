@@ -987,25 +987,17 @@ def generate_seed(state: BeaconState,
 ### `get_beacon_proposer_index`
 
 ```python
-def get_beacon_proposer_index(state: BeaconState,
-                              slot: Slot) -> ValidatorIndex:
+def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
-    Return the beacon proposer index for the ``slot``.
-    Due to proposer selection being based upon the validator balances during
-    the epoch in question, this can only be run for the current epoch.
+    Return the beacon proposer index at ``state.slot``.
     """
     current_epoch = get_current_epoch(state)
-    assert slot_to_epoch(slot) == current_epoch
-
-    first_committee, _ = get_crosslink_committees_at_slot(state, slot)[0]
+    first_committee, _ = get_crosslink_committees_at_slot(state, state.slot)[0]
     i = 0
     while True:
-        rand_byte = hash(
-            generate_seed(state, current_epoch) +
-            int_to_bytes8(i // 32)
-        )[i % 32]
         candidate = first_committee[(current_epoch + i) % len(first_committee)]
-        if get_effective_balance(state, candidate) * 256 > MAX_DEPOSIT_AMOUNT * rand_byte:
+        random_byte = hash(generate_seed(state, current_epoch) + int_to_bytes8(i // 32))[i % 32]
+        if get_effective_balance(state, candidate) * 256 > MAX_DEPOSIT_AMOUNT * random_byte:
             return candidate
         i += 1
 ```
@@ -1055,16 +1047,8 @@ def get_attestation_participants(state: BeaconState,
     Return the sorted participant indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
-
     assert verify_bitfield(bitfield, len(crosslink_committee))
-
-    # Find the participating attesters in the committee
-    participants = []
-    for i, validator_index in enumerate(crosslink_committee):
-        aggregation_bit = get_bitfield_bit(bitfield, i)
-        if aggregation_bit == 0b1:
-            participants.append(validator_index)
-    return sorted(participants)
+    return sorted([index for i, index in enumerate(crosslink_committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
@@ -1348,7 +1332,7 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     slashed_balance = get_effective_balance(state, slashed_index)
     state.latest_slashed_balances[get_current_epoch(state) % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
 
-    proposer_index = get_beacon_proposer_index(state, state.slot)
+    proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
     whistleblowing_reward = slashed_balance // WHISTLEBLOWING_REWARD_QUOTIENT
@@ -1499,9 +1483,9 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         process_deposit(state, deposit)
 
     # Process genesis activations
-    for validator_index in range(len(state.validator_registry)):
-        if get_effective_balance(state, validator_index) >= MAX_DEPOSIT_AMOUNT:
-            activate_validator(state, validator_index, is_genesis=True)
+    for index in range(len(state.validator_registry)):
+        if get_effective_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
+            activate_validator(state, index, is_genesis=True)
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
@@ -1552,8 +1536,8 @@ def get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock:
         return get_ancestor(store, store.get_parent(block), slot)
 ```
 
-* Let `get_latest_attestation(store: Store, validator_index: ValidatorIndex) -> Attestation` be the attestation with the highest slot number in `store` from the validator with the given `validator_index`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
-* Let `get_latest_attestation_target(store: Store, validator_index: ValidatorIndex) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, validator_index)`.
+* Let `get_latest_attestation(store: Store, index: ValidatorIndex) -> Attestation` be the attestation with the highest slot number in `store` from the validator with the given `index`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
+* Let `get_latest_attestation_target(store: Store, index: ValidatorIndex) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, index)`.
 * Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
 * Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
 * The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
@@ -1565,10 +1549,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     """
     validators = start_state.validator_registry
     active_validator_indices = get_active_validator_indices(validators, slot_to_epoch(start_state.slot))
-    attestation_targets = [
-        (validator_index, get_latest_attestation_target(store, validator_index))
-        for validator_index in active_validator_indices
-    ]
+    attestation_targets = [(i, get_latest_attestation_target(store, i)) for i in active_validator_indices]
 
     # Use the rounded-balance-with-hysteresis supplied by the protocol for fork
     # choice voting. This reduces the number of recomputations that need to be
@@ -1633,7 +1614,7 @@ The steps below happen when `state.slot > GENESIS_SLOT and (state.slot + 1) % SL
 
 #### Helper functions
 
-We define some helper functions utilized when processing an epoch transition:
+We define epoch transition helper functions:
 
 ```python
 def get_current_total_balance(state: BeaconState) -> Gwei:
@@ -1710,22 +1691,10 @@ def get_winning_root_and_participants(state: BeaconState, slot: Slot, shard: Sha
 ```
 
 ```python
-def earliest_attestation(state: BeaconState, validator_index: ValidatorIndex) -> PendingAttestation:
+def get_earliest_attestation(state: BeaconState, attestations: List[PendingAttestation], index: ValidatorIndex) -> PendingAttestation:
     return min([
-        a for a in state.previous_epoch_attestations if
-        validator_index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
+        a for a in attestations if index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
     ], key=lambda a: a.inclusion_slot)
-```
-
-```python
-def inclusion_slot(state: BeaconState, validator_index: ValidatorIndex) -> Slot:
-    return earliest_attestation(state, validator_index).inclusion_slot
-```
-
-```python
-def inclusion_distance(state: BeaconState, validator_index: ValidatorIndex) -> int:
-    attestation = earliest_attestation(state, validator_index)
-    return attestation.inclusion_slot - attestation.data.slot
 ```
 
 #### Justification
@@ -1734,47 +1703,42 @@ Run the following function:
 
 ```python
 def update_justification_and_finalization(state: BeaconState) -> None:
-    new_justified_epoch = state.current_justified_epoch
-    new_finalized_epoch = state.finalized_epoch
+    antepenultimate_justified_epoch = state.previous_justified_epoch
 
-    # Rotate the justification bitfield up one epoch to make room for the current epoch (and limit to 64 bits)
+    # Process justifications
+    state.previous_justified_epoch = state.current_justified_epoch
+    state.previous_justified_root = state.current_justified_root
     state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
-    # If the previous epoch gets justified, fill the second last bit
     previous_boundary_attesting_balance = get_attesting_balance(state, get_previous_epoch_boundary_attestations(state))
     if previous_boundary_attesting_balance * 3 >= get_previous_total_balance(state) * 2:
-        new_justified_epoch = get_current_epoch(state) - 1
-        state.justification_bitfield |= 2
-    # If the current epoch gets justified, fill the last bit
+        state.current_justified_epoch = get_previous_epoch(state)
+        state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
+        state.justification_bitfield |= (1 << 1)
     current_boundary_attesting_balance = get_attesting_balance(state, get_current_epoch_boundary_attestations(state))
     if current_boundary_attesting_balance * 3 >= get_current_total_balance(state) * 2:
-        new_justified_epoch = get_current_epoch(state)
-        state.justification_bitfield |= 1
+        state.current_justified_epoch = get_current_epoch(state)
+        state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
+        state.justification_bitfield |= (1 << 0)
 
     # Process finalizations
     bitfield = state.justification_bitfield
     current_epoch = get_current_epoch(state)
-    # The 2nd/3rd/4th most recent epochs are all justified, the 2nd using the 4th as source
-    if (bitfield >> 1) % 8 == 0b111 and state.previous_justified_epoch == current_epoch - 3:
-        new_finalized_epoch = state.previous_justified_epoch
-    # The 2nd/3rd most recent epochs are both justified, the 2nd using the 3rd as source
-    if (bitfield >> 1) % 4 == 0b11 and state.previous_justified_epoch == current_epoch - 2:
-        new_finalized_epoch = state.previous_justified_epoch
-    # The 1st/2nd/3rd most recent epochs are all justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and state.current_justified_epoch == current_epoch - 2:
-        new_finalized_epoch = state.current_justified_epoch
-    # The 1st/2nd most recent epochs are both justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and state.current_justified_epoch == current_epoch - 1:
-        new_finalized_epoch = state.current_justified_epoch
-
-    # Update state jusification/finality fields
-    state.previous_justified_epoch = state.current_justified_epoch
-    state.previous_justified_root = state.current_justified_root
-    if new_justified_epoch != state.current_justified_epoch:
-        state.current_justified_epoch = new_justified_epoch
-        state.current_justified_root = get_block_root(state, get_epoch_start_slot(new_justified_epoch))
-    if new_finalized_epoch != state.finalized_epoch:
-        state.finalized_epoch = new_finalized_epoch
-        state.finalized_root = get_block_root(state, get_epoch_start_slot(new_finalized_epoch))
+    # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
+    if (bitfield >> 1) % 8 == 0b111 and antepenultimate_justified_epoch == current_epoch - 3:
+        state.finalized_epoch = antepenultimate_justified_epoch
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
+    # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
+    if (bitfield >> 1) % 4 == 0b11 and antepenultimate_justified_epoch == current_epoch - 2:
+        state.finalized_epoch = antepenultimate_justified_epoch
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
+    # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
+    if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_root == current_epoch - 2:
+        state.finalized_epoch = state.previous_justified_root
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
+    # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
+    if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_root == current_epoch - 1:
+        state.finalized_epoch = state.previous_justified_root
+        state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
 ```
 
 #### Crosslinks
@@ -1823,12 +1787,17 @@ def maybe_reset_eth1_period(state: BeaconState) -> None:
 First, we define some additional helpers:
 
 ```python
-def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    if get_previous_total_balance(state) == 0:
+def get_base_reward_from_total_balance(state: BeaconState, total_balance: Gwei, index: ValidatorIndex) -> Gwei:
+    if total_balance == 0:
         return 0
 
-    adjusted_quotient = integer_squareroot(get_previous_total_balance(state)) // BASE_REWARD_QUOTIENT
+    adjusted_quotient = integer_squareroot(total_balance) // BASE_REWARD_QUOTIENT
     return get_effective_balance(state, index) // adjusted_quotient // 5
+```
+
+```python
+def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    return get_base_reward_from_total_balance(state, get_previous_total_balance(state), index)
 ```
 
 ```python
@@ -1871,10 +1840,9 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
             rewards[index] += base_reward * total_attesting_balance // total_balance
             # Inclusion speed bonus
-            rewards[index] += (
-                base_reward * MIN_ATTESTATION_INCLUSION_DELAY //
-                inclusion_distance(state, index)
-            )
+            earliest_attestation = get_earliest_attestation(state, state.previous_epoch_attestations, index)
+            inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
+            rewards[index] += base_reward * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
         else:
             penalties[index] += base_reward
         # Expected FFG target
@@ -1887,10 +1855,6 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
             rewards[index] += base_reward * matching_head_balance // total_balance
         else:
             penalties[index] += base_reward
-        # Proposer bonus
-        if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
-            proposer_index = get_beacon_proposer_index(state, inclusion_slot(state, index))
-            rewards[proposer_index] += base_reward // PROPOSER_REWARD_QUOTIENT
         # Take away max rewards if we're not finalizing
         if epochs_since_finality > 4:
             penalties[index] += base_reward * 4
@@ -1934,14 +1898,8 @@ def apply_rewards(state: BeaconState) -> None:
     rewards1, penalties1 = get_justification_and_finalization_deltas(state)
     rewards2, penalties2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
-        set_balance(
-            state,
-            i,
-            max(
-                0,
-                get_balance(state, i) + rewards1[i] + rewards2[i] - penalties1[i] - penalties2[i],
-            ),
-        )
+        increase_balance(state, i, rewards1[i] + rewards2[i])
+        decrease_balance(state, i, penalties1[i] + penalties2[i])
 ```
 
 #### Balance-driven status transitions
@@ -1957,7 +1915,7 @@ def process_balance_driven_status_transitions(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         balance = get_balance(state, index)
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
-            state.activation_eligibility_epoch = get_current_epoch(state)
+            validator.activation_eligibility_epoch = get_current_epoch(state)
 
         if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
@@ -1970,7 +1928,7 @@ Run the following function:
 ```python
 def update_registry(state: BeaconState) -> None:
     activation_queue = sorted([
-        validator for validator in state.validator_registry if
+        index for index, validator in enumerate(state.validator_registry) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
@@ -2067,7 +2025,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Save current block as the new latest block
     state.latest_block_header = get_temporary_block_header(block)
     # Verify proposer is not slashed
-    proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
+    proposer = state.validator_registry[get_beacon_proposer_index(state)]
     assert not proposer.slashed
     # Verify proposer signature
     assert bls_verify(
@@ -2082,7 +2040,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_randao(state: BeaconState, block: BeaconBlock) -> None:
-    proposer = state.validator_registry[get_beacon_proposer_index(state, state.slot)]
+    proposer = state.validator_registry[get_beacon_proposer_index(state)]
     # Verify that the provided randao value is valid
     assert bls_verify(
         pubkey=proposer.pubkey,
@@ -2223,6 +2181,18 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.previous_epoch_attestations.append(pending_attestation)
 ```
 
+Run `process_proposer_attestation_rewards(state)`.
+
+```python
+def process_proposer_attestation_rewards(state: BeaconState) -> None:
+    proposer_index = get_beacon_proposer_index(state)
+    for pending_attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
+        for index in get_unslashed_attesting_indices(state, pending_attestations):
+            if get_earliest_attestation(state, pending_attestations, index).inclusion_slot == state.slot:
+                base_reward = get_base_reward_from_total_balance(state, get_current_total_balance(state), index)
+                increase_balance(state, proposer_index, base_reward // PROPOSER_REWARD_QUOTIENT)
+```
+
 ##### Deposits
 
 Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.
@@ -2284,7 +2254,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            initiated_exit=False,
             slashed=False,
             high_balance=0
         )
@@ -2347,14 +2316,6 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     """
     # Verify the amount and fee aren't individually too big (for anti-overflow purposes)
     assert get_balance(state, transfer.sender) >= max(transfer.amount, transfer.fee)
-    # Verify that we have enough ETH to send, and that after the transfer the balance will be either
-    # exactly zero or at least MIN_DEPOSIT_AMOUNT
-    assert (
-        get_balance(state, transfer.sender) == transfer.amount + transfer.fee or
-        get_balance(state, transfer.sender) >= transfer.amount + transfer.fee + MIN_DEPOSIT_AMOUNT
-    )
-    # No self-transfers (to enforce >= MIN_DEPOSIT_AMOUNT or zero balance invariant)
-    assert transfer.sender != transfer.recipient
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
     # Only withdrawn or not-yet-deposited accounts can transfer
@@ -2377,7 +2338,10 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Process the transfer
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
-    increase_balance(state, get_beacon_proposer_index(state, state.slot), transfer.fee)
+    increase_balance(state, get_beacon_proposer_index(state), transfer.fee)
+    # Verify balances are not dust
+    assert not (0 < get_balance(state, transfer.sender) < MIN_DEPOSIT_AMOUNT)
+    assert not (0 < get_balance(state, transfer.recipient) < MIN_DEPOSIT_AMOUNT)
 ```
 
 #### State root verification
