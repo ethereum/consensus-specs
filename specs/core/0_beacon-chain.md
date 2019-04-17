@@ -250,12 +250,14 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value |
 | - | - |
 | `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
+| `NUMBER_OF_BASE_REWARDS` | `5` (= 32) |
 | `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**24` (= 16,777,216) |
 | `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
+* `NUMBER_OF_BASE_REWARDS` is a constant that measures how many times the base_reward can be applied to a proposer in a given epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
@@ -1779,7 +1781,7 @@ def get_base_reward_from_total_balance(state: BeaconState, total_balance: Gwei, 
         return 0
 
     adjusted_quotient = integer_squareroot(total_balance) // BASE_REWARD_QUOTIENT
-    return get_effective_balance(state, index) // adjusted_quotient // 5
+    return get_effective_balance(state, index) // adjusted_quotient // NUMBER_OF_BASE_REWARDS
 ```
 
 ```python
