@@ -2192,10 +2192,10 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 Run `process_proposer_attestation_rewards(state)`.
 
 ```python
-def process_proposer_attestation_rewards(state: BeaconState, block_attestations: List[Attestation]) -> None:
+def process_proposer_attestation_rewards(state: BeaconState) -> None:
     proposer_index = get_beacon_proposer_index(state)
     for pending_attestations in (state.previous_epoch_attestations, state.current_epoch_attestations):
-        for index in get_unslashed_attesting_indices(state, block_attestations):
+        for index in get_unslashed_attesting_indices(state, pending_attestations):
             if earliest_attestation(state, pending_attestations, index).inclusion_slot == state.slot:
                 base_reward = get_base_reward_from_total_balance(state, get_current_total_balance(state), index)
                 increase_balance(state, proposer_index, base_reward // PROPOSER_REWARD_QUOTIENT)
