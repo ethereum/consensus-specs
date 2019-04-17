@@ -1588,7 +1588,8 @@ def cache_state(state: BeaconState) -> None:
         state.latest_block_header.state_root = previous_slot_state_root
 
     # store latest known block for previous slot
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = signing_root(state.latest_block_header)
+    latest_block_root = signing_root(state.latest_block_header)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_block_root
 ```
 
 ### Per-epoch processing
@@ -1683,7 +1684,7 @@ Run the following function:
 
 ```python
 def update_justification_and_finalization(state: BeaconState) -> None:
-    if get_current_epoch(state) == GENESIS_EPOCH:
+    if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
 
     antepenultimate_justified_epoch = state.previous_justified_epoch
