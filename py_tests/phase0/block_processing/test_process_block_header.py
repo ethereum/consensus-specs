@@ -10,6 +10,7 @@ from eth2spec.phase0.spec import (
 )
 from phase0.helpers import (
     build_empty_block_for_next_slot,
+    next_slot,
 )
 
 # mark entire file as 'header'
@@ -61,8 +62,12 @@ def test_invalid_previous_block_root(state):
 
 
 def test_proposer_slashed(state):
+    # use stub state to get proposer index of next slot
+    stub_state = deepcopy(state)
+    next_slot(stub_state)
+    proposer_index = get_beacon_proposer_index(stub_state)
+
     # set proposer to slashed
-    proposer_index = get_beacon_proposer_index(state, state.slot + 1)
     state.validator_registry[proposer_index].slashed = True
 
     block = build_empty_block_for_next_slot(state)
