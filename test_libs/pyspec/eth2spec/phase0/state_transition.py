@@ -93,7 +93,6 @@ def process_block(state: BeaconState,
 def process_epoch_transition(state: BeaconState) -> None:
     spec.update_justification_and_finalization(state)
     spec.process_crosslinks(state)
-    spec.maybe_reset_eth1_period(state)
     spec.apply_rewards(state)
     spec.process_balance_driven_status_transitions(state)
     spec.update_registry(state)
