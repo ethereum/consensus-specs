@@ -1,5 +1,6 @@
 from .hash_function import hash
 
+
 BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_PREFIX = 4
 ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
@@ -110,15 +111,19 @@ def coerce_to_bytes(x):
         raise Exception("Expecting bytes")
 
 
-def encode_variable_size_container(value, typ):
-    serialized_bytes = coerce_to_bytes(value) if typ == 'bytes' else b''.join([serialize_value(element, typ[0]) for element in value])
+def encode_bytes(value):
+    serialized_bytes = coerce_to_bytes(value)
     assert len(serialized_bytes) < 2**(8 * BYTES_PER_LENGTH_PREFIX)
     serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, 'little')
     return serialized_length + serialized_bytes
 
 
-def encode_fixed_size_container(value, typ):
-    return b''.join([serialize_value(element, typ[0]) for element in value])
+def encode_variable_size_container(values, types):
+    return encode_bytes(encode_fixed_size_container(values, types))
+
+
+def encode_fixed_size_container(values, types):
+    return b''.join([serialize_value(v, typ) for (v, typ) in zip(values, types)])
 
 
 def serialize_value(value, typ=None):
@@ -130,7 +135,7 @@ def serialize_value(value, typ=None):
         assert length in (8, 16, 32, 64, 128, 256)
         return value.to_bytes(length // 8, 'little')
     # "bool"
-    elif typ == 'bool':
+    elif isinstance(typ, str) and typ == 'bool':
         assert value in (True, False)
         return b'\x01' if value is True else b'\x00'
     # Vector:
@@ -139,24 +144,28 @@ def serialize_value(value, typ=None):
         assert len(value) == typ[1]
         # If value is fixed-size (i.e. element type is fixed-size):
         if is_constant_sized(typ):
-            return encode_fixed_size_container(value, typ)
+            return encode_fixed_size_container(value, [typ[0]] * len(value))
         # If value is variable-size (i.e. element type is variable-size)
         else:
-            return encode_variable_size_container(value, typ)
-    # List, "bytes" (variable size)
-    elif (isinstance(typ, list) and len(typ) == 1) or typ == 'bytes':
-        encode_variable_size_container(value, typ)
+            return encode_variable_size_container(value, [typ[0]] * len(value))
+    # "bytes" (variable size)
+    elif isinstance(typ, str) and typ == 'bytes':
+        return encode_bytes(value)
+    # List
+    elif isinstance(typ, list) and len(typ) == 1:
+        return encode_variable_size_container(value, [typ[0]] * len(value))
     # "bytesN" (fixed size)
     elif isinstance(typ, str) and len(typ) > 5 and typ[:5] == 'bytes':
         assert len(value) == int(typ[5:]), (value, int(typ[5:]))
         return coerce_to_bytes(value)
     # containers
     elif hasattr(typ, 'fields'):
-        fields = [(getattr(value, field), subtype) for field, subtype in typ.fields.items()]
+        values = [getattr(value, field) for field in typ.fields.keys()]
+        types = list(typ.fields.values())
         if is_constant_sized(typ):
-            return encode_fixed_size_container(fields, typ)
+            return encode_fixed_size_container(values, types)
         else:
-            return encode_variable_size_container(fields, typ)
+            return encode_variable_size_container(values, types)
     else:
         print(value, typ)
         raise Exception("Type not recognized")
