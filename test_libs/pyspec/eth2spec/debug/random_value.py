@@ -2,23 +2,34 @@ from random import Random
 from typing import Any
 from enum import Enum
 
+
 UINT_SIZES = [8, 16, 32, 64, 128, 256]
 
 basic_types = ["uint%d" % v for v in UINT_SIZES] + ['bool', 'byte']
+
+random_mode_names = ["random", "zero", "max", "nil", "one", "lengthy"]
+
 
 class RandomizationMode(Enum):
     # random content / length
     mode_random = 0
     # Zero-value
-    mode_zero = 2
+    mode_zero = 1
     # Maximum value, limited to count 1 however
-    mode_max = 3
+    mode_max = 2
     # Return 0 values, i.e. empty
-    mode_nil_count = 4
+    mode_nil_count = 3
     # Return 1 value, random content
-    mode_one_count = 5
+    mode_one_count = 4
     # Return max amount of values, random content
-    mode_max_count = 6
+    mode_max_count = 5
+
+    def to_name(self):
+        return random_mode_names[self.value]
+
+    def is_changing(self):
+        return self.value in [0, 4, 5]
+
 
 def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list_length: int, mode: RandomizationMode, chaos: bool) -> Any:
     """
@@ -66,7 +77,7 @@ def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list
             return get_random_basic_value(rng, typ)
     # Vector:
     elif isinstance(typ, list) and len(typ) == 2:
-        return [get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode) for _ in range(typ[1])]
+        return [get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode, chaos) for _ in range(typ[1])]
     # List:
     elif isinstance(typ, list) and len(typ) == 1:
         length = rng.randint(0, max_list_length)
@@ -74,10 +85,10 @@ def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list
             length = 1
         if mode == RandomizationMode.mode_max_count:
             length = max_list_length
-        return [get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode) for _ in range(length)]
+        return [get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode, chaos) for _ in range(length)]
     # Container:
     elif hasattr(typ, 'fields'):
-        return typ({field: get_random_ssz_object(rng, subtype, max_bytes_length, max_list_length, mode) for field, subtype in typ.fields.items()})
+        return typ(**{field: get_random_ssz_object(rng, subtype, max_bytes_length, max_list_length, mode, chaos) for field, subtype in typ.fields.items()})
     else:
         print(typ)
         raise Exception("Type not recognized")
