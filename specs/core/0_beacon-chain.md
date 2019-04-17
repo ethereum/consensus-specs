@@ -1842,7 +1842,7 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
             rewards[index] += base_reward * total_attesting_balance // total_balance
             # Inclusion speed bonus
-            earliest_attestation = earliest_attestation(state, previous_epoch_attestations, index)
+            earliest_attestation = earliest_attestation(state, state.previous_epoch_attestations, index)
             inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
             rewards[index] += base_reward * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
         else:
