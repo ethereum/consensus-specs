@@ -976,7 +976,6 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at ``state.slot``.
     """
     current_epoch = get_current_epoch(state)
-    # assert slot_to_epoch(slot) == current_epoch
 
     first_committee, _ = get_crosslink_committees_at_slot(state, state.slot)[0]
     i = 0
