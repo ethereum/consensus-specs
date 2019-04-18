@@ -577,7 +577,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
     'latest_start_shard': 'uint64',
-    
+
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
     'current_epoch_attestations': [PendingAttestation],
@@ -651,7 +651,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ```python
 def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
     """
-    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``. 
+    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``.
     """
     return BeaconBlockHeader(
         slot=block.slot,
@@ -796,7 +796,7 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
     assert index < list_size
     assert list_size <= 2**40
-    
+
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
@@ -1659,7 +1659,7 @@ def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch
     ) for a in pending_attestations if a.data.shard == shard]
 
     if len(candidate_crosslinks) == 0:
-        return Crosslink(GENESIS_EPOCH, ZERO_HASH, ZERO_HASH), []
+        return Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH, previous_crosslink_root=ZERO_HASH), []
 
     def get_attestations_for(crosslink_data_root) -> List[PendingAttestation]:
         return [a for a in pending_attestations if a.data.shard == shard and a.data.crosslink_data_root == crosslink_data_root]
@@ -1899,7 +1899,7 @@ def update_registry(state: BeaconState) -> None:
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
 
     for index in activation_queue[:get_churn_limit(state)]:
-        activate_validator(state, index, is_genesis=False) 
+        activate_validator(state, index, is_genesis=False)
 
     state.latest_start_shard = (
         state.latest_start_shard +

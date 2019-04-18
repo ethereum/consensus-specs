@@ -25,7 +25,7 @@ from eth2spec.phase0.spec import (
     # functions
     convert_to_indexed,
     get_active_validator_indices,
-    get_attestation_participants,
+    get_attesting_indices,
     get_block_root,
     get_crosslink_committee_for_attestation,
     get_current_epoch,
@@ -300,7 +300,7 @@ def get_valid_attestation(state, slot=None):
         custody_bitfield=custody_bitfield,
         aggregate_signature=EMPTY_SIGNATURE,
     )
-    participants = get_attestation_participants(
+    participants = get_attesting_indices(
         state,
         attestation.data,
         attestation.aggregation_bitfield,
