@@ -2155,7 +2155,7 @@ def process_proposer_attestation_rewards(state: BeaconState) -> None:
 
 ##### Deposits
 
-Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.
+Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)`.
 
 For each `deposit` in `block.body.deposits`, run the following function:
 
