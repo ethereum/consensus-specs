@@ -26,10 +26,10 @@ from eth2spec.phase0.spec import (
     # functions
     convert_to_indexed,
     get_active_validator_indices,
-    get_attestation_participants,
     get_balance,
+    get_attesting_indices,
     get_block_root,
-    get_crosslink_committee_for_attestation,
+    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_empty_block,
@@ -37,6 +37,7 @@ from eth2spec.phase0.spec import (
     get_genesis_beacon_state,
     get_previous_epoch,
     get_shard_delta,
+    hash_tree_root,
     slot_to_epoch,
     verify_merkle_branch,
     hash,
@@ -156,6 +157,7 @@ def build_attestation_data(state, slot, shard):
 
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     if slot < current_epoch_start_slot:
+        print(slot)
         epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
     elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
@@ -169,6 +171,7 @@ def build_attestation_data(state, slot, shard):
         justified_epoch = state.current_justified_epoch
         justified_block_root = state.current_justified_root
 
+    crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
     return AttestationData(
         slot=slot,
         shard=shard,
@@ -177,7 +180,7 @@ def build_attestation_data(state, slot, shard):
         source_root=justified_block_root,
         target_root=epoch_boundary_root,
         crosslink_data_root=spec.ZERO_HASH,
-        previous_crosslink=deepcopy(state.latest_crosslinks[shard]),
+        previous_crosslink_root=hash_tree_root(crosslinks[shard]),
     )
 
 
@@ -275,6 +278,14 @@ def get_valid_attester_slashing(state):
     )
 
 
+def get_crosslink_committee_for_attestation(state, attestation_data):
+    """
+    Return the crosslink committee corresponding to ``attestation_data``.
+    """
+    crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
+    return [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
+
+
 def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
@@ -299,7 +310,7 @@ def get_valid_attestation(state, slot=None):
         custody_bitfield=custody_bitfield,
         aggregate_signature=EMPTY_SIGNATURE,
     )
-    participants = get_attestation_participants(
+    participants = get_attesting_indices(
         state,
         attestation.data,
         attestation.aggregation_bitfield,
@@ -384,6 +395,13 @@ def fill_aggregate_attestation(state, attestation):
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation.data)
     for i in range(len(crosslink_committee)):
         attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
+
+
+def add_attestation_to_state(state, attestation, slot):
+    block = build_empty_block_for_next_slot(state)
+    block.slot = slot
+    block.body.attestations.append(attestation)
+    state_transition(state, block)
 
 
 def next_slot(state):

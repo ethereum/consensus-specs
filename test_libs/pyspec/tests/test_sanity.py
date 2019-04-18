@@ -25,6 +25,7 @@ from eth2spec.phase0.spec import (
     advance_slot,
     cache_state,
     set_balance,
+    slot_to_epoch,
     verify_merkle_branch,
     hash,
 )
@@ -380,33 +381,6 @@ def test_voluntary_exit(state):
     assert post_state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     return pre_state, [initiate_exit_block, exit_block], post_state
-
-
-def test_no_exit_churn_too_long_since_change(state):
-    pre_state = deepcopy(state)
-    validator_index = get_active_validator_indices(
-        pre_state,
-        get_current_epoch(pre_state)
-    )[-1]
-
-    #
-    # setup pre_state
-    #
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-
-    post_state = deepcopy(pre_state)
-
-    #
-    # Process registry change but ensure no exit
-    #
-    block = build_empty_block_for_next_slot(post_state)
-    block.slot += spec.SLOTS_PER_EPOCH
-    state_transition(post_state, block)
-
-    assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-
-    return pre_state, [block], post_state
 
 
 def test_transfer(state):
