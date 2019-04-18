@@ -144,7 +144,7 @@ Generating a proof is simply a matter of taking the node of the SSZ hash tree wi
 Here is the verification function:
 
 ```python
-def verify_multi_proof(root: Bytes32, indices: List[int], leaves: List[Bytes32], proof: List[bytes]) -> bool:
+def verify_multi_proof(root: Bytes32, indices: List[int], leaves: List[Bytes32], proof: List[Bytes32]) -> bool:
     tree = {}
     for index, leaf in zip(indices, leaves):
         tree[index] = leaf
