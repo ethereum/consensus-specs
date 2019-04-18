@@ -50,6 +50,10 @@ For convenience we alias:
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
 
+### Zero values
+
+The zero value of a type is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists. By convention objects are initialized to the zero value corresponding to their type.
+
 ## Serialization
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
