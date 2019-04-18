@@ -77,7 +77,7 @@
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
         - [`get_crosslink_committee_for_attestation`](#get_crosslink_committee_for_attestation)
-        - [`get_attestation_participants`](#get_attestation_participants)
+        - [`get_attesting_indices`](#get_attesting_indices)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_effective_balance`](#get_effective_balance)
@@ -180,7 +180,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | - | - |
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_ATTESTATION_PARTICIPANTS` | `2**12` (= 4,096) |
+| `MAX_INDICES_PER_ATTESTATION` | `2**12` (= 4,096) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | 90 |
@@ -303,10 +303,10 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Epoch number
     'epoch': 'uint64',
-    # Shard data since the previous crosslink
-    'crosslink_data_root': 'bytes32',
     # Root of the previous crosslink
     'previous_crosslink_root': 'bytes32',
+    # Shard data since the previous crosslink
+    'crosslink_data_root': 'bytes32',
 }
 ```
 
@@ -1023,14 +1023,14 @@ def get_crosslink_committee_for_attestation(state: BeaconState,
     return crosslink_committee
 ```
 
-### `get_attestation_participants`
+### `get_attesting_indices`
 
 ```python
-def get_attestation_participants(state: BeaconState,
+def get_attesting_indices(state: BeaconState,
                                  attestation_data: AttestationData,
                                  bitfield: bytes) -> List[ValidatorIndex]:
     """
-    Return the sorted participant indices corresponding to ``attestation_data`` and ``bitfield``.
+    Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
     assert verify_bitfield(bitfield, len(crosslink_committee))
@@ -1129,8 +1129,8 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     """
     Convert ``attestation`` to (almost) indexed-verifiable form.
     """
-    attesting_indices = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
-    custody_bit_1_indices = get_attestation_participants(state, attestation.data, attestation.custody_bitfield)
+    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
+    custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bitfield)
     custody_bit_0_indices = [index for index in attesting_indices if index not in custody_bit_1_indices]
 
     return IndexedAttestation(
@@ -1151,14 +1151,13 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     custody_bit_0_indices = indexed_attestation.custody_bit_0_indices
     custody_bit_1_indices = indexed_attestation.custody_bit_1_indices
 
-    # ensure no duplicate indices across custody bits
+    # Ensure no duplicate indices across custody bits
     assert len(set(custody_bit_0_indices).intersection(set(custody_bit_1_indices))) == 0
 
     if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
         return False
 
-    total_attesting_indices = len(custody_bit_0_indices) + len(custody_bit_1_indices)
-    if not (1 <= total_attesting_indices <= MAX_ATTESTATION_PARTICIPANTS):
+    if not (1 <= len(custody_bit_0_indices) + len(custody_bit_1_indices) <= MAX_INDICES_PER_ATTESTATION):
         return False
 
     if custody_bit_0_indices != sorted(custody_bit_0_indices):
@@ -1615,7 +1614,7 @@ def get_previous_total_balance(state: BeaconState) -> Gwei:
 def get_unslashed_attesting_indices(state: BeaconState, attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
     output = set()
     for a in attestations:
-        output = output.union(get_attestation_participants(state, a.data, a.aggregation_bitfield))
+        output = output.union(get_attesting_indices(state, a.data, a.aggregation_bitfield))
     return sorted(filter(lambda index: not state.validator_registry[index].slashed, list(output)))
 ```
 
@@ -1651,34 +1650,31 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 **Note**: Total balances computed for the previous epoch might be marginally different than the actual total balances during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
 ```python
-def get_winning_root_and_participants(state: BeaconState, slot: Slot, shard: Shard) -> Tuple[Bytes32, Bytes32, List[ValidatorIndex]]:
-    attestations = state.current_epoch_attestations if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_epoch_attestations
-
-    valid_attestations = [a for a in attestations if a.data.shard == shard]
-    all_roots = [(a.data.crosslink_data_root, a.data.previous_crosslink_root) for a in valid_attestations]
-
-    # handle when no attestations for shard available
-    if len(all_roots) == 0:
-        return ZERO_HASH, ZERO_HASH, []
+def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
+    pending_attestations = state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
+    crosslink_data_roots = [(a.data.crosslink_data_root, a.data.previous_crosslink_root) for a in pending_attestations if a.data.shard == shard]
 
     def get_attestations_for(root) -> List[PendingAttestation]:
-        return [a for a in valid_attestations if a.data.crosslink_data_root == root]
+        return [a for a in valid_attestations if a.data.shard == shard and a.data.crosslink_data_root == root]
 
-    # Winning crosslink root is the root with the most votes for it, ties broken in favor of
-    # lexicographically higher hash
-    winning_root, previous_crosslink_root = max(all_roots, key=lambda r: (get_attesting_balance(state, get_attestations_for(r[0])), r[0]))
-
-    return (
-        winning_root,
-        previous_crosslink_root,
-        get_unslashed_attesting_indices(state, get_attestations_for(winning_root)),
+    # Winning crosslink data root is the root with the most votes for it (ties broken lexicographically)
+    crosslink_data_root, previous_crosslink_root = max(crosslink_data_roots,
+        key=lambda r: (get_attesting_balance(state, get_attestations_for(r[0])), r[0]),
+        default=ZERO_HASH, ZERO_HASH
     )
+    winning_crosslink = Crosslink(
+        epoch=min(epoch, state.current_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
+        crosslink_data_root=crosslink_data_root,
+        previous_crosslink_root=previous_crosslink_root,
+    )
+
+    return winning_crosslink, get_unslashed_attesting_indices(state, get_attestations_for(crosslink_data_root))
 ```
 
 ```python
 def get_earliest_attestation(state: BeaconState, attestations: List[PendingAttestation], index: ValidatorIndex) -> PendingAttestation:
     return min([
-        a for a in attestations if index in get_attestation_participants(state, a.data, a.aggregation_bitfield)
+        a for a in attestations if index in get_attesting_indices(state, a.data, a.aggregation_bitfield)
     ], key=lambda a: a.inclusion_slot)
 ```
 
@@ -1735,22 +1731,18 @@ Run the following function:
 
 ```python
 def process_crosslinks(state: BeaconState) -> None:
-    state.previous_crosslinks = [crosslink for crosslink in state.current_crosslinks]
+    state.previous_crosslinks = state.current_crosslinks
 
-    previous_epoch = get_previous_epoch(state)
-    next_epoch = get_current_epoch(state) + 1
-    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
+    for slot in range(get_epoch_start_slot(get_previous_epoch(state)), get_epoch_start_slot(get_current_epoch(state) + 1)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
-            winning_root, previous_crosslink_root, participants = get_winning_root_and_participants(state, slot, shard)
-            expected_crosslink_root = hash_tree_root(state.current_crosslinks[shard])
-            participating_balance = get_total_balance(state, participants)
-            total_balance = get_total_balance(state, crosslink_committee)
-            if previous_crosslink_root == expected_crosslink_root and 3 * participating_balance >= 2 * total_balance:
-                state.current_crosslinks[shard] = Crosslink(
-                    epoch=min(slot_to_epoch(slot), state.current_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
-                    crosslink_data_root=winning_root,
-                    previous_crosslink_root=previous_crosslink_root,
-                )
+            winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, slot, shard)
+            attesting_balance = get_total_balance(state, attesting_indices)
+            committee_balance = get_total_balance(state, crosslink_committee)
+            if (
+                winning_crosslink.previous_crosslink_root == hash_tree_root(state.current_crosslinks[shard]) and
+                3 * attesting_balance >= 2 * committee_balance
+            ):
+                state.current_crosslinks[shard] = winning_crosslink
 ```
 
 #### Rewards and penalties
@@ -1838,23 +1830,22 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
 def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     rewards = [0 for index in range(len(state.validator_registry))]
     penalties = [0 for index in range(len(state.validator_registry))]
-    previous_epoch_start_slot = get_epoch_start_slot(get_previous_epoch(state))
-    current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
-    for slot in range(previous_epoch_start_slot, current_epoch_start_slot):
+    for slot in range(get_epoch_start_slot(get_previous_epoch(state)), get_epoch_start_slot(get_current_epoch(state))):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
-            winning_root, previous_crosslink_root, participants = get_winning_root_and_participants(state, slot, shard)
+            winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, slot, shard)
 
-            # do not count as success if winning_root did not or cannot form a chain
-            attempted_crosslink = Crosslink(epoch=slot_to_epoch(slot), crosslink_data_root=winning_root, previous_crosslink_root=previous_crosslink_root)
-            actual_crosslink_root = hash_tree_root(state.previous_crosslinks[shard])
-            if not actual_crosslink_root in {previous_crosslink_root, hash_tree_root(attempted_crosslink)}:
-                participants = []
+            # Do not count as success if winning_crosslink did not or cannot form a chain
+            if not hash_tree_root(state.previous_crosslinks[shard]) in (
+                winning_crosslink.previous_crosslink_root,
+                hash_tree_root(winning_crosslink)
+            ):
+                attesting_indices = []
 
-            participating_balance = get_total_balance(state, participants)
-            total_balance = get_total_balance(state, crosslink_committee)
+            attesting_balance = get_total_balance(state, attesting_indices)
+            committee_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:
-                if index in participants:
-                    rewards[index] += get_base_reward(state, index) * participating_balance // total_balance
+                if index in attesting_indices:
+                    rewards[index] += get_base_reward(state, index) * attesting_balance // committee_balance
                 else:
                     penalties[index] += get_base_reward(state, index)
     return [rewards, penalties]
