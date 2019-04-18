@@ -1634,22 +1634,28 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 ```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
     pending_attestations = state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
-    candidate_crosslinks = [Crosslink(
+    shard_attestations = [a for a in pending_attestations if a.data.shard == shard]
+    shard_crosslinks = [Crosslink(
         epoch=min(epoch, state.current_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
         crosslink_data_root=a.data.crosslink_data_root,
         previous_crosslink_root=a.data.previous_crosslink_root,
-    ) for a in pending_attestations if a.data.shard == shard]
+    ) for a in shard_attestations]
+    candidate_crosslinks = [c for c in shard_crosslinks if
+        hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
+    ]
 
     if len(candidate_crosslinks) == 0:
         return Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH, previous_crosslink_root=ZERO_HASH), []
 
     def get_attestations_for(crosslink_data_root) -> List[PendingAttestation]:
-        return [a for a in pending_attestations if a.data.shard == shard and a.data.crosslink_data_root == crosslink_data_root]
+        return [a for a in shard_attestations if a.data.crosslink_data_root == crosslink_data_root]
 
     # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
-    winning_crosslink = max(candidate_crosslinks, key=lambda c: (
-        get_attesting_balance(state, get_attestations_for(c.crosslink_data_root)), c.crosslink_data_root
-    ))
+    winning_crosslink = max(candidate_crosslinks,
+        key=lambda c: (get_attesting_balance(state, get_attestations_for(c.crosslink_data_root)), c.crosslink_data_root),
+        default=Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH, previous_crosslink_root=ZERO_HASH),
+    )
+
     return winning_crosslink, get_unslashed_attesting_indices(state, get_attestations_for(winning_crosslink.crosslink_data_root))
 ```
 
@@ -1714,16 +1720,10 @@ Run the following function:
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     state.previous_crosslinks = state.current_crosslinks
-
     for slot in range(get_epoch_start_slot(get_previous_epoch(state)), get_epoch_start_slot(get_current_epoch(state) + 1)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, slot_to_epoch(slot), shard)
-            attesting_balance = get_total_balance(state, attesting_indices)
-            committee_balance = get_total_balance(state, crosslink_committee)
-            if (
-                winning_crosslink.previous_crosslink_root == hash_tree_root(state.current_crosslinks[shard]) and
-                3 * attesting_balance >= 2 * committee_balance
-            ):
+            if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
                 state.current_crosslinks[shard] = winning_crosslink
 ```
 
@@ -1815,14 +1815,6 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     for slot in range(get_epoch_start_slot(get_previous_epoch(state)), get_epoch_start_slot(get_current_epoch(state))):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, slot_to_epoch(slot), shard)
-
-            # Do not count as success if winning_crosslink did not or cannot form a chain
-            if not hash_tree_root(state.previous_crosslinks[shard]) in (
-                winning_crosslink.previous_crosslink_root,
-                hash_tree_root(winning_crosslink)
-            ):
-                attesting_indices = []
-
             attesting_balance = get_total_balance(state, attesting_indices)
             committee_balance = get_total_balance(state, crosslink_committee)
             for index in crosslink_committee:

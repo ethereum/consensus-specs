@@ -27,7 +27,6 @@ from eth2spec.phase0.spec import (
     get_active_validator_indices,
     get_attesting_indices,
     get_block_root,
-    get_crosslink_committee_for_attestation,
     get_current_epoch,
     get_domain,
     get_empty_block,
@@ -35,6 +34,7 @@ from eth2spec.phase0.spec import (
     get_genesis_beacon_state,
     get_previous_epoch,
     get_shard_delta,
+    get_crosslink_committees_at_slot,
     hash_tree_root,
     slot_to_epoch,
     verify_merkle_branch,
@@ -276,8 +276,7 @@ def get_valid_attester_slashing(state):
     )
 
 
-def get_crosslink_committee_for_attestation(state: BeaconState,
-                                            attestation_data: AttestationData) -> List[ValidatorIndex]:
+def get_crosslink_committee_for_attestation(state, attestation_data):
     """
     Return the crosslink committee corresponding to ``attestation_data``.
     """
