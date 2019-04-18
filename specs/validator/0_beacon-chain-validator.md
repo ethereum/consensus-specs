@@ -38,13 +38,13 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
         - [Attestations](#attestations-1)
             - [Attestation data](#attestation-data)
                 - [Slot](#slot-1)
-                - [Shard](#shard)
                 - [Beacon block root](#beacon-block-root)
-                - [Target root](#target-root)
-                - [Crosslink data root](#crosslink-data-root)
-                - [Latest crosslink](#latest-crosslink)
                 - [Source epoch](#source-epoch)
                 - [Source root](#source-root)
+                - [Target root](#target-root)
+                - [Shard](#shard)
+                - [Previous crosslink root](#previous-crosslink-root)
+                - [Crosslink data root](#crosslink-data-root)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bitfield](#aggregation-bitfield)
@@ -250,13 +250,17 @@ First the validator should construct `attestation_data`, an [`AttestationData`](
 
 Set `attestation_data.slot = head_state.slot`.
 
-##### Shard
-
-Set `attestation_data.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
-
 ##### Beacon block root
 
 Set `attestation_data.beacon_block_root = signing_root(head_block)`.
+
+##### Source epoch
+
+Set `attestation_data.source_epoch = head_state.justified_epoch`.
+
+##### Source root
+
+Set `attestation_data.source_root = head_state.current_justified_root`.
 
 ##### Target root
 
@@ -266,23 +270,19 @@ _Note:_ This can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
 * Set `epoch_boundary = head if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
 
+##### Shard
+
+Set `attestation_data.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
+
+##### Previous crosslink root
+
+Set `attestation_data.previous_crosslink_root = hash_tree_root(head_state.current_crosslinks[shard])`.
+
 ##### Crosslink data root
 
 Set `attestation_data.crosslink_data_root = ZERO_HASH`.
 
 _Note:_ This is a stub for phase 0.
-
-##### Latest crosslink
-
-Set `attestation_data.previous_crosslink = head_state.latest_crosslinks[shard]`.
-
-##### Source epoch
-
-Set `attestation_data.source_epoch = head_state.justified_epoch`.
-
-##### Source root
-
-Set `attestation_data.source_root = head_state.current_justified_root`.
 
 #### Construct attestation
 
@@ -299,7 +299,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 * Set `aggregation_bitfield[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
 * Set `attestation.aggregation_bitfield = aggregation_bitfield`.
 
-_Note_: Calling `get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)` should return a list of length equal to 1, containing `validator_index`.
+_Note_: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)` should return a list of length equal to 1, containing `validator_index`.
 
 ##### Custody bitfield
 
@@ -369,24 +369,23 @@ def get_committee_assignment(
             return assignment
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the epoch of the slot in question and can not reliably be used to predict an epoch in advance.
+A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question and can not reliably be used to predict in advance.
 
 ```python
 def is_proposer_at_slot(state: BeaconState,
                         slot: Slot,
                         validator_index: ValidatorIndex) -> bool:
-    current_epoch = get_current_epoch(state)
-    assert slot_to_epoch(slot) == current_epoch
+    assert state.slot == slot
 
-    return get_beacon_proposer_index(state, slot) == validator_index
+    return get_beacon_proposer_index(state) == validator_index
 ```
 
-_Note_: If a validator is assigned to the 0th slot of an epoch, the validator must run an empty slot transition from the previous epoch into the 0th slot of the epoch to be able to check if they are a proposer at that slot.
+_Note_: To see if a validator is assigned to proposer during the slot, the validator must run an empty slot transition from the previous state to the current slot.
 
 
 ### Lookahead
 
-The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing which must checked during the epoch in question.
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing which must checked during the slot in question.
 
 `get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments which involves noting at which future slot one will have to attest and also which shard one should begin syncing (in phase 1+).
 

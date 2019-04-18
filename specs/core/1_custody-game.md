@@ -283,7 +283,7 @@ def process_custody_reveal(state: BeaconState,
         assert is_active_validator(revealer, get_current_epoch(state)) or revealer.exit_epoch > get_current_epoch(state)
         revealer.custody_reveal_index += 1
         revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, current_custody_period - reveal.period)
-        proposer_index = get_beacon_proposer_index(state, state.slot)
+        proposer_index = get_beacon_proposer_index(state)
         increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 
     # Case 2: masked punitive early reveal
@@ -309,7 +309,7 @@ def process_chunk_challenge(state: BeaconState,
     responder = state.validator_registry[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
-    attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
@@ -323,7 +323,7 @@ def process_chunk_challenge(state: BeaconState,
     # Add new chunk challenge record
     state.custody_chunk_challenge_records.append(CustodyChunkChallengeRecord(
         challenge_index=state.custody_challenge_index,
-        challenger_index=get_beacon_proposer_index(state, state.slot),
+        challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         crosslink_data_root=challenge.attestation.data.crosslink_data_root,
@@ -359,9 +359,9 @@ def process_bit_challenge(state: BeaconState,
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
     min_challengeable_epoch = responder.exit_epoch - EPOCHS_PER_CUSTODY_PERIOD * (1 + responder.max_reveal_lateness)
-    assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
+    assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot)
     # Verify the responder participated in the attestation
-    attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
     # A validator can be the challenger or responder for at most one challenge at a time
     for record in state.custody_bit_challenge_records:
@@ -436,7 +436,7 @@ def process_chunk_challenge_response(state: BeaconState,
     # Clear the challenge
     state.custody_chunk_challenge_records.remove(challenge)
     # Reward the proposer
-    proposer_index = get_beacon_proposer_index(state, state.slot)
+    proposer_index = get_beacon_proposer_index(state)
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 

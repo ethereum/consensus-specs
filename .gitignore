@@ -1,7 +1,15 @@
 *.pyc
 /__pycache__
-/venv
+venv
+.venvs
+.venv
 /.pytest_cache
 
 build/
 output/
+
+yaml_tests/
+.pytest_cache
+
+# Dynamically built from Markdown spec
+test_libs/pyspec/eth2spec/phase0/spec.py

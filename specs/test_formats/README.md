@@ -17,7 +17,16 @@ This document defines the YAML format and structure used for ETH 2.0 testing.
 
 Ethereum 2.0 uses YAML as the format for all cross client tests. This document describes at a high level the general format to which all test files should conform.
 
+### Test-case formats
+
 The particular formats of specific types of tests (test suites) are defined in separate documents.
+
+Test formats:
+- [`bls`](./bls/README.md)
+- [`operations`](./operations/README.md)
+- [`shuffling`](./shuffling/README.md)
+- [`ssz`](./ssz/README.md)
+- More formats are planned, see tracking issues for CI/testing
 
 ## Glossary
 
@@ -66,16 +75,11 @@ There are two types of fork-data:
 The first is neat to have as a separate form: we prevent duplication, and can run with different presets
  (e.g. fork timeline for a minimal local test, for a public testnet, or for mainnet)
 
-The second is still somewhat ambiguous: some tests may want cover multiple forks, and can do so in different ways:
-- run one test, transitioning from one to the other
-- run the same test for both
-- run a test for every transition from one fork to the other
-- more
-
-There is a common factor here however: the options are exclusive, and give a clear idea on what test suites need to be ran to cover testing for a specific fork.
-The way this list of forks is interpreted, is up to the test-runner:
-State-transition test suites may want to just declare forks that are being covered in the test suite,
- whereas shuffling test suites may want to declare a list of forks to test the shuffling algorithm for individually. 
+The second does not affect the result of the tests, it just states what is covered by the tests,
+ so that the right suites can be executed to see coverage for a certain fork.
+For some types of tests, it may be beneficial to ensure it runs exactly the same, with any given fork "active".
+Test-formats can be explicit on the need to repeat a test with different forks being "active",
+ but generally tests run only once.
 
 ### Test completeness
 
@@ -89,14 +93,13 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 ## Test Suite
 
 ```
-title: <required, string, short, one line> -- Display name for the test suite
-summary: <required, string, average, 1-3 lines> -- Summarizes the test suite
-forks_timeline: <required, string, reference to a fork definition file, without extension> -- Used to determine the forking timeline
-forks: <required, list of strings> -- Runner decides what to do: run for each fork, or run for all at once, each fork transition, etc.
-  - ... <required, string, first the fork name, then the spec version>
-config: <required, string, reference to a config file, without extension> -- Used to determine which set of constants to run (possibly compile time) with
-runner: <required, string, no spaces, python-like naming format> *MUST be consistent with folder structure*
-handler: <optional, string, no spaces, python-like naming format> *MUST be consistent with folder structure*
+title: <string, short, one line> -- Display name for the test suite
+summary: <string, average, 1-3 lines> -- Summarizes the test suite
+forks_timeline: <string, reference to a fork definition file, without extension> -- Used to determine the forking timeline
+forks: <list of strings> -- Defines the coverage. Test-runner code may decide to re-run with the different forks "activated", when applicable.
+config: <string, reference to a config file, without extension> -- Used to determine which set of constants to run (possibly compile time) with
+runner: <string, no spaces, python-like naming format> *MUST be consistent with folder structure*
+handler: <string, no spaces, python-like naming format> *MUST be consistent with folder structure*
 
 test_cases: <list, values being maps defining a test case each>
    ...
@@ -161,11 +164,14 @@ To prevent parsing of hundreds of different YAML files to test a specific test t
  or even more specific, just a handler, tests should be structured in the following nested form: 
 
 ```
-.                        <--- root of eth2.0 tests repository
-├── bls                  <--- collection of handler for a specific test-runner, example runner: "bls"
-│   ├── signing          <--- collection of test suites for a specific handler, example handler: "signing". If no handler, use a dummy folder "main"
-│   │   ├── sign_msg.yml <--- an entry list of test suites
-│   │   ...              <--- more suite files (optional)
-│   ...                  <--- more handlers
-...                      <--- more test types
+.                             <--- root of eth2.0 tests repository
+├── bls                       <--- collection of handler for a specific test-runner, example runner: "bls"
+│   ├── verify_msg            <--- collection of test suites for a specific handler, example handler: "verify_msg". If no multiple handlers, use a dummy folder (e.g. "core"), and specify that in the yaml.
+│   │   ├── verify_valid.yml    .
+│   │   ├── special_cases.yml   . a list of test suites
+│   │   ├── domains.yml         .
+│   │   ├── invalid.yml         .
+│   │   ...                   <--- more suite files (optional)
+│   ...                       <--- more handlers
+...                           <--- more test types
 ```
