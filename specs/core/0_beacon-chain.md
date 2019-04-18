@@ -126,7 +126,7 @@
         - [Per-block processing](#per-block-processing)
             - [Block header](#block-header)
             - [RANDAO](#randao)
-            - [Eth1 data](#eth1-data-1)
+            - [Eth1 data](#eth1-data)
             - [Operations](#operations)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
@@ -1429,8 +1429,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         finalized_root=ZERO_HASH,
 
         # Recent state
-        current_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH, previous_crosslink_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
-        previous_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH, previous_crosslink_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
+        current_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
+        previous_crosslinks=Vector([Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH) for _ in range(SHARD_COUNT)]),
         latest_block_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
         latest_state_roots=Vector([ZERO_HASH for _ in range(SLOTS_PER_HISTORICAL_ROOT)]),
         latest_active_index_roots=Vector([ZERO_HASH for _ in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH)]),
@@ -1634,14 +1634,17 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 ```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
     pending_attestations = state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
-    candidate_crosslinks = [Crosslink(
-        epoch=min(epoch, state.current_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
-        crosslink_data_root=a.data.crosslink_data_root,
-        previous_crosslink_root=a.data.previous_crosslink_root,
-    ) for a in pending_attestations if a.data.shard == shard]
+    candidate_crosslinks = [
+        Crosslink(
+            epoch=min(epoch, state.current_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
+            previous_crosslink_root=a.data.previous_crosslink_root,
+            crosslink_data_root=a.data.crosslink_data_root,
+        )
+        for a in pending_attestations if a.data.shard == shard
+    ]
 
     if len(candidate_crosslinks) == 0:
-        return Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH, previous_crosslink_root=ZERO_HASH), []
+        return Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH), []
 
     def get_attestations_for(crosslink_data_root) -> List[PendingAttestation]:
         return [a for a in pending_attestations if a.data.shard == shard and a.data.crosslink_data_root == crosslink_data_root]
@@ -1714,8 +1717,9 @@ Run the following function:
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     state.previous_crosslinks = state.current_crosslinks
-
-    for slot in range(get_epoch_start_slot(get_previous_epoch(state)), get_epoch_start_slot(get_current_epoch(state) + 1)):
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = get_current_epoch(state) + 1
+    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, slot_to_epoch(slot), shard)
             attesting_balance = get_total_balance(state, attesting_indices)
@@ -1817,7 +1821,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, slot_to_epoch(slot), shard)
 
             # Do not count as success if winning_crosslink did not or cannot form a chain
-            if not hash_tree_root(state.previous_crosslinks[shard]) in (
+            if hash_tree_root(state.previous_crosslinks[shard]) not in (
                 winning_crosslink.previous_crosslink_root,
                 hash_tree_root(winning_crosslink)
             ):
@@ -1881,7 +1885,7 @@ def update_registry(state: BeaconState) -> None:
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
 
     for index in activation_queue[:get_churn_limit(state)]:
-        activate_validator(state, index, is_genesis=False)
+        activate_validator(state, index)
 
     state.latest_start_shard = (
         state.latest_start_shard +
