@@ -1344,7 +1344,7 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 ### `Deposit` logs
 
-Every Ethereum 1.0 deposit, of size greater than `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `Eth2Genesis` log
 
