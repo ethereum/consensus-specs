@@ -51,7 +51,7 @@ def get_ssz_suite(seed: int, config_name: str, mode: random_value.RandomizationM
             summary="Test suite for ssz serialization and hash-tree-root",
             forks_timeline="testing",
             forks=["phase0"],
-            config="minimal",
+            config=config_name,
             runner="ssz",
             handler="static",
             test_cases=ssz_static_cases(rng, mode, chaos, count)))
