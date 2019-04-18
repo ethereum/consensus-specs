@@ -1709,12 +1709,12 @@ def update_justification_and_finalization(state: BeaconState) -> None:
         state.finalized_epoch = antepenultimate_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_root == current_epoch - 2:
-        state.finalized_epoch = state.previous_justified_root
+    if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_epoch == current_epoch - 2:
+        state.finalized_epoch = state.previous_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_root == current_epoch - 1:
-        state.finalized_epoch = state.previous_justified_root
+    if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_epoch == current_epoch - 1:
+        state.finalized_epoch = state.previous_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
 ```
 
