@@ -442,7 +442,7 @@ def test_transfer(state):
         spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer_pubkey)[1:]
     )
     # un-activate so validator can transfer
-    pre_state.validator_registry[sender_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    pre_state.validator_registry[sender_index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     post_state = deepcopy(pre_state)
     #

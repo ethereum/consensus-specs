@@ -52,7 +52,7 @@ def run_transfer_processing(state, transfer, valid=True):
 def test_success_non_activated(state):
     transfer = get_valid_transfer(state)
     # un-activate so validator can transfer
-    state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validator_registry[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     pre_state, post_state = run_transfer_processing(state, transfer)
 
