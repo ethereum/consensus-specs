@@ -35,6 +35,8 @@ from eth2spec.phase0.spec import (
     get_empty_block,
     get_epoch_start_slot,
     get_genesis_beacon_state,
+    get_previous_epoch,
+    get_shard_delta,
     slot_to_epoch,
     verify_merkle_branch,
     hash,
@@ -49,6 +51,19 @@ from eth2spec.utils.merkle_minimal import (
 privkeys = [i + 1 for i in range(1000)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
+
+
+def set_bitfield_bit(bitfield, i):
+    """
+    Set the bit in ``bitfield`` at position ``i`` to ``1``.
+    """
+    byte_index = i // 8
+    bit_index = i % 8
+    return (
+        bitfield[:byte_index] +
+        bytes([bitfield[byte_index] | (1 << bit_index)]) +
+        bitfield[byte_index+1:]
+    )
 
 
 def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
@@ -134,24 +149,31 @@ def build_deposit_data(state, pubkey, privkey, amount):
 def build_attestation_data(state, slot, shard):
     assert state.slot >= slot
 
-    block_root = build_empty_block_for_next_slot(state).previous_block_root
+    if slot == state.slot:
+        block_root = build_empty_block_for_next_slot(state).previous_block_root
+    else:
+        block_root = get_block_root(state, slot)
 
-    epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
-    if epoch_start_slot == slot:
+    current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
+    if slot < current_epoch_start_slot:
+        epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
+    elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
     else:
-        get_block_root(state, epoch_start_slot)
+        epoch_boundary_root = get_block_root(state, current_epoch_start_slot)
 
-    if slot < epoch_start_slot:
+    if slot < current_epoch_start_slot:
+        justified_epoch = state.previous_justified_epoch
         justified_block_root = state.previous_justified_root
     else:
+        justified_epoch = state.current_justified_epoch
         justified_block_root = state.current_justified_root
 
     return AttestationData(
         slot=slot,
         shard=shard,
         beacon_block_root=block_root,
-        source_epoch=state.current_justified_epoch,
+        source_epoch=justified_epoch,
         source_root=justified_block_root,
         target_root=epoch_boundary_root,
         crosslink_data_root=spec.ZERO_HASH,
@@ -256,7 +278,13 @@ def get_valid_attester_slashing(state):
 def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
-    shard = state.latest_start_shard
+
+    if slot_to_epoch(slot) == get_current_epoch(state):
+        shard = (state.latest_start_shard + slot) % spec.SLOTS_PER_EPOCH
+    else:
+        previous_shard_delta = get_shard_delta(state, get_previous_epoch(state))
+        shard = (state.latest_start_shard - previous_shard_delta + slot) % spec.SHARD_COUNT
+
     attestation_data = build_attestation_data(state, slot, shard)
 
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
@@ -350,6 +378,12 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
             domain_type=spec.DOMAIN_ATTESTATION,
         )
     )
+
+
+def fill_aggregate_attestation(state, attestation):
+    crosslink_committee = get_crosslink_committee_for_attestation(state, attestation.data)
+    for i in range(len(crosslink_committee)):
+        attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
 
 
 def next_slot(state):
