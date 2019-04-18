@@ -2260,8 +2260,6 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
 
 ##### Transfers
 
-Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
-
 Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
 
 For each `transfer` in `block.body.transfers`, run the following function:
