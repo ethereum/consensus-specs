@@ -1,5 +1,7 @@
 from .hash_function import hash
 
+from typing import Any
+
 BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_PREFIX = 4
 ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
@@ -8,10 +10,11 @@ ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
 def SSZType(fields):
     class SSZObject():
         def __init__(self, **kwargs):
-            for f in fields:
+            for f, t in fields.items():
                 if f not in kwargs:
-                    raise Exception("Missing constructor argument: %s" % f)
-                setattr(self, f, kwargs[f])
+                    setattr(self, f, get_zero_value(t))
+                else:
+                    setattr(self, f, kwargs[f])
 
         def __eq__(self, other):
             return (
@@ -138,7 +141,7 @@ def serialize_value(value, typ=None):
     elif isinstance(typ, str) and typ == 'bool':
         assert value in (True, False)
         return b'\x01' if value is True else b'\x00'
-    # Vector:
+    # Vector
     elif isinstance(typ, list) and len(typ) == 2:
         # (regardless of element type, sanity-check if the length reported in the vector type matches the value length)
         assert len(value) == typ[1]
@@ -168,6 +171,38 @@ def serialize_value(value, typ=None):
             return encode_variable_size_container(values, types)
     else:
         print(value, typ)
+        raise Exception("Type not recognized")
+
+
+def get_zero_value(typ: Any) -> Any:
+    if isinstance(typ, str):
+        # Bytes array
+        if typ == 'bytes':
+            return b''
+        # bytesN
+        elif typ[:5] == 'bytes' and len(typ) > 5:
+            length = int(typ[5:])
+            return b'\x00' * length
+        # Basic types
+        elif typ == 'bool':
+            return False
+        elif typ[:4] == 'uint':
+            return 0
+        elif typ == 'byte':
+            return 0x00
+        else:
+            raise ValueError("Type not recognized")
+    # Vector:
+    elif isinstance(typ, list) and len(typ) == 2:
+        return [get_zero_value(typ[0]) for _ in range(typ[1])]
+    # List:
+    elif isinstance(typ, list) and len(typ) == 1:
+        return []
+    # Container:
+    elif hasattr(typ, 'fields'):
+        return typ(**{field: get_zero_value(subtype) for field, subtype in typ.fields.items()})
+    else:
+        print(typ)
         raise Exception("Type not recognized")
 
 
