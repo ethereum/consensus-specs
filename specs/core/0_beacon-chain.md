@@ -1631,8 +1631,8 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationData) -> Crosslink:
     return Crosslink(
         epoch=min(slot_to_epoch(data.slot), state.current_crosslinks[data.shard].epoch + MAX_CROSSLINK_EPOCHS),
-        crosslink_data_root=data.crosslink_data_root,
         previous_crosslink_root=data.previous_crosslink_root,
+        crosslink_data_root=data.crosslink_data_root,
     )
 ```
 
@@ -1641,8 +1641,9 @@ def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch
     pending_attestations = state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
     shard_attestations = [a for a in pending_attestations if a.data.shard == shard]
     shard_crosslinks = [get_crosslink_from_attestation_data(state, a.data) for a in shard_attestations]
-    candidate_crosslinks = [c for c in shard_crosslinks if
-        hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
+    candidate_crosslinks = [
+        c for c in shard_crosslinks
+        if hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
     ]
     if len(candidate_crosslinks) == 0:
         return Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH), []
@@ -1718,7 +1719,7 @@ Run the following function:
 
 ```python
 def process_crosslinks(state: BeaconState) -> None:
-    state.previous_crosslinks = state.current_crosslinks
+    state.previous_crosslinks = [c for c in state.current_crosslinks]
     previous_epoch = get_previous_epoch(state)
     next_epoch = get_current_epoch(state) + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
