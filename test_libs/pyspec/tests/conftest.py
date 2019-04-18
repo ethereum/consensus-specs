@@ -27,7 +27,8 @@ def overwrite_spec_config(config):
         if field == "LATEST_RANDAO_MIXES_LENGTH":
             spec.BeaconState.fields['latest_randao_mixes'][1] = config[field]
         elif field == "SHARD_COUNT":
-            spec.BeaconState.fields['latest_crosslinks'][1] = config[field]
+            spec.BeaconState.fields['current_crosslinks'][1] = config[field]
+            spec.BeaconState.fields['previous_crosslinks'][1] = config[field]
         elif field == "SLOTS_PER_HISTORICAL_ROOT":
             spec.BeaconState.fields['latest_block_roots'][1] = config[field]
             spec.BeaconState.fields['latest_state_roots'][1] = config[field]
