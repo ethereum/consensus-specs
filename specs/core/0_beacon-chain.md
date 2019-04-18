@@ -235,7 +235,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) | epochs | ~7 hours |
-| `MAX_FINALITY_LOOKBACK` | `2**2` (= 4) | epochs | 25.6 minutes |
+| `MIN_EPOCHS_TO_LEAK` | `2**2` (= 4) | epochs | 25.6 minutes |
 
 * `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
@@ -1820,8 +1820,8 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
             penalties[index] += base_reward * (inclusion_delay - MIN_ATTESTATION_INCLUSION_DELAY) // (SLOTS_PER_EPOCH - MIN_ATTESTATION_INCLUSION_DELAY)
 
         # Inactivity penalty
-        epochs_since_finality = previous_epoch + 1 - state.finalized_epoch
-        if epochs_since_finality >= MIN_EPOCHS_TO_LEAK:
+        epochs_since_finality = previous_epoch - state.finalized_epoch
+        if epochs_since_finality > MIN_EPOCHS_TO_LEAK:
             penalties[index] += BASE_REWARDS_PER_EPOCH * base_reward
             if index not in get_unslashed_attesting_indices(state, get_previous_epoch_matching_target_attestations(state)):
                 penalties[index] += get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT
