@@ -262,7 +262,6 @@ def infer_type(value):
     else:
         raise Exception("Failed to infer type")
 
-
 def hash_tree_root(value, typ=None):
     if typ is None:
         typ = infer_type(value)
