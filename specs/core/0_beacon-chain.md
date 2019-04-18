@@ -423,8 +423,6 @@ The types are defined topologically to aid in facilitating an executable version
     'aggregation_bitfield': 'bytes',
     # Attestation data
     'data': AttestationData,
-    # Custody bitfield
-    'custody_bitfield': 'bytes',
     # Inclusion slot
     'inclusion_slot': 'uint64',
 }
@@ -916,7 +914,7 @@ def get_block_root(state: BeaconState,
     return state.latest_block_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
-`get_block_root(_, s)` should always return `hash_tree_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
+`get_block_root(_, s)` should always return `signed_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
 ### `get_state_root`
 
@@ -1715,12 +1713,12 @@ def update_justification_and_finalization(state: BeaconState) -> None:
         state.finalized_epoch = antepenultimate_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_root == current_epoch - 2:
-        state.finalized_epoch = state.previous_justified_root
+    if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_epoch == current_epoch - 2:
+        state.finalized_epoch = state.previous_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_root == current_epoch - 1:
-        state.finalized_epoch = state.previous_justified_root
+    if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_epoch == current_epoch - 1:
+        state.finalized_epoch = state.previous_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
 ```
 
@@ -2135,7 +2133,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     pending_attestation = PendingAttestation(
         data=attestation.data,
         aggregation_bitfield=attestation.aggregation_bitfield,
-        custody_bitfield=attestation.custody_bitfield,
         inclusion_slot=state.slot
     )
     if target_epoch == get_current_epoch(state):
