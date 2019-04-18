@@ -113,7 +113,7 @@
         - [State caching](#state-caching)
         - [Per-epoch processing](#per-epoch-processing)
             - [Helper functions](#helper-functions-1)
-            - [Justification-and-finalization](#justification-and-finalization)
+            - [Justification and finalization](#justification-and-finalization)
             - [Crosslinks](#crosslinks)
             - [Rewards and penalties](#rewards-and-penalties)
             - [Registry updates](#registry-updates)
@@ -1675,7 +1675,7 @@ def get_earliest_attestation(state: BeaconState, attestations: List[PendingAttes
 Run the following function:
 
 ```python
-def update_justification_and_finalization(state: BeaconState) -> None:
+def process_justification_and_finalization(state: BeaconState) -> None:
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
 
