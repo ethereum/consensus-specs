@@ -113,21 +113,17 @@
         - [State caching](#state-caching)
         - [Per-epoch processing](#per-epoch-processing)
             - [Helper functions](#helper-functions-1)
-            - [Justification](#justification)
+            - [Justification and finalization](#justification-and-finalization)
             - [Crosslinks](#crosslinks)
             - [Rewards and penalties](#rewards-and-penalties)
-                - [Justification and finalization](#justification-and-finalization)
-                - [Crosslinks](#crosslinks-1)
-            - [Apply rewards](#apply-rewards)
-            - [Balance-driven status transitions](#balance-driven-status-transitions)
-            - [Activation queue and start shard](#activation-queue-and-start-shard)
+            - [Registry updates](#registry-updates)
             - [Slashings](#slashings)
             - [Final updates](#final-updates)
         - [Per-slot processing](#per-slot-processing)
         - [Per-block processing](#per-block-processing)
             - [Block header](#block-header)
             - [RANDAO](#randao)
-            - [Eth1 data](#eth1-data-1)
+            - [Eth1 data](#eth1-data)
             - [Operations](#operations)
                 - [Proposer slashings](#proposer-slashings)
                 - [Attester slashings](#attester-slashings)
@@ -575,7 +571,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Randomness and committees
     'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
     'latest_start_shard': 'uint64',
-    
+
     # Finality
     'previous_epoch_attestations': [PendingAttestation],
     'current_epoch_attestations': [PendingAttestation],
@@ -648,7 +644,7 @@ Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethere
 ```python
 def get_temporary_block_header(block: BeaconBlock) -> BeaconBlockHeader:
     """
-    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``. 
+    Return the block header corresponding to a block with ``state_root`` set to ``ZERO_HASH``.
     """
     return BeaconBlockHeader(
         slot=block.slot,
@@ -793,7 +789,7 @@ def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
     """
     assert index < list_size
     assert list_size <= 2**40
-    
+
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
         flip = (pivot - index) % list_size
@@ -1674,12 +1670,12 @@ def get_earliest_attestation(state: BeaconState, attestations: List[PendingAttes
     ], key=lambda a: a.inclusion_slot)
 ```
 
-#### Justification
+#### Justification and finalization
 
 Run the following function:
 
 ```python
-def update_justification_and_finalization(state: BeaconState) -> None:
+def process_justification_and_finalization(state: BeaconState) -> None:
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
 
@@ -1744,7 +1740,7 @@ def process_crosslinks(state: BeaconState) -> None:
 
 #### Rewards and penalties
 
-First, we define some additional helpers:
+First, we define additional helpers:
 
 ```python
 def get_base_reward_from_total_balance(state: BeaconState, total_balance: Gwei, index: ValidatorIndex) -> Gwei:
@@ -1768,10 +1764,6 @@ def get_inactivity_penalty(state: BeaconState, index: ValidatorIndex, epochs_sin
         extra_penalty = get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT // 2
     return get_base_reward(state, index) + extra_penalty
 ```
-
-Note: When applying penalties in the following balance recalculations, implementers should make sure the `uint64` does not underflow.
-
-##### Justification and finalization
 
 ```python
 def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
@@ -1821,8 +1813,6 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
     return [rewards, penalties]
 ```
 
-##### Crosslinks
-
 ```python
 def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     rewards = [0 for index in range(len(state.validator_registry))]
@@ -1842,12 +1832,10 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     return [rewards, penalties]
 ```
 
-#### Apply rewards
-
-Run the following:
+Run the following function:
 
 ```python
-def apply_rewards(state: BeaconState) -> None:
+def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
@@ -1858,16 +1846,13 @@ def apply_rewards(state: BeaconState) -> None:
         decrease_balance(state, i, penalties1[i] + penalties2[i])
 ```
 
-#### Balance-driven status transitions
+#### Registry updates
 
-Run `process_balance_driven_status_transitions(state)`.
+Run the following function:
 
 ```python
-def process_balance_driven_status_transitions(state: BeaconState) -> None:
-    """
-    Iterate through the validator registry
-    and deposit or eject active validators with sufficiently high or low balances
-    """
+def process_registry_updates(state: BeaconState) -> None:
+    # Process activation eligibility and ejections
     for index, validator in enumerate(state.validator_registry):
         balance = get_balance(state, index)
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_EFFECTIVE_BALANCE:
@@ -1875,39 +1860,23 @@ def process_balance_driven_status_transitions(state: BeaconState) -> None:
 
         if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
-```
 
-#### Activation queue and start shard
-
-Run the following function:
-
-```python
-def update_registry(state: BeaconState) -> None:
+    # Process activations
     activation_queue = sorted([
         index for index, validator in enumerate(state.validator_registry) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
-
     for index in activation_queue[:get_churn_limit(state)]:
-        activate_validator(state, index, is_genesis=False) 
-
-    state.latest_start_shard = (
-        state.latest_start_shard +
-        get_shard_delta(state, get_current_epoch(state))
-    ) % SHARD_COUNT
+        activate_validator(state, index)
 ```
 
 #### Slashings
 
-Run `process_slashings(state)`:
+Run the following function:
 
 ```python
 def process_slashings(state: BeaconState) -> None:
-    """
-    Process the slashings.
-    Note that this function mutates ``state``.
-    """
     current_epoch = get_current_epoch(state)
     active_validator_indices = get_active_validator_indices(state, current_epoch)
     total_balance = get_total_balance(state, active_validator_indices)
@@ -1931,12 +1900,14 @@ def process_slashings(state: BeaconState) -> None:
 Run the following function:
 
 ```python
-def finish_epoch_update(state: BeaconState) -> None:
+def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     # Reset eth1 data votes
     if state.slot % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
+    # Update start shard
+    state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
     state.latest_active_index_roots[index_root_position] = hash_tree_root(
