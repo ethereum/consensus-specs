@@ -1628,32 +1628,33 @@ def get_previous_epoch_matching_head_attestations(state: BeaconState) -> List[Pe
 **Note**: Total balances computed for the previous epoch might be marginally different than the actual total balances during the previous epoch transition. Due to the tight bound on validator churn each epoch and small per-epoch rewards/penalties, the potential balance difference is very low and only marginally affects consensus safety.
 
 ```python
+def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationData) -> Crosslink:
+    return Crosslink(
+        epoch=min(slot_to_epoch(data.slot), state.current_crosslinks[data.shard].epoch + MAX_CROSSLINK_EPOCHS),
+        crosslink_data_root=data.crosslink_data_root,
+        previous_crosslink_root=data.previous_crosslink_root,
+    )
+```
+
+```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
     pending_attestations = state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
     shard_attestations = [a for a in pending_attestations if a.data.shard == shard]
-    shard_crosslinks = [
-        Crosslink(
-            epoch=min(epoch, state.current_crosslinks[shard].epoch + MAX_CROSSLINK_EPOCHS),
-            crosslink_data_root=a.data.crosslink_data_root,
-            previous_crosslink_root=a.data.previous_crosslink_root,
-        ) for a in shard_attestations
-    ]
+    shard_crosslinks = [get_crosslink_from_attestation_data(state, a.data) for a in shard_attestations]
     candidate_crosslinks = [c for c in shard_crosslinks if
         hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
     ]
     if len(candidate_crosslinks) == 0:
         return Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH), []
 
-    def get_attestations_for(crosslink_data_root) -> List[PendingAttestation]:
-        return [a for a in shard_attestations if a.data.crosslink_data_root == crosslink_data_root]
-
+    def get_attestations_for(crosslink: Crosslink) -> List[PendingAttestation]:
+        return [a for a in shard_attestations if get_crosslink_from_attestation_data(state, a.data) == crosslink]
     # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
-    winning_crosslink = max(candidate_crosslinks,
-        key=lambda c: (get_attesting_balance(state, get_attestations_for(c.crosslink_data_root)), c.crosslink_data_root),
-        default=Crosslink(epoch=GENESIS_EPOCH, crosslink_data_root=ZERO_HASH, previous_crosslink_root=ZERO_HASH),
-    )
+    winning_crosslink = max(candidate_crosslinks, key=lambda crosslink: (
+        get_attesting_balance(state, get_attestations_for(crosslink)), crosslink.crosslink_data_root
+    ))
 
-    return winning_crosslink, get_unslashed_attesting_indices(state, get_attestations_for(winning_crosslink.crosslink_data_root))
+    return winning_crosslink, get_unslashed_attesting_indices(state, get_attestations_for(winning_crosslink))
 ```
 
 ```python
