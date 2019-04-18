@@ -204,9 +204,18 @@ def infer_type(value):
     if hasattr(value.__class__, 'fields'):
         return value.__class__
     elif isinstance(value, Vector):
-        return [infer_type(value[0]), len(value)]
+        if len(value) > 0:
+            return [infer_type(value[0]), len(value)]
+        else:
+            # Element type does not matter too much,
+            # assumed to be a basic type for size-encoding purposes, vector is empty.
+            return ['uint64']
     elif isinstance(value, list):
-        return [infer_type(value[0])]
+        if len(value) > 0:
+            return [infer_type(value[0])]
+        else:
+            # Element type does not matter, list-content size will be encoded regardless, list is empty.
+            return ['uint64']
     elif isinstance(value, (bytes, str)):
         return 'bytes'
     elif isinstance(value, int):
@@ -215,7 +224,6 @@ def infer_type(value):
         return 'uint64'
     else:
         raise Exception("Failed to infer type")
-
 
 def hash_tree_root(value, typ=None):
     if typ is None:
