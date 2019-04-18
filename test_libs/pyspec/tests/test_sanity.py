@@ -39,9 +39,11 @@ from eth2spec.utils.merkle_minimal import (
 from .helpers import (
     build_deposit_data,
     build_empty_block_for_next_slot,
+    fill_aggregate_attestation,
     get_valid_attestation,
     get_valid_attester_slashing,
     get_valid_proposer_slashing,
+    next_slot,
     privkeys,
     pubkeys,
 )
@@ -49,6 +51,33 @@ from .helpers import (
 
 # mark entire file as 'sanity'
 pytestmark = pytest.mark.sanity
+
+
+def check_finality(state,
+                   prev_state,
+                   current_justified_changed,
+                   previous_justified_changed,
+                   finalized_changed):
+    if current_justified_changed:
+        assert state.current_justified_epoch > prev_state.current_justified_epoch
+        assert state.current_justified_root != prev_state.current_justified_root
+    else:
+        assert state.current_justified_epoch == prev_state.current_justified_epoch
+        assert state.current_justified_root == prev_state.current_justified_root
+
+    if previous_justified_changed:
+        assert state.previous_justified_epoch > prev_state.previous_justified_epoch
+        assert state.previous_justified_root != prev_state.previous_justified_root
+    else:
+        assert state.previous_justified_epoch == prev_state.previous_justified_epoch
+        assert state.previous_justified_root == prev_state.previous_justified_root
+
+    if finalized_changed:
+        assert state.finalized_epoch > prev_state.finalized_epoch
+        assert state.finalized_root != prev_state.finalized_root
+    else:
+        assert state.finalized_epoch == prev_state.finalized_epoch
+        assert state.finalized_root == prev_state.finalized_root
 
 
 def test_slot_transition(state):
@@ -113,6 +142,33 @@ def test_empty_epoch_transition_not_finalizing(state):
         assert get_balance(test_state, index) < get_balance(state, index)
 
     return state, [block], test_state
+
+
+def test_full_attestations_finalizing(state):
+    test_state = deepcopy(state)
+
+    for slot in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(test_state)
+
+    for epoch in range(5):
+        for slot in range(spec.SLOTS_PER_EPOCH):
+            print(test_state.slot)
+            attestation = get_valid_attestation(test_state, test_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY)
+            fill_aggregate_attestation(test_state, attestation)
+            block = build_empty_block_for_next_slot(test_state)
+            block.body.attestations.append(attestation)
+            state_transition(test_state, block)
+
+        if epoch == 0:
+            check_finality(test_state, state, False, False, False)
+        elif epoch == 1:
+            check_finality(test_state, state, False, False, False)
+        elif epoch == 2:
+            check_finality(test_state, state, True, False, False)
+        elif epoch == 3:
+            check_finality(test_state, state, True, True, False)
+        elif epoch == 4:
+            check_finality(test_state, state, True, True, True)
 
 
 def test_proposer_slashing(state):
