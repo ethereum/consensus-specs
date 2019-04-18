@@ -1,6 +1,5 @@
 from .hash_function import hash
 
-
 BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_PREFIX = 4
 ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
@@ -62,16 +61,17 @@ def is_basic(typ):
     if not isinstance(typ, str):
         return False
     # "uintN": N-bit unsigned integer (where N in [8, 16, 32, 64, 128, 256])
-    if typ[:4] == 'uint' and typ[4:] in ['8', '16', '32', '64', '128', '256']:
+    elif typ[:4] == 'uint' and typ[4:] in ['8', '16', '32', '64', '128', '256']:
         return True
     # "bool": True or False
-    if typ == 'bool':
+    elif typ == 'bool':
         return True
     # alias: "byte" -> "uint8"
-    if typ == 'byte':
+    elif typ == 'byte':
         return True
     # default
-    return False
+    else:
+        return False
 
 
 def is_constant_sized(typ):
@@ -113,7 +113,7 @@ def coerce_to_bytes(x):
 
 def encode_bytes(value):
     serialized_bytes = coerce_to_bytes(value)
-    assert len(serialized_bytes) < 2**(8 * BYTES_PER_LENGTH_PREFIX)
+    assert len(serialized_bytes) < 2 ** (8 * BYTES_PER_LENGTH_PREFIX)
     serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, 'little')
     return serialized_length + serialized_bytes
 
@@ -198,9 +198,13 @@ def mix_in_length(root, length):
     return hash(root + length.to_bytes(32, 'little'))
 
 
-# Note: defaults to uint64 for integer type inference due to lack of information.
-# Other integer sizes are still supported, see spec.
 def infer_type(value):
+    """
+    Note: defaults to uint64 for integer type inference due to lack of information.
+    Other integer sizes are still supported, see spec.
+    :param value: The value to infer a SSZ type for.
+    :return: The SSZ type.
+    """
     if hasattr(value.__class__, 'fields'):
         return value.__class__
     elif isinstance(value, Vector):
@@ -220,10 +224,9 @@ def infer_type(value):
         return 'bytes'
     elif isinstance(value, int):
         return 'uint64'
-    elif isinstance(value, int):
-        return 'uint64'
     else:
         raise Exception("Failed to infer type")
+
 
 def hash_tree_root(value, typ=None):
     if typ is None:
