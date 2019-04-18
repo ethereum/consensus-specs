@@ -1817,11 +1817,11 @@ def get_justification_and_finalization_deltas(state: BeaconState) -> Tuple[List[
         if index in get_unslashed_attesting_indices(state, state.previous_epoch_attestations):
             earliest_attestation = get_earliest_attestation(state, state.previous_epoch_attestations, index)
             inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
-            penalties[index] += base_reward * (1 - MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay)
+            penalties[index] += base_reward * (inclusion_delay - MIN_ATTESTATION_INCLUSION_DELAY) // (SLOTS_PER_EPOCH - MIN_ATTESTATION_INCLUSION_DELAY)
 
         # Inactivity penalty
         epochs_since_finality = previous_epoch + 1 - state.finalized_epoch
-        if epochs_since_finality > MAX_FINALITY_LOOKBACK:
+        if epochs_since_finality >= MIN_EPOCHS_TO_LEAK:
             penalties[index] += BASE_REWARDS_PER_EPOCH * base_reward
             if index not in get_unslashed_attesting_indices(state, get_previous_epoch_matching_target_attestations(state)):
                 penalties[index] += get_effective_balance(state, index) * epochs_since_finality // INACTIVITY_PENALTY_QUOTIENT
