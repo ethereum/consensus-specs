@@ -33,6 +33,8 @@ from eth2spec.phase0.spec import (
     get_empty_block,
     get_epoch_start_slot,
     get_genesis_beacon_state,
+    get_previous_epoch,
+    get_shard_delta,
     hash_tree_root,
     slot_to_epoch,
     verify_merkle_branch,
@@ -146,17 +148,25 @@ def build_deposit_data(state, pubkey, privkey, amount):
 def build_attestation_data(state, slot, shard):
     assert state.slot >= slot
 
-    block_root = build_empty_block_for_next_slot(state).previous_block_root
+    if slot == state.slot:
+        block_root = build_empty_block_for_next_slot(state).previous_block_root
+    else:
+        block_root = get_block_root(state, slot)
 
-    epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
-    if epoch_start_slot == slot:
+    current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
+    if slot < current_epoch_start_slot:
+        print(slot)
+        epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
+    elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
     else:
-        epoch_boundary_root = get_block_root(state, epoch_start_slot)
+        epoch_boundary_root = get_block_root(state, current_epoch_start_slot)
 
-    if slot < epoch_start_slot:
+    if slot < current_epoch_start_slot:
+        justified_epoch = state.previous_justified_epoch
         justified_block_root = state.previous_justified_root
     else:
+        justified_epoch = state.current_justified_epoch
         justified_block_root = state.current_justified_root
 
     crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
@@ -164,7 +174,7 @@ def build_attestation_data(state, slot, shard):
         slot=slot,
         shard=shard,
         beacon_block_root=block_root,
-        source_epoch=state.current_justified_epoch,
+        source_epoch=justified_epoch,
         source_root=justified_block_root,
         target_root=epoch_boundary_root,
         crosslink_data_root=spec.ZERO_HASH,
@@ -269,7 +279,13 @@ def get_valid_attester_slashing(state):
 def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
-    shard = (state.latest_start_shard + slot) % spec.SLOTS_PER_EPOCH
+
+    if slot_to_epoch(slot) == get_current_epoch(state):
+        shard = (state.latest_start_shard + slot) % spec.SLOTS_PER_EPOCH
+    else:
+        previous_shard_delta = get_shard_delta(state, get_previous_epoch(state))
+        shard = (state.latest_start_shard - previous_shard_delta + slot) % spec.SHARD_COUNT
+
     attestation_data = build_attestation_data(state, slot, shard)
 
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)

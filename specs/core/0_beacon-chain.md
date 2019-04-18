@@ -208,15 +208,13 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value |
 | - | - |
 | `GENESIS_FORK_VERSION` | `int_to_bytes4(0)` |
-| `GENESIS_SLOT` | `2**32` |
-| `GENESIS_EPOCH` | `slot_to_epoch(GENESIS_SLOT)` |
+| `GENESIS_SLOT` | `0` |
+| `GENESIS_EPOCH` | `0` |
 | `GENESIS_START_SHARD` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
 | `ZERO_HASH` | `int_to_bytes32(0)` |
 | `EMPTY_SIGNATURE` | `int_to_bytes96(0)` |
 | `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
-
-* `GENESIS_SLOT` should be at least as large in terms of time as the largest of the time parameters or state list lengths below (ie. it should be at least as large as any value measured in slots, and at least `SLOTS_PER_EPOCH` times as large as any value measured in epochs).
 
 ### Time parameters
 
@@ -427,8 +425,6 @@ The types are defined topologically to aid in facilitating an executable version
     'aggregation_bitfield': 'bytes',
     # Attestation data
     'data': AttestationData,
-    # Custody bitfield
-    'custody_bitfield': 'bytes',
     # Inclusion slot
     'inclusion_slot': 'uint64',
 }
@@ -683,8 +679,10 @@ def slot_to_epoch(slot: Slot) -> Epoch:
 def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
     Return the previous epoch of the given ``state``.
+    Return the current epoch if it's genesis epoch.
     """
-    return get_current_epoch(state) - 1
+    current_epoch = get_current_epoch(state)
+    return (current_epoch - 1) if current_epoch > GENESIS_EPOCH else current_epoch
 ```
 
 ### `get_current_epoch`
@@ -919,7 +917,7 @@ def get_block_root(state: BeaconState,
     return state.latest_block_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
-`get_block_root(_, s)` should always return `hash_tree_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
+`get_block_root(_, s)` should always return `signed_root` of the block in the beacon chain at slot `s`, and `get_crosslink_committees_at_slot(_, s)` should not change unless the [validator](#dfn-validator) registry changes.
 
 ### `get_state_root`
 
@@ -979,6 +977,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at ``state.slot``.
     """
     current_epoch = get_current_epoch(state)
+
     first_committee, _ = get_crosslink_committees_at_slot(state, state.slot)[0]
     i = 0
     while True:
@@ -1266,14 +1265,13 @@ Note: All functions in this section mutate `state`.
 #### `activate_validator`
 
 ```python
-def activate_validator(state: BeaconState, index: ValidatorIndex, is_genesis: bool) -> None:
+def activate_validator(state: BeaconState, index: ValidatorIndex) -> None:
     """
     Activate the validator of the given ``index``.
     Note that this function mutates ``state``.
     """
     validator = state.validator_registry[index]
-
-    if is_genesis:
+    if state.slot == GENESIS_SLOT:
         validator.activation_eligibility_epoch = GENESIS_EPOCH
         validator.activation_epoch = GENESIS_EPOCH
     else:
@@ -1441,7 +1439,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         # Finality
         previous_epoch_attestations=[],
         current_epoch_attestations=[],
-        previous_justified_epoch=GENESIS_EPOCH - 1,
+        previous_justified_epoch=GENESIS_EPOCH,
         current_justified_epoch=GENESIS_EPOCH,
         previous_justified_root=ZERO_HASH,
         current_justified_root=ZERO_HASH,
@@ -1472,7 +1470,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     # Process genesis activations
     for index in range(len(state.validator_registry)):
         if get_effective_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
-            activate_validator(state, index, is_genesis=True)
+            activate_validator(state, index)
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
@@ -1495,7 +1493,7 @@ For a beacon chain block, `block`, to be processed by a node, the following cond
 
 * The parent block with root `block.previous_block_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
+* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
 
 If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
 
@@ -1582,17 +1580,17 @@ At every `slot > GENESIS_SLOT` run the following function:
 
 ```python
 def cache_state(state: BeaconState) -> None:
-    previous_slot_state_root = hash_tree_root(state)
+    # Cache latest known state root (for previous slot)
+    latest_state_root = hash_tree_root(state)
+    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_state_root
 
-    # store the previous slot's post state transition root
-    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_slot_state_root
-
-    # cache state root in stored latest_block_header if empty
+    # Store latest known state root (for previous slot) in latest_block_header if it is empty
     if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = previous_slot_state_root
+        state.latest_block_header.state_root = latest_state_root
 
-    # store latest known block for previous slot
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = signing_root(state.latest_block_header)
+    # Cache latest known block root (for previous slot)
+    latest_block_root = signing_root(state.latest_block_header)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_block_root
 ```
 
 ### Per-epoch processing
@@ -1690,6 +1688,9 @@ Run the following function:
 
 ```python
 def update_justification_and_finalization(state: BeaconState) -> None:
+    if get_current_epoch(state) <= GENESIS_EPOCH + 1:
+        return
+
     antepenultimate_justified_epoch = state.previous_justified_epoch
 
     # Process justifications
@@ -1719,12 +1720,12 @@ def update_justification_and_finalization(state: BeaconState) -> None:
         state.finalized_epoch = antepenultimate_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_root == current_epoch - 2:
-        state.finalized_epoch = state.previous_justified_root
+    if (bitfield >> 0) % 8 == 0b111 and state.previous_justified_epoch == current_epoch - 2:
+        state.finalized_epoch = state.previous_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_root == current_epoch - 1:
-        state.finalized_epoch = state.previous_justified_root
+    if (bitfield >> 0) % 4 == 0b11 and state.previous_justified_epoch == current_epoch - 1:
+        state.finalized_epoch = state.previous_justified_epoch
         state.finalized_root = get_block_root(state, get_epoch_start_slot(state.finalized_epoch))
 ```
 
@@ -1734,12 +1735,10 @@ Run the following function:
 
 ```python
 def process_crosslinks(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    previous_epoch = max(current_epoch - 1, GENESIS_EPOCH)
-    next_epoch = current_epoch + 1
-
     state.previous_crosslinks = [crosslink for crosslink in state.current_crosslinks]
 
+    previous_epoch = get_previous_epoch(state)
+    next_epoch = get_current_epoch(state) + 1
     for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
             winning_root, previous_crosslink_root, participants = get_winning_root_and_participants(state, slot, shard)
@@ -1867,6 +1866,9 @@ Run the following:
 
 ```python
 def apply_rewards(state: BeaconState) -> None:
+    if get_current_epoch(state) == GENESIS_EPOCH:
+        return
+
     rewards1, penalties1 = get_justification_and_finalization_deltas(state)
     rewards2, penalties2 = get_crosslink_deltas(state)
     for i in range(len(state.validator_registry)):
@@ -2123,8 +2125,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Note that this function mutates ``state``.
     """
     data = attestation.data
-    assert max(GENESIS_SLOT, state.slot - SLOTS_PER_EPOCH) <= data.slot
-    assert data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
+    min_slot = state.slot - SLOTS_PER_EPOCH if get_current_epoch(state) > GENESIS_EPOCH else GENESIS_SLOT
+    assert min_slot <= data.slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
     # Check target epoch, source epoch, source root, and source crosslink
     target_epoch = slot_to_epoch(data.slot)
@@ -2143,7 +2145,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     pending_attestation = PendingAttestation(
         data=data,
         aggregation_bitfield=attestation.aggregation_bitfield,
-        custody_bitfield=attestation.custody_bitfield,
         inclusion_slot=state.slot
     )
     if target_epoch == get_current_epoch(state):
