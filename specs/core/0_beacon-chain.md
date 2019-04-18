@@ -1575,16 +1575,15 @@ At every `slot > GENESIS_SLOT` run the following function:
 
 ```python
 def cache_state(state: BeaconState) -> None:
-    previous_slot_state_root = hash_tree_root(state)
+    # Cache latest known state root (for previous slot)
+    latest_state_root = hash_tree_root(state)
+    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_state_root
 
-    # store the previous slot's post state transition root
-    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_slot_state_root
-
-    # cache state root in stored latest_block_header if empty
+    # Store latest known state root (for previous slot) in latest_block_header if it is empty
     if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = previous_slot_state_root
+        state.latest_block_header.state_root = latest_state_root
 
-    # store latest known block for previous slot
+    # Cache latest known block root (for previous slot)
     latest_block_root = signing_root(state.latest_block_header)
     state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_block_root
 ```
