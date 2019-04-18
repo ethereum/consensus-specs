@@ -76,7 +76,6 @@
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
-        - [`get_crosslink_committee_for_attestation`](#get_crosslink_committee_for_attestation)
         - [`get_attesting_indices`](#get_attesting_indices)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
         - [`bytes_to_int`](#bytes_to_int)
@@ -1005,34 +1004,17 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
     return value == root
 ```
 
-### `get_crosslink_committee_for_attestation`
-
-```python
-def get_crosslink_committee_for_attestation(state: BeaconState,
-                                            attestation_data: AttestationData) -> List[ValidatorIndex]:
-    """
-    Return the crosslink committee corresponding to ``attestation_data``.
-    """
-    # Find the committee in the list with the desired shard
-    crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
-
-    # Find the committee in the list with the desired shard
-    assert attestation_data.shard in [shard for _, shard in crosslink_committees]
-    crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
-
-    return crosslink_committee
-```
-
 ### `get_attesting_indices`
 
 ```python
 def get_attesting_indices(state: BeaconState,
-                                 attestation_data: AttestationData,
-                                 bitfield: bytes) -> List[ValidatorIndex]:
+                          attestation_data: AttestationData,
+                          bitfield: bytes) -> List[ValidatorIndex]:
     """
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
-    crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
+    crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
+    crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
     assert verify_bitfield(bitfield, len(crosslink_committee))
     return sorted([index for i, index in enumerate(crosslink_committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```

@@ -276,6 +276,15 @@ def get_valid_attester_slashing(state):
     )
 
 
+def get_crosslink_committee_for_attestation(state: BeaconState,
+                                            attestation_data: AttestationData) -> List[ValidatorIndex]:
+    """
+    Return the crosslink committee corresponding to ``attestation_data``.
+    """
+    crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
+    return [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
+
+
 def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
