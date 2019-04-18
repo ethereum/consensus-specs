@@ -1867,7 +1867,7 @@ def process_registry_updates(state: BeaconState) -> None:
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
     for index in activation_queue[:get_churn_limit(state)]:
-        activate_validator(state, index, is_genesis=False)
+        activate_validator(state, index)
 ```
 
 #### Slashings
@@ -1908,7 +1908,7 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.latest_start_shard = (
         state.latest_start_shard +
-        get_shard_delta(state, get_current_epoch(state))
+        get_shard_delta(state, current_epoch)
     ) % SHARD_COUNT
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
