@@ -1906,10 +1906,7 @@ def process_final_updates(state: BeaconState) -> None:
     if state.slot % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
     # Update start shard
-    state.latest_start_shard = (
-        state.latest_start_shard +
-        get_shard_delta(state, current_epoch)
-    ) % SHARD_COUNT
+    state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
     state.latest_active_index_roots[index_root_position] = hash_tree_root(
