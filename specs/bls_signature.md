@@ -20,6 +20,8 @@
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
     - [Signature verification](#signature-verification)
+        - [`raw_bls_verify`](#raw_bls_verify)
+        - [`raw_bls_verify_multiple`](#raw_bls_verify_multiple)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
 
@@ -66,6 +68,8 @@ We require:
 ## Helpers
 
 ### `hash_to_G2`
+
+Note: The following function is an (insecure!) placeholder that will be replaced according to the recommendations of the ongoing BLS12-381 standardisation effort.
 
 ```python
 G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
