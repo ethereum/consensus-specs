@@ -155,7 +155,6 @@ def build_attestation_data(state, slot, shard):
 
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     if slot < current_epoch_start_slot:
-        print(slot)
         epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
     elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root

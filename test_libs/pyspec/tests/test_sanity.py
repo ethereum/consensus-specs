@@ -145,33 +145,6 @@ def test_empty_epoch_transition_not_finalizing(state):
     return state, [block], test_state
 
 
-def test_full_attestations_finalizing(state):
-    test_state = deepcopy(state)
-
-    for slot in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        next_slot(test_state)
-
-    for epoch in range(5):
-        for slot in range(spec.SLOTS_PER_EPOCH):
-            print(test_state.slot)
-            attestation = get_valid_attestation(test_state, test_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY)
-            fill_aggregate_attestation(test_state, attestation)
-            block = build_empty_block_for_next_slot(test_state)
-            block.body.attestations.append(attestation)
-            state_transition(test_state, block)
-
-        if epoch == 0:
-            check_finality(test_state, state, False, False, False)
-        elif epoch == 1:
-            check_finality(test_state, state, False, False, False)
-        elif epoch == 2:
-            check_finality(test_state, state, True, False, False)
-        elif epoch == 3:
-            check_finality(test_state, state, True, True, False)
-        elif epoch == 4:
-            check_finality(test_state, state, True, True, True)
-
-
 def test_proposer_slashing(state):
     test_state = deepcopy(state)
     proposer_slashing = get_valid_proposer_slashing(state)
