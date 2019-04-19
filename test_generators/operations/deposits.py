@@ -24,7 +24,6 @@ def build_deposit_data(state,
         pubkey=pubkey,
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + withdrawal_cred[1:],
         amount=amount,
-        proof_of_possession=spec.EMPTY_SIGNATURE,
     )
     deposit_data.proof_of_possession = bls.sign(
         message_hash=signing_root(deposit_data),

@@ -8,7 +8,6 @@ import eth2spec.phase0.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
-    EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
     Deposit,
@@ -350,7 +349,6 @@ def test_voluntary_exit(state):
     voluntary_exit = VoluntaryExit(
         epoch=get_current_epoch(pre_state),
         validator_index=validator_index,
-        signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
         message_hash=signing_root(voluntary_exit),
@@ -398,7 +396,6 @@ def test_transfer(state):
         fee=0,
         slot=pre_state.slot + 1,
         pubkey=transfer_pubkey,
-        signature=EMPTY_SIGNATURE,
     )
     transfer.signature = bls.sign(
         message_hash=signing_root(transfer),

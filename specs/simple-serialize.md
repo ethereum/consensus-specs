@@ -9,6 +9,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
     - [Basic types](#basic-types)
     - [Composite types](#composite-types)
     - [Aliases](#aliases)
+    - [Default values](#default-values)
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
@@ -49,6 +50,10 @@ For convenience we alias:
 * `"byte"` to `"uint8"` (this is a basic type)
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
+
+### Default values
+
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists.
 
 ## Serialization
 
