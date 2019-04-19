@@ -28,6 +28,7 @@
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
+            - [`RandaoReveal`](#randaoreveal)
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`Validator`](#validator)
@@ -1145,7 +1146,7 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
             bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
         ],
-        message_hashes=[
+        roots=[
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],

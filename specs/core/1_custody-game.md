@@ -235,7 +235,7 @@ def epoch_to_custody_period(epoch: Epoch) -> int:
 def verify_custody_key(state: BeaconState, reveal: CustodyKeyReveal) -> bool:
     # Case 1: non-masked non-punitive non-early reveal
     pubkeys = [state.validator_registry[reveal.revealer_index].pubkey]
-    message_hashes = [hash_tree_root(reveal.period)]
+    roots = [hash_tree_root(reveal.period)]
 
     # Case 2: masked punitive early reveal
     # Masking prevents proposer stealing the whistleblower reward
@@ -243,11 +243,11 @@ def verify_custody_key(state: BeaconState, reveal: CustodyKeyReveal) -> bool:
     # See pages 11-12 of https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf
     if reveal.mask != ZERO_HASH:
         pubkeys.append(state.validator_registry[reveal.masker_index].pubkey)
-        message_hashes.append(reveal.mask)
+        roots.append(reveal.mask)
 
     return bls_verify_multiple(
         pubkeys=pubkeys,
-        message_hashes=message_hashes,
+        roots=roots,
         signature=reveal.key,
         domain=get_domain(
             fork=state.fork,

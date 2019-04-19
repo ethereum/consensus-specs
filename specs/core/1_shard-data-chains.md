@@ -165,7 +165,7 @@ def get_persistent_committee(state: BeaconState,
         len(get_active_validator_indices(state.validator_registry, later_start_epoch)) //
         (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
     ) + 1
-    
+
     index = slot % committee_count
     earlier_committee = get_period_committee(state, shard, earlier_start_epoch, index, committee_count)
     later_committee = get_period_committee(state, shard, later_start_epoch, index, committee_count)

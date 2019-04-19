@@ -243,7 +243,7 @@ def get_valid_proposer_slashing(state):
 
     domain = get_domain(
         state=state,
-        domain_type=spec.DOMAIN_BEACON_PROPOSER,
+        domain_type=spec.DOMAIN_PROPOSER,
     )
     header_1.signature = bls.sign(
         message_hash=signing_root(header_1),

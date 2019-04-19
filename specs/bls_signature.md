@@ -142,7 +142,7 @@ def bls_verify(pubkey: Bytes48, self_signed_object: Any, domain: Bytes8) -> bool
 ### `bls_verify_multiple`
 
 ```python
-def bls_verify(pubkeys: List[Bytes48], roots: List[Bytes32], signature: Bytes96, domain: Bytes8) -> bool:
+def bls_verify_multiple(pubkeys: List[Bytes48], roots: List[Bytes32], signature: Bytes96, domain: Bytes8) -> bool:
     messages = [domain + root for root in roots]
     return bls_verify_multiple(pubkey, messages, signature)
 ```
