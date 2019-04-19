@@ -68,7 +68,7 @@ def set_bitfield_bit(bitfield, i):
 def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
     if not deposit_data_leaves:
         deposit_data_leaves = []
-    proof_of_possession = b'\x33' * 96
+    signature = b'\x33' * 96
 
     deposit_data_list = []
     for i in range(num_validators):
@@ -78,7 +78,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
             # insecurely use pubkey as withdrawal key as well
             withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
             amount=spec.MAX_DEPOSIT_AMOUNT,
-            proof_of_possession=proof_of_possession,
+            signature=signature,
         )
         item = hash(deposit_data.serialize())
         deposit_data_leaves.append(item)
@@ -130,18 +130,17 @@ def build_deposit_data(state, pubkey, privkey, amount):
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
         amount=amount,
-        proof_of_possession=EMPTY_SIGNATURE,
+        signature=EMPTY_SIGNATURE,
     )
-    proof_of_possession = bls.sign(
+    signature = bls.sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
         domain=get_domain(
-            state.fork,
-            get_current_epoch(state),
+            state,
             spec.DOMAIN_DEPOSIT,
         )
     )
-    deposit_data.proof_of_possession = proof_of_possession
+    deposit_data.signature = signature
     return deposit_data
 
 
@@ -192,9 +191,9 @@ def build_voluntary_exit(state, epoch, validator_index, privkey):
         message_hash=signing_root(voluntary_exit),
         privkey=privkey,
         domain=get_domain(
-            fork=state.fork,
-            epoch=epoch,
+            state=state,
             domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+            message_epoch=epoch,
         )
     )
 
@@ -243,9 +242,8 @@ def get_valid_proposer_slashing(state):
     header_2.slot = slot + 1
 
     domain = get_domain(
-        fork=state.fork,
-        epoch=get_current_epoch(state),
-        domain_type=spec.DOMAIN_BEACON_BLOCK,
+        state=state,
+        domain_type=spec.DOMAIN_BEACON_PROPOSER,
     )
     header_1.signature = bls.sign(
         message_hash=signing_root(header_1),
@@ -340,9 +338,9 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
         message_hash=message_hash,
         privkey=privkey,
         domain=get_domain(
-            fork=state.fork,
-            epoch=slot_to_epoch(attestation_data.slot),
+            state=state,
             domain_type=spec.DOMAIN_ATTESTATION,
+            message_epoch=slot_to_epoch(attestation_data.slot),
         )
     )
 
