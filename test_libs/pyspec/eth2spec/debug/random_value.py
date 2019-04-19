@@ -103,7 +103,7 @@ def get_random_basic_value(rng: Random, typ: str) -> Any:
         return rng.choice((True, False))
     if typ[:4] == 'uint':
         size = int(typ[4:])
-        assert size in (8, 16, 32, 64, 128, 256)
+        assert size in UINT_SIZES
         return rng.randint(0, 2**size - 1)
     if typ == 'byte':
         return rng.randint(0, 8)
@@ -116,7 +116,7 @@ def get_min_basic_value(typ: str) -> Any:
         return False
     if typ[:4] == 'uint':
         size = int(typ[4:])
-        assert size in (8, 16, 32, 64, 128, 256)
+        assert size in UINT_SIZES
         return 0
     if typ == 'byte':
         return 0x00
@@ -129,7 +129,7 @@ def get_max_basic_value(typ: str) -> Any:
         return True
     if typ[:4] == 'uint':
         size = int(typ[4:])
-        assert size in (8, 16, 32, 64, 128, 256)
+        assert size in UINT_SIZES
         return 2**size - 1
     if typ == 'byte':
         return 0xff
