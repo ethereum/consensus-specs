@@ -1059,13 +1059,13 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex]) -> G
 ```python
 def get_domain(state: BeaconState,
                domain_type: int,
-               message_epoch: int=None) -> int:
+               message_epoch: int=None) -> Bytes8:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return bytes_to_int(fork_version + int_to_bytes4(domain_type))
+    return fork_version + int_to_bytes4(domain_type)
 ```
 
 ### `get_bitfield_bit`
@@ -1219,16 +1219,9 @@ def get_churn_limit(state: BeaconState) -> int:
     )
 ```
 
-### `raw_bls_verify`
-
-`raw_bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
-
 ### `bls_verify`
 
-```python
-def bls_verify(pubkey: bytes48, self_signed_object: Any, domain: bytes4) -> bool:
-    return raw_bls_verify(pubkey, domain + signed_root(self_signed_object), self_signed_object.signature)
-```
+`bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
 
 ### `bls_verify_multiple`
 
