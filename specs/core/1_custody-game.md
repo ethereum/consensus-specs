@@ -309,7 +309,7 @@ def process_chunk_challenge(state: BeaconState,
     responder = state.validator_registry[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
-    attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
@@ -359,9 +359,9 @@ def process_bit_challenge(state: BeaconState,
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
     min_challengeable_epoch = responder.exit_epoch - EPOCHS_PER_CUSTODY_PERIOD * (1 + responder.max_reveal_lateness)
-    assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot) 
+    assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot)
     # Verify the responder participated in the attestation
-    attesters = get_attestation_participants(state, attestation.data, attestation.aggregation_bitfield)
+    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
     # A validator can be the challenger or responder for at most one challenge at a time
     for record in state.custody_bit_challenge_records:

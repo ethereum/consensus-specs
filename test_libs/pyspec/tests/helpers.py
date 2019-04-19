@@ -25,15 +25,16 @@ from eth2spec.phase0.spec import (
     # functions
     convert_to_indexed,
     get_active_validator_indices,
-    get_attestation_participants,
+    get_attesting_indices,
     get_block_root,
-    get_crosslink_committee_for_attestation,
+    get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
     get_epoch_start_slot,
     get_genesis_beacon_state,
     get_previous_epoch,
     get_shard_delta,
+    hash_tree_root,
     slot_to_epoch,
     verify_merkle_branch,
     hash,
@@ -66,7 +67,7 @@ def set_bitfield_bit(bitfield, i):
 def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
     if not deposit_data_leaves:
         deposit_data_leaves = []
-    proof_of_possession = b'\x33' * 96
+    signature = b'\x33' * 96
 
     deposit_data_list = []
     for i in range(num_validators):
@@ -76,7 +77,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
             # insecurely use pubkey as withdrawal key as well
             withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
             amount=spec.MAX_DEPOSIT_AMOUNT,
-            proof_of_possession=proof_of_possession,
+            signature=signature,
         )
         item = hash(deposit_data.serialize())
         deposit_data_leaves.append(item)
@@ -129,16 +130,15 @@ def build_deposit_data(state, pubkey, privkey, amount):
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
         amount=amount,
     )
-    proof_of_possession = bls.sign(
+    signature = bls.sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
         domain=get_domain(
-            state.fork,
-            get_current_epoch(state),
+            state,
             spec.DOMAIN_DEPOSIT,
         )
     )
-    deposit_data.proof_of_possession = proof_of_possession
+    deposit_data.signature = signature
     return deposit_data
 
 
@@ -152,6 +152,7 @@ def build_attestation_data(state, slot, shard):
 
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     if slot < current_epoch_start_slot:
+        print(slot)
         epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
     elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
@@ -165,6 +166,7 @@ def build_attestation_data(state, slot, shard):
         justified_epoch = state.current_justified_epoch
         justified_block_root = state.current_justified_root
 
+    crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
     return AttestationData(
         slot=slot,
         shard=shard,
@@ -173,7 +175,7 @@ def build_attestation_data(state, slot, shard):
         source_root=justified_block_root,
         target_root=epoch_boundary_root,
         crosslink_data_root=spec.ZERO_HASH,
-        previous_crosslink=deepcopy(state.latest_crosslinks[shard]),
+        previous_crosslink_root=hash_tree_root(crosslinks[shard]),
     )
 
 
@@ -186,9 +188,9 @@ def build_voluntary_exit(state, epoch, validator_index, privkey):
         message_hash=signing_root(voluntary_exit),
         privkey=privkey,
         domain=get_domain(
-            fork=state.fork,
-            epoch=epoch,
+            state=state,
             domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+            message_epoch=epoch,
         )
     )
 
@@ -236,9 +238,8 @@ def get_valid_proposer_slashing(state):
     header_2.slot = slot + 1
 
     domain = get_domain(
-        fork=state.fork,
-        epoch=get_current_epoch(state),
-        domain_type=spec.DOMAIN_BEACON_BLOCK,
+        state=state,
+        domain_type=spec.DOMAIN_BEACON_PROPOSER,
     )
     header_1.signature = bls.sign(
         message_hash=signing_root(header_1),
@@ -269,6 +270,14 @@ def get_valid_attester_slashing(state):
     )
 
 
+def get_crosslink_committee_for_attestation(state, attestation_data):
+    """
+    Return the crosslink committee corresponding to ``attestation_data``.
+    """
+    crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
+    return [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
+
+
 def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
@@ -292,7 +301,7 @@ def get_valid_attestation(state, slot=None):
         data=attestation_data,
         custody_bitfield=custody_bitfield,
     )
-    participants = get_attestation_participants(
+    participants = get_attesting_indices(
         state,
         attestation.data,
         attestation.aggregation_bitfield,
@@ -324,9 +333,9 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
         message_hash=message_hash,
         privkey=privkey,
         domain=get_domain(
-            fork=state.fork,
-            epoch=slot_to_epoch(attestation_data.slot),
+            state=state,
             domain_type=spec.DOMAIN_ATTESTATION,
+            message_epoch=slot_to_epoch(attestation_data.slot),
         )
     )
 
@@ -335,6 +344,13 @@ def fill_aggregate_attestation(state, attestation):
     crosslink_committee = get_crosslink_committee_for_attestation(state, attestation.data)
     for i in range(len(crosslink_committee)):
         attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
+
+
+def add_attestation_to_state(state, attestation, slot):
+    block = build_empty_block_for_next_slot(state)
+    block.slot = slot
+    block.body.attestations.append(attestation)
+    state_transition(state, block)
 
 
 def next_slot(state):
