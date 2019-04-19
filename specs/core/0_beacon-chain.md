@@ -88,6 +88,7 @@
         - [`integer_squareroot`](#integer_squareroot)
         - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
         - [`get_churn_limit`](#get_churn_limit)
+        - [`raw_bls_verify`](#raw_bls_verify)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
@@ -163,6 +164,7 @@ We define the following Python custom types for type hinting and readability:
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Version` | `Bytes4` | a fork version number |
 | `Hash` | `Bytes32` | a hashed result |
+| `BLSDomain` | `Bytes8` | a BLS12-381 domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -265,7 +267,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `0` |
+| `DOMAIN_PROPOSER` | `0` |
 | `DOMAIN_RANDAO` | `1` |
 | `DOMAIN_ATTESTATION` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
@@ -570,11 +572,11 @@ The `hash` function is SHA256.
 ### `bls_domain`
 
 ```python
-def bls_domain(domain_type: int, fork_version: bytes=b'\x00\x00\x00\x00') -> int:
+def bls_domain(domain_type: int, fork_version: bytes=b'\x00\x00\x00\x00') -> BLSDomain:
     """
     Return the bls domain given by the ``domain_type`` and optional 4 byte ``fork_version`` (defaults to zero).
     """
-    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+    return int_to_bytes(domain_type, length=4) + fork_version
 ```
 
 ### `slot_to_epoch`
@@ -924,7 +926,7 @@ def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
 ```python
 def get_domain(state: BeaconState,
                domain_type: int,
-               message_epoch: Epoch=None) -> int:
+               message_epoch: Epoch=None) -> BLSDomain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
@@ -1040,9 +1042,16 @@ def get_churn_limit(state: BeaconState) -> int:
     )
 ```
 
+### `raw_bls_verify`
+
+`raw_bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
+
 ### `bls_verify`
 
-`bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
+```python
+def bls_verify(pubkey: BLSPubkey, self_signed_object: Container, domain: BLSDomain) -> bool:
+    return raw_bls_verify(pubkey, domain + signed_root(self_signed_object), self_signed_object.signature)
+```
 
 ### `bls_verify_multiple`
 
@@ -1552,7 +1561,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     proposer = state.validators[get_beacon_proposer_index(state)]
     assert not proposer.slashed
     # Verify proposer signature
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    assert bls_verify(proposer.pubkey, block, get_domain(state, DOMAIN_PROPOSER))
 ```
 
 #### RANDAO
@@ -1562,7 +1571,8 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
-    assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    reveal = RandaoReveal(epoch=epoch, signature=body.randao_reveal)
+    assert bls_verify(proposer.pubkey, reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -1615,8 +1625,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, slot_to_epoch(header.slot))
-        assert bls_verify(proposer.pubkey, signing_root(header), header.signature, domain)
+        assert bls_verify(proposer.pubkey, header, get_domain(state, DOMAIN_PROPOSER, slot_to_epoch(header.slot)))
 
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -1711,9 +1720,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Invalid signatures are allowed by the deposit contract,
         # and hence included on-chain, but must not be processed.
         # Note: Deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
-        if not bls_verify(
-            pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)
-        ):
+        if not bls_verify(pubkey, deposit.data, bls_domain(DOMAIN_DEPOSIT)):
             return
 
         # Add validator and balance entries
@@ -1750,8 +1757,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Verify the validator has been active long enough
     assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
-    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch)
-    assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, domain)
+    assert bls_verify(validator.pubkey, exit, get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch))
     # Initiate exit
     initiate_validator_exit(state, exit.validator_index)
 ```
@@ -1782,7 +1788,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid
-    assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
+    assert bls_verify(transfer.pubkey, transfer, get_domain(state, DOMAIN_TRANSFER))
     # Process the transfer
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
