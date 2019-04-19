@@ -9,6 +9,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
     - [Basic types](#basic-types)
     - [Composite types](#composite-types)
     - [Aliases](#aliases)
+    - [Default values](#default-values)
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
