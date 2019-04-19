@@ -356,8 +356,7 @@ def test_voluntary_exit(state):
         message_hash=signing_root(voluntary_exit),
         privkey=privkeys[validator_index],
         domain=get_domain(
-            fork=pre_state.fork,
-            epoch=get_current_epoch(pre_state),
+            state=pre_state,
             domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
         )
     )
@@ -405,8 +404,7 @@ def test_transfer(state):
         message_hash=signing_root(transfer),
         privkey=transfer_privkey,
         domain=get_domain(
-            fork=pre_state.fork,
-            epoch=get_current_epoch(pre_state),
+            state=pre_state,
             domain_type=spec.DOMAIN_TRANSFER,
         )
     )
