@@ -1,4 +1,5 @@
 from py_ecc import bls
+from .ssz.ssz_impl import signing_root
 
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
@@ -22,13 +23,14 @@ def only_with_bls(alt_return=None):
 
 
 @only_with_bls(alt_return=True)
-def bls_verify(pubkey, message_hash, signature, domain):
-    return bls.verify(message_hash=message_hash, pubkey=pubkey, signature=signature, domain=domain)
+def bls_verify(pubkey, self_signed_object, signature, domain):
+    return bls.verify(message_hash=signing_root(self_signed_object), pubkey=pubkey,
+                      signature=signature, domain=int.from_bytes(domain, 'little'))
 
 
 @only_with_bls(alt_return=True)
-def bls_verify_multiple(pubkeys, message_hashes, signature, domain):
-    return bls.verify_multiple(pubkeys, message_hashes, signature, domain)
+def bls_verify_multiple(pubkeys, roots, signature, domain):
+    return bls.verify_multiple(pubkeys, roots, signature, int.from_bytes(domain, 'little'))
 
 
 @only_with_bls(alt_return=STUB_PUBKEY)

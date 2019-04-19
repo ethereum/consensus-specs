@@ -31,6 +31,7 @@
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
             - [`PendingAttestation`](#pendingattestation)
+            - [`RandaoReveal`](#randaoreveal)
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
@@ -367,6 +368,14 @@ class PendingAttestation(Container):
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
+```
+
+#### `RandaoReveal`
+
+```python
+class RandaoReveal(Container):
+    epoch: Epoch
+    signature: BLSSginature
 ```
 
 #### `Eth1Data`
@@ -979,7 +988,7 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
             bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
             bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
         ],
-        message_hashes=[
+        roots=[
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
