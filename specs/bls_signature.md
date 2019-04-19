@@ -67,12 +67,25 @@ We require:
 
 ### `hash_to_G2`
 
+Note: The following function is an (insecure!) placeholder that will be replaced according to the recommendations of the ongoing BLS12-381 standardisation effort.
+
 ```python
 G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
 q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
 
 def hash_to_G2(message: bytes) -> (Bytes96, Bytes96):
-    # TBD (pending standardisation)
+    # Initial candidate x coordinate
+    x_re = int.from_bytes(hash(message + b'\x01'), 'big')
+    x_im = int.from_bytes(hash(message + b'\x02'), 'big')
+    x_coordinate = Fq2([x_re, x_im])  # x = x_re + i * x_im
+    
+    # Test candidate y coordinates until a one is found
+    while 1:
+        y_coordinate_squared = x_coordinate ** 3 + Fq2([4, 4])  # The curve is y^2 = x^3 + 4(i + 1)
+        y_coordinate = modular_squareroot(y_coordinate_squared)
+        if y_coordinate is not None:  # Check if quadratic residue found
+            return multiply_in_G2((x_coordinate, y_coordinate), G2_cofactor)
+        x_coordinate += Fq2([1, 0])  # Add 1 and try again
 ```
 
 ### `modular_squareroot`
@@ -138,13 +151,13 @@ Let `raw_bls_verify_multiple(pubkeys: List[Bytes48], messages: List[bytes], sign
 
 ```python
 def bls_verify(pubkey: Bytes48, self_signed_object: Any, domain: Bytes8) -> bool:
-    return raw_bls_verify(pubkey, domain + signed_root(self_signed_object), self_signed_object.signature)
+    return raw_bls_verify(pubkey, signed_root(self_signed_object) + domain, self_signed_object.signature)
 ```
 
 ### `bls_verify_multiple`
 
 ```python
 def bls_verify_multiple(pubkeys: List[Bytes48], roots: List[Bytes32], signature: Bytes96, domain: Bytes8) -> bool:
-    messages = [domain + root for root in roots]
+    messages = [root + domain for root in roots]
     return bls_verify_multiple(pubkey, messages, signature)
 ```
