@@ -1,6 +1,6 @@
-from .hash_function import hash
-
 from typing import Any
+
+from .hash_function import hash
 
 BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_PREFIX = 4
@@ -17,10 +17,7 @@ def SSZType(fields):
                     setattr(self, f, kwargs[f])
 
         def __eq__(self, other):
-            return (
-                    self.fields == other.fields and
-                    self.serialize() == other.serialize()
-            )
+            return self.fields == other.fields and self.serialize() == other.serialize()
 
         def __hash__(self):
             return int.from_bytes(self.hash_tree_root(), byteorder="little")
