@@ -1042,16 +1042,9 @@ def get_churn_limit(state: BeaconState) -> int:
     )
 ```
 
-### `raw_bls_verify`
-
-`raw_bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
-
 ### `bls_verify`
 
-```python
-def bls_verify(pubkey: BLSPubkey, self_signed_object: Container, domain: BLSDomain) -> bool:
-    return raw_bls_verify(pubkey, domain + signed_root(self_signed_object), self_signed_object.signature)
-```
+`bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
 
 ### `bls_verify_multiple`
 
