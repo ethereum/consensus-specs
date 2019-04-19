@@ -50,9 +50,9 @@ For convenience we alias:
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
 
-### Zero values
+### Default values
 
-The zero value of a type is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists. By convention objects are initialized to the zero value corresponding to their type.
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists.
 
 ## Serialization
 
