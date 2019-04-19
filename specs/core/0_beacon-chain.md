@@ -263,7 +263,7 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `0` |
+| `DOMAIN_PROPOSER` | `0` |
 | `DOMAIN_RANDAO` | `1` |
 | `DOMAIN_ATTESTATION` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
@@ -358,6 +358,15 @@ The types are defined topologically to aid in facilitating an executable version
     # Attestation data
     'data': AttestationData,
     # Aggregate signature
+    'signature': 'bytes96',
+}
+```
+
+#### `RandaoReveal`
+
+```python
+{
+    'epoch': 'uint64',
     'signature': 'bytes96',
 }
 ```
@@ -1210,9 +1219,16 @@ def get_churn_limit(state: BeaconState) -> int:
     )
 ```
 
+### `raw_bls_verify`
+
+`raw_bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
+
 ### `bls_verify`
 
-`bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
+```python
+def bls_verify(pubkey: bytes48, self_signed_object: Any, domain: bytes4) -> bool:
+    return raw_bls_verify(pubkey, domain + signed_root(self_signed_object), self_signed_object.signature)
+```
 
 ### `bls_verify_multiple`
 
@@ -1934,7 +1950,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
     assert not proposer.slashed
     # Verify proposer signature
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    assert bls_verify(proposer.pubkey, block, get_domain(state, DOMAIN_PROPOSER))
 ```
 
 #### RANDAO
@@ -1943,11 +1959,11 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 def process_randao(state: BeaconState, block: BeaconBlock) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
     # Verify that the provided randao value is valid
-    assert bls_verify(proposer.pubkey, hash_tree_root(get_current_epoch(state)), block.body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    randao_reveal = RandaoReveal(epoch=get_current_epoch(state), signature=block.body.randao_reveal)
+    assert bls_verify(proposer.pubkey, randao_reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix it in
     state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
-        xor(get_randao_mix(state, get_current_epoch(state)),
-            hash(block.body.randao_reveal))
+        xor(get_randao_mix(state, get_current_epoch(state)), hash(block.body.randao_reveal))
     )
 ```
 
@@ -1984,8 +2000,7 @@ def process_proposer_slashing(state: BeaconState,
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, slot_to_epoch(header.slot))
-        assert bls_verify(proposer.pubkey, signing_root(header), header.signature, domain)
+        assert bls_verify(proposer.pubkey, header, get_domain(state, DOMAIN_PROPOSER, slot_to_epoch(header.slot)))
 
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -2121,7 +2136,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession)
-        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, get_domain(state, DOMAIN_DEPOSIT)):
+        if not bls_verify(pubkey, deposit.data, get_domain(state, DOMAIN_DEPOSIT)):
             return
 
         # Add new validator
@@ -2168,8 +2183,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Verify the validator has been active long enough
     assert get_current_epoch(state) - validator.activation_epoch >= PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
-    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch)
-    assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, domain)
+    assert bls_verify(validator.pubkey, exit, get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch))
     # Initiate exit
     initiate_validator_exit(state, exit.validator_index)
 ```
@@ -2203,7 +2217,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid
-    assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
+    assert bls_verify(transfer.pubkey, transfer, get_domain(state, DOMAIN_TRANSFER))
     # Process the transfer
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
