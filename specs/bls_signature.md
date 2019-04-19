@@ -18,6 +18,8 @@
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
     - [Signature verification](#signature-verification)
+        - [`raw_bls_verify`](#raw_bls_verify)
+        - [`raw_bls_verify_multiple`](#raw_bls_verify_multiple)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
 
