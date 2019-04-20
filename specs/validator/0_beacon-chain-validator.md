@@ -60,7 +60,7 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 ## Introduction
 
-This document represents the expected behavior of an "honest validator" with respect to Phase 0 of the Ethereum 2.0 protocol. This document does not distinguish between a "node" (ie. the functionality of following and reading the beacon chain) and a "validator client" (ie. the functionality of actively participating in consensus). The separation of concerns between these (potentially) two pieces of software is left as a design decision that is out of scope.
+This document represents the expected behavior of an "honest validator" with respect to Phase 0 of the Ethereum 2.0 protocol. This document does not distinguish between a "node" (i.e. the functionality of following and reading the beacon chain) and a "validator client" (i.e. the functionality of actively participating in consensus). The separation of concerns between these (potentially) two pieces of software is left as a design decision that is out of scope.
 
 A validator is an entity that participates in the consensus of the Ethereum 2.0 protocol. This is an optional role for users in which they can post ETH as collateral and verify and attest to the validity of blocks to seek financial returns in exchange for building and securing the protocol. This is similar to proof of work networks in which a miner provides collateral in the form of hardware/hash-power to seek returns in exchange for building and securing the protocol.
 
@@ -141,7 +141,7 @@ A validator has two primary responsibilities to the beacon chain -- [proposing b
 
 A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state, slot)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
-There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (eg. at 312500 validators = 10 million ETH, that's once per ~3 weeks).
+There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312500 validators = 10 million ETH, that's once per ~3 weeks).
 
 #### Block header
 
