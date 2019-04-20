@@ -1981,14 +1981,15 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             return
 
         # Add new validator
-        state.validator_registry.append(Validator(
+        validator = Validator(
             pubkey=pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
             activation_eligibility_epoch=FAR_FUTURE_EPOCH,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-        ))
+        )
+        state.validator_registry.append(validator)
 
         # Add initial balance
         state.balances.append(amount)
