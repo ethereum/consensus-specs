@@ -937,13 +937,13 @@ def get_beacon_proposer_index(state: BeaconState, slot: Slot=None) -> ValidatorI
     """
     Return the beacon proposer index at ``slot``.
     """
-    current_epoch = get_current_epoch(state)
+    epoch = slot_to_epoch(slot if slot != None else state.slot)
     first_committee, _ = get_crosslink_committees_at_slot(state, slot if slot != None else state.slot)[0]
     i = 0
     while True:
-        candidate = first_committee[(current_epoch + i) % len(first_committee)]
-        random_byte = hash(generate_seed(state, current_epoch) + int_to_bytes8(i // 32))[i % 32]
-        if get_effective_balance(state, candidate, current_epoch) * 256 > MAX_DEPOSIT_AMOUNT * random_byte:
+        candidate = first_committee[(epoch + i) % len(first_committee)]
+        random_byte = hash(generate_seed(state, epoch) + int_to_bytes8(i // 32))[i % 32]
+        if get_effective_balance(state, candidate, epoch) * 256 > MAX_DEPOSIT_AMOUNT * random_byte:
             return candidate
         i += 1
 ```
