@@ -180,8 +180,8 @@ def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: Val
     assert proof.shard_parent_block.beacon_chain_root == hash_tree_root(proof.header)
     committee = compute_committee(proof.header, validator_memory)
     # Verify that we have >=50% support
-    support_balance = sum([v.high_balance for i, v in enumerate(committee) if get_bitfield_bit(proof.shard_bitfield, i) is True])
-    total_balance = sum([v.high_balance for i, v in enumerate(committee)])
+    support_balance = sum([v.effective_balance for i, v in enumerate(committee) if get_bitfield_bit(proof.shard_bitfield, i) is True])
+    total_balance = sum([v.effective_balance for i, v in enumerate(committee)])
     assert support_balance * 2 > total_balance
     # Verify shard attestations
     group_public_key = bls_aggregate_pubkeys([

@@ -4,11 +4,11 @@ import pytest
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
-    get_balance,
     ZERO_HASH,
     process_deposit,
 )
 from tests.helpers import (
+    get_balance,
     build_deposit,
     privkeys,
     pubkeys,
