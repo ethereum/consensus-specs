@@ -3,6 +3,8 @@ from eth2spec.utils.minimal_ssz import hash_tree_root
 
 def encode(value, typ, include_hash_tree_roots=False):
     if isinstance(typ, str) and typ[:4] == 'uint':
+        if typ[4:] == '128' or typ[4:] == '256':
+            return str(value)
         return value
     elif typ == 'bool':
         assert value in (True, False)

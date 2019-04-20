@@ -9,13 +9,13 @@ import eth2spec.phase0.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
-    EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
     Attestation,
     AttestationData,
     AttestationDataAndCustodyBit,
     AttesterSlashing,
+    BeaconBlock,
     BeaconBlockHeader,
     Deposit,
     DepositData,
@@ -30,7 +30,6 @@ from eth2spec.phase0.spec import (
     get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
-    get_empty_block,
     get_epoch_start_slot,
     get_genesis_beacon_state,
     get_previous_epoch,
@@ -70,7 +69,7 @@ def set_bitfield_bit(bitfield, i):
 def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
     if not deposit_data_leaves:
         deposit_data_leaves = []
-    proof_of_possession = b'\x33' * 96
+    signature = b'\x33' * 96
 
     deposit_data_list = []
     for i in range(num_validators):
@@ -80,7 +79,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
             # insecurely use pubkey as withdrawal key as well
             withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
             amount=spec.MAX_DEPOSIT_AMOUNT,
-            proof_of_possession=proof_of_possession,
+            signature=signature,
         )
         item = hash(deposit_data.serialize())
         deposit_data_leaves.append(item)
@@ -117,7 +116,7 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
 
 
 def build_empty_block_for_next_slot(state):
-    empty_block = get_empty_block()
+    empty_block = BeaconBlock()
     empty_block.slot = state.slot + 1
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
@@ -132,18 +131,16 @@ def build_deposit_data(state, pubkey, privkey, amount):
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
         amount=amount,
-        proof_of_possession=EMPTY_SIGNATURE,
     )
-    proof_of_possession = bls.sign(
+    signature = bls.sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
         domain=get_domain(
-            state.fork,
-            get_current_epoch(state),
+            state,
             spec.DOMAIN_DEPOSIT,
         )
     )
-    deposit_data.proof_of_possession = proof_of_possession
+    deposit_data.signature = signature
     return deposit_data
 
 
@@ -188,15 +185,14 @@ def build_voluntary_exit(state, epoch, validator_index, privkey):
     voluntary_exit = VoluntaryExit(
         epoch=epoch,
         validator_index=validator_index,
-        signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
         message_hash=signing_root(voluntary_exit),
         privkey=privkey,
         domain=get_domain(
-            fork=state.fork,
-            epoch=epoch,
+            state=state,
             domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+            message_epoch=epoch,
         )
     )
 
@@ -238,16 +234,14 @@ def get_valid_proposer_slashing(state):
         previous_block_root=ZERO_HASH,
         state_root=ZERO_HASH,
         block_body_root=ZERO_HASH,
-        signature=EMPTY_SIGNATURE,
     )
     header_2 = deepcopy(header_1)
     header_2.previous_block_root = b'\x02' * 32
     header_2.slot = slot + 1
 
     domain = get_domain(
-        fork=state.fork,
-        epoch=get_current_epoch(state),
-        domain_type=spec.DOMAIN_BEACON_BLOCK,
+        state=state,
+        domain_type=spec.DOMAIN_BEACON_PROPOSER,
     )
     header_1.signature = bls.sign(
         message_hash=signing_root(header_1),
@@ -308,7 +302,6 @@ def get_valid_attestation(state, slot=None):
         aggregation_bitfield=aggregation_bitfield,
         data=attestation_data,
         custody_bitfield=custody_bitfield,
-        aggregate_signature=EMPTY_SIGNATURE,
     )
     participants = get_attesting_indices(
         state,
@@ -342,9 +335,9 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
         message_hash=message_hash,
         privkey=privkey,
         domain=get_domain(
-            fork=state.fork,
-            epoch=slot_to_epoch(attestation_data.slot),
+            state=state,
             domain_type=spec.DOMAIN_ATTESTATION,
+            message_epoch=slot_to_epoch(attestation_data.slot),
         )
     )
 
