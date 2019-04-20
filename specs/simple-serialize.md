@@ -45,7 +45,7 @@ The type `"null"` is only legal as one of several type in a `union` type.
 * **union**: union type containing one of the given subtypes
     * round bracket notation `(type1, type2, ...)`, e.g. `("uint64", "null")`
 
-We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
+We recursively define "variable-size" types to be lists and unions and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
 ### Aliases
 
