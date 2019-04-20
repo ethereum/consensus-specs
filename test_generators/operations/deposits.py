@@ -29,7 +29,7 @@ def build_deposit_data(state,
         message_hash=signing_root(deposit_data),
         privkey=privkey,
         domain=spec.get_domain(
-            state.fork,
+            state,
             spec.get_current_epoch(state),
             spec.DOMAIN_DEPOSIT,
         )
