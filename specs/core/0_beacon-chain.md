@@ -715,12 +715,12 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[Valid
 ```python
 def get_current_epoch_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
-    Get validator effective balance for the next epoch
+    Get validator effective balance for the current epoch
     """
     balance = min(state.balances[index], MAX_DEPOSIT_AMOUNT)
     validator = state.validator_registry[index]
     HALF_INCREMENT = HIGH_BALANCE_INCREMENT // 2
-    if validator.effective_balance > balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
+    if state.slot == GENESIS_SLOT or (validator.effective_balance > balance or validator.effective_balance + 3 * HALF_INCREMENT < balance):
         return balance - balance % HIGH_BALANCE_INCREMENT
     return validator.effective_balance
 ```
@@ -1705,7 +1705,7 @@ def process_registry_updates(state: BeaconState) -> None:
         if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and validator.effective_balance >= MAX_DEPOSIT_AMOUNT:
             validator.activation_eligibility_epoch = get_current_epoch(state)
 
-        if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance < EJECTION_BALANCE:
+        if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 
     # Process activations
@@ -1956,30 +1956,21 @@ For each `deposit` in `block.body.deposits`, run the following function:
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
-    Process a deposit from Ethereum 1.0.
-    Used to add a validator or top up an existing validator's
-    balance by some ``deposit`` amount.
-
+    Process an Eth1 deposit, registering a validator or increasing its balance.
     Note that this function mutates ``state``.
     """
     # Deposits must be processed in order
     assert deposit.index == state.deposit_index
+    state.deposit_index += 1
 
     # Verify the Merkle branch
-    merkle_branch_is_valid = verify_merkle_branch(
+    assert verify_merkle_branch(
         leaf=hash(serialize(deposit.data)),  # 48 + 32 + 8 + 96 = 184 bytes serialization
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
         index=deposit.index,
         root=state.latest_eth1_data.deposit_root,
     )
-    assert merkle_branch_is_valid
-
-    # Increment the next deposit index we are expecting. Note that this
-    # needs to be done here because while the deposit contract will never
-    # create an invalid Merkle branch, it may admit an invalid deposit
-    # object, and we need to be able to skip over it
-    state.deposit_index += 1
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit.data.pubkey
@@ -1998,11 +1989,11 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            effective_balance=amount - amount % HIGH_BALANCE_INCREMENT,
         )
 
         state.validator_registry.append(validator)
         state.balances.append(amount)
+        validator.effective_balance = get_current_epoch_effective_balance(state, len(state.validator_registry) - 1)
     else:
         # Increase balance by deposit amount
         index = validator_pubkeys.index(pubkey)
