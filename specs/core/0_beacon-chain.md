@@ -1959,10 +1959,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     Process an Eth1 deposit, registering a validator or increasing its balance.
     Note that this function mutates ``state``.
     """
-    # Deposits must be processed in order
-    assert deposit.index == state.deposit_index
-    state.deposit_index += 1
-
     # Verify the Merkle branch
     assert verify_merkle_branch(
         leaf=hash(serialize(deposit.data)),  # 48 + 32 + 8 + 96 = 184 bytes serialization
@@ -1971,6 +1967,10 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         index=deposit.index,
         root=state.latest_eth1_data.deposit_root,
     )
+
+    # Deposits must be processed in order
+    assert deposit.index == state.deposit_index
+    state.deposit_index += 1
 
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit.data.pubkey
