@@ -731,10 +731,10 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[Valid
     return [i for i, v in enumerate(state.validator_registry) if is_active_validator(v, epoch)]
 ```
 
-### `get_next_epoch_effective_balance`
+### `get_current_epoch_effective_balance`
 
 ```python
-def get_next_epoch_effective_balance(state: BeaconState, index: ValidatorIndex) -> None:
+def get_current_epoch_effective_balance(state: BeaconState, index: ValidatorIndex) -> None:
     """
     Get validator effective balance for the next epoch
     """
@@ -1020,7 +1020,7 @@ def get_effective_balance(state: BeaconState, index: ValidatorIndex, epoch: Epoc
     """
     Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
-    return state.validator_registry[index].effective_balance if epoch == get_current_epoch(state) else get_next_epoch_effective_balance(state, index)
+    return get_current_epoch_effective_balance(state, index) if epoch == get_current_epoch(state) else state.validator_registry[index].effective_balance
 ```
 
 ### `get_total_balance`
@@ -1860,7 +1860,7 @@ def process_final_updates(state: BeaconState) -> None:
         state.eth1_data_votes = []
     # Update effective balances
     for index, validator in enumerate(state.validator_registry):
-        validator.effective_balance = get_next_epoch_effective_balance(state, index)
+        validator.effective_balance = get_current_epoch_effective_balance(state, index)
     # Update start shard
     state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
     # Set active index root
