@@ -2,7 +2,7 @@ SPEC_DIR = ./specs
 SCRIPT_DIR = ./scripts
 TEST_LIBS_DIR = ./test_libs
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-YAML_TEST_DIR = ./yaml_tests
+YAML_TEST_DIR = ./eth2.0-spec-tests/tests
 GENERATOR_DIR = ./test_generators
 CONFIGS_DIR = ./configs
 
