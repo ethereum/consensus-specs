@@ -32,7 +32,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 * `"bool"`: `True` or `False`
 * `"null"`: `None`
 
-The type `"null"` is only legal as one of several type in a `union` type.
+The `"null"` type is only legal as a union sub-type.
 
 ### Composite types
 
@@ -107,7 +107,6 @@ serialized_bytes = serialize(value.value)
 serialized_type_index = value.type_index.to_bytes(BYTES_PER_LENGTH_PREFIX, "little")
 return serialized_type_index + serialized_bytes
 ```
-
 
 ## Deserialization
 
