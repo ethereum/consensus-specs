@@ -58,6 +58,7 @@
         - [`is_active_validator`](#is_active_validator)
         - [`is_slashable_validator`](#is_slashable_validator)
         - [`get_active_validator_indices`](#get_active_validator_indices)
+        - [`get_current_epoch_effective_balance`](#get_current_epoch_effective_balance)
         - [`increase_balance`](#increase_balance)
         - [`decrease_balance`](#decrease_balance)
         - [`get_permuted_index`](#get_permuted_index)
@@ -712,7 +713,7 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[Valid
 ### `get_current_epoch_effective_balance`
 
 ```python
-def get_current_epoch_effective_balance(state: BeaconState, index: ValidatorIndex) -> None:
+def get_current_epoch_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Get validator effective balance for the next epoch
     """
@@ -1008,7 +1009,7 @@ def get_total_balance(state: BeaconState, validators: List[ValidatorIndex], epoc
     """
     Return the combined effective balance of an array of ``validators``.
     """
-    return sum([get_effective_balance(state, i, epoch) for i in validators])
+    return sum([get_effective_balance(state, index, epoch) for index in validators])
 ```
 
 ### `get_domain`
@@ -1547,6 +1548,8 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
         return
 
+    previous_epoch = get_previous_epoch(state)
+    current_epoch = get_current_epoch(state)
     old_previous_justified_epoch = state.previous_justified_epoch
     old_current_justified_epoch = state.current_justified_epoch
 
@@ -1554,22 +1557,19 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     state.previous_justified_epoch = state.current_justified_epoch
     state.previous_justified_root = state.current_justified_root
     state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
-    epoch = get_previous_epoch(state)
-    previous_epoch_matching_target_balance = get_attesting_balance(state, get_matching_target_attestations(state, epoch), epoch)
-    if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state, epoch) * 2:
+    previous_epoch_matching_target_balance = get_attesting_balance(state, get_matching_target_attestations(state, previous_epoch), previous_epoch)
+    if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state, previous_epoch) * 2:
         state.current_justified_epoch = get_previous_epoch(state)
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
         state.justification_bitfield |= (1 << 1)
-    epoch = get_current_epoch(state)
-    current_epoch_matching_target_balance = get_attesting_balance(state, get_matching_target_attestations(state, epoch), epoch)
-    if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state, epoch) * 2:
+    current_epoch_matching_target_balance = get_attesting_balance(state, get_matching_target_attestations(state, current_epoch), current_epoch)
+    if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state, current_epoch) * 2:
         state.current_justified_epoch = get_current_epoch(state)
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
         state.justification_bitfield |= (1 << 0)
 
     # Process finalizations
     bitfield = state.justification_bitfield
-    current_epoch = get_current_epoch(state)
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
     if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_epoch == current_epoch - 3:
         state.finalized_epoch = old_previous_justified_epoch
@@ -1611,39 +1611,39 @@ First, we define additional helpers:
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex, epoch: Epoch) -> Gwei:
-    total_balance = get_total_active_balance(state, epoch)
-    if total_balance == 0:
+    adjusted_quotient = integer_squareroot(get_total_active_balance(state, epoch)) // BASE_REWARD_QUOTIENT
+    if adjusted_quotient == 0:
         return 0
-
-    adjusted_quotient = integer_squareroot(total_balance) // BASE_REWARD_QUOTIENT
     return get_effective_balance(state, index, epoch) // adjusted_quotient // BASE_REWARDS_PER_EPOCH
+
 ```
 
 ```python
 def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    epoch = get_previous_epoch(state)
+    previous_epoch = get_previous_epoch(state)
+    total_balance = get_total_active_balance(state, previous_epoch)
     eligible_validator_indices = [
         index for index, validator in enumerate(state.validator_registry)
-        if is_active_validator(validator, epoch) or (validator.slashed and epoch < validator.withdrawable_epoch)
+        if is_active_validator(validator, previous_epoch) or (validator.slashed and previous_epoch < validator.withdrawable_epoch)
     ]
     rewards = [0 for index in range(len(state.validator_registry))]
     penalties = [0 for index in range(len(state.validator_registry))]
     for index in eligible_validator_indices:
-        base_reward = get_base_reward(state, index, epoch)
+        base_reward = get_base_reward(state, index, previous_epoch)
 
         # Micro-incentives for attestations matching FFG source, FFG target, and head
         for attestations in (
-            get_matching_source_attestations(state, epoch),
-            get_matching_target_attestations(state, epoch),
-            get_matching_source_attestations(state, epoch),
+            get_matching_source_attestations(state, previous_epoch),
+            get_matching_target_attestations(state, previous_epoch),
+            get_matching_source_attestations(state, previous_epoch),
         ):
             if index in get_unslashed_attesting_indices(state, attestations):
-                rewards[index] += base_reward * get_attesting_balance(state, attestations, epoch) // get_total_active_balance(state, epoch)
+                rewards[index] += base_reward * get_attesting_balance(state, attestations, previous_epoch) // total_balance
             else:
                 penalties[index] += base_reward
 
-        if index in get_unslashed_attesting_indices(state, get_matching_source_attestations(state, epoch)):
-            earliest_attestation = get_earliest_attestation(state, get_matching_source_attestations(state, epoch), index)
+        if index in get_unslashed_attesting_indices(state, get_matching_source_attestations(state, previous_epoch)):
+            earliest_attestation = get_earliest_attestation(state, get_matching_source_attestations(state, previous_epoch), index)
             # Proposer micro-rewards
             proposer_index = get_beacon_proposer_index(state, earliest_attestation.inclusion_slot)
             rewards[proposer_index] += base_reward // PROPOSER_REWARD_QUOTIENT
@@ -1652,11 +1652,11 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             rewards[index] += base_reward * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
 
         # Inactivity penalty
-        finality_delay = epoch - state.finalized_epoch
+        finality_delay = previous_epoch - state.finalized_epoch
         if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
             penalties[index] += BASE_REWARDS_PER_EPOCH * base_reward
-            if index not in get_unslashed_attesting_indices(state, get_matching_target_attestations(state, epoch)):
-                penalties[index] += get_effective_balance(state, index, epoch) * finality_delay // INACTIVITY_PENALTY_QUOTIENT
+            if index not in get_unslashed_attesting_indices(state, get_matching_target_attestations(state, previous_epoch)):
+                penalties[index] += get_effective_balance(state, index, previous_epoch) * finality_delay // INACTIVITY_PENALTY_QUOTIENT
 
     return [rewards, penalties]
 ```
