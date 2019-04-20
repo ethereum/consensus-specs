@@ -1972,26 +1972,25 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert deposit.index == state.deposit_index
     state.deposit_index += 1
 
-    validator_pubkeys = [v.pubkey for v in state.validator_registry]
     pubkey = deposit.data.pubkey
     amount = deposit.data.amount
-
+    validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession)
         if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, get_domain(state, DOMAIN_DEPOSIT)):
             return
 
         # Add new validator
-        validator = Validator(
+        state.validator_registry.append(Validator(
             pubkey=pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
             activation_eligibility_epoch=FAR_FUTURE_EPOCH,
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-        )
+        ))
 
-        state.validator_registry.append(validator)
+        # Add initial balance
         state.balances.append(amount)
         validator.effective_balance = get_current_epoch_effective_balance(state, len(state.validator_registry) - 1)
     else:
