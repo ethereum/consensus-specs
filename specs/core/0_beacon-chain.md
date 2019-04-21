@@ -295,7 +295,7 @@ The types are defined topologically to aid in facilitating an executable version
     'epoch': 'uint64',
     # Root of the previous crosslink
     'previous_crosslink_root': 'bytes32',
-    # Shard data since the previous crosslink
+    # Root of the crosslinked shard data since the previous crosslink
     'crosslink_data_root': 'bytes32',
 }
 ```
