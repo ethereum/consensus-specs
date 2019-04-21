@@ -39,32 +39,36 @@ To facilitate RPC-over-`libp2p`, a single protocol name is used: `/eth/serenity/
 Remote method calls are wrapped in a "request" structure:
 
 ```
-(
-    id: uint64
-    method_id: uint16
-    body: Request
-)
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                          id (uint64)                          +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|       method_id (uint16)      |       body_len (uint32)       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |     body (body_len bytes)     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
 and their corresponding responses are wrapped in a "response" structure:
 
 ```
-(
-    id: uint64
-    response_code: uint16
-    result: bytes
-)
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                          id (uint64)                          +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     response_code (uint16)    |      result_len (uint32)      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                               |   result (result_len bytes)   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-If an error occurs, a variant of the response structure is returned:
-
-```
-(
-    id: uint64
-    response_code: uint16
-    result: bytes
-)
-```
+Note that the above structures are NOT encoded as SSZ but rather as sequences of bytes according to the packet diagrams above. This is because SSZ does not support structures without an explicit schema. Since the `body` and `result` fields depend on the value of `method_id` and `response_code`, a schema for the above structure cannot be known beforehand.
 
 The details of the RPC-Over-`libp2p` protocol are similar to [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Specifically:
 
