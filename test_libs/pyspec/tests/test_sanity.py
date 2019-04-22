@@ -380,7 +380,10 @@ def test_voluntary_exit(state):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
-def test_transfer(state):
+def test_transfer(state, config):
+    # overwrite default 0 to test
+    spec.MAX_TRANSFERS = 1
+
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     sender_index = get_active_validator_indices(pre_state, current_epoch)[-1]
