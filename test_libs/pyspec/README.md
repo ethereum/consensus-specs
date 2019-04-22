@@ -38,7 +38,7 @@ Install dependencies:
 ```bash
 python3 -m venv venv
 . venv/bin/activate
-pip3 install -r requirements.txt
+pip3 install -r requirements-testing.txt
 ```
 Note: make sure to run `make -B pyspec` from the root of the specs repository,
  to build the parts of the pyspec module derived from the markdown specs.
@@ -46,7 +46,7 @@ The `-B` flag may be helpful to force-overwrite the `pyspec` output after you ma
 
 Run the tests:
 ```
-pytest -m minimal_config .
+pytest --config=minimal
 ```
 
 

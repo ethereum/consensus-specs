@@ -118,6 +118,7 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
 def build_empty_block_for_next_slot(state):
     empty_block = BeaconBlock()
     empty_block.slot = state.slot + 1
+    empty_block.body.eth1_data.deposit_count = state.deposit_index
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()

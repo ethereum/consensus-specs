@@ -34,10 +34,10 @@ install_test:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt;
 
 test: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest -m minimal_config .
+	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest .
 
 citest: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml -m minimal_config .
+	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
