@@ -31,7 +31,7 @@ gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
 
 # installs the packages to run pyspec tests
 install_test:
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt;
+	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -e .[dev];
 
 test: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest .
