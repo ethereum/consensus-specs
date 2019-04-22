@@ -28,6 +28,8 @@
             - [`BeaconState`](#beaconstate)
             - [`BeaconBlockBody`](#beaconblockbody)
     - [Helpers](#helpers)
+        - [`typeof`](#typeof)
+        - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
@@ -203,6 +205,14 @@ Add the following fields to the end of the specified container objects. Fields w
 ```
 
 ## Helpers
+
+### `typeof`
+
+The `typeof` function accepts and SSZ object as a single input and returns the corresponding SSZ type.
+
+### `empty`
+
+The `empty` function accepts and SSZ type as input and returns an object of that type with all fields initialized to default values.
 
 ### `get_crosslink_chunk_count`
 
