@@ -23,7 +23,7 @@ There are a variety of network-based pubsub implementations available. `libp2p` 
 
 Topics involving single shards are mapped to "subnets." A shard's subnet is calculating by calculating `shard_number % SHARD_SUBNET_COUNT`. Grouping shards into subnets as described confers the following benefits:
 
-- Shards using smaller amounts network traffic are grouped with shards with more network traffic, thus increasing the stability of the network by reducing the likelihood that less-used shareds will be eclipsed.
+- Shards using smaller amounts network traffic are grouped with shards with more network traffic, thus increasing the stability of the network by reducing the likelihood that less-used shards will be eclipsed.
 - The existence of the `SHARD_SUBNET_COUNT` creates a quality-of-service parameter that we can tweak to ensure the health over the network.
 
 We expect that over time `SHARD_SUBNET_COUNT` will be increased to equal the total number of shards.
