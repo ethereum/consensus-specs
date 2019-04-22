@@ -28,5 +28,5 @@ A test-runner can implement the following assertions:
 
 
 **`serialized`**: [SSZ serialization](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#serialization)   
-**`root`** - [hash_tree_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#merkleization)
-**`signing_root`** - [signing_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#self-signed-containers)
+**`root`** - [hash_tree_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#merkleization) function  
+**`signing_root`** - [signing_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#self-signed-containers) function
