@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This document represents is the specification for the beacon chain fork choice rule, part of phase 0 of Ethereum 2.0.
+This document represents is the specification for the beacon chain fork choice rule, part of Ethereum 2.0 phase 0.
 
 ## Constants
 
