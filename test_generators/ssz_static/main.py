@@ -2,7 +2,11 @@ from random import Random
 
 from eth2spec.debug import random_value, encode
 from eth2spec.phase0 import spec
-from eth2spec.utils.minimal_ssz import hash_tree_root, serialize
+from eth2spec.utils.minimal_ssz import (
+    hash_tree_root,
+    signing_root,
+    serialize,
+)
 from eth_utils import (
     to_tuple, to_dict
 )
@@ -21,6 +25,8 @@ def create_test_case(rng: Random, name: str, mode: random_value.RandomizationMod
     yield "value", encode.encode(value, typ)
     yield "serialized", '0x' + serialize(value).hex()
     yield "root", '0x' + hash_tree_root(value).hex()
+    if hasattr(value, "signature"):
+        yield "signing_root", '0x' + signing_root(value).hex()
 
 
 @to_tuple
