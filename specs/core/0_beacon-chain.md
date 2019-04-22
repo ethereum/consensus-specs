@@ -1682,12 +1682,16 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     state.previous_justified_root = state.current_justified_root
     state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
     previous_boundary_attesting_balance = get_attesting_balance(state, get_previous_epoch_boundary_attestations(state))
+    print(previous_boundary_attesting_balance)
     if previous_boundary_attesting_balance * 3 >= get_previous_total_balance(state) * 2:
+        print("prev success")
         state.current_justified_epoch = get_previous_epoch(state)
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
         state.justification_bitfield |= (1 << 1)
     current_boundary_attesting_balance = get_attesting_balance(state, get_current_epoch_boundary_attestations(state))
+    print(current_boundary_attesting_balance)
     if current_boundary_attesting_balance * 3 >= get_current_total_balance(state) * 2:
+        print("cur success")
         state.current_justified_epoch = get_current_epoch(state)
         state.current_justified_root = get_block_root(state, get_epoch_start_slot(state.current_justified_epoch))
         state.justification_bitfield |= (1 << 0)
