@@ -94,7 +94,6 @@
         - [`bls_verify_multiple`](#bls_verify_multiple)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [Routines for updating validator status](#routines-for-updating-validator-status)
-            - [`activate_validator`](#activate_validator)
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
@@ -1205,22 +1204,6 @@ def get_churn_limit(state: BeaconState) -> int:
 
 Note: All functions in this section mutate `state`.
 
-#### `activate_validator`
-
-```python
-def activate_validator(state: BeaconState, index: ValidatorIndex) -> None:
-    """
-    Activate the validator of the given ``index``.
-    Note that this function mutates ``state``.
-    """
-    validator = state.validator_registry[index]
-    if state.slot == GENESIS_SLOT:
-        validator.activation_eligibility_epoch = GENESIS_EPOCH
-        validator.activation_epoch = GENESIS_EPOCH
-    else:
-        validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
-```
-
 #### `initiate_validator_exit`
 
 ```python
@@ -1340,9 +1323,10 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         process_deposit(state, deposit)
 
     # Process genesis activations
-    for index in range(len(state.validator_registry)):
+    for index, validator in enumerate(state.validator_registry):
         if get_effective_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
-            activate_validator(state, index)
+            validator.activation_eligibility_epoch = GENESIS_EPOCH
+            validator.activation_epoch = GENESIS_EPOCH
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
@@ -1745,14 +1729,16 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 
-    # Process activations
+    # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
     activation_queue = sorted([
         index for index, validator in enumerate(state.validator_registry) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
+    # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_churn_limit(state)]:
-        activate_validator(state, index)
+        if validator.activation_epoch == FAR_FUTURE_EPOCH:
+            validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
