@@ -28,8 +28,11 @@ make clean
 This runs all the generators.
 
 ```bash
-make gen_yaml_tests
+make -j 4 gen_yaml_tests
 ```
+
+The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
+
 
 ### Running a single generator
 

@@ -8,7 +8,7 @@ venv
 build/
 output/
 
-yaml_tests/
+eth2.0-spec-tests/
 .pytest_cache
 
 # Dynamically built from Markdown spec

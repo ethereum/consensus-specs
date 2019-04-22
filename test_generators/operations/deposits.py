@@ -29,7 +29,7 @@ def build_deposit_data(state,
         message_hash=signing_root(deposit_data),
         privkey=privkey,
         domain=spec.get_domain(
-            state.fork,
+            state,
             spec.get_current_epoch(state),
             spec.DOMAIN_DEPOSIT,
         )
@@ -46,7 +46,7 @@ def build_deposit(state,
 
     deposit_data = build_deposit_data(state, pubkey, withdrawal_cred, privkey, amount)
 
-    item = spec.hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     index = len(deposit_data_leaves)
     deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
@@ -69,7 +69,7 @@ def build_deposit_for_index(initial_validator_count: int, index: int) -> Tuple[s
     )
     state = genesis.create_genesis_state(genesis_deposits)
 
-    deposit_data_leaves = [spec.hash(dep.data.serialize()) for dep in genesis_deposits]
+    deposit_data_leaves = [dep.data.hash_tree_root() for dep in genesis_deposits]
 
     deposit = build_deposit(
         state,
