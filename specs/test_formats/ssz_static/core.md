@@ -13,6 +13,7 @@ type_name: string  -- string, object name, formatted as in spec. E.g. "BeaconBlo
 value: dynamic     -- the YAML-encoded value, of the type specified by type_name.
 serialized: bytes  -- string, SSZ-serialized data, hex encoded, with prefix 0x
 root: bytes32      -- string, hash-tree-root of the value, hex encoded, with prefix 0x
+signing_root: bytes32 -- string, signing-root of the value, hex encoded, with prefix 0x. Optional, present if type contains ``signature`` field
 ```
 
 ## Condition
@@ -20,4 +21,12 @@ root: bytes32      -- string, hash-tree-root of the value, hex encoded, with pre
 A test-runner can implement the following assertions:
 - Serialization: After parsing the `value`, SSZ-serialize it: the output should match `serialized`
 - Hash-tree-root: After parsing the `value`, Hash-tree-root it: the output should match `root`
+    - Optionally also check signing-root, if present.
 - Deserialization: SSZ-deserialize the `serialized` value, and see if it matches the parsed `value`
+
+## References
+
+
+**`serialized`**: [SSZ serialization](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#serialization)   
+**`root`** - [hash_tree_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#merkleization)
+**`signing_root`** - [signing_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#self-signed-containers)
