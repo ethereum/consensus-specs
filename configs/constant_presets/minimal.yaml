@@ -42,8 +42,8 @@ HIGH_BALANCE_INCREMENT: 1000000000
 # Initial values
 # ---------------------------------------------------------------
 GENESIS_FORK_VERSION: 0x00000000
-# 2**32, GENESIS_EPOCH is derived from this constant
-GENESIS_SLOT: 4294967296
+# 0, GENESIS_EPOCH is derived from this constant
+GENESIS_SLOT: 0
 GENESIS_START_SHARD: 0
 # 2**64 - 1
 FAR_FUTURE_EPOCH: 18446744073709551615
@@ -116,7 +116,7 @@ MAX_TRANSFERS: 16
 
 # Signature domains
 # ---------------------------------------------------------------
-DOMAIN_BEACON_BLOCK: 0
+DOMAIN_BEACON_PROPOSER: 0
 DOMAIN_RANDAO: 1
 DOMAIN_ATTESTATION: 2
 DOMAIN_DEPOSIT: 3
