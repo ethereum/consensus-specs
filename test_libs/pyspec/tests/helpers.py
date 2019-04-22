@@ -79,7 +79,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
             amount=spec.MAX_DEPOSIT_AMOUNT,
             signature=signature,
         )
-        item = hash(deposit_data.serialize())
+        item = deposit_data.hash_tree_root()
         deposit_data_leaves.append(item)
         tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
         root = get_merkle_root((tuple(deposit_data_leaves)))
@@ -204,7 +204,7 @@ def build_deposit(state,
                   amount):
     deposit_data = build_deposit_data(state, pubkey, privkey, amount)
 
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     index = len(deposit_data_leaves)
     deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
