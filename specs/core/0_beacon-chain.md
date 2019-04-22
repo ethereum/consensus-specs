@@ -238,7 +238,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
-| `MIN_PENALTY_QUOTIENT` | `2**5` (= 32) |
+| `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
 * The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
@@ -401,7 +401,7 @@ The types are defined topologically to aid in facilitating an executable version
     'withdrawable_epoch': 'uint64',
     # Was the validator slashed
     'slashed': 'bool',
-    # Rounded balance
+    # Effective balance
     'effective_balance': 'uint64',
 }
 ```
@@ -725,7 +725,7 @@ def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
     """
     Decrease validator balance by ``delta`` with underflow protection.
     """
-    state.balances[index] = state.balances[index] - delta if state.balances[index] >= delta else 0
+    state.balances[index] = 0 if delta > state.balances[index] else state.balances[index] - delta
 ```
 
 ### `get_permuted_index`
@@ -925,10 +925,12 @@ def get_beacon_proposer_index(state: BeaconState, slot: Slot=None) -> ValidatorI
     first_committee, _ = get_crosslink_committees_at_slot(state, slot if slot != None else state.slot)[0]
     i = 0
     while True:
-        candidate = first_committee[(epoch + i) % len(first_committee)]
+        candidate_index = first_committee[(epoch + i) % len(first_committee)]
         random_byte = hash(generate_seed(state, epoch) + int_to_bytes8(i // 32))[i % 32]
-        if state.validator_registry[candidate].effective_balance * 256 > MAX_DEPOSIT_AMOUNT * random_byte:
-            return candidate
+        MAX_RANDOM_BYTE = 2**8 - 1
+        effective_balance = state.validator_registry[candidate_index].effective_balance
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_DEPOSIT_AMOUNT * random_byte:
+            return candidate_index
         i += 1
 ```
 
@@ -1217,10 +1219,9 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     """
     current_epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
-    slashed_validator = state.validator_registry[slashed_index]
-    slashed_validator.slashed = True
-    slashed_validator.withdrawable_epoch = current_epoch + LATEST_SLASHED_EXIT_LENGTH
-    slashed_balance = slashed_validator.effective_balance
+    state.validator_registry[slashed_index].slashed = True
+    state.validator_registry[slashed_index].withdrawable_epoch = current_epoch + LATEST_SLASHED_EXIT_LENGTH
+    slashed_balance = state.validator_registry[slashed_index].effective_balance
     state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
 
     proposer_index = get_beacon_proposer_index(state)
@@ -1371,9 +1372,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     active_validator_indices = get_active_validator_indices(validators, slot_to_epoch(start_state.slot))
     attestation_targets = [(i, get_latest_attestation_target(store, i)) for i in active_validator_indices]
 
-    # Use the rounded-balance-with-hysteresis supplied by the protocol for fork
-    # choice voting. This reduces the number of recomputations that need to be
-    # made for optimized implementations that precompute and save data
+    # Use the effective balance for fork choice voting to reduce recomputations and save bandwidth
     def get_vote_count(block: BeaconBlock) -> int:
         return sum(
             start_state.validator_registry[validator_index].effective_balance
@@ -1711,7 +1710,7 @@ def process_slashings(state: BeaconState) -> None:
         if validator.slashed and current_epoch == validator.withdrawable_epoch - LATEST_SLASHED_EXIT_LENGTH // 2:
             penalty = max(
                 validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
-                validator.effective_balance // MIN_PENALTY_QUOTIENT
+                validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
             )
             decrease_balance(state, index, penalty)
 ```
@@ -1965,7 +1964,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            effective_balance=amount - amount % EFFECTIVE_BALANCE_INCREMENT,
+            effective_balance=amount - amount % EFFECTIVE_BALANCE_INCREMENT
         ))
         state.balances.append(amount)
     else:
