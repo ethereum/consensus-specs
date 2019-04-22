@@ -235,7 +235,7 @@ def test_deposit_in_block(state):
     privkey = privkeys[index]
     deposit_data = build_deposit_data(pre_state, pubkey, privkey, spec.MAX_DEPOSIT_AMOUNT)
 
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
@@ -274,7 +274,7 @@ def test_deposit_top_up(state):
     deposit_data = build_deposit_data(pre_state, pubkey, privkey, amount)
 
     merkle_index = len(test_deposit_data_leaves)
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
@@ -380,7 +380,10 @@ def test_voluntary_exit(state):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
-def test_transfer(state):
+def test_transfer(state, config):
+    # overwrite default 0 to test
+    spec.MAX_TRANSFERS = 1
+
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     sender_index = get_active_validator_indices(pre_state, current_epoch)[-1]

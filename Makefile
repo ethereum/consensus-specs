@@ -16,7 +16,7 @@ PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS)
 
 
-.PHONY: clean all test gen_yaml_tests pyspec phase0
+.PHONY: clean all test citest gen_yaml_tests pyspec phase0 install_test
 
 all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
@@ -27,11 +27,17 @@ clean:
 	rm -rf $(PY_SPEC_ALL_TARGETS)
 
 # "make gen_yaml_tests" to run generators
-gen_yaml_tests: $(YAML_TEST_TARGETS)
+gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
 
-# runs a limited set of tests against a minimal config
+# installs the packages to run pyspec tests
+install_test:
+	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt;
+
 test: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements.txt; python -m pytest -m minimal_config .
+	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest -m minimal_config .
+
+citest: $(PY_SPEC_ALL_TARGETS)
+	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml -m minimal_config .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
@@ -59,7 +65,7 @@ define build_yaml_tests
 	echo "generator $(1) started"; \
 	mkdir -p $(YAML_TEST_DIR)$(1); \
 	cd $(GENERATOR_DIR)$(1); \
-	if test -d venv; then python3 -m venv venv; fi; \
+	if ! test -d venv; then python3 -m venv venv; fi; \
 	. venv/bin/activate; \
 	pip3 install -r requirements.txt; \
 	python3 main.py -o $(CURRENT_DIR)/$(YAML_TEST_DIR)$(1) -c $(CURRENT_DIR)/$(CONFIGS_DIR); \
@@ -75,5 +81,5 @@ $(YAML_TEST_DIR)/:
 
 # For any target within the tests dir, build it using the build_yaml_tests function.
 # (creation of output dir is a dependency)
-$(YAML_TEST_DIR)%: $(YAML_TEST_DIR)
+$(YAML_TEST_DIR)%: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR)
 	$(call build_yaml_tests,$*)

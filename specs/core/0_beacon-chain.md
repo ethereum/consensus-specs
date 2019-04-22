@@ -253,7 +253,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
-| `MAX_TRANSFERS` | `2**4` (= 16) |
+| `MAX_TRANSFERS` | `0` |
 
 ### Signature domains
 
@@ -295,7 +295,7 @@ The types are defined topologically to aid in facilitating an executable version
     'epoch': 'uint64',
     # Root of the previous crosslink
     'previous_crosslink_root': 'bytes32',
-    # Shard data since the previous crosslink
+    # Root of the crosslinked shard data since the previous crosslink
     'crosslink_data_root': 'bytes32',
 }
 ```
@@ -1236,7 +1236,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validator_registry if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = sorted(exit_epochs + [get_delayed_activation_exit_epoch(get_current_epoch(state))])[-1]
+    exit_queue_epoch = max(exit_epochs + [get_delayed_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validator_registry if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_churn_limit(state):
         exit_queue_epoch += 1
@@ -1276,7 +1276,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositData`.
+The deposit contract has a single `deposit` function which takes as argument the `DepositData` elements.
 
 ### Withdrawal credentials
 
@@ -1311,7 +1311,7 @@ For convenience, we provide the interface to the contract here:
 
 * `__init__()`: initializes the contract
 * `get_deposit_root() -> bytes32`: returns the current root of the deposit tree
-* `deposit(bytes[512])`: adds a deposit instance to the deposit tree, incorporating the input argument and the value transferred in the given call. Note: the amount of value transferred *must* be within `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, inclusive. Each of these constants are specified in units of Gwei.
+* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. Note: the amount of value transferred *must* be within `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, inclusive. Each of these constants are specified in units of Gwei.
 
 ## On genesis
 
@@ -2013,7 +2013,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
     # Verify the Merkle branch
     merkle_branch_is_valid = verify_merkle_branch(
-        leaf=hash(serialize(deposit.data)),  # 48 + 32 + 8 + 96 = 184 bytes serialization
+        leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
         index=deposit.index,

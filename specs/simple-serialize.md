@@ -34,11 +34,11 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ### Composite types
 
-* **container**: ordered heterogenous collection of values
+* **container**: ordered heterogeneous collection of values
     * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
 * **vector**: ordered fixed-length homogeneous collection of values
     * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
-* **list**: ordered variable-length homogenous collection of values
+* **list**: ordered variable-length homogeneous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
 
 We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
