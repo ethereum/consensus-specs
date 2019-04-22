@@ -228,16 +228,11 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
 ### `get_chunk_bits_root`
 
 ```python
-def get_chunk_bits_root(chunk_bits: Bitfield, chunk_count: int) -> bool:
-    bits_to_aggregate = 2**int(math.log2(next_power_of_two(chunk_count)) - 9)
-
-    aggregated_bits = b'\0' * 64
-    for i in range(chunk_count // bits_to_aggregate):
-        current_bit = False
-        for j in range(bits_to_aggregate):
-            if i * bits_to_aggregate + j < chunk_count:
-                current_bit ^= get_bitfield_bit(chunk_bits, i * bits_to_aggregate + j)
-        aggregated_bits[i // 8] |= current_bit << (i % 8)
+def get_chunk_bits_root(chunk_bitfield: Bitfield) -> Bytes32:
+    aggregated_bits = bytearray([0] * 32)
+    for i in range(0, len(chunk_bitfield), 32):
+        for j in range(32):
+            aggregated_bits[j] ^= chunk_bitfield[i+j]
     return hash(aggregated_bits)
 ```
 
@@ -399,7 +394,7 @@ def process_bit_challenge(state: BeaconState,
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
     custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
-    assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits, chunk_count), 0)
+    assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
     # Add new bit challenge record
     state.custody_bit_challenge_records.append(CustodyBitChallengeRecord(
         challenge_index=state.custody_challenge_index,
