@@ -32,7 +32,6 @@ We expect that over time `SHARD_SUBNET_COUNT` will be increased to equal the tot
 
 Messages are serialized using SSZ unless otherwise noted.
 
-## 
 
 ## Propagated Data
 
