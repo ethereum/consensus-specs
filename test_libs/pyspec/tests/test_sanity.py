@@ -8,7 +8,6 @@ import eth2spec.phase0.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
-    EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
     Deposit,
@@ -207,9 +206,9 @@ def test_deposit_in_block(state):
     index = len(test_deposit_data_leaves)
     pubkey = pubkeys[index]
     privkey = privkeys[index]
-    deposit_data = build_deposit_data(pre_state, pubkey, privkey, spec.MAX_DEPOSIT_AMOUNT)
+    deposit_data = build_deposit_data(pre_state, pubkey, privkey, spec.MAX_EFFECTIVE_BALANCE)
 
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
@@ -231,7 +230,7 @@ def test_deposit_in_block(state):
     state_transition(post_state, block)
     assert len(post_state.validator_registry) == len(state.validator_registry) + 1
     assert len(post_state.balances) == len(state.balances) + 1
-    assert get_balance(post_state, index) == spec.MAX_DEPOSIT_AMOUNT
+    assert get_balance(post_state, index) == spec.MAX_EFFECTIVE_BALANCE
     assert post_state.validator_registry[index].pubkey == pubkeys[index]
 
     return pre_state, [block], post_state
@@ -242,13 +241,13 @@ def test_deposit_top_up(state):
     test_deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     validator_index = 0
-    amount = spec.MAX_DEPOSIT_AMOUNT // 4
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
     pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
     deposit_data = build_deposit_data(pre_state, pubkey, privkey, amount)
 
     merkle_index = len(test_deposit_data_leaves)
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
@@ -323,14 +322,12 @@ def test_voluntary_exit(state):
     voluntary_exit = VoluntaryExit(
         epoch=get_current_epoch(pre_state),
         validator_index=validator_index,
-        signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
         message_hash=signing_root(voluntary_exit),
         privkey=privkeys[validator_index],
         domain=get_domain(
-            fork=pre_state.fork,
-            epoch=get_current_epoch(pre_state),
+            state=pre_state,
             domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
         )
     )
@@ -357,6 +354,9 @@ def test_voluntary_exit(state):
 
 
 def test_transfer(state):
+    # overwrite default 0 to test
+    spec.MAX_TRANSFERS = 1
+
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     sender_index = get_active_validator_indices(pre_state, current_epoch)[-1]
@@ -372,14 +372,12 @@ def test_transfer(state):
         fee=0,
         slot=pre_state.slot + 1,
         pubkey=transfer_pubkey,
-        signature=EMPTY_SIGNATURE,
     )
     transfer.signature = bls.sign(
         message_hash=signing_root(transfer),
         privkey=transfer_privkey,
         domain=get_domain(
-            fork=pre_state.fork,
-            epoch=get_current_epoch(pre_state),
+            state=pre_state,
             domain_type=spec.DOMAIN_TRANSFER,
         )
     )
@@ -389,7 +387,7 @@ def test_transfer(state):
         spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer_pubkey)[1:]
     )
     # un-activate so validator can transfer
-    pre_state.validator_registry[sender_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    pre_state.validator_registry[sender_index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     post_state = deepcopy(pre_state)
     #

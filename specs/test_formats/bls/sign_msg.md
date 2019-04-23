@@ -12,7 +12,7 @@ input:
 output: bytes96    -- expected signature
 ```
 
-All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`
+All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
 
 
 ## Condition

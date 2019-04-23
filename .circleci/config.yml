@@ -1,89 +1,97 @@
 version: 2.1
+commands:
+  restore_cached_venv:
+    description: "Restores a cached venv"
+    parameters:
+      reqs_checksum:
+        type: string
+        default: "1234"
+      venv_name:
+        type: string
+        default: "default-name"
+    steps:
+      - restore_cache:
+          keys:
+            - << parameters.venv_name >>-venv-<< parameters.reqs_checksum >>
+            # fallback to using the latest cache if no exact match is found
+            - << parameters.venv_name >>-venv-
+  save_cached_venv:
+    description: "Saves a venv into a cache"
+    parameters:
+      reqs_checksum:
+        type: string
+        default: "1234"
+      venv_path:
+        type: string
+        default: "venv"
+      venv_name:
+        type: string
+        default: "default-name"
+    steps:
+      - save_cache:
+          key: << parameters.venv_name >>-venv-<< parameters.reqs_checksum >>
+          paths: << parameters.venv_path >>
 jobs:
-  build:
+  checkout_specs:
     docker:
       - image: circleci/python:3.6
-    working_directory: ~/repo
-
+    working_directory: ~/specs-repo
     steps:
+      # Restore git repo at point close to target branch/revision, to speed up checkout
+      - restore_cache:
+          keys:
+            - v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+            - v1-specs-repo-{{ .Branch }}-
+            - v1-specs-repo-
       - checkout
       - run:
-          name: Build pyspec
-          command: make pyspec
-
+          name: Clean up git repo to reduce cache size
+          command: git gc
+      # Save the git checkout as a cache, to make cloning next time faster.
+      - save_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/specs-repo
+  install_test:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_cached_venv:
+          venv_name: v1-pyspec
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}'
+      - run:
+          name: Install pyspec requirements
+          command: make install_test
+      - save_cached_venv:
+          venv_name: v1-pyspec
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}'
+          venv_path: ./test_libs/pyspec/venv
+  test:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_cached_venv:
+          venv_name: v1-pyspec
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}'
       - run:
           name: Run py-tests
-          command: make test
-
-# TODO see #928: decide on CI triggering of yaml tests building,
-#  and destination of output (new yaml tests LFS-configured repository)
-#
-#      - run:
-#          name: Generate YAML tests
-#          command: make gen_yaml_tests
-#
-#      - store_artifacts:
-#          path: test-reports
-#          destination: test-reports
-#
-#      - run:
-#          name: Save YAML tests for deployment
-#          command: |
-#            mkdir /tmp/workspace
-#            cp -r yaml_tests /tmp/workspace/
-#            git log -1 >> /tmp/workspace/latest_commit_message
-#      - persist_to_workspace:
-#          root: /tmp/workspace
-#          paths:
-#            - yaml_tests
-#            - latest_commit_message
-#  commit:
-#    docker:
-#      - image: circleci/python:3.6
-#    steps:
-#      - attach_workspace:
-#          at: /tmp/workspace
-#      - add_ssh_keys:
-#          fingerprints:
-#            - "01:85:b6:36:96:a6:84:72:e4:9b:4e:38:ee:21:97:fa"
-#      - run:
-#          name: Checkout test repository
-#          command: |
-#            ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-#            git clone git@github.com:ethereum/eth2.0-tests.git
-#      - run:
-#          name: Commit and push generated YAML tests
-#          command: |
-#            cd eth2.0-tests
-#            git config user.name 'eth2TestGenBot'
-#            git config user.email '47188154+eth2TestGenBot@users.noreply.github.com'
-#            for filename in /tmp/workspace/yaml_tests/*; do
-#              rm -rf $(basename $filename)
-#              cp -r $filename .
-#            done
-#            git add .
-#            if git diff --cached --exit-code >& /dev/null; then
-#              echo "No changes to commit"
-#            else
-#              echo -e "Update generated tests\n\nLatest commit message from eth2.0-specs:\n" > commit_message
-#              cat /tmp/workspace/latest_commit_message >> commit_message
-#              git commit -F commit_message
-#              git push origin master
-#            fi
-#workflows:
-#  version: 2.1
-#
-#  build_and_commit:
-#    jobs:
-#      - build:
-#          filters:
-#            tags:
-#              only: /.*/
-#      - commit:
-#          requires:
-#            - build
-#          filters:
-#            tags:
-#              only: /.*/
-#            branches:
-#              ignore: /.*/
+          command: make citest
+      - store_test_results:
+          path: test_libs/pyspec/test-reports
+workflows:
+  version: 2.1
+  test_spec:
+    jobs:
+      - checkout_specs
+      - install_test:
+          requires:
+            - checkout_specs
+      - test:
+          requires:
+            - install_test

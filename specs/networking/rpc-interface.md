@@ -247,7 +247,7 @@ Requests a list of block roots and slots from the peer. The `count` parameter MU
 
 Requests beacon block headers from the peer starting from `(start_root, start_slot)`. The response MUST contain no more than `max_headers` headers. `skip_slots` defines the maximum number of slots to skip between blocks. For example, requesting blocks starting at slots `2` a `skip_slots` value of `1` would return the blocks at `[2, 4, 6, 8, 10]`. In cases where a slot is empty for a given slot number, the closest previous block MUST be returned. For example, if slot `4` were empty in the previous example, the returned array would contain `[2, 3, 6, 8, 10]`. If slot three were further empty, the array would contain `[2, 6, 8, 10]` - i.e., duplicate blocks MUST be collapsed. A `skip_slots` value of `0` returns all blocks.
 
-The function of the `skip_slots` parameter helps facilitate light client sync - for example, in [#459](https://github.com/ethereum/eth2.0-specs/issues/459) - and allows clients to balance the peers from whom they request headers. Clients could, for instance, request every 10th block from a set of peers where each per has a different starting block in order to populate block data.
+The function of the `skip_slots` parameter helps facilitate light client sync - for example, in [#459](https://github.com/ethereum/eth2.0-specs/issues/459) - and allows clients to balance the peers from whom they request headers. Clients could, for instance, request every 10th block from a set of peers where each peer has a different starting block in order to populate block data.
 
 ### Beacon Block Bodies
 
@@ -287,6 +287,6 @@ Requests the `block_bodies` associated with the provided `block_roots` from the 
 
 **Response Body:** TBD
 
-Requests contain the hashes of Merkle tree nodes that when merkelized yield the block's `state_root`.
+Requests contain the hashes of Merkle tree nodes that when merkleized yield the block's `state_root`.
 
 The response will contain the values that, when hashed, yield the hashes inside the request body.

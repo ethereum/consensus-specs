@@ -118,7 +118,7 @@ Separation of configuration and tests aims to:
   Note: Some clients prefer compile-time constants and optimizations.
   They should compile for each configuration once, and run the corresponding tests per build target.
 
-The format is described in `configs/constant_presets`.
+The format is described in [`configs/constant_presets`](../../configs/constant_presets/README.md#format).
 
 
 ## Fork-timeline
@@ -129,7 +129,7 @@ A fork timeline is (preferably) loaded in as a configuration object into a clien
  - we may decide on an epoch number for a fork based on external events (e.g. Eth1 log event),
     a client should be able to activate a fork dynamically.
 
-The format is described in `configs/fork_timelines`.
+The format is described in [`configs/fork_timelines`](../../configs/fork_timelines/README.md#format).
 
 ## Config sourcing
 
@@ -175,3 +175,24 @@ To prevent parsing of hundreds of different YAML files to test a specific test t
 │   ...                       <--- more handlers
 ...                           <--- more test types
 ```
+
+
+## Note for implementers
+
+The basic pattern for test-suite loading and running is:
+
+Iterate suites for given test-type, or sub-type (e.g. `operations > deposits`):
+1. Filter test-suite, options:
+    - Config: Load first few lines, load into YAML, and check `config`, either:
+        - Pass the suite to the correct compiled target
+        - Ignore the suite if running tests as part of a compiled target with different configuration
+        - Load the correct configuration for the suite dynamically before running the suite
+    - Select by file name
+    - Filter for specific suites (e.g. for a specific fork)
+2. Load the YAML
+    - Optionally translate the data into applicable naming, e.g. `snake_case` to `PascalCase`
+3. Iterate through the `test_cases`
+4. Ask test-runner to allocate a new test-case (i.e. objectify the test-case, generalize it with a `TestCase` interface) 
+    Optionally pass raw test-case data to enable dynamic test-case allocation.
+    1. Load test-case data into it.
+    2. Make the test-case run.
