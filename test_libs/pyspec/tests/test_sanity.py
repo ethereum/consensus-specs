@@ -53,33 +53,6 @@ from .helpers import (
 pytestmark = pytest.mark.sanity
 
 
-def check_finality(state,
-                   prev_state,
-                   current_justified_changed,
-                   previous_justified_changed,
-                   finalized_changed):
-    if current_justified_changed:
-        assert state.current_justified_epoch > prev_state.current_justified_epoch
-        assert state.current_justified_root != prev_state.current_justified_root
-    else:
-        assert state.current_justified_epoch == prev_state.current_justified_epoch
-        assert state.current_justified_root == prev_state.current_justified_root
-
-    if previous_justified_changed:
-        assert state.previous_justified_epoch > prev_state.previous_justified_epoch
-        assert state.previous_justified_root != prev_state.previous_justified_root
-    else:
-        assert state.previous_justified_epoch == prev_state.previous_justified_epoch
-        assert state.previous_justified_root == prev_state.previous_justified_root
-
-    if finalized_changed:
-        assert state.finalized_epoch > prev_state.finalized_epoch
-        assert state.finalized_root != prev_state.finalized_root
-    else:
-        assert state.finalized_epoch == prev_state.finalized_epoch
-        assert state.finalized_root == prev_state.finalized_root
-
-
 def test_slot_transition(state):
     test_state = deepcopy(state)
     cache_state(test_state)
