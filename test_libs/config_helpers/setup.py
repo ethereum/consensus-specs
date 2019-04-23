@@ -2,17 +2,19 @@ from distutils.core import setup
 
 
 deps = {
-    'config_helpers': [
+    'preset_loader': [
         "ruamel.yaml==0.15.87",
     ],
 }
 
 deps['dev'] = (
-    deps['config_helpers']
+    deps['preset_loader']
 )
+
+install_requires = deps['preset_loader']
 
 setup(
     name='config_helpers',
     packages=['preset_loader'],
-    install_requires=deps['config_helpers']
+    install_requires=install_requires,
 )
