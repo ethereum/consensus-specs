@@ -814,7 +814,7 @@ def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
 ```python
 def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
     """
-    Return the minimum number of shards that get processed at ``epoch``.
+    Return the number of shards to increment ``state.shard_shard`` during ``epoch``.
     """
     return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
