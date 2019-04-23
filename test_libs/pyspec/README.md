@@ -58,4 +58,4 @@ The pyspec is not a replacement.
 
 ## License
 
-Same as the spec itself, see LICENSE file in spec repository root.
+Same as the spec itself, see [LICENSE](../../LICENSE) file in spec repository root.

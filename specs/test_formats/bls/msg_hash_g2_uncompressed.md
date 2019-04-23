@@ -11,7 +11,7 @@ input:
 output: List[List[bytes48]] -- 3 lists, each a length of two
 ```
 
-All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`
+All byte(s) fields are encoded as strings, hexadecimal encoding, prefixed with `0x`.
 
 
 ## Condition
