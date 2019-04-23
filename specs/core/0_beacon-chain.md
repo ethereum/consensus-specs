@@ -191,7 +191,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value | Unit |
 | - | - | :-: |
 | `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
-| `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
+| `MAX_EFFECTIVE_BALANCE` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
 | `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
 | `HIGH_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 
@@ -958,7 +958,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     while True:
         candidate = first_committee[(current_epoch + i) % len(first_committee)]
         random_byte = hash(generate_seed(state, current_epoch) + int_to_bytes8(i // 32))[i % 32]
-        if get_effective_balance(state, candidate) * 256 > MAX_DEPOSIT_AMOUNT * random_byte:
+        if get_effective_balance(state, candidate) * 256 > MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate
         i += 1
 ```
@@ -1013,7 +1013,7 @@ def get_effective_balance(state: BeaconState, index: ValidatorIndex) -> Gwei:
     """
     Return the effective balance (also known as "balance at stake") for a validator with the given ``index``.
     """
-    return min(get_balance(state, index), MAX_DEPOSIT_AMOUNT)
+    return min(get_balance(state, index), MAX_EFFECTIVE_BALANCE)
 ```
 
 ### `get_total_balance`
@@ -1275,7 +1275,7 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 ### `Deposit` logs
 
-Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `Eth2Genesis` log
 
@@ -1297,7 +1297,7 @@ For convenience, we provide the interface to the contract here:
 
 * `__init__()`: initializes the contract
 * `get_deposit_root() -> bytes32`: returns the current root of the deposit tree
-* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. Note: the amount of value transferred *must* be within `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, inclusive. Each of these constants are specified in units of Gwei.
+* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. Note: the amount of value transferred *must* be at least `MIN_DEPOSIT_AMOUNT`. Each of these constants are specified in units of Gwei.
 
 ## On genesis
 
@@ -1327,7 +1327,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
     # Process genesis activations
     for index, validator in enumerate(state.validator_registry):
-        if get_effective_balance(state, index) >= MAX_DEPOSIT_AMOUNT:
+        if get_effective_balance(state, index) >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
@@ -1726,7 +1726,7 @@ def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validator_registry):
         balance = get_balance(state, index)
-        if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and balance >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = get_current_epoch(state)
 
         if is_active_validator(validator, get_current_epoch(state)) and balance < EJECTION_BALANCE:
@@ -2075,8 +2075,6 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
 
 ##### Transfers
 
-Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
-
 Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
 
 For each `transfer` in `block.body.transfers`, run the following function:
@@ -2091,10 +2089,11 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert get_balance(state, transfer.sender) >= max(transfer.amount, transfer.fee)
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
-    # Only withdrawn or not-yet-deposited accounts can transfer
+    # Sender must be not yet eligible for activation, withdrawn, or transfer balance over MAX_EFFECTIVE_BALANCE
     assert (
+        state.validator_registry[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
         get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
-        state.validator_registry[transfer.sender].activation_epoch == FAR_FUTURE_EPOCH
+        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= get_balance(state, transfer.sender)
     )
     # Verify that the pubkey is valid
     assert (
