@@ -17,3 +17,6 @@ eth2.0-spec-tests/
 
 # Dynamically built from Markdown spec
 test_libs/pyspec/eth2spec/phase0/spec.py
+
+# vscode
+.vscode/**

@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 
 deps = {
@@ -15,6 +15,6 @@ install_requires = deps['preset_loader']
 
 setup(
     name='config_helpers',
-    packages=['preset_loader'],
+    packages=find_packages(exclude=["tests", "tests.*"]),
     install_requires=install_requires,
 )

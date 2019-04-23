@@ -1,8 +1,6 @@
 from setuptools import setup, find_packages
 
 
-
-
 deps = {
     'pyspec': [
         "eth-utils>=1.3.0,<2",
@@ -24,7 +22,7 @@ install_requires = deps['pyspec']
 
 setup(
     name='pyspec',
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     install_requires=install_requires,
     extras_require=deps,
 )

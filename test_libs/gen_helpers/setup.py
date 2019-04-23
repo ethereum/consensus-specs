@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 
 deps = {
@@ -16,6 +16,6 @@ install_requires = deps['gen_base']
 
 setup(
     name='gen_helpers',
-    packages=['gen_base'],
+    packages=find_packages(exclude=["tests", "tests.*"]),
     install_requires=install_requires,
 )
