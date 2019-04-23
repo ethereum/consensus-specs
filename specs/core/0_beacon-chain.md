@@ -797,7 +797,7 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
 ```python
 def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
     """
-    Return the number of committees in one epoch.
+    Return the number of committees at ``epoch``.
     """
     active_validators = get_active_validator_indices(state, epoch)
     return max(
@@ -813,6 +813,9 @@ def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
 
 ```python
 def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
+    """
+    Return the minimum number of shards that get processed at ``epoch``.
+    """
     return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
 
