@@ -9,13 +9,13 @@ import eth2spec.phase0.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
-    EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
     Attestation,
     AttestationData,
     AttestationDataAndCustodyBit,
     AttesterSlashing,
+    BeaconBlock,
     BeaconBlockHeader,
     Deposit,
     DepositData,
@@ -32,7 +32,6 @@ from eth2spec.phase0.spec import (
     get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
-    get_empty_block,
     get_epoch_start_slot,
     get_genesis_beacon_state,
     get_previous_epoch,
@@ -82,7 +81,7 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
             amount=spec.MAX_EFFECTIVE_BALANCE,
             signature=signature,
         )
-        item = hash(deposit_data.serialize())
+        item = deposit_data.hash_tree_root()
         deposit_data_leaves.append(item)
         tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
         root = get_merkle_root((tuple(deposit_data_leaves)))
@@ -117,7 +116,7 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
 
 
 def build_empty_block_for_next_slot(state):
-    empty_block = get_empty_block()
+    empty_block = BeaconBlock()
     empty_block.slot = state.slot + 1
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
@@ -132,7 +131,6 @@ def build_deposit_data(state, pubkey, privkey, amount):
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
         amount=amount,
-        signature=EMPTY_SIGNATURE,
     )
     signature = bls.sign(
         message_hash=signing_root(deposit_data),
@@ -187,7 +185,6 @@ def build_voluntary_exit(state, epoch, validator_index, privkey):
     voluntary_exit = VoluntaryExit(
         epoch=epoch,
         validator_index=validator_index,
-        signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
         message_hash=signing_root(voluntary_exit),
@@ -209,7 +206,7 @@ def build_deposit(state,
                   amount):
     deposit_data = build_deposit_data(state, pubkey, privkey, amount)
 
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     index = len(deposit_data_leaves)
     deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
@@ -237,7 +234,6 @@ def get_valid_proposer_slashing(state):
         previous_block_root=ZERO_HASH,
         state_root=ZERO_HASH,
         block_body_root=ZERO_HASH,
-        signature=EMPTY_SIGNATURE,
     )
     header_2 = deepcopy(header_1)
     header_2.previous_block_root = b'\x02' * 32
@@ -306,7 +302,6 @@ def get_valid_attestation(state, slot=None):
         aggregation_bitfield=aggregation_bitfield,
         data=attestation_data,
         custody_bitfield=custody_bitfield,
-        aggregate_signature=EMPTY_SIGNATURE,
     )
     participants = get_attesting_indices(
         state,
@@ -352,7 +347,7 @@ def get_valid_transfer(state, slot=None, sender_index=None, amount=None, fee=Non
         fee=fee,
         slot=slot,
         pubkey=transfer_pubkey,
-        signature=EMPTY_SIGNATURE,
+        signature=ZERO_HASH,
     )
     transfer.signature = bls.sign(
         message_hash=signing_root(transfer),
