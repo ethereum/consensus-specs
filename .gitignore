@@ -4,6 +4,10 @@ venv
 .venvs
 .venv
 /.pytest_cache
+*.egg
+*.egg-info
+eggs
+.eggs
 
 build/
 output/
