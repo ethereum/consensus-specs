@@ -48,7 +48,7 @@ from eth2spec.utils.merkle_minimal import (
 )
 
 
-privkeys = [i + 1 for i in range(1000)]
+privkeys = [i + 1 for i in range(1024)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
 
@@ -122,6 +122,7 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
 def build_empty_block_for_next_slot(state):
     empty_block = BeaconBlock()
     empty_block.slot = state.slot + 1
+    empty_block.body.eth1_data.deposit_count = state.deposit_index
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
