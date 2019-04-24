@@ -376,17 +376,15 @@ def test_transfer(state):
 
 
 def test_balance_driven_status_transitions(state):
-    pre_state = deepcopy(state)
+    current_epoch = get_current_epoch(state)
+    validator_index = get_active_validator_indices(state, current_epoch)[-1]
 
-    current_epoch = get_current_epoch(pre_state)
-    validator_index = get_active_validator_indices(pre_state, current_epoch)[-1]
-
-    assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    pre_state.validator_registry[validator_index].effective_balance = spec.EJECTION_BALANCE
+    state.validator_registry[validator_index].effective_balance = spec.EJECTION_BALANCE
 
-    post_state = deepcopy(pre_state)
+    post_state = deepcopy(state)
     #
     # trigger epoch transition
     #
@@ -396,14 +394,13 @@ def test_balance_driven_status_transitions(state):
 
     assert post_state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
-    return pre_state, [block], post_state
+    return state, [block], post_state
 
 
 def test_historical_batch(state):
-    pre_state = deepcopy(state)
-    pre_state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (pre_state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
+    state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
 
-    post_state = deepcopy(pre_state)
+    post_state = deepcopy(state)
 
     block = build_empty_block_for_next_slot(post_state)
 
@@ -411,6 +408,30 @@ def test_historical_batch(state):
 
     assert post_state.slot == block.slot
     assert get_current_epoch(post_state) % (spec.SLOTS_PER_HISTORICAL_ROOT // spec.SLOTS_PER_EPOCH) == 0
-    assert len(post_state.historical_roots) == len(pre_state.historical_roots) + 1
+    assert len(post_state.historical_roots) == len(state.historical_roots) + 1
 
-    return pre_state, [block], post_state
+    return state, [block], post_state
+
+
+def test_eth1_data_votes(state):
+    post_state = deepcopy(state)
+
+    expected_votes = 0
+    assert len(state.eth1_data_votes) == expected_votes
+
+    blocks = []
+    for _ in range(spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1):
+        block = build_empty_block_for_next_slot(post_state)
+        state_transition(post_state, block)
+        expected_votes += 1
+        assert len(post_state.eth1_data_votes) == expected_votes
+        blocks.append(block)
+
+    block = build_empty_block_for_next_slot(post_state)
+    state_transition(post_state, block)
+    blocks.append(block)
+
+    assert post_state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
+    assert len(post_state.eth1_data_votes) == 1
+
+    return state, blocks, post_state

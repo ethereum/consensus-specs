@@ -1726,7 +1726,7 @@ def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     next_epoch = current_epoch + 1
     # Reset eth1 data votes
-    if state.slot % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
+    if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validator_registry):
