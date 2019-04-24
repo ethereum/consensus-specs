@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-**NOTICE**: This document is a work in progress for researchers and implementers. It reflects recent spec changes and takes precedence over the Python proof-of-concept implementation [[python-poc]](#ref-python-poc).
+**NOTICE**: This document is a work in progress for researchers and implementers. It reflects recent spec changes and takes precedence over the Python proof-of-concept implementation [[python-poc]](https://github.com/ethereum/beacon_chain).
 
 ## Table of contents
 <!-- TOC -->
@@ -91,7 +91,6 @@
         - [`bls_verify_multiple`](#bls_verify_multiple)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [Routines for updating validator status](#routines-for-updating-validator-status)
-            - [`activate_validator`](#activate_validator)
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
@@ -190,7 +189,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value | Unit |
 | - | - | :-: |
 | `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
-| `MAX_DEPOSIT_AMOUNT` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
+| `MAX_EFFECTIVE_BALANCE` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
 | `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
 | `EFFECTIVE_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
 
@@ -240,7 +239,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* The `BASE_REWARD_QUOTIENT` parameter dictates the per-epoch reward. It corresponds to ~2.54% annual interest assuming 10 million participating ETH in every epoch.
+* **The `BASE_REWARD_QUOTIENT` is NOT final. Once all other protocol details are finalized it will be adjusted, to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc etc)**
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
@@ -252,7 +251,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
-| `MAX_TRANSFERS` | `2**4` (= 16) |
+| `MAX_TRANSFERS` | `0` |
 
 ### Signature domains
 
@@ -294,7 +293,7 @@ The types are defined topologically to aid in facilitating an executable version
     'epoch': 'uint64',
     # Root of the previous crosslink
     'previous_crosslink_root': 'bytes32',
-    # Shard data since the previous crosslink
+    # Root of the crosslinked shard data since the previous crosslink
     'crosslink_data_root': 'bytes32',
 }
 ```
@@ -772,7 +771,7 @@ def get_split_offset(list_size: int, chunks: int, index: int) -> int:
 ```python
 def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
     """
-    Return the number of committees in one epoch.
+    Return the number of committees at ``epoch``.
     """
     active_validator_indices = get_active_validator_indices(state, epoch)
     return max(
@@ -788,6 +787,9 @@ def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
 
 ```python
 def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
+    """
+    Return the number of shards to increment ``state.latest_start_shard`` during ``epoch``.
+    """
     return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
 
@@ -921,12 +923,12 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     Return the beacon proposer index at ``slot``.
     """
-    epoch = slot_to_epoch(state.slot)
+    current_epoch = slot_to_epoch(state.slot)
     first_committee, _ = get_crosslink_committees_at_slot(state, state.slot)[0]
     MAX_RANDOM_BYTE = 2**8 - 1
     i = 0
     while True:
-        candidate_index = first_committee[(epoch + i) % len(first_committee)]
+        candidate_index = first_committee[(current_epoch + i) % len(first_committee)]
         random_byte = hash(generate_seed(state, epoch) + int_to_bytes8(i // 32))[i % 32]
         effective_balance = state.validator_registry[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_DEPOSIT_AMOUNT * random_byte:
@@ -1168,22 +1170,6 @@ def get_churn_limit(state: BeaconState) -> int:
 
 Note: All functions in this section mutate `state`.
 
-#### `activate_validator`
-
-```python
-def activate_validator(state: BeaconState, index: ValidatorIndex) -> None:
-    """
-    Activate the validator of the given ``index``.
-    Note that this function mutates ``state``.
-    """
-    validator = state.validator_registry[index]
-    if state.slot == GENESIS_SLOT:
-        validator.activation_eligibility_epoch = GENESIS_EPOCH
-        validator.activation_epoch = GENESIS_EPOCH
-    else:
-        validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
-```
-
 #### `initiate_validator_exit`
 
 ```python
@@ -1199,7 +1185,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validator_registry if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = sorted(exit_epochs + [get_delayed_activation_exit_epoch(get_current_epoch(state))])[-1]
+    exit_queue_epoch = max(exit_epochs + [get_delayed_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validator_registry if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_churn_limit(state):
         exit_queue_epoch += 1
@@ -1240,7 +1226,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositData`.
+The deposit contract has a single `deposit` function which takes as argument the `DepositData` elements.
 
 ### Withdrawal credentials
 
@@ -1253,7 +1239,7 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 ### `Deposit` logs
 
-Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `Eth2Genesis` log
 
@@ -1275,7 +1261,7 @@ For convenience, we provide the interface to the contract here:
 
 * `__init__()`: initializes the contract
 * `get_deposit_root() -> bytes32`: returns the current root of the deposit tree
-* `deposit(bytes[512])`: adds a deposit instance to the deposit tree, incorporating the input argument and the value transferred in the given call. Note: the amount of value transferred *must* be within `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, inclusive. Each of these constants are specified in units of Gwei.
+* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. Note: the amount of value transferred *must* be at least `MIN_DEPOSIT_AMOUNT`. Each of these constants are specified in units of Gwei.
 
 ## On genesis
 
@@ -1306,7 +1292,8 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
     # Process genesis activations
     for index, validator in enumerate(state.validator_registry):
         if validator.effective_balance >= MAX_DEPOSIT_AMOUNT:
-            activate_validator(state, index)
+            validator.activation_eligibility_epoch = GENESIS_EPOCH
+            validator.activation_epoch = GENESIS_EPOCH
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
@@ -1681,14 +1668,16 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, index)
 
-    # Process activations
+    # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
     activation_queue = sorted([
         index for index, validator in enumerate(state.validator_registry) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
+    # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_churn_limit(state)]:
-        activate_validator(state, index)
+        if validator.activation_epoch == FAR_FUTURE_EPOCH:
+            validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
@@ -1938,7 +1927,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
     # Verify the Merkle branch
     assert verify_merkle_branch(
-        leaf=hash(serialize(deposit.data)),  # 48 + 32 + 8 + 96 = 184 bytes serialization
+        leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
         index=deposit.index,
@@ -2004,8 +1993,6 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
 
 ##### Transfers
 
-Note: Transfers are a temporary functionality for phases 0 and 1, to be removed in phase 2.
-
 Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
 
 For each `transfer` in `block.body.transfers`, run the following function:
@@ -2020,10 +2007,11 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert state.balances[transfer.sender] >= max(transfer.amount, transfer.fee)
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
-    # Only withdrawn or not-yet-deposited accounts can transfer
+    # Sender must be not yet eligible for activation, withdrawn, or transfer balance over MAX_EFFECTIVE_BALANCE
     assert (
+        state.validator_registry[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
         get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
-        state.validator_registry[transfer.sender].activation_epoch == FAR_FUTURE_EPOCH
+        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= get_balance(state, transfer.sender)
     )
     # Verify that the pubkey is valid
     assert (

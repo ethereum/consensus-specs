@@ -4,7 +4,7 @@ from typing import List
 
 
 def create_genesis_state(deposits: List[spec.Deposit]) -> spec.BeaconState:
-    deposit_root = get_merkle_root((tuple([spec.hash(dep.data.serialize()) for dep in deposits])))
+    deposit_root = get_merkle_root((tuple([(dep.data.hash_tree_root()) for dep in deposits])))
 
     return spec.get_genesis_beacon_state(
         deposits,
@@ -32,7 +32,7 @@ def create_deposits(pubkeys: List[spec.BLSPubkey], withdrawal_cred: List[spec.By
     ]
 
     # Fill tree with existing deposits
-    deposit_data_leaves = [spec.hash(data.serialize()) for data in deposit_data]
+    deposit_data_leaves = [data.hash_tree_root() for data in deposit_data]
     tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
 
     return [

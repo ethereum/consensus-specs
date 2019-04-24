@@ -118,7 +118,7 @@ Separation of configuration and tests aims to:
   Note: Some clients prefer compile-time constants and optimizations.
   They should compile for each configuration once, and run the corresponding tests per build target.
 
-The format is described in `configs/constant_presets`.
+The format is described in [`configs/constant_presets`](../../configs/constant_presets/README.md#format).
 
 
 ## Fork-timeline
@@ -129,7 +129,7 @@ A fork timeline is (preferably) loaded in as a configuration object into a clien
  - we may decide on an epoch number for a fork based on external events (e.g. Eth1 log event),
     a client should be able to activate a fork dynamically.
 
-The format is described in `configs/fork_timelines`.
+The format is described in [`configs/fork_timelines`](../../configs/fork_timelines/README.md#format).
 
 ## Config sourcing
 
