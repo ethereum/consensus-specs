@@ -11,16 +11,18 @@ This repo hosts the current eth2.0 specifications. Discussions about design rati
 
 Core specifications for eth2.0 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
-* Phase 0
-  * [The Beacon Chain](specs/core/0_beacon-chain.md)
-  * [Fork Choice](specs/core/0_fork-choice.md)
-  * [Deposit Contract](specs/core/0_deposit-contract.md)
-  * [Honest validator implementation doc](specs/validator/0_beacon-chain-validator.md)
-* Phase 1
-  * [Phase 1 -- Custody Game](specs/core/1_custody-game.md)
-  * [Phase 1 -- Shard Data Chains](specs/core/1_shard-data-chains.md)
+### Phase 0
+* [The Beacon Chain](specs/core/0_beacon-chain.md)
+* [Fork Choice](specs/core/0_fork-choice.md)
+* [Deposit Contract](specs/core/0_deposit-contract.md)
+* [Honest validator implementation doc](specs/validator/0_beacon-chain-validator.md)
 
-Accompanying documents can be found in [specs](specs) and include:
+### Phase 1
+* [Phase 1 -- Custody Game](specs/core/1_custody-game.md)
+* [Phase 1 -- Shard Data Chains](specs/core/1_shard-data-chains.md)
+
+### Accompanying documents can be found in [specs](specs) and include:
+
 * [SimpleSerialize (SSZ) spec](specs/simple-serialize.md)
 * [BLS signature verification](specs/bls_signature.md)
 * [General test format](specs/test_formats/README.md)
