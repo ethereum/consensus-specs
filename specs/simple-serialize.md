@@ -1,4 +1,4 @@
-# SimpleSerialiZe (SSZ)
+# SimpleSerialize (SSZ)
 
 This is a **work in progress** describing typing, serialization and Merkleization of Ethereum 2.0 objects.
 
@@ -9,6 +9,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
     - [Basic types](#basic-types)
     - [Composite types](#composite-types)
     - [Aliases](#aliases)
+    - [Default values](#default-values)
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
@@ -34,11 +35,11 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 ### Composite types
 
-* **container**: ordered heterogenous collection of values
+* **container**: ordered heterogeneous collection of values
     * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
 * **vector**: ordered fixed-length homogeneous collection of values
     * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
-* **list**: ordered variable-length homogenous collection of values
+* **list**: ordered variable-length homogeneous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
 
 We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
@@ -51,11 +52,16 @@ For convenience we alias:
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
 
+### Default values
+
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists.
+
 ## Serialization
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
 > *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
+
 
 ### `"uintN"`
 
@@ -119,10 +125,10 @@ Let `value` be a self-signed container object. The convention is that the signat
 | Language | Project | Maintainer | Implementation |
 |-|-|-|-|
 | Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
-| Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz](https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz) |
+| Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz](https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz) |
 | Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
 | Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/util/ssz](https://github.com/paritytech/shasper/tree/master/util/ssz) |
-| Javascript | Lodestart | Chain Safe Systems | [https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js](https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js) |
+| TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz-js) |
 | Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
 | Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) |
 | Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |

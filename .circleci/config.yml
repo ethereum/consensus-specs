@@ -1,41 +1,97 @@
-# Python CircleCI 2.0 configuration file
-version: 2
-jobs:
-  build:
-    docker:
-      - image: circleci/python:3.6
-    working_directory: ~/repo
-
+version: 2.1
+commands:
+  restore_cached_venv:
+    description: "Restores a cached venv"
+    parameters:
+      reqs_checksum:
+        type: string
+        default: "1234"
+      venv_name:
+        type: string
+        default: "default-name"
     steps:
-      - checkout
-      # Download and cache dependencies
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - << parameters.venv_name >>-venv-<< parameters.reqs_checksum >>
             # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
-
-      - run:
-          name: install dependencies
-          command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install -r requirements.txt
-      - run:
-          name: build phase0 spec
-          command: make build/phase0
-
+            - << parameters.venv_name >>-venv-
+  save_cached_venv:
+    description: "Saves a venv into a cache"
+    parameters:
+      reqs_checksum:
+        type: string
+        default: "1234"
+      venv_path:
+        type: string
+        default: "venv"
+      venv_name:
+        type: string
+        default: "default-name"
+    steps:
       - save_cache:
-          paths:
-            - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
-
+          key: << parameters.venv_name >>-venv-<< parameters.reqs_checksum >>
+          paths: << parameters.venv_path >>
+jobs:
+  checkout_specs:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      # Restore git repo at point close to target branch/revision, to speed up checkout
+      - restore_cache:
+          keys:
+            - v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+            - v1-specs-repo-{{ .Branch }}-
+            - v1-specs-repo-
+      - checkout
       - run:
-          name: run tests
-          command: |
-            . venv/bin/activate
-            pytest tests
-
-      - store_artifacts:
-          path: test-reports
-          destination: test-reports
+          name: Clean up git repo to reduce cache size
+          command: git gc
+      # Save the git checkout as a cache, to make cloning next time faster.
+      - save_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ~/specs-repo
+  install_test:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_cached_venv:
+          venv_name: v1-test_libs
+          reqs_checksum: '{{ checksum "test_libs/pyspec/setup.py" }}'
+      - run:
+          name: Install pyspec requirements
+          command: make install_test
+      - save_cached_venv:
+          venv_name: v1-test_libs
+          reqs_checksum: '{{ checksum "test_libs/pyspec/setup.py" }}'
+          venv_path: ./test_libs/venv
+  test:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_cached_venv:
+          venv_name: v1-test_libs
+          reqs_checksum: '{{ checksum "test_libs/pyspec/setup.py" }}'
+      - run:
+          name: Run py-tests
+          command: make citest
+      - store_test_results:
+          path: test_libs/pyspec/test-reports
+workflows:
+  version: 2.1
+  test_spec:
+    jobs:
+      - checkout_specs
+      - install_test:
+          requires:
+            - checkout_specs
+      - test:
+          requires:
+            - install_test

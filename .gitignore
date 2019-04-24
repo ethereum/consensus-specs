@@ -1,7 +1,22 @@
 *.pyc
 /__pycache__
-/venv
+venv
+.venvs
+.venv
 /.pytest_cache
+*.egg
+*.egg-info
+eggs
+.eggs
 
 build/
 output/
+
+eth2.0-spec-tests/
+.pytest_cache
+
+# Dynamically built from Markdown spec
+test_libs/pyspec/eth2spec/phase0/spec.py
+
+# vscode
+.vscode/**
