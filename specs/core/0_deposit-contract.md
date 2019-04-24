@@ -9,7 +9,7 @@
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
-        - [Deposit contract](#time-parameters)
+        - [Deposit contract](#deposit-contract)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
