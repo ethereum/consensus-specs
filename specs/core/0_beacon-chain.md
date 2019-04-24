@@ -929,7 +929,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     i = 0
     while True:
         candidate_index = first_committee[(current_epoch + i) % len(first_committee)]
-        random_byte = hash(generate_seed(state, epoch) + int_to_bytes8(i // 32))[i % 32]
+        random_byte = hash(generate_seed(state, current_epoch) + int_to_bytes8(i // 32))[i % 32]
         effective_balance = state.validator_registry[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -2011,7 +2011,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert (
         state.validator_registry[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
         get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
-        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= get_balance(state, transfer.sender)
+        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= state.balances[transfer.sender]
     )
     # Verify that the pubkey is valid
     assert (

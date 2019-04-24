@@ -9,6 +9,7 @@ from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
+    SLOTS_PER_HISTORICAL_ROOT,
     # SSZ
     Deposit,
     Transfer,
@@ -17,9 +18,9 @@ from eth2spec.phase0.spec import (
     get_active_validator_indices,
     get_beacon_proposer_index,
     get_block_root,
+    get_block_root_at_slot,
     get_current_epoch,
     get_domain,
-    get_state_root,
     advance_slot,
     cache_state,
     slot_to_epoch,
@@ -47,6 +48,13 @@ from .helpers import (
     pubkeys,
 )
 
+
+def get_state_root(state, slot) -> bytes:
+    """
+    Return the state root at a recent ``slot``.
+    """
+    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
+    return state.latest_state_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 
 # mark entire file as 'sanity'
 pytestmark = pytest.mark.sanity
@@ -94,7 +102,7 @@ def test_empty_block_transition(state):
     state_transition(test_state, block)
 
     assert len(test_state.eth1_data_votes) == len(state.eth1_data_votes) + 1
-    assert get_block_root(test_state, state.slot) == block.previous_block_root
+    assert get_block_root_at_slot(test_state, state.slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -108,7 +116,7 @@ def test_skipped_slots(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -122,7 +130,7 @@ def test_empty_epoch_transition(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
 
     return state, [block], test_state
 

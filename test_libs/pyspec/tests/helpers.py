@@ -28,6 +28,7 @@ from eth2spec.phase0.spec import (
     get_active_validator_indices,
     get_attesting_indices,
     get_block_root,
+    get_block_root_at_slot,
     get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
@@ -51,8 +52,10 @@ privkeys = [i + 1 for i in range(1000)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
 
+
 def get_balance(state, index):
     return state.balances[index]
+
 
 def set_bitfield_bit(bitfield, i):
     """
@@ -151,16 +154,16 @@ def build_attestation_data(state, slot, shard):
     if slot == state.slot:
         block_root = build_empty_block_for_next_slot(state).previous_block_root
     else:
-        block_root = get_block_root(state, slot)
+        block_root = get_block_root_at_slot(state, slot)
 
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     if slot < current_epoch_start_slot:
         print(slot)
-        epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
+        epoch_boundary_root = get_block_root(state, get_previous_epoch(state))
     elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
     else:
-        epoch_boundary_root = get_block_root(state, current_epoch_start_slot)
+        epoch_boundary_root = get_block_root(state, get_current_epoch(state))
 
     if slot < current_epoch_start_slot:
         justified_epoch = state.previous_justified_epoch
