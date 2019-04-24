@@ -22,8 +22,8 @@ def config(request):
 
 
 @pytest.fixture
-def num_validators():
-    return 100
+def num_validators(config):
+    return spec.SLOTS_PER_EPOCH * 8
 
 
 @pytest.fixture
