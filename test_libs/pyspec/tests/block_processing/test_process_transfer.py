@@ -5,11 +5,9 @@ import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
     get_active_validator_indices,
-    get_balance,
     get_beacon_proposer_index,
     get_current_epoch,
     process_transfer,
-    set_balance,
 )
 from tests.helpers import (
     get_valid_transfer,
@@ -75,7 +73,7 @@ def test_success_withdrawable(state):
 def test_success_active_above_max_effective(state):
     sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
     amount = spec.MAX_EFFECTIVE_BALANCE // 32
-    set_balance(state, sender_index, spec.MAX_EFFECTIVE_BALANCE + amount)
+    state.validator_registry[sender_index] = spec.MAX_EFFECTIVE_BALANCE + amount
     transfer = get_valid_transfer(state, sender_index=sender_index, amount=amount, fee=0)
 
     pre_state, post_state = run_transfer_processing(state, transfer)
@@ -86,7 +84,7 @@ def test_success_active_above_max_effective(state):
 def test_active_but_transfer_past_effective_balance(state):
     sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
     amount = spec.MAX_EFFECTIVE_BALANCE // 32
-    set_balance(state, sender_index, spec.MAX_EFFECTIVE_BALANCE)
+    state.validator_registry[sender_index] = spec.MAX_EFFECTIVE_BALANCE
     transfer = get_valid_transfer(state, sender_index=sender_index, amount=amount, fee=0)
 
     pre_state, post_state = run_transfer_processing(state, transfer, False)
@@ -107,7 +105,7 @@ def test_incorrect_slot(state):
 def test_insufficient_balance(state):
     sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
     amount = spec.MAX_EFFECTIVE_BALANCE
-    set_balance(state, sender_index, spec.MAX_EFFECTIVE_BALANCE)
+    state.validator_registry[sender_index] = spec.MAX_EFFECTIVE_BALANCE
     transfer = get_valid_transfer(state, sender_index=sender_index, amount=amount + 1, fee=0)
 
     # un-activate so validator can transfer

@@ -931,7 +931,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
         candidate_index = first_committee[(current_epoch + i) % len(first_committee)]
         random_byte = hash(generate_seed(state, epoch) + int_to_bytes8(i // 32))[i % 32]
         effective_balance = state.validator_registry[candidate_index].effective_balance
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_DEPOSIT_AMOUNT * random_byte:
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
         i += 1
 ```
@@ -1291,7 +1291,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
     # Process genesis activations
     for index, validator in enumerate(state.validator_registry):
-        if validator.effective_balance >= MAX_DEPOSIT_AMOUNT:
+        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
@@ -1662,7 +1662,7 @@ Run the following function:
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validator_registry):
-        if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and validator.effective_balance >= MAX_DEPOSIT_AMOUNT:
+        if validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = get_current_epoch(state)
 
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
@@ -1717,7 +1717,7 @@ def process_final_updates(state: BeaconState) -> None:
         state.eth1_data_votes = []
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validator_registry):
-        balance = min(state.balances[index], MAX_DEPOSIT_AMOUNT)
+        balance = min(state.balances[index], MAX_EFFECTIVE_BALANCE)
         HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
         if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
             validator.effective_balance = balance - balance % EFFECTIVE_BALANCE_INCREMENT

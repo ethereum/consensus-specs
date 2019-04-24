@@ -26,7 +26,6 @@ from eth2spec.phase0.spec import (
     # functions
     convert_to_indexed,
     get_active_validator_indices,
-    get_balance,
     get_attesting_indices,
     get_block_root,
     get_crosslink_committees_at_slot,
