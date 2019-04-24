@@ -86,9 +86,9 @@ def hash_to_G2(message_hash: Bytes32, domain: uint64) -> [uint384]:
 
 ### `modular_squareroot`
 
-`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions the one with higher imaginary component is favored; if both solutions have equal imaginary component the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
+`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions, the one with higher imaginary component is favored; if both solutions have equal imaginary component, the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
 
-The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (ie. integers `mod q`) and converts it to a regular integer.
+The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (i.e. integers `mod q`) and converts it to a regular integer.
 
 ```python
 Fq2_order = q ** 2 - 1
@@ -110,11 +110,11 @@ def modular_squareroot(value: Fq2) -> Fq2:
 
 ### `bls_aggregate_pubkeys`
 
-Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve.
+Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve. (When `len(pubkeys) == 0` the empty sum is the G1 point at infinity.)
 
 ### `bls_aggregate_signatures`
 
-Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve.
+Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve. (When `len(signatures) == 0` the empty sum is the G2 point at infinity.)
 
 ## Signature verification
 
