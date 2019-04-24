@@ -436,7 +436,7 @@ def test_balance_driven_status_transitions(state):
     assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    pre_state.validator_registry[validator_index].effective_balance = spec.EJECTION_BALANCE - 1
+    pre_state.validator_registry[validator_index].effective_balance = spec.EJECTION_BALANCE
 
     post_state = deepcopy(pre_state)
     #
