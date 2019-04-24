@@ -1429,6 +1429,7 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 
 ```python
 def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
+    assert epoch in (get_current_epoch(state), get_previous_epoch(state))
     return state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
 ```
 
@@ -1472,8 +1473,7 @@ def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationDat
 
 ```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, shard: Shard, epoch: Epoch) -> Tuple[Crosslink, List[ValidatorIndex]]:
-    attestations = get_matching_source_attestations(state, epoch)
-    shard_attestations = [a for a in attestations if a.data.shard == shard]
+    shard_attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.shard == shard]
     shard_crosslinks = [get_crosslink_from_attestation_data(state, a.data) for a in shard_attestations]
     candidate_crosslinks = [
         c for c in shard_crosslinks
