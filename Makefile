@@ -2,6 +2,7 @@ SPEC_DIR = ./specs
 SCRIPT_DIR = ./scripts
 TEST_LIBS_DIR = ./test_libs
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
+CONFIG_HELPERS_DIR = $(TEST_LIBS_DIR)/config_helpers
 YAML_TEST_DIR = ./eth2.0-spec-tests/tests
 GENERATOR_DIR = ./test_generators
 CONFIGS_DIR = ./configs
@@ -23,7 +24,8 @@ all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 clean:
 	rm -rf $(YAML_TEST_DIR)
 	rm -rf $(GENERATOR_VENVS)
-	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
+	rm -rf $(TEST_LIBS_DIR)/venv
+	rm -rf $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
 
 # "make gen_yaml_tests" to run generators
@@ -31,13 +33,17 @@ gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
 
 # installs the packages to run pyspec tests
 install_test:
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt;
+	cd $(TEST_LIBS_DIR); python3 -m venv venv; . venv/bin/activate; \
+	cd ..; cd $(CONFIG_HELPERS_DIR); pip3 install -e .; \
+	cd ../..; cd $(PY_SPEC_DIR); pip3 install -e .[dev];
 
 test: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest .
+	cd $(TEST_LIBS_DIR); . venv/bin/activate; \
+	cd ..; cd $(PY_SPEC_DIR); python -m pytest .;
 
 citest: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
+	cd $(TEST_LIBS_DIR); . venv/bin/activate; \
+	cd ..; cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
