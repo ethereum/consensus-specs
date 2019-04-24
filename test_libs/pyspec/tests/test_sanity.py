@@ -15,16 +15,13 @@ from eth2spec.phase0.spec import (
     VoluntaryExit,
     # functions
     get_active_validator_indices,
-    get_balance,
     get_beacon_proposer_index,
-    get_block_root,
+    get_block_root_at_slot,
+    get_state_root,
     get_current_epoch,
     get_domain,
-    get_state_root,
     advance_slot,
     cache_state,
-    set_balance,
-    slot_to_epoch,
     verify_merkle_branch,
     hash,
 )
@@ -37,6 +34,7 @@ from eth2spec.utils.merkle_minimal import (
     get_merkle_root,
 )
 from .helpers import (
+    get_balance,
     build_deposit_data,
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
@@ -51,7 +49,6 @@ from .helpers import (
 
 # mark entire file as 'sanity'
 pytestmark = pytest.mark.sanity
-
 
 def check_finality(state,
                    prev_state,
@@ -96,7 +93,7 @@ def test_empty_block_transition(state):
     state_transition(test_state, block)
 
     assert len(test_state.eth1_data_votes) == len(state.eth1_data_votes) + 1
-    assert get_block_root(test_state, state.slot) == block.previous_block_root
+    assert get_block_root_at_slot(test_state, state.slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -110,7 +107,7 @@ def test_skipped_slots(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -124,7 +121,7 @@ def test_empty_epoch_transition(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -303,6 +300,7 @@ def test_deposit_top_up(state):
 
 
 def test_attestation(state):
+    state.slot = spec.SLOTS_PER_EPOCH
     test_state = deepcopy(state)
     attestation = get_valid_attestation(state)
 
@@ -316,8 +314,6 @@ def test_attestation(state):
 
     assert len(test_state.current_epoch_attestations) == len(state.current_epoch_attestations) + 1
 
-    proposer_index = get_beacon_proposer_index(test_state)
-    assert test_state.balances[proposer_index] > state.balances[proposer_index]
 
     #
     # Epoch transition should move to previous_epoch_attestations
@@ -441,7 +437,7 @@ def test_balance_driven_status_transitions(state):
     assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    set_balance(pre_state, validator_index, spec.EJECTION_BALANCE - 1)
+    pre_state.validator_registry[validator_index].effective_balance = spec.EJECTION_BALANCE
 
     post_state = deepcopy(pre_state)
     #

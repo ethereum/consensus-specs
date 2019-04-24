@@ -16,6 +16,7 @@ from build.phase0.spec import (
     VoluntaryExit,
     # functions
     get_block_root,
+    get_block_root_at_slot,
     get_current_epoch,
     get_domain,
     get_empty_block,
@@ -141,7 +142,7 @@ def build_attestation_data(state, slot, shard):
     if epoch_start_slot == slot:
         epoch_boundary_root = block_root
     else:
-        get_block_root(state, epoch_start_slot)
+        epoch_boundary_root = get_block_root(state, get_current_epoch(state))
 
     if slot < epoch_start_slot:
         justified_block_root = state.previous_justified_root
