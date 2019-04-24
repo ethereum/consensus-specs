@@ -18,8 +18,8 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 * [Honest validator implementation doc](specs/validator/0_beacon-chain-validator.md)
 
 ### Phase 1
-* [Phase 1 -- Custody Game](specs/core/1_custody-game.md)
-* [Phase 1 -- Shard Data Chains](specs/core/1_shard-data-chains.md)
+* [Custody Game](specs/core/1_custody-game.md)
+* [Shard Data Chains](specs/core/1_shard-data-chains.md)
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
