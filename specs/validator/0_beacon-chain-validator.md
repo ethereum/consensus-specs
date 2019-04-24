@@ -138,7 +138,7 @@ A validator has two primary responsibilities to the beacon chain -- [proposing b
 
 ### Block proposal
 
-A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state, slot)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
+A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
 There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312500 validators = 10 million ETH, that's once per ~3 weeks).
 
@@ -368,7 +368,7 @@ def get_committee_assignment(
             return assignment
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question and can not reliably be used to predict in advance.
+A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
 def is_proposer_at_slot(state: BeaconState,
