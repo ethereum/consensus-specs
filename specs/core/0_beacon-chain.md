@@ -921,9 +921,9 @@ def generate_seed(state: BeaconState,
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
-    Return the beacon proposer index at ``slot``.
+    Return the beacon proposer index at ``state.slot``.
     """
-    current_epoch = slot_to_epoch(state.slot)
+    current_epoch = get_current_epoch(state)
     first_committee, _ = get_crosslink_committees_at_slot(state, state.slot)[0]
     MAX_RANDOM_BYTE = 2**8 - 1
     i = 0
