@@ -13,7 +13,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
-    - [Vectors, containers, lists](#vectors-containers-lists)
+    - [Containers, vectors, lists](#containers-vectors-lists)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -23,8 +23,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 | Name | Value | Description |
 |-|-|-|
-| `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk.
-| `BYTES_PER_LENGTH_PREFIX` | `4` | Number of bytes per serialized length prefix. |
+| `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk. |
+| `BYTES_PER_LENGTH_OFFSET` | `4` | Number of bytes per serialized length offset. |
+| `BITS_PER_BYTE` | `8` | Number of bits per byte. |
 
 ## Typing
 ### Basic types
@@ -59,7 +60,8 @@ The default value of a type upon initialization is recursively defined using `0`
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
-*Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, etc.) objects implicitly carry their type.
+> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
+
 
 ### `"uintN"`
 
@@ -75,21 +77,24 @@ assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### Vectors, containers, lists
-
-If `value` is fixed-size:
+### Containers, vectors, lists
 
 ```python
-return "".join([serialize(element) for element in value])
-```
+# Reccursively serialize
+fixed_parts = [serialize(element) if not is_variable_size(element) else None for element in value]
+variable_parts = [serialize(element) if is_variable_size(element) else b"" for element in value]
 
-If `value` is variable-size:
+# Compute and check lengths
+fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts]
+variable_lengths = [len(part) for part in variable_parts]
+assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
 
-```python
-serialized_bytes = "".join([serialize(element) for element in value])
-assert len(serialized_bytes) < 2**(8 * BYTES_PER_LENGTH_PREFIX)
-serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, "little")
-return serialized_length + serialized_bytes
+# Interleave offsets of variable-size parts with fixed-size parts
+variable_offsets = [serialize(sum(fixed_lengths + variable_lengths[:i])) for i in range(len(value))]
+fixed_parts = [part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)]
+
+# Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
+return b"".join(fixed_parts + variable_parts)
 ```
 
 ## Deserialization
