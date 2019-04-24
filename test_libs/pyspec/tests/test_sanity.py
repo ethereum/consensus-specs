@@ -380,7 +380,7 @@ def test_voluntary_exit(state):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
-def test_transfer(state, config):
+def test_transfer(state):
     # overwrite default 0 to test
     spec.MAX_TRANSFERS = 1
 
