@@ -8,6 +8,7 @@
 - [Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice](#ethereum-20-phase-0----beacon-chain-fork-choice)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
+    - [Prerequisites](#prerequisites)
     - [Constants](#constants)
         - [Time parameters](#time-parameters)
     - [Beacon chain processing](#beacon-chain-processing)
@@ -18,6 +19,10 @@
 ## Introduction
 
 This document represents is the specification for the beacon chain fork choice rule, part of Ethereum 2.0 phase 0.
+
+## Prerequisites
+
+All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](./0_beacon-chain.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
 ## Constants
 

@@ -1,6 +1,6 @@
 # Test format: SSZ static types
 
-The goal of this type is to provide clients with a solid reference how the known SSZ objects should be encoded.
+The goal of this type is to provide clients with a solid reference for how the known SSZ objects should be encoded.
 Each object described in the Phase-0 spec is covered.
 This is important, as many of the clients aiming to serialize/deserialize objects directly into structs/classes
 do not support (or have alternatives for) generic SSZ encoding/decoding.
@@ -27,6 +27,6 @@ A test-runner can implement the following assertions:
 ## References
 
 
-**`serialized`**: [SSZ serialization](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#serialization)   
-**`root`** - [hash_tree_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#merkleization) function  
-**`signing_root`** - [signing_root](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/simple-serialize.md#self-signed-containers) function
+**`serialized`**: [SSZ serialization](../../simple-serialize.md#serialization)   
+**`root`** - [hash_tree_root](../../simple-serialize.md#merkleization) function  
+**`signing_root`** - [signing_root](../../simple-serialize.md#self-signed-containers) function

@@ -21,12 +21,14 @@ from eth2spec.phase0.spec import (
     DepositData,
     Eth1Data,
     ProposerSlashing,
+    Transfer,
     VoluntaryExit,
     # functions
     convert_to_indexed,
     get_active_validator_indices,
     get_attesting_indices,
     get_block_root,
+    get_block_root_at_slot,
     get_crosslink_committees_at_slot,
     get_current_epoch,
     get_domain,
@@ -46,9 +48,13 @@ from eth2spec.utils.merkle_minimal import (
 )
 
 
-privkeys = [i + 1 for i in range(1000)]
+privkeys = [i + 1 for i in range(1024)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
+
+
+def get_balance(state, index):
+    return state.balances[index]
 
 
 def set_bitfield_bit(bitfield, i):
@@ -76,10 +82,10 @@ def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=N
             pubkey=pubkey,
             # insecurely use pubkey as withdrawal key as well
             withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
-            amount=spec.MAX_DEPOSIT_AMOUNT,
+            amount=spec.MAX_EFFECTIVE_BALANCE,
             signature=signature,
         )
-        item = hash(deposit_data.serialize())
+        item = deposit_data.hash_tree_root()
         deposit_data_leaves.append(item)
         tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
         root = get_merkle_root((tuple(deposit_data_leaves)))
@@ -116,6 +122,7 @@ def create_genesis_state(num_validators, deposit_data_leaves=None):
 def build_empty_block_for_next_slot(state):
     empty_block = BeaconBlock()
     empty_block.slot = state.slot + 1
+    empty_block.body.eth1_data.deposit_count = state.deposit_index
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
@@ -148,16 +155,15 @@ def build_attestation_data(state, slot, shard):
     if slot == state.slot:
         block_root = build_empty_block_for_next_slot(state).previous_block_root
     else:
-        block_root = get_block_root(state, slot)
+        block_root = get_block_root_at_slot(state, slot)
 
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     if slot < current_epoch_start_slot:
-        print(slot)
-        epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
+        epoch_boundary_root = get_block_root(state, get_previous_epoch(state))
     elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
     else:
-        epoch_boundary_root = get_block_root(state, current_epoch_start_slot)
+        epoch_boundary_root = get_block_root(state, get_current_epoch(state))
 
     if slot < current_epoch_start_slot:
         justified_epoch = state.previous_justified_epoch
@@ -204,7 +210,7 @@ def build_deposit(state,
                   amount):
     deposit_data = build_deposit_data(state, pubkey, privkey, amount)
 
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     index = len(deposit_data_leaves)
     deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
@@ -321,6 +327,48 @@ def get_valid_attestation(state, slot=None):
 
     attestation.aggregation_signature = bls.aggregate_signatures(signatures)
     return attestation
+
+
+def get_valid_transfer(state, slot=None, sender_index=None, amount=None, fee=None):
+    if slot is None:
+        slot = state.slot
+    current_epoch = get_current_epoch(state)
+    if sender_index is None:
+        sender_index = get_active_validator_indices(state, current_epoch)[-1]
+    recipient_index = get_active_validator_indices(state, current_epoch)[0]
+    transfer_pubkey = pubkeys[-1]
+    transfer_privkey = privkeys[-1]
+
+    if fee is None:
+        fee = get_balance(state, sender_index) // 32
+    if amount is None:
+        amount = get_balance(state, sender_index) - fee
+
+    transfer = Transfer(
+        sender=sender_index,
+        recipient=recipient_index,
+        amount=amount,
+        fee=fee,
+        slot=slot,
+        pubkey=transfer_pubkey,
+        signature=ZERO_HASH,
+    )
+    transfer.signature = bls.sign(
+        message_hash=signing_root(transfer),
+        privkey=transfer_privkey,
+        domain=get_domain(
+            state=state,
+            domain_type=spec.DOMAIN_TRANSFER,
+            message_epoch=get_current_epoch(state),
+        )
+    )
+
+    # ensure withdrawal_credentials reproducable
+    state.validator_registry[transfer.sender].withdrawal_credentials = (
+        spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(transfer.pubkey)[1:]
+    )
+
+    return transfer
 
 
 def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0):

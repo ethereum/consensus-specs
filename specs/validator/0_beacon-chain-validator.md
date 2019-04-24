@@ -66,7 +66,7 @@ A validator is an entity that participates in the consensus of the Ethereum 2.0 
 
 ## Prerequisites
 
-All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](../core/0_beacon-chain.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](../core/0_beacon-chain.md) and [Phase 0 -- Deposit Contract](../core/0_deposit-contract.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
 ## Constants
 
@@ -96,16 +96,15 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](../core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`.
+In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](../core/0_deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 
 * Pack the validator's [initialization parameters](#initialization) into `deposit_data`, a [`DepositData`](../core/0_beacon-chain.md#depositdata) SSZ object.
-* Let `proof_of_possession` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=DOMAIN_DEPOSIT`.
-* Set `deposit_data.proof_of_possession = proof_of_possession`.
 * Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_DEPOSIT_AMOUNT`.
 * Set `deposit_data.amount = amount`.
-* Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `deposit(deposit_input: bytes[512])` along with `serialize(deposit_data)` as the singular `bytes` input along with a deposit of `amount` Gwei.
+* Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=DOMAIN_DEPOSIT`.
+* Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])` along with a deposit of `amount` Gwei.
 
 _Note_: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validator_registry` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_DEPOSIT_AMOUNT`.
 
@@ -139,7 +138,7 @@ A validator has two primary responsibilities to the beacon chain -- [proposing b
 
 ### Block proposal
 
-A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state, slot)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
+A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
 There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312500 validators = 10 million ETH, that's once per ~3 weeks).
 
@@ -225,7 +224,7 @@ Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. 
 
 ##### Deposits
 
-If there are any unprocessed deposits for the existing `state.latest_eth1_data` (i.e. `state.latest_eth1_data.deposit_count > state.deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](../core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
+If there are any unprocessed deposits for the existing `state.latest_eth1_data` (i.e. `state.latest_eth1_data.deposit_count > state.deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](../core/0_deposit-contract.md) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
 
 The `proof` for each deposit must be constructed against the deposit root contained in `state.latest_eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `latest_eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
@@ -369,7 +368,7 @@ def get_committee_assignment(
             return assignment
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question and can not reliably be used to predict in advance.
+A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
 def is_proposer_at_slot(state: BeaconState,

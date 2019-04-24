@@ -1,6 +1,6 @@
 # SSZ-static
 
 The purpose of this test-generator is to provide test-vectors for the most important applications of SSZ:
- the serialization and hashing of ETH 2.0 data types
+ the serialization and hashing of ETH 2.0 data types.
 
 Test-format documentation can be found [here](../../specs/test_formats/ssz_static/README.md).

@@ -28,9 +28,12 @@
             - [`BeaconState`](#beaconstate)
             - [`BeaconBlockBody`](#beaconblockbody)
     - [Helpers](#helpers)
+        - [`typeof`](#typeof)
+        - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
+        - [`replace_empty_or_append`](#replace_empty_or_append)
         - [`verify_custody_key`](#verify_custody_key)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
@@ -203,6 +206,14 @@ Add the following fields to the end of the specified container objects. Fields w
 
 ## Helpers
 
+### `typeof`
+
+The `typeof` function accepts and SSZ object as a single input and returns the corresponding SSZ type.
+
+### `empty`
+
+The `empty` function accepts and SSZ type as input and returns an object of that type with all fields initialized to default values.
+
 ### `get_crosslink_chunk_count`
 
 ```python
@@ -227,6 +238,18 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
 ```python
 def epoch_to_custody_period(epoch: Epoch) -> int:
     return epoch // EPOCHS_PER_CUSTODY_PERIOD
+```
+
+### `replace_empty_or_append`
+
+```python
+def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
+    for i in range(len(list)):
+        if list[i] == empty(typeof(new_element)):
+            list[i] = new_element
+            return i
+    list.append(new_element)
+    return len(list) - 1
 ```
 
 ### `verify_custody_key`
@@ -321,7 +344,7 @@ def process_chunk_challenge(state: BeaconState,
     depth = math.log2(next_power_of_two(get_custody_chunk_count(challenge.attestation)))
     assert challenge.chunk_index < 2**depth
     # Add new chunk challenge record
-    state.custody_chunk_challenge_records.append(CustodyChunkChallengeRecord(
+    new_record = CustodyChunkChallengeRecord(
         challenge_index=state.custody_challenge_index,
         challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index
@@ -329,7 +352,9 @@ def process_chunk_challenge(state: BeaconState,
         crosslink_data_root=challenge.attestation.data.crosslink_data_root,
         depth=depth,
         chunk_index=challenge.chunk_index,
-    ))
+    )
+    replace_empty_or_append(state.custody_chunk_challenge_records, new_record)
+
     state.custody_challenge_index += 1
     # Postpone responder withdrawability
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH
@@ -385,7 +410,7 @@ def process_bit_challenge(state: BeaconState,
     custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
     assert custody_bit != chunk_bits_xor
     # Add new bit challenge record
-    state.custody_bit_challenge_records.append(CustodyBitChallengeRecord(
+    new_record = CustodyBitChallengeRecord(
         challenge_index=state.custody_challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
@@ -393,7 +418,8 @@ def process_bit_challenge(state: BeaconState,
         crosslink_data_root=challenge.attestation.crosslink_data_root,
         chunk_bits=challenge.chunk_bits,
         responder_key=challenge.responder_key,
-    ))
+    )
+    replace_empty_or_append(state.custody_bit_challenge_records, new_record)
     state.custody_challenge_index += 1
     # Postpone responder withdrawability
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH
@@ -434,7 +460,8 @@ def process_chunk_challenge_response(state: BeaconState,
         root=challenge.crosslink_data_root,
     )
     # Clear the challenge
-    state.custody_chunk_challenge_records.remove(challenge)
+    records = state.custody_chunk_challenge_records
+    records[records.index(challenge)] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
@@ -457,7 +484,8 @@ def process_bit_challenge_response(state: BeaconState,
     # Verify the chunk bit does not match the challenge chunk bit
     assert get_custody_chunk_bit(challenge.responder_key, response.chunk) != get_bitfield_bit(challenge.chunk_bits, response.chunk_index)
     # Clear the challenge
-    state.custody_bit_challenge_records.remove(challenge)
+    records = state.custody_bit_challenge_records
+    records[records.index(challenge)] = CustodyBitChallengeRecord()
     # Slash challenger
     slash_validator(state, challenge.challenger_index, challenge.responder_index)
 ```
@@ -471,12 +499,14 @@ def process_challenge_deadlines(state: BeaconState) -> None:
     for challenge in state.custody_chunk_challenge_records:
         if get_current_epoch(state) > challenge.deadline:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
-            state.custody_chunk_challenge_records.remove(challenge)
+            records = state.custody_chunk_challenge_records
+            records[records.index(challenge)] = CustodyChunkChallengeRecord()
 
     for challenge in state.custody_bit_challenge_records:
         if get_current_epoch(state) > challenge.deadline:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
-            state.custody_bit_challenge_records.remove(challenge)
+            records = state.custody_bit_challenge_records
+            records[records.index(challenge)] = CustodyBitChallengeRecord()
 ```
 
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
