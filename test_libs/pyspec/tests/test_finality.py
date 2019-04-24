@@ -77,7 +77,7 @@ def test_finality_from_genesis_rule_4(state):
     test_state = deepcopy(state)
 
     blocks = []
-    for epoch in range(6):
+    for epoch in range(4):
         prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, True, False)
         blocks += new_blocks
 
@@ -88,7 +88,7 @@ def test_finality_from_genesis_rule_4(state):
         elif epoch == 2:
             check_finality(test_state, prev_state, True, False, False)
         elif epoch >= 3:
-            # rule 4 of finaliy
+            # rule 4 of finality
             check_finality(test_state, prev_state, True, True, True)
             assert test_state.finalized_epoch == prev_state.current_justified_epoch
             assert test_state.finalized_root == prev_state.current_justified_root
@@ -137,10 +137,10 @@ def test_finality_rule_2(state):
         if epoch == 0:
             prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, True, False)
             check_finality(test_state, prev_state, True, False, False)
-        if epoch == 1:
+        elif epoch == 1:
             prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, False, False)
             check_finality(test_state, prev_state, False, True, False)
-        if epoch == 2:
+        elif epoch == 2:
             prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, False, True)
             # finalized by rule 2
             check_finality(test_state, prev_state, True, False, True)
