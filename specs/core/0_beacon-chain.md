@@ -1603,11 +1603,12 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
                 penalties[index] += get_base_reward(state, index)
 
     # Proposer and inclusion delay micro-rewards
-    if index in get_unslashed_attesting_indices(state, matching_source_attestations):
-        earliest_attestation = get_earliest_attestation(state, matching_source_attestations, index)
-        rewards[earliest_attestation.proposer_index] += get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT
-        inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
-        rewards[index] += get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
+    for index in eligible_validator_indices:
+        if index in get_unslashed_attesting_indices(state, matching_source_attestations):
+            earliest_attestation = get_earliest_attestation(state, matching_source_attestations, index)
+            rewards[earliest_attestation.proposer_index] += get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT
+            inclusion_delay = earliest_attestation.inclusion_slot - earliest_attestation.data.slot
+            rewards[index] += get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
 
     # Inactivity penalty
     finality_delay = previous_epoch - state.finalized_epoch
