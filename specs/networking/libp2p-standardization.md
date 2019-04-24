@@ -53,12 +53,20 @@ updated to topic hashes in later versions - https://github.com/libp2p/rust-libp2
 
 For Eth2.0 clients, topics will be sent as `SHA2-256` hashes of the topic string.
 
-There is one dedicated topic for propagating beacon blocks and aggregated
-attestations across the network. This topic will have the string
-`beacon_chain`. Each shard will have it's own topic allowing relevant parties
-to subscribe to in order to receive local shard attestations. The shard topics are
-prefixed with `shard` followed by the number of the shard. For example,
-messages relating to shard 10, will have the topic string `shard10`.
+There are two main topics used to propagate attestations and beacon blocks to
+all nodes on the network.
+
+- The `beacon_block` topic - This topic is used solely for propagating new
+	beacon blocks to all nodes on the networks.
+- The `beacon_attestation` topic - This topic is used to for propagate
+	aggregated attestations to subscribing nodes (typically block proposers) to
+	be included into future blocks. Attestations will be aggregated in their
+	respective subnets before publishing on this topic.
+
+Shards will be grouped into their own subnets (defined by a shard topic). The
+number of shard subnets will be defined via `SHARD_SUBNET_COUNT` and the shard
+`shard_number % SHARD_SUBNET_COUNT` will be assigned to the topic:
+`shard{shard_number % SHARD_SUBNET_COUNT}`.
 
 ### Messages
 
@@ -78,31 +86,15 @@ The byte array is prefixed with a unsigned 64 bit length number encoded as an
 +--------------------------+
 ```
 
-The body of the message is an SSZ-encoded object representing either a
-beacon block or attestation. The type of objected is determined via a prefixed
-nibble. Currently there are two objects that are sent across the gossip
-network. They are (with their corresponding nibble specification):
-
-- `0x1`: Beacon block
-- `0x2`: Attestation
-
-The body therefore takes the form:
-```
-+--------------------------+
-|       type nibble        |
-+--------------------------+
-|                          |
-|    SSZ-encoded object    |
-|                          |
-+--------------------------+
-```
+The body of the message is an SSZ-encoded object. For the `beacon_block` topic,
+this will be a `beacon_block`. For the `beacon_attestation` topic, this will be
+an `attestation`.
 
 ## Eth-2 RPC
 
 #### Protocol Id: `/eth/serenity/beacon/rpc/1`
 
 The [RPC Interface](./rpc-interface.md) is specified in this repository.
-
 
 ## Identify
 
