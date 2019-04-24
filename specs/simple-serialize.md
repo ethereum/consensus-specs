@@ -55,7 +55,7 @@ For convenience we alias:
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
-> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signed_root`, `is_fixed_size`, `is_variable_size`, etc.) objects implicitly carry their type.
+> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
 
 ### `"uintN"`
 
@@ -75,8 +75,8 @@ return b"\x01" if value is True else b"\x00"
 
 ```python
 # Reccursively serialize
-fixed_parts = [serialize(element) if is_fixed_size(element) else None for element in value]
-variable_parts = [serialize(element) if is_variable_size(element) else "" for element in value]
+fixed_parts = [serialize(element) if not is_variable_size(element) else None for element in value]
+variable_parts = [serialize(element) if is_variable_size(element) else b"" for element in value]
 
 # Compute and check lengths
 fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts]
@@ -88,7 +88,7 @@ variable_offsets = [serialize(sum(fixed_lengths + variable_lengths[:i])) for i i
 fixed_parts = [part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)]
 
 # Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
-return "".join(fixed_parts + variable_parts)
+return b"".join(fixed_parts + variable_parts)
 ```
 
 ## Deserialization
@@ -112,7 +112,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 
 ## Self-signed containers
 
-Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signed_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
+Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
 ## Implementations
 
