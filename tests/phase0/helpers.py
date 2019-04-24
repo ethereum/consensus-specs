@@ -142,7 +142,7 @@ def build_attestation_data(state, slot, shard):
     if epoch_start_slot == slot:
         epoch_boundary_root = block_root
     else:
-        get_block_root(state, get_current_epoch(state))
+        epoch_boundary_root = get_block_root(state, get_current_epoch(state))
 
     if slot < epoch_start_slot:
         justified_block_root = state.previous_justified_root
