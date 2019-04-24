@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-**NOTICE**: This document is a work in progress for researchers and implementers. It reflects recent spec changes and takes precedence over the Python proof-of-concept implementation [[python-poc]](https://github.com/ethereum/beacon_chain).
+**NOTICE**: This document is a work in progress for researchers and implementers.
 
 ## Table of contents
 <!-- TOC -->
@@ -94,15 +94,7 @@
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
-    - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
-        - [Deposit arguments](#deposit-arguments)
-        - [Withdrawal credentials](#withdrawal-credentials)
-        - [`Deposit` logs](#deposit-logs)
-        - [`Eth2Genesis` log](#eth2genesis-log)
-        - [Vyper code](#vyper-code)
     - [On genesis](#on-genesis)
-    - [Beacon chain processing](#beacon-chain-processing)
-        - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [State caching](#state-caching)
         - [Per-epoch processing](#per-epoch-processing)
@@ -182,7 +174,6 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value |
 | - | - |
-| `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 
 ### Gwei values
@@ -208,7 +199,6 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `SECONDS_PER_SLOT` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
 | `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
@@ -1233,49 +1223,6 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     decrease_balance(state, slashed_index, whistleblowing_reward)
 ```
 
-## Ethereum 1.0 deposit contract
-
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
-
-### Deposit arguments
-
-The deposit contract has a single `deposit` function which takes as argument the `DepositData` elements.
-
-### Withdrawal credentials
-
-One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawals to shards. The first byte of `withdrawal_credentials` is a version number. As of now the only expected format is as follows:
-
-* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`
-* `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
-
-The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
-
-### `Deposit` logs
-
-Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
-
-### `Eth2Genesis` log
-
-When a sufficient amount of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
-
-* `genesis_time` equals `time` in the `Eth2Genesis` log
-* `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
-* `latest_eth1_data.deposit_count` equals `deposit_count` in the `Eth2Genesis` log
-* `latest_eth1_data.block_hash` equals the hash of the block that included the log
-* `genesis_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `Eth2Genesis` log, processed in the order in which they were emitted (oldest to newest)
-
-### Vyper code
-
-The source for the Vyper contract lives in a [separate repository](https://github.com/ethereum/deposit_contract) at [https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py](https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py).
-
-Note: to save ~10x on gas this contract uses a somewhat unintuitive progressive Merkle root calculation algo that requires only O(log(n)) storage. See https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py for an implementation of the same algo in python tested for correctness.
-
-For convenience, we provide the interface to the contract here:
-
-* `__init__()`: initializes the contract
-* `get_deposit_root() -> bytes32`: returns the current root of the deposit tree
-* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. Note: the amount of value transferred *must* be at least `MIN_DEPOSIT_AMOUNT`. Each of these constants are specified in units of Gwei.
-
 ## On genesis
 
 When enough full deposits have been made to the deposit contract, an `Eth2Genesis` log is emitted. Construct a corresponding `genesis_state` and `genesis_block` as follows:
@@ -1313,80 +1260,6 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         state.latest_active_index_roots[index] = genesis_active_index_root
 
     return state
-```
-
-## Beacon chain processing
-
-The beacon chain is the system chain for Ethereum 2.0. The main responsibilities of the beacon chain are as follows:
-
-* Store and maintain the registry of [validators](#dfn-validator)
-* Process crosslinks (see above)
-* Process its per-block consensus, as well as the finality gadget
-
-Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Clients download and process blocks and maintain a view of what is the current "canonical chain", terminating at the current "head". However, because of the beacon chain's relationship with Ethereum 1.0, and because it is a proof-of-stake chain, there are differences.
-
-For a beacon chain block, `block`, to be processed by a node, the following conditions must be met:
-
-* The parent block with root `block.previous_block_root` has been processed and accepted.
-* An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`. (Note that leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.)
-
-If these conditions are not met, the client should delay processing the beacon block until the conditions are all satisfied.
-
-Beacon block production is significantly different because of the proof-of-stake mechanism. A client simply checks what it thinks is the canonical chain when it should create a block and looks up what its slot number is; when the slot arrives, it either proposes or attests to a block as required. Note that this requires each node to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
-
-### Beacon chain fork choice rule
-
-The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a [validator](#dfn-validator) `v` subjectively calculates the beacon chain head as follows.
-
-* Abstractly define `Store` as the type of storage object for the chain data and `store` be the set of attestations and blocks that the [validator](#dfn-validator) `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
-* Let `finalized_head` be the finalized block with the highest epoch. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
-* Let `justified_head` be the descendant of `finalized_head` with the highest epoch that has been justified for at least 1 epoch. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
-* Let `get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as:
-
-```python
-def get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock:
-    """
-    Get the ancestor of ``block`` with slot number ``slot``; return ``None`` if not found.
-    """
-    if block.slot == slot:
-        return block
-    elif block.slot < slot:
-        return None
-    else:
-        return get_ancestor(store, store.get_parent(block), slot)
-```
-
-* Let `get_latest_attestation(store: Store, index: ValidatorIndex) -> Attestation` be the attestation with the highest slot number in `store` from the validator with the given `index`. If several such attestations exist, use the one the [validator](#dfn-validator) `v` observed first.
-* Let `get_latest_attestation_target(store: Store, index: ValidatorIndex) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, index)`.
-* Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
-* Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
-* The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
-
-```python
-def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) -> BeaconBlock:
-    """
-    Execute the LMD-GHOST algorithm to find the head ``BeaconBlock``.
-    """
-    validators = start_state.validator_registry
-    active_validator_indices = get_active_validator_indices(validators, slot_to_epoch(start_state.slot))
-    attestation_targets = [(i, get_latest_attestation_target(store, i)) for i in active_validator_indices]
-
-    # Use the effective balance for fork choice voting to reduce recomputations and save bandwidth
-    def get_vote_count(block: BeaconBlock) -> int:
-        return sum(
-            start_state.validator_registry[validator_index].effective_balance
-            for validator_index, target in attestation_targets
-            if get_ancestor(store, target, block.slot) == block
-        )
-
-    head = start_block
-    while 1:
-        children = get_children(store, head)
-        if len(children) == 0:
-            return head
-        # Ties broken by favoring block with lexicographically higher root
-        head = max(children, key=lambda x: (get_vote_count(x), hash_tree_root(x)))
 ```
 
 ## Beacon chain state transition function

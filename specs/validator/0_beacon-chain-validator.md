@@ -66,7 +66,7 @@ A validator is an entity that participates in the consensus of the Ethereum 2.0 
 
 ## Prerequisites
 
-All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](../core/0_beacon-chain.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
+All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](../core/0_beacon-chain.md) and [Phase 0 -- Deposit Contract](../core/0_deposit-contract.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
 ## Constants
 
@@ -96,7 +96,7 @@ The validator constructs their `withdrawal_credentials` via the following:
 
 ### Submit deposit
 
-In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](../core/0_beacon-chain.md#ethereum-10-deposit-contract) located at `DEPOSIT_CONTRACT_ADDRESS`.
+In phase 0, all incoming validator deposits originate from the Ethereum 1.0 PoW chain. Deposits are made to the [deposit contract](../core/0_deposit-contract.md) located at `DEPOSIT_CONTRACT_ADDRESS`.
 
 To submit a deposit:
 
@@ -224,7 +224,7 @@ Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. 
 
 ##### Deposits
 
-If there are any unprocessed deposits for the existing `state.latest_eth1_data` (i.e. `state.latest_eth1_data.deposit_count > state.deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](../core/0_beacon-chain.md#ethereum-10-deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
+If there are any unprocessed deposits for the existing `state.latest_eth1_data` (i.e. `state.latest_eth1_data.deposit_count > state.deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth1.0 deposit contract](../core/0_deposit-contract.md) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
 
 The `proof` for each deposit must be constructed against the deposit root contained in `state.latest_eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `latest_eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
