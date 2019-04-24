@@ -429,6 +429,7 @@ def test_eth1_data_votes(state):
 
     block = build_empty_block_for_next_slot(post_state)
     state_transition(post_state, block)
+    blocks.append(block)
 
     assert post_state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
     assert len(post_state.eth1_data_votes) == 1
