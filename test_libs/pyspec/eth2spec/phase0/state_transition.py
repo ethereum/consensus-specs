@@ -11,7 +11,6 @@ from .spec import (
     BeaconState,
     BeaconBlock,
     Slot,
-    process_proposer_attestation_rewards,
 )
 
 
@@ -52,7 +51,6 @@ def process_operations(state: BeaconState, block: BeaconBlock) -> None:
         spec.MAX_ATTESTATIONS,
         spec.process_attestation,
     )
-    process_proposer_attestation_rewards(state)
 
     assert len(block.body.deposits) == expected_deposit_count(state)
     process_operation_type(
