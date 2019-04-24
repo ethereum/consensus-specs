@@ -52,7 +52,7 @@ def next_epoch_with_attestations(state,
                                  fill_prev_epoch):
     post_state = deepcopy(state)
     blocks = []
-    for slot in range(spec.SLOTS_PER_EPOCH):
+    for _ in range(spec.SLOTS_PER_EPOCH):
         block = build_empty_block_for_next_slot(post_state)
         if fill_cur_epoch:
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
