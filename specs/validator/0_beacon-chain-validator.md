@@ -255,7 +255,7 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 ##### Source epoch
 
-Set `attestation_data.source_epoch = head_state.justified_epoch`.
+Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
 
 ##### Source root
 
