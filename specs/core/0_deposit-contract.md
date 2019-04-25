@@ -9,7 +9,7 @@
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
-        - [Deposit contract](#time-parameters)
+        - [Deposit contract](#deposit-contract)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
@@ -51,7 +51,7 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 
 ### `Deposit` logs
 
-Every Ethereum 1.0 deposit, of size between `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `Eth2Genesis` log
 
@@ -73,4 +73,4 @@ For convenience, we provide the interface to the contract here:
 
 * `__init__()`: initializes the contract
 * `get_deposit_root() -> bytes32`: returns the current root of the deposit tree
-* `deposit(bytes[512])`: adds a deposit instance to the deposit tree, incorporating the input argument and the value transferred in the given call. Note: the amount of value transferred *must* be within `MIN_DEPOSIT_AMOUNT` and `MAX_DEPOSIT_AMOUNT`, inclusive. Each of these constants are specified in units of Gwei.
+* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. Note: the amount of value transferred *must* be at least `MIN_DEPOSIT_AMOUNT`. Each of these constants are specified in units of Gwei.
