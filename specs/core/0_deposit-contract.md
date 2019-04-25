@@ -10,14 +10,15 @@
     - [Introduction](#introduction)
     - [Constants](#constants)
         - [Gwei values](#gwei-values)
-        - [Deposit contract](#deposit-contract)
+        - [Contract](#contract)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
-        - [Deposit arguments](#deposit-arguments)
-        - [Withdrawal credentials](#withdrawal-credentials)
-        - [Amount](#amount)
+        - [Arguments](#arguments)
+            - [Withdrawal credentials](#withdrawal-credentials)
+            - [Amount](#amount)
+    - [Event logs](#event-logs)
         - [`Deposit` logs](#deposit-logs)
         - [`Eth2Genesis` log](#eth2genesis-log)
-        - [Vyper code](#vyper-code)
+    - [Vyper code](#vyper-code)
 
 <!-- /TOC -->
 
@@ -33,7 +34,7 @@ This document represents is the specification for the beacon chain deposit contr
 | - | - | - |
 | `FULL_DEPOSIT_AMOUNT` | `32 * 10**9` | Gwei |
 
-### Deposit contract
+### Contract
 
 | Name | Value |
 | - | - |
@@ -45,11 +46,11 @@ This document represents is the specification for the beacon chain deposit contr
 
 The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
 
-### Deposit arguments
+### Arguments
 
 The deposit contract has a `deposit` function which takes the amount in Ethereum 1.0 transation, and arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]` corresponding to `DepositData`.
 
-### Withdrawal credentials
+#### Withdrawal credentials
 
 One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawals to shards. The first byte of `withdrawal_credentials` is a version number. As of now the only expected format is as follows:
 
@@ -58,10 +59,12 @@ One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment 
 
 The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
 
-### Amount
+#### Amount
 
 * A valid deposit amount should be at least `MIN_DEPOSIT_AMOUNT` in Gwei.
 * A deposit with an amount greater than or equal to `FULL_DEPOSIT_AMOUNT` in Gwei is considered as a full deposit.
+
+## Event logs
 
 ### `Deposit` logs
 
@@ -77,7 +80,7 @@ When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the d
 * `latest_eth1_data.block_hash` equals the hash of the block that included the log
 * `genesis_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `Eth2Genesis` log, processed in the order in which they were emitted (oldest to newest)
 
-### Vyper code
+## Vyper code
 
 The source for the Vyper contract lives in a [separate repository](https://github.com/ethereum/deposit_contract) at [https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py](https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py).
 
