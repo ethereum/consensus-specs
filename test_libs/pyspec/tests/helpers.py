@@ -119,6 +119,7 @@ def build_empty_block_for_next_slot(state):
     empty_block = BeaconBlock()
     empty_block.slot = state.slot + 1
     previous_block_header = deepcopy(state.latest_block_header)
+    empty_block.body.eth1_data = state.latest_eth1_data
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
     empty_block.previous_block_root = signing_root(previous_block_header)
@@ -154,7 +155,6 @@ def build_attestation_data(state, slot, shard):
 
     current_epoch_start_slot = get_epoch_start_slot(get_current_epoch(state))
     if slot < current_epoch_start_slot:
-        print(slot)
         epoch_boundary_root = get_block_root(state, get_epoch_start_slot(get_previous_epoch(state)))
     elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
@@ -284,17 +284,11 @@ def get_valid_attestation(state, slot=None):
     if slot is None:
         slot = state.slot
 
-    if slot_to_epoch(slot) == get_current_epoch(state):
-        shard = (state.latest_start_shard + slot) % spec.SLOTS_PER_EPOCH
-    else:
-        previous_shard_delta = get_shard_delta(state, get_previous_epoch(state))
-        shard = (state.latest_start_shard - previous_shard_delta + slot) % spec.SHARD_COUNT
-
+    crosslink_committee, shard = get_crosslink_committees_at_slot(state, slot)[0]
     attestation_data = build_attestation_data(state, slot, shard)
 
-    crosslink_committee = get_crosslink_committee_for_attestation(state, attestation_data)
-
     committee_size = len(crosslink_committee)
+    assert committee_size > 0
     bitfield_length = (committee_size + 7) // 8
     aggregation_bitfield = b'\xC0' + b'\x00' * (bitfield_length - 1)
     custody_bitfield = b'\x00' * bitfield_length
@@ -321,7 +315,7 @@ def get_valid_attestation(state, slot=None):
             )
         )
 
-    attestation.aggregation_signature = bls.aggregate_signatures(signatures)
+    attestation.signature = bls.aggregate_signatures(signatures)
     return attestation
 
 
