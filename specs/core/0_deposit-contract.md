@@ -9,10 +9,12 @@
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
+        - [Gwei values](#gwei-values)
         - [Deposit contract](#deposit-contract)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Deposit arguments](#deposit-arguments)
         - [Withdrawal credentials](#withdrawal-credentials)
+        - [Amount](#amount)
         - [`Deposit` logs](#deposit-logs)
         - [`Eth2Genesis` log](#eth2genesis-log)
         - [Vyper code](#vyper-code)
@@ -25,12 +27,19 @@ This document represents is the specification for the beacon chain deposit contr
 
 ## Constants
 
+### Gwei values
+
+| Name | Value | Unit |
+| - | - | - |
+| `FULL_DEPOSIT_AMOUNT` | `32 * 10**9` | Gwei |
+
 ### Deposit contract
 
 | Name | Value |
 | - | - |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+| `CHAIN_START_FULL_DEPOSIT_THRESHOLD` | `2**16` (=65,536) |
 
 ## Ethereum 1.0 deposit contract
 
@@ -38,7 +47,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Deposit arguments
 
-The deposit contract has a single `deposit` function which takes as argument a SimpleSerialize'd `DepositData`.
+The deposit contract has a `deposit` function which takes the amount in Ethereum 1.0 transation, and arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]` corresponding to `DepositData`.
 
 ### Withdrawal credentials
 
@@ -49,13 +58,18 @@ One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment 
 
 The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
 
+### Amount
+
+* A valid deposit amount should be at least `MIN_DEPOSIT_AMOUNT` in Gwei.
+* A deposit with an amount greater than or equal to `FULL_DEPOSIT_AMOUNT` in Gwei is considered as a full deposit.
+
 ### `Deposit` logs
 
 Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ### `Eth2Genesis` log
 
-When a sufficient amount of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
+When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
 * `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
