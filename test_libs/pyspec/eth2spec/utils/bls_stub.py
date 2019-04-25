@@ -10,3 +10,7 @@ def bls_verify_multiple(pubkeys, message_hashes, signature, domain):
 
 def bls_aggregate_pubkeys(pubkeys):
     return b'\x42' * 96
+
+
+def bls_aggregate_signatures(signatures):
+    return b'\x42' * 96

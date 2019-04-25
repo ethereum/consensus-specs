@@ -99,7 +99,7 @@ def process_epoch_transition(state: BeaconState) -> None:
     spec.process_final_updates(state)
 
 
-def state_transition_to(state: BeaconState, up_to: Slot) -> BeaconState:
+def state_transition_to(state: BeaconState, up_to: Slot) -> None:
     while state.slot < up_to:
         spec.cache_state(state)
         if (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0:
@@ -109,6 +109,6 @@ def state_transition_to(state: BeaconState, up_to: Slot) -> BeaconState:
 
 def state_transition(state: BeaconState,
                      block: BeaconBlock,
-                     verify_state_root: bool=False) -> BeaconState:
+                     verify_state_root: bool=False) -> None:
     state_transition_to(state, block.slot)
     process_block(state, block, verify_state_root)
