@@ -1562,6 +1562,7 @@ def process_registry_updates(state: BeaconState) -> None:
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_churn_limit(state)]:
+        validator = state.validator_registry[index]
         if validator.activation_epoch == FAR_FUTURE_EPOCH:
             validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
