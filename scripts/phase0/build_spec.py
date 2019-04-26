@@ -5,10 +5,8 @@ import function_puller
 def build_phase0_spec(sourcefile, outfile):
     code_lines = []
     code_lines.append("""
-    
 from typing import (
     Any,
-    Callable,
     Dict,
     List,
     NewType,
@@ -17,17 +15,14 @@ from typing import (
 from eth2spec.utils.minimal_ssz import *
 from eth2spec.utils.bls_stub import *
 
-
-    """)
+""")
     for i in (1, 2, 3, 4, 8, 32, 48, 96):
         code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
 
     code_lines.append("""
+
 # stub, will get overwritten by real var
 SLOTS_PER_EPOCH = 64
-
-
-def slot_to_epoch(x): return x // SLOTS_PER_EPOCH
 
 
 Slot = NewType('Slot', int)  # uint64
@@ -38,9 +33,8 @@ Gwei = NewType('Gwei', int)  # uint64
 Bytes32 = NewType('Bytes32', bytes)  # bytes32
 BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
 BLSSignature = NewType('BLSSignature', bytes)  # bytes96
-Any = None
 Store = None
-    """)
+""")
 
     code_lines += function_puller.get_spec(sourcefile)
 
@@ -88,7 +82,7 @@ def apply_constants_preset(preset: Dict[str, Any]):
 
     # Deal with derived constants
     global_vars['GENESIS_EPOCH'] = slot_to_epoch(GENESIS_SLOT)
-    
+
     # Initialize SSZ types again, to account for changed lengths
     init_SSZ_types()
 """)

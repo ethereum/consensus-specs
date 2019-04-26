@@ -687,7 +687,6 @@ def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
     Check if ``validator`` is slashable.
     """
     return validator.slashed is False and (validator.activation_epoch <= epoch < validator.withdrawable_epoch)
-
 ```
 
 ### `get_active_validator_indices`
@@ -1250,7 +1249,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         process_deposit(state, deposit)
 
     # Process genesis activations
-    for index, validator in enumerate(state.validator_registry):
+    for validator in state.validator_registry:
         if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
@@ -1366,7 +1365,7 @@ def get_winning_crosslink_and_attesting_indices(state: BeaconState, shard: Shard
         if hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
     ]
     if len(candidate_crosslinks) == 0:
-        return Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH), []
+        return Crosslink(epoch=GENESIS_EPOCH), []
 
     def get_attestations_for(crosslink: Crosslink) -> List[PendingAttestation]:
         return [a for a in shard_attestations if get_crosslink_from_attestation_data(state, a.data) == crosslink]
@@ -1461,15 +1460,14 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     if adjusted_quotient == 0:
         return 0
     return state.validator_registry[index].effective_balance // adjusted_quotient // BASE_REWARDS_PER_EPOCH
-
 ```
 
 ```python
 def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     previous_epoch = get_previous_epoch(state)
     total_balance = get_total_active_balance(state)
-    rewards = [0 for index in range(len(state.validator_registry))]
-    penalties = [0 for index in range(len(state.validator_registry))]
+    rewards = [0 for _ in range(len(state.validator_registry))]
+    penalties = [0 for _ in range(len(state.validator_registry))]
     eligible_validator_indices = [
         index for index, v in enumerate(state.validator_registry)
         if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
@@ -1509,8 +1507,8 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
 
 ```python
 def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    rewards = [0 for index in range(len(state.validator_registry))]
-    penalties = [0 for index in range(len(state.validator_registry))]
+    rewards = [0 for _ in range(len(state.validator_registry))]
+    penalties = [0 for _ in range(len(state.validator_registry))]
     for slot in range(get_epoch_start_slot(get_previous_epoch(state)), get_epoch_start_slot(get_current_epoch(state))):
         epoch = slot_to_epoch(slot)
         for crosslink_committee, shard in get_crosslink_committees_at_slot(state, slot):
