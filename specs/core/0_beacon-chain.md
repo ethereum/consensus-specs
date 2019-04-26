@@ -1502,7 +1502,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             if index not in matching_target_attesting_indices:
                 penalties[index] += state.validator_registry[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
 
-    return [rewards, penalties]
+    return rewards, penalties
 ```
 
 ```python
@@ -1521,7 +1521,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
                     rewards[index] += base_reward * attesting_balance // committee_balance
                 else:
                     penalties[index] += base_reward
-    return [rewards, penalties]
+    return rewards, penalties
 ```
 
 Run the following function:
