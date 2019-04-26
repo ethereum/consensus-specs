@@ -48,7 +48,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### Arguments
 
-The deposit contract has a `deposit` function which takes the amount in Ethereum 1.0 transation, and arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]` corresponding to `DepositData`.
+The deposit contract has a `deposit` function which takes the amount in Ethereum 1.0 transaction, and arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]` corresponding to `DepositData`.
 
 #### Withdrawal credentials
 
