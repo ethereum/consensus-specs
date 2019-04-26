@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+import pytest
+
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
@@ -9,6 +11,9 @@ from eth2spec.phase0.spec import (
 from tests.helpers import (
     next_epoch,
 )
+
+# mark entire file as 'state'
+pytestmark = pytest.mark.state
 
 
 def test_activation(state):
@@ -23,8 +28,10 @@ def test_activation(state):
 
     pre_state = deepcopy(state)
 
+    blocks = []
     for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
-        next_epoch(state)
+        block = next_epoch(state)
+        blocks.append(block)
 
     assert state.validator_registry[index].activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
     assert state.validator_registry[index].activation_epoch != spec.FAR_FUTURE_EPOCH
@@ -33,7 +40,7 @@ def test_activation(state):
         get_current_epoch(state),
     )
 
-    return pre_state, state
+    return pre_state, blocks, state
 
 
 def test_ejection(state):
@@ -46,8 +53,10 @@ def test_ejection(state):
 
     pre_state = deepcopy(state)
 
+    blocks = []
     for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
-        next_epoch(state)
+        block = next_epoch(state)
+        blocks.append(block)
 
     assert state.validator_registry[index].exit_epoch != spec.FAR_FUTURE_EPOCH
     assert not is_active_validator(
@@ -55,4 +64,4 @@ def test_ejection(state):
         get_current_epoch(state),
     )
 
-    return pre_state, state
+    return pre_state, blocks, state
