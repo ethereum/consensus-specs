@@ -1836,9 +1836,9 @@ def process_randao_key_reveal(state: BeaconState,
         message_hashes=message_hashes,
         signature=randao_key_reveal.reveal,
         domain=get_domain(
-            fork=state.fork,
-            epoch=randao_key_reveal.epoch,
+            state=state,
             domain_type=DOMAIN_RANDAO,
+            message_epoch=randao_key_reveal.epoch,
         ),
     )
 
@@ -1861,7 +1861,7 @@ def process_randao_key_reveal(state: BeaconState,
         penalty = max_proposer_slot_reward * RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE
 
         # Apply penalty
-        proposer_index = get_beacon_proposer_index(state, state.slot)
+        proposer_index = get_beacon_proposer_index(state)
         whistleblower_index = randao_key_reveal.masker_index
         whistleblowing_reward = penalty // WHISTLEBLOWING_REWARD_QUOTIENT
         proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT

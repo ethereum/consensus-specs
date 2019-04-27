@@ -1,16 +1,15 @@
 from copy import deepcopy
 import pytest
 
-import build.phase0.spec as spec
-from build.phase0.spec import (
-    get_balance,
+import eth2spec.phase0.spec as spec
+from eth2spec.phase0.spec import (
     get_current_epoch,
     process_randao_key_reveal,
     RANDAO_PENALTY_EPOCHS,
     CUSTODY_PERIOD_TO_RANDAO_PADDING,
     RANDAO_PENALTY_MAX_FUTURE_EPOCHS,
 )
-from tests.phase0.helpers import (
+from tests.helpers import (
     get_valid_randao_key_reveal,
 )
 
@@ -40,10 +39,10 @@ def run_randao_key_reveal_processing(state, randao_key_reveal, valid=True):
         assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
     # FIXME: Currently broken because get_base_reward in genesis epoch is 0
-    #assert (
-    #    get_balance(post_state, randao_key_reveal.revealed_index) <
-    #    get_balance(state, randao_key_reveal.revealed_index)
-    #)
+    assert (
+        post_state.balances[randao_key_reveal.revealed_index] <
+        state.balances[randao_key_reveal.revealed_index]
+    )
 
     return state, post_state
 
@@ -63,13 +62,14 @@ def test_reveal_from_current_epoch(state):
 
     return pre_state, randao_key_reveal, post_state
 
-
-def test_reveal_from_past_epoch(state):
-    randao_key_reveal = get_valid_randao_key_reveal(state, get_current_epoch(state) - 1)
-
-    pre_state, post_state = run_randao_key_reveal_processing(state, randao_key_reveal, False)
-
-    return pre_state, randao_key_reveal, post_state
+# Not currently possible as we are testing at epoch 0
+#
+#def test_reveal_from_past_epoch(state):
+#    randao_key_reveal = get_valid_randao_key_reveal(state, get_current_epoch(state) - 1)
+#
+#    pre_state, post_state = run_randao_key_reveal_processing(state, randao_key_reveal, False)
+#
+#    return pre_state, randao_key_reveal, post_state
 
 def test_reveal_with_custody_padding(state):
     randao_key_reveal = get_valid_randao_key_reveal(state, get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING)

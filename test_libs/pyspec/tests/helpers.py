@@ -290,18 +290,18 @@ def get_valid_randao_key_reveal(state, epoch=None):
         message_hash=hash_tree_root(epoch),
         privkey=pubkey_to_privkey[state.validator_registry[revealed_index].pubkey],
         domain=get_domain(
-            fork=state.fork,
-            epoch=epoch,
+            state=state,
             domain_type=spec.DOMAIN_RANDAO,
+            message_epoch=epoch,
         ),
     )
     mask = bls.sign(
         message_hash=hash_tree_root(epoch),
         privkey=pubkey_to_privkey[state.validator_registry[masker_index].pubkey],
         domain=get_domain(
-            fork=state.fork,
-            epoch=epoch,
+            state=state,
             domain_type=spec.DOMAIN_RANDAO,
+            message_epoch=epoch,
         ),
     )
 
