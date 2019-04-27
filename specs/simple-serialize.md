@@ -8,12 +8,13 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Typing](#typing)
     - [Basic types](#basic-types)
     - [Composite types](#composite-types)
+        - [Illegal empty composites](#illegal-empty-composites)
     - [Aliases](#aliases)
     - [Default values](#default-values)
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
-    - [Containers, vectors, lists](#containers-vectors-lists)
+    - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Self-signed containers](#self-signed-containers)
@@ -32,9 +33,6 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 
 * `"uintN"`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
 * `"bool"`: `True` or `False`
-* `"null"`: `None`
-
-The `"null"` type is only legal as a union sub-type.
 
 ### Composite types
 
@@ -49,6 +47,10 @@ The `"null"` type is only legal as a union sub-type.
 
 We recursively define "variable-size" types to be lists and unions and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
+#### Illegal empty composites
+
+The empty container `{}` (except as the `"null"` type inside a union, see below) and the empty fixed length list `[type, 0]` are **not** legal types.
+
 ### Aliases
 
 For convenience we alias:
@@ -56,6 +58,9 @@ For convenience we alias:
 * `"byte"` to `"uint8"` (this is a basic type)
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
+* `"null"`: `{}`, i.e. the empty container
+
+The `"null"` type is only legal as a union sub-type.
 
 ### Default values
 
