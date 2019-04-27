@@ -462,13 +462,13 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Index of the validator whos key is being revealed
-    'revealed_index': ValidatorIndex,
+    'revealed_index': 'uint64',
     # RANDAO epoch of the key that is being revealed
     'epoch': 'uint64',
     # Reveal (masked signature)
     'reveal': 'bytes96',
     # Index of the validator who revealed (whistleblower)
-    'masker_index': ValidatorIndex,
+    'masker_index': 'uint64',
     # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
     'mask': 'bytes32',
 }
