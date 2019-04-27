@@ -14,6 +14,8 @@ from eth2spec.phase0.spec import (
 from tests.helpers import (
     build_empty_block_for_next_slot,
     get_valid_attestation,
+    next_epoch,
+    next_slot,
 )
 
 
@@ -120,10 +122,12 @@ def test_non_zero_crosslink_data_root(state):
 
 
 def test_bad_previous_crosslink(state):
+    next_epoch(state)
     attestation = get_valid_attestation(state)
-    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
 
-    state.latest_crosslinks[attestation.data.shard].epoch += 10
+    state.current_crosslinks[attestation.data.shard].epoch += 10
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 

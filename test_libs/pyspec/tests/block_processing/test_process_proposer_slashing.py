@@ -3,15 +3,15 @@ import pytest
 
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import (
-    get_balance,
     get_current_epoch,
     process_proposer_slashing,
 )
 from tests.helpers import (
+    get_balance,
     get_valid_proposer_slashing,
 )
 
-# mark entire file as 'header'
+# mark entire file as 'proposer_slashings'
 pytestmark = pytest.mark.proposer_slashings
 
 

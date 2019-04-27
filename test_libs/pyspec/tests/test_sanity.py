@@ -8,7 +8,6 @@ import eth2spec.phase0.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
-    EMPTY_SIGNATURE,
     ZERO_HASH,
     # SSZ
     Deposit,
@@ -16,15 +15,13 @@ from eth2spec.phase0.spec import (
     VoluntaryExit,
     # functions
     get_active_validator_indices,
-    get_balance,
     get_beacon_proposer_index,
-    get_block_root,
+    get_block_root_at_slot,
+    get_state_root,
     get_current_epoch,
     get_domain,
-    get_state_root,
     advance_slot,
     cache_state,
-    set_balance,
     verify_merkle_branch,
     hash,
 )
@@ -37,11 +34,14 @@ from eth2spec.utils.merkle_minimal import (
     get_merkle_root,
 )
 from .helpers import (
+    get_balance,
     build_deposit_data,
     build_empty_block_for_next_slot,
+    fill_aggregate_attestation,
     get_valid_attestation,
     get_valid_attester_slashing,
     get_valid_proposer_slashing,
+    next_slot,
     privkeys,
     pubkeys,
 )
@@ -67,7 +67,7 @@ def test_empty_block_transition(state):
     state_transition(test_state, block)
 
     assert len(test_state.eth1_data_votes) == len(state.eth1_data_votes) + 1
-    assert get_block_root(test_state, state.slot) == block.previous_block_root
+    assert get_block_root_at_slot(test_state, state.slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -81,7 +81,7 @@ def test_skipped_slots(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -95,7 +95,7 @@ def test_empty_epoch_transition(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
 
     return state, [block], test_state
 
@@ -177,9 +177,9 @@ def test_deposit_in_block(state):
     index = len(test_deposit_data_leaves)
     pubkey = pubkeys[index]
     privkey = privkeys[index]
-    deposit_data = build_deposit_data(pre_state, pubkey, privkey, spec.MAX_DEPOSIT_AMOUNT)
+    deposit_data = build_deposit_data(pre_state, pubkey, privkey, spec.MAX_EFFECTIVE_BALANCE)
 
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
@@ -201,7 +201,7 @@ def test_deposit_in_block(state):
     state_transition(post_state, block)
     assert len(post_state.validator_registry) == len(state.validator_registry) + 1
     assert len(post_state.balances) == len(state.balances) + 1
-    assert get_balance(post_state, index) == spec.MAX_DEPOSIT_AMOUNT
+    assert get_balance(post_state, index) == spec.MAX_EFFECTIVE_BALANCE
     assert post_state.validator_registry[index].pubkey == pubkeys[index]
 
     return pre_state, [block], post_state
@@ -212,13 +212,13 @@ def test_deposit_top_up(state):
     test_deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
     validator_index = 0
-    amount = spec.MAX_DEPOSIT_AMOUNT // 4
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
     pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
     deposit_data = build_deposit_data(pre_state, pubkey, privkey, amount)
 
     merkle_index = len(test_deposit_data_leaves)
-    item = hash(deposit_data.serialize())
+    item = deposit_data.hash_tree_root()
     test_deposit_data_leaves.append(item)
     tree = calc_merkle_tree_from_leaves(tuple(test_deposit_data_leaves))
     root = get_merkle_root((tuple(test_deposit_data_leaves)))
@@ -247,6 +247,7 @@ def test_deposit_top_up(state):
 
 
 def test_attestation(state):
+    state.slot = spec.SLOTS_PER_EPOCH
     test_state = deepcopy(state)
     attestation = get_valid_attestation(state)
 
@@ -260,8 +261,6 @@ def test_attestation(state):
 
     assert len(test_state.current_epoch_attestations) == len(state.current_epoch_attestations) + 1
 
-    proposer_index = get_beacon_proposer_index(test_state)
-    assert test_state.balances[proposer_index] > state.balances[proposer_index]
 
     #
     # Epoch transition should move to previous_epoch_attestations
@@ -293,14 +292,12 @@ def test_voluntary_exit(state):
     voluntary_exit = VoluntaryExit(
         epoch=get_current_epoch(pre_state),
         validator_index=validator_index,
-        signature=EMPTY_SIGNATURE,
     )
     voluntary_exit.signature = bls.sign(
         message_hash=signing_root(voluntary_exit),
         privkey=privkeys[validator_index],
         domain=get_domain(
-            fork=pre_state.fork,
-            epoch=get_current_epoch(pre_state),
+            state=pre_state,
             domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
         )
     )
@@ -326,34 +323,10 @@ def test_voluntary_exit(state):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
-def test_no_exit_churn_too_long_since_change(state):
-    pre_state = deepcopy(state)
-    validator_index = get_active_validator_indices(
-        pre_state,
-        get_current_epoch(pre_state)
-    )[-1]
-
-    #
-    # setup pre_state
-    #
-    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
-    pre_state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
-
-    post_state = deepcopy(pre_state)
-
-    #
-    # Process registry change but ensure no exit
-    #
-    block = build_empty_block_for_next_slot(post_state)
-    block.slot += spec.SLOTS_PER_EPOCH
-    state_transition(post_state, block)
-
-    assert post_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-
-    return pre_state, [block], post_state
-
-
 def test_transfer(state):
+    # overwrite default 0 to test
+    spec.MAX_TRANSFERS = 1
+
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)
     sender_index = get_active_validator_indices(pre_state, current_epoch)[-1]
@@ -369,14 +342,12 @@ def test_transfer(state):
         fee=0,
         slot=pre_state.slot + 1,
         pubkey=transfer_pubkey,
-        signature=EMPTY_SIGNATURE,
     )
     transfer.signature = bls.sign(
         message_hash=signing_root(transfer),
         privkey=transfer_privkey,
         domain=get_domain(
-            fork=pre_state.fork,
-            epoch=get_current_epoch(pre_state),
+            state=pre_state,
             domain_type=spec.DOMAIN_TRANSFER,
         )
     )
@@ -386,7 +357,7 @@ def test_transfer(state):
         spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer_pubkey)[1:]
     )
     # un-activate so validator can transfer
-    pre_state.validator_registry[sender_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    pre_state.validator_registry[sender_index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     post_state = deepcopy(pre_state)
     #
@@ -405,17 +376,15 @@ def test_transfer(state):
 
 
 def test_balance_driven_status_transitions(state):
-    pre_state = deepcopy(state)
+    current_epoch = get_current_epoch(state)
+    validator_index = get_active_validator_indices(state, current_epoch)[-1]
 
-    current_epoch = get_current_epoch(pre_state)
-    validator_index = get_active_validator_indices(pre_state, current_epoch)[-1]
-
-    assert pre_state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert state.validator_registry[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # set validator balance to below ejection threshold
-    set_balance(pre_state, validator_index, spec.EJECTION_BALANCE - 1)
+    state.validator_registry[validator_index].effective_balance = spec.EJECTION_BALANCE
 
-    post_state = deepcopy(pre_state)
+    post_state = deepcopy(state)
     #
     # trigger epoch transition
     #
@@ -425,14 +394,13 @@ def test_balance_driven_status_transitions(state):
 
     assert post_state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
-    return pre_state, [block], post_state
+    return state, [block], post_state
 
 
 def test_historical_batch(state):
-    pre_state = deepcopy(state)
-    pre_state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (pre_state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
+    state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
 
-    post_state = deepcopy(pre_state)
+    post_state = deepcopy(state)
 
     block = build_empty_block_for_next_slot(post_state)
 
@@ -440,6 +408,30 @@ def test_historical_batch(state):
 
     assert post_state.slot == block.slot
     assert get_current_epoch(post_state) % (spec.SLOTS_PER_HISTORICAL_ROOT // spec.SLOTS_PER_EPOCH) == 0
-    assert len(post_state.historical_roots) == len(pre_state.historical_roots) + 1
+    assert len(post_state.historical_roots) == len(state.historical_roots) + 1
 
-    return pre_state, [block], post_state
+    return state, [block], post_state
+
+
+def test_eth1_data_votes(state):
+    post_state = deepcopy(state)
+
+    expected_votes = 0
+    assert len(state.eth1_data_votes) == expected_votes
+
+    blocks = []
+    for _ in range(spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1):
+        block = build_empty_block_for_next_slot(post_state)
+        state_transition(post_state, block)
+        expected_votes += 1
+        assert len(post_state.eth1_data_votes) == expected_votes
+        blocks.append(block)
+
+    block = build_empty_block_for_next_slot(post_state)
+    state_transition(post_state, block)
+    blocks.append(block)
+
+    assert post_state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
+    assert len(post_state.eth1_data_votes) == 1
+
+    return state, blocks, post_state

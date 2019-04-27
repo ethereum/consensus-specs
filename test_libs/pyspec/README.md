@@ -19,6 +19,8 @@ Or, to build a single file, specify the path, e.g. `make test_libs/pyspec/eth2sp
 
 ## Py-tests
 
+After building, you can install the dependencies for running the `pyspec` tests with `make install_test`
+
 These tests are not intended for client-consumption.
 These tests are sanity tests, to verify if the spec itself is consistent.
 
@@ -36,14 +38,15 @@ Install dependencies:
 ```bash
 python3 -m venv venv
 . venv/bin/activate
-pip3 install -r requirements.txt
+pip3 install -e .[dev]
 ```
-Note: make sure to run `make pyspec` from the root of the specs repository,
+Note: make sure to run `make -B pyspec` from the root of the specs repository,
  to build the parts of the pyspec module derived from the markdown specs.
+The `-B` flag may be helpful to force-overwrite the `pyspec` output after you made a change to the markdown source files.
 
 Run the tests:
 ```
-pytest -m minimal_config .
+pytest --config=minimal
 ```
 
 
@@ -55,4 +58,4 @@ The pyspec is not a replacement.
 
 ## License
 
-Same as the spec itself, see LICENSE file in spec repository root.
+Same as the spec itself, see [LICENSE](../../LICENSE) file in spec repository root.

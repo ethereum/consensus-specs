@@ -28,8 +28,11 @@ make clean
 This runs all the generators.
 
 ```bash
-make gen_yaml_tests
+make -j 4 gen_yaml_tests
 ```
+
+The `-j N` flag makes the generators run in parallel, with `N` being the amount of cores.
+
 
 ### Running a single generator
 
@@ -69,7 +72,7 @@ Note: make sure to run `make pyspec` from the root of the specs repository, to b
 
 Install all the necessary requirements (re-run when you add more):
 ```bash
-pip3 install -r requirements.txt
+pip3 install -e .[pyspec]
 ```
 
 And write your initial test generator, extending the base generator:
