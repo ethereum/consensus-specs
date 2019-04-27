@@ -14,6 +14,7 @@
         - [Misc](#misc)
         - [Time parameters](#time-parameters)
         - [Max operations per block](#max-operations-per-block)
+        - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [Custody objects](#custody-objects)
@@ -22,6 +23,8 @@
             - [`CustodyChunkChallengeRecord`](#custodychunkchallengerecord)
             - [`CustodyBitChallengeRecord`](#custodybitchallengerecord)
             - [`CustodyResponse`](#custodyresponse)
+        - [New Beacon operations](#new-beacon-operations)
+            - [`RandaoKeyReveal`](#RandaoKeyReveal)
         - [Phase 0 container updates](#phase-0-container-updates)
             - [`Validator`](#validator)
             - [`BeaconState`](#beaconstate)
@@ -36,7 +39,8 @@
         - [`verify_custody_key`](#verify_custody_key)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
-            - [Custody reveals](#custody-reveals)
+            - [Custody key reveals](#custody-key-reveals)
+            - [Randao key reveals](#randao-key-reveals)
             - [Chunk challenges](#chunk-challenges)
             - [Bit challenges](#bit-challenges)
             - [Custody responses](#custody-responses)
@@ -79,15 +83,23 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - | :-: | :-: |
 | `MAX_CHUNK_CHALLENGE_DELAY` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
+| `RANDAO_PENALTY_EPOCHS` | `2` | epochs | 12.8 minutes |
+| `RANDAO_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
+| `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
+| `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 
 ### Max operations per block
 
 | Name | Value |
 | - | - |
-| `MAX_CUSTODY_KEY_REVEALS` | `2**4` (= 16) |
+| `MAX_RANDAO_KEY_REVEALS` | `2**4` (= 16) |
 | `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |
 | `MAX_CUSTODY_BIT_CHALLENGES` | `2**2` (= 4) |
 | `MAX_CUSTODY_RESPONSES` | `2**5` (= 32) |
+
+### Reward and penalty quotients
+
+| `RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE` | `2` |
 
 ### Signature domains
 
@@ -161,6 +173,25 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 }
 ```
 
+### New Beacon operations
+
+#### `RandaoKeyReveal`
+
+```python
+{
+    # Index of the validator whos key is being revealed
+    'revealed_index': 'uint64',
+    # RANDAO epoch of the key that is being revealed
+    'epoch': 'uint64',
+    # Reveal (masked signature)
+    'reveal': 'bytes96',
+    # Index of the validator who revealed (whistleblower)
+    'masker_index': 'uint64',
+    # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
+    'mask': 'bytes32',
+}
+```
+
 ### Phase 0 container updates
 
 Add the following fields to the end of the specified container objects. Fields with underlying type `uint64` are initialized to `0` and list fields are initialized to `[]`.
@@ -178,6 +209,10 @@ Add the following fields to the end of the specified container objects. Fields w
     'custody_chunk_challenge_records': [CustodyChunkChallengeRecord],
     'custody_bit_challenge_records': [CustodyBitChallengeRecord],
     'custody_challenge_index': 'uint64',
+
+    # Future RANDAO reveals already exposed; contains the indices of the exposed validator
+    # at RANDAO reveal period % RANDAO_PENALTY_MAX_FUTURE_EPOCHS
+    'exposed_randao_reveals': [['uint64'], RANDAO_PENALTY_MAX_FUTURE_EPOCHS],
 ```
 
 #### `BeaconBlockBody`
@@ -186,6 +221,7 @@ Add the following fields to the end of the specified container objects. Fields w
     'custody_chunk_challenges': [CustodyChunkChallenge],
     'custody_bit_challenges': [CustodyBitChallenge],
     'custody_responses': [CustodyResponse],
+    'randao_key_reveals': [RandaoKeyReveal],
 ```
 
 ## Helpers
@@ -285,6 +321,78 @@ def process_custody_reveal(state: BeaconState,
     revealer.max_reveal_lateness = max(revealer.max_reveal_lateness, current_custody_period - reveal.period)
     proposer_index = get_beacon_proposer_index(state)
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
+```
+
+##### Randao key reveals
+
+Verify that `len(block.body.randao_key_reveals) <= MAX_RANDAO_KEY_REVEALS`.
+
+For each `randao_key_reveal` in `block.body.randao_key_reveal`, run the following function:
+
+```python
+def process_randao_key_reveal(state: BeaconState,
+                              randao_key_reveal: RandaoKeyReveal) -> None:
+    """
+    Process ``RandaoKeyReveal`` operation.
+    Note that this function mutates ``state``.
+    """
+    if randao_key_reveal.mask == ZERO_HASH:
+        process_custody_reveal(state, randao_key_reveal)
+
+    revealer = state.validator_registry[randao_key_reveal.revealed_index]
+    masker = state.validator_registry[randao_key_reveal.masker_index]
+    pubkeys = [revealer.pubkey, masker.pubkey]
+    message_hashes = [
+        hash_tree_root(randao_key_reveal.epoch),
+        randao_key_reveal.mask,
+    ]
+
+    assert randao_key_reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
+    assert randao_key_reveal.epoch < get_current_epoch(state) + RANDAO_PENALTY_MAX_FUTURE_EPOCHS
+    assert revealer.slashed is False
+    assert randao_key_reveal.revealed_index not in state.exposed_randao_reveals[randao_key_reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS]
+
+    assert bls_verify_multiple(
+        pubkeys=pubkeys,
+        message_hashes=message_hashes,
+        signature=randao_key_reveal.reveal,
+        domain=get_domain(
+            state=state,
+            domain_type=DOMAIN_RANDAO,
+            message_epoch=randao_key_reveal.epoch,
+        ),
+    )
+
+    if randao_key_reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
+        # Full slashing when the RANDAO was revealed so early it may be a valid custody
+        # round key
+        slash_validator(state, randao_key_reveal.revealed_index, randao_key_reveal.masker_index)
+    else:
+        # Only a small penalty proportional to proposer slot reward for RANDAO reveal 
+        # that does not interfere with the custody period
+        # The penalty is proportional to the max proposer reward 
+        
+        # Calculate penalty
+        max_proposer_slot_reward = (
+            get_base_reward(state, randao_key_reveal.revealed_index) *
+            SLOTS_PER_EPOCH //
+            len(get_active_validator_indices(state, get_current_epoch(state))) //
+            PROPOSER_REWARD_QUOTIENT
+        )
+        penalty = max_proposer_slot_reward * RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE
+
+        # Apply penalty
+        proposer_index = get_beacon_proposer_index(state)
+        whistleblower_index = randao_key_reveal.masker_index
+        whistleblowing_reward = penalty // WHISTLEBLOWING_REWARD_QUOTIENT
+        proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
+        increase_balance(state, proposer_index, proposer_reward)
+        increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
+        decrease_balance(state, randao_key_reveal.revealed_index, penalty)
+
+        # Mark this RANDAO reveal as exposed so validator cannot be punished repeatedly 
+        state.exposed_randao_reveals[randao_key_reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS].append(randao_key_reveal.revealed_index)
+
 ```
 
 #### Chunk challenges
@@ -478,6 +586,15 @@ def process_challenge_deadlines(state: BeaconState) -> None:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
             records = state.custody_bit_challenge_records
             records[records.index(challenge)] = CustodyBitChallengeRecord()
+```
+
+Run `clean_up_exposed_randao_key_reveals(state)` after `process_final_updates(state)`:
+
+```python
+def clean_up_exposed_randao_key_reveals(state: BeaconState) -> None:
+
+    # Clean up exposed RANDAO key reveals
+    state.exposed_randao_reveals[current_epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```
 
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):

@@ -10,7 +10,6 @@ from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
-    CUSTODY_PERIOD_TO_RANDAO_PADDING,
     # SSZ
     Attestation,
     AttestationData,
@@ -22,7 +21,6 @@ from eth2spec.phase0.spec import (
     DepositData,
     Eth1Data,
     ProposerSlashing,
-    RandaoKeyReveal,
     Transfer,
     VoluntaryExit,
     # functions

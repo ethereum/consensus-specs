@@ -47,13 +47,6 @@ def process_operations(state: BeaconState, block: BeaconBlock) -> None:
 
     process_operation_type(
         state,
-        block.body.randao_key_reveals,
-        spec.MAX_RANDAO_KEY_REVEALS,
-        spec.process_randao_key_reveal,
-    )
-
-    process_operation_type(
-        state,
         block.body.attestations,
         spec.MAX_ATTESTATIONS,
         spec.process_attestation,
