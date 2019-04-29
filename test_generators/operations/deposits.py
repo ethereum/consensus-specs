@@ -77,7 +77,7 @@ def build_deposit_for_index(initial_validator_count: int, index: int) -> Tuple[s
         keys.pubkeys[index],
         keys.withdrawal_creds[index],
         keys.privkeys[index],
-        spec.MAX_DEPOSIT_AMOUNT,
+        spec.MAX_EFFECTIVE_BALANCE,
     )
 
     state.latest_eth1_data.deposit_root = get_merkle_root(tuple(deposit_data_leaves))
