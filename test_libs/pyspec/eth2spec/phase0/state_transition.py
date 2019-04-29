@@ -10,7 +10,7 @@ from typing import (
 from .spec import (
     BeaconState,
     BeaconBlock,
-    Slot
+    Slot,
 )
 
 
@@ -89,14 +89,12 @@ def process_block(state: BeaconState,
 
 
 def process_epoch_transition(state: BeaconState) -> None:
-    spec.update_justification_and_finalization(state)
+    spec.process_justification_and_finalization(state)
     spec.process_crosslinks(state)
-    spec.maybe_reset_eth1_period(state)
-    spec.apply_rewards(state)
-    spec.process_balance_driven_status_transitions(state)
-    spec.update_registry(state)
+    spec.process_rewards_and_penalties(state)
+    spec.process_registry_updates(state)
     spec.process_slashings(state)
-    spec.finish_epoch_update(state)
+    spec.process_final_updates(state)
 
 
 def state_transition_to(state: BeaconState, up_to: Slot) -> BeaconState:
@@ -112,4 +110,3 @@ def state_transition(state: BeaconState,
                      verify_state_root: bool=False) -> BeaconState:
     state_transition_to(state, block.slot)
     process_block(state, block, verify_state_root)
-

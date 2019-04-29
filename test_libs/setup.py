@@ -20,6 +20,7 @@ deps['dev'] = (
 
 install_requires = deps['pyspec']
 
+
 setup(
     name='pyspec',
     packages=find_packages(exclude=["tests", "tests.*"]),
