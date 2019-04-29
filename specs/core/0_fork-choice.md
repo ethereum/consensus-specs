@@ -86,7 +86,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
     # made for optimized implementations that precompute and save data
     def get_vote_count(block: BeaconBlock) -> int:
         return sum(
-            start_state.validator_registry[validator_index].high_balance
+            start_state.validator_registry[validator_index].effective_balance
             for validator_index, target in attestation_targets
             if get_ancestor(store, target, block.slot) == block
         )
