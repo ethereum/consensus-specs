@@ -34,7 +34,8 @@
         - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
-        - [`epoch_to_custody_period`](#epoch_to_custody_period)
+        - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
+        - [`get_validators_custody_reveal_period`](#get_validators_custody_reveal_period)
         - [`replace_empty_or_append`](#replace_empty_or_append)
         - [`verify_custody_key`](#verify_custody_key)
     - [Per-block processing](#per-block-processing)
@@ -45,6 +46,7 @@
             - [Bit challenges](#bit-challenges)
             - [Custody responses](#custody-responses)
     - [Per-epoch processing](#per-epoch-processing)
+        - [Handling of custody-related deadlines](#handling-of-custody-related-deadlines)
 
 <!-- /TOC -->
 
@@ -87,6 +89,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `RANDAO_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
+| `MAX_REVEAL_LATENESS_DECREMENT` | `2**7` (= 128) | epochs | ~14 hours |
 
 ### Max operations per block
 
@@ -199,7 +202,10 @@ Add the following fields to the end of the specified container objects. Fields w
 #### `Validator`
 
 ```python
-    'custody_reveal_index': 'uint64',
+    # next_custody_reveal_period is initialised to the custody period
+    # (of the particular validator) in which the validator is activated
+    # = get_validators_current_custody_reveal_period(...)
+    'next_custody_reveal_period': 'uint64',
     'max_reveal_lateness': 'uint64',
 ```
 
@@ -253,18 +259,27 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
     return get_bitfield_bit(hash(challenge.responder_key + chunk), 0)
 ```
 
-### `epoch_to_custody_period`
-
-```python
-def epoch_to_custody_period(epoch: Epoch) -> int:
-    return epoch // EPOCHS_PER_CUSTODY_PERIOD
-```
-
 ### `get_randao_epoch_for_custody_period`
 
 ```python
-def get_randao_epoch_for_custody_period(period: int) -> Epoch:
-    return period * EPOCHS_PER_CUSTODY_PERIOD + CUSTODY_PERIOD_TO_RANDAO_PADDING
+def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorIndex) -> Epoch:
+    return (period + 1) * EPOCHS_PER_CUSTODY_PERIOD - validator_index % EPOCHS_PER_CUSTODY_PERIOD + CUSTODY_PERIOD_TO_RANDAO_PADDING
+```
+
+### `get_validators_custody_reveal_period`
+
+ ```python
+def get_validators_custody_reveal_period(state: BeaconState,
+                                         validator_index: ValidatorIndex,
+                                         epoch: Epoch=None) -> int:
+    '''
+    This function returns the reveal period for a given validator.
+    If no epoch is supplied, the current epoch is assumed.
+    Note: This function implicitly requires that validators are not removed from the
+    validator set in fewer than EPOCHS_PER_CUSTODY_PERIOD epochs
+    '''
+    epoch = get_current_epoch(state) if epoch is None else epoch
+    return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
 ### `replace_empty_or_append`
 
 ```python
@@ -321,16 +336,22 @@ def process_custody_reveal(state: BeaconState,
                            reveal: RandaoKeyReveal) -> None:
 
     revealed_validator = state.validator_registry[reveal.revealed_index]
-    current_custody_period = epoch_to_custody_period(get_current_epoch(state))
 
-    assert reveal.epoch == get_randao_epoch_for_custody_period(epoch_to_custody_period(revealed_validator.activation_epoch) + revealed_validator.custody_reveal_index)
+    assert reveal.epoch == get_randao_epoch_for_custody_period( revealed_validator.next_custody_reveal_period, reveal.revealed_index)
+    assert revealed_validator.next_custody_reveal_period < get_validators_custody_reveal_period(state, reveal.revealed_index)
 
-    # Revealed validator is active or exited
-    assert is_active_validator(revealed_validator, get_current_epoch(state)) or revealed_validator.exit_epoch > get_current_epoch(state)
+    # Revealed validator is active or exited, but not withdrawn
+    assert is_slashable_validator(revealer, get_current_epoch(state))
+
+    # Decrement max reveal lateness if response is timely
+    if revealed_validator.next_custody_reveal_period == get_validators_custody_reveal_period(state, reveal.revealer_index) - 2:
+            revealer.max_reveal_lateness -=  MAX_REVEAL_LATENESS_DECREMENT
+    revealed_validator.max_reveal_lateness = max(revealed_validator.max_reveal_lateness, get_validators_custody_reveal_period(state, reveal.revealed_index) - revealed_validator.next_custody_reveal_period)
 
     # Process reveal
-    revealed_validator.custody_reveal_index += 1
-    revealed_validator.max_reveal_lateness = max(revealed_validator.max_reveal_lateness, current_custody_period - reveal.period)
+    revealed_validator.next_custody_reveal_period += 1
+
+    # Reward Block Preposer
     proposer_index = get_beacon_proposer_index(state)
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
@@ -458,14 +479,13 @@ def process_bit_challenge(state: BeaconState,
         signature=challenge.signature,
         domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_BIT_CHALLENGE),
     )
-    # Verify the challenger is not slashed
-    assert challenger.slashed is False
+    assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify the attestation
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
-    min_challengeable_epoch = responder.exit_epoch - EPOCHS_PER_CUSTODY_PERIOD * (1 + responder.max_reveal_lateness)
-    assert min_challengeable_epoch <= slot_to_epoch(challenge.attestation.data.slot)
+    assert (slot_to_epoch(challenge.attestation.data.slot) + responder.max_reveal_lateness <=
+            get_validators_custody_reveal_period(state, challenge.responder_index))
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
@@ -476,7 +496,10 @@ def process_bit_challenge(state: BeaconState,
     # Verify the responder key
     assert verify_custody_key(state, RandaoKeyReveal(
         revealer_index=challenge.responder_index,
-        period=epoch_to_custody_period(slot_to_epoch(attestation.data.slot)),
+        period=get_validators_custody_reveal_period(
+            state=state,
+            index=challenge.responder_index,
+            epoch=slot_to_epoch(attestation.data.slot)),
         key=challenge.responder_key,
         masker_index=0,
         mask=ZERO_HASH,
@@ -495,7 +518,7 @@ def process_bit_challenge(state: BeaconState,
         challenge_index=state.custody_challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
-        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE
+        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         crosslink_data_root=challenge.attestation.crosslink_data_root,
         chunk_bits=challenge.chunk_bits,
         responder_key=challenge.responder_key,
@@ -573,7 +596,20 @@ def process_bit_challenge_response(state: BeaconState,
 
 ## Per-epoch processing
 
-Run `process_challenge_deadlines(state)` immediately after `process_ejections(state)`:
+### Handling of custody-related deadlines
+
+ Run `process_reveal_deadlines(state)` immediately after `process_ejections(state)`:
+
+ ```python
+def process_reveal_deadlines(state: BeaconState) -> None:
+    for index, validator in enumerate(state.validator_registry):
+        if (validator.latest_custody_reveal_period +
+            (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <
+            get_validators_current_custody_reveal_period(state, index)):
+                slash_validator(state, index)
+```
+
+Run `process_challenge_deadlines(state)` immediately after `process_reveal_deadlines(state)`:
 
 ```python
 def process_challenge_deadlines(state: BeaconState) -> None:
@@ -602,13 +638,16 @@ def clean_up_exposed_randao_key_reveals(state: BeaconState) -> None:
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
 
 ```python
-def eligible(index):
+def eligible(state: BeaconState, index: ValidatorIndex) -> bool:
     validator = state.validator_registry[index]
     # Cannot exit if there are still open chunk challenges
     if len([record for record in state.custody_chunk_challenge_records if record.responder_index == index]) > 0:
         return False
+    # Cannot exit if there are still open bit challenges
+    if len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
+        return False
     # Cannot exit if you have not revealed all of your custody keys
-    elif epoch_to_custody_period(revealer.activation_epoch) + validator.custody_reveal_index <= epoch_to_custody_period(validator.exit_epoch):
+    elif validator.next_custody_reveal_period <= get_validators_custody_reveal_period(state, index,validator.exit_epoch):
         return False
     # Cannot exit if you already have
     elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
