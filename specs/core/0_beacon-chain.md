@@ -63,8 +63,8 @@
         - [`get_permuted_index`](#get_permuted_index)
         - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
-        - [`get_shard_delta`](#get_shard_delta)
         - [`compute_committee`](#compute_committee)
+        - [`get_shard_delta`](#get_shard_delta)
         - [`get_epoch_start_shard`](#get_epoch_start_shard)
         - [`committee_shard_to_slot`](#committee_shard_to_slot)
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
@@ -318,7 +318,6 @@ The types are defined topologically to aid in facilitating an executable version
     'target_root': 'bytes32',
 
     # Crosslink vote
-    'epoch_start_shard': 'uint64',
     'shard': 'uint64',
     'previous_crosslink_root': 'bytes32',
     'crosslink_data_root': 'bytes32',
@@ -777,16 +776,6 @@ def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
     ) * SLOTS_PER_EPOCH
 ```
 
-### `get_shard_delta`
-
-```python
-def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
-    """
-    Return the number of shards to increment ``state.latest_start_shard`` during ``epoch``.
-    """
-    return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
-```
-
 ### `compute_committee`
 
 ```python
@@ -798,6 +787,7 @@ def compute_committee(validator_indices: List[ValidatorIndex],
     Return the ``index``'th shuffled committee out of a total ``total_committees``
     using ``validator_indices`` and ``seed``.
     """
+    assert index < total_committees
     start_offset = get_split_offset(len(validator_indices), total_committees, index)
     end_offset = get_split_offset(len(validator_indices), total_committees, index + 1)
     return [
@@ -808,20 +798,27 @@ def compute_committee(validator_indices: List[ValidatorIndex],
 
 Note: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
+### `get_shard_delta`
+
+```python
+def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
+    """
+    Return the number of shards to increment ``state.latest_start_shard`` during ``epoch``.
+    """
+    return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
+```
+
 ### `get_epoch_start_shard`
 
 ```python
 def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
-    if epoch == get_current_epoch(state):
-        return state.latest_start_shard
-    elif epoch == get_previous_epoch(state):
-        previous_shard_delta = get_shard_delta(state, epoch)
-        return (state.latest_start_shard - previous_shard_delta) % SHARD_COUNT
-    elif epoch == get_current_epoch(state) + 1:
-        current_shard_delta = get_shard_delta(state, get_current_epoch(state))
-        return (state.latest_start_shard + current_shard_delta) % SHARD_COUNT
-    else:
-        raise Exception("Not supported")
+    assert epoch <= get_current_epoch(state) + 1
+    check_epoch = get_current_epoch(state) + 1
+    shard = (state.latest_start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT
+    while check_epoch > epoch:
+        check_epoch -= 1
+        shard = (shard + SHARD_COUNT - get_shard_delta(state, check_epoch)) % SHARD_COUNT
+    return shard
 ```
 
 ### `committee_shard_to_slot`
@@ -950,11 +947,11 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 ### `get_crosslink_committee`
 
 ```python
-def get_crosslink_committee(state: BeaconState, epoch: Epoch, offset: int):
+def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard):
     return compute_committee(
         validator_indices=get_active_validator_indices(state, epoch),
         seed=generate_seed(state, epoch),
-        index=offset,
+        index=(shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT,
         total_committees=get_epoch_committee_count(state, epoch)
     )
 ```
@@ -968,8 +965,7 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
-    offset = (attestation_data.shard - attestation_data.epoch_start_shard) % SHARD_COUNT
-    committee = get_crosslink_committee(state, attestation_data.epoch, offset)
+    committee = get_crosslink_committee(state, attestation_data.epoch, attestation_data.shard)
     assert verify_bitfield(bitfield, len(committee))
     return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
@@ -1450,7 +1446,7 @@ def process_crosslinks(state: BeaconState) -> None:
     for epoch in (get_previous_epoch(state), get_current_epoch(state)):
         for offset in range(get_epoch_committee_count(state, epoch)):
             shard = (get_epoch_start_shard(epoch) + offset) % SHARD_COUNT
-            crosslink_committee =  get_crosslink_committee(state, epoch, offset)
+            crosslink_committee =  get_crosslink_committee(state, epoch, shard)
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, shard, epoch)
             if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
                 state.current_crosslinks[shard] = winning_crosslink
@@ -1787,10 +1783,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
     }
     
-    # Check shard and epoch start shard
-    assert data.epoch_start_shard == get_epoch_start_shard(state, data.epoch)
-    assert (data.shard - data.epoch_start_shard) % SHARD_COUNT < get_epoch_committee_count(state, data.epoch)
-
     # Check crosslink data root
     assert data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
 
