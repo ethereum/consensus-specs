@@ -38,7 +38,6 @@
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
         - [`get_validators_custody_reveal_period`](#get_validators_custody_reveal_period)
         - [`replace_empty_or_append`](#replace_empty_or_append)
-        - [`verify_custody_key`](#verify_custody_key)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
             - [Custody key reveals](#custody-key-reveals)
@@ -488,6 +487,7 @@ For each `challenge` in `block.body.custody_bit_challenges`, run the following f
 ```python
 def process_bit_challenge(state: BeaconState,
                           challenge: CustodyBitChallenge) -> None:
+
     # Verify challenge signature
     challenger = state.validator_registry[challenge.challenger_index]
     assert bls_verify(
@@ -497,41 +497,54 @@ def process_bit_challenge(state: BeaconState,
         domain=get_domain(state, get_current_epoch(state), DOMAIN_CUSTODY_BIT_CHALLENGE),
     )
     assert is_slashable_validator(challenger, get_current_epoch(state))
+
     # Verify the attestation
     assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
+
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
     assert (slot_to_epoch(challenge.attestation.data.slot) + responder.max_reveal_lateness <=
             get_validators_custody_reveal_period(state, challenge.responder_index))
+
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
+
     # A validator can be the challenger or responder for at most one challenge at a time
     for record in state.custody_bit_challenge_records:
         assert record.challenger_index != challenge.challenger_index
         assert record.responder_index != challenge.responder_index
-    # Verify the responder key
-    assert verify_custody_key(state, RandaoKeyReveal(
-        revealed_index=challenge.responder_index,
-        epoch=get_randao_epoch_for_custody_period(
-            get_validators_custody_reveal_period(
-                state=state,
-                index=challenge.responder_index,
-                epoch=slot_to_epoch(attestation.data.slot)),
-            challenge.responder_index),
-        key=challenge.responder_key,
-        masker_index=0,
-        mask=ZERO_HASH,
-    ))
+
+    # Verify the responder is a valid custody key
+    epoch_to_sign = get_randao_epoch_for_custody_period(
+        get_validators_custody_reveal_period(
+            state=state,
+            index=challenge.responder_index,
+            epoch=slot_to_epoch(attestation.data.slot),
+        challenge.responder_index
+    )
+    assert bls_verify(
+        pubkey=responder.pubkey,
+        message_hash=hash_tree_root(epoch_to_sign),
+        signature=challenge.responder_key,
+        domain=get_domain(
+            state=state,
+            domain_type=DOMAIN_RANDAO,
+            message_epoch=epoch_to_sign,
+        ),
+    )
+
     # Verify the chunk count
     chunk_count = get_custody_chunk_count(challenge.attestation)
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
+
     # Verify the xor of the chunk bits does not equal the custody bit
     chunk_bits_xor = 0b0
     for i in range(chunk_count):
         chunk_bits_xor ^ get_bitfield_bit(challenge.chunk_bits, i)
     custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
     assert custody_bit != chunk_bits_xor
+
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(
         challenge_index=state.custody_challenge_index,
@@ -544,6 +557,7 @@ def process_bit_challenge(state: BeaconState,
     )
     replace_empty_or_append(state.custody_bit_challenge_records, new_record)
     state.custody_challenge_index += 1
+
     # Postpone responder withdrawability
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
