@@ -25,7 +25,7 @@
             - [`CustodyResponse`](#custodyresponse)
         - [New Beacon operations](#new-beacon-operations)
             - [`CustodyKeyReveal`](#custodykeyreveal)
-            - [`RandaoKeyReveal`](#randaokeyreveal)
+            - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
         - [Phase 0 container updates](#phase-0-container-updates)
             - [`Validator`](#validator)
             - [`BeaconState`](#beaconstate)
@@ -41,7 +41,7 @@
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
             - [Custody key reveals](#custody-key-reveals)
-            - [Randao key reveals](#randao-key-reveals)
+            - [Early derived secret reveals](#early-derived-secret-reveals)
             - [Chunk challenges](#chunk-challenges)
             - [Bit challenges](#bit-challenges)
             - [Custody responses](#custody-responses)
@@ -86,7 +86,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `MAX_CHUNK_CHALLENGE_DELAY` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_RESPONSE_DEADLINE` | `2**14` (= 16,384) | epochs | ~73 days |
 | `RANDAO_PENALTY_EPOCHS` | `2` | epochs | 12.8 minutes |
-| `RANDAO_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
+| `EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS` | `2**14` | epochs | ~73 days |
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 | `MAX_REVEAL_LATENESS_DECREMENT` | `2**7` (= 128) | epochs | ~14 hours |
@@ -96,14 +96,14 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value |
 | - | - |
 | `MAX_CUSTODY_KEY_REVEALS` | `2**4` (= 16) |
-| `MAX_RANDAO_KEY_REVEALS` | `1` |
+| `MAX_EARLY_DERIVED_SECRET_REVEALS` | `1` |
 | `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |
 | `MAX_CUSTODY_BIT_CHALLENGES` | `2**2` (= 4) |
 | `MAX_CUSTODY_RESPONSES` | `2**5` (= 32) |
 
 ### Reward and penalty quotients
 
-| `RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE` | `2` |
+| `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2` |
 
 ### Signature domains
 
@@ -183,18 +183,20 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ```python
 {
-    # Index of the validator whos key is being revealed
+    # Index of the validator whose key is being revealed
     'revealer_index': 'uint64',
     # Reveal (masked signature)
     'reveal': 'bytes96',
 }
 ```
 
-#### `RandaoKeyReveal`
+#### `EarlyDerivedSecretReveal`
+
+Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both are part of the same domain).
 
 ```python
 {
-    # Index of the validator whos key is being revealed
+    # Index of the validator whose key is being revealed
     'revealed_index': 'uint64',
     # RANDAO epoch of the key that is being revealed
     'epoch': 'uint64',
@@ -228,9 +230,9 @@ Add the following fields to the end of the specified container objects. Fields w
     'custody_bit_challenge_records': [CustodyBitChallengeRecord],
     'custody_challenge_index': 'uint64',
 
-    # Future RANDAO reveals already exposed; contains the indices of the exposed validator
-    # at RANDAO reveal period % RANDAO_PENALTY_MAX_FUTURE_EPOCHS
-    'exposed_randao_reveals': [['uint64'], RANDAO_PENALTY_MAX_FUTURE_EPOCHS],
+    # Future derived secrets already exposed; contains the indices of the exposed validator
+    # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
+    'exposed_derived_secrets': [['uint64'], EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS],
 ```
 
 #### `BeaconBlockBody`
@@ -240,7 +242,7 @@ Add the following fields to the end of the specified container objects. Fields w
     'custody_bit_challenges': [CustodyBitChallenge],
     'custody_responses': [CustodyResponse],
     'custody_key_reveals': [CustodyKeyReveal],
-    'randao_key_reveals': [RandaoKeyReveal],
+    'early_derived_secret_reveals': [EarlyDerivedSecretReveal],
 ```
 
 ## Helpers
@@ -360,28 +362,27 @@ def process_custody_key_reveal(state: BeaconState,
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 
-##### Randao key reveals
+##### Early derived secret reveals
 
-Verify that `len(block.body.randao_key_reveals) <= MAX_RANDAO_KEY_REVEALS`.
+Verify that `len(block.body.early_derived_secret_reveals) <= MAX_EARLY_DERIVED_SECRET_REVEALS`.
 
-For each `reveal` in `block.body.randao_key_reveals`, run the following function:
+For each `reveal` in `block.body.early_derived_secret_reveals`, run the following function:
 
 ```python
-def process_randao_key_reveal(state: BeaconState,
-                              reveal: RandaoKeyReveal) -> None:
+def process_early_derived_secret_reveal(state: BeaconState,
+                              reveal: EarlyDerivedSecretReveal) -> None:
     """
-    Process ``RandaoKeyReveal`` operation.
+    Process ``EarlyDerivedSecretReveal`` operation.
     Note that this function mutates ``state``.
     """
 
-    # Handle the masked early reveal (RANDAO and possibly also custody reveal)
     revealed_validator = state.validator_registry[reveal.revealed_index]
     masker = state.validator_registry[reveal.masker_index]
 
     assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
-    assert reveal.epoch < get_current_epoch(state) + RANDAO_PENALTY_MAX_FUTURE_EPOCHS
+    assert reveal.epoch < get_current_epoch(state) + EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     assert revealed_validator.slashed is False
-    assert reveal.revealed_index not in state.exposed_randao_reveals[reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS]
+    assert reveal.revealed_index not in state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
 
     # Verify signature correctness
     masker = state.validator_registry[reveal.masker_index]
@@ -403,7 +404,7 @@ def process_randao_key_reveal(state: BeaconState,
     )
 
     if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
-        # Full slashing when the RANDAO was revealed so early it may be a valid custody
+        # Full slashing when the secret was revealed so early it may be a valid custody
         # round key
         slash_validator(state, reveal.revealed_index, reveal.masker_index)
     else:
@@ -418,7 +419,7 @@ def process_randao_key_reveal(state: BeaconState,
             len(get_active_validator_indices(state, get_current_epoch(state))) //
             PROPOSER_REWARD_QUOTIENT
         )
-        penalty = max_proposer_slot_reward * RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE
+        penalty = max_proposer_slot_reward * EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE
 
         # Apply penalty
         proposer_index = get_beacon_proposer_index(state)
@@ -429,8 +430,8 @@ def process_randao_key_reveal(state: BeaconState,
         increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
         decrease_balance(state, reveal.revealed_index, penalty)
 
-        # Mark this RANDAO reveal as exposed so validator cannot be punished repeatedly 
-        state.exposed_randao_reveals[reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS].append(reveal.revealed_index)
+        # Mark this derived secret as exposed so validator cannot be punished repeatedly 
+        state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS].append(reveal.revealed_index)
 
 ```
 
@@ -663,7 +664,7 @@ Append this to `process_final_updates(state)`:
 
 ```python
     # Clean up exposed RANDAO key reveals
-    state.exposed_randao_reveals[current_epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS] = []
+    state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```
 
 In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
