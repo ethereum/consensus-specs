@@ -1459,8 +1459,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         earliest_attestation = get_earliest_attestation(state, matching_source_attestations, index)
         rewards[earliest_attestation.proposer_index] += get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT
-        attestation_slot = get_attestation_slot(state, earliest_attestation)
-        inclusion_delay = earliest_attestation.inclusion_slot - attestation_slot
+        inclusion_delay = earliest_attestation.inclusion_slot - get_attestation_slot(state, earliest_attestation)
         rewards[index] += get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
 
     # Inactivity penalty
@@ -1745,9 +1744,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` operation.
     Note that this function mutates ``state``.
     """
-    attestation_slot = get_attestation_slot(state, attestation)
     min_slot = state.slot - SLOTS_PER_EPOCH if get_current_epoch(state) > GENESIS_EPOCH else GENESIS_SLOT
-    assert min_slot <= attestation_slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
+    assert min_slot <= get_attestation_slot(state, attestation) <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
     # Check target epoch, source epoch, source root, and source crosslink
     data = attestation.data
