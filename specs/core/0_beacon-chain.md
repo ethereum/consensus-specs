@@ -85,8 +85,6 @@
         - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`verify_indexed_attestation`](#verify_indexed_attestation)
-        - [`is_double_vote`](#is_double_vote)
-        - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
         - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
         - [`get_churn_limit`](#get_churn_limit)
@@ -309,12 +307,12 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # LMD GHOST vote
-    'epoch': 'uint64',
     'beacon_block_root': 'bytes32',
 
     # FFG vote
     'source_epoch': 'uint64',
     'source_root': 'bytes32',
+    'target_epoch': 'uint64',
     'target_root': 'bytes32',
 
     # Crosslink vote
@@ -965,7 +963,7 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
-    committee = get_crosslink_committee(state, attestation_data.epoch, attestation_data.shard)
+    committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.shard)
     assert verify_bitfield(bitfield, len(committee))
     return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
@@ -1087,32 +1085,8 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
         signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.epoch),
+        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target_epoch),
     )
-```
-
-### `is_double_vote`
-
-```python
-def is_double_vote(attestation_data_1: AttestationData,
-                   attestation_data_2: AttestationData) -> bool:
-    """
-    Check if ``attestation_data_1`` and ``attestation_data_2`` have the same target.
-    """
-    return attestation_data_1.epoch == attestation_data_2.epoch
-```
-
-### `is_surround_vote`
-
-```python
-def is_surround_vote(attestation_data_1: AttestationData,
-                     attestation_data_2: AttestationData) -> bool:
-    """
-    Check if ``attestation_data_1`` surrounds ``attestation_data_2``.
-    """
-    source_epoch_1 = attestation_data_1.source_epoch
-    source_epoch_2 = attestation_data_2.source_epoch
-    return source_epoch_1 < source_epoch_2 and attestation_data_2.epoch < attestation_data_1.epoch
 ```
 
 ### `integer_squareroot`
@@ -1345,7 +1319,7 @@ def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestat
 ```python
 def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationData) -> Crosslink:
     return Crosslink(
-        epoch=min(data.epoch, state.current_crosslinks[data.shard].epoch + MAX_CROSSLINK_EPOCHS),
+        epoch=min(data.target_epoch, state.current_crosslinks[data.shard].epoch + MAX_CROSSLINK_EPOCHS),
         previous_crosslink_root=data.previous_crosslink_root,
         crosslink_data_root=data.crosslink_data_root,
     )
@@ -1488,7 +1462,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         earliest_attestation = get_earliest_attestation(state, matching_source_attestations, index)
         rewards[earliest_attestation.proposer_index] += get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT
-        attestation_slot = committee_shard_to_slot(state, earliest_attestation.data.epoch, earliest_attestation.data.shard)
+        attestation_slot = committee_shard_to_slot(state, earliest_attestation.data.target_epoch, earliest_attestation.data.shard)
         inclusion_delay = earliest_attestation.inclusion_slot - attestation_slot
         rewards[index] += get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
 
@@ -1730,19 +1704,26 @@ def process_attester_slashing(state: BeaconState,
     Process ``AttesterSlashing`` operation.
     Note that this function mutates ``state``.
     """
-    attestation1 = attester_slashing.attestation_1
-    attestation2 = attester_slashing.attestation_2
+    attestation_1 = attester_slashing.attestation_1
+    attestation_2 = attester_slashing.attestation_2
     # Check that the attestations are conflicting
-    assert attestation1.data != attestation2.data
+    assert attestation_1.data != attestation_2.data
+
+    source_1 = attestation_1.data.source_epoch
+    target_1 = attestation_1.data.target_epoch
+    source_2 = attestation_2.data.source_epoch
+    target_2 = attestation_2.data.target_epoch
     assert (
-        is_double_vote(attestation1.data, attestation2.data) or
-        is_surround_vote(attestation1.data, attestation2.data)
+        # Double vote
+        (target_1 == target_2) or
+        # Surround vote (attestation 1 surrounds attestation 2)
+        (source_1 < source_2 and target_2 < target_1)
     )
 
-    assert verify_indexed_attestation(state, attestation1)
-    assert verify_indexed_attestation(state, attestation2)
-    attesting_indices_1 = attestation1.custody_bit_0_indices + attestation1.custody_bit_1_indices
-    attesting_indices_2 = attestation2.custody_bit_0_indices + attestation2.custody_bit_1_indices
+    assert verify_indexed_attestation(state, attestation_1)
+    assert verify_indexed_attestation(state, attestation_2)
+    attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
+    attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
     slashable_indices = [
         index for index in attesting_indices_1
         if (
@@ -1768,12 +1749,12 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Note that this function mutates ``state``.
     """
     data = attestation.data
-    attestation_slot = committee_shard_to_slot(state, data.epoch, attestation.shard)
+    attestation_slot = committee_shard_to_slot(state, data.target_epoch, attestation.shard)
     min_slot = state.slot - SLOTS_PER_EPOCH if get_current_epoch(state) > GENESIS_EPOCH else GENESIS_SLOT
     assert min_slot <= attestation_slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
     # Check target epoch, source epoch, source root, and source crosslink
-    assert (data.epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
+    assert (data.target_epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
         (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
     }
