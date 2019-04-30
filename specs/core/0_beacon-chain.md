@@ -66,6 +66,7 @@
         - [`get_attestation_slot`](#get_attestation_slot)
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
+        - [`get_state_root`](#get_state_root)
         - [`get_randao_mix`](#get_randao_mix)
         - [`get_active_index_root`](#get_active_index_root)
         - [`generate_seed`](#generate_seed)
@@ -82,6 +83,8 @@
         - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`verify_indexed_attestation`](#verify_indexed_attestation)
+        - [`is_double_vote`](#is_double_vote)
+        - [`is_surround_vote`](#is_surround_vote)
         - [`integer_squareroot`](#integer_squareroot)
         - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
         - [`get_churn_limit`](#get_churn_limit)
@@ -763,7 +766,7 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 def get_attestation_slot(state: BeaconState, attestation: Attestation) -> Slot:
     epoch = attestation.data.target_epoch
     committee_count = get_epoch_committee_count(state, epoch)
-    offset = (attestation.data.shard - get_epoch_start_slot(epoch)) % SHARD_COUNT
+    offset = (attestation.data.shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
     return get_epoch_start_slot(epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
 ```
 
@@ -788,6 +791,18 @@ def get_block_root(state: BeaconState,
     Return the block root at a recent ``epoch``.
     """
     return get_block_root_at_slot(state, get_epoch_start_slot(epoch))
+```
+
+### `get_state_root`
+
+```python
+def get_state_root(state: BeaconState,
+                   slot: Slot) -> Bytes32:
+    """
+    Return the state root at a recent ``slot``.
+    """
+    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
+    return state.latest_state_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 ### `get_randao_mix`
@@ -838,8 +853,9 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     epoch = get_current_epoch(state)
     committees_per_slot = get_epoch_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    offset = committees_per_slot * (state.slot % EPOCH_LENGTH)
-    first_committee = get_crosslink_committee(state, epoch, offset)
+    offset = committees_per_slot * (state.slot % SLOTS_PER_EPOCH)
+    shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
+    first_committee = get_crosslink_committee(state, epoch, shard)
     MAX_RANDOM_BYTE = 2**8 - 1
     i = 0
     while True:
@@ -905,8 +921,9 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> L
 
     start_validator_index = (len(active_indices) * committee_index) // committee_count
     end_validator_index = (len(active_indices) * (committee_index + 1)) // committee_count
+    seed = generate_seed(state, epoch)
     return [
-        active_indices[get_shuffled_index(i, len(active_indices), generate_seed(state, epoch))]
+        active_indices[get_shuffled_index(i, len(active_indices), seed)]
         for i in range(start_validator_index, end_validator_index)
     ]
 ```
@@ -1043,6 +1060,29 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
         ],
         signature=indexed_attestation.signature,
         domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target_epoch),
+    )
+```
+
+### `is_double_vote`
+
+```python
+def is_double_vote(attestation_data_1: AttestationData, attestation_data_2: AttestationData) -> bool:
+    """
+    Check if ``attestation_data_1`` and ``attestation_data_2`` violate Casper "double" slashing rule.
+    """
+    return attestation_data_1.target_epoch == attestation_data_2.target_epoch
+```
+
+### `is_surround_vote`
+
+```python
+def is_surround_vote(attestation_data_1: AttestationData, attestation_data_2: AttestationData) -> bool:
+    """
+    Check if ``attestation_data_1`` and ``attestation_data_2`` violate Casper "surround" slashing rule.
+    """
+    return (
+        attestation_data_1.source_epoch < attestation_data_2.source_epoch and
+        attestation_data_2.target_epoch < attestation_data_1.target_epoch
     )
 ```
 
@@ -1359,7 +1399,7 @@ def process_crosslinks(state: BeaconState) -> None:
     state.previous_crosslinks = [c for c in state.current_crosslinks]
     for epoch in (get_previous_epoch(state), get_current_epoch(state)):
         for offset in range(get_epoch_committee_count(state, epoch)):
-            shard = (get_epoch_start_shard(epoch) + offset) % SHARD_COUNT
+            shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
             crosslink_committee = get_crosslink_committee(state, epoch, shard)
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, shard, epoch)
             if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
@@ -1429,8 +1469,8 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     penalties = [0 for index in range(len(state.validator_registry))]
     epoch = get_previous_epoch(state)
     for offset in range(get_epoch_committee_count(state, epoch)):
-        shard = (get_epoch_start_shard(epoch) + offset) % SHARD_COUNT
-        crosslink_committee =  get_crosslink_committee(state, epoch, offset)
+        shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
+        crosslink_committee = get_crosslink_committee(state, epoch, shard)
         winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, shard, epoch)
         attesting_balance = get_total_balance(state, attesting_indices)
         committee_balance = get_total_balance(state, crosslink_committee)
@@ -1653,16 +1693,9 @@ def process_attester_slashing(state: BeaconState,
     attestation_2 = attester_slashing.attestation_2
     # Check that the attestations are conflicting
     assert attestation_1.data != attestation_2.data
-
-    source_1 = attestation_1.data.source_epoch
-    target_1 = attestation_1.data.target_epoch
-    source_2 = attestation_2.data.source_epoch
-    target_2 = attestation_2.data.target_epoch
     assert (
-        # Double vote
-        (target_1 == target_2) or
-        # Surround vote (attestation 1 surrounds attestation 2)
-        (source_1 < source_2 and target_2 < target_1)
+        is_double_vote(attestation_1.data, attestation_2.data) or
+        is_surround_vote(attestation_1.data, attestation_2.data)
     )
 
     assert verify_indexed_attestation(state, attestation_1)
@@ -1715,7 +1748,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         inclusion_delay=state.slot - attestation_slot,
         proposer_index=get_beacon_proposer_index(state),
     )
-    if target_epoch == get_current_epoch(state):
+    if data.target_epoch == get_current_epoch(state):
         state.current_epoch_attestations.append(pending_attestation)
     else:
         state.previous_epoch_attestations.append(pending_attestation)
