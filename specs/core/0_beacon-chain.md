@@ -912,7 +912,7 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> L
     """
     Return the crosslink committee at ``epoch`` for ``shard``.
     """
-    active_validator_indices = get_active_validator_indices(state, epoch)
+    active_indices = get_active_validator_indices(state, epoch)
     committee_count = get_epoch_committee_count(state, epoch)
     committee_index = (shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
 
