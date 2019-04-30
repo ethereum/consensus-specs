@@ -17,16 +17,21 @@ def create_genesis_state(deposits: List[spec.Deposit]) -> spec.BeaconState:
     )
 
 
-def create_deposits(pubkeys: List[spec.BLSPubkey], withdrawal_cred: List[spec.Bytes32]) -> List[spec.Deposit]:
+def create_deposits(pubkeys: List[spec.BLSPubkey],
+                    withdrawal_cred: List[spec.Bytes32],
+                    amounts: List[int] = None) -> List[spec.Deposit]:
 
     # Mock proof of possession
     proof_of_possession = b'\x33' * 96
+
+    if amounts is None:
+        amounts = [spec.MAX_EFFECTIVE_BALANCE for _ in range(len(pubkeys))]
 
     deposit_data = [
         spec.DepositData(
             pubkey=pubkeys[i],
             withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + withdrawal_cred[i][1:],
-            amount=spec.MAX_DEPOSIT_AMOUNT,
+            amount=amounts[i],
             proof_of_possession=proof_of_possession,
         ) for i in range(len(pubkeys))
     ]
