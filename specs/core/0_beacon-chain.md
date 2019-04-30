@@ -1099,9 +1099,7 @@ def is_double_vote(attestation_data_1: AttestationData,
     """
     Check if ``attestation_data_1`` and ``attestation_data_2`` have the same target.
     """
-    target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
-    target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
-    return target_epoch_1 == target_epoch_2
+    return attestation_data_1.epoch == attestation_data_2.epoch
 ```
 
 ### `is_surround_vote`
@@ -1114,10 +1112,7 @@ def is_surround_vote(attestation_data_1: AttestationData,
     """
     source_epoch_1 = attestation_data_1.source_epoch
     source_epoch_2 = attestation_data_2.source_epoch
-    target_epoch_1 = slot_to_epoch(attestation_data_1.slot)
-    target_epoch_2 = slot_to_epoch(attestation_data_2.slot)
-
-    return source_epoch_1 < source_epoch_2 and target_epoch_2 < target_epoch_1
+    return source_epoch_1 < source_epoch_2 and attestation_data_2.epoch < attestation_data_1.epoch
 ```
 
 ### `integer_squareroot`
