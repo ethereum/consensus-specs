@@ -1409,13 +1409,10 @@ Run the following function:
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     state.previous_crosslinks = [c for c in state.current_crosslinks]
-    previous_epoch = get_previous_epoch(state)
-    next_epoch = get_current_epoch(state) + 1
-    for slot in range(get_epoch_start_slot(previous_epoch), get_epoch_start_slot(next_epoch)):
     for epoch in (get_previous_epoch(state), get_current_epoch(state)):
         for offset in range(get_epoch_committee_count(state, epoch)):
             shard = (get_epoch_start_shard(epoch) + offset) % SHARD_COUNT
-            crosslink_committee =  get_crosslink_committee(state, epoch, shard)
+            crosslink_committee = get_crosslink_committee(state, epoch, shard)
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, shard, epoch)
             if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
                 state.current_crosslinks[shard] = winning_crosslink
