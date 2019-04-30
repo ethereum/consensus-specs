@@ -24,6 +24,7 @@
             - [`CustodyBitChallengeRecord`](#custodybitchallengerecord)
             - [`CustodyResponse`](#custodyresponse)
         - [New Beacon operations](#new-beacon-operations)
+            - [`CustodyKeyReveal`](#custodykeyreveal)
             - [`RandaoKeyReveal`](#randaokeyreveal)
         - [Phase 0 container updates](#phase-0-container-updates)
             - [`Validator`](#validator)
@@ -95,7 +96,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 | Name | Value |
 | - | - |
-| `MAX_RANDAO_KEY_REVEALS` | `2**4` (= 16) |
+| `MAX_CUSTODY_KEY_REVEALS` | `2**4` (= 16) |
+| `MAX_RANDAO_KEY_REVEALS` | `1` |
 | `MAX_CUSTODY_CHUNK_CHALLENGES` | `2**2` (= 4) |
 | `MAX_CUSTODY_BIT_CHALLENGES` | `2**2` (= 4) |
 | `MAX_CUSTODY_RESPONSES` | `2**5` (= 32) |
@@ -178,6 +180,17 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ### New Beacon operations
 
+#### `CustodyKeyReveal`
+
+```python
+{
+    # Index of the validator whos key is being revealed
+    'revealer_index': 'uint64',
+    # Reveal (masked signature)
+    'reveal': 'bytes96',
+}
+```
+
 #### `RandaoKeyReveal`
 
 ```python
@@ -227,6 +240,7 @@ Add the following fields to the end of the specified container objects. Fields w
     'custody_chunk_challenges': [CustodyChunkChallenge],
     'custody_bit_challenges': [CustodyBitChallenge],
     'custody_responses': [CustodyResponse],
+    'custody_key_reveals': [CustodyKeyReveal],
     'randao_key_reveals': [RandaoKeyReveal],
 ```
 
@@ -293,22 +307,90 @@ def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
     return len(list) - 1
 ```
 
-### `verify_custody_key`
+## Per-block processing
+
+### Operations
+
+Add the following operations to the per-block processing, in order the given below and after all other operations in phase 0.
+
+#### Custody key reveals
+
+Verify that `len(block.body.custody_key_reveals) <= MAX_CUSTODY_KEY_REVEALS`.
+
+For each `reveal` in `block.body.custody_key_reveals`, run the following function:
 
 ```python
-def verify_custody_key(state: BeaconState, reveal: RandaoKeyReveal) -> bool:
-    revealed_validator = state.validator_registry[reveal.revealed_index]
+def process_custody_key_reveal(state: BeaconState,
+                           reveal: CustodyKeyReveal) -> None:
 
-    if reveal.mask == ZERO_HASH: 
-        pubkeys = [revealed_validator.pubkey]
-        message_hashes = [hash_tree_root(reveal.epoch)]
-    else:
-        masker = state.validator_registry[reveal.masker_index]
-        pubkeys = [revealed_validator.pubkey, masker.pubkey]
-        message_hashes = [
-            hash_tree_root(reveal.epoch),
-            reveal.mask,
-        ]
+    """
+    Process ``CustodyKeyReveal`` operation.
+    Note that this function mutates ``state``.
+    """
+
+    revealer = state.validator_registry[reveal.revealer_index]
+    epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_reveal_period, reveal.revealed_index)
+
+    assert revealer.next_custody_reveal_period < get_validators_custody_reveal_period(state, reveal.revealed_index)
+
+    # Revealed validator is active or exited, but not withdrawn
+    assert is_slashable_validator(revealer, get_current_epoch(state))
+
+    # Verify signature
+    assert bls_verify(
+        pubkey=revealer.pubkey,
+        message_hash=hash_tree_root(epoch_to_sign),
+        signature=reveal.reveal,
+        domain=get_domain(
+            state=state,
+            domain_type=DOMAIN_RANDAO,
+            message_epoch=epoch_to_sign,
+        ),
+    )
+
+    # Decrement max reveal lateness if response is timely
+    if revealer.next_custody_reveal_period == get_validators_custody_reveal_period(state, reveal.revealer_index) - 2:
+            revealer.max_reveal_lateness -=  MAX_REVEAL_LATENESS_DECREMENT
+    revealer.max_reveal_lateness = max(revealed_validator.max_reveal_lateness, get_validators_custody_reveal_period(state, reveal.revealed_index) - revealer.next_custody_reveal_period)
+
+    # Process reveal
+    revealer.next_custody_reveal_period += 1
+
+    # Reward Block Preposer
+    proposer_index = get_beacon_proposer_index(state)
+    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
+```
+
+##### Randao key reveals
+
+Verify that `len(block.body.randao_key_reveals) <= MAX_RANDAO_KEY_REVEALS`.
+
+For each `reveal` in `block.body.randao_key_reveals`, run the following function:
+
+```python
+def process_randao_key_reveal(state: BeaconState,
+                              reveal: RandaoKeyReveal) -> None:
+    """
+    Process ``RandaoKeyReveal`` operation.
+    Note that this function mutates ``state``.
+    """
+
+    # Handle the masked early reveal (RANDAO and possibly also custody reveal)
+    revealed_validator = state.validator_registry[reveal.revealed_index]
+    masker = state.validator_registry[reveal.masker_index]
+
+    assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
+    assert reveal.epoch < get_current_epoch(state) + RANDAO_PENALTY_MAX_FUTURE_EPOCHS
+    assert revealed_validator.slashed is False
+    assert reveal.revealed_index not in state.exposed_randao_reveals[reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS]
+
+    # Verify signature correctness
+    masker = state.validator_registry[reveal.masker_index]
+    pubkeys = [revealed_validator.pubkey, masker.pubkey]
+    message_hashes = [
+        hash_tree_root(reveal.epoch),
+        reveal.mask,
+    ]
 
     assert bls_verify_multiple(
         pubkeys=pubkeys,
@@ -320,102 +402,36 @@ def verify_custody_key(state: BeaconState, reveal: RandaoKeyReveal) -> bool:
             message_epoch=reveal.epoch,
         ),
     )
-```
 
-## Per-block processing
-
-### Operations
-
-Add the following operations to the per-block processing, in order the given below and after all other operations in phase 0.
-
-#### Custody reveals
-
-Replace process_custody_reveal from phase 0 with this function:
-
-```python
-def process_custody_reveal(state: BeaconState,
-                           reveal: RandaoKeyReveal) -> None:
-
-    revealed_validator = state.validator_registry[reveal.revealed_index]
-
-    assert reveal.epoch == get_randao_epoch_for_custody_period( revealed_validator.next_custody_reveal_period, reveal.revealed_index)
-    assert revealed_validator.next_custody_reveal_period < get_validators_custody_reveal_period(state, reveal.revealed_index)
-
-    # Revealed validator is active or exited, but not withdrawn
-    assert is_slashable_validator(revealer, get_current_epoch(state))
-
-    # Decrement max reveal lateness if response is timely
-    if revealed_validator.next_custody_reveal_period == get_validators_custody_reveal_period(state, reveal.revealer_index) - 2:
-            revealer.max_reveal_lateness -=  MAX_REVEAL_LATENESS_DECREMENT
-    revealed_validator.max_reveal_lateness = max(revealed_validator.max_reveal_lateness, get_validators_custody_reveal_period(state, reveal.revealed_index) - revealed_validator.next_custody_reveal_period)
-
-    # Process reveal
-    revealed_validator.next_custody_reveal_period += 1
-
-    # Reward Block Preposer
-    proposer_index = get_beacon_proposer_index(state)
-    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
-```
-
-##### Randao key reveals
-
-Verify that `len(block.body.randao_key_reveals) <= MAX_RANDAO_KEY_REVEALS`.
-
-For each `reveal` in `block.body.randao_key_reveal`, run the following function:
-
-```python
-def process_randao_key_reveal(state: BeaconState,
-                              reveal: RandaoKeyReveal) -> None:
-    """
-    Process ``RandaoKeyReveal`` operation.
-    Note that this function mutates ``state``.
-    """
-    # Verify signature correctness
-    assert verify_custody_key(state, reveal)
-
-    if reveal.mask == ZERO_HASH:
-        # Handle the case of a regular custody reveal
-        process_custody_reveal(state, reveal)
-
+    if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
+        # Full slashing when the RANDAO was revealed so early it may be a valid custody
+        # round key
+        slash_validator(state, reveal.revealed_index, reveal.masker_index)
     else:
-        # Handle the masked early reveal (RANDAO and possibly also custody reveal)
-        revealed_validator = state.validator_registry[reveal.revealed_index]
-        masker = state.validator_registry[reveal.masker_index]
+        # Only a small penalty proportional to proposer slot reward for RANDAO reveal 
+        # that does not interfere with the custody period
+        # The penalty is proportional to the max proposer reward 
+        
+        # Calculate penalty
+        max_proposer_slot_reward = (
+            get_base_reward(state, reveal.revealed_index) *
+            SLOTS_PER_EPOCH //
+            len(get_active_validator_indices(state, get_current_epoch(state))) //
+            PROPOSER_REWARD_QUOTIENT
+        )
+        penalty = max_proposer_slot_reward * RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE
 
-        assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
-        assert reveal.epoch < get_current_epoch(state) + RANDAO_PENALTY_MAX_FUTURE_EPOCHS
-        assert revealed_validator.slashed is False
-        assert reveal.revealed_index not in state.exposed_randao_reveals[reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS]
+        # Apply penalty
+        proposer_index = get_beacon_proposer_index(state)
+        whistleblower_index = reveal.masker_index
+        whistleblowing_reward = penalty // WHISTLEBLOWING_REWARD_QUOTIENT
+        proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
+        increase_balance(state, proposer_index, proposer_reward)
+        increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
+        decrease_balance(state, reveal.revealed_index, penalty)
 
-        if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
-            # Full slashing when the RANDAO was revealed so early it may be a valid custody
-            # round key
-            slash_validator(state, reveal.revealed_index, reveal.masker_index)
-        else:
-            # Only a small penalty proportional to proposer slot reward for RANDAO reveal 
-            # that does not interfere with the custody period
-            # The penalty is proportional to the max proposer reward 
-            
-            # Calculate penalty
-            max_proposer_slot_reward = (
-                get_base_reward(state, reveal.revealed_index) *
-                SLOTS_PER_EPOCH //
-                len(get_active_validator_indices(state, get_current_epoch(state))) //
-                PROPOSER_REWARD_QUOTIENT
-            )
-            penalty = max_proposer_slot_reward * RANDAO_KEY_REVEAL_SLOT_REWARD_MULTIPLE
-
-            # Apply penalty
-            proposer_index = get_beacon_proposer_index(state)
-            whistleblower_index = reveal.masker_index
-            whistleblowing_reward = penalty // WHISTLEBLOWING_REWARD_QUOTIENT
-            proposer_reward = whistleblowing_reward // PROPOSER_REWARD_QUOTIENT
-            increase_balance(state, proposer_index, proposer_reward)
-            increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
-            decrease_balance(state, reveal.revealed_index, penalty)
-
-            # Mark this RANDAO reveal as exposed so validator cannot be punished repeatedly 
-            state.exposed_randao_reveals[reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS].append(reveal.revealed_index)
+        # Mark this RANDAO reveal as exposed so validator cannot be punished repeatedly 
+        state.exposed_randao_reveals[reveal.epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS].append(reveal.revealed_index)
 
 ```
 
@@ -629,11 +645,9 @@ def process_challenge_deadlines(state: BeaconState) -> None:
             records[records.index(challenge)] = CustodyBitChallengeRecord()
 ```
 
-Run `clean_up_exposed_randao_key_reveals(state)` after `process_final_updates(state)`:
+Append this to `process_final_updates(state)`:
 
 ```python
-def clean_up_exposed_randao_key_reveals(state: BeaconState) -> None:
-
     # Clean up exposed RANDAO key reveals
     state.exposed_randao_reveals[current_epoch % RANDAO_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```
