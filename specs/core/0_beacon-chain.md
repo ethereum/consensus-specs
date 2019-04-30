@@ -66,7 +66,7 @@
         - [`compute_committee`](#compute_committee)
         - [`get_shard_delta`](#get_shard_delta)
         - [`get_epoch_start_shard`](#get_epoch_start_shard)
-        - [`committee_shard_to_slot`](#committee_shard_to_slot)
+        - [`get_attestation_slot`](#get_attestation_slot)
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_state_root`](#get_state_root)
@@ -819,13 +819,13 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
     return shard
 ```
 
-### `committee_shard_to_slot`
+### `get_attestation_slot`
 
 ```python
-def committee_shard_to_slot(state: BeaconState, epoch: Epoch, shard: Shard) -> Slot:
-    start_shard = get_epoch_start_shard(state, epoch)
+def get_attestation_slot(state: BeaconState, attestation: Attestation) -> Slot:
+    epoch = attestation.data.target_epoch
     committees_per_slot = get_epoch_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    offset = (shard - get_epoch_start_slot(epoch)) % SHARD_COUNT
+    offset = (attestation.data.shard + SHARD_COUNT - get_epoch_start_slot(epoch)) % SHARD_COUNT
     return get_epoch_start_slot(epoch) + offset // committees_per_slot
 ```
 
@@ -1299,7 +1299,7 @@ def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> List[P
 def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
     return [
         a for a in get_matching_source_attestations(state, epoch)
-        if a.data.beacon_block_root == get_block_root_at_slot(state, committee_shard_to_slot(state, epoch, a.data.shard))
+        if a.data.beacon_block_root == get_block_root_at_slot(state, get_attestation_slot(state, a))
     ]
 ```
 
@@ -1459,7 +1459,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         earliest_attestation = get_earliest_attestation(state, matching_source_attestations, index)
         rewards[earliest_attestation.proposer_index] += get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT
-        attestation_slot = committee_shard_to_slot(state, earliest_attestation.data.target_epoch, earliest_attestation.data.shard)
+        attestation_slot = get_attestation_slot(state, earliest_attestation)
         inclusion_delay = earliest_attestation.inclusion_slot - attestation_slot
         rewards[index] += get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // inclusion_delay
 
@@ -1745,12 +1745,12 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` operation.
     Note that this function mutates ``state``.
     """
-    data = attestation.data
-    attestation_slot = committee_shard_to_slot(state, data.target_epoch, attestation.shard)
+    attestation_slot = get_attestation_slot(state, attestation)
     min_slot = state.slot - SLOTS_PER_EPOCH if get_current_epoch(state) > GENESIS_EPOCH else GENESIS_SLOT
     assert min_slot <= attestation_slot <= state.slot - MIN_ATTESTATION_INCLUSION_DELAY
 
     # Check target epoch, source epoch, source root, and source crosslink
+    data = attestation.data
     assert (data.target_epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
         (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
