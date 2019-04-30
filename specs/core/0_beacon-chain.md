@@ -920,7 +920,7 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> L
     end_validator_index = (len(active_indices) * (committee_index + 1)) // committee_count
     return [
         active_indices[get_shuffled_index(i, len(active_indices), generate_seed(state, epoch))]
-        for i in range(start_index, end_index)
+        for i in range(start_validator_index, end_validator_index)
     ]
 ```
 
