@@ -1758,7 +1758,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
     }
-    
+
     # Check crosslink data root
     assert data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
 
