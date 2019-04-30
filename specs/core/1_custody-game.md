@@ -263,7 +263,8 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
 
 ```python
 def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorIndex) -> Epoch:
-    return (period + 1) * EPOCHS_PER_CUSTODY_PERIOD - validator_index % EPOCHS_PER_CUSTODY_PERIOD + CUSTODY_PERIOD_TO_RANDAO_PADDING
+    next_period_start = (period + 1) * EPOCHS_PER_CUSTODY_PERIOD - validator_index % EPOCHS_PER_CUSTODY_PERIOD
+    return next_period_start + CUSTODY_PERIOD_TO_RANDAO_PADDING
 ```
 
 ### `get_validators_custody_reveal_period`
