@@ -419,7 +419,7 @@ def process_early_derived_secret_reveal(state: BeaconState,
             len(get_active_validator_indices(state, get_current_epoch(state))) //
             PROPOSER_REWARD_QUOTIENT
         )
-        penalty = max_proposer_slot_reward * EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE
+        penalty = max_proposer_slot_reward * EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE * (len(state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]) + 1)
 
         # Apply penalty
         proposer_index = get_beacon_proposer_index(state)
