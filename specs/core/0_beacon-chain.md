@@ -60,10 +60,7 @@
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`increase_balance`](#increase_balance)
         - [`decrease_balance`](#decrease_balance)
-        - [`get_permuted_index`](#get_permuted_index)
-        - [`get_split_offset`](#get_split_offset)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
-        - [`compute_committee`](#compute_committee)
         - [`get_shard_delta`](#get_shard_delta)
         - [`get_epoch_start_shard`](#get_epoch_start_shard)
         - [`get_attestation_slot`](#get_attestation_slot)
@@ -75,6 +72,7 @@
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
+        - [`get_shuffled_index`](#get_shuffled_index)
         - [`get_crosslink_committee`](#get_crosslink_committee)
         - [`get_attesting_indices`](#get_attesting_indices)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
@@ -720,43 +718,6 @@ def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
     state.balances[index] = 0 if delta > state.balances[index] else state.balances[index] - delta
 ```
 
-### `get_permuted_index`
-
-```python
-def get_permuted_index(index: int, list_size: int, seed: Bytes32) -> int:
-    """
-    Return `p(index)` in a pseudorandom permutation `p` of `0...list_size - 1` with ``seed`` as entropy.
-
-    Utilizes 'swap or not' shuffling found in
-    https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
-    See the 'generalized domain' algorithm on page 3.
-    """
-    assert index < list_size
-    assert list_size <= 2**40
-
-    for round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % list_size
-        flip = (pivot - index) % list_size
-        position = max(index, flip)
-        source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
-        byte = source[(position % 256) // 8]
-        bit = (byte >> (position % 8)) % 2
-        index = flip if bit else index
-
-    return index
-```
-
-### `get_split_offset`
-
-```python
-def get_split_offset(list_size: int, chunks: int, index: int) -> int:
-    """
-    Returns a value such that for a list L, chunk count k and index i,
-    split(L, k)[i] == L[get_split_offset(len(L), k, i): get_split_offset(len(L), k, i+1)]
-    """
-    return (list_size * index) // chunks
-```
-
 ### `get_epoch_committee_count`
 
 ```python
@@ -773,28 +734,6 @@ def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
         )
     ) * SLOTS_PER_EPOCH
 ```
-
-### `compute_committee`
-
-```python
-def compute_committee(validator_indices: List[ValidatorIndex],
-                      seed: Bytes32,
-                      index: int,
-                      total_committees: int) -> List[ValidatorIndex]:
-    """
-    Return the ``index``'th shuffled committee out of a total ``total_committees``
-    using ``validator_indices`` and ``seed``.
-    """
-    assert index < total_committees
-    start_offset = get_split_offset(len(validator_indices), total_committees, index)
-    end_offset = get_split_offset(len(validator_indices), total_committees, index + 1)
-    return [
-        validator_indices[get_permuted_index(i, len(validator_indices), seed)]
-        for i in range(start_offset, end_offset)
-    ]
-```
-
-Note: this definition and the next few definitions are highly inefficient as algorithms, as they re-calculate many sub-expressions. Production implementations are expected to appropriately use caching/memoization to avoid redoing work.
 
 ### `get_shard_delta`
 
@@ -942,16 +881,47 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
     return value == root
 ```
 
+### `get_shuffled_index`
+
+```python
+def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -> ValidatorIndex:
+    """
+    Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
+    """
+    assert index < index_count
+    assert index_count <= 2**40
+
+    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
+    # See the 'generalized domain' algorithm on page 3
+    for round in range(SHUFFLE_ROUND_COUNT):
+        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % index_count
+        flip = (pivot - index) % index_count
+        position = max(index, flip)
+        source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
+        byte = source[(position % 256) // 8]
+        bit = (byte >> (position % 8)) % 2
+        index = flip if bit else index
+
+    return index
+```
+
 ### `get_crosslink_committee`
 
 ```python
-def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard):
-    return compute_committee(
-        validator_indices=get_active_validator_indices(state, epoch),
-        seed=generate_seed(state, epoch),
-        index=(shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT,
-        total_committees=get_epoch_committee_count(state, epoch)
-    )
+def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> List[ValidatorIndex]:
+    """
+    Return the crosslink committee at ``epoch`` for ``shard``.
+    """
+    active_validator_indices = get_active_validator_indices(state, epoch)
+    committee_count = get_epoch_committee_count(state, epoch)
+    committee_index = (shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
+
+    start_validator_index = (len(active_indices) * committee_index) // committee_count
+    end_validator_index = (len(active_indices) * (committee_index + 1)) // committee_count
+    return [
+        active_indices[get_shuffled_index(i, len(active_indices), generate_seed(state, epoch))]
+        for i in range(start_index, end_index)
+    ]
 ```
 
 ### `get_attesting_indices`
