@@ -1289,7 +1289,7 @@ def get_winning_crosslink_and_attesting_indices(state: BeaconState, shard: Shard
         if hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
     ]
     if len(candidate_crosslinks) == 0:
-        return Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH), []
+        return Crosslink(), []
 
     def get_attestations_for(crosslink: Crosslink) -> List[PendingAttestation]:
         return [a for a in shard_attestations if get_crosslink_from_attestation_data(state, a.data) == crosslink]
