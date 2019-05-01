@@ -9,6 +9,7 @@ from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
+    SLOTS_PER_HISTORICAL_ROOT,
     # SSZ
     Deposit,
     Transfer,
@@ -17,7 +18,6 @@ from eth2spec.phase0.spec import (
     get_active_validator_indices,
     get_beacon_proposer_index,
     get_block_root_at_slot,
-    get_state_root,
     get_current_epoch,
     get_domain,
     advance_slot,
@@ -49,6 +49,14 @@ from .helpers import (
 
 # mark entire file as 'sanity'
 pytestmark = pytest.mark.sanity
+
+
+def get_state_root(state, slot) -> bytes:
+    """
+    Return the state root at a recent ``slot``.
+    """
+    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
+    return state.latest_state_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 
 
 def test_slot_transition(state):
