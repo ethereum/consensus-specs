@@ -38,6 +38,7 @@ from .helpers import (
     build_deposit_data,
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
+    get_state_root,
     get_valid_attestation,
     get_valid_attester_slashing,
     get_valid_proposer_slashing,
@@ -49,14 +50,6 @@ from .helpers import (
 
 # mark entire file as 'sanity'
 pytestmark = pytest.mark.sanity
-
-
-def get_state_root(state, slot) -> bytes:
-    """
-    Return the state root at a recent ``slot``.
-    """
-    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
-    return state.latest_state_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 
 
 def test_slot_transition(state):
