@@ -113,7 +113,7 @@ fixed_parts = [part if part != None else variable_offsets[i] for i, part in enum
 return b"".join(fixed_parts + variable_parts)
 ```
 
-If `value` is an union type:
+If `value` is a union type:
 
 Define value as an object that has properties `value.value` with the contained value, and `value.type_index` which indexes the type.
 
