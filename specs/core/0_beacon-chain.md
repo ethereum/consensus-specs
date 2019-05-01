@@ -206,7 +206,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) | epochs | ~7 hours |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `EPOCHS_PER_HISTORY_OBJECT` | `2**13` (= 8,192) | epochs | ~36 days |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
 
 * `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
@@ -546,7 +546,7 @@ The types are defined topologically to aid in facilitating an executable version
     'balances': ['uint64'],
 
     # Randomness and committees
-    'latest_randao_mixes': ['bytes32', EPOCHS_PER_HISTORY_OBJECT],
+    'latest_randao_mixes': ['bytes32', EPOCHS_PER_HISTORICAL_VECTOR],
     'latest_start_shard': 'uint64',
 
     # Finality
@@ -556,7 +556,7 @@ The types are defined topologically to aid in facilitating an executable version
     'current_justified_epoch': 'uint64',
     'previous_justified_root': 'bytes32',
     'current_justified_root': 'bytes32',
-    'justification_bitfield': ['bit', EPOCHS_PER_HISTORY_OBJECT],
+    'justification_bitfield': ['bit', EPOCHS_PER_HISTORICAL_VECTOR],
     'finalized_epoch': 'uint64',
     'finalized_root': 'bytes32',
 
@@ -565,8 +565,8 @@ The types are defined topologically to aid in facilitating an executable version
     'previous_crosslinks': [Crosslink, SHARD_COUNT],
     'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
-    'latest_active_index_roots': ['bytes32', EPOCHS_PER_HISTORY_OBJECT],
-    'latest_slashed_balances': ['uint64', EPOCHS_PER_HISTORY_OBJECT],  # Balances slashed at every withdrawal period
+    'latest_active_index_roots': ['bytes32', EPOCHS_PER_HISTORICAL_VECTOR],
+    'latest_slashed_balances': ['uint64', EPOCHS_PER_HISTORICAL_VECTOR],  # Balances slashed at every withdrawal period
     'latest_block_header': BeaconBlockHeader,  # `latest_block_header.state_root == ZERO_HASH` temporarily
     'historical_roots': ['bytes32'],
 
@@ -878,8 +878,8 @@ def get_randao_mix(state: BeaconState,
     """
     Return the randao mix at a recent ``epoch``.
     """
-    assert get_current_epoch(state) - EPOCHS_PER_HISTORY_OBJECT < epoch <= get_current_epoch(state)
-    return state.latest_randao_mixes[epoch % EPOCHS_PER_HISTORY_OBJECT]
+    assert get_current_epoch(state) - EPOCHS_PER_HISTORICAL_VECTOR < epoch <= get_current_epoch(state)
+    return state.latest_randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
 ### `get_active_index_root`
@@ -890,8 +890,8 @@ def get_active_index_root(state: BeaconState,
     """
     Return the index root at a recent ``epoch``.
     """
-    assert get_current_epoch(state) - EPOCHS_PER_HISTORY_OBJECT + ACTIVATION_EXIT_DELAY < epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY
-    return state.latest_active_index_roots[epoch % EPOCHS_PER_HISTORY_OBJECT]
+    assert get_current_epoch(state) - EPOCHS_PER_HISTORICAL_VECTOR + ACTIVATION_EXIT_DELAY < epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY
+    return state.latest_active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
 ### `generate_seed`
@@ -1171,9 +1171,9 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     current_epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
     state.validator_registry[slashed_index].slashed = True
-    state.validator_registry[slashed_index].withdrawable_epoch = current_epoch + EPOCHS_PER_HISTORY_OBJECT
+    state.validator_registry[slashed_index].withdrawable_epoch = current_epoch + EPOCHS_PER_HISTORICAL_VECTOR
     slashed_balance = state.validator_registry[slashed_index].effective_balance
-    state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORY_OBJECT] += slashed_balance
+    state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORICAL_VECTOR] += slashed_balance
 
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
@@ -1218,7 +1218,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
             validator.activation_epoch = GENESIS_EPOCH
 
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
-    for index in range(EPOCHS_PER_HISTORY_OBJECT):
+    for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
         state.latest_active_index_roots[index] = genesis_active_index_root
 
     return state
@@ -1368,18 +1368,18 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_epoch = previous_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
-        state.justification_bitfield[previous_epoch % EPOCHS_PER_HISTORY_OBJECT] = True
+        state.justification_bitfield[previous_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = True
     current_epoch_matching_target_balance = get_attesting_balance(state, get_matching_target_attestations(state, current_epoch))
     if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_epoch = current_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
-        state.justification_bitfield[current_epoch % EPOCHS_PER_HISTORY_OBJECT] = True
+        state.justification_bitfield[current_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = True
 
     # Process finalizations
-    bit_0 = state.justification_bitfield[(current_epoch - 0) % EPOCHS_PER_HISTORY_OBJECT]
-    bit_1 = state.justification_bitfield[(current_epoch - 1) % EPOCHS_PER_HISTORY_OBJECT]
-    bit_2 = state.justification_bitfield[(current_epoch - 2) % EPOCHS_PER_HISTORY_OBJECT]
-    bit_3 = state.justification_bitfield[(current_epoch - 3) % EPOCHS_PER_HISTORY_OBJECT]
+    bit_0 = state.justification_bitfield[(current_epoch - 0) % EPOCHS_PER_HISTORICAL_VECTOR]
+    bit_1 = state.justification_bitfield[(current_epoch - 1) % EPOCHS_PER_HISTORICAL_VECTOR]
+    bit_2 = state.justification_bitfield[(current_epoch - 2) % EPOCHS_PER_HISTORICAL_VECTOR]
+    bit_3 = state.justification_bitfield[(current_epoch - 3) % EPOCHS_PER_HISTORICAL_VECTOR]
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
     if bit_1 and bit_2 and bit_3 and old_previous_justified_epoch == current_epoch - 3:
         state.finalized_epoch = old_previous_justified_epoch
@@ -1541,12 +1541,12 @@ def process_slashings(state: BeaconState) -> None:
     total_balance = get_total_balance(state, active_validator_indices)
 
     # Compute `total_penalties`
-    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % EPOCHS_PER_HISTORY_OBJECT]
-    total_at_end = state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORY_OBJECT]
+    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % EPOCHS_PER_HISTORICAL_VECTOR]
+    total_at_end = state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORICAL_VECTOR]
     total_penalties = total_at_end - total_at_start
 
     for index, validator in enumerate(state.validator_registry):
-        if validator.slashed and current_epoch == validator.withdrawable_epoch - EPOCHS_PER_HISTORY_OBJECT // 2:
+        if validator.slashed and current_epoch == validator.withdrawable_epoch - EPOCHS_PER_HISTORICAL_VECTOR // 2:
             penalty = max(
                 validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
                 validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
@@ -1574,16 +1574,16 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
     # Set active index root
-    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORY_OBJECT
+    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
     state.latest_active_index_roots[index_root_position] = hash_tree_root(
         get_active_validator_indices(state, next_epoch + ACTIVATION_EXIT_DELAY)
     )
     # Set total slashed balances
-    state.latest_slashed_balances[next_epoch % EPOCHS_PER_HISTORY_OBJECT] = (
-        state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORY_OBJECT]
+    state.latest_slashed_balances[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = (
+        state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORICAL_VECTOR]
     )
     # Set randao mix
-    state.latest_randao_mixes[next_epoch % EPOCHS_PER_HISTORY_OBJECT] = get_randao_mix(state, current_epoch)
+    state.latest_randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(
@@ -1638,7 +1638,7 @@ def process_randao(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the provided randao value is valid
     assert bls_verify(proposer.pubkey, hash_tree_root(get_current_epoch(state)), block.body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix it in
-    state.latest_randao_mixes[get_current_epoch(state) % EPOCHS_PER_HISTORY_OBJECT] = (
+    state.latest_randao_mixes[get_current_epoch(state) % EPOCHS_PER_HISTORICAL_VECTOR] = (
         xor(get_randao_mix(state, get_current_epoch(state)),
             hash(block.body.randao_reveal))
     )
