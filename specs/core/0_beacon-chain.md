@@ -1285,15 +1285,18 @@ def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
 
 ```python
 def cache_state(state: BeaconState) -> None:
-    # Cache state and block roots of previous slot
+    # Cache state root of previous slot
     previous_state_root = hash_tree_root(state)
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
-    previous_block_root = signing_root(state.latest_block_header)
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
 
     # Cache previous state root in latest_block_header, if empty
     if state.latest_block_header.state_root == ZERO_HASH:
         state.latest_block_header.state_root = previous_state_root
+
+    # Cache block root of previous slot
+    previous_block_root = signing_root(state.latest_block_header)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
+
 ```
 
 ### Epoch processing
