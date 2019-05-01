@@ -1,0 +1,3 @@
+-r requirements.txt
+pytest>=3.6,<3.7
+../config_helpers

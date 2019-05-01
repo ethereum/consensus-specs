@@ -70,7 +70,7 @@ Note: make sure to run `make pyspec` from the root of the specs repository in or
 
 Install all the necessary requirements (re-run when you add more):
 ```bash
-pip3 install -e .[pyspec]
+pip3 install -r requirements.txt
 ```
 
 And write your initial test generator, extending the base generator:
