@@ -280,6 +280,8 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
+    # Shard number
+    'shard': 'uint64',
     # Epoch number
     'epoch': 'uint64',
     # Root of the previous crosslink
@@ -316,9 +318,7 @@ The types are defined topologically to aid in facilitating an executable version
     'target_root': 'bytes32',
 
     # Crosslink vote
-    'shard': 'uint64',
-    'previous_crosslink_root': 'bytes32',
-    'crosslink_data_root': 'bytes32',
+    'crosslink': Crosslink,
 }
 ```
 
@@ -966,7 +966,7 @@ def get_attesting_indices(state: BeaconState,
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
-    crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
+    crosslink_committee = [c for c, shard in crosslink_committees if shard == attestation_data.crosslink.shard][0]
     assert verify_bitfield(bitfield, len(crosslink_committee))
     return sorted([index for i, index in enumerate(crosslink_committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
@@ -1348,28 +1348,20 @@ def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestat
     return get_total_balance(state, get_unslashed_attesting_indices(state, attestations))
 ```
 
-```python
-def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationData) -> Crosslink:
-    return Crosslink(
-        epoch=min(slot_to_epoch(data.slot), state.current_crosslinks[data.shard].epoch + MAX_CROSSLINK_EPOCHS),
-        previous_crosslink_root=data.previous_crosslink_root,
-        crosslink_data_root=data.crosslink_data_root,
-    )
-```
 
 ```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, shard: Shard, epoch: Epoch) -> Tuple[Crosslink, List[ValidatorIndex]]:
     shard_attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.shard == shard]
-    shard_crosslinks = [get_crosslink_from_attestation_data(state, a.data) for a in shard_attestations]
+    shard_crosslinks = [a.data.crosslink for a in shard_attestations]
     candidate_crosslinks = [
         c for c in shard_crosslinks
         if hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
     ]
     if len(candidate_crosslinks) == 0:
-        return Crosslink(epoch=GENESIS_EPOCH, previous_crosslink_root=ZERO_HASH, crosslink_data_root=ZERO_HASH), []
+        return Crosslink(), []
 
     def get_attestations_for(crosslink: Crosslink) -> List[PendingAttestation]:
-        return [a for a in shard_attestations if get_crosslink_from_attestation_data(state, a.data) == crosslink]
+        return [a for a in shard_attestations if a.data.crosslink == crosslink]
     # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
     winning_crosslink = max(candidate_crosslinks, key=lambda crosslink: (
         get_attesting_balance(state, get_attestations_for(crosslink)), crosslink.crosslink_data_root
@@ -1776,12 +1768,13 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Check target epoch, source epoch, source root, and source crosslink
     target_epoch = slot_to_epoch(data.slot)
     assert (target_epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
-        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
-        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
+        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.crosslink.shard])),
+        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.crosslink.shard])),
     }
 
-    # Check crosslink data root
-    assert data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
+    # Check crosslink
+    assert data.crosslink.epoch = min(slot_to_epoch(data.slot), previous_crosslink.epoch + MAX_CROSSLINK_EPOCHS)
+    assert data.crosslink.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
 
     # Check signature and bitfields
     assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))
