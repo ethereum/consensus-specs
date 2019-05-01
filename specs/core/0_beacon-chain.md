@@ -929,11 +929,11 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     current_epoch = get_current_epoch(state)
     first_committee, _ = get_crosslink_committees_at_slot(state, state.slot)[0]
     MAX_RANDOM_BYTE = 2**8 - 1
-    seed = hash(generate_seed(state, current_epoch)
+    seed = generate_seed(state, current_epoch)
     i = 0
     while True:
         candidate_index = first_committee[(current_epoch + i) % len(first_committee)]
-        random_byte = seed + int_to_bytes8(i // 32))[i % 32]
+        random_byte = hash(seed + int_to_bytes8(i // 32))[i % 32])
         effective_balance = state.validator_registry[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
