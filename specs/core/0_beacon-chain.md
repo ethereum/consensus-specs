@@ -97,7 +97,7 @@
     - [On genesis](#on-genesis)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [State caching](#state-caching)
-        - [Per-epoch processing](#per-epoch-processing)
+        - [Epoch processing](#epoch-processing)
             - [Helper functions](#helper-functions-1)
             - [Justification and finalization](#justification-and-finalization)
             - [Crosslinks](#crosslinks)
@@ -105,7 +105,7 @@
             - [Registry updates](#registry-updates)
             - [Slashings](#slashings)
             - [Final updates](#final-updates)
-        - [Per-block processing](#per-block-processing)
+        - [Block processing](#block-processing)
             - [Block header](#block-header)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
@@ -1263,7 +1263,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
 ## Beacon chain state transition function
 
-The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`.
+The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. failed `assert`s and out-of-range list accesses) are considered invalid.
 
 ```python
 def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
@@ -1271,16 +1271,14 @@ def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
     while state.slot < block.slot:
         # State caching at the start of every slot
         cache_state(state)
-        # Per-epoch processing at the start of the first slot of every epoch
+        # Epoch processing at the start of the first slot of every epoch
         if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
-            process_epoch_transition(state)
+            process_epoch(state)
         # Slot incrementing
         state.slot += 1
     # Block processing at every block
     process_block(state, block)
 ```
-
-Note: Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
 ### State caching
 
@@ -1299,10 +1297,10 @@ def cache_state(state: BeaconState) -> None:
     state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_block_root
 ```
 
-### Per-epoch processing
+### Epoch processing
 
 ```python
-def process_epoch_transition(state: BeaconState) -> None:
+def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)
     process_crosslinks(state)
     process_rewards_and_penalties(state)
@@ -1623,7 +1621,7 @@ def process_final_updates(state: BeaconState) -> None:
     state.current_epoch_attestations = []
 ```
 
-### Per-block processing
+### Block processing
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
