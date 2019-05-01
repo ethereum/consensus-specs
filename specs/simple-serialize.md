@@ -44,7 +44,7 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 * **list**: ordered variable-length homogeneous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
 * **union**: union type containing one of the given subtypes
-    * round bracket notation `(type1, type2, ...)`, e.g. `("uint64", "null")`
+    * round bracket notation `(type_1, type_2, ...)`, e.g. `("uint64", "null")`
 
 ### Variable-size and fixed-size
 
