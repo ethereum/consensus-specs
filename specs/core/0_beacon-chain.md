@@ -80,7 +80,6 @@
         - [`get_total_balance`](#get_total_balance)
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
-        - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`verify_indexed_attestation`](#verify_indexed_attestation)
         - [`is_double_vote`](#is_double_vote)
@@ -401,7 +400,7 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Attester aggregation bitfield
-    'aggregation_bitfield': 'bytes',
+    'aggregation_bitfield': ['bool'],
     # Attestation data
     'data': AttestationData,
     # Inclusion slot
@@ -453,11 +452,11 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Attester aggregation bitfield
-    'aggregation_bitfield': 'bytes',
+    'aggregation_bitfield': ['bool'],
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
-    'custody_bitfield': 'bytes',
+    'custody_bitfield': ['bool'],
     # BLS aggregate signature
     'signature': 'bytes96',
 }
@@ -566,7 +565,7 @@ The types are defined topologically to aid in facilitating an executable version
     'current_justified_epoch': 'uint64',
     'previous_justified_root': 'bytes32',
     'current_justified_root': 'bytes32',
-    'justification_bitfield': 'uint64',
+    'justification_bitfield': ['bool', SLOTS_PER_EPOCH],
     'finalized_epoch': 'uint64',
     'finalized_root': 'bytes32',
 
@@ -967,7 +966,7 @@ def get_attesting_indices(state: BeaconState,
     """
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
-    assert verify_bitfield(bitfield, len(crosslink_committee))
+    assert len(bitfield) == len(crosslink_committee)
     return sorted([index for i, index in enumerate(crosslink_committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
 
@@ -1014,24 +1013,6 @@ def get_bitfield_bit(bitfield: bytes, i: int) -> int:
     Extract the bit in ``bitfield`` at position ``i``.
     """
     return (bitfield[i // 8] >> (i % 8)) % 2
-```
-
-### `verify_bitfield`
-
-```python
-def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
-    """
-    Verify ``bitfield`` against the ``committee_size``.
-    """
-    if len(bitfield) != (committee_size + 7) // 8:
-        return False
-
-    # Check `bitfield` is padded with zero bits only
-    for i in range(committee_size, len(bitfield) * 8):
-        if get_bitfield_bit(bitfield, i) == 0b1:
-            return False
-
-    return True
 ```
 
 ### `convert_to_indexed`
@@ -1402,34 +1383,36 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Process justifications
     state.previous_justified_epoch = state.current_justified_epoch
     state.previous_justified_root = state.current_justified_root
-    state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
     previous_epoch_matching_target_balance = get_attesting_balance(state, get_matching_target_attestations(state, previous_epoch))
     if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_epoch = previous_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
-        state.justification_bitfield |= (1 << 1)
+        state.justification_bitfield[previous_epoch % SLOTS_PER_EPOCH] = True
     current_epoch_matching_target_balance = get_attesting_balance(state, get_matching_target_attestations(state, current_epoch))
     if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_epoch = current_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
-        state.justification_bitfield |= (1 << 0)
+        state.justification_bitfield[current_epoch % SLOTS_PER_EPOCH] = True
 
     # Process finalizations
-    bitfield = state.justification_bitfield
+    bit_0 = state.justification_bitfield[(current_epoch - 0) % SLOTS_PER_EPOCH]
+    bit_1 = state.justification_bitfield[(current_epoch - 1) % SLOTS_PER_EPOCH]
+    bit_2 = state.justification_bitfield[(current_epoch - 2) % SLOTS_PER_EPOCH]
+    bit_3 = state.justification_bitfield[(current_epoch - 3) % SLOTS_PER_EPOCH]
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_epoch == current_epoch - 3:
+    if bit_1 and bit_2 and bit_3 and old_previous_justified_epoch == current_epoch - 3:
         state.finalized_epoch = old_previous_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_epoch == current_epoch - 2:
+    if bit_1 and bit_2 and old_previous_justified_epoch == current_epoch - 2:
         state.finalized_epoch = old_previous_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_epoch == current_epoch - 2:
+    if bit_0 and bit_1 and bit_2 and old_current_justified_epoch == current_epoch - 2:
         state.finalized_epoch = old_current_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_epoch == current_epoch - 1:
+    if bit_0 and bit_1 and old_current_justified_epoch == current_epoch - 1:
         state.finalized_epoch = old_current_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
 ```
