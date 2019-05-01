@@ -61,11 +61,11 @@ For convenience we alias:
 
 ### Default values
 
-The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists.
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
 
 ### Illegal types
 
-Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as a union subtype.
+Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as the first type in a union subtype (i.e., with type index zero).
 
 ## Serialization
 
