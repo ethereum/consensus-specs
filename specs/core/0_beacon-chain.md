@@ -933,7 +933,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     i = 0
     while True:
         candidate_index = first_committee[(current_epoch + i) % len(first_committee)]
-        random_byte = hash(seed + int_to_bytes8(i // 32))[i % 32])
+        random_byte = hash(seed + int_to_bytes8(i // 32))[i % 32]
         effective_balance = state.validator_registry[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
