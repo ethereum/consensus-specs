@@ -1314,7 +1314,7 @@ def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationDat
 ```
 
 ```python
-def get_winning_crosslink_and_attesting_indices(state: BeaconState, shard: Shard, epoch: Epoch) -> Tuple[Crosslink, List[ValidatorIndex]]:
+def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
     shard_attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.shard == shard]
     shard_crosslinks = [get_crosslink_from_attestation_data(state, a.data) for a in shard_attestations]
     candidate_crosslinks = [
@@ -1394,7 +1394,7 @@ def process_crosslinks(state: BeaconState) -> None:
         for offset in range(get_epoch_committee_count(state, epoch)):
             shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
             crosslink_committee = get_crosslink_committee(state, epoch, shard)
-            winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, shard, epoch)
+            winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
             if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
                 state.current_crosslinks[shard] = winning_crosslink
 ```
@@ -1464,7 +1464,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     for offset in range(get_epoch_committee_count(state, epoch)):
         shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
         crosslink_committee = get_crosslink_committee(state, epoch, shard)
-        winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, shard, epoch)
+        winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
         attesting_balance = get_total_balance(state, attesting_indices)
         committee_balance = get_total_balance(state, crosslink_committee)
         for index in crosslink_committee:
