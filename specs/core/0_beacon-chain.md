@@ -687,7 +687,6 @@ def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
     Check if ``validator`` is slashable.
     """
     return validator.slashed is False and (validator.activation_epoch <= epoch < validator.withdrawable_epoch)
-
 ```
 
 ### `get_active_validator_indices`
@@ -857,10 +856,11 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
     first_committee = get_crosslink_committee(state, epoch, shard)
     MAX_RANDOM_BYTE = 2**8 - 1
+    seed = generate_seed(state, epoch)
     i = 0
     while True:
         candidate_index = first_committee[(epoch + i) % len(first_committee)]
-        random_byte = hash(generate_seed(state, epoch) + int_to_bytes8(i // 32))[i % 32]
+        random_byte = hash(seed + int_to_bytes8(i // 32))[i % 32]
         effective_balance = state.validator_registry[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -1206,7 +1206,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
         process_deposit(state, deposit)
 
     # Process genesis activations
-    for index, validator in enumerate(state.validator_registry):
+    for validator in state.validator_registry:
         if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
@@ -1409,15 +1409,14 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     if adjusted_quotient == 0:
         return 0
     return state.validator_registry[index].effective_balance // adjusted_quotient // BASE_REWARDS_PER_EPOCH
-
 ```
 
 ```python
 def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     previous_epoch = get_previous_epoch(state)
     total_balance = get_total_active_balance(state)
-    rewards = [0 for index in range(len(state.validator_registry))]
-    penalties = [0 for index in range(len(state.validator_registry))]
+    rewards = [0 for _ in range(len(state.validator_registry))]
+    penalties = [0 for _ in range(len(state.validator_registry))]
     eligible_validator_indices = [
         index for index, v in enumerate(state.validator_registry)
         if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
@@ -1453,7 +1452,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             if index not in matching_target_attesting_indices:
                 penalties[index] += state.validator_registry[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
 
-    return [rewards, penalties]
+    return rewards, penalties
 ```
 
 ```python
@@ -1473,7 +1472,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
                 rewards[index] += base_reward * attesting_balance // committee_balance
             else:
                 penalties[index] += base_reward
-    return [rewards, penalties]
+    return rewards, penalties
 ```
 
 Run the following function:
@@ -1512,6 +1511,7 @@ def process_registry_updates(state: BeaconState) -> None:
     ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_churn_limit(state)]:
+        validator = state.validator_registry[index]
         if validator.activation_epoch == FAR_FUTURE_EPOCH:
             validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
@@ -1553,10 +1553,10 @@ def process_final_updates(state: BeaconState) -> None:
         state.eth1_data_votes = []
     # Update effective balances with hysteresis
     for index, validator in enumerate(state.validator_registry):
-        balance = min(state.balances[index], MAX_EFFECTIVE_BALANCE)
+        balance = state.balances[index]
         HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
         if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
-            validator.effective_balance = balance - balance % EFFECTIVE_BALANCE_INCREMENT
+            validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     # Update start shard
     state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
     # Set active index root
@@ -1778,7 +1778,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            effective_balance=amount - amount % EFFECTIVE_BALANCE_INCREMENT
+            effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
         ))
         state.balances.append(amount)
     else:

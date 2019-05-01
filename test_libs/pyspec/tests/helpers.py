@@ -394,11 +394,21 @@ def add_attestation_to_state(state, attestation, slot):
 
 
 def next_slot(state):
+    """
+    Transition to the next slot via an empty block.
+    Return the empty block that triggered the transition.
+    """
     block = build_empty_block_for_next_slot(state)
     state_transition(state, block)
+    return block
 
 
 def next_epoch(state):
+    """
+    Transition to the start slot of the next epoch via an empty block.
+    Return the empty block that triggered the transition.
+    """
     block = build_empty_block_for_next_slot(state)
     block.slot += spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     state_transition(state, block)
+    return block
