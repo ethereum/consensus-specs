@@ -8,9 +8,10 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 - [Typing](#typing)
     - [Basic types](#basic-types)
     - [Composite types](#composite-types)
-        - [Illegal empty composites](#illegal-empty-composites)
+    - [Variable-size and fixed-size](#variable-size-and-fixed-size)
     - [Aliases](#aliases)
     - [Default values](#default-values)
+    - [Illegal types](#illegal-types)
 - [Serialization](#serialization)
     - [`"uintN"`](#uintn)
     - [`"bool"`](#bool)
@@ -45,13 +46,9 @@ This is a **work in progress** describing typing, serialization and Merkleizatio
 * **union**: union type containing one of the given subtypes
     * round bracket notation `(type1, type2, ...)`, e.g. `("uint64", "null")`
 
-#### Variable-size and fixed-size
+### Variable-size and fixed-size
 
 We recursively define "variable-size" types to be lists and unions and all types that contain a variable-size type. All other types are said to be "fixed-size".
-
-#### Illegal empty composites
-
-The empty container `{}` (except as the `"null"` type inside a union, see below) and the empty fixed length list `[type, 0]` are **not** legal types.
 
 ### Aliases
 
@@ -62,18 +59,19 @@ For convenience we alias:
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
 * `"null"`: `{}`, i.e. the empty container
 
-The `"null"` type is only legal as a union sub-type.
-
 ### Default values
 
 The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists.
+
+### Illegal types
+
+Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as a union subtype.
 
 ## Serialization
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
 > *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
-
 
 ### `"uintN"`
 
