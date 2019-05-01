@@ -410,7 +410,7 @@ If the software crashes at some point within this routine, then when the validat
 
 ### Attester slashing
 
-To avoid "attester slashings", a validator must not sign two conflicting [`AttestationData`](../core/0_beacon-chain.md#attestationdata) objects where conflicting is defined as a set of two attestations that satisfy either [`is_double_vote`](../core/0_beacon-chain.md#is_double_vote) or [`is_surround_vote`](../core/0_beacon-chain.md#is_surround_vote).
+To avoid "attester slashings", a validator must not sign two conflicting [`AttestationData`](../core/0_beacon-chain.md#attestationdata) objects, i.e. two attestations that satisfy [`is_slashable_attestation_data`](../core/0_beacon-chain.md#is_slashable_attestation_data).
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
 1. Save a record to hard disk that an attestation has been signed for source -- `attestation_data.source_epoch` -- and target -- `slot_to_epoch(attestation_data.slot)`.

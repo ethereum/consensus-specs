@@ -83,8 +83,7 @@
         - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`verify_indexed_attestation`](#verify_indexed_attestation)
-        - [`is_double_vote`](#is_double_vote)
-        - [`is_surround_vote`](#is_surround_vote)
+        - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
         - [`integer_squareroot`](#integer_squareroot)
         - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
         - [`get_churn_limit`](#get_churn_limit)
@@ -1063,26 +1062,16 @@ def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedA
     )
 ```
 
-### `is_double_vote`
+### `is_slashable_attestation_data`
 
 ```python
-def is_double_vote(attestation_data_1: AttestationData, attestation_data_2: AttestationData) -> bool:
+def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationData) -> bool:
     """
-    Check if ``attestation_data_1`` and ``attestation_data_2`` violate Casper "double" slashing rule.
-    """
-    return attestation_data_1.target_epoch == attestation_data_2.target_epoch
-```
-
-### `is_surround_vote`
-
-```python
-def is_surround_vote(attestation_data_1: AttestationData, attestation_data_2: AttestationData) -> bool:
-    """
-    Check if ``attestation_data_1`` and ``attestation_data_2`` violate Casper "surround" slashing rule.
+    Check if ``data_1`` and ``data_2`` are slashable according to Casper FFG rules.
     """
     return (
-        attestation_data_1.source_epoch < attestation_data_2.source_epoch and
-        attestation_data_2.target_epoch < attestation_data_1.target_epoch
+        (data_1 != data_2 and data_1.target == data_2.target) or           # Double vote
+        (data_1.source < data_2.source and data_2.target < data_1.target)  # Surround vote
     )
 ```
 
@@ -1691,27 +1680,18 @@ def process_attester_slashing(state: BeaconState,
     """
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
-    # Check that the attestations are conflicting
-    assert attestation_1.data != attestation_2.data
-    assert (
-        is_double_vote(attestation_1.data, attestation_2.data) or
-        is_surround_vote(attestation_1.data, attestation_2.data)
-    )
-
+    assert is_slashable_attestation_data(attestation_1.data, attestation_2.data)
     assert verify_indexed_attestation(state, attestation_1)
     assert verify_indexed_attestation(state, attestation_2)
+
+    slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
     attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
-    slashable_indices = [
-        index for index in attesting_indices_1
-        if (
-            index in attesting_indices_2 and
-            is_slashable_validator(state.validator_registry[index], get_current_epoch(state))
-        )
-    ]
-    assert len(slashable_indices) >= 1
-    for index in slashable_indices:
-        slash_validator(state, index)
+    for index in set(attesting_indices_1).intersection(attesting_indices_2):
+        if is_slashable_validator(state.validator_registry[index], get_current_epoch(state)):
+            slash_validator(state, index)
+            slashed_any = True
+    assert slashed_any
 ```
 
 ##### Attestations
