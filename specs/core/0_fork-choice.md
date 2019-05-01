@@ -13,6 +13,8 @@
         - [Time parameters](#time-parameters)
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
+    - [Implementation notes](#implementation-notes)
+        - [Justification and finality at genesis](#justification-and-finality-at-genesis)
 
 <!-- /TOC -->
 
@@ -99,3 +101,9 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda x: (get_vote_count(x), hash_tree_root(x)))
 ```
+
+## Implementation notes
+
+### Justification and finality at genesis
+
+Clients may choose to refer to the justification and finality data in a given `BeaconState` to determine the finalized/justified head. During the early epochs right after genesis, the justification and finality data are not stored in the `BeaconState`. In their place are "empty" values; for example, the 32-byte zero value as the `finalized_root`. Clients wishing to compute the fork choice in these early epochs should work around this fact of the `BeaconState` to recognize that the genesis epoch and root of the genesis block are _both_ the finalized and justified heads until updated via the state transition function defined in [Phase 0 -- The Beacon Chain](./0_beacon-chain.md). Solutions will be language-specific but one possibility is to treat the zero-value hash as an exceptional case that references the genesis block/epoch.
