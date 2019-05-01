@@ -45,24 +45,20 @@ Store = None
     code_lines += function_puller.get_spec(sourcefile)
 
     code_lines.append("""
-# Monkey patch validator get committee code
-_get_crosslink_committee = get_crosslink_committee
+# Monkey patch validator compute committee code
+_compute_committee = compute_committee
 committee_cache = {}
 
 
-def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> List[ValidatorIndex]:
-    active_indices = get_active_validator_indices(state, epoch)
-    seed = generate_seed(state, epoch)
-    committee_count = get_epoch_committee_count(state, epoch)
-    committee_index = (shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
-    param_hash = (hash_tree_root(active_indices), seed, committee_count, committee_index)
+def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
+    param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash in committee_cache:
-        # print("Cache hit, epoch={0}".format(epoch))
+        print("Cache hit, param_hash: ", param_hash)
         return committee_cache[param_hash]
     else:
-        # print("Cache miss, epoch={0}".format(epoch))
-        ret = _get_crosslink_committee(state, epoch, shard)
+        print("Cache miss, param_hash: ", param_hash)
+        ret = _compute_committee(indices, seed, index, count)
         committee_cache[param_hash] = ret
         return ret
 
