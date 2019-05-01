@@ -105,7 +105,6 @@
             - [Registry updates](#registry-updates)
             - [Slashings](#slashings)
             - [Final updates](#final-updates)
-        - [Per-slot processing](#per-slot-processing)
         - [Per-block processing](#per-block-processing)
             - [Block header](#block-header)
             - [RANDAO](#randao)
@@ -1264,26 +1263,26 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
 ## Beacon chain state transition function
 
-We now define the state transition function. At a high level, the state transition is made up of four parts:
+The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`.
 
-1. State caching, which happens at the start of every slot.
-2. The per-epoch transitions, which happens at the start of the first slot of every epoch.
-3. The per-slot transitions, which happens at every slot.
-4. The per-block transitions, which happens at every block.
+```python
+def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
+    assert state.slot < block.slot
+    while state.slot < block.slot:
+        # State caching at the start of every slot
+        cache_state(state)
+        # Per-epoch processing at the start of the first slot of every epoch
+        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
+            process_epoch_transition(state)
+        # Slot incrementing
+        state.slot += 1
+    # Block processing at every block
+    process_block(state, block)
+```
 
-Transition section notes:
-* The state caching caches the state root of the previous slot and updates block and state roots records.
-* The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
-* The per-slot transitions focus on the slot counter.
-* The per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
-
-Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
-
-Note: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
+Note: Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
 ### State caching
-
-At every `slot > GENESIS_SLOT` run the following function:
 
 ```python
 def cache_state(state: BeaconState) -> None:
@@ -1302,11 +1301,17 @@ def cache_state(state: BeaconState) -> None:
 
 ### Per-epoch processing
 
-The steps below happen when `state.slot > GENESIS_SLOT and (state.slot + 1) % SLOTS_PER_EPOCH == 0`.
+```python
+def process_epoch_transition(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_crosslinks(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_final_updates(state)
+```
 
 #### Helper functions
-
-We define epoch transition helper functions:
 
 ```python
 def get_total_active_balance(state: BeaconState) -> Gwei:
@@ -1387,8 +1392,6 @@ def get_earliest_attestation(state: BeaconState, attestations: List[PendingAttes
 
 #### Justification and finalization
 
-Run the following function:
-
 ```python
 def process_justification_and_finalization(state: BeaconState) -> None:
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
@@ -1436,8 +1439,6 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
 #### Crosslinks
 
-Run the following function:
-
 ```python
 def process_crosslinks(state: BeaconState) -> None:
     state.previous_crosslinks = [c for c in state.current_crosslinks]
@@ -1452,8 +1453,6 @@ def process_crosslinks(state: BeaconState) -> None:
 ```
 
 #### Rewards and penalties
-
-First, we define additional helpers:
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
@@ -1526,8 +1525,6 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     return [rewards, penalties]
 ```
 
-Run the following function:
-
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
@@ -1541,8 +1538,6 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 ```
 
 #### Registry updates
-
-Run the following function:
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
@@ -1568,8 +1563,6 @@ def process_registry_updates(state: BeaconState) -> None:
 
 #### Slashings
 
-Run the following function:
-
 ```python
 def process_slashings(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
@@ -1591,8 +1584,6 @@ def process_slashings(state: BeaconState) -> None:
 ```
 
 #### Final updates
-
-Run the following function:
 
 ```python
 def process_final_updates(state: BeaconState) -> None:
@@ -1632,18 +1623,16 @@ def process_final_updates(state: BeaconState) -> None:
     state.current_epoch_attestations = []
 ```
 
-### Per-slot processing
-
-At every `slot > GENESIS_SLOT` run the following function:
-
-```python
-def advance_slot(state: BeaconState) -> None:
-    state.slot += 1
-```
-
 ### Per-block processing
 
-For every `block` except the genesis block, run `process_block_header(state, block)`, `process_randao(state, block)` and `process_eth1_data(state, block)`.
+```python
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    process_block_header(state, block)
+    process_randao(state, block)
+    process_eth1_data(state, block)
+    process_operations(state, block.body)
+    # verify_block_state_root(state, block)
+```
 
 #### Block header
 
@@ -1690,8 +1679,6 @@ def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
 ```
 
 #### Operations
-
-The sub-sections below define helper functions, one per operation type. The full processing of operations is done by running `process_operations(state, block.body)`.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
@@ -1912,8 +1899,6 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
 ```
 
 #### State root verification
-
-Verify the block's `state_root` by running the following function:
 
 ```python
 def verify_block_state_root(state: BeaconState, block: BeaconBlock) -> None:

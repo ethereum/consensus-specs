@@ -3,13 +3,11 @@ import pytest
 
 import eth2spec.phase0.spec as spec
 
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 from eth2spec.phase0.spec import (
     cache_state,
     get_crosslink_deltas,
     process_crosslinks,
+    state_transition,
 )
 from tests.helpers import (
     add_attestation_to_state,

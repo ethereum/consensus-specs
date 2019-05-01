@@ -20,13 +20,10 @@ from eth2spec.phase0.spec import (
     get_state_root,
     get_current_epoch,
     get_domain,
-    advance_slot,
     cache_state,
     verify_merkle_branch,
-    hash,
-)
-from eth2spec.phase0.state_transition import (
     state_transition,
+    hash,
 )
 from eth2spec.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
@@ -34,6 +31,7 @@ from eth2spec.utils.merkle_minimal import (
     get_merkle_root,
 )
 from .helpers import (
+    advance_slot,
     get_balance,
     build_deposit_data,
     build_empty_block_for_next_slot,

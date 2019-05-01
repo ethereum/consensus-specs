@@ -3,13 +3,11 @@ import pytest
 
 import eth2spec.phase0.spec as spec
 
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 from eth2spec.phase0.spec import (
     get_current_epoch,
     process_attestation,
     slot_to_epoch,
+    state_transition,
 )
 from tests.helpers import (
     build_empty_block_for_next_slot,
