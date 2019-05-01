@@ -388,7 +388,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Epoch when validator is eligible to withdraw
     'withdrawable_epoch': 'uint64',
     # Was the validator slashed
-    'slashed': 'bit',
+    'slashed': 'bool',
     # Effective balance
     'effective_balance': 'uint64',
 }
