@@ -412,3 +412,11 @@ def next_epoch(state):
     block.slot += spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
     state_transition(state, block)
     return block
+
+
+def get_state_root(state, slot) -> bytes:
+    """
+    Return the state root at a recent ``slot``.
+    """
+    assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
+    return state.latest_state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
