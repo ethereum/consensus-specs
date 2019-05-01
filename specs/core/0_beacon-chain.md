@@ -73,6 +73,7 @@
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
         - [`get_shuffled_index`](#get_shuffled_index)
+        - [`get_committee`](#get_committee)
         - [`get_crosslink_committee`](#get_crosslink_committee)
         - [`get_attesting_indices`](#get_attesting_indices)
         - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
@@ -907,24 +908,23 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -
     return index
 ```
 
+### `get_committee`
+
+```python
+def get_committee(state: BeaconState, epoch: Epoch, index: int, count: int) -> List[ValidatorIndex]:
+    active_indices = get_active_validator_indices(state, epoch)
+    return [
+        active_indices[get_shuffled_index(i, len(active_indices), generate_seed(state, epoch))]
+        for i in range((len(active_indices) * index) // count, (len(active_indices) * (index + 1)) // count)
+    ]
+```
+
 ### `get_crosslink_committee`
 
 ```python
 def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> List[ValidatorIndex]:
-    """
-    Return the crosslink committee at ``epoch`` for ``shard``.
-    """
-    active_indices = get_active_validator_indices(state, epoch)
-    committee_count = get_epoch_committee_count(state, epoch)
     committee_index = (shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
-
-    start_validator_index = (len(active_indices) * committee_index) // committee_count
-    end_validator_index = (len(active_indices) * (committee_index + 1)) // committee_count
-    seed = generate_seed(state, epoch)
-    return [
-        active_indices[get_shuffled_index(i, len(active_indices), seed)]
-        for i in range(start_validator_index, end_validator_index)
-    ]
+    return get_committee(state, epoch, committee_index, get_epoch_committee_count(state, epoch))
 ```
 
 ### `get_attesting_indices`
