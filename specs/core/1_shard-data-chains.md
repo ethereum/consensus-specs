@@ -124,7 +124,12 @@ def get_period_committee(state: BeaconState, epoch: Epoch, shard: Shard, index: 
     """
     Return committee for a period. Used to construct persistent committees.
     """
-    return get_committee(state, epoch, shard * count + index, SHARD_COUNT * count)
+    return compute_committee(
+        indices=get_active_validator_indices(state, epoch),
+        seed=generate_seed(state, epoch),
+        index=shard * count + index,
+        count=SHARD_COUNT * count,
+    )
 ```
 
 ### `get_switchover_epoch`
