@@ -1691,11 +1691,27 @@ def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Operations
 
+The sub-sections below define helper functions, one per operation type. The full processing of operations is done by running `process_operations(state, block.body)`.
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    assert len(body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)
+    assert len(body.transfers) == len(set(body.transfers))
+
+    for operations, max_operations, function in {
+        (body.proposer_slashings, MAX_PROPOSER_SLASHINGS, process_proposer_slashing),
+        (body.attester_slashings, MAX_ATTESTER_SLASHINGS, attester_slashings),
+        (body.attestations, MAX_ATTESTATIONS, process_attestation),
+        (body.deposits, MAX_DEPOSITS, process_deposit),
+        (body.voluntary_exits, MAX_VOLUNTARY_EXITS, process_voluntary_exit),
+        (body.transfers, MAX_TRANSFERS, process_transfer),
+    }:
+        assert len(operations) <= max_operations
+        for operation in operations:
+            function(state, operation)
+```
+
 ##### Proposer slashings
-
-Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
-
-For each `proposer_slashing` in `block.body.proposer_slashings`, run the following function:
 
 ```python
 def process_proposer_slashing(state: BeaconState,
@@ -1720,10 +1736,6 @@ def process_proposer_slashing(state: BeaconState,
 ```
 
 ##### Attester slashings
-
-Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
-
-For each `attester_slashing` in `block.body.attester_slashings`, run the following function:
 
 ```python
 def process_attester_slashing(state: BeaconState,
@@ -1758,10 +1770,6 @@ def process_attester_slashing(state: BeaconState,
 ```
 
 ##### Attestations
-
-Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
-
-For each `attestation` in `block.body.attestations`, run the following function:
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -1800,10 +1808,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ```
 
 ##### Deposits
-
-Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)`.
-
-For each `deposit` in `block.body.deposits`, run the following function:
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
@@ -1851,10 +1855,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 
 ##### Voluntary exits
 
-Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
-
-For each `exit` in `block.body.voluntary_exits`, run the following function:
-
 ```python
 def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
@@ -1878,10 +1878,6 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
 ```
 
 ##### Transfers
-
-Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
-
-For each `transfer` in `block.body.transfers`, run the following function:
 
 ```python
 def process_transfer(state: BeaconState, transfer: Transfer) -> None:
