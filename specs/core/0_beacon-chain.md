@@ -68,7 +68,6 @@
         - [`get_crosslink_committees_at_slot`](#get_crosslink_committees_at_slot)
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
-        - [`get_state_root`](#get_state_root)
         - [`get_randao_mix`](#get_randao_mix)
         - [`get_active_index_root`](#get_active_index_root)
         - [`generate_seed`](#generate_seed)
@@ -866,18 +865,6 @@ def get_block_root(state: BeaconState,
     Return the block root at a recent ``epoch``.
     """
     return get_block_root_at_slot(state, get_epoch_start_slot(epoch))
-```
-
-### `get_state_root`
-
-```python
-def get_state_root(state: BeaconState,
-                   slot: Slot) -> Bytes32:
-    """
-    Return the state root at a recent ``slot``.
-    """
-    assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
-    return state.latest_state_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 ### `get_randao_mix`
