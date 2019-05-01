@@ -388,7 +388,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Epoch when validator is eligible to withdraw
     'withdrawable_epoch': 'uint64',
     # Was the validator slashed
-    'slashed': 'bool',
+    'slashed': 'bit',
     # Effective balance
     'effective_balance': 'uint64',
 }
@@ -966,7 +966,7 @@ def get_attesting_indices(state: BeaconState,
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
     assert len(bitfield) == len(crosslink_committee)
-    return sorted([index for i, index in enumerate(crosslink_committee) if bitfield[i]])
+    return sorted([index for position, index in enumerate(crosslink_committee) if bitfield[position]])
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
