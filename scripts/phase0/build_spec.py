@@ -39,24 +39,20 @@ Store = None
     code_lines += function_puller.get_spec(sourcefile)
 
     code_lines.append("""
-# Monkey patch validator get committee code
+# Monkey patch validator compute committee code
 _compute_committee = compute_committee
 committee_cache = {}
 
 
-def compute_committee(validator_indices: List[ValidatorIndex],
-                      seed: Bytes32,
-                      index: int,
-                      total_committees: int) -> List[ValidatorIndex]:
-
-    param_hash = (hash_tree_root(validator_indices), seed, index, total_committees)
+def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
+    param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash in committee_cache:
-        # print("Cache hit, epoch={0}".format(epoch))
+        print("Cache hit, param_hash: ", param_hash)
         return committee_cache[param_hash]
     else:
-        # print("Cache miss, epoch={0}".format(epoch))
-        ret = _compute_committee(validator_indices, seed, index, total_committees)
+        print("Cache miss, param_hash: ", param_hash)
+        ret = _compute_committee(indices, seed, index, count)
         committee_cache[param_hash] = ret
         return ret
 

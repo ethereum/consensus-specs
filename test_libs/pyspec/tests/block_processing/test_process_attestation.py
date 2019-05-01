@@ -38,8 +38,7 @@ def run_attestation_processing(state, attestation, valid=True):
     process_attestation(post_state, attestation)
 
     current_epoch = get_current_epoch(state)
-    target_epoch = slot_to_epoch(attestation.data.slot)
-    if target_epoch == current_epoch:
+    if attestation.data.target_epoch == current_epoch:
         assert len(post_state.current_epoch_attestations) == len(state.current_epoch_attestations) + 1
     else:
         assert len(post_state.previous_epoch_attestations) == len(state.previous_epoch_attestations) + 1
