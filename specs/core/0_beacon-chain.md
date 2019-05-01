@@ -518,6 +518,7 @@ The types are defined topologically to aid in facilitating an executable version
 {
     'randao_reveal': 'bytes96',
     'eth1_data': Eth1Data,
+    'graffiti': 'bytes32',
     'proposer_slashings': [ProposerSlashing],
     'attester_slashings': [AttesterSlashing],
     'attestations': [Attestation],
