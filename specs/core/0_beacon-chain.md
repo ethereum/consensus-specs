@@ -94,7 +94,6 @@
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
-    - [On genesis](#on-genesis)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [State caching](#state-caching)
         - [Per-epoch processing](#per-epoch-processing)
@@ -1221,45 +1220,6 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     increase_balance(state, proposer_index, proposer_reward)
     increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
     decrease_balance(state, slashed_index, whistleblowing_reward)
-```
-
-## On genesis
-
-When enough full deposits have been made to the deposit contract, an `Eth2Genesis` log is emitted. Construct a corresponding `genesis_state` and `genesis_block` as follows:
-
-* Let `genesis_validator_deposits` be the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log.
-* Let `genesis_time` be the timestamp specified in the `Eth2Genesis` log.
-* Let `genesis_eth1_data` be the `Eth1Data` object where:
-    * `genesis_eth1_data.deposit_root` is the `deposit_root` contained in the `Eth2Genesis` log.
-    * `genesis_eth1_data.deposit_count` is the `deposit_count` contained in the `Eth2Genesis` log.
-    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
-* Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
-* Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
-
-```python
-def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
-                             genesis_time: int,
-                             genesis_eth1_data: Eth1Data) -> BeaconState:
-    """
-    Get the genesis ``BeaconState``.
-    """
-    state = BeaconState(genesis_time=genesis_time, latest_eth1_data=genesis_eth1_data)
-
-    # Process genesis deposits
-    for deposit in genesis_validator_deposits:
-        process_deposit(state, deposit)
-
-    # Process genesis activations
-    for index, validator in enumerate(state.validator_registry):
-        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
-            validator.activation_eligibility_epoch = GENESIS_EPOCH
-            validator.activation_epoch = GENESIS_EPOCH
-
-    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
-    for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
-        state.latest_active_index_roots[index] = genesis_active_index_root
-
-    return state
 ```
 
 ## Beacon chain state transition function
