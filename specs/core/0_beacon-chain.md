@@ -79,7 +79,6 @@
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_total_balance`](#get_total_balance)
         - [`get_domain`](#get_domain)
-        - [`get_bitfield_bit`](#get_bitfield_bit)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`verify_indexed_attestation`](#verify_indexed_attestation)
         - [`is_double_vote`](#is_double_vote)
@@ -328,7 +327,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Attestation data
     'data': AttestationData,
     # Custody bit
-    'custody_bit': 'bool',
+    'custody_bit': 'bit',
 }
 ```
 
@@ -389,7 +388,7 @@ The types are defined topologically to aid in facilitating an executable version
     # Epoch when validator is eligible to withdraw
     'withdrawable_epoch': 'uint64',
     # Was the validator slashed
-    'slashed': 'bool',
+    'slashed': 'bit',
     # Effective balance
     'effective_balance': 'uint64',
 }
@@ -400,7 +399,7 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Attester aggregation bitfield
-    'aggregation_bitfield': ['bool'],
+    'aggregation_bitfield': ['bit'],
     # Attestation data
     'data': AttestationData,
     # Inclusion slot
@@ -452,11 +451,11 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Attester aggregation bitfield
-    'aggregation_bitfield': ['bool'],
+    'aggregation_bitfield': ['bit'],
     # Attestation data
     'data': AttestationData,
     # Custody bitfield
-    'custody_bitfield': ['bool'],
+    'custody_bitfield': ['bit'],
     # BLS aggregate signature
     'signature': 'bytes96',
 }
@@ -565,7 +564,7 @@ The types are defined topologically to aid in facilitating an executable version
     'current_justified_epoch': 'uint64',
     'previous_justified_root': 'bytes32',
     'current_justified_root': 'bytes32',
-    'justification_bitfield': ['bool', SLOTS_PER_EPOCH],
+    'justification_bitfield': ['bit', SLOTS_PER_EPOCH],
     'finalized_epoch': 'uint64',
     'finalized_root': 'bytes32',
 
@@ -967,7 +966,7 @@ def get_attesting_indices(state: BeaconState,
     crosslink_committees = get_crosslink_committees_at_slot(state, attestation_data.slot)
     crosslink_committee = [committee for committee, shard in crosslink_committees if shard == attestation_data.shard][0]
     assert len(bitfield) == len(crosslink_committee)
-    return sorted([index for i, index in enumerate(crosslink_committee) if get_bitfield_bit(bitfield, i) == 0b1])
+    return sorted([index for i, index in enumerate(crosslink_committee) if bitfield[i]])
 ```
 
 ### `int_to_bytes1`, `int_to_bytes2`, ...
@@ -1003,16 +1002,6 @@ def get_domain(state: BeaconState,
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
     return bytes_to_int(fork_version + int_to_bytes4(domain_type))
-```
-
-### `get_bitfield_bit`
-
-```python
-def get_bitfield_bit(bitfield: bytes, i: int) -> int:
-    """
-    Extract the bit in ``bitfield`` at position ``i``.
-    """
-    return (bitfield[i // 8] >> (i % 8)) % 2
 ```
 
 ### `convert_to_indexed`
