@@ -1263,18 +1263,19 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 
 ## Beacon chain state transition function
 
-The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. failed `assert`s and out-of-range list accesses) are considered invalid.
+The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
 def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
     assert state.slot < block.slot
+    # Slot processing (including slots with no blocks)
     while state.slot < block.slot:
         # State caching at the start of every slot
         cache_state(state)
         # Epoch processing at the start of the first slot of every epoch
         if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
             process_epoch(state)
-        # Slot incrementing
+        # Increment slot number
         state.slot += 1
     # Block processing at every block
     process_block(state, block)
@@ -1284,17 +1285,15 @@ def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
 
 ```python
 def cache_state(state: BeaconState) -> None:
-    # Cache latest known state root (for previous slot)
-    latest_state_root = hash_tree_root(state)
-    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_state_root
+    # Cache state and block roots of previous slot
+    previous_state_root = hash_tree_root(state)
+    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
+    previous_block_root = signing_root(state.latest_block_header)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
 
-    # Store latest known state root (for previous slot) in latest_block_header if it is empty
+    # Cache previous state root in latest_block_header, if empty
     if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = latest_state_root
-
-    # Cache latest known block root (for previous slot)
-    latest_block_root = signing_root(state.latest_block_header)
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_block_root
+        state.latest_block_header.state_root = previous_state_root
 ```
 
 ### Epoch processing
