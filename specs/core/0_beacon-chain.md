@@ -1018,37 +1018,33 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
 ```python
 def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
-    Verify validity of ``indexed_attestation`` fields.
+    Verify validity of ``indexed_attestation``.
     """
-    custody_bit_0_indices = indexed_attestation.custody_bit_0_indices
-    custody_bit_1_indices = indexed_attestation.custody_bit_1_indices
+    bit_0_indices = indexed_attestation.custody_bit_0_indices
+    bit_1_indices = indexed_attestation.custody_bit_1_indices
 
-    # Ensure no duplicate indices across custody bits
-    assert len(set(custody_bit_0_indices).intersection(set(custody_bit_1_indices))) == 0
-
-    if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
-        return False
-
-    if not (1 <= len(custody_bit_0_indices) + len(custody_bit_1_indices) <= MAX_INDICES_PER_ATTESTATION):
-        return False
-
-    if custody_bit_0_indices != sorted(custody_bit_0_indices):
-        return False
-
-    if custody_bit_1_indices != sorted(custody_bit_1_indices):
-        return False
-
-    return bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
-        ],
-        message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
-        ],
-        signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target_epoch),
+    return (
+        # Verify no index has custody bit equal to 1 [to be removed in phase 1]
+        len(bit_1_indices) == 0 and
+        # Verify max number of indices
+        len(bit_0_indices) + len(bit_1_indices) <= MAX_INDICES_PER_ATTESTATION and
+        # Verify index sets are disjoint
+        len(set(bit_0_indices).intersection(bit_1_indices)) == 0 and
+        # Verify indices are sorted
+        bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices) and
+        # Verify aggregate signature
+        bls_verify_multiple(
+            pubkeys=[
+                bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_0_indices]),
+                bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_1_indices]),
+            ],
+            message_hashes=[
+                hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
+                hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
+            ],
+            signature=indexed_attestation.signature,
+            domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target_epoch),
+        )
     )
 ```
 
