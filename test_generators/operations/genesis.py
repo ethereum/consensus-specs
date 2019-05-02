@@ -26,7 +26,7 @@ def create_deposits(pubkeys: List[spec.BLSPubkey], withdrawal_cred: List[spec.By
         spec.DepositData(
             pubkey=pubkeys[i],
             withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + withdrawal_cred[i][1:],
-            amount=spec.MAX_DEPOSIT_AMOUNT,
+            amount=spec.MAX_EFFECTIVE_BALANCE,
             proof_of_possession=proof_of_possession,
         ) for i in range(len(pubkeys))
     ]
