@@ -163,7 +163,7 @@ def serialize_value(value, typ=None):
         return encode_series(value, [typ[0]] * len(value))
     # "bytes" (variable size)
     elif isinstance(typ, str) and typ == 'bytes':
-        return (b"\x00" * BYTES_PER_LENGTH_OFFSET) + coerce_to_bytes(value)
+        return coerce_to_bytes(value)
     # "bytesN" (fixed size)
     elif isinstance(typ, str) and len(typ) > 5 and typ[:5] == 'bytes':
         assert len(value) == int(typ[5:]), (value, int(typ[5:]))
