@@ -142,14 +142,3 @@ def test_non_empty_custody_bitfield(state):
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
-
-
-def test_empty_aggregation_bitfield(state):
-    attestation = get_valid_attestation(state)
-    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
-
-    attestation.aggregation_bitfield = b'\x00' * len(attestation.aggregation_bitfield)
-
-    pre_state, post_state = run_attestation_processing(state, attestation, False)
-
-    return pre_state, attestation, post_state
