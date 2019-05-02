@@ -7,7 +7,7 @@ UINT_SIZES = [8, 16, 32, 64, 128, 256]
 
 basic_types = ["uint%d" % v for v in UINT_SIZES] + ['bool', 'byte']
 
-random_mode_names = ["random", "zero", "max", "nil", "one", "lengthy"]
+random_mode_names = ["random", "zero", "max", "nil", "one", "lengthy", "js_random"]
 
 
 class RandomizationMode(Enum):
@@ -23,12 +23,14 @@ class RandomizationMode(Enum):
     mode_one_count = 4
     # Return max amount of values, random content
     mode_max_count = 5
+    # Return random content / length (safe for js consumption)
+    mode_js_random = 6
 
     def to_name(self):
         return random_mode_names[self.value]
 
     def is_changing(self):
-        return self.value in [0, 4, 5]
+        return self.value in [0, 4, 5, 6]
 
 
 def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list_length: int, mode: RandomizationMode, chaos: bool) -> Any:
@@ -74,6 +76,8 @@ def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list
                 return get_min_basic_value(typ)
             if mode == RandomizationMode.mode_max:
                 return get_max_basic_value(typ)
+            if mode == RandomizationMode.mode_js_random:
+                return get_random_basic_value(rng, typ, 32)
             return get_random_basic_value(rng, typ)
     # Vector:
     elif isinstance(typ, list) and len(typ) == 2:
@@ -98,13 +102,13 @@ def get_random_bytes_list(rng: Random, length: int) -> bytes:
     return bytes(rng.getrandbits(8) for _ in range(length))
 
 
-def get_random_basic_value(rng: Random, typ: str) -> Any:
+def get_random_basic_value(rng: Random, typ: str, max_uint_size=256) -> Any:
     if typ == 'bool':
         return rng.choice((True, False))
     if typ[:4] == 'uint':
         size = int(typ[4:])
         assert size in UINT_SIZES
-        return rng.randint(0, 2**size - 1)
+        return rng.randint(0, 2**min(size, max_uint_size) - 1)
     if typ == 'byte':
         return rng.randint(0, 8)
     else:
