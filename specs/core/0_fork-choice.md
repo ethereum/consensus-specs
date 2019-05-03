@@ -42,7 +42,7 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 *Note*: Leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.
 
-*Note*: Nodes needs to have a clock that is roughly (i.e., within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
+*Note*: Nodes needs to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
 
 ### Beacon chain fork choice rule
 
