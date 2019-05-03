@@ -11,7 +11,7 @@ Each preset is a key-value mapping.
 
 **Key**: an `lower_snake_case` (a.k.a. "python case") formatted string, name of the fork.
 
-**Value**: an unsigned integer number, epoch number of activation of the fork
+**Value**: an unsigned integer number, epoch number of activation of the fork.
 
 Timelines may contain comments to describe the values.
 
