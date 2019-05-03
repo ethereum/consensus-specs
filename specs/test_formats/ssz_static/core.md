@@ -27,6 +27,6 @@ A test-runner can implement the following assertions:
 ## References
 
 
-**`serialized`** - [SSZ serialization](../../simple-serialize.md#serialization)   
-**`root`** - [hash_tree_root](../../simple-serialize.md#merkleization) function  
-**`signing_root`** - [signing_root](../../simple-serialize.md#self-signed-containers) function
+**`serialized`** — [SSZ serialization](../../simple-serialize.md#serialization)   
+**`root`** — [hash_tree_root](../../simple-serialize.md#merkleization) function  
+**`signing_root`** — [signing_root](../../simple-serialize.md#self-signed-containers) function
