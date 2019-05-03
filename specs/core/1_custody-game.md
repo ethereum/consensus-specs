@@ -23,7 +23,7 @@
             - [`CustodyChunkChallengeRecord`](#custodychunkchallengerecord)
             - [`CustodyBitChallengeRecord`](#custodybitchallengerecord)
             - [`CustodyResponse`](#custodyresponse)
-        - [New Beacon operations](#new-beacon-operations)
+        - [New beacon operations](#new-beacon-operations)
             - [`CustodyKeyReveal`](#custodykeyreveal)
             - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
         - [Phase 0 container updates](#phase-0-container-updates)
@@ -181,7 +181,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 }
 ```
 
-### New Beacon operations
+### New beacon operations
 
 #### `CustodyKeyReveal`
 
