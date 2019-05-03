@@ -2,11 +2,11 @@
 
 **Notice**: This document is a work-in-progress describing typing, serialization, and Merkleization of Eth 2.0 objects.
 
-## Table of Contents
+## Table of contents
 <!-- TOC -->
 
 - [SimpleSerialize (SSZ)](#simpleserialize-ssz)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Constants](#constants)
     - [Typing](#typing)
         - [Basic types](#basic-types)
