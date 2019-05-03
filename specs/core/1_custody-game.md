@@ -1,13 +1,13 @@
 # Ethereum 2.0 Phase 1 -- Custody Game
 
-**NOTICE**: This spec is a work-in-progress for researchers and implementers.
+**NOTICE**: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
+## Table of Contents
 
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 1 -- Custody Game](#ethereum-20-phase-1----custody-game)
-    - [Table of contents](#table-of-contents)
+    - [Table of Contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Terminology](#terminology)
     - [Constants](#constants)
@@ -53,22 +53,22 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support the shard data custody game, building upon the [phase 0](0_beacon-chain.md) specification.
+This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support the shard data custody game, building upon the [Phase 0](0_beacon-chain.md) specification.
 
 ## Terminology
 
-* **Custody game**:
-* **Custody period**:
-* **Custody chunk**:
-* **Custody chunk bit**:
-* **Custody chunk challenge**:
-* **Custody bit**:
-* **Custody bit challenge**:
-* **Custody key**:
-* **Custody key reveal**:
-* **Custody key mask**:
-* **Custody response**:
-* **Custody response deadline**:
+* **Custody game** -
+* **Custody period** -
+* **Custody chunk** -
+* **Custody chunk bit** -
+* **Custody chunk challenge** -
+* **Custody bit** -
+* **Custody bit challenge** -
+* **Custody key** -
+* **Custody key reveal** -
+* **Custody key mask** -
+* **Custody response** -
+* **Custody response deadline** -
 
 ## Constants
 
@@ -330,7 +330,7 @@ def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
 
 ### Operations
 
-Add the following operations to the per-block processing, in order the given below and after all other operations in phase 0.
+Add the following operations to the per-block processing, in the order given below and after all other operations in Phase 0.
 
 #### Custody key reveals
 
