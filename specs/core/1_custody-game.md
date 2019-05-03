@@ -32,6 +32,7 @@
         - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
+        - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
         - [`replace_empty_or_append`](#replace_empty_or_append)
         - [`verify_custody_key`](#verify_custody_key)
@@ -148,7 +149,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'responder_index': ValidatorIndex,
     'deadline': Epoch,
     'crosslink_data_root': Hash,
-    'chunk_bits': Bitfield,
+    'chunk_count': 'uint64',
+    'chunk_bits_merkle_root': Hash,
     'responder_key': BLSSignature,
 }
 ```
@@ -160,7 +162,9 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenge_index': 'uint64',
     'chunk_index': 'uint64',
     'chunk': ['byte', BYTES_PER_CUSTODY_CHUNK],
-    'branch': [Hash],
+    'data_branch': [Hash],
+    'chunk_bits_branch': [Hash],
+    'chunk_bits_leaf': Hash,
 }
 ```
 
@@ -231,6 +235,17 @@ def get_custody_chunk_count(attestation: Attestation) -> int:
 def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
     # TODO: Replace with something MPC-friendly, e.g. the Legendre symbol
     return get_bitfield_bit(hash(challenge.responder_key + chunk), 0)
+```
+
+### `get_chunk_bits_root`
+
+```python
+def get_chunk_bits_root(chunk_bitfield: Bitfield) -> Bytes32:
+    aggregated_bits = bytearray([0] * 32)
+    for i in range(0, len(chunk_bitfield), 32):
+        for j in range(32):
+            aggregated_bits[j] ^= chunk_bitfield[i+j]
+    return hash(aggregated_bits)
 ```
 
 ### `epoch_to_custody_period`
@@ -326,7 +341,7 @@ For each `challenge` in `block.body.custody_chunk_challenges`, run the following
 def process_chunk_challenge(state: BeaconState,
                             challenge: CustodyChunkChallenge) -> None:
     # Verify the attestation
-    assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
+    assert verify_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
     # Verify it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     responder = state.validator_registry[challenge.responder_index]
@@ -380,7 +395,7 @@ def process_bit_challenge(state: BeaconState,
     # Verify the challenger is not slashed
     assert challenger.slashed is False
     # Verify the attestation
-    assert verify_standalone_attestation(state, convert_to_standalone(state, challenge.attestation))
+    assert verify_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
     min_challengeable_epoch = responder.exit_epoch - EPOCHS_PER_CUSTODY_PERIOD * (1 + responder.max_reveal_lateness)
@@ -403,20 +418,18 @@ def process_bit_challenge(state: BeaconState,
     # Verify the chunk count
     chunk_count = get_custody_chunk_count(challenge.attestation)
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
-    # Verify the xor of the chunk bits does not equal the custody bit
-    chunk_bits_xor = 0b0
-    for i in range(chunk_count):
-        chunk_bits_xor ^ get_bitfield_bit(challenge.chunk_bits, i)
+    # Verify the first bit of the hash of the chunk bits does not equal the custody bit
     custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
-    assert custody_bit != chunk_bits_xor
+    assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(
         challenge_index=state.custody_challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE
-        crosslink_data_root=challenge.attestation.crosslink_data_root,
-        chunk_bits=challenge.chunk_bits,
+        crosslink_data_root=challenge.attestation.data.crosslink_data_root,
+        chunk_count=chunk_count,
+        chunk_bits_merkle_root=merkle_root(pad_to_power_of_2((challenge.chunk_bits))),
         responder_key=challenge.responder_key,
     )
     replace_empty_or_append(state.custody_bit_challenge_records, new_record)
@@ -451,10 +464,12 @@ def process_chunk_challenge_response(state: BeaconState,
                                      challenge: CustodyChunkChallengeRecord) -> None:
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
+    # Verify bit challenge data is null
+    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == ZERO_HASH
     # Verify the chunk matches the crosslink data root
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.chunk),
-        branch=response.branch,
+        branch=response.data_branch,
         depth=challenge.depth,
         index=response.chunk_index,
         root=challenge.crosslink_data_root,
@@ -472,17 +487,25 @@ def process_bit_challenge_response(state: BeaconState,
                                    response: CustodyResponse,
                                    challenge: CustodyBitChallengeRecord) -> None:
     # Verify chunk index
-    assert response.chunk_index < len(challenge.chunk_bits)
+    assert response.chunk_index < challenge.chunk_count
     # Verify the chunk matches the crosslink data root
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.chunk),
-        branch=response.branch,
-        depth=math.log2(next_power_of_two(len(challenge.chunk_bits))),
+        branch=response.data_branch,
+        depth=math.log2(next_power_of_two(challenge.chunk_count)),
         index=response.chunk_index,
         root=challenge.crosslink_data_root,
     )
+    # Verify the chunk bit leaf matches the challenge data
+    assert verify_merkle_branch(
+        leaf=response.chunk_bits_leaf,
+        branch=response.chunk_bits_branch,
+        depth=math.log2(next_power_of_two(challenge.chunk_count) // 256),
+        index=response.chunk_index // 256,
+        root=challenge.chunk_bits_merkle_root
+    )
     # Verify the chunk bit does not match the challenge chunk bit
-    assert get_custody_chunk_bit(challenge.responder_key, response.chunk) != get_bitfield_bit(challenge.chunk_bits, response.chunk_index)
+    assert get_custody_chunk_bit(challenge.responder_key, response.chunk) != get_bitfield_bit(challenge.chunk_bits_leaf, response.chunk_index % 256)
     # Clear the challenge
     records = state.custody_bit_challenge_records
     records[records.index(challenge)] = CustodyBitChallengeRecord()
