@@ -45,7 +45,7 @@
             - [`BeaconBlock`](#beaconblock)
         - [Beacon state](#beacon-state)
             - [`BeaconState`](#beaconstate)
-    - [Custom Types](#custom-types)
+    - [Custom types](#custom-types)
     - [Helper functions](#helper-functions)
         - [`xor`](#xor)
         - [`hash`](#hash)
@@ -587,7 +587,7 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
-## Custom Types
+## Custom types
 
 We define the following Python custom types for type hinting and readability:
 
