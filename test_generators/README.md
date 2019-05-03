@@ -132,7 +132,7 @@ if __name__ == "__main__":
 ```
 
 Recommendations:
-- You can have more than just one suite creator, e.g., ` gen_runner.run_generator("foo", [bar_test_suite, abc_test_suite, example_test_suite])`.
+- You can have more than just one suite creator, e.g. ` gen_runner.run_generator("foo", [bar_test_suite, abc_test_suite, example_test_suite])`.
 - You can concatenate lists of test cases if you don't want to split it up in suites, however, make sure they can be run with one handler.
 - You can split your suite creators into different Python files/packages; this is good for code organization.
 - Use config "minimal" for performance, but also implement a suite with the default config where necessary. 
@@ -158,7 +158,7 @@ To add a new test generator that builds `New Tests`:
  if desired to increase code quality.
 
 *Note*: You do not have to change the makefile.
-However, if necessary (e.g., not using Python, or mixing in other languages), submit an issue, and it can be a special case.
+However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
 Do note that generators should be easy to maintain, lean, and based on the spec.
 
 
