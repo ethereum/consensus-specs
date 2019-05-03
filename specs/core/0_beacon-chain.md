@@ -1279,7 +1279,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
     assert state.slot < slot
     while state.slot < slot:
         process_slot(state)
-        # Process epoch on the last slot of every epoch
+        # Process epoch on the first slot of the next epoch
         if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
             process_epoch(state)
         state.slot += 1
