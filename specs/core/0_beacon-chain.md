@@ -2,11 +2,11 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
-## Table of Contents
+## Table of contents
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Notation](#notation)
     - [Terminology](#terminology)
