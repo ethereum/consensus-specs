@@ -2,24 +2,27 @@ import sys
 import function_puller
 
 
-def build_spec(sourcefile, outfile):
+def build_phase0_spec(sourcefile, outfile):
     code_lines = []
-
-    code_lines.append("from build.phase0.utils.minimal_ssz import *")
-    code_lines.append("from build.phase0.utils.bls_stub import *")
-    for i in (1, 2, 3, 4, 8, 32, 48, 96):
-        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
-    code_lines.append("SLOTS_PER_EPOCH = 64")  # stub, will get overwritten by real var
-    code_lines.append("def slot_to_epoch(x): return x // SLOTS_PER_EPOCH")
-
     code_lines.append("""
 from typing import (
     Any,
-    Callable,
+    Dict,
     List,
     NewType,
     Tuple,
 )
+from eth2spec.utils.minimal_ssz import *
+from eth2spec.utils.bls_stub import *
+
+""")
+    for i in (1, 2, 3, 4, 8, 32, 48, 96):
+        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
+
+    code_lines.append("""
+
+# stub, will get overwritten by real var
+SLOTS_PER_EPOCH = 64
 
 
 Slot = NewType('Slot', int)  # uint64
@@ -30,29 +33,26 @@ Gwei = NewType('Gwei', int)  # uint64
 Bytes32 = NewType('Bytes32', bytes)  # bytes32
 BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
 BLSSignature = NewType('BLSSignature', bytes)  # bytes96
-Any = None
 Store = None
-    """)
+""")
 
-    code_lines += function_puller.get_lines(sourcefile)
+    code_lines += function_puller.get_spec(sourcefile)
 
     code_lines.append("""
-# Monkey patch validator get committee code
+# Monkey patch validator compute committee code
 _compute_committee = compute_committee
 committee_cache = {}
-def compute_committee(validator_indices: List[ValidatorIndex],
-                      seed: Bytes32,
-                      index: int,
-                      total_committees: int) -> List[ValidatorIndex]:
 
-    param_hash = (hash_tree_root(validator_indices), seed, index, total_committees)
+
+def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
+    param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash in committee_cache:
-        # print("Cache hit, epoch={0}".format(epoch))
+        print("Cache hit, param_hash: ", param_hash)
         return committee_cache[param_hash]
     else:
-        # print("Cache miss, epoch={0}".format(epoch))
-        ret = _compute_committee(validator_indices, seed, index, total_committees)
+        print("Cache miss, param_hash: ", param_hash)
+        ret = _compute_committee(indices, seed, index, count)
         committee_cache[param_hash] = ret
         return ret
 
@@ -60,6 +60,8 @@ def compute_committee(validator_indices: List[ValidatorIndex],
 # Monkey patch hash cache
 _hash = hash
 hash_cache = {}
+
+
 def hash(x):
     if x in hash_cache:
         return hash_cache[x]
@@ -67,7 +69,19 @@ def hash(x):
         ret = _hash(x)
         hash_cache[x] = ret
         return ret
-    """)
+
+# Access to overwrite spec constants based on configuration
+def apply_constants_preset(preset: Dict[str, Any]):
+    global_vars = globals()
+    for k, v in preset.items():
+        global_vars[k] = v
+
+    # Deal with derived constants
+    global_vars['GENESIS_EPOCH'] = slot_to_epoch(GENESIS_SLOT)
+
+    # Initialize SSZ types again, to account for changed lengths
+    init_SSZ_types()
+""")
 
     with open(outfile, 'w') as out:
         out.write("\n".join(code_lines))
@@ -75,5 +89,6 @@ def hash(x):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("Error: spec source and outfile must defined")
-    build_spec(sys.argv[1], sys.argv[2])
+        print("Usage: <source phase0> <output phase0 pyspec>")
+    build_phase0_spec(sys.argv[1], sys.argv[2])
+

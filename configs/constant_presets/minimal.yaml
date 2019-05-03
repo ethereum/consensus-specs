@@ -1,0 +1,126 @@
+# Minimal preset
+
+
+# Misc
+# ---------------------------------------------------------------
+
+# [customized] Just 8 shards for testing purposes
+SHARD_COUNT: 8
+# [customized] unsecure, but fast
+TARGET_COMMITTEE_SIZE: 4
+# 2**12 (= 4,096)
+MAX_INDICES_PER_ATTESTATION: 4096
+# 2**2 (= 4)
+MIN_PER_EPOCH_CHURN_LIMIT: 4
+# 2**16 (= 65,536)
+CHURN_LIMIT_QUOTIENT: 65536
+# Normalizes base rewards
+BASE_REWARDS_PER_EPOCH: 5
+# [customized] Faster, but unsecure.
+SHUFFLE_ROUND_COUNT: 10
+
+
+# Deposit contract
+# ---------------------------------------------------------------
+# **TBD**
+DEPOSIT_CONTRACT_ADDRESS: 0x1234567890123456789012345678901234567890
+# 2**5 (= 32)
+DEPOSIT_CONTRACT_TREE_DEPTH: 32
+
+
+# Gwei values
+# ---------------------------------------------------------------
+# 2**0 * 10**9 (= 1,000,000,000) Gwei
+MIN_DEPOSIT_AMOUNT: 1000000000
+# 2**5 * 10**9 (= 32,000,000,000) Gwei
+MAX_EFFECTIVE_BALANCE: 32000000000
+# 2**4 * 10**9 (= 16,000,000,000) Gwei
+EJECTION_BALANCE: 16000000000
+# 2**0 * 10**9 (= 1,000,000,000) Gwei
+EFFECTIVE_BALANCE_INCREMENT: 1000000000
+
+
+# Initial values
+# ---------------------------------------------------------------
+GENESIS_FORK_VERSION: 0x00000000
+# 0, GENESIS_EPOCH is derived from this constant
+GENESIS_SLOT: 0
+# 2**64 - 1
+FAR_FUTURE_EPOCH: 18446744073709551615
+BLS_WITHDRAWAL_PREFIX_BYTE: 0x00
+
+
+# Time parameters
+# ---------------------------------------------------------------
+# 6 seconds 6 seconds
+SECONDS_PER_SLOT: 6
+# [customized] 2 slots
+MIN_ATTESTATION_INCLUSION_DELAY: 2
+# [customized] fast epochs
+SLOTS_PER_EPOCH: 8
+# 2**0 (= 1) epochs 6.4 minutes
+MIN_SEED_LOOKAHEAD: 1
+# 2**2 (= 4) epochs 25.6 minutes
+ACTIVATION_EXIT_DELAY: 4
+# [customized] higher frequency new deposits from eth1 for testing
+SLOTS_PER_ETH1_VOTING_PERIOD: 16
+# [customized] smaller state
+SLOTS_PER_HISTORICAL_ROOT: 64
+# 2**8 (= 256) epochs ~27 hours
+MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+# 2**11 (= 2,048) epochs 9 days
+PERSISTENT_COMMITTEE_PERIOD: 2048
+# 2**6 (= 64) epochs ~7 hours
+MAX_CROSSLINK_EPOCHS: 64
+# 2**2 (= 4) epochs 25.6 minutes
+MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
+
+
+# State list lengths
+# ---------------------------------------------------------------
+# [customized] smaller state
+LATEST_RANDAO_MIXES_LENGTH: 64
+# [customized] smaller state
+LATEST_ACTIVE_INDEX_ROOTS_LENGTH: 64
+# [customized] smaller state
+LATEST_SLASHED_EXIT_LENGTH: 64
+
+
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+# 2**5 (= 32)
+BASE_REWARD_QUOTIENT: 32
+# 2**9 (= 512)
+WHISTLEBLOWING_REWARD_QUOTIENT: 512
+# 2**3 (= 8)
+PROPOSER_REWARD_QUOTIENT: 8
+# 2**25 (= 33,554,432)
+INACTIVITY_PENALTY_QUOTIENT: 33554432
+# 2**5 (= 32)
+MIN_SLASHING_PENALTY_QUOTIENT: 32
+
+
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_PROPOSER_SLASHINGS: 16
+# 2**0 (= 1)
+MAX_ATTESTER_SLASHINGS: 1
+# 2**7 (= 128)
+MAX_ATTESTATIONS: 128
+# 2**4 (= 16)
+MAX_DEPOSITS: 16
+# 2**4 (= 16)
+MAX_VOLUNTARY_EXITS: 16
+# Originally 2**4 (= 16), disabled for now.
+MAX_TRANSFERS: 0
+
+
+# Signature domains
+# ---------------------------------------------------------------
+DOMAIN_BEACON_PROPOSER: 0
+DOMAIN_RANDAO: 1
+DOMAIN_ATTESTATION: 2
+DOMAIN_DEPOSIT: 3
+DOMAIN_VOLUNTARY_EXIT: 4
+DOMAIN_TRANSFER: 5
