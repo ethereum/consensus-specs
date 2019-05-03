@@ -12,7 +12,7 @@ This specification assumes familiarity with the [Messaging](./messaging.md), [No
 
 # Specification
 
-## Message Schemas
+## Message schemas
 
 Message body schemas are notated like this:
 
@@ -27,11 +27,11 @@ Embedded types are serialized as SSZ Containers unless otherwise noted.
 
 All referenced data structures can be found in the [Beacon Chain](../core/0_beacon-chain.md#data-structures) specification.
 
-## `libp2p` Protocol Names
+## `libp2p` protocol names
 
 A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp2p` uses in order to identify sub-protocols and stream messages of different types over the same connection. Peers exchange supported protocol IDs via the `Identify` protocol upon connection. When opening a new stream, peers pin a particular protocol ID to it, and the stream remains contextualized thereafter. Since messages are sent inside a stream, they do not need to bear the protocol ID.
 
-## RPC-Over-`libp2p`
+## RPC-over-`libp2p`
 
 To facilitate RPC-over-`libp2p`, a single protocol name is used: `/eth/serenity/beacon/rpc/1`. The version number in the protocol name is neither backwards or forwards compatible, and will be incremented whenever changes to the below structures are required.
 
@@ -87,7 +87,7 @@ The first 1,000 values in `response_code` are reserved for system use. The follo
 3. `30`: Method not found.
 4. `40`: Server error.
 
-### Alternative for Non-`libp2p` Clients
+### Alternative for non-`libp2p` clients
 
 Since some clients are waiting for `libp2p` implementations in their respective languages. As such, they MAY listen for raw TCP messages on port `9000`. To distinguish RPC messages from other messages on that port, a byte prefix of `ETH` (`0x455448`) MUST be prepended to all messages. This option will be removed once `libp2p` is ready in all supported languages.
 
@@ -166,11 +166,11 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MAY be o
 
 Clients MAY define custom goodbye reasons as long as the value is larger than `1000`.
 
-### Get Status
+### Get status
 
 **Method ID:** `2`
 
-**Request Body:**
+**Request body:**
 
 ```
 (
@@ -180,7 +180,7 @@ Clients MAY define custom goodbye reasons as long as the value is larger than `1
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 (
@@ -192,11 +192,11 @@ Clients MAY define custom goodbye reasons as long as the value is larger than `1
 
 Returns metadata about the remote node.
 
-### Request Beacon Block Roots
+### Request beacon block roots
 
 **Method ID:** `10`
 
-**Request Body**
+**Request body**
 
 ```
 (
@@ -205,7 +205,7 @@ Returns metadata about the remote node.
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 # BlockRootSlot
@@ -221,11 +221,11 @@ Returns metadata about the remote node.
 
 Requests a list of block roots and slots from the peer. The `count` parameter MUST be less than or equal to `32768`. The slots MUST be returned in ascending slot order.
 
-### Beacon Block Headers
+### Beacon block headers
 
 **Method ID:** `11`
 
-**Request Body**
+**Request body**
 
 ```
 (
@@ -236,7 +236,7 @@ Requests a list of block roots and slots from the peer. The `count` parameter MU
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 (
@@ -248,11 +248,11 @@ Requests beacon block headers from the peer starting from `(start_root, start_sl
 
 The function of the `skip_slots` parameter helps facilitate light client sync - for example, in [#459](https://github.com/ethereum/eth2.0-specs/issues/459) - and allows clients to balance the peers from whom they request headers. Clients could, for instance, request every 10th block from a set of peers where each peer has a different starting block in order to populate block data.
 
-### Beacon Block Bodies
+### Beacon block bodies
 
 **Method ID:** `12`
 
-**Request Body:**
+**Request body:**
 
 ```
 (
@@ -260,7 +260,7 @@ The function of the `skip_slots` parameter helps facilitate light client sync - 
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 (
@@ -270,13 +270,13 @@ The function of the `skip_slots` parameter helps facilitate light client sync - 
 
 Requests the `block_bodies` associated with the provided `block_roots` from the peer. Responses MUST return `block_roots` in the order provided in the request. If the receiver does not have a particular `block_root`, it must return a zero-value `block_body` (i.e. a `block_body` container with all zero fields).
 
-### Beacon Chain State
+### Beacon chain state
 
 *Note*: This section is preliminary, pending the definition of the data structures to be transferred over the wire during fast sync operations.
 
 **Method ID:** `13`
 
-**Request Body:**
+**Request body:**
 
 ```
 (
@@ -284,7 +284,7 @@ Requests the `block_bodies` associated with the provided `block_roots` from the 
 )
 ```
 
-**Response Body:** TBD
+**Response body:** TBD
 
 Requests contain the hashes of Merkle tree nodes that when merkleized yield the block's `state_root`.
 
