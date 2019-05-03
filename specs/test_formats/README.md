@@ -2,11 +2,11 @@
 
 This document defines the YAML format and structure used for Eth 2.0 testing.
 
-## Table of Contents
+## Table of contents
 <!-- TOC -->
 
 - [General test format](#general-test-format)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [About](#about)
         - [Test-case formats](#test-case-formats)
     - [Glossary](#glossary)
