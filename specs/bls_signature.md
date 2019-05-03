@@ -2,11 +2,11 @@
 
 **Warning: This document is pending academic review and should not yet be considered secure.**
 
-## Table of Contents
+## Table of contents
 <!-- TOC -->
 
 - [BLS signature verification](#bls-signature-verification)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Curve parameters](#curve-parameters)
     - [Point representations](#point-representations)
         - [G1 points](#g1-points)
