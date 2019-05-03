@@ -65,7 +65,7 @@ def test_success_surround(state):
 
     # set attestion1 to surround attestation 2
     attester_slashing.attestation_1.data.source_epoch = attester_slashing.attestation_2.data.source_epoch - 1
-    attester_slashing.attestation_1.data.slot = attester_slashing.attestation_2.data.slot + spec.SLOTS_PER_EPOCH
+    attester_slashing.attestation_1.data.target_epoch = attester_slashing.attestation_2.data.target_epoch + 1
 
     pre_state, post_state = run_attester_slashing_processing(state, attester_slashing)
 
@@ -85,7 +85,7 @@ def test_same_data(state):
 def test_no_double_or_surround(state):
     attester_slashing = get_valid_attester_slashing(state)
 
-    attester_slashing.attestation_1.data.slot += spec.SLOTS_PER_EPOCH
+    attester_slashing.attestation_1.data.target_epoch += 1
 
     pre_state, post_state = run_attester_slashing_processing(state, attester_slashing, False)
 

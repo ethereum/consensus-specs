@@ -120,21 +120,15 @@ This document describes the shard data layer and the shard fork choice rule in P
 ### `get_period_committee`
 
 ```python
-def get_period_committee(state: BeaconState,
-                         shard: Shard,
-                         committee_start_epoch: Epoch,
-                         index: int,
-                         committee_count: int) -> List[ValidatorIndex]:
+def get_period_committee(state: BeaconState, epoch: Epoch, shard: Shard, index: int, count: int) -> List[ValidatorIndex]:
     """
     Return committee for a period. Used to construct persistent committees.
     """
-    active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
-    seed = generate_seed(state, committee_start_epoch)
     return compute_committee(
-        validator_indices=active_validator_indices,
-        seed=seed,
-        index=shard * committee_count + index,
-        total_committees=SHARD_COUNT * committee_count,
+        indices=get_active_validator_indices(state, epoch),
+        seed=generate_seed(state, epoch),
+        index=shard * count + index,
+        count=SHARD_COUNT * count,
     )
 ```
 
@@ -165,7 +159,7 @@ def get_persistent_committee(state: BeaconState,
         len(get_active_validator_indices(state.validator_registry, later_start_epoch)) //
         (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
     ) + 1
-    
+
     index = slot % committee_count
     earlier_committee = get_period_committee(state, shard, earlier_start_epoch, index, committee_count)
     later_committee = get_period_committee(state, shard, later_start_epoch, index, committee_count)
