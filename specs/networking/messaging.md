@@ -14,7 +14,7 @@ Note that while `libp2p` is the chosen networking stack for Ethereum 2.0, as of 
 
 ## Specification
 
-### Message Structure
+### Message structure
 
 An Eth 2.0 message consists of an envelope that defines the message's compression, encoding, and length followed by the body itself.
 
@@ -36,10 +36,10 @@ Visually, a message looks like this:
 
 Clients MUST ignore messages with malformed bodies. The compression/encoding nibbles MUST be one of the following values:
 
-### Compression Nibble Values
+### Compression nibble values
 
 - `0x0`: no compression
 
-### Encoding Nibble Values
+### Encoding nibble values
 
 - `0x1`: SSZ
