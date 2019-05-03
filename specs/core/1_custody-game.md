@@ -32,6 +32,7 @@
         - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
+        - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`epoch_to_custody_period`](#epoch_to_custody_period)
         - [`replace_empty_or_append`](#replace_empty_or_append)
         - [`verify_custody_key`](#verify_custody_key)
@@ -426,7 +427,7 @@ def process_bit_challenge(state: BeaconState,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE
-        crosslink_data_root=challenge.attestation.crosslink_data_root,
+        crosslink_data_root=challenge.attestation.data.crosslink_data_root,
         chunk_count=chunk_count,
         chunk_bits_merkle_root=merkle_root(pad_to_power_of_2((challenge.chunk_bits))),
         responder_key=challenge.responder_key,
