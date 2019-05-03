@@ -41,11 +41,11 @@ This document is a **work-in-progress** describing typing, serialization, and Me
 ### Composite types
 
 * **container**: ordered heterogeneous collection of values
-    * key-pair curly bracket notation `{}`, e.g., `{"foo": "uint64", "bar": "bool"}`
+    * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
 * **vector**: ordered fixed-length homogeneous collection of values
-    * angle bracket notation `[type, N]`, e.g., `["uint64", N]`
+    * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
 * **list**: ordered variable-length homogeneous collection of values
-    * angle bracket notation `[type]`, e.g., `["uint64"]`
+    * angle bracket notation `[type]`, e.g. `["uint64"]`
 
 We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
 
@@ -104,7 +104,7 @@ return b"".join(fixed_parts + variable_parts)
 
 ## Deserialization
 
-Because serialization is an injective function (i.e., two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
+Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
 ## Merkleization
 
@@ -123,7 +123,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 
 ## Self-signed containers
 
-Let `value` be a self-signed container object. The convention is that the signature (e.g., a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
+Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
 ## Implementations
 
