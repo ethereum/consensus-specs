@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice
 
-**NOTICE**: This document is a work-in-progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of Contents
 <!-- TOC -->
