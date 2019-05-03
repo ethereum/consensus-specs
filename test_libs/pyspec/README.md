@@ -14,7 +14,7 @@ All the dynamic parts of the spec can be build at once with `make pyspec`.
 
 Alternatively, you can build a sub-set of the pyspec: `make phase0`.
 
-Or, to build a single file, specify the path, e.g., `make test_libs/pyspec/eth2spec/phase0/spec.py`.
+Or, to build a single file, specify the path, e.g. `make test_libs/pyspec/eth2spec/phase0/spec.py`.
 
 
 ## Py-tests
