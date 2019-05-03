@@ -167,5 +167,5 @@ Do note that generators should be easy to maintain, lean, and based on the spec.
 If a test generator is not needed anymore, undo the steps described above and make a new release:
 
 1. Remove the generator directory.
-2. Remove the generated tests in the [`eth2.0-spec-tests`](https://github.com/ethereum/eth2.0-spec-tests) repository by opening a PR there.
+2. Remove the generated tests in the [`eth2.0-spec-tests`](https://github.com/ethereum/eth2.0-spec-tests) repository by opening a pull request there.
 3. Make a new release.
