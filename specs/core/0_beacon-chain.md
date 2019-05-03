@@ -96,7 +96,6 @@
             - [`slash_validator`](#slash_validator)
     - [On genesis](#on-genesis)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-        - [State caching](#state-caching)
         - [Epoch processing](#epoch-processing)
             - [Helper functions](#helper-functions-1)
             - [Justification and finalization](#justification-and-finalization)
@@ -1267,36 +1266,36 @@ The post-state corresponding to a pre-state `state` and a block `block` is defin
 
 ```python
 def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconBlock:
-    # Block must post-date the state
-    assert state.slot < block.slot
     # Process slots (including those with no blocks) since block
-    while state.slot < block.slot:
-        # Cache state at the start of every slot
-        cache_state(state)
-        # Process epoch at the start of the first slot of every epoch
-        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
-            process_epoch(state)
-        # Increment slot number
-        state.slot += 1
+    process_slots(state, block.slot)
     # Process block
     process_block(state, block)
     # Return post-state
     return state
 ```
 
-### State caching
+```python
+def process_slots(state: BeaconState, slot: Slot) -> None:
+    assert state.slot < slot
+    while state.slot < slot:
+        process_slot(state)
+        # Process epoch on the last slot of every epoch
+        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
+            process_epoch(state)
+        state.slot += 1
+```
 
 ```python
-def cache_state(state: BeaconState) -> None:
-    # Cache state root of previous slot
+def process_slot(state: BeaconState) -> None:
+    # Cache state root
     previous_state_root = hash_tree_root(state)
     state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
 
-    # Cache previous state root in latest_block_header, if empty
+    # Cache latest block header state root
     if state.latest_block_header.state_root == ZERO_HASH:
         state.latest_block_header.state_root = previous_state_root
 
-    # Cache block root of previous slot
+    # Cache block root
     previous_block_root = signing_root(state.latest_block_header)
     state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
 
@@ -1631,10 +1630,10 @@ def process_final_updates(state: BeaconState) -> None:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    process_randao(state, block)
-    process_eth1_data(state, block)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    # verify_block_state_root(state, block)
+    # process_state_root(state, block)
 ```
 
 #### Block header
@@ -1661,31 +1660,33 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 #### RANDAO
 
 ```python
-def process_randao(state: BeaconState, block: BeaconBlock) -> None:
+def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
     # Verify that the provided randao value is valid
-    assert bls_verify(proposer.pubkey, hash_tree_root(get_current_epoch(state)), block.body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    assert bls_verify(proposer.pubkey, hash_tree_root(get_current_epoch(state)), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix it in
     state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
         xor(get_randao_mix(state, get_current_epoch(state)),
-            hash(block.body.randao_reveal))
+            hash(body.randao_reveal))
     )
 ```
 
 #### Eth1 data
 
 ```python
-def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
-    state.eth1_data_votes.append(block.body.eth1_data)
-    if state.eth1_data_votes.count(block.body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
-        state.latest_eth1_data = block.body.eth1_data
+def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
+    state.eth1_data_votes.append(body.eth1_data)
+    if state.eth1_data_votes.count(body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+        state.latest_eth1_data = body.eth1_data
 ```
 
 #### Operations
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)
+    # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
 
     for operations, max_operations, function in (
@@ -1704,8 +1705,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ##### Proposer slashings
 
 ```python
-def process_proposer_slashing(state: BeaconState,
-                              proposer_slashing: ProposerSlashing) -> None:
+def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     """
     Process ``ProposerSlashing`` operation.
     Note that this function mutates ``state``.
@@ -1728,8 +1728,7 @@ def process_proposer_slashing(state: BeaconState,
 ##### Attester slashings
 
 ```python
-def process_attester_slashing(state: BeaconState,
-                              attester_slashing: AttesterSlashing) -> None:
+def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
     """
     Process ``AttesterSlashing`` operation.
     Note that this function mutates ``state``.
@@ -1904,6 +1903,6 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
 #### State root verification
 
 ```python
-def verify_block_state_root(state: BeaconState, block: BeaconBlock) -> None:
+def process_state_root(state: BeaconState, block: BeaconBlock) -> None:
     assert block.state_root == hash_tree_root(state)
 ```

@@ -4,7 +4,7 @@ import pytest
 
 from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
-    cache_state,
+    process_slot,
     process_block_header,
 )
 from tests.helpers import (
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.header
 
 
 def prepare_state_for_header_processing(state):
-    cache_state(state)
+    process_slot(state)
     advance_slot(state)
 
 

@@ -20,7 +20,7 @@ from eth2spec.phase0.spec import (
     get_state_root,
     get_current_epoch,
     get_domain,
-    cache_state,
+    process_slot,
     verify_merkle_branch,
     state_transition,
     hash,
@@ -51,7 +51,7 @@ pytestmark = pytest.mark.sanity
 
 def test_slot_transition(state):
     test_state = deepcopy(state)
-    cache_state(test_state)
+    process_slot(test_state)
     advance_slot(test_state)
     assert test_state.slot == state.slot + 1
     assert get_state_root(test_state, state.slot) == state.hash_tree_root()

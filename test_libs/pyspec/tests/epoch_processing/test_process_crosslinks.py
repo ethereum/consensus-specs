@@ -4,7 +4,7 @@ import pytest
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
-    cache_state,
+    process_slot,
     get_crosslink_deltas,
     process_crosslinks,
     state_transition,
@@ -33,7 +33,7 @@ def run_process_crosslinks(state, valid=True):
     state_transition(state, block)
 
     # cache state before epoch transition
-    cache_state(state)
+    process_slot(state)
 
     post_state = deepcopy(state)
     process_crosslinks(post_state)
