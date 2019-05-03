@@ -2,11 +2,11 @@
 
 **Warning: This document is pending academic review and should not yet be considered secure.**
 
-## Table of contents
+## Table of Contents
 <!-- TOC -->
 
 - [BLS signature verification](#bls-signature-verification)
-    - [Table of contents](#table-of-contents)
+    - [Table of Contents](#table-of-contents)
     - [Curve parameters](#curve-parameters)
     - [Point representations](#point-representations)
         - [G1 points](#g1-points)
@@ -88,7 +88,7 @@ def hash_to_G2(message_hash: Bytes32, domain: uint64) -> [uint384]:
 
 `modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions, the one with higher imaginary component is favored; if both solutions have equal imaginary component, the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
 
-The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (i.e. integers `mod q`) and converts it to a regular integer.
+The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (i.e., integers `mod q`) and converts it to a regular integer.
 
 ```python
 Fq2_order = q ** 2 - 1
@@ -118,7 +118,7 @@ Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `sig
 
 ## Signature verification
 
-In the following `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
+In the following, `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
 
 ```python
 g_x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
