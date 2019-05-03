@@ -799,9 +799,8 @@ def get_randao_mix(state: BeaconState,
                    epoch: Epoch) -> Bytes32:
     """
     Return the randao mix at a recent ``epoch``.
+    ``epoch`` expected to be between (current_epoch - LATEST_RANDAO_MIXES_LENGTH, current_epoch].
     """
-    min_epoch = epoch - LATEST_RANDAO_MIXES_LENGTH + 1 if epoch > LATEST_RANDAO_MIXES_LENGTH else GENESIS_EPOCH
-    assert min_epoch <= epoch <= get_current_epoch(state)
     return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
 ```
 
@@ -812,9 +811,9 @@ def get_active_index_root(state: BeaconState,
                           epoch: Epoch) -> Bytes32:
     """
     Return the index root at a recent ``epoch``.
+    ``epoch`` expected to be between
+    (current_epoch - LATEST_ACTIVE_INDEX_ROOTS_LENGTH + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
     """
-    min_epoch = get_current_epoch(state) + ACTIVATION_EXIT_DELAY - LATEST_ACTIVE_INDEX_ROOTS_LENGTH + 1 if epoch > LATEST_ACTIVE_INDEX_ROOTS_LENGTH - ACTIVATION_EXIT_DELAY else GENESIS_EPOCH
-    assert min_epoch <= epoch <= get_current_epoch(state) + ACTIVATION_EXIT_DELAY
     return state.latest_active_index_roots[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
 ```
 
@@ -827,7 +826,7 @@ def generate_seed(state: BeaconState,
     Generate a seed for the given ``epoch``.
     """
     return hash(
-        get_randao_mix(state, epoch - MIN_SEED_LOOKAHEAD) if epoch >= MIN_SEED_LOOKAHEAD else ZERO_HASH +
+        get_randao_mix(state, epoch + LATEST_RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch) +
         int_to_bytes32(epoch)
     )

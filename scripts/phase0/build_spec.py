@@ -48,10 +48,8 @@ def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, 
     param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash in committee_cache:
-        # print("Cache hit, param_hash: ", param_hash)
         return committee_cache[param_hash]
     else:
-        # print("Cache miss, param_hash: ", param_hash)
         ret = _compute_committee(indices, seed, index, count)
         committee_cache[param_hash] = ret
         return ret
