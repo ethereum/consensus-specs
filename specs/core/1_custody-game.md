@@ -220,7 +220,7 @@ Add the following fields to the end of the specified container objects. Fields w
 #### `Validator`
 
 ```python
-    # next_custody_reveal_period is initialised to the custody period
+    # next_custody_reveal_period is initialized to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_validators_custody_reveal_period(...)
     'next_custody_reveal_period': 'uint64',
