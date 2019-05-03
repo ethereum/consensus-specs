@@ -15,7 +15,7 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 * [The Beacon Chain](specs/core/0_beacon-chain.md)
 * [Fork Choice](specs/core/0_fork-choice.md)
 * [Deposit Contract](specs/core/0_deposit-contract.md)
-* [Honest validator implementation doc](specs/validator/0_beacon-chain-validator.md)
+* [Honest Validator](specs/validator/0_beacon-chain-validator.md)
 
 ### Phase 1
 * [Custody Game](specs/core/1_custody-game.md)
