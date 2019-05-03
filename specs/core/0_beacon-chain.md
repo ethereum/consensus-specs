@@ -1,12 +1,12 @@
 # Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-**NOTICE**: This document is a work in progress for researchers and implementers.
+**NOTICE**: This document is a work-in-progress for researchers and implementers.
 
-## Table of contents
+## Table of Contents
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
-    - [Table of contents](#table-of-contents)
+    - [Table of Contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Notation](#notation)
     - [Terminology](#terminology)
@@ -151,8 +151,8 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Constants
 
-Note: the default mainnet values for the constants are included here for spec-design purposes.
-The different configurations for mainnet, testnets, and yaml-based testing can be found in the `configs/constant_presets/` directory.
+*Note*: The default mainnet values for the constants are included here for spec-design purposes.
+The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory.
 These configurations are updated for releases, but may be out of sync during `dev` changes.
 
 ### Misc
@@ -165,7 +165,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `BASE_REWARDS_PER_EPOCH` | `5` |
-| `SHUFFLE_ROUND_COUNT` | 90 |
+| `SHUFFLE_ROUND_COUNT` | `90` |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -229,7 +229,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* **The `BASE_REWARD_QUOTIENT` is NOT final. Once all other protocol details are finalized it will be adjusted, to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc etc)**
+* **The `BASE_REWARD_QUOTIENT` is NOT final. Once all other protocol details are finalized, it will be adjusted to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc etc)**
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
@@ -604,7 +604,7 @@ We define the following Python custom types for type hinting and readability:
 
 ## Helper functions
 
-Note: The definitions below are for specification purposes and are not necessarily optimal implementations.
+*Note*: The definitions below are for specification purposes and are not necessarily optimal implementations.
 
 ### `xor`
 
@@ -617,7 +617,7 @@ def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
 
 The `hash` function is SHA256.
 
-Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
+*Note*: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
 ### `hash_tree_root`
 
@@ -1120,7 +1120,7 @@ def get_churn_limit(state: BeaconState) -> int:
 
 ### Routines for updating validator status
 
-Note: All functions in this section mutate `state`.
+*Note*: All functions in this section mutate `state`.
 
 #### `initiate_validator_exit`
 
@@ -1224,9 +1224,9 @@ Transition section notes:
 * The per-slot transitions focus on the slot counter.
 * The per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
 
-Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
+Beacon blocks that trigger unhandled Python exceptions (e.g., out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
-Note: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
+*Note*: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
 
 ### State caching
 
@@ -1632,7 +1632,7 @@ def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Operations
 
-Note: All functions in this section mutate `state`.
+*Note*: All functions in this section mutate `state`.
 
 ##### Proposer slashings
 
