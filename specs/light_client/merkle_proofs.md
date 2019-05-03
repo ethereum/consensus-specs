@@ -1,16 +1,19 @@
+# Merkle proof formats
+
 **NOTICE**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of Contents
 <!-- TOC -->
 
-- [Table of Contents](#table-of-contents)
-- [Constants](#constants)
-- [Generalized Merkle tree index](#generalized-merkle-tree-index)
-- [SSZ object to index](#ssz-object-to-index)
-- [Merkle multiproofs](#merkle-multiproofs)
-- [MerklePartial](#merklepartial)
-    - [`SSZMerklePartial`](#sszmerklepartial)
-    - [Proofs for execution](#proofs-for-execution)
+- [Merkle proof formats](#merkle-proof-formats)
+   - [Table of Contents](#table-of-contents)
+   - [Constants](#constants)
+   - [Generalized Merkle tree index](#generalized-merkle-tree-index)
+   - [SSZ object to index](#ssz-object-to-index)
+   - [Merkle multiproofs](#merkle-multiproofs)
+   - [MerklePartial](#merklepartial)
+       - [`SSZMerklePartial`](#sszmerklepartial)
+       - [Proofs for execution](#proofs-for-execution)
 
 <!-- /TOC -->
 
@@ -102,7 +105,7 @@ def get_generalized_indices(obj: Any, path: List[int], root: int=1) -> List[int]
 
 ## Merkle multiproofs
 
-We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree needed to fully authenticate that a set of nodes actually are part of a Merkle tree with some specified root, at a particular set of generalized indices. For example, here is the Merkle multiproof for positions 0, 1, 6 in an 8-node Merkle tree (i.e. generalized indices 8, 9, 14):
+We define a Merkle multiproof as a minimal subset of nodes in a Merkle tree needed to fully authenticate that a set of nodes actually are part of a Merkle tree with some specified root, at a particular set of generalized indices. For example, here is the Merkle multiproof for positions 0, 1, 6 in an 8-node Merkle tree (i.e., generalized indices 8, 9, 14):
 
 ```
        .
