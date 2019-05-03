@@ -2,12 +2,12 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
-## Table of Contents
+## Table of contents
 
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 1 -- Shards Data Chains](#ethereum-20-phase-1----shard-data-chains)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
         - [Misc](#misc)
