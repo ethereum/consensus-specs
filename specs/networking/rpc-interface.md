@@ -1,13 +1,12 @@
-ETH 2.0 Networking Spec - RPC Interface
-===
+# Eth 2.0 Networking Spec - RPC Interface
 
-# Abstract
+## Abstract
 
 The Ethereum 2.0 networking stack uses two modes of communication: a broadcast protocol that gossips information to interested parties via GossipSub, and an RPC protocol that retrieves information from specific clients. This specification defines the RPC protocol.
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL", NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL", NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
-# Dependencies
+## Dependencies
 
 This specification assumes familiarity with the [Messaging](./messaging.md), [Node Identification](./node-identification.md), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
 
@@ -26,7 +25,7 @@ Message body schemas are notated like this:
 
 Embedded types are serialized as SSZ Containers unless otherwise noted.
 
-All referenced data structures can be found in the [0-beacon-chain](../core/0_beacon-chain.md#data-structures) specification.
+All referenced data structures can be found in the [Beacon Chain](../core/0_beacon-chain.md#data-structures) specification.
 
 ## `libp2p` Protocol Names
 
@@ -273,7 +272,7 @@ Requests the `block_bodies` associated with the provided `block_roots` from the 
 
 ### Beacon Chain State
 
-**Note:** This section is preliminary, pending the definition of the data structures to be transferred over the wire during fast sync operations.
+*Note*: This section is preliminary, pending the definition of the data structures to be transferred over the wire during fast sync operations.
 
 **Method ID:** `13`
 
