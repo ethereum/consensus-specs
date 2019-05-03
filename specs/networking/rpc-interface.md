@@ -144,7 +144,7 @@ Root B          ^
        +---+
 ```
 
-Once the handshake completes, the client with the higher `latest_finalized_epoch` or `best_slot` (if the clients have equal `latest_finalized_epoch`s) SHOULD request beacon block roots from its counterparty via `beacon_block_roots` (i.e., RPC method `10`).
+Once the handshake completes, the client with the higher `latest_finalized_epoch` or `best_slot` (if the clients have equal `latest_finalized_epoch`s) SHOULD request beacon block roots from its counterparty via `beacon_block_roots` (i.e. RPC method `10`).
 
 ### Goodbye
 
@@ -244,7 +244,7 @@ Requests a list of block roots and slots from the peer. The `count` parameter MU
 )
 ```
 
-Requests beacon block headers from the peer starting from `(start_root, start_slot)`. The response MUST contain no more than `max_headers` headers. `skip_slots` defines the maximum number of slots to skip between blocks. For example, requesting blocks starting at slots `2` a `skip_slots` value of `1` would return the blocks at `[2, 4, 6, 8, 10]`. In cases where a slot is empty for a given slot number, the closest previous block MUST be returned. For example, if slot `4` were empty in the previous example, the returned array would contain `[2, 3, 6, 8, 10]`. If slot three were further empty, the array would contain `[2, 6, 8, 10]` - i.e., duplicate blocks MUST be collapsed. A `skip_slots` value of `0` returns all blocks.
+Requests beacon block headers from the peer starting from `(start_root, start_slot)`. The response MUST contain no more than `max_headers` headers. `skip_slots` defines the maximum number of slots to skip between blocks. For example, requesting blocks starting at slots `2` a `skip_slots` value of `1` would return the blocks at `[2, 4, 6, 8, 10]`. In cases where a slot is empty for a given slot number, the closest previous block MUST be returned. For example, if slot `4` were empty in the previous example, the returned array would contain `[2, 3, 6, 8, 10]`. If slot three were further empty, the array would contain `[2, 6, 8, 10]` - i.e. duplicate blocks MUST be collapsed. A `skip_slots` value of `0` returns all blocks.
 
 The function of the `skip_slots` parameter helps facilitate light client sync - for example, in [#459](https://github.com/ethereum/eth2.0-specs/issues/459) - and allows clients to balance the peers from whom they request headers. Clients could, for instance, request every 10th block from a set of peers where each peer has a different starting block in order to populate block data.
 
@@ -268,7 +268,7 @@ The function of the `skip_slots` parameter helps facilitate light client sync - 
 )
 ```
 
-Requests the `block_bodies` associated with the provided `block_roots` from the peer. Responses MUST return `block_roots` in the order provided in the request. If the receiver does not have a particular `block_root`, it must return a zero-value `block_body` (i.e., a `block_body` container with all zero fields).
+Requests the `block_bodies` associated with the provided `block_roots` from the peer. Responses MUST return `block_roots` in the order provided in the request. If the receiver does not have a particular `block_root`, it must return a zero-value `block_body` (i.e. a `block_body` container with all zero fields).
 
 ### Beacon Chain State
 
