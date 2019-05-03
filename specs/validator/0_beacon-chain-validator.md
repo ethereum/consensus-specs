@@ -2,12 +2,12 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers. This is an accompanying document to [Ethereum 2.0 Phase 0 -- The Beacon Chain](../core/0_beacon-chain.md), which describes the expected actions of a "validator" participating in the Ethereum 2.0 protocol.
 
-## Table of Contents
+## Table of contents
 
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 0 -- Honest Validator](#ethereum-20-phase-0----honest-validator)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Prerequisites](#prerequisites)
     - [Constants](#constants)
