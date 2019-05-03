@@ -14,7 +14,7 @@ This document defines the YAML format and structure used for Eth 2.0 testing.
         - [Config design](#config-design)
         - [Fork config design](#fork-config-design)
         - [Test completeness](#test-completeness)
-    - [Test Suite](#test-suite)
+    - [Test suite](#test-suite)
     - [Config](#config)
     - [Fork-timeline](#fork-timeline)
     - [Config sourcing](#config-sourcing)
@@ -100,7 +100,7 @@ The aim is to provide clients with a well-defined scope of work to run a particu
 - Clients that are not complete in functionality can choose to ignore suites that use certain test-runners, or specific handlers of these test-runners.
 - Clients that are on older versions can test their work based on older releases of the generated tests, and catch up with newer releases when possible.
 
-## Test Suite
+## Test suite
 
 ```
 title: <string, short, one line> -- Display name for the test suite
