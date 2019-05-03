@@ -29,7 +29,7 @@ All referenced data structures can be found in the [Beacon Chain](../core/0_beac
 
 ## `libp2p` Protocol Names
 
-A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp2p` uses in order to identify sub-protocols and stream messages of different types over the same connection. Peers exchange supported protocol IDs via the `Identify` protocol upon connection. When opening a new stream, peers pin a particular protocol ID to it, and the stream remains contextualised thereafter. Since messages are sent inside a stream, they do not need to bear the protocol ID.
+A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp2p` uses in order to identify sub-protocols and stream messages of different types over the same connection. Peers exchange supported protocol IDs via the `Identify` protocol upon connection. When opening a new stream, peers pin a particular protocol ID to it, and the stream remains contextualized thereafter. Since messages are sent inside a stream, they do not need to bear the protocol ID.
 
 ## RPC-Over-`libp2p`
 
