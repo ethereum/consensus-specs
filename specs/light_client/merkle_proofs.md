@@ -2,11 +2,11 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
-## Table of Contents
+## Table of contents
 <!-- TOC -->
 
 - [Merkle proof formats](#merkle-proof-formats)
-   - [Table of Contents](#table-of-contents)
+   - [Table of contents](#table-of-contents)
    - [Constants](#constants)
    - [Generalized Merkle tree index](#generalized-merkle-tree-index)
    - [SSZ object to index](#ssz-object-to-index)
