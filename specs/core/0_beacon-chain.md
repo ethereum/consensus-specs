@@ -1431,7 +1431,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
         attestation = min([
             a for a in matching_source_attestations if index in get_attesting_indices(state, a.data, a.aggregation_bitfield)
         ], key=lambda a: a.inclusion_delay)
-        rewards[attestation.proposer_index] += get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT
+        rewards[attestation.proposer_index] += get_base_reward(state, attestation.proposer_index) // PROPOSER_REWARD_QUOTIENT
         rewards[index] += get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // attestation.inclusion_delay
 
     # Inactivity penalty
