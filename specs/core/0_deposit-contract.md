@@ -2,11 +2,11 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
-## Table of Contents
+## Table of contents
 <!-- TOC -->
 
 - [Ethereum 2.0 Phase 0 -- Deposit Contract](#ethereum-20-phase-0----deposit-contract)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
         - [Gwei values](#gwei-values)
