@@ -63,10 +63,10 @@ Test formats:
 
 After long discussion, the following types of configured constants were identified:
 - Never changing: genesis data.
-- Changing, but reliant on old value: e.g., an epoch time may change, but if you want to do the conversion 
+- Changing, but reliant on old value: e.g. an epoch time may change, but if you want to do the conversion 
   `(genesis data, timestamp) -> epoch number`, you end up needing both constants.
 - Changing, but kept around during fork transition: finalization may take a while,
-  e.g., an executable has to deal with new deposits and old deposits at the same time. Another example may be economic constants.
+  e.g. an executable has to deal with new deposits and old deposits at the same time. Another example may be economic constants.
 - Additional, backwards compatible: new constants are introduced for later phases.
 - Changing: there is a very small chance some constant may really be *replaced*. 
   In this off-chance, it is likely better to include it as an additional variable,
@@ -83,7 +83,7 @@ There are two types of fork-data:
 2) Coverage: What forks are covered by a test?
 
 The first is neat to have as a separate form: we prevent duplication, and can run with different presets
- (e.g., fork timeline for a minimal local test, for a public testnet, or for mainnet).
+ (e.g. fork timeline for a minimal local test, for a public testnet, or for mainnet).
 
 The second does not affect the result of the tests, it just states what is covered by the tests,
  so that the right suites can be executed to see coverage for a certain fork.
@@ -121,7 +121,7 @@ test_cases: <list, values being maps defining a test case each>
 A configuration is a separate YAML file.
 Separation of configuration and tests aims to:
 - Prevent duplication of configuration
-- Make all tests easy to upgrade (e.g., when a new config constant is introduced)
+- Make all tests easy to upgrade (e.g. when a new config constant is introduced)
 - Clearly define which constants to use
 - Shareable between clients, for cross-client short- or long-lived testnets
 - Minimize the amounts of different constants permutations to compile as a client.
@@ -136,7 +136,7 @@ The format is described in [`configs/constant_presets`](../../configs/constant_p
 A fork timeline is (preferably) loaded in as a configuration object into a client, as opposed to the constants configuration:
  - We do not allocate or optimize any code based on epoch numbers.
  - When we transition from one fork to the other, it is preferred to stay online.
- - We may decide on an epoch number for a fork based on external events (e.g., Eth1 log event);
+ - We may decide on an epoch number for a fork based on external events (e.g. Eth1 log event);
     a client should be able to activate a fork dynamically.
 
 The format is described in [`configs/fork_timelines`](../../configs/fork_timelines/README.md#format).
@@ -191,18 +191,18 @@ To prevent parsing of hundreds of different YAML files to test a specific test t
 
 The basic pattern for test-suite loading and running is:
 
-Iterate suites for given test-type, or sub-type (e.g., `operations > deposits`):
+Iterate suites for given test-type, or sub-type (e.g. `operations > deposits`):
 1. Filter test-suite, options:
     - Config: Load first few lines, load into YAML, and check `config`, either:
         - Pass the suite to the correct compiled target
         - Ignore the suite if running tests as part of a compiled target with different configuration
         - Load the correct configuration for the suite dynamically before running the suite
     - Select by file name
-    - Filter for specific suites (e.g., for a specific fork)
+    - Filter for specific suites (e.g. for a specific fork)
 2. Load the YAML
-    - Optionally translate the data into applicable naming, e.g., `snake_case` to `PascalCase`
+    - Optionally translate the data into applicable naming, e.g. `snake_case` to `PascalCase`
 3. Iterate through the `test_cases`
-4. Ask test-runner to allocate a new test-case (i.e., objectify the test-case, generalize it with a `TestCase` interface) 
+4. Ask test-runner to allocate a new test-case (i.e. objectify the test-case, generalize it with a `TestCase` interface) 
     Optionally pass raw test-case data to enable dynamic test-case allocation.
     1. Load test-case data into it.
     2. Make the test-case run.
