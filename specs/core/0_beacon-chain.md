@@ -1224,7 +1224,7 @@ Transition section notes:
 * The per-slot transitions focus on the slot counter.
 * The per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
 
-Beacon blocks that trigger unhandled Python exceptions (e.g., out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
+Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
 *Note*: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
 
