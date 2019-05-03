@@ -3,7 +3,7 @@
 This directory contains a set of fork timelines used for testing, testnets, and mainnet.
 
 A timeline file contains all the forks known for its target.
-Later forks can be ignored, e.g. ignore fork `phase1` as a client that only supports phase 0 currently.
+Later forks can be ignored, e.g. ignore fork `phase1` as a client that only supports Phase 0 currently.
 
 ## Format
 
