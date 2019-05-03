@@ -1,6 +1,6 @@
 # Merkle proof formats
 
-**NOTICE**: This document is a work-in-progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of Contents
 <!-- TOC -->
