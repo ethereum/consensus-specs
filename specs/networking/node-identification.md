@@ -20,11 +20,11 @@ The keys above are enough to construct a [multiaddr](https://github.com/multifor
 
 It is RECOMMENDED that clients set their TCP port to the default of `9000`.
 
-### Peer ID Generation
+### Peer ID generation
 
 The `libp2p` networking stack identifies peers via a "peer ID." Simply put, a node's Peer ID is the SHA2-256 `multihash` of the node's public key struct (serialized in protobuf, refer to the [Peer ID spec](https://github.com/libp2p/specs/pull/100)). `go-libp2p-crypto` contains the canonical implementation of how to hash `secp256k1` keys for use as a peer ID.
 
-## See Also
+## See also
 
 - [multiaddr](https://github.com/multiformats/multiaddr)
 - [multihash](https://multiformats.io/multihash/)
