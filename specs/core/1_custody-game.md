@@ -296,7 +296,10 @@ def get_validators_custody_reveal_period(state: BeaconState,
     '''
     epoch = get_current_epoch(state) if epoch is None else epoch
     return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
+```
+
 ### `replace_empty_or_append`
+
 
 ```python
 def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
