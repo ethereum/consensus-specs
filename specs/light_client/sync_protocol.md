@@ -2,12 +2,12 @@
 
 **Notice**: This document is a work-in-progress for researchers and implementers. One of the design goals of the Eth 2.0 beacon chain is light-client friendliness, not only to allow low-resource clients (mobile phones, IoT, etc.) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the Eth 2.0 beacon chain and other chains.
 
-## Table of Contents
+## Table of contents
 
 <!-- TOC -->
 
 - [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Preliminaries](#preliminaries)
         - [Expansions](#expansions)
         - [`get_active_validator_indices`](#get_active_validator_indices)
