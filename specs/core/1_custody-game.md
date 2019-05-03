@@ -628,7 +628,7 @@ def process_bit_challenge_response(state: BeaconState,
     # Verify chunk index
     assert response.chunk_index < challenge.chunk_count
     # Verify responder has not been slashed
-    responder = state.validator_registry[record.responder_index]
+    responder = state.validator_registry[challenge.responder_index]
     assert not responder.slashed
     # Verify the chunk matches the crosslink data root
     assert verify_merkle_branch(
