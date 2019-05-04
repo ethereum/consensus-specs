@@ -1799,7 +1799,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Exits must specify an epoch when they become valid; they are not valid before then
     assert get_current_epoch(state) >= exit.epoch
     # Verify the validator has been active long enough
-    assert get_current_epoch(state) - validator.activation_epoch >= PERSISTENT_COMMITTEE_PERIOD
+    assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch)
     assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, domain)
