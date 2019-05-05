@@ -6,7 +6,7 @@
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Shards Data Chains](#ethereum-20-phase-1----shard-data-chains)
+- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
