@@ -279,6 +279,8 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
+    # Shard number
+    'shard': 'uint64',
     # Epoch number
     'epoch': 'uint64',
     # Root of the previous crosslink
@@ -315,9 +317,7 @@ The types are defined topologically to aid in facilitating an executable version
     'target_root': 'bytes32',
 
     # Crosslink vote
-    'shard': 'uint64',
-    'previous_crosslink_root': 'bytes32',
-    'crosslink_data_root': 'bytes32',
+    'crosslink': Crosslink,
 }
 ```
 
@@ -765,7 +765,7 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 def get_attestation_slot(state: BeaconState, attestation: Attestation) -> Slot:
     epoch = attestation.data.target_epoch
     committee_count = get_epoch_committee_count(state, epoch)
-    offset = (attestation.data.shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
+    offset = (attestation.data.crosslink.shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
     return get_epoch_start_slot(epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
 ```
 
@@ -927,7 +927,7 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
-    committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.shard)
+    committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
     assert verify_bitfield(bitfield, len(committee))
     return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
@@ -1297,27 +1297,17 @@ def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestat
 ```
 
 ```python
-def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationData) -> Crosslink:
-    return Crosslink(
-        epoch=min(data.target_epoch, state.current_crosslinks[data.shard].epoch + MAX_CROSSLINK_EPOCHS),
-        previous_crosslink_root=data.previous_crosslink_root,
-        crosslink_data_root=data.crosslink_data_root,
-    )
-```
-
-```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
-    shard_attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.shard == shard]
-    shard_crosslinks = [get_crosslink_from_attestation_data(state, a.data) for a in shard_attestations]
+    shard_attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
     candidate_crosslinks = [
-        c for c in shard_crosslinks
+        c for c in [a.data.crosslink for a in shard_attestations]
         if hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
     ]
     if len(candidate_crosslinks) == 0:
         return Crosslink(), []
 
     def get_attestations_for(crosslink: Crosslink) -> List[PendingAttestation]:
-        return [a for a in shard_attestations if get_crosslink_from_attestation_data(state, a.data) == crosslink]
+        return [a for a in shard_attestations if a.data.crosslink == crosslink]
     # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
     winning_crosslink = max(candidate_crosslinks, key=lambda crosslink: (
         get_attesting_balance(state, get_attestations_for(crosslink)), crosslink.crosslink_data_root
@@ -1705,30 +1695,30 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     attestation_slot = get_attestation_slot(state, attestation)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
-    # Check target epoch, source epoch, source root, and source crosslink
     data = attestation.data
-    assert (data.target_epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
-        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
-        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
-    }
-
-    # Check crosslink data root
-    assert data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
-
-    # Check signature and bitfields
-    assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))
-
-    # Cache pending attestation
     pending_attestation = PendingAttestation(
         data=data,
         aggregation_bitfield=attestation.aggregation_bitfield,
         inclusion_delay=state.slot - attestation_slot,
         proposer_index=get_beacon_proposer_index(state),
     )
-    if data.target_epoch == get_current_epoch(state):
-        state.current_epoch_attestations.append(pending_attestation)
-    else:
+
+    assert data.target_epoch in (get_previous_epoch(state), get_current_epoch(state))
+    if data.target_epoch == get_previous_epoch(state):
+        ffg_data = (state.previous_justified_epoch, state.previous_justified_root, get_previous_epoch(state))
+        previous_crosslink = state.previous_crosslinks[data.crosslink.shard]
         state.previous_epoch_attestations.append(pending_attestation)
+    if data.target_epoch == get_current_epoch(state):
+        ffg_data = (state.current_justified_epoch, state.current_justified_root, get_current_epoch(state))
+        previous_crosslink = state.current_crosslinks[data.crosslink.shard]
+        state.current_epoch_attestations.append(pending_attestation)
+
+    # Check FFG data, crosslink data, and signature
+    assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)
+    assert data.crosslink.epoch == min(data.target_epoch, previous_crosslink.epoch + MAX_CROSSLINK_EPOCHS)
+    assert data.crosslink.previous_crosslink_root == hash_tree_root(previous_crosslink)
+    assert data.crosslink.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
+    assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))
 ```
 
 ##### Deposits
