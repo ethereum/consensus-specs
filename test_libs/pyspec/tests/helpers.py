@@ -10,6 +10,7 @@ from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
+    MAX_EPOCHS_PER_CROSSLINK,
     # SSZ
     Attestation,
     AttestationData,
@@ -17,6 +18,7 @@ from eth2spec.phase0.spec import (
     AttesterSlashing,
     BeaconBlock,
     BeaconBlockHeader,
+    Crosslink,
     Deposit,
     DepositData,
     Eth1Data,
@@ -174,14 +176,17 @@ def build_attestation_data(state, slot, shard):
 
     crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
     return AttestationData(
-        shard=shard,
         beacon_block_root=block_root,
         source_epoch=justified_epoch,
         source_root=justified_block_root,
         target_epoch=slot_to_epoch(slot),
         target_root=epoch_boundary_root,
-        crosslink_data_root=spec.ZERO_HASH,
-        previous_crosslink_root=hash_tree_root(crosslinks[shard]),
+        crosslink=Crosslink(
+            shard=shard,
+            epoch=min(slot_to_epoch(slot), crosslinks[shard].epoch + MAX_EPOCHS_PER_CROSSLINK),
+            crosslink_data_root=spec.ZERO_HASH,
+            previous_crosslink_root=hash_tree_root(crosslinks[shard]),
+        ),
     )
 
 
@@ -288,7 +293,7 @@ def get_valid_attestation(state, slot=None):
 
     attestation_data = build_attestation_data(state, slot, shard)
 
-    crosslink_committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.shard)
+    crosslink_committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
 
     committee_size = len(crosslink_committee)
     bitfield_length = (committee_size + 7) // 8
@@ -381,7 +386,7 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
 
 
 def fill_aggregate_attestation(state, attestation):
-    crosslink_committee = get_crosslink_committee(state, attestation.data.target_epoch, attestation.data.shard)
+    crosslink_committee = get_crosslink_committee(state, attestation.data.target_epoch, attestation.data.crosslink.shard)
     for i in range(len(crosslink_committee)):
         attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
 

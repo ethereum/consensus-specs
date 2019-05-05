@@ -206,10 +206,10 @@ These configurations are updated for releases, but may be out of sync during `de
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
-| `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) | epochs | ~7 hours |
+| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
 
-* `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
+* `MAX_EPOCHS_PER_CROSSLINK` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
 ### State list lengths
 
@@ -1715,7 +1715,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Check FFG data, crosslink data, and signature
     assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)
-    assert data.crosslink.epoch == min(data.target_epoch, previous_crosslink.epoch + MAX_CROSSLINK_EPOCHS)
+    assert data.crosslink.epoch == min(data.target_epoch, previous_crosslink.epoch + MAX_EPOCHS_PER_CROSSLINK)
     assert data.crosslink.previous_crosslink_root == hash_tree_root(previous_crosslink)
     assert data.crosslink.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
     assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))

@@ -271,7 +271,7 @@ _Note:_ This can be looked up in the state using:
 
 ##### Shard
 
-Set `attestation_data.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
+Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
 
 ##### Previous crosslink root
 
@@ -279,7 +279,7 @@ Set `attestation_data.previous_crosslink_root = hash_tree_root(head_state.curren
 
 ##### Crosslink data root
 
-Set `attestation_data.crosslink_data_root = ZERO_HASH`.
+Set `attestation_data.crosslink.crosslink_data_root = ZERO_HASH`.
 
 _Note:_ This is a stub for phase 0.
 

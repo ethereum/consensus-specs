@@ -215,7 +215,7 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
 def verify_shard_attestation_signature(state: BeaconState,
                                        attestation: ShardAttestation) -> None:
     data = attestation.data
-    persistent_committee = get_persistent_committee(state, data.shard, data.slot)
+    persistent_committee = get_persistent_committee(state, data.crosslink.shard, data.slot)
     assert verify_bitfield(attestation.aggregation_bitfield, len(persistent_committee))
     pubkeys = []
     for i, index in enumerate(persistent_committee):
@@ -225,7 +225,7 @@ def verify_shard_attestation_signature(state: BeaconState,
             pubkeys.append(validator.pubkey)
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(pubkeys),
-        message_hash=data.shard_block_root,
+        message_hash=data.crosslink.shard_block_root,
         signature=attestation.aggregate_signature,
         domain=get_domain(state, slot_to_epoch(data.slot), DOMAIN_SHARD_ATTESTER)
     )
@@ -312,7 +312,7 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
     for _, attestation in enumerate(block.attestations):
         assert max(GENESIS_SHARD_SLOT, block.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
         assert attestation.data.slot <= block.slot - MIN_ATTESTATION_INCLUSION_DELAY
-        assert attestation.data.shard == block.shard
+        assert attestation.data.crosslink.shard == block.shard
         verify_shard_attestation_signature(beacon_state, attestation)
 
     # Check signature
@@ -343,11 +343,11 @@ def is_valid_shard_attestation(valid_shard_blocks: List[ShardBlock],
     # Check shard block
     shard_block = next(
         block for block in valid_shard_blocks if
-        signing_root(block) == candidate.attestation.data.shard_block_root
+        signing_root(block) == candidate.attestation.data.crosslink.shard_block_root
     , None)
     assert shard_block != None
     assert shard_block.slot == attestation.data.slot
-    assert shard_block.shard == attestation.data.shard
+    assert shard_block.shard == attestation.data.crosslink.shard
 
     # Check signature
     verify_shard_attestation_signature(beacon_state, attestation)
@@ -382,18 +382,18 @@ def is_valid_beacon_attestation(shard: Shard,
     else:
         previous_attestation = next(
             attestation for attestation in valid_attestations if
-            attestation.data.crosslink_data_root == candidate.data.previous_crosslink.crosslink_data_root
+            attestation.data.crosslink.crosslink_data_root == candidate.data.previous_crosslink.crosslink_data_root
         , None)
         assert previous_attestation != None
         assert candidate.data.previous_attestation.epoch < slot_to_epoch(candidate.data.slot)
 
     # Check crosslink data root
     start_epoch = state.latest_crosslinks[shard].epoch
-    end_epoch = min(slot_to_epoch(candidate.data.slot) - CROSSLINK_LOOKBACK, start_epoch + MAX_CROSSLINK_EPOCHS)
+    end_epoch = min(slot_to_epoch(candidate.data.slot) - CROSSLINK_LOOKBACK, start_epoch + MAX_EPOCHS_PER_CROSSLINK)
     blocks = []
     for slot in range(start_epoch * SLOTS_PER_EPOCH, end_epoch * SLOTS_PER_EPOCH):
         blocks.append(shard_blocks[slot])
-    assert candidate.data.crosslink_data_root == compute_crosslink_data_root(blocks)
+    assert candidate.data.crosslink.crosslink_data_root == compute_crosslink_data_root(blocks)
 
     return True
 ```
