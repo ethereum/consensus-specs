@@ -134,20 +134,20 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Terminology
 
-* **Validator** <a id="dfn-validator"></a> — a registered participant in the beacon chain. You can become one by sending ether into the Ethereum 1.0 deposit contract.
-* **Active validator** <a id="dfn-active-validator"></a> — an active participant in the Ethereum 2.0 consensus invited to, among other things, propose and attest to blocks and vote for crosslinks.
-* **Committee** — a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
-* **Proposer** — the [validator](#dfn-validator) that creates a beacon chain block.
-* **Attester** — a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
-* **Beacon chain** — the central PoS chain that is the base of the sharding system.
-* **Shard chain** — one of the chains on which user transactions take place and account data is stored.
-* **Block root** — a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
-* **Crosslink** — a set of signatures from a committee attesting to a block in a shard chain that can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
-* **Slot** — a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations.
-* **Epoch** — an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation.
-* **Finalized**, **justified** — see the [Casper FFG paper](https://arxiv.org/abs/1710.09437).
-* **Withdrawal period** — the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable.
-* **Genesis time** — the Unix time of the genesis beacon chain block at slot 0.
+* **Validator**<a id="dfn-validator"></a>—a registered participant in the beacon chain. You can become one by sending ether into the Ethereum 1.0 deposit contract.
+* **Active validator**<a id="dfn-active-validator"></a>—an active participant in the Ethereum 2.0 consensus invited to, among other things, propose and attest to blocks and vote for crosslinks.
+* **Committee**—a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
+* **Proposer**—the [validator](#dfn-validator) that creates a beacon chain block.
+* **Attester**—a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
+* **Beacon chain**—the central PoS chain that is the base of the sharding system.
+* **Shard chain**—one of the chains on which user transactions take place and account data is stored.
+* **Block root**—a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
+* **Crosslink**—a set of signatures from a committee attesting to a block in a shard chain that can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
+* **Slot**—a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations.
+* **Epoch**—an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation.
+* **Finalized**, **justified**—see the [Casper FFG paper](https://arxiv.org/abs/1710.09437).
+* **Withdrawal period**—the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable.
+* **Genesis time**—the Unix time of the genesis beacon chain block at slot 0.
 
 ## Constants
 
