@@ -63,7 +63,7 @@
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shard_delta`](#get_shard_delta)
         - [`get_epoch_start_shard`](#get_epoch_start_shard)
-        - [`get_attestation_slot`](#get_attestation_slot)
+        - [`get_attestation_data_slot`](#get_attestation_data_slot)
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_randao_mix`](#get_randao_mix)
@@ -759,14 +759,13 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
     return shard
 ```
 
-### `get_attestation_slot`
+### `get_attestation_data_slot`
 
 ```python
-def get_attestation_slot(state: BeaconState, attestation: Attestation) -> Slot:
-    epoch = attestation.data.target_epoch
-    committee_count = get_epoch_committee_count(state, epoch)
-    offset = (attestation.data.shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
-    return get_epoch_start_slot(epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
+def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot:
+    committee_count = get_epoch_committee_count(state, data.target_epoch)
+    offset = (data.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target_epoch)) % SHARD_COUNT
+    return get_epoch_start_slot(data.target_epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
 ```
 
 ### `get_block_root_at_slot`
@@ -1279,7 +1278,7 @@ def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> List[P
 def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
     return [
         a for a in get_matching_source_attestations(state, epoch)
-        if a.data.beacon_block_root == get_block_root_at_slot(state, get_attestation_slot(state, a))
+        if a.data.beacon_block_root == get_block_root_at_slot(state, get_attestation_data_slot(state, a.data))
     ]
 ```
 
@@ -1702,11 +1701,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     """
     Process ``Attestation`` operation.
     """
-    attestation_slot = get_attestation_slot(state, attestation)
+    data = attestation.data
+    attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
     # Check target epoch, source epoch, source root, and source crosslink
-    data = attestation.data
     assert (data.target_epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
         (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
         (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
