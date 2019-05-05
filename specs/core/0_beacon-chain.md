@@ -1189,10 +1189,10 @@ When enough deposits of size `MAX_EFFECTIVE_BALANCE` have been made to the depos
 
 ### Genesis state
 
-Let `genesis_state = get_genesis_beacon_state(eth2genesis.genesis_time, genesis_eth1_data, genesis_deposits)`.
+Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.genesis_time, genesis_eth1_data)`.
 
 ```python
-def get_genesis_beacon_state(genesis_time: int, eth1_data: Eth1Data, deposits: List[Deposit]) -> BeaconState:
+def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, eth1_data: Eth1Data) -> BeaconState:
     state = BeaconState(genesis_time=genesis_time, latest_eth1_data=genesis_eth1_data)
 
     # Process genesis deposits
