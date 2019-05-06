@@ -10,7 +10,7 @@ from tests.helpers import (
     get_valid_proposer_slashing,
 )
 
-from .block_test_helpers import spec_state_test
+from tests.context import spec_state_test
 
 
 def run_proposer_slashing_processing(state, proposer_slashing, valid=True):

@@ -13,7 +13,7 @@ from tests.helpers import (
     next_epoch,
 )
 
-from .block_test_helpers import spec_state_test
+from tests.context import spec_state_test
 
 
 def run_transfer_processing(state, transfer, valid=True):

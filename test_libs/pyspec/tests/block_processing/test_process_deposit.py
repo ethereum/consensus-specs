@@ -13,7 +13,7 @@ from tests.helpers import (
     pubkeys,
 )
 
-from .block_test_helpers import spec_state_test
+from tests.context import spec_state_test
 
 
 def prepare_state_and_deposit(state, validator_index, amount):

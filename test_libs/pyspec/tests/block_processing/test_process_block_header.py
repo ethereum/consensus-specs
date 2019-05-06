@@ -13,7 +13,7 @@ from tests.helpers import (
     next_slot,
 )
 
-from .block_test_helpers import spec_state_test
+from tests.context import spec_state_test
 
 
 def prepare_state_for_header_processing(state):

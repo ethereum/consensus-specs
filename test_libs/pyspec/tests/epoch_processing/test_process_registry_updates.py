@@ -1,7 +1,3 @@
-from copy import deepcopy
-
-import pytest
-
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
@@ -12,10 +8,10 @@ from tests.helpers import (
     next_epoch,
 )
 
-# mark entire file as 'state'
-pytestmark = pytest.mark.state
+from tests.context import spec_state_test
 
 
+@spec_state_test
 def test_activation(state):
     index = 0
     assert is_active_validator(state.validator_registry[index], get_current_epoch(state))
@@ -26,12 +22,17 @@ def test_activation(state):
     state.validator_registry[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
     assert not is_active_validator(state.validator_registry[index], get_current_epoch(state))
 
-    pre_state = deepcopy(state)
+    yield 'pre', state
 
     blocks = []
     for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
         block = next_epoch(state)
         blocks.append(block)
+
+    # provide extra type hinting here, since it is wrapped in a list.
+    yield 'blocks', blocks, [spec.BeaconBlock]
+
+    yield 'post', state
 
     assert state.validator_registry[index].activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
     assert state.validator_registry[index].activation_epoch != spec.FAR_FUTURE_EPOCH
@@ -40,9 +41,8 @@ def test_activation(state):
         get_current_epoch(state),
     )
 
-    return pre_state, blocks, state
 
-
+@spec_state_test
 def test_ejection(state):
     index = 0
     assert is_active_validator(state.validator_registry[index], get_current_epoch(state))
@@ -51,17 +51,20 @@ def test_ejection(state):
     # Mock an ejection
     state.validator_registry[index].effective_balance = spec.EJECTION_BALANCE
 
-    pre_state = deepcopy(state)
+    yield 'pre', state
 
     blocks = []
     for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
         block = next_epoch(state)
         blocks.append(block)
 
+    # provide extra type hinting here, since it is wrapped in a list.
+    yield 'blocks', blocks, [spec.BeaconBlock]
+
+    yield 'post', state
+
     assert state.validator_registry[index].exit_epoch != spec.FAR_FUTURE_EPOCH
     assert not is_active_validator(
         state.validator_registry[index],
         get_current_epoch(state),
     )
-
-    return pre_state, blocks, state

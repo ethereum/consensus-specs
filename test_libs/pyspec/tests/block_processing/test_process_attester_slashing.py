@@ -11,10 +11,7 @@ from tests.helpers import (
     next_epoch,
 )
 
-from tests.utils import spectest
-from tests.context import with_state
-
-from .block_test_helpers import spec_state_test
+from tests.context import spec_state_test
 
 
 def run_attester_slashing_processing(state, attester_slashing, valid=True):

@@ -1,4 +1,3 @@
-from copy import deepcopy
 import pytest
 
 import eth2spec.phase0.spec as spec
@@ -14,7 +13,7 @@ from tests.helpers import (
     pubkey_to_privkey,
 )
 
-from .block_test_helpers import spec_state_test
+from tests.context import spec_state_test
 
 
 def run_voluntary_exit_processing(state, voluntary_exit, valid=True):

@@ -17,7 +17,7 @@ from tests.helpers import (
     next_slot,
 )
 
-from .block_test_helpers import spec_state_test
+from tests.context import spec_state_test
 
 
 def run_attestation_processing(state, attestation, valid=True):
