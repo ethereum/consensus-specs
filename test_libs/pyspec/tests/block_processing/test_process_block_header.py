@@ -13,8 +13,7 @@ from tests.helpers import (
     next_slot,
 )
 
-# mark entire file as 'header'
-pytestmark = pytest.mark.header
+from .block_test_helpers import spec_state_test
 
 
 def prepare_state_for_header_processing(state):
@@ -24,43 +23,50 @@ def prepare_state_for_header_processing(state):
 
 def run_block_header_processing(state, block, valid=True):
     """
-    Run ``process_block_header`` returning the pre and post state.
+    Run ``process_block_header``, yielding:
+      - pre-state ('pre')
+      - block ('block')
+      - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
     prepare_state_for_header_processing(state)
-    post_state = deepcopy(state)
+
+    yield 'pre', state
+    yield 'block', block
 
     if not valid:
         with pytest.raises(AssertionError):
-            process_block_header(post_state, block)
-        return state, None
+            process_block_header(state, block)
+        yield 'post', None
+        return
 
-    process_block_header(post_state, block)
-    return state, post_state
+    process_block_header(state, block)
+    yield 'post', state
 
 
+@spec_state_test
 def test_success(state):
     block = build_empty_block_for_next_slot(state)
-    pre_state, post_state = run_block_header_processing(state, block)
-    return state, block, post_state
+    yield from run_block_header_processing(state, block)
 
 
+@spec_state_test
 def test_invalid_slot(state):
     block = build_empty_block_for_next_slot(state)
     block.slot = state.slot + 2  # invalid slot
 
-    pre_state, post_state = run_block_header_processing(state, block, valid=False)
-    return pre_state, block, None
+    yield from run_block_header_processing(state, block, valid=False)
 
 
+@spec_state_test
 def test_invalid_previous_block_root(state):
     block = build_empty_block_for_next_slot(state)
     block.previous_block_root = b'\12' * 32  # invalid prev root
 
-    pre_state, post_state = run_block_header_processing(state, block, valid=False)
-    return pre_state, block, None
+    yield from run_block_header_processing(state, block, valid=False)
 
 
+@spec_state_test
 def test_proposer_slashed(state):
     # use stub state to get proposer index of next slot
     stub_state = deepcopy(state)
@@ -72,5 +78,4 @@ def test_proposer_slashed(state):
 
     block = build_empty_block_for_next_slot(state)
 
-    pre_state, post_state = run_block_header_processing(state, block, valid=False)
-    return pre_state, block, None
+    yield from run_block_header_processing(state, block, valid=False)
