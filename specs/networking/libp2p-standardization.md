@@ -7,7 +7,7 @@ Ethereum 2.0 clients plan to use the libp2p protocol networking stack for
 mainnet release. This document aims to standardize the libp2p client protocols,
 configuration and messaging formats.
 
-# Libp2p Protocols
+# Libp2p Components 
 
 ## Transport
 
@@ -19,8 +19,11 @@ TCP/IP and optionally websockets. Websockets are useful for implementations
 running in the browser and therefore native clients would ideally support these implementations 
 by supporting websockets.
 
-An ideal libp2p transport would therefore be TCP/IP with a fallback to
-websockets.
+An ideal libp2p transport would therefore support both TCP/IP and websockets.
+
+*Note: There is active development in libp2p to facilitate the
+[QUIC](https://github.com/libp2p/go-libp2p-quic-transport) transport, which may
+be adopted in the future*
 
 ### Encryption
 
@@ -35,6 +38,11 @@ Current defaults are:
 - Cipher: `AES-128` (also supports `AES-256`, `TwofishCTR`)
 - Digests: `SHA256` (also supports `SHA512`)
 
+*Note: Secio is being deprecated in favour of [TLS
+1.3](https://github.com/libp2p/specs/blob/master/tls/tls.md). It is our
+intention to transition to use TLS 1.3 for encryption between nodes, rather
+than Secio.*
+
 
 ## Protocols
 
@@ -45,7 +53,8 @@ running a libp2p network stack.
 
 #### Protocol id: `/multistream/1.0.0`
 
-Clients running libp2p should support the [multistream-select](https://github.com/multiformats/multistream-select/)
+Clients running libp2p should support the
+[multistream-select](https://github.com/multiformats/multistream-select/)
 protocol which allows clients to negotiate libp2p protocols establish streams
 per protocol.
 
@@ -62,7 +71,7 @@ optionally [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md)
 
 ## Gossipsub
 
-#### Protocol id: `/meshsub/1.0.0`
+#### Protocol id: `/eth/serenity/gossipsub/1.0.0`
 
 *Note: Parameters listed here are subject to a large-scale network feasibility
 study*
@@ -121,36 +130,14 @@ number of shard subnets will be defined via `SHARD_SUBNET_COUNT` and the shard
 
 ### Messages
 
-#### Libp2p Specification
+*Note: The message format here is Eth2.0-specific*
 
-*This section simply outlines the data sent across the wire as specified by
-libp2p - this section is aimed at gossipsub implementers to standardize their implementation of this protocol*
+Each Gossipsub
+[Message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24)
+has a maximum size of 512KB (estimated from expected largest uncompressed block
+size).
 
-Libp2p raw gossipsub messages are sent across the wire as fixed-size length-prefixed byte arrays.
-
-The byte array is prefixed with an unsigned 64 bit length number encoded as an
-`unsigned varint` (https://github.com/multiformats/unsigned-varint). Gossipsub messages therefore take the form:
-```
-+--------------------------+
-|     message length       |
-+--------------------------+
-|                          |
-|       body (<1M)         |
-|                          |
-+--------------------------+
-```
-
-The body represents a protobuf-encoded [Message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24). 
-
-In the following section we discuss the data being sent in the `data` field of
-the protobuf gossipsub `Message`.
-
-#### Eth2.0 Specifics
-
-Each message has a maximum size of 512KB (estimated from expected largest uncompressed
-block size).
-
-The `data` that is sent in a Gossipsub message is an SSZ-encoded object. For the `beacon_block` topic,
+The `data` field of a Gossipsub `Message` is an SSZ-encoded object. For the `beacon_block` topic,
 this will be a `beacon_block`. For the `beacon_attestation` topic, this will be
 an `attestation`.
 
@@ -162,10 +149,10 @@ The [RPC Interface](./rpc-interface.md) is specified in this repository.
 
 ## Identify
 
-#### Protocol Id: `/ipfs/id/1.0.0` (to be updated to `/p2p/id/1.0.0`)
+**Note: This protocol is a placeholder and will be updated once the discv5
+discovery protocol is added to this document**
 
-*To be updated to incorporate discv5*
-
+#### Protocol Id: `/eth/serentiy/id/1.0.0` 
 
 The Identify protocol (defined in go - [identify-go](https://github.com/ipfs/go-ipfs/blob/master/core/commands/id.go) and rust [rust-identify](https://github.com/libp2p/rust-libp2p/blob/master/protocols/identify/src/lib.rs))
 allows a node A to query another node B which information B knows about A. This also includes the addresses B is listening on.
@@ -185,8 +172,4 @@ type of connecting node. Suggested format:
 
 ## Discovery
 
-#### Protocol Id: `/eth/serenity/disc/1.0.0`
-
-*To be updated to incorporate discv5*
-
-The discovery protocol to be determined.
+**To be updated to incorporate discv5**
