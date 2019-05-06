@@ -966,7 +966,8 @@ def get_domain(state: BeaconState,
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return bytes_to_int(fork_version + int_to_bytes4(domain_type))
+    # fork version is on the big-endian side: when signing using only the type (e.g. deposits), the type can be passed directly.
+    return bytes_to_int(int_to_bytes4(domain_type) + fork_version)
 ```
 
 ### `get_bitfield_bit`
@@ -1766,7 +1767,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession)
-        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, get_domain(state, DOMAIN_DEPOSIT)):
+        # Note: deposits are valid regardless of fork version, hence the type is passed directly as domain.
+        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, DOMAIN_DEPOSIT):
             return
 
         # Add validator and balance entries
