@@ -1,7 +1,5 @@
 from copy import deepcopy
 
-import pytest
-
 from py_ecc import bls
 import eth2spec.phase0.spec as spec
 
@@ -9,7 +7,6 @@ from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
-    SLOTS_PER_HISTORICAL_ROOT,
     # SSZ
     Deposit,
     Transfer,
@@ -37,139 +34,169 @@ from .helpers import (
     get_balance,
     build_deposit_data,
     build_empty_block_for_next_slot,
-    fill_aggregate_attestation,
     get_state_root,
     get_valid_attestation,
     get_valid_attester_slashing,
     get_valid_proposer_slashing,
-    next_slot,
     privkeys,
     pubkeys,
 )
 
-
-# mark entire file as 'sanity'
-pytestmark = pytest.mark.sanity
+from .context import spec_state_test
 
 
+@spec_state_test
 def test_slot_transition(state):
-    test_state = deepcopy(state)
-    cache_state(test_state)
-    advance_slot(test_state)
-    assert test_state.slot == state.slot + 1
-    assert get_state_root(test_state, state.slot) == state.hash_tree_root()
-    return test_state
+    pre_slot = state.slot
+    pre_root = state.hash_tree_root()
+    yield 'pre', state
+
+    cache_state(state)
+    advance_slot(state)
+    yield 'post', state
+
+    assert state.slot == pre_slot + 1
+    assert get_state_root(state, pre_slot) == pre_root
 
 
+@spec_state_test
 def test_empty_block_transition(state):
-    test_state = deepcopy(state)
+    pre_slot = state.slot
+    pre_eth1_votes = len(state.eth1_data_votes)
 
-    block = build_empty_block_for_next_slot(test_state)
-    state_transition(test_state, block)
+    yield 'pre', state
 
-    assert len(test_state.eth1_data_votes) == len(state.eth1_data_votes) + 1
-    assert get_block_root_at_slot(test_state, state.slot) == block.previous_block_root
+    block = build_empty_block_for_next_slot(state)
+    yield 'blocks', [block], [spec.BeaconBlock]
 
-    return state, [block], test_state
+    state_transition(state, block)
+    yield 'post', state
+
+    assert len(state.eth1_data_votes) == pre_eth1_votes + 1
+    assert get_block_root_at_slot(state, pre_slot) == block.previous_block_root
 
 
+@spec_state_test
 def test_skipped_slots(state):
-    test_state = deepcopy(state)
-    block = build_empty_block_for_next_slot(test_state)
+    pre_slot = state.slot
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(state)
     block.slot += 3
+    yield 'blocks', [block], [spec.BeaconBlock]
 
-    state_transition(test_state, block)
+    state_transition(state, block)
+    yield 'post', state
 
-    assert test_state.slot == block.slot
-    for slot in range(state.slot, test_state.slot):
-        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
-
-    return state, [block], test_state
+    assert state.slot == block.slot
+    for slot in range(pre_slot, state.slot):
+        assert get_block_root_at_slot(state, slot) == block.previous_block_root
 
 
+@spec_state_test
 def test_empty_epoch_transition(state):
-    test_state = deepcopy(state)
-    block = build_empty_block_for_next_slot(test_state)
+    pre_slot = state.slot
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(state)
     block.slot += spec.SLOTS_PER_EPOCH
+    yield 'blocks', [block], [spec.BeaconBlock]
 
-    state_transition(test_state, block)
+    state_transition(state, block)
+    yield 'post', state
 
-    assert test_state.slot == block.slot
-    for slot in range(state.slot, test_state.slot):
-        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
-
-    return state, [block], test_state
+    assert state.slot == block.slot
+    for slot in range(pre_slot, state.slot):
+        assert get_block_root_at_slot(state, slot) == block.previous_block_root
 
 
+@spec_state_test
 def test_empty_epoch_transition_not_finalizing(state):
-    test_state = deepcopy(state)
-    block = build_empty_block_for_next_slot(test_state)
+    # copy for later balance lookups.
+    pre_state = deepcopy(state)
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(state)
     block.slot += spec.SLOTS_PER_EPOCH * 5
+    yield 'blocks', [block], [spec.BeaconBlock]
 
-    state_transition(test_state, block)
+    state_transition(state, block)
+    yield 'post', state
 
-    assert test_state.slot == block.slot
-    assert test_state.finalized_epoch < get_current_epoch(test_state) - 4
-    for index in range(len(test_state.validator_registry)):
-        assert get_balance(test_state, index) < get_balance(state, index)
-
-    return state, [block], test_state
+    assert state.slot == block.slot
+    assert state.finalized_epoch < get_current_epoch(state) - 4
+    for index in range(len(state.validator_registry)):
+        assert get_balance(state, index) < get_balance(pre_state, index)
 
 
+@spec_state_test
 def test_proposer_slashing(state):
-    test_state = deepcopy(state)
+    # copy for later balance lookups.
+    pre_state = deepcopy(state)
     proposer_slashing = get_valid_proposer_slashing(state)
     validator_index = proposer_slashing.proposer_index
 
+    assert not state.validator_registry[validator_index].slashed
+
+    yield 'pre', state
+
     #
     # Add to state via block transition
     #
-    block = build_empty_block_for_next_slot(test_state)
+    block = build_empty_block_for_next_slot(state)
     block.body.proposer_slashings.append(proposer_slashing)
-    state_transition(test_state, block)
+    yield 'blocks', [block], [spec.BeaconBlock]
 
-    assert not state.validator_registry[validator_index].slashed
+    state_transition(state, block)
+    yield 'post', state
 
-    slashed_validator = test_state.validator_registry[validator_index]
+    # check if slashed
+    slashed_validator = state.validator_registry[validator_index]
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
-    assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
-
-    return state, [block], test_state
+    assert get_balance(state, validator_index) < get_balance(pre_state, validator_index)
 
 
+@spec_state_test
 def test_attester_slashing(state):
-    test_state = deepcopy(state)
+    # copy for later balance lookups.
+    pre_state = deepcopy(state)
+
     attester_slashing = get_valid_attester_slashing(state)
     validator_index = attester_slashing.attestation_1.custody_bit_0_indices[0]
 
+    assert not state.validator_registry[validator_index].slashed
+
+    yield 'pre', state
+
     #
     # Add to state via block transition
     #
-    block = build_empty_block_for_next_slot(test_state)
+    block = build_empty_block_for_next_slot(state)
     block.body.attester_slashings.append(attester_slashing)
-    state_transition(test_state, block)
+    yield 'blocks', [block], [spec.BeaconBlock]
 
-    assert not state.validator_registry[validator_index].slashed
+    state_transition(state, block)
+    yield 'post', state
 
-    slashed_validator = test_state.validator_registry[validator_index]
+    slashed_validator = state.validator_registry[validator_index]
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
-    assert get_balance(test_state, validator_index) < get_balance(state, validator_index)
+    assert get_balance(state, validator_index) < get_balance(pre_state, validator_index)
 
-    proposer_index = get_beacon_proposer_index(test_state)
+    proposer_index = get_beacon_proposer_index(state)
     # gained whistleblower reward
     assert (
-        get_balance(test_state, proposer_index) >
-        get_balance(state, proposer_index)
+        get_balance(state, proposer_index) >
+        get_balance(pre_state, proposer_index)
     )
 
-    return state, [block], test_state
 
+# TODO update functions below to be like above, i.e. with @spec_state_test and yielding data to put into the test vector
 
 def test_deposit_in_block(state):
     pre_state = deepcopy(state)
