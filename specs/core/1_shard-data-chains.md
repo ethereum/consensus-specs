@@ -78,7 +78,7 @@ This document describes the shard data layer and the shard fork choice rule in P
     'slot': Slot,
     'shard': Shard,
     'beacon_chain_root': Hash,
-    'previous_block_root': Hash,
+    'parent_block_root': Hash,
     'data': ShardBlockBody,
     'state_root': Hash,
     'attestations': [ShardAttestation],
@@ -93,7 +93,7 @@ This document describes the shard data layer and the shard fork choice rule in P
     'slot': Slot,
     'shard': Shard,
     'beacon_chain_root': Hash,
-    'previous_block_root': Hash,
+    'parent_block_root': Hash,
     'body_root': Hash,
     'state_root': Hash,
     'attestations': [ShardAttestation],
@@ -201,7 +201,7 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
         slot: block.slot,
         shard: block.shard,
         beacon_chain_root: block.beacon_chain_root,
-        previous_block_root: block.previous_block_root,
+        parent_block_root: block.parent_block_root,
         body_root: hash_tree_root(block.body),
         state_root: block.state_root,
         attestations: block.attestations,
@@ -296,11 +296,11 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
 
     # Check parent block
     if block.slot == PHASE_1_GENESIS_SLOT:
-        assert candidate.previous_block_root == ZERO_HASH
+        assert candidate.parent_block_root == ZERO_HASH
     else:
         parent_block = next(
             block for block in valid_shard_blocks if
-            signing_root(block) == candidate.previous_block_root
+            signing_root(block) == candidate.parent_block_root
         , None)
         assert parent_block != None
         assert parent_block.shard == block.shard
@@ -378,11 +378,11 @@ def is_valid_beacon_attestation(shard: Shard,
 
     # Check previous attestation
     if candidate.data.previous_crosslink.epoch <= PHASE_1_GENESIS_EPOCH:
-        assert candidate.data.previous_crosslink.crosslink_data_root == ZERO_HASH
+        assert candidate.data.previous_crosslink.data_root == ZERO_HASH
     else:
         previous_attestation = next(
             attestation for attestation in valid_attestations if
-            attestation.data.crosslink.crosslink_data_root == candidate.data.previous_crosslink.crosslink_data_root
+            attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root
         , None)
         assert previous_attestation != None
         assert candidate.data.previous_attestation.epoch < slot_to_epoch(candidate.data.slot)
@@ -393,7 +393,7 @@ def is_valid_beacon_attestation(shard: Shard,
     blocks = []
     for slot in range(start_epoch * SLOTS_PER_EPOCH, end_epoch * SLOTS_PER_EPOCH):
         blocks.append(shard_blocks[slot])
-    assert candidate.data.crosslink.crosslink_data_root == compute_crosslink_data_root(blocks)
+    assert candidate.data.crosslink.data_root == compute_crosslink_data_root(blocks)
 
     return True
 ```

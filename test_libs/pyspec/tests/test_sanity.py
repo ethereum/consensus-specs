@@ -68,7 +68,7 @@ def test_empty_block_transition(state):
     state_transition(test_state, block)
 
     assert len(test_state.eth1_data_votes) == len(state.eth1_data_votes) + 1
-    assert get_block_root_at_slot(test_state, state.slot) == block.previous_block_root
+    assert get_block_root_at_slot(test_state, state.slot) == block.parent_block_root
 
     return state, [block], test_state
 
@@ -82,7 +82,7 @@ def test_skipped_slots(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.parent_block_root
 
     return state, [block], test_state
 
@@ -96,7 +96,7 @@ def test_empty_epoch_transition(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.parent_block_root
 
     return state, [block], test_state
 

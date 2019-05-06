@@ -113,7 +113,7 @@ def test_non_zero_crosslink_data_root(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.crosslink.crosslink_data_root = b'\x42' * 32
+    attestation.data.crosslink.data_root = b'\x42' * 32
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 

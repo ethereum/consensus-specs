@@ -147,7 +147,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'deadline': Epoch,
-    'crosslink_data_root': Hash,
+    'data_root': Hash,
     'depth': 'uint64',
     'chunk_index': 'uint64',
 }
@@ -161,7 +161,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'deadline': Epoch,
-    'crosslink_data_root': Hash,
+    'data_root': Hash,
     'chunk_count': 'uint64',
     'chunk_bits_merkle_root': Hash,
     'responder_key': BLSSignature,
@@ -474,7 +474,7 @@ def process_chunk_challenge(state: BeaconState,
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
         assert (
-            record.crosslink_data_root != challenge.attestation.data.crosslink.crosslink_data_root or
+            record.data_root != challenge.attestation.data.crosslink.data_root or
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
@@ -486,7 +486,7 @@ def process_chunk_challenge(state: BeaconState,
         challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
-        crosslink_data_root=challenge.attestation.data.crosslink.crosslink_data_root,
+        data_root=challenge.attestation.data.crosslink.data_root,
         depth=depth,
         chunk_index=challenge.chunk_index,
     )
@@ -564,7 +564,7 @@ def process_bit_challenge(state: BeaconState,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
-        crosslink_data_root=challenge.attestation.data.crosslink.crosslink_data_root,
+        data_root=challenge.attestation.data.crosslink.data_root,
         chunk_count=chunk_count,
         chunk_bits_merkle_root=merkle_root(pad_to_power_of_2((challenge.chunk_bits))),
         responder_key=challenge.responder_key,
@@ -610,7 +610,7 @@ def process_chunk_challenge_response(state: BeaconState,
         branch=response.data_branch,
         depth=challenge.depth,
         index=response.chunk_index,
-        root=challenge.crosslink_data_root,
+        root=challenge.data_root,
     )
     # Clear the challenge
     records = state.custody_chunk_challenge_records
@@ -632,7 +632,7 @@ def process_bit_challenge_response(state: BeaconState,
         branch=response.data_branch,
         depth=math.log2(next_power_of_two(challenge.chunk_count)),
         index=response.chunk_index,
-        root=challenge.crosslink_data_root,
+        root=challenge.data_root,
     )
     # Verify the chunk bit leaf matches the challenge data
     assert verify_merkle_branch(
