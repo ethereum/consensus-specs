@@ -1,4 +1,3 @@
-from copy import deepcopy
 import pytest
 
 import eth2spec.phase0.spec as spec
