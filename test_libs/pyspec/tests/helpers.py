@@ -128,7 +128,7 @@ def build_empty_block_for_next_slot(state):
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
-    empty_block.parent_block_root = signing_root(previous_block_header)
+    empty_block.parent_root = signing_root(previous_block_header)
     return empty_block
 
 
@@ -155,7 +155,7 @@ def build_attestation_data(state, slot, shard):
     assert state.slot >= slot
 
     if slot == state.slot:
-        block_root = build_empty_block_for_next_slot(state).parent_block_root
+        block_root = build_empty_block_for_next_slot(state).parent_root
     else:
         block_root = get_block_root_at_slot(state, slot)
 
@@ -185,7 +185,7 @@ def build_attestation_data(state, slot, shard):
             shard=shard,
             epoch=min(slot_to_epoch(slot), crosslinks[shard].epoch + MAX_EPOCHS_PER_CROSSLINK),
             data_root=spec.ZERO_HASH,
-            parent_crosslink_root=hash_tree_root(crosslinks[shard]),
+            parent_root=hash_tree_root(crosslinks[shard]),
         ),
     )
 
@@ -240,12 +240,12 @@ def get_valid_proposer_slashing(state):
 
     header_1 = BeaconBlockHeader(
         slot=slot,
-        parent_block_root=ZERO_HASH,
+        parent_root=ZERO_HASH,
         state_root=ZERO_HASH,
-        block_body_root=ZERO_HASH,
+        body_root=ZERO_HASH,
     )
     header_2 = deepcopy(header_1)
-    header_2.parent_block_root = b'\x02' * 32
+    header_2.parent_root = b'\x02' * 32
     header_2.slot = slot + 1
 
     domain = get_domain(

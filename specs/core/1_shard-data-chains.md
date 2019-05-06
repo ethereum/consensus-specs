@@ -78,7 +78,7 @@ This document describes the shard data layer and the shard fork choice rule in P
     'slot': Slot,
     'shard': Shard,
     'beacon_chain_root': Hash,
-    'parent_block_root': Hash,
+    'parent_root': Hash,
     'data': ShardBlockBody,
     'state_root': Hash,
     'attestations': [ShardAttestation],
@@ -93,7 +93,7 @@ This document describes the shard data layer and the shard fork choice rule in P
     'slot': Slot,
     'shard': Shard,
     'beacon_chain_root': Hash,
-    'parent_block_root': Hash,
+    'parent_root': Hash,
     'body_root': Hash,
     'state_root': Hash,
     'attestations': [ShardAttestation],
@@ -201,7 +201,7 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
         slot: block.slot,
         shard: block.shard,
         beacon_chain_root: block.beacon_chain_root,
-        parent_block_root: block.parent_block_root,
+        parent_root: block.parent_root,
         body_root: hash_tree_root(block.body),
         state_root: block.state_root,
         attestations: block.attestations,
@@ -296,11 +296,11 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
 
     # Check parent block
     if block.slot == PHASE_1_GENESIS_SLOT:
-        assert candidate.parent_block_root == ZERO_HASH
+        assert candidate.parent_root == ZERO_HASH
     else:
         parent_block = next(
             block for block in valid_shard_blocks if
-            signing_root(block) == candidate.parent_block_root
+            signing_root(block) == candidate.parent_root
         , None)
         assert parent_block != None
         assert parent_block.shard == block.shard

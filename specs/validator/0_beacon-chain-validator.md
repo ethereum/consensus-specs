@@ -152,7 +152,7 @@ Set `block.slot = slot` where `slot` is the current slot at which the validator 
 
 ##### Parent root
 
-Set `block.parent_block_root = signing_root(parent)`.
+Set `block.parent_root = signing_root(parent)`.
 
 ##### State root
 
@@ -275,7 +275,7 @@ Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associ
 
 ##### Previous crosslink root
 
-Set `attestation_data.parent_crosslink_root = hash_tree_root(head_state.current_crosslinks[shard])`.
+Set `attestation_data.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
 
 ##### Crosslink data root
 
