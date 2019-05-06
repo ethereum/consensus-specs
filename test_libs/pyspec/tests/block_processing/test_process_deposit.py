@@ -14,128 +14,100 @@ from tests.helpers import (
     pubkeys,
 )
 
-
-# mark entire file as 'deposits'
-pytestmark = pytest.mark.deposits
+from .block_test_helpers import spec_state_test
 
 
-def test_success(state):
-    pre_state = deepcopy(state)
+def prepare_state_and_deposit(state, validator_index, amount):
+    """
+    Prepare the state for the deposit, and create a deposit for the given validator, depositing the given amount.
+    """
+    pre_validator_count = len(state.validator_registry)
     # fill previous deposits with zero-hash
-    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
+    deposit_data_leaves = [ZERO_HASH] * pre_validator_count
 
-    index = len(deposit_data_leaves)
-    pubkey = pubkeys[index]
-    privkey = privkeys[index]
-    deposit, root, deposit_data_leaves = build_deposit(
-        pre_state,
-        deposit_data_leaves,
-        pubkey,
-        privkey,
-        spec.MAX_EFFECTIVE_BALANCE,
-    )
-
-    pre_state.latest_eth1_data.deposit_root = root
-    pre_state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
-
-    post_state = deepcopy(pre_state)
-
-    process_deposit(post_state, deposit)
-
-    assert len(post_state.validator_registry) == len(state.validator_registry) + 1
-    assert len(post_state.balances) == len(state.balances) + 1
-    assert post_state.validator_registry[index].pubkey == pubkeys[index]
-    assert get_balance(post_state, index) == spec.MAX_EFFECTIVE_BALANCE
-    assert post_state.deposit_index == post_state.latest_eth1_data.deposit_count
-
-    return pre_state, deposit, post_state
-
-
-def test_success_top_up(state):
-    pre_state = deepcopy(state)
-    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
-
-    validator_index = 0
-    amount = spec.MAX_EFFECTIVE_BALANCE // 4
     pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]
     deposit, root, deposit_data_leaves = build_deposit(
-        pre_state,
+        state,
         deposit_data_leaves,
         pubkey,
         privkey,
         amount,
     )
 
-    pre_state.latest_eth1_data.deposit_root = root
-    pre_state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
-    pre_balance = get_balance(pre_state, validator_index)
-
-    post_state = deepcopy(pre_state)
-
-    process_deposit(post_state, deposit)
-
-    assert len(post_state.validator_registry) == len(state.validator_registry)
-    assert len(post_state.balances) == len(state.balances)
-    assert post_state.deposit_index == post_state.latest_eth1_data.deposit_count
-    assert get_balance(post_state, validator_index) == pre_balance + amount
-
-    return pre_state, deposit, post_state
+    state.latest_eth1_data.deposit_root = root
+    state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
+    return deposit
 
 
+def run_deposit_processing(state, deposit, validator_index, valid=True):
+    """
+    Run ``process_deposit``, yielding:
+      - pre-state ('pre')
+      - deposit ('deposit')
+      - post-state ('post').
+    If ``valid == False``, run expecting ``AssertionError``
+    """
+    pre_balance = get_balance(state, validator_index)
+    pre_validator_count = len(state.validator_registry)
+
+    yield 'pre', state
+    yield 'deposit', deposit
+
+    if not valid:
+        with pytest.raises(AssertionError):
+            process_deposit(state, deposit)
+        yield 'post', None
+        return
+
+    process_deposit(state, deposit)
+
+    yield 'post', state
+
+    assert len(state.validator_registry) == pre_validator_count
+    assert len(state.balances) == pre_validator_count
+    assert state.deposit_index == state.latest_eth1_data.deposit_count
+    assert get_balance(state, validator_index) == pre_balance + deposit.amount
+
+
+@spec_state_test
+def test_success(state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validator_registry)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
+
+    yield from run_deposit_processing(state, deposit, validator_index)
+
+
+@spec_state_test
+def test_success_top_up(state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
+
+    yield from run_deposit_processing(state, deposit, validator_index)
+
+
+@spec_state_test
 def test_wrong_index(state):
-    pre_state = deepcopy(state)
-    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
-
-    index = len(deposit_data_leaves)
-    pubkey = pubkeys[index]
-    privkey = privkeys[index]
-    deposit, root, deposit_data_leaves = build_deposit(
-        pre_state,
-        deposit_data_leaves,
-        pubkey,
-        privkey,
-        spec.MAX_EFFECTIVE_BALANCE,
-    )
+    validator_index = len(state.validator_registry)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
 
     # mess up deposit_index
-    deposit.index = pre_state.deposit_index + 1
+    deposit.index = state.deposit_index + 1
 
-    pre_state.latest_eth1_data.deposit_root = root
-    pre_state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
-
-    post_state = deepcopy(pre_state)
-
-    with pytest.raises(AssertionError):
-        process_deposit(post_state, deposit)
-
-    return pre_state, deposit, None
+    yield from run_deposit_processing(state, deposit, validator_index, valid=False)
 
 
+@spec_state_test
 def test_bad_merkle_proof(state):
-    pre_state = deepcopy(state)
-    deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
-
-    index = len(deposit_data_leaves)
-    pubkey = pubkeys[index]
-    privkey = privkeys[index]
-    deposit, root, deposit_data_leaves = build_deposit(
-        pre_state,
-        deposit_data_leaves,
-        pubkey,
-        privkey,
-        spec.MAX_EFFECTIVE_BALANCE,
-    )
+    validator_index = len(state.validator_registry)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
 
     # mess up merkle branch
     deposit.proof[-1] = spec.ZERO_HASH
 
-    pre_state.latest_eth1_data.deposit_root = root
-    pre_state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
-
-    post_state = deepcopy(pre_state)
-
-    with pytest.raises(AssertionError):
-        process_deposit(post_state, deposit)
-
-    return pre_state, deposit, None
+    yield from run_deposit_processing(state, deposit, validator_index, valid=False)
