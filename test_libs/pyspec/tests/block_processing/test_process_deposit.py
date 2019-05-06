@@ -47,8 +47,13 @@ def run_deposit_processing(state, deposit, validator_index, valid=True):
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    pre_balance = get_balance(state, validator_index)
     pre_validator_count = len(state.validator_registry)
+    pre_balance = 0
+    if validator_index < pre_validator_count:
+        pre_balance = get_balance(state, validator_index)
+    else:
+        # if it is a new validator, it should be right at the end of the current registry.
+        assert validator_index == pre_validator_count
 
     yield 'pre', state
     yield 'deposit', deposit
@@ -63,10 +68,17 @@ def run_deposit_processing(state, deposit, validator_index, valid=True):
 
     yield 'post', state
 
-    assert len(state.validator_registry) == pre_validator_count
-    assert len(state.balances) == pre_validator_count
+    if validator_index < pre_validator_count:
+        # top-up
+        assert len(state.validator_registry) == pre_validator_count
+        assert len(state.balances) == pre_validator_count
+    else:
+        # new validator
+        assert len(state.validator_registry) == pre_validator_count + 1
+        assert len(state.balances) == pre_validator_count + 1
+
     assert state.deposit_index == state.latest_eth1_data.deposit_count
-    assert get_balance(state, validator_index) == pre_balance + deposit.amount
+    assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
 
 
 @spec_state_test
