@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice
 
-**NOTICE**: This document is a work in progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 <!-- TOC -->
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-This document represents is the specification for the beacon chain fork choice rule, part of Ethereum 2.0 phase 0.
+This document represents the specification for the beacon chain fork choice rule, part of Ethereum 2.0 Phase 0.
 
 ## Prerequisites
 
@@ -42,17 +42,17 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
 * The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`.
 
-Note: Leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.
+*Note*: Leap seconds mean that slots will occasionally last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds, possibly several times a year.
 
-Note: Nodes needs to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
+*Note*: Nodes needs to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
 
 ### Beacon chain fork choice rule
 
-The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time a validator `v` subjectively calculates the beacon chain head as follows.
+The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time, a validator `v` subjectively calculates the beacon chain head as follows.
 
-* Abstractly define `Store` as the type of storage object for the chain data and `store` be the set of attestations and blocks that the validator `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
-* Let `finalized_head` be the finalized block with the highest epoch. (A block `B` is finalized if there is a descendant of `B` in `store` the processing of which sets `B` as finalized.)
-* Let `justified_head` be the descendant of `finalized_head` with the highest epoch that has been justified for at least 1 epoch. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists set `justified_head` to `finalized_head`.
+* Abstractly define `Store` as the type of storage object for the chain data, and let `store` be the set of attestations and blocks that the validator `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
+* Let `finalized_head` be the finalized block with the highest epoch. (A block `B` is finalized if there is a descendant of `B` in `store`, the processing of which sets `B` as finalized.)
+* Let `justified_head` be the descendant of `finalized_head` with the highest epoch that has been justified for at least 1 epoch. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists, set `justified_head` to `finalized_head`.
 * Let `get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as:
 
 ```python
@@ -70,7 +70,7 @@ def get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock:
 
 * Let `get_latest_attestation(store: Store, index: ValidatorIndex) -> Attestation` be the attestation with the highest slot number in `store` from the validator with the given `index`. If several such attestations exist, use the one the validator `v` observed first.
 * Let `get_latest_attestation_target(store: Store, index: ValidatorIndex) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, index)`.
-* Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` returns the child blocks of the given `block`.
+* Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` return the child blocks of the given `block`.
 * Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
 * The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
 
