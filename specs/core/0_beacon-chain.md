@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- The Beacon Chain
 
-**NOTICE**: This document is a work in progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 <!-- TOC -->
@@ -45,7 +45,7 @@
             - [`BeaconBlock`](#beaconblock)
         - [Beacon state](#beacon-state)
             - [`BeaconState`](#beaconstate)
-    - [Custom Types](#custom-types)
+    - [Custom types](#custom-types)
     - [Helper functions](#helper-functions)
         - [`xor`](#xor)
         - [`hash`](#hash)
@@ -63,7 +63,7 @@
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shard_delta`](#get_shard_delta)
         - [`get_epoch_start_shard`](#get_epoch_start_shard)
-        - [`get_attestation_slot`](#get_attestation_slot)
+        - [`get_attestation_data_slot`](#get_attestation_data_slot)
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_randao_mix`](#get_randao_mix)
@@ -93,7 +93,10 @@
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
-    - [On genesis](#on-genesis)
+    - [Genesis](#genesis)
+        - [`Eth2Genesis`](#eth2genesis)
+        - [Genesis state](#genesis-state)
+        - [Genesis block](#genesis-block)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
         - [State caching](#state-caching)
         - [Per-epoch processing](#per-epoch-processing)
@@ -134,25 +137,25 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Terminology
 
-* **Validator** <a id="dfn-validator"></a> - a registered participant in the beacon chain. You can become one by sending ether into the Ethereum 1.0 deposit contract.
-* **Active validator** <a id="dfn-active-validator"></a> - an active participant in the Ethereum 2.0 consensus invited to, among other things, propose and attest to blocks and vote for crosslinks.
-* **Committee** - a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
-* **Proposer** - the [validator](#dfn-validator) that creates a beacon chain block.
-* **Attester** - a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
-* **Beacon chain** - the central PoS chain that is the base of the sharding system.
-* **Shard chain** - one of the chains on which user transactions take place and account data is stored.
-* **Block root** - a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
-* **Crosslink** - a set of signatures from a committee attesting to a block in a shard chain that can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
-* **Slot** - a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations.
-* **Epoch** - an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation.
-* **Finalized**, **justified** - see the [Casper FFG paper](https://arxiv.org/abs/1710.09437).
-* **Withdrawal period** - the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable.
-* **Genesis time** - the Unix time of the genesis beacon chain block at slot 0.
+* **Validator**<a id="dfn-validator"></a>—a registered participant in the beacon chain. You can become one by sending ether into the Ethereum 1.0 deposit contract.
+* **Active validator**<a id="dfn-active-validator"></a>—an active participant in the Ethereum 2.0 consensus invited to, among other things, propose and attest to blocks and vote for crosslinks.
+* **Committee**—a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
+* **Proposer**—the [validator](#dfn-validator) that creates a beacon chain block.
+* **Attester**—a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
+* **Beacon chain**—the central PoS chain that is the base of the sharding system.
+* **Shard chain**—one of the chains on which user transactions take place and account data is stored.
+* **Block root**—a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
+* **Crosslink**—a set of signatures from a committee attesting to a block in a shard chain that can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
+* **Slot**—a period during which one proposer has the ability to create a beacon chain block and some attesters have the ability to make attestations.
+* **Epoch**—an aligned span of slots during which all [validators](#dfn-validator) get exactly one chance to make an attestation.
+* **Finalized**, **justified**—see the [Casper FFG paper](https://arxiv.org/abs/1710.09437).
+* **Withdrawal period**—the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable.
+* **Genesis time**—the Unix time of the genesis beacon chain block at slot 0.
 
 ## Constants
 
-Note: the default mainnet values for the constants are included here for spec-design purposes.
-The different configurations for mainnet, testnets, and yaml-based testing can be found in the `configs/constant_presets/` directory.
+*Note*: The default mainnet values for the constants are included here for spec-design purposes.
+The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory.
 These configurations are updated for releases, but may be out of sync during `dev` changes.
 
 ### Misc
@@ -165,7 +168,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `BASE_REWARDS_PER_EPOCH` | `5` |
-| `SHUFFLE_ROUND_COUNT` | 90 |
+| `SHUFFLE_ROUND_COUNT` | `90` |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -229,7 +232,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* **The `BASE_REWARD_QUOTIENT` is NOT final. Once all other protocol details are finalized it will be adjusted, to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc etc)**
+* **The `BASE_REWARD_QUOTIENT` is NOT final. Once all other protocol details are finalized, it will be adjusted to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc.)**
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
@@ -587,7 +590,7 @@ The types are defined topologically to aid in facilitating an executable version
 }
 ```
 
-## Custom Types
+## Custom types
 
 We define the following Python custom types for type hinting and readability:
 
@@ -604,7 +607,7 @@ We define the following Python custom types for type hinting and readability:
 
 ## Helper functions
 
-Note: The definitions below are for specification purposes and are not necessarily optimal implementations.
+*Note*: The definitions below are for specification purposes and are not necessarily optimal implementations.
 
 ### `xor`
 
@@ -617,7 +620,7 @@ def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
 
 The `hash` function is SHA256.
 
-Note: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
+*Note*: We aim to migrate to a S[T/N]ARK-friendly hash function in a future Ethereum 2.0 deployment phase.
 
 ### `hash_tree_root`
 
@@ -759,14 +762,13 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
     return shard
 ```
 
-### `get_attestation_slot`
+### `get_attestation_data_slot`
 
 ```python
-def get_attestation_slot(state: BeaconState, attestation: Attestation) -> Slot:
-    epoch = attestation.data.target_epoch
-    committee_count = get_epoch_committee_count(state, epoch)
-    offset = (attestation.data.crosslink.shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT
-    return get_epoch_start_slot(epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
+def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot:
+    committee_count = get_epoch_committee_count(state, data.target_epoch)
+    offset = (data.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target_epoch)) % SHARD_COUNT
+    return get_epoch_start_slot(data.target_epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
 ```
 
 ### `get_block_root_at_slot`
@@ -1121,7 +1123,7 @@ def get_churn_limit(state: BeaconState) -> int:
 
 ### Routines for updating validator status
 
-Note: All functions in this section mutate `state`.
+*Note*: All functions in this section mutate `state`.
 
 #### `initiate_validator_exit`
 
@@ -1171,30 +1173,29 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     decrease_balance(state, slashed_index, whistleblowing_reward)
 ```
 
-## On genesis
+## Genesis
 
-When enough full deposits have been made to the deposit contract, an `Eth2Genesis` log is emitted. Construct a corresponding `genesis_state` and `genesis_block` as follows:
+### `Eth2Genesis`
 
-* Let `genesis_validator_deposits` be the list of deposits, ordered chronologically, up to and including the deposit that triggered the `Eth2Genesis` log.
-* Let `genesis_time` be the timestamp specified in the `Eth2Genesis` log.
-* Let `genesis_eth1_data` be the `Eth1Data` object where:
-    * `genesis_eth1_data.deposit_root` is the `deposit_root` contained in the `Eth2Genesis` log.
-    * `genesis_eth1_data.deposit_count` is the `deposit_count` contained in the `Eth2Genesis` log.
-    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log.
-* Let `genesis_state = get_genesis_beacon_state(genesis_validator_deposits, genesis_time, genesis_eth1_data)`.
-* Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
+When enough deposits of size `MAX_EFFECTIVE_BALANCE` have been made to the deposit contract an `Eth2Genesis` log is emitted triggering the genesis of the beacon chain. Let:
+
+* `eth2genesis` be the object corresponding to `Eth2Genesis`
+* `genesis_eth1_data` be object of type `Eth1Data` where
+    * `genesis_eth1_data.deposit_root = eth2genesis.deposit_root`
+    * `genesis_eth1_data.deposit_count = eth2genesis.deposit_count`
+    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log
+* `genesis_deposits` be the object of type `List[Deposit]` with deposits ordered chronologically up to and including the deposit that triggered the `Eth2Genesis` log
+
+### Genesis state
+
+Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.genesis_time, genesis_eth1_data)`.
 
 ```python
-def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
-                             genesis_time: int,
-                             genesis_eth1_data: Eth1Data) -> BeaconState:
-    """
-    Get the genesis ``BeaconState``.
-    """
+def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
     state = BeaconState(genesis_time=genesis_time, latest_eth1_data=genesis_eth1_data)
 
     # Process genesis deposits
-    for deposit in genesis_validator_deposits:
+    for deposit in deposits:
         process_deposit(state, deposit)
 
     # Process genesis activations
@@ -1203,12 +1204,17 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
+    # Populate latest_active_index_roots
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
     for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
         state.latest_active_index_roots[index] = genesis_active_index_root
 
     return state
 ```
+
+### Genesis block
+
+Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ## Beacon chain state transition function
 
@@ -1227,7 +1233,7 @@ Transition section notes:
 
 Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
 
-Note: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
+*Note*: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
 
 ### State caching
 
@@ -1279,7 +1285,7 @@ def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> List[P
 def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
     return [
         a for a in get_matching_source_attestations(state, epoch)
-        if a.data.beacon_block_root == get_block_root_at_slot(state, get_attestation_slot(state, a))
+        if a.data.beacon_block_root == get_block_root_at_slot(state, get_attestation_data_slot(state, a.data))
     ]
 ```
 
@@ -1619,7 +1625,7 @@ def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Operations
 
-Note: All functions in this section mutate `state`.
+*Note*: All functions in this section mutate `state`.
 
 ##### Proposer slashings
 
@@ -1687,10 +1693,10 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     """
     Process ``Attestation`` operation.
     """
-    attestation_slot = get_attestation_slot(state, attestation)
+    data = attestation.data
+    attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
-    data = attestation.data
     pending_attestation = PendingAttestation(
         data=data,
         aggregation_bitfield=attestation.aggregation_bitfield,

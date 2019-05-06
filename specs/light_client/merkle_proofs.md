@@ -1,16 +1,19 @@
-**NOTICE**: This document is a work-in-progress for researchers and implementers.
+# Merkle proof formats
 
-## Table of Contents
+**Notice**: This document is a work-in-progress for researchers and implementers.
+
+## Table of contents
 <!-- TOC -->
 
-- [Table of Contents](#table-of-contents)
-- [Constants](#constants)
-- [Generalized Merkle tree index](#generalized-merkle-tree-index)
-- [SSZ object to index](#ssz-object-to-index)
-- [Merkle multiproofs](#merkle-multiproofs)
-- [MerklePartial](#merklepartial)
-    - [`SSZMerklePartial`](#sszmerklepartial)
-    - [Proofs for execution](#proofs-for-execution)
+- [Merkle proof formats](#merkle-proof-formats)
+   - [Table of contents](#table-of-contents)
+   - [Constants](#constants)
+   - [Generalized Merkle tree index](#generalized-merkle-tree-index)
+   - [SSZ object to index](#ssz-object-to-index)
+   - [Merkle multiproofs](#merkle-multiproofs)
+   - [MerklePartial](#merklepartial)
+       - [`SSZMerklePartial`](#sszmerklepartial)
+       - [Proofs for execution](#proofs-for-execution)
 
 <!-- /TOC -->
 
