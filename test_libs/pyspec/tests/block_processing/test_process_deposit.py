@@ -9,34 +9,12 @@ from eth2spec.phase0.spec import (
 from tests.helpers import (
     get_balance,
     build_deposit,
+    prepare_state_and_deposit,
     privkeys,
     pubkeys,
 )
 
 from tests.context import spec_state_test
-
-
-def prepare_state_and_deposit(state, validator_index, amount):
-    """
-    Prepare the state for the deposit, and create a deposit for the given validator, depositing the given amount.
-    """
-    pre_validator_count = len(state.validator_registry)
-    # fill previous deposits with zero-hash
-    deposit_data_leaves = [ZERO_HASH] * pre_validator_count
-
-    pubkey = pubkeys[validator_index]
-    privkey = privkeys[validator_index]
-    deposit, root, deposit_data_leaves = build_deposit(
-        state,
-        deposit_data_leaves,
-        pubkey,
-        privkey,
-        amount,
-    )
-
-    state.latest_eth1_data.deposit_root = root
-    state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
-    return deposit
 
 
 def run_deposit_processing(state, deposit, validator_index, valid=True):
