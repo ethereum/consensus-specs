@@ -1298,22 +1298,17 @@ def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestat
 
 ```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
-    shard_attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
-    candidate_crosslinks = [
-        c for c in [a.data.crosslink for a in shard_attestations]
-        if hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
-    ]
-    if len(candidate_crosslinks) == 0:
-        return Crosslink(), []
-
-    def get_attestations_for(crosslink: Crosslink) -> List[PendingAttestation]:
-        return [a for a in shard_attestations if a.data.crosslink == crosslink]
-    # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
-    winning_crosslink = max(candidate_crosslinks, key=lambda crosslink: (
-        get_attesting_balance(state, get_attestations_for(crosslink)), crosslink.crosslink_data_root
+    attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
+    crosslinks = list(filter(
+        lambda c: hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c)),
+        [a.data.crosslink for a in attestations]
     ))
-
-    return winning_crosslink, get_unslashed_attesting_indices(state, get_attestations_for(winning_crosslink))
+    # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
+    winning_crosslink = max(crosslinks, key=lambda c: (
+        get_attesting_balance(state, [a for a in attestations if a.data.crosslink == c]), c.crosslink_data_root
+    ), default=Crosslink())
+    winning_attestations = [a for a in attestations if a.data.crosslink == winning_crosslink]
+    return winning_crosslink, get_unslashed_attesting_indices(state, winning_attestations)
 ```
 
 #### Justification and finalization
