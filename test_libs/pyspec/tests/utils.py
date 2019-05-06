@@ -3,7 +3,7 @@ from eth2spec.debug.encode import encode
 
 def spectest(description: str = None):
     def runner(fn):
-        # this wraps the function, to hide that the function actually yielding data.
+        # this wraps the function, to hide that the function actually is yielding data, instead of returning once.
         def entry(*args, **kw):
             # check generator mode, may be None/else.
             # "pop" removes it, so it is not passed to the inner function.
@@ -25,9 +25,12 @@ def spectest(description: str = None):
                         (key, value, typ) = data
                         out[key] = encode(value, typ)
                     else:
-                        # Otherwise, just put the raw value.
+                        # Otherwise, try to infer the type, but keep it as-is if it's not a SSZ container.
                         (key, value) = data
-                        out[key] = value
+                        if hasattr(value.__class__, 'fields'):
+                            out[key] = encode(value, value.__class__)
+                        else:
+                            out[key] = value
                 return out
             else:
                 # just complete the function, ignore all yielded data, we are not using it
