@@ -118,7 +118,7 @@ all nodes on the network.
 
 - The `beacon_block` topic - This topic is used solely for propagating new
 	beacon blocks to all nodes on the networks.
-- The `beacon_attestation` topic - This topic is used to for propagate
+- The `beacon_attestation` topic - This topic is used to propagate
 	aggregated attestations to subscribing nodes (typically block proposers) to
 	be included into future blocks. Attestations will be aggregated in their
 	respective subnets before publishing on this topic.
