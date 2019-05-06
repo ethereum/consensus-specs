@@ -13,6 +13,8 @@
         - [Time parameters](#time-parameters)
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
+    - [Implementation notes](#implementation-notes)
+        - [Justification and finality at genesis](#justification-and-finality-at-genesis)
 
 <!-- /TOC -->
 
@@ -99,3 +101,9 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda x: (get_vote_count(x), hash_tree_root(x)))
 ```
+
+## Implementation notes
+
+### Justification and finality at genesis
+
+During genesis, justification and finality root fields within the `BeaconState` reference `ZERO_HASH` rather than a known block. `ZERO_HASH` in `previous_justified_root`, `current_justified_root`, and `finalized_root` should be considered as an alias to the root of the genesis block.
