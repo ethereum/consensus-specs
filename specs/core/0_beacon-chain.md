@@ -767,7 +767,7 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 ```python
 def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot:
     committee_count = get_epoch_committee_count(state, data.target_epoch)
-    offset = (data.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target_epoch)) % SHARD_COUNT
+    offset = (data.crosslink.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target_epoch)) % SHARD_COUNT
     return get_epoch_start_slot(data.target_epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
 ```
 
@@ -1705,14 +1705,14 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     )
 
     assert data.target_epoch in (get_previous_epoch(state), get_current_epoch(state))
-    if data.target_epoch == get_previous_epoch(state):
-        ffg_data = (state.previous_justified_epoch, state.previous_justified_root, get_previous_epoch(state))
-        previous_crosslink = state.previous_crosslinks[data.crosslink.shard]
-        state.previous_epoch_attestations.append(pending_attestation)
     if data.target_epoch == get_current_epoch(state):
         ffg_data = (state.current_justified_epoch, state.current_justified_root, get_current_epoch(state))
         previous_crosslink = state.current_crosslinks[data.crosslink.shard]
         state.current_epoch_attestations.append(pending_attestation)
+    else:
+        ffg_data = (state.previous_justified_epoch, state.previous_justified_root, get_previous_epoch(state))
+        previous_crosslink = state.previous_crosslinks[data.crosslink.shard]
+        state.previous_epoch_attestations.append(pending_attestation)
 
     # Check FFG data, crosslink data, and signature
     assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)
