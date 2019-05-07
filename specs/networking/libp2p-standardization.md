@@ -77,7 +77,7 @@ optionally [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md)
 study*
 
 The [Gossipsub](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub)
-protocol will be used for block and attestation propagation across the
+protocol is used for block and attestation propagation across the
 network.
 
 ### Configuration Parameters
@@ -111,7 +111,7 @@ propagation times and message duplication. Current network-related defaults are:
 *The Go and Js implementations use string topics - This is likely to be
 updated to topic hashes in later versions - https://github.com/libp2p/rust-libp2p/issues/473*
 
-For Eth2.0 clients, topics will be sent as `SHA2-256` hashes of the topic string.
+For Eth2.0 clients, topics are sent as `SHA2-256` hashes of the topic string.
 
 There are two main topics used to propagate attestations and beacon blocks to
 all nodes on the network.
@@ -120,12 +120,12 @@ all nodes on the network.
 	beacon blocks to all nodes on the networks.
 - The `beacon_attestation` topic - This topic is used to propagate
 	aggregated attestations to subscribing nodes (typically block proposers) to
-	be included into future blocks. Attestations will be aggregated in their
+	be included into future blocks. Attestations are aggregated in their
 	respective subnets before publishing on this topic.
 
-Shards will be grouped into their own subnets (defined by a shard topic). The
-number of shard subnets will be defined via `SHARD_SUBNET_COUNT` and the shard
-`shard_number % SHARD_SUBNET_COUNT` will be assigned to the topic:
+Shards are grouped into their own subnets (defined by a shard topic). The
+number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard
+`shard_number % SHARD_SUBNET_COUNT` is assigned to the topic:
 `shard{shard_number % SHARD_SUBNET_COUNT}`.
 
 ### Messages
@@ -138,7 +138,7 @@ has a maximum size of 512KB (estimated from expected largest uncompressed block
 size).
 
 The `data` field of a Gossipsub `Message` is an SSZ-encoded object. For the `beacon_block` topic,
-this will be a `beacon_block`. For the `beacon_attestation` topic, this will be
+this is a `beacon_block`. For the `beacon_attestation` topic, this is
 an `attestation`.
 
 ## Eth-2 RPC
