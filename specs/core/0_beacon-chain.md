@@ -75,7 +75,7 @@
         - [`compute_committee`](#compute_committee)
         - [`get_crosslink_committee`](#get_crosslink_committee)
         - [`get_attesting_indices`](#get_attesting_indices)
-        - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
+        - [`int_to_bytes`](#int_to_bytes)
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_total_balance`](#get_total_balance)
         - [`get_domain`](#get_domain)
@@ -194,8 +194,8 @@ These configurations are updated for releases, but may be out of sync during `de
 | `GENESIS_SLOT` | `0` |
 | `GENESIS_EPOCH` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
-| `ZERO_HASH` | `int_to_bytes32(0)` |
-| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
+| `ZERO_HASH` | `int_to_bytes(0, length=32)` |
+| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes(0, length=1)` |
 
 ### Time parameters
 
@@ -830,7 +830,7 @@ def generate_seed(state: BeaconState,
     return hash(
         get_randao_mix(state, epoch + LATEST_RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch) +
-        int_to_bytes32(epoch)
+        int_to_bytes(epoch, length=32)
     )
 ```
 
@@ -851,7 +851,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     i = 0
     while True:
         candidate_index = first_committee[(epoch + i) % len(first_committee)]
-        random_byte = hash(seed + int_to_bytes8(i // 32))[i % 32]
+        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
         effective_balance = state.validator_registry[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -888,10 +888,10 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
     for round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % index_count
+        pivot = bytes_to_int(hash(seed + int_to_bytes(round, length=1))[0:8]) % index_count
         flip = (pivot - index) % index_count
         position = max(index, flip)
-        source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
+        source = hash(seed + int_to_bytes(round, length=1) + int_to_bytes(position // 256, length=4))
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
@@ -934,9 +934,12 @@ def get_attesting_indices(state: BeaconState,
     return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
 
-### `int_to_bytes1`, `int_to_bytes2`, ...
+### `int_to_bytes`
 
-`int_to_bytes1(x): return x.to_bytes(1, 'little')`, `int_to_bytes2(x): return x.to_bytes(2, 'little')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+```python
+def int_to_bytes(integer: int, length: int) -> bytes:
+    return integer.to_bytes(length, 'little')
+```
 
 ### `bytes_to_int`
 
@@ -966,7 +969,7 @@ def get_domain(state: BeaconState,
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return bytes_to_int(fork_version + int_to_bytes4(domain_type))
+    return bytes_to_int(fork_version + int_to_bytes(domain_type, length=4))
 ```
 
 ### `get_bitfield_bit`
