@@ -13,6 +13,7 @@ YAML_TEST_TARGETS = $(patsubst $(GENERATOR_DIR)/%, $(YAML_TEST_DIR)/%, $(GENERAT
 GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
 
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
+PY_SPEC_PHASE_1_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase1/custody-game.py $(PY_SPEC_DIR)/eth2spec/phase1/shard-data-chains.py
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS)
 
 
@@ -25,6 +26,7 @@ clean:
 	rm -rf $(GENERATOR_VENVS)
 	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
+	rm -rf $(PY_SPEC_PHASE_1_TARGETS)
 
 # "make gen_yaml_tests" to run generators
 gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
@@ -45,9 +47,17 @@ pyspec: $(PY_SPEC_ALL_TARGETS)
 # "make phase0" to create pyspec for phase0
 phase0: $(PY_SPEC_PHASE_0_TARGETS)
 
+# "make phase1" to create pyspec for phase1
+phase1: $(PY_SPEC_PHASE_1_TARGETS)
 
 $(PY_SPEC_DIR)/eth2spec/phase0/spec.py:
 	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@
+
+$(PY_SPEC_DIR)/eth2spec/phase1/custody-game.py:
+	python3 $(SCRIPT_DIR)/phase0/build_spec.py -p1  $(SPEC_DIR)/core/1_custody-game.md $@
+
+$(PY_SPEC_DIR)/eth2spec/phase1/shard-data-chains.py:
+	python3 $(SCRIPT_DIR)/phase0/build_spec.py -p1 $(SPEC_DIR)/core/1_shard-data-chains.md $@
 
 
 CURRENT_DIR = ${CURDIR}

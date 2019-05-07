@@ -2,16 +2,26 @@ import sys
 from typing import List
 
 
-def get_spec(file_name: str) -> List[str]:
+def get_spec(file_name: str, phase:int = 0) -> List[str]:
     code_lines = []
     pulling_from = None
     current_name = None
     current_typedef = None
+    is_update_section = False
+    update_section_depth = None
     type_defs = []
-    for linenum, line in enumerate(open(sys.argv[1]).readlines()):
+    for linenum, line in enumerate(open(file_name).readlines()):
         line = line.rstrip()
         if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
             current_name = line[line[:-1].rfind('`') + 1: -1]
+        if pulling_from is None and len(line) > 0 and line[0] == '#' and line.endswith('updates'):
+            is_update_section = True
+            update_section_depth = max(i for i in range(10) if line.startswith('#' * i))
+        elif pulling_from is None and len(line) > 0 and line[0] == '#' and is_update_section:
+            section_depth = max(i for i in range(10) if line.startswith('#' * i))
+            if section_depth <= update_section_depth:
+                is_update_section = False
+                update_section_depth = None
         if line[:9] == '```python':
             assert pulling_from is None
             pulling_from = linenum + 1
@@ -28,7 +38,10 @@ def get_spec(file_name: str) -> List[str]:
                 current_typedef = None
         else:
             if pulling_from == linenum and line == '{':
-                code_lines.append('%s = SSZType({' % current_name)
+                if is_update_section:
+                    code_lines.append('%s = SSZTypeExtension({' % current_name)
+                else:
+                    code_lines.append('%s = SSZType({' % current_name)
                 current_typedef = ['global_vars["%s"] = SSZType({' % current_name]
             elif pulling_from is not None:
                 # Add some whitespace between functions

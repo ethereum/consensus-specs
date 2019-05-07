@@ -1,6 +1,6 @@
 import sys
 import function_puller
-
+from optparse import OptionParser
 
 def build_phase0_spec(sourcefile, outfile):
     code_lines = []
@@ -85,8 +85,35 @@ def apply_constants_preset(preset: Dict[str, Any]):
         out.write("\n".join(code_lines))
 
 
+def build_phase1_spec(sourcefile, outfile):
+    code_lines = []
+    code_lines.append("""
+from eth2spec.phase0.spec import *
+
+""")
+
+    code_lines += function_puller.get_spec(sourcefile)
+
+    with open(outfile, 'w') as out:
+        out.write("\n".join(code_lines))
+
+
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print("Usage: <source phase0> <output phase0 pyspec>")
-    build_phase0_spec(sys.argv[1], sys.argv[2])
+    parser = OptionParser()
+    parser.add_option("-p", "--phase", dest="phase", type="int", default=0,
+                  help="Build for phase #")
+
+    (options, args) = parser.parse_args()
+
+    if len(args) < 2:
+        parser.print_help()
+    
+    if options.phase == 0:
+        build_phase0_spec(args[0], args[1])
+        print(args[0])
+        print(args[1])
+    elif options.phase == 1:
+        build_phase1_spec(args[0], args[1])
+    else:
+        print("Invalid phase: {0}".format(options["phase"]))
 

@@ -37,6 +37,10 @@ def SSZType(fields):
     SSZObject.fields = fields
     return SSZObject
 
+def SSZTypeExtension(original_type, new_fields):
+    fields = original_type.fields.copy()
+    fields.update(original_type.fields)
+    return SSZType(fields)
 
 class Vector():
     def __init__(self, items):

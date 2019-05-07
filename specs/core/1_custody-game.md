@@ -220,16 +220,19 @@ Add the following fields to the end of the specified container objects. Fields w
 #### `Validator`
 
 ```python
+{
     # next_custody_reveal_period is initialised to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_validators_custody_reveal_period(...)
     'next_custody_reveal_period': 'uint64',
     'max_reveal_lateness': 'uint64',
+}
 ```
 
 #### `BeaconState`
 
 ```python
+{
     'custody_chunk_challenge_records': [CustodyChunkChallengeRecord],
     'custody_bit_challenge_records': [CustodyBitChallengeRecord],
     'custody_challenge_index': 'uint64',
@@ -237,16 +240,19 @@ Add the following fields to the end of the specified container objects. Fields w
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     'exposed_derived_secrets': [['uint64'], EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS],
+}
 ```
 
 #### `BeaconBlockBody`
 
 ```python
+{
     'custody_chunk_challenges': [CustodyChunkChallenge],
     'custody_bit_challenges': [CustodyBitChallenge],
     'custody_responses': [CustodyResponse],
     'custody_key_reveals': [CustodyKeyReveal],
     'early_derived_secret_reveals': [EarlyDerivedSecretReveal],
+}
 ```
 
 ## Helpers
@@ -299,7 +305,7 @@ def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorI
 
 ### `get_validators_custody_reveal_period`
 
- ```python
+```python
 def get_validators_custody_reveal_period(state: BeaconState,
                                          validator_index: ValidatorIndex,
                                          epoch: Epoch=None) -> int:
@@ -484,7 +490,7 @@ def process_chunk_challenge(state: BeaconState,
     new_record = CustodyChunkChallengeRecord(
         challenge_index=state.custody_challenge_index,
         challenger_index=get_beacon_proposer_index(state),
-        responder_index=challenge.responder_index
+        responder_index=challenge.responder_index,
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         crosslink_data_root=challenge.attestation.data.crosslink_data_root,
         depth=depth,
@@ -538,7 +544,7 @@ def process_bit_challenge(state: BeaconState,
         get_validators_custody_reveal_period(
             state=state,
             index=challenge.responder_index,
-            epoch=slot_to_epoch(attestation.data.slot),
+            epoch=slot_to_epoch(attestation.data.slot)),
         challenge.responder_index
     )
     assert bls_verify(
@@ -585,11 +591,11 @@ For each `response` in `block.body.custody_responses`, run the following functio
 ```python
 def process_custody_response(state: BeaconState,
                              response: CustodyResponse) -> None:
-    chunk_challenge = next(record for record in state.custody_chunk_challenge_records if record.challenge_index == response.challenge_index, None)
+    chunk_challenge = next((record for record in state.custody_chunk_challenge_records if record.challenge_index == response.challenge_index), None)
     if chunk_challenge is not None:
         return process_chunk_challenge_response(state, response, chunk_challenge)
 
-    bit_challenge = next(record for record in state.custody_bit_challenge_records if record.challenge_index == response.challenge_index, None)
+    bit_challenge = next((record for record in state.custody_bit_challenge_records if record.challenge_index == response.challenge_index), None)
     if bit_challenge is not None:
         return process_bit_challenge_response(state, response, bit_challenge)
 
@@ -657,7 +663,7 @@ def process_bit_challenge_response(state: BeaconState,
 
  Run `process_reveal_deadlines(state)` immediately after `process_ejections(state)`:
 
- ```python
+```python
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         if (validator.latest_custody_reveal_period +
@@ -686,6 +692,7 @@ def process_challenge_deadlines(state: BeaconState) -> None:
 Append this to `process_final_updates(state)`:
 
 ```python
+def after_process_final_updates(state: BeaconState) -> None:
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```
