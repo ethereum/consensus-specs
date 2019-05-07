@@ -16,7 +16,7 @@
     - [Serialization](#serialization)
         - [`"uintN"`](#uintn)
         - [`"bool"`](#bool)
-        - [Containers, vectors, lists](#containers-vectors-lists)
+        - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
     - [Deserialization](#deserialization)
     - [Merkleization](#merkleization)
     - [Self-signed containers](#self-signed-containers)
@@ -46,8 +46,12 @@
     * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
 * **list**: ordered variable-length homogeneous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
+* **union**: union type containing one of the given subtypes
+    * round bracket notation `(type_1, type_2, ...)`, e.g. `("uint64", "null")`
 
-We recursively define "variable-size" types to be lists and all types that contains a variable-size type. All other types are said to be "fixed-size".
+### Variable-size and fixed-size
+
+We recursively define "variable-size" types to be lists and unions and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
 ### Aliases
 
@@ -56,17 +60,21 @@ For convenience we alias:
 * `"byte"` to `"uint8"` (this is a basic type)
 * `"bytes"` to `["byte"]` (this is *not* a basic type)
 * `"bytesN"` to `["byte", N]` (this is *not* a basic type)
+* `"null"`: `{}`, i.e. the empty container
 
 ### Default values
 
-The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists.
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
+
+### Illegal types
+
+Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as the first type in a union subtype (i.e., with type index zero).
 
 ## Serialization
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
 > *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
-
 
 ### `"uintN"`
 
@@ -82,7 +90,13 @@ assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### Containers, vectors, lists
+### `"null"`
+
+```python
+return b""
+```
+
+### Vectors, containers, lists, unions
 
 ```python
 # Recursively serialize
@@ -102,6 +116,16 @@ fixed_parts = [part if part != None else variable_offsets[i] for i, part in enum
 return b"".join(fixed_parts + variable_parts)
 ```
 
+If `value` is a union type:
+
+Define value as an object that has properties `value.value` with the contained value, and `value.type_index` which indexes the type.
+
+```python
+serialized_bytes = serialize(value.value)
+serialized_type_index = value.type_index.to_bytes(BYTES_PER_LENGTH_OFFSET, "little")
+return serialized_type_index + serialized_bytes
+```
+
 ## Deserialization
 
 Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
@@ -113,6 +137,7 @@ We first define helper functions:
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root. Note that `merkleize` on a single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
+* `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
@@ -120,6 +145,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
+* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
 
 ## Self-signed containers
 
