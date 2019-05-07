@@ -37,14 +37,9 @@
                 - [Voluntary exits](#voluntary-exits)
         - [Attestations](#attestations-1)
             - [Attestation data](#attestation-data)
-                - [Slot](#slot-1)
-                - [Beacon block root](#beacon-block-root)
-                - [Source epoch](#source-epoch)
-                - [Source root](#source-root)
-                - [Target root](#target-root)
-                - [Shard](#shard)
-                - [Previous crosslink root](#previous-crosslink-root)
-                - [Crosslink data root](#crosslink-data-root)
+                - [LMD GHOST vote](#lmd-ghost-vote)
+                - [FFG vote](#ffg-vote)
+                - [Crosslink vote](#crosslink-vote)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bitfield](#aggregation-bitfield)
@@ -245,43 +240,29 @@ First the validator should construct `attestation_data`, an [`AttestationData`](
 * Let `head_block` be the result of running the fork choice during the assigned slot.
 * Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot.
 
-##### Slot
-
-Set `attestation_data.slot = head_state.slot`.
-
-##### Beacon block root
+##### LMD GHOST vote
 
 Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
-##### Source epoch
+##### FFG vote
 
-Set `attestation_data.source_epoch = head_state.justified_epoch`.
+* Set `attestation_data.source_epoch = head_state.justified_epoch`.
+* Set `attestation_data.source_root = head_state.current_justified_root`.
+* Set `attestation_data.target_epoch = get_current_epoch(head_state)`
+* Set `attestation_data.target_root = signing_root(epoch_boundary_block)` where `epoch_boundary_block` is the block at the most recent epoch boundary.
 
-##### Source root
-
-Set `attestation_data.source_root = head_state.current_justified_root`.
-
-##### Target root
-
-Set `attestation_data.target_root = signing_root(epoch_boundary)` where `epoch_boundary` is the block at the most recent epoch boundary.
-
-*Note*: This can be looked up in the state using:
+*Note*: `epoch_boundary_block` can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
-* Set `epoch_boundary = head if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
+* Let `epoch_boundary_block = head if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
 
-##### Shard
+##### Crosslink vote
 
-Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
+Construct `attestation_data.crosslink` via the following
 
-##### Previous crosslink root
-
-Set `attestation_data.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
-
-##### Crosslink data root
-
-Set `attestation_data.crosslink.data_root = ZERO_HASH`.
-
-*Note*: This is a stub for Phase 0.
+* Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
+* Set `attestation_data.crosslink.epoch = min(attestation_data.target_epoch, head_state.current_crosslinks[shard].epoch + MAX_EPOCHS_PER_CROSSLINK)`.
+* Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
+* Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
 
 #### Construct attestation
 
