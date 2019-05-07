@@ -194,7 +194,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `GENESIS_SLOT` | `0` |
 | `GENESIS_EPOCH` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
-| `ZERO_HASH` | `int_to_bytes(0, length=32)` |
+| `ZERO_HASH` | `b'\x00' * 32` |
 | `BLS_WITHDRAWAL_PREFIX` | `0` |
 
 ### Time parameters

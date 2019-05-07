@@ -18,9 +18,6 @@ from eth2spec.utils.bls_stub import *
 # stub, will get overwritten by real var
 SLOTS_PER_EPOCH = 64
 
-def int_to_bytes(integer: int, length: int) -> bytes:
-    return integer.to_bytes(length, 'little')
-
 Slot = NewType('Slot', int)  # uint64
 Epoch = NewType('Epoch', int)  # uint64
 Shard = NewType('Shard', int)  # uint64
