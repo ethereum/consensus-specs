@@ -1,13 +1,13 @@
 # Ethereum 2.0 Phase 1 -- Shard Data Chains
 
-**NOTICE**: This document is a work-in-progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
-## Table of Contents
+## Table of contents
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Shards Data Chains](#ethereum-20-phase-1----shard-data-chains)
-    - [Table of Contents](#table-of-contents)
+- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
+    - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
         - [Misc](#misc)
@@ -363,7 +363,7 @@ Let:
 * `shard_blocks` be the `ShardBlock` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `shard` at slot `slot`
 * `beacon_state` be the canonical `BeaconState`
 * `valid_attestations` be the list of valid `Attestation`, recursively defined
-* `candidate` be a candidate `Attestation` which is valid under phase 0 rules, and for which validity is to be determined under phase 1 rules by running `is_valid_beacon_attestation`
+* `candidate` be a candidate `Attestation` which is valid under Phase 0 rules, and for which validity is to be determined under Phase 1 rules by running `is_valid_beacon_attestation`
 
 ```python
 def is_valid_beacon_attestation(shard: Shard,

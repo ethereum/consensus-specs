@@ -2,14 +2,14 @@
 
 [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-To learn more about sharding and eth2.0/Serenity, see the [sharding FAQ](https://github.com/ethereum/wiki/wiki/Sharding-FAQ) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
+To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://github.com/ethereum/wiki/wiki/Sharding-FAQ) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
-This repo hosts the current eth2.0 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed upon changes to spec can be made through pull requests.
+This repository hosts the current Eth 2.0 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 
 
 ## Specs
 
-Core specifications for eth2.0 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
+Core specifications for Eth 2.0 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
 ### Phase 0
 * [The Beacon Chain](specs/core/0_beacon-chain.md)
@@ -30,7 +30,7 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 * [Light client syncing protocol](specs/light_client/sync_protocol.md)
 
 
-### Design goals
+## Design goals
 
 The following are the broad design goals for Ethereum 2.0:
 * to minimize complexity, even at the cost of some losses in efficiency

@@ -1,7 +1,7 @@
 # BLS tests
 
 A test type for BLS. Primarily geared towards verifying the *integration* of any BLS library.
-We do not recommend to roll your own crypto, or use an untested BLS library.
+We do not recommend rolling your own crypto or using an untested BLS library.
 
 The BLS test suite runner has the following handlers:
 
@@ -12,4 +12,4 @@ The BLS test suite runner has the following handlers:
 - [`priv_to_pub`](./priv_to_pub.md)
 - [`sign_msg`](./sign_msg.md)
 
-Note: signature-verification and aggregate-verify test cases are not yet supported.
+*Note*: Signature-verification and aggregate-verify test cases are not yet supported.
