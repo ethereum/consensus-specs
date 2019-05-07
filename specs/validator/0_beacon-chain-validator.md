@@ -134,7 +134,7 @@ Once a validator is activated, the validator is assigned [responsibilities](#bea
 
 ## Beacon chain responsibilities
 
-A validator has two primary responsibilities to the beacon chain: [proposing blocks](block-proposal) and [creating attestations](attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
+A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
 
 ### Block proposal
 
