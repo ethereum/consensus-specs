@@ -82,7 +82,7 @@
         - [`get_bitfield_bit`](#get_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
-        - [`verify_indexed_attestation`](#verify_indexed_attestation)
+        - [`validate_indexed_attestation`](#validate_indexed_attestation)
         - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
         - [`integer_squareroot`](#integer_squareroot)
         - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
@@ -1013,38 +1013,36 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     )
 ```
 
-### `verify_indexed_attestation`
+### `validate_indexed_attestation`
 
 ```python
-def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
+def validate_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> None:
     """
     Verify validity of ``indexed_attestation``.
     """
     bit_0_indices = indexed_attestation.custody_bit_0_indices
     bit_1_indices = indexed_attestation.custody_bit_1_indices
 
-    return (
-        # Verify no index has custody bit equal to 1 [to be removed in phase 1]
-        len(bit_1_indices) == 0 and
-        # Verify max number of indices
-        len(bit_0_indices) + len(bit_1_indices) <= MAX_INDICES_PER_ATTESTATION and
-        # Verify index sets are disjoint
-        len(set(bit_0_indices).intersection(bit_1_indices)) == 0 and
-        # Verify indices are sorted
-        bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices) and
-        # Verify aggregate signature
-        bls_verify_multiple(
-            pubkeys=[
-                bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_0_indices]),
-                bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_1_indices]),
-            ],
-            message_hashes=[
-                hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-                hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
-            ],
-            signature=indexed_attestation.signature,
-            domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target_epoch),
-        )
+    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
+    assert len(bit_1_indices) == 0
+    # Verify max number of indices
+    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_INDICES_PER_ATTESTATION
+    # Verify index sets are disjoint
+    assert len(set(bit_0_indices).intersection(bit_1_indices)) == 0
+    # Verify indices are sorted
+    assert bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)
+    # Verify aggregate signature
+    assert bls_verify_multiple(
+        pubkeys=[
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_0_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_1_indices]),
+        ],
+        message_hashes=[
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
+        ],
+        signature=indexed_attestation.signature,
+        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target_epoch),
     )
 ```
 
@@ -1669,8 +1667,8 @@ def process_attester_slashing(state: BeaconState,
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
     assert is_slashable_attestation_data(attestation_1.data, attestation_2.data)
-    assert verify_indexed_attestation(state, attestation_1)
-    assert verify_indexed_attestation(state, attestation_2)
+    validate_indexed_attestation(state, attestation_1)
+    validate_indexed_attestation(state, attestation_2)
 
     slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
@@ -1707,7 +1705,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
 
     # Check signature and bitfields
-    assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))
+    validate_indexed_attestation(state, convert_to_indexed(state, attestation))
 
     # Cache pending attestation
     pending_attestation = PendingAttestation(
