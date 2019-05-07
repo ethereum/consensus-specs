@@ -134,7 +134,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'attestation': Attestation,
     'challenger_index': ValidatorIndex,
     'responder_key': BLSSignature,
-    'chunk_bits': Bitfield,
+    'chunk_bits': "bytes",
     'signature': BLSSignature,
 }
 ```
@@ -147,7 +147,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'deadline': Epoch,
-    'crosslink_data_root': Hash,
+    'crosslink_data_root': 'bytes32',
     'depth': 'uint64',
     'chunk_index': 'uint64',
 }
@@ -161,9 +161,9 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'deadline': Epoch,
-    'crosslink_data_root': Hash,
+    'crosslink_data_root': 'bytes32',
     'chunk_count': 'uint64',
-    'chunk_bits_merkle_root': Hash,
+    'chunk_bits_merkle_root': 'bytes32',
     'responder_key': BLSSignature,
 }
 ```
@@ -175,9 +175,9 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenge_index': 'uint64',
     'chunk_index': 'uint64',
     'chunk': ['byte', BYTES_PER_CUSTODY_CHUNK],
-    'data_branch': [Hash],
-    'chunk_bits_branch': [Hash],
-    'chunk_bits_leaf': Hash,
+    'data_branch': ['bytes32'],
+    'chunk_bits_branch': ['bytes32'],
+    'chunk_bits_leaf': 'bytes32',
 }
 ```
 
@@ -287,7 +287,7 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
 ### `get_chunk_bits_root`
 
 ```python
-def get_chunk_bits_root(chunk_bitfield: Bitfield) -> Bytes32:
+def get_chunk_bits_root(chunk_bitfield: bytes) -> Bytes32:
     aggregated_bits = bytearray([0] * 32)
     for i in range(0, len(chunk_bitfield), 32):
         for j in range(32):

@@ -15,9 +15,9 @@
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
+        - [`ShardAttestation`](#shardattestation)
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
-        - [`ShardAttestation`](#shardattestation)
     - [Helper functions](#helper-functions)
         - [`get_period_committee`](#get_period_committee)
         - [`get_switchover_epoch`](#get_switchover_epoch)
@@ -68,7 +68,23 @@ This document describes the shard data layer and the shard fork choice rule in P
 ### `ShardBlockBody`
 
 ```python
-['byte', BYTES_PER_SHARD_BLOCK_BODY]
+{
+    'data': ['byte', BYTES_PER_SHARD_BLOCK_BODY],
+}
+```
+
+### `ShardAttestation`
+
+```python
+{
+    'data': {
+        'slot': Slot,
+        'shard': Shard,
+        'shard_block_root': 'bytes32',
+    },
+    'aggregation_bitfield': 'bytes',
+    'aggregate_signature': BLSSignature,
+}
 ```
 
 ### `ShardBlock`
@@ -77,10 +93,10 @@ This document describes the shard data layer and the shard fork choice rule in P
 {
     'slot': Slot,
     'shard': Shard,
-    'beacon_chain_root': Hash,
-    'previous_block_root': Hash,
+    'beacon_chain_root': 'bytes32',
+    'previous_block_root': 'bytes32',
     'data': ShardBlockBody,
-    'state_root': Hash,
+    'state_root': 'bytes32',
     'attestations': [ShardAttestation],
     'signature': BLSSignature,
 }
@@ -92,26 +108,12 @@ This document describes the shard data layer and the shard fork choice rule in P
 {
     'slot': Slot,
     'shard': Shard,
-    'beacon_chain_root': Hash,
-    'previous_block_root': Hash,
-    'body_root': Hash,
-    'state_root': Hash,
+    'beacon_chain_root': 'bytes32',
+    'previous_block_root': 'bytes32',
+    'body_root': 'bytes32',
+    'state_root': 'bytes32',
     'attestations': [ShardAttestation],
     'signature': BLSSignature,
-}
-```
-
-### `ShardAttestation`
-
-```python
-{
-    'data': {
-        'slot': Slot,
-        'shard': Shard,
-        'shard_block_root': Hash,
-    },
-    'aggregation_bitfield': Bitfield,
-    'aggregate_signature': BLSSignature,
 }
 ```
 
@@ -234,7 +236,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 ### `compute_crosslink_data_root`
 
 ```python
-def compute_crosslink_data_root(blocks: List[ShardBlock]) -> Hash:
+def compute_crosslink_data_root(blocks: List[ShardBlock]) -> 'bytes32':
     def is_power_of_two(value: int) -> bool:
         return (value > 0) and (value & (value - 1) == 0)
 
@@ -272,7 +274,7 @@ Let:
 def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
                          beacon_state: BeaconState,
                          valid_shard_blocks: List[ShardBlock],
-                         unix_time: uint64,
+                         unix_time: int,
                          candidate: ShardBlock) -> bool:
     # Check if block is already determined valid
     for _, block in enumerate(valid_shard_blocks):

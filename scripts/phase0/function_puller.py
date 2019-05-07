@@ -39,7 +39,7 @@ def get_spec(file_name: str, phase:int = 0) -> List[str]:
         else:
             if pulling_from == linenum and line == '{':
                 if is_update_section:
-                    code_lines.append('%s = SSZTypeExtension({' % current_name)
+                    code_lines.append('%s = SSZTypeExtension(%s, {' % (current_name, current_name))
                 else:
                     code_lines.append('%s = SSZType({' % current_name)
                 current_typedef = ['global_vars["%s"] = SSZType({' % current_name]
