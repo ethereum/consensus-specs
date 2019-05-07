@@ -111,7 +111,7 @@ Because serialization is an injective function (i.e. two distinct objects of the
 We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
+* `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root. Note that `merkleize` on a single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
