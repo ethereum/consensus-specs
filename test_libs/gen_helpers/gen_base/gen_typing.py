@@ -1,4 +1,10 @@
-from typing import Callable, Dict, Tuple, Any
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Tuple,
+)
+
 
 TestCase = Dict[str, Any]
 TestSuite = Dict[str, Any]

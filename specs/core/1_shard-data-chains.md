@@ -1,13 +1,13 @@
 # Ethereum 2.0 Phase 1 -- Shard Data Chains
 
-**NOTICE**: This document is a work-in-progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
-## Table of Contents
+## Table of contents
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Shards Data Chains](#ethereum-20-phase-1----shard-data-chains)
-    - [Table of Contents](#table-of-contents)
+- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
+    - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
         - [Misc](#misc)
@@ -53,8 +53,8 @@ This document describes the shard data layer and the shard fork choice rule in P
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `CROSSLINK_LOOKBACK` | 2**0 (= 1) | epochs  | 6.2 minutes |
-| `PERSISTENT_COMMITTEE_PERIOD` | 2**11 (= 2,048) | epochs | ~9 days |
+| `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs  | 6.2 minutes |
+| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 
 ### Signature domains
 
@@ -120,21 +120,15 @@ This document describes the shard data layer and the shard fork choice rule in P
 ### `get_period_committee`
 
 ```python
-def get_period_committee(state: BeaconState,
-                         shard: Shard,
-                         committee_start_epoch: Epoch,
-                         index: int,
-                         committee_count: int) -> List[ValidatorIndex]:
+def get_period_committee(state: BeaconState, epoch: Epoch, shard: Shard, index: int, count: int) -> List[ValidatorIndex]:
     """
     Return committee for a period. Used to construct persistent committees.
     """
-    active_validator_indices = get_active_validator_indices(state.validator_registry, committee_start_epoch)
-    seed = generate_seed(state, committee_start_epoch)
     return compute_committee(
-        validator_indices=active_validator_indices,
-        seed=seed,
-        index=shard * committee_count + index,
-        total_committees=SHARD_COUNT * committee_count,
+        indices=get_active_validator_indices(state, epoch),
+        seed=generate_seed(state, epoch),
+        index=shard * count + index,
+        count=SHARD_COUNT * count,
     )
 ```
 
@@ -165,7 +159,7 @@ def get_persistent_committee(state: BeaconState,
         len(get_active_validator_indices(state.validator_registry, later_start_epoch)) //
         (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
     ) + 1
-    
+
     index = slot % committee_count
     earlier_committee = get_period_committee(state, shard, earlier_start_epoch, index, committee_count)
     later_committee = get_period_committee(state, shard, later_start_epoch, index, committee_count)
@@ -369,7 +363,7 @@ Let:
 * `shard_blocks` be the `ShardBlock` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `shard` at slot `slot`
 * `beacon_state` be the canonical `BeaconState`
 * `valid_attestations` be the list of valid `Attestation`, recursively defined
-* `candidate` be a candidate `Attestation` which is valid under phase 0 rules, and for which validity is to be determined under phase 1 rules by running `is_valid_beacon_attestation`
+* `candidate` be a candidate `Attestation` which is valid under Phase 0 rules, and for which validity is to be determined under Phase 1 rules by running `is_valid_beacon_attestation`
 
 ```python
 def is_valid_beacon_attestation(shard: Shard,
