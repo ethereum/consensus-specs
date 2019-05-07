@@ -15,15 +15,8 @@ from typing import (
 from eth2spec.utils.minimal_ssz import *
 from eth2spec.utils.bls_stub import *
 
-""")
-    for i in (1, 2, 3, 4, 8, 32, 48, 96):
-        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
-
-    code_lines.append("""
-
 # stub, will get overwritten by real var
 SLOTS_PER_EPOCH = 64
-
 
 Slot = NewType('Slot', int)  # uint64
 Epoch = NewType('Epoch', int)  # uint64
