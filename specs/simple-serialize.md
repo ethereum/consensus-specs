@@ -85,7 +85,7 @@ return b"\x01" if value is True else b"\x00"
 ### Containers, vectors, lists
 
 ```python
-# Reccursively serialize
+# Recursively serialize
 fixed_parts = [serialize(element) if not is_variable_size(element) else None for element in value]
 variable_parts = [serialize(element) if is_variable_size(element) else b"" for element in value]
 
