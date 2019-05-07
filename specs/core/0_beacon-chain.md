@@ -371,7 +371,7 @@ The types are defined topologically to aid in facilitating an executable version
     'slot': 'uint64',
     'parent_root': 'bytes32',
     'state_root': 'bytes32',
-    'block_body_root': 'bytes32',
+    'body_root': 'bytes32',
     'signature': 'bytes96',
 }
 ```
@@ -1591,7 +1591,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        block_body_root=hash_tree_root(block.body),
+        body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
