@@ -1265,7 +1265,7 @@ def get_genesis_beacon_state(genesis_validator_deposits: List[Deposit],
 The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
-def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconBlock:
+def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
     # Process slots (including those with no blocks) since block
     process_slots(state, block.slot)
     # Process block
