@@ -15,7 +15,7 @@ from tests.helpers import (
     add_attestation_to_state,
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
-    get_crosslink_committee_for_attestation,
+    get_crosslink_committee,
     get_valid_attestation,
     next_epoch,
     next_slot,
@@ -88,7 +88,7 @@ def test_single_crosslink_update_from_previous_epoch(state):
     assert post_state.previous_crosslinks[shard] != post_state.current_crosslinks[shard]
     assert pre_state.current_crosslinks[shard] != post_state.current_crosslinks[shard]
     # ensure rewarded
-    for index in get_crosslink_committee_for_attestation(state, attestation.data):
+    for index in get_crosslink_committee(state, attestation.data.target_epoch, attestation.data.shard):
         assert crosslink_deltas[0][index] > 0
         assert crosslink_deltas[1][index] == 0
 
@@ -129,7 +129,7 @@ def test_double_late_crosslink(state):
     # ensure that the current crosslinks were not updated by the second attestation
     assert post_state.previous_crosslinks[shard] == post_state.current_crosslinks[shard]
     # ensure no reward, only penalties for the failed crosslink
-    for index in get_crosslink_committee_for_attestation(state, attestation_2.data):
+    for index in get_crosslink_committee(state, attestation_2.data.target_epoch, attestation_2.data.shard):
         assert crosslink_deltas[0][index] == 0
         assert crosslink_deltas[1][index] > 0
 

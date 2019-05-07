@@ -3,7 +3,7 @@ from typing import Any
 from .hash_function import hash
 
 BYTES_PER_CHUNK = 32
-BYTES_PER_LENGTH_PREFIX = 4
+BYTES_PER_LENGTH_OFFSET = 4
 ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
 
 
@@ -111,19 +111,34 @@ def coerce_to_bytes(x):
         raise Exception("Expecting bytes")
 
 
-def encode_bytes(value):
-    serialized_bytes = coerce_to_bytes(value)
-    assert len(serialized_bytes) < 2 ** (8 * BYTES_PER_LENGTH_PREFIX)
-    serialized_length = len(serialized_bytes).to_bytes(BYTES_PER_LENGTH_PREFIX, 'little')
-    return serialized_length + serialized_bytes
+def encode_series(values, types):
+    # Recursively serialize
+    parts = [(is_constant_sized(types[i]), serialize_value(values[i], types[i])) for i in range(len(values))]
 
+    # Compute and check lengths
+    fixed_lengths = [len(serialized) if constant_size else BYTES_PER_LENGTH_OFFSET
+                     for (constant_size, serialized) in parts]
+    variable_lengths = [len(serialized) if not constant_size else 0
+                        for (constant_size, serialized) in parts]
 
-def encode_variable_size_container(values, types):
-    return encode_bytes(encode_fixed_size_container(values, types))
+    # Check if integer is not out of bounds (Python)
+    assert sum(fixed_lengths + variable_lengths) < 2 ** (BYTES_PER_LENGTH_OFFSET * 8)
 
+    # Interleave offsets of variable-size parts with fixed-size parts.
+    # Avoid quadratic complexity in calculation of offsets.
+    offset = sum(fixed_lengths)
+    variable_parts = []
+    fixed_parts = []
+    for (constant_size, serialized) in parts:
+        if constant_size:
+            fixed_parts.append(serialized)
+        else:
+            fixed_parts.append(offset.to_bytes(BYTES_PER_LENGTH_OFFSET, 'little'))
+            variable_parts.append(serialized)
+            offset += len(serialized)
 
-def encode_fixed_size_container(values, types):
-    return b''.join([serialize_value(v, typ) for (v, typ) in zip(values, types)])
+    # Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
+    return b"".join(fixed_parts + variable_parts)
 
 
 def serialize_value(value, typ=None):
@@ -142,18 +157,13 @@ def serialize_value(value, typ=None):
     elif isinstance(typ, list) and len(typ) == 2:
         # (regardless of element type, sanity-check if the length reported in the vector type matches the value length)
         assert len(value) == typ[1]
-        # If value is fixed-size (i.e. element type is fixed-size):
-        if is_constant_sized(typ):
-            return encode_fixed_size_container(value, [typ[0]] * len(value))
-        # If value is variable-size (i.e. element type is variable-size)
-        else:
-            return encode_variable_size_container(value, [typ[0]] * len(value))
-    # "bytes" (variable size)
-    elif isinstance(typ, str) and typ == 'bytes':
-        return encode_bytes(value)
+        return encode_series(value, [typ[0]] * len(value))
     # List
     elif isinstance(typ, list) and len(typ) == 1:
-        return encode_variable_size_container(value, [typ[0]] * len(value))
+        return encode_series(value, [typ[0]] * len(value))
+    # "bytes" (variable size)
+    elif isinstance(typ, str) and typ == 'bytes':
+        return coerce_to_bytes(value)
     # "bytesN" (fixed size)
     elif isinstance(typ, str) and len(typ) > 5 and typ[:5] == 'bytes':
         assert len(value) == int(typ[5:]), (value, int(typ[5:]))
@@ -162,10 +172,7 @@ def serialize_value(value, typ=None):
     elif hasattr(typ, 'fields'):
         values = [getattr(value, field) for field in typ.fields.keys()]
         types = list(typ.fields.values())
-        if is_constant_sized(typ):
-            return encode_fixed_size_container(values, types)
-        else:
-            return encode_variable_size_container(values, types)
+        return encode_series(values, types)
     else:
         print(value, typ)
         raise Exception("Type not recognized")

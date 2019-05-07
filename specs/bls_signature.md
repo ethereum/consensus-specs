@@ -118,7 +118,7 @@ Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `sig
 
 ## Signature verification
 
-In the following `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
+In the following, `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
 
 ```python
 g_x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507

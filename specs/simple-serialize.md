@@ -1,25 +1,28 @@
 # SimpleSerialize (SSZ)
 
-This is a **work in progress** describing typing, serialization and Merkleization of Ethereum 2.0 objects.
+**Notice**: This document is a work-in-progress describing typing, serialization, and Merkleization of Eth 2.0 objects.
 
 ## Table of contents
+<!-- TOC -->
 
-- [Constants](#constants)
-- [Typing](#typing)
-    - [Basic types](#basic-types)
-    - [Composite types](#composite-types)
-    - [Variable-size and fixed-size](#variable-size-and-fixed-size)
-    - [Aliases](#aliases)
-    - [Default values](#default-values)
-    - [Illegal types](#illegal-types)
-- [Serialization](#serialization)
-    - [`"uintN"`](#uintn)
-    - [`"bool"`](#bool)
-    - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
-- [Deserialization](#deserialization)
-- [Merkleization](#merkleization)
-- [Self-signed containers](#self-signed-containers)
-- [Implementations](#implementations)
+- [SimpleSerialize (SSZ)](#simpleserialize-ssz)
+    - [Table of contents](#table-of-contents)
+    - [Constants](#constants)
+    - [Typing](#typing)
+        - [Basic types](#basic-types)
+        - [Composite types](#composite-types)
+        - [Aliases](#aliases)
+        - [Default values](#default-values)
+    - [Serialization](#serialization)
+        - [`"uintN"`](#uintn)
+        - [`"bool"`](#bool)
+        - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
+    - [Deserialization](#deserialization)
+    - [Merkleization](#merkleization)
+    - [Self-signed containers](#self-signed-containers)
+    - [Implementations](#implementations)
+
+<!-- /TOC -->
 
 ## Constants
 
@@ -96,7 +99,7 @@ return b""
 ### Vectors, containers, lists, unions
 
 ```python
-# Reccursively serialize
+# Recursively serialize
 fixed_parts = [serialize(element) if not is_variable_size(element) else None for element in value]
 variable_parts = [serialize(element) if is_variable_size(element) else b"" for element in value]
 
@@ -161,4 +164,4 @@ Let `value` be a self-signed container object. The convention is that the signat
 | Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) |
 | Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |
 | C# | | Jordan Andrews | [https://github.com/codingupastorm/csharp-ssz](https://github.com/codingupastorm/csharp-ssz) |
-| C++ | | | [https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) |
+| C++ | | Jiyun Kim | [https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) |
