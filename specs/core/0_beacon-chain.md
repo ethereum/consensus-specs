@@ -195,7 +195,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `GENESIS_EPOCH` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
 | `ZERO_HASH` | `int_to_bytes(0, length=32)` |
-| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes(0, length=1)` |
+| `BLS_WITHDRAWAL_PREFIX` | `0` |
 
 ### Time parameters
 
@@ -1840,7 +1840,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Verify that the pubkey is valid
     assert (
         state.validator_registry[transfer.sender].withdrawal_credentials ==
-        BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]
+        int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid
     assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))

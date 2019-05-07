@@ -180,7 +180,7 @@ def get_shard_proposer_index(state: BeaconState,
                              slot: Slot) -> ValidatorIndex:
     # Randomly shift persistent committee
     persistent_committee = get_persistent_committee(state, shard, slot)
-    seed = hash(state.current_shuffling_seed + int_to_bytes8(shard) + int_to_bytes8(slot))
+    seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
     random_index = bytes_to_int(seed[0:8]) % len(persistent_committee)
     persistent_committee = persistent_committee[random_index:] + persistent_committee[:random_index]
 
