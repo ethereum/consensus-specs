@@ -5,7 +5,8 @@ import function_puller
 def build_phase0_spec(sourcefile, outfile):
     code_lines = []
     code_lines.append("""
-    
+
+import copy
 from typing import (
     Any,
     Callable,
@@ -88,7 +89,7 @@ def apply_constants_preset(preset: Dict[str, Any]):
 
     # Deal with derived constants
     global_vars['GENESIS_EPOCH'] = slot_to_epoch(GENESIS_SLOT)
-    
+
     # Initialize SSZ types again, to account for changed lengths
     init_SSZ_types()
 """)
