@@ -1,11 +1,11 @@
-# ETH 2.0 PySpec
+# Eth 2.0 Executable Python Spec (PySpec)
 
-The Python executable spec is built from the ETH 2.0 specification, 
+The executable Python spec is built from the Eth 2.0 specification, 
  complemented with the necessary helper functions for hashing, BLS, and more.
 
 With this executable spec,
  test-generators can easily create test-vectors for client implementations,
- and the spec itself can be verified to be consistent and coherent, through sanity tests implemented with pytest.
+ and the spec itself can be verified to be consistent and coherent through sanity tests implemented with pytest.
 
 
 ## Building
@@ -14,12 +14,12 @@ All the dynamic parts of the spec can be build at once with `make pyspec`.
 
 Alternatively, you can build a sub-set of the pyspec: `make phase0`.
 
-Or, to build a single file, specify the path, e.g. `make test_libs/pyspec/eth2spec/phase0/spec.py`
+Or, to build a single file, specify the path, e.g. `make test_libs/pyspec/eth2spec/phase0/spec.py`.
 
 
 ## Py-tests
 
-After building, you can install the dependencies for running the `pyspec` tests with `make install_test`
+After building, you can install the dependencies for running the `pyspec` tests with `make install_test`.
 
 These tests are not intended for client-consumption.
 These tests are sanity tests, to verify if the spec itself is consistent.
@@ -28,7 +28,7 @@ These tests are sanity tests, to verify if the spec itself is consistent.
 
 #### Automated
 
-Run `make test` from the root of the spec repository.
+Run `make test` from the root of the specs repository.
 
 #### Manual
 
@@ -40,7 +40,7 @@ python3 -m venv venv
 . venv/bin/activate
 pip3 install -r requirements-testing.txt
 ```
-Note: make sure to run `make -B pyspec` from the root of the specs repository,
+*Note*: Make sure to run `make -B pyspec` from the root of the specs repository,
  to build the parts of the pyspec module derived from the markdown specs.
 The `-B` flag may be helpful to force-overwrite the `pyspec` output after you made a change to the markdown source files.
 
@@ -58,4 +58,4 @@ The pyspec is not a replacement.
 
 ## License
 
-Same as the spec itself, see [LICENSE](../../LICENSE) file in spec repository root.
+Same as the spec itself; see [LICENSE](../../LICENSE) file in the specs repository root.
