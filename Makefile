@@ -15,7 +15,7 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
 PY_SPEC_PHASE_0_DEPS = $(SPEC_DIR)/core/0_*.md
 
-PY_SPEC_PHASE_1_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase1/custody_game.py $(PY_SPEC_DIR)/eth2spec/phase1/shard_data_chains.py
+PY_SPEC_PHASE_1_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase1/spec.py
 PY_SPEC_PHASE_1_DEPS = $(SPEC_DIR)/core/1_*.md
 
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS)
@@ -46,7 +46,7 @@ citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
 
 # "make pyspec" to create the pyspec for all phases.
-pyspec: $(PY_SPEC_ALL_TARGETS)
+pyspec: $(PY_SPEC_ALL_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
 # "make phase0" to create pyspec for phase0
 phase0: $(PY_SPEC_PHASE_0_TARGETS)
@@ -57,12 +57,8 @@ phase1: $(PY_SPEC_PHASE_1_TARGETS)
 $(PY_SPEC_DIR)/eth2spec/phase0/spec.py: $(PY_SPEC_PHASE_0_DEPS)
 	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@
 
-$(PY_SPEC_DIR)/eth2spec/phase1/custody_game.py: $(PY_SPEC_PHASE_1_DEPS)
+$(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
 	python3 $(SCRIPT_DIR)/phase0/build_spec.py -p1  $(SPEC_DIR)/core/1_custody-game.md $@
-
-$(PY_SPEC_DIR)/eth2spec/phase1/shard_data_chains.py: $(PY_SPEC_PHASE_0_DEPS)
-	python3 $(SCRIPT_DIR)/phase0/build_spec.py -p1 $(SPEC_DIR)/core/1_shard-data-chains.md $@
-
 
 CURRENT_DIR = ${CURDIR}
 
