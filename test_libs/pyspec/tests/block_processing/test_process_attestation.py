@@ -150,6 +150,6 @@ def test_empty_aggregation_bitfield(state):
 
     attestation.aggregation_bitfield = b'\x00' * len(attestation.aggregation_bitfield)
 
-    pre_state, post_state = run_attestation_processing(state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation)
 
     return pre_state, attestation, post_state
