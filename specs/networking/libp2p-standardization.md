@@ -126,7 +126,7 @@ all nodes on the network.
 Shards are grouped into their own subnets (defined by a shard topic). The
 number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard
 `shard_number % SHARD_SUBNET_COUNT` is assigned to the topic:
-`shard{shard_number % SHARD_SUBNET_COUNT}`.
+`shard{shard_number % SHARD_SUBNET_COUNT}_attestation`.
 
 ### Messages
 
