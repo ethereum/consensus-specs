@@ -1,5 +1,3 @@
-import pytest
-
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
@@ -8,12 +6,12 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_voluntary_exit,
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     build_voluntary_exit,
     pubkey_to_privkey,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test, expect_assertion_error
 
 
 def run_voluntary_exit_processing(state, voluntary_exit, valid=True):
@@ -31,8 +29,7 @@ def run_voluntary_exit_processing(state, voluntary_exit, valid=True):
     yield 'voluntary_exit', voluntary_exit
 
     if not valid:
-        with pytest.raises(AssertionError):
-            process_voluntary_exit(state, voluntary_exit)
+        expect_assertion_error(lambda: process_voluntary_exit(state, voluntary_exit))
         yield 'post', None
         return
 

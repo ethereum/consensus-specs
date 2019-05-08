@@ -1,16 +1,14 @@
-import pytest
-
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import (
     get_current_epoch,
     process_proposer_slashing,
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     get_balance,
     get_valid_proposer_slashing,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test, expect_assertion_error
 
 
 def run_proposer_slashing_processing(state, proposer_slashing, valid=True):
@@ -27,8 +25,7 @@ def run_proposer_slashing_processing(state, proposer_slashing, valid=True):
     yield 'proposer_slashing', proposer_slashing
 
     if not valid:
-        with pytest.raises(AssertionError):
-            process_proposer_slashing(state, proposer_slashing)
+        expect_assertion_error(lambda: process_proposer_slashing(state, proposer_slashing))
         yield 'post', None
         return
 

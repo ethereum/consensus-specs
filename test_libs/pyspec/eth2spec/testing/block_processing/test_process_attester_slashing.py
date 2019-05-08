@@ -1,17 +1,15 @@
-import pytest
-
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
     process_attester_slashing,
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     get_balance,
     get_valid_attester_slashing,
     next_epoch,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test, expect_assertion_error
 
 
 def run_attester_slashing_processing(state, attester_slashing, valid=True):
@@ -27,8 +25,7 @@ def run_attester_slashing_processing(state, attester_slashing, valid=True):
     yield 'attester_slashing', attester_slashing
 
     if not valid:
-        with pytest.raises(AssertionError):
-            process_attester_slashing(state, attester_slashing)
+        expect_assertion_error(lambda: process_attester_slashing(state, attester_slashing))
         yield 'post', None
         return
 

@@ -1,5 +1,3 @@
-import pytest
-
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
@@ -8,12 +6,12 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_transfer,
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     get_valid_transfer,
     next_epoch,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test, expect_assertion_error
 
 
 def run_transfer_processing(state, transfer, valid=True):
@@ -34,8 +32,7 @@ def run_transfer_processing(state, transfer, valid=True):
     yield 'transfer', transfer
 
     if not valid:
-        with pytest.raises(AssertionError):
-            process_transfer(state, transfer)
+        expect_assertion_error(lambda: process_transfer(state, transfer))
         yield 'post', None
         return
 

@@ -1,12 +1,10 @@
-import pytest
-
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.spec import (
     ZERO_HASH,
     process_deposit,
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     get_balance,
     build_deposit,
     prepare_state_and_deposit,
@@ -14,7 +12,7 @@ from tests.helpers import (
     pubkeys,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test, expect_assertion_error
 
 
 def run_deposit_processing(state, deposit, validator_index, valid=True):
@@ -37,8 +35,7 @@ def run_deposit_processing(state, deposit, validator_index, valid=True):
     yield 'deposit', deposit
 
     if not valid:
-        with pytest.raises(AssertionError):
-            process_deposit(state, deposit)
+        expect_assertion_error(lambda: process_deposit(state, deposit))
         yield 'post', None
         return
 
@@ -88,6 +85,9 @@ def test_wrong_index(state):
     deposit.index = state.deposit_index + 1
 
     yield from run_deposit_processing(state, deposit, validator_index, valid=False)
+
+
+# TODO: test invalid signature
 
 
 @spec_state_test

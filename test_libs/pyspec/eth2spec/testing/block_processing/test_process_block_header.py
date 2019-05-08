@@ -1,6 +1,4 @@
 from copy import deepcopy
-import pytest
-
 
 from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
@@ -8,12 +6,12 @@ from eth2spec.phase0.spec import (
     advance_slot,
     process_block_header,
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     build_empty_block_for_next_slot,
     next_slot,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test, expect_assertion_error
 
 
 def prepare_state_for_header_processing(state):
@@ -35,8 +33,7 @@ def run_block_header_processing(state, block, valid=True):
     yield 'block', block
 
     if not valid:
-        with pytest.raises(AssertionError):
-            process_block_header(state, block)
+        expect_assertion_error(lambda: process_block_header(state, block))
         yield 'post', None
         return
 

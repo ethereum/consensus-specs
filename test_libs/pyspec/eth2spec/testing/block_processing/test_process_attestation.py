@@ -1,5 +1,4 @@
 from copy import deepcopy
-import pytest
 
 import eth2spec.phase0.spec as spec
 
@@ -10,14 +9,14 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_attestation
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     build_empty_block_for_next_slot,
     get_valid_attestation,
     next_epoch,
     next_slot,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test, expect_assertion_error
 
 
 def run_attestation_processing(state, attestation, valid=True):
@@ -35,8 +34,7 @@ def run_attestation_processing(state, attestation, valid=True):
 
     # If the attestation is invalid, processing is aborted, and there is no post-state.
     if not valid:
-        with pytest.raises(AssertionError):
-            process_attestation(state, attestation)
+        expect_assertion_error(lambda: process_attestation(state, attestation))
         yield 'post', None
         return
 

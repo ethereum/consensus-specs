@@ -4,11 +4,11 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     is_active_validator,
 )
-from tests.helpers import (
+from eth2spec.testing.helpers import (
     next_epoch,
 )
 
-from tests.context import spec_state_test
+from eth2spec.testing.context import spec_state_test
 
 
 @spec_state_test
