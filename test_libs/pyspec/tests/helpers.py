@@ -2,12 +2,12 @@ from copy import deepcopy
 
 from py_ecc import bls
 
-from eth2spec.phase0.state_transition import (
+from eth2spec.phase1.state_transition import (
     state_transition,
 )
-import eth2spec.phase0.spec as spec
+import eth2spec.phase1.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
-from eth2spec.phase0.spec import (
+from eth2spec.phase1.spec import (
     # constants
     ZERO_HASH,
     # SSZ
@@ -420,3 +420,6 @@ def get_state_root(state, slot) -> bytes:
     """
     assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
     return state.latest_state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+
+# Stub to be overwritten by config
+import_spec = None

@@ -1,6 +1,6 @@
 import pytest
 
-from eth2spec.phase0 import spec
+from eth2spec.phase1 import spec
 from preset_loader import loader
 
 from .helpers import (
@@ -19,7 +19,6 @@ def config(request):
     config_name = request.config.getoption("--config")
     presets = loader.load_presets('../../configs/', config_name)
     spec.apply_constants_preset(presets)
-
 
 @pytest.fixture
 def num_validators(config):

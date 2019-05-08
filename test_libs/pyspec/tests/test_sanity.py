@@ -3,10 +3,10 @@ from copy import deepcopy
 import pytest
 
 from py_ecc import bls
-import eth2spec.phase0.spec as spec
+import eth2spec.phase1.spec as spec
 
 from eth2spec.utils.minimal_ssz import signing_root
-from eth2spec.phase0.spec import (
+from eth2spec.phase1.spec import (
     # constants
     ZERO_HASH,
     SLOTS_PER_HISTORICAL_ROOT,
@@ -25,7 +25,7 @@ from eth2spec.phase0.spec import (
     verify_merkle_branch,
     hash,
 )
-from eth2spec.phase0.state_transition import (
+from eth2spec.phase1.state_transition import (
     state_transition,
 )
 from eth2spec.utils.merkle_minimal import (
@@ -326,7 +326,7 @@ def test_voluntary_exit(state):
 
 def test_transfer(state):
     # overwrite default 0 to test
-    spec.MAX_TRANSFERS = 1
+    spec.apply_constants_preset({"MAX_TRANSFERS": 1})
 
     pre_state = deepcopy(state)
     current_epoch = get_current_epoch(pre_state)

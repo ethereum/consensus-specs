@@ -1,12 +1,12 @@
 from copy import deepcopy
 import pytest
 
-import eth2spec.phase0.spec as spec
+import eth2spec.phase1.spec as spec
 
-from eth2spec.phase0.state_transition import (
+from eth2spec.phase1.state_transition import (
     state_transition,
 )
-from eth2spec.phase0.spec import (
+from eth2spec.phase1.spec import (
     cache_state,
     get_crosslink_deltas,
     process_crosslinks,

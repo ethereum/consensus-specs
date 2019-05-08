@@ -6,9 +6,14 @@ BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_OFFSET = 4
 ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
 
+cached_typedefs = {}
 
-def SSZType(fields):
+def SSZType(name, fields):
     class SSZObject():
+        if name != None:
+            __name__ = name
+            __qualname__ = name
+        
         def __init__(self, **kwargs):
             for f, t in fields.items():
                 if f not in kwargs:
@@ -25,8 +30,11 @@ def SSZType(fields):
         def __str__(self):
             output = []
             for field in self.fields:
-                output.append(f'{field}: {getattr(self, field)}')
+                output.append(f'{field}: {repr(getattr(self, field))},')
             return "\n".join(output)
+        
+        def __repr__(self):
+            return name + "(**{\n    " + str(self).replace("\n", "\n    ") + "\n})"
 
         def serialize(self):
             return serialize_value(self, self.__class__)
@@ -35,12 +43,16 @@ def SSZType(fields):
             return hash_tree_root(self, self.__class__)
 
     SSZObject.fields = fields
+    
+    if name != None:
+        cached_typedefs[name] = SSZObject
+
     return SSZObject
 
 def SSZTypeExtension(original_type, new_fields):
-    fields = original_type.fields.copy()
-    fields.update(original_type.fields)
-    return SSZType(fields)
+    typedef = cached_typedefs[original_type]
+    typedef.fields.update(new_fields)
+    return typedef
 
 class Vector():
     def __init__(self, items):
@@ -319,7 +331,7 @@ def truncate(container):
         key: container.fields[key]
         for key in field_keys[:-1]
     }
-    truncated_class = SSZType(truncated_fields)
+    truncated_class = SSZType(None, truncated_fields)
     kwargs = {
         field: getattr(container, field)
         for field in field_keys[:-1]

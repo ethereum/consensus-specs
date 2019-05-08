@@ -1,9 +1,9 @@
 from copy import deepcopy
 import pytest
 
-import eth2spec.phase0.spec as spec
+import eth2spec.phase1.spec as spec
 
-from eth2spec.phase0.spec import (
+from eth2spec.phase1.spec import (
     get_active_validator_indices,
     get_churn_limit,
     get_current_epoch,

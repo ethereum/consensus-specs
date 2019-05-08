@@ -39,10 +39,11 @@ def get_spec(file_name: str, phase:int = 0) -> List[str]:
         else:
             if pulling_from == linenum and line == '{':
                 if is_update_section:
-                    code_lines.append('%s = SSZTypeExtension(%s, {' % (current_name, current_name))
+                    code_lines.append('%s = SSZTypeExtension("%s", {' % (current_name, current_name))
+                    current_typedef = ['global_vars["%s"] = SSZTypeExtension("%s", {' % (current_name, current_name)]
                 else:
-                    code_lines.append('%s = SSZType({' % current_name)
-                current_typedef = ['global_vars["%s"] = SSZType({' % current_name]
+                    code_lines.append('%s = SSZType("%s", {' % (current_name, current_name))
+                    current_typedef = ['global_vars["%s"] = SSZType("%s", {' % (current_name, current_name)]
             elif pulling_from is not None:
                 # Add some whitespace between functions
                 if line[:3] == 'def':

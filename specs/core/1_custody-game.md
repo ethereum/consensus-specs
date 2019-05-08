@@ -661,12 +661,12 @@ def process_bit_challenge_response(state: BeaconState,
 
 ### Handling of custody-related deadlines
 
-Run `process_reveal_deadlines(state)` immediately after `process_ejections(state)`:
+Run `process_reveal_deadlines(state)` immediately after `process_registry_updates(state)`:
 
 ```python
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
-        if (validator.latest_custody_reveal_period +
+        if (validator.next_custody_reveal_period +
             (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <
             get_validators_custody_reveal_period(state, index)):
                 slash_validator(state, index)
@@ -693,6 +693,7 @@ Append this to `process_final_updates(state)`:
 
 ```python
 def after_process_final_updates(state: BeaconState) -> None:
+    current_epoch = get_current_epoch(state)
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```

@@ -89,10 +89,28 @@ def build_phase1_spec(sourcefile, outfile):
     code_lines = []
     code_lines.append("""
 from eth2spec.phase0.spec import *
+from eth2spec.phase0.spec import apply_constants_preset as apply_constants_preset_phase0
 
 """)
 
     code_lines += function_puller.get_spec(sourcefile)
+
+    code_lines.append("""
+# Access to overwrite spec constants based on configuration
+def apply_constants_preset(preset: Dict[str, Any]):
+
+    apply_constants_preset_phase0(preset)
+
+    global_vars = globals()
+    for k, v in preset.items():
+        global_vars[k] = v
+
+    # Deal with derived constants
+    global_vars['GENESIS_EPOCH'] = slot_to_epoch(GENESIS_SLOT)
+
+    # Initialize SSZ types again, to account for changed lengths
+    init_SSZ_types()
+""")
 
     with open(outfile, 'w') as out:
         out.write("\n".join(code_lines))
