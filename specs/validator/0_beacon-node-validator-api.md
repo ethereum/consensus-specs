@@ -1,26 +1,30 @@
-# ETH2.0 Beacon Node & Validator Client RPC Proposal
+# Ethereum 2.0 Phase 0 -- Beacon Node API for Validator
+
+__NOTICE__: This document is a work-in-progress for researchers and implementers. This is an accompanying document to [Ethereum 2.0 Phase 0 -- Honest Validator](0_beacon-chain-validator.md) that describes an API exposed by the beacon node, which enables the validator client to participate in the Ethereum 2.0 protocol.
+
+## Table of Contents
+
+<!-- TOC -->
+
+<!-- /TOC -->
 
 ## Outline
 
-This issue proposes a minimal communications specification between a beacon node and validator client, targeting _phase 0_ of the Eth2.0 specification. The protocol is designed to be a simple local communications interface, permitting two separate binaries to communicate.
+This document outlines a minimal application programming interface (API) which is exposed by a `BeaconNode` for use by a `ValidatorClient` which aims to facilitate [_phase 0_](../../README.md#phase-0) of Ethereum 2.0.
 
-This specification is intended to describe communication abstractly, without choosing any particular protocol. The protocol used (e.g. gRPC/JSON-RPC) is discussed in a separate issue: #1012.
-
-This issue follows on from a discussion during the [Client Architecture](https://notes.ethereum.org/iuPB2YjKQMGua0nwCZJVAQ) session at the [Sydney Implementers meeting](https://notes.ethereum.org/7w7diW1-St2_Yu-YHjg6NA). This also follow from the [Client Architecture Roundtable](https://hackmd.io/s/rJl05Lk6X) in Prague.
-There is an editable version of this document, here: https://hackmd.io/r7D61hs4RWKm8nz_O2iinQ
+The API is a REST interface, accessed via HTTP, designed for use as a local communications protocol between binaries.
 
 ###  Background
 The beacon node maintains the state of the beacon chain by communicating with other beacon nodes in the Ethereum Serenity network. Conceptually, it does not maintain keypairs that participate with the beacon chain.
 
-The validator client is conceptually a separate entity which utilises private keys to perform validator related tasks on the beacon chain, which we call validator "duties". This includes the production of beacon blocks and signing of attestations.
+The validator client is a conceptually separate entity which utilises private keys to perform validator related tasks on the beacon chain, which we call validator "duties". These duties includes the production of beacon blocks and signing of attestations.
 
-Since it is recommended to separate these concerns in the client implementations, it is necessary for us to clearly define the communication between them.
+Since it is recommended to separate these concerns in the client implementations, we must clearly define the communication between them.
 
 The goal of this specification is to promote interoperability between beacon nodes and validator clients derived from different projects. For example, the validator client from Lighthouse, could communicate with a running instance of the beacon node from Prysm.
 
-This proposal has been adapted from the [Lighthouse gRPC protocol specification](https://github.com/sigp/lighthouse/blob/master/protos/src/services.proto).
+This specification is derived from a proposal and discussion on Issues [#1011](https://github.com/ethereum/eth2.0-specs/issues/1011) and [#1012](https://github.com/ethereum/eth2.0-specs/issues/1012)
 
-There is also another [WIP proposal for a Minimum Validator Interface](https://notes.ethereum.org/Ia2kvjy0RX2J-GxrWfoCAQ), which describes additional functions possibly necessary for phase 1 and beyond.
 
 ## Specification 
 
@@ -31,7 +35,6 @@ The following are the two entities that participate in this protocol:
 
  - **`ValidatorClient`**:
 A validator client instance, which must connect to at least one instance of `BeaconNode`.
-
 
 
 ### Endpoints
