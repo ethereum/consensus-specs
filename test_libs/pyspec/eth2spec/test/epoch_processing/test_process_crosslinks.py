@@ -10,7 +10,7 @@ from eth2spec.phase0.spec import (
     get_crosslink_deltas,
     process_crosslinks,
 )
-from eth2spec.testing.helpers import (
+from eth2spec.test.helpers import (
     add_attestation_to_state,
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
@@ -19,7 +19,7 @@ from eth2spec.testing.helpers import (
     next_epoch,
     next_slot,
 )
-from eth2spec.testing.context import spec_state_test
+from eth2spec.test.context import spec_state_test
 
 
 def run_process_crosslinks(state, valid=True):

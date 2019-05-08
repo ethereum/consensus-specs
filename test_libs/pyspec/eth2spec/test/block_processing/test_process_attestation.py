@@ -9,14 +9,14 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_attestation
 )
-from eth2spec.testing.helpers import (
+from eth2spec.test.helpers import (
     build_empty_block_for_next_slot,
     get_valid_attestation,
     next_epoch,
     next_slot,
 )
 
-from eth2spec.testing.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error
 
 
 def run_attestation_processing(state, attestation, valid=True):

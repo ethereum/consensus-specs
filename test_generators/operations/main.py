@@ -1,4 +1,4 @@
-from eth2spec.testing.block_processing import (
+from eth2spec.test.block_processing import (
     test_process_attestation,
     test_process_attester_slashing,
     test_process_block_header,

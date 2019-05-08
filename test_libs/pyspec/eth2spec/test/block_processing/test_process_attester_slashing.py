@@ -3,13 +3,13 @@ from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
     process_attester_slashing,
 )
-from eth2spec.testing.helpers import (
+from eth2spec.test.helpers import (
     get_balance,
     get_valid_attester_slashing,
     next_epoch,
 )
 
-from eth2spec.testing.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error
 
 
 def run_attester_slashing_processing(state, attester_slashing, valid=True):

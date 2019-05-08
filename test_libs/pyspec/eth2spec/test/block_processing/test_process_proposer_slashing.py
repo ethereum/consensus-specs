@@ -3,12 +3,12 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_proposer_slashing,
 )
-from eth2spec.testing.helpers import (
+from eth2spec.test.helpers import (
     get_balance,
     get_valid_proposer_slashing,
 )
 
-from eth2spec.testing.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error
 
 
 def run_proposer_slashing_processing(state, proposer_slashing, valid=True):
