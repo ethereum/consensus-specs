@@ -6,7 +6,6 @@ def build_phase0_spec(sourcefile, outfile):
     code_lines = []
     code_lines.append("""
 
-import copy
 from typing import (
     Any,
     Dict,
