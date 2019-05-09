@@ -75,14 +75,14 @@
         - [`compute_committee`](#compute_committee)
         - [`get_crosslink_committee`](#get_crosslink_committee)
         - [`get_attesting_indices`](#get_attesting_indices)
-        - [`int_to_bytes1`, `int_to_bytes2`, ...](#int_to_bytes1-int_to_bytes2-)
+        - [`int_to_bytes`](#int_to_bytes)
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_total_balance`](#get_total_balance)
         - [`get_domain`](#get_domain)
         - [`get_bitfield_bit`](#get_bitfield_bit)
         - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
-        - [`verify_indexed_attestation`](#verify_indexed_attestation)
+        - [`validate_indexed_attestation`](#validate_indexed_attestation)
         - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
         - [`integer_squareroot`](#integer_squareroot)
         - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
@@ -194,8 +194,8 @@ These configurations are updated for releases, but may be out of sync during `de
 | `GENESIS_SLOT` | `0` |
 | `GENESIS_EPOCH` | `0` |
 | `FAR_FUTURE_EPOCH` | `2**64 - 1` |
-| `ZERO_HASH` | `int_to_bytes32(0)` |
-| `BLS_WITHDRAWAL_PREFIX_BYTE` | `int_to_bytes1(0)` |
+| `ZERO_HASH` | `b'\x00' * 32` |
+| `BLS_WITHDRAWAL_PREFIX` | `0` |
 
 ### Time parameters
 
@@ -209,10 +209,10 @@ These configurations are updated for releases, but may be out of sync during `de
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
-| `MAX_CROSSLINK_EPOCHS` | `2**6` (= 64) | epochs | ~7 hours |
+| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
 
-* `MAX_CROSSLINK_EPOCHS` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
+* `MAX_EPOCHS_PER_CROSSLINK` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
 
 ### State list lengths
 
@@ -282,12 +282,14 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 {
+    # Shard number
+    'shard': 'uint64',
     # Epoch number
     'epoch': 'uint64',
     # Root of the previous crosslink
-    'previous_crosslink_root': 'bytes32',
+    'parent_root': 'bytes32',
     # Root of the crosslinked shard data since the previous crosslink
-    'crosslink_data_root': 'bytes32',
+    'data_root': 'bytes32',
 }
 ```
 
@@ -318,9 +320,7 @@ The types are defined topologically to aid in facilitating an executable version
     'target_root': 'bytes32',
 
     # Crosslink vote
-    'shard': 'uint64',
-    'previous_crosslink_root': 'bytes32',
-    'crosslink_data_root': 'bytes32',
+    'crosslink': Crosslink,
 }
 ```
 
@@ -369,9 +369,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     'slot': 'uint64',
-    'previous_block_root': 'bytes32',
+    'parent_root': 'bytes32',
     'state_root': 'bytes32',
-    'block_body_root': 'bytes32',
+    'body_root': 'bytes32',
     'signature': 'bytes96',
 }
 ```
@@ -536,7 +536,7 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Header
     'slot': 'uint64',
-    'previous_block_root': 'bytes32',
+    'parent_root': 'bytes32',
     'state_root': 'bytes32',
     'body': BeaconBlockBody,
     'signature': 'bytes96',
@@ -767,7 +767,7 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 ```python
 def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot:
     committee_count = get_epoch_committee_count(state, data.target_epoch)
-    offset = (data.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target_epoch)) % SHARD_COUNT
+    offset = (data.crosslink.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target_epoch)) % SHARD_COUNT
     return get_epoch_start_slot(data.target_epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
 ```
 
@@ -830,7 +830,7 @@ def generate_seed(state: BeaconState,
     return hash(
         get_randao_mix(state, epoch + LATEST_RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch) +
-        int_to_bytes32(epoch)
+        int_to_bytes(epoch, length=32)
     )
 ```
 
@@ -851,7 +851,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     i = 0
     while True:
         candidate_index = first_committee[(epoch + i) % len(first_committee)]
-        random_byte = hash(seed + int_to_bytes8(i // 32))[i % 32]
+        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
         effective_balance = state.validator_registry[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return candidate_index
@@ -888,10 +888,10 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
     for round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_int(hash(seed + int_to_bytes1(round))[0:8]) % index_count
+        pivot = bytes_to_int(hash(seed + int_to_bytes(round, length=1))[0:8]) % index_count
         flip = (pivot - index) % index_count
         position = max(index, flip)
-        source = hash(seed + int_to_bytes1(round) + int_to_bytes4(position // 256))
+        source = hash(seed + int_to_bytes(round, length=1) + int_to_bytes(position // 256, length=4))
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
@@ -929,14 +929,17 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
-    committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.shard)
+    committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
     assert verify_bitfield(bitfield, len(committee))
     return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
 
-### `int_to_bytes1`, `int_to_bytes2`, ...
+### `int_to_bytes`
 
-`int_to_bytes1(x): return x.to_bytes(1, 'little')`, `int_to_bytes2(x): return x.to_bytes(2, 'little')`, and so on for all integers, particularly 1, 2, 3, 4, 8, 32, 48, 96.
+```python
+def int_to_bytes(integer: int, length: int) -> bytes:
+    return integer.to_bytes(length, 'little')
+```
 
 ### `bytes_to_int`
 
@@ -966,7 +969,7 @@ def get_domain(state: BeaconState,
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return bytes_to_int(fork_version + int_to_bytes4(domain_type))
+    return bytes_to_int(fork_version + int_to_bytes(domain_type, length=4))
 ```
 
 ### `get_bitfield_bit`
@@ -1016,35 +1019,29 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     )
 ```
 
-### `verify_indexed_attestation`
+### `validate_indexed_attestation`
 
 ```python
-def verify_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
+def validate_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> None:
     """
-    Verify validity of ``indexed_attestation`` fields.
+    Verify validity of ``indexed_attestation``.
     """
-    custody_bit_0_indices = indexed_attestation.custody_bit_0_indices
-    custody_bit_1_indices = indexed_attestation.custody_bit_1_indices
+    bit_0_indices = indexed_attestation.custody_bit_0_indices
+    bit_1_indices = indexed_attestation.custody_bit_1_indices
 
-    # Ensure no duplicate indices across custody bits
-    assert len(set(custody_bit_0_indices).intersection(set(custody_bit_1_indices))) == 0
-
-    if len(custody_bit_1_indices) > 0:  # [TO BE REMOVED IN PHASE 1]
-        return False
-
-    if not (1 <= len(custody_bit_0_indices) + len(custody_bit_1_indices) <= MAX_INDICES_PER_ATTESTATION):
-        return False
-
-    if custody_bit_0_indices != sorted(custody_bit_0_indices):
-        return False
-
-    if custody_bit_1_indices != sorted(custody_bit_1_indices):
-        return False
-
-    return bls_verify_multiple(
+    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
+    assert len(bit_1_indices) == 0
+    # Verify max number of indices
+    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_INDICES_PER_ATTESTATION
+    # Verify index sets are disjoint
+    assert len(set(bit_0_indices).intersection(bit_1_indices)) == 0
+    # Verify indices are sorted
+    assert bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)
+    # Verify aggregate signature
+    assert bls_verify_multiple(
         pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_0_indices]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in custody_bit_1_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_0_indices]),
+            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_1_indices]),
         ],
         message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
@@ -1303,33 +1300,18 @@ def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestat
 ```
 
 ```python
-def get_crosslink_from_attestation_data(state: BeaconState, data: AttestationData) -> Crosslink:
-    return Crosslink(
-        epoch=min(data.target_epoch, state.current_crosslinks[data.shard].epoch + MAX_CROSSLINK_EPOCHS),
-        previous_crosslink_root=data.previous_crosslink_root,
-        crosslink_data_root=data.crosslink_data_root,
-    )
-```
-
-```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
-    shard_attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.shard == shard]
-    shard_crosslinks = [get_crosslink_from_attestation_data(state, a.data) for a in shard_attestations]
-    candidate_crosslinks = [
-        c for c in shard_crosslinks
-        if hash_tree_root(state.current_crosslinks[shard]) in (c.previous_crosslink_root, hash_tree_root(c))
-    ]
-    if len(candidate_crosslinks) == 0:
-        return Crosslink(), []
-
-    def get_attestations_for(crosslink: Crosslink) -> List[PendingAttestation]:
-        return [a for a in shard_attestations if get_crosslink_from_attestation_data(state, a.data) == crosslink]
-    # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
-    winning_crosslink = max(candidate_crosslinks, key=lambda crosslink: (
-        get_attesting_balance(state, get_attestations_for(crosslink)), crosslink.crosslink_data_root
+    attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
+    crosslinks = list(filter(
+        lambda c: hash_tree_root(state.current_crosslinks[shard]) in (c.parent_root, hash_tree_root(c)),
+        [a.data.crosslink for a in attestations]
     ))
-
-    return winning_crosslink, get_unslashed_attesting_indices(state, get_attestations_for(winning_crosslink))
+    # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
+    winning_crosslink = max(crosslinks, key=lambda c: (
+        get_attesting_balance(state, [a for a in attestations if a.data.crosslink == c]), c.data_root
+    ), default=Crosslink())
+    winning_attestations = [a for a in attestations if a.data.crosslink == winning_crosslink]
+    return winning_crosslink, get_unslashed_attesting_indices(state, winning_attestations)
 ```
 
 #### Justification and finalization
@@ -1601,12 +1583,12 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
     # Verify that the parent matches
-    assert block.previous_block_root == signing_root(state.latest_block_header)
+    assert block.parent_root == signing_root(state.latest_block_header)
     # Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
-        previous_block_root=block.previous_block_root,
-        block_body_root=hash_tree_root(block.body),
+        parent_root=block.parent_root,
+        body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
@@ -1684,8 +1666,8 @@ def process_attester_slashing(state: BeaconState,
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
     assert is_slashable_attestation_data(attestation_1.data, attestation_2.data)
-    assert verify_indexed_attestation(state, attestation_1)
-    assert verify_indexed_attestation(state, attestation_2)
+    validate_indexed_attestation(state, attestation_1)
+    validate_indexed_attestation(state, attestation_2)
 
     slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
@@ -1712,29 +1694,29 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
-    # Check target epoch, source epoch, source root, and source crosslink
-    assert (data.target_epoch, data.source_epoch, data.source_root, data.previous_crosslink_root) in {
-        (get_current_epoch(state), state.current_justified_epoch, state.current_justified_root, hash_tree_root(state.current_crosslinks[data.shard])),
-        (get_previous_epoch(state), state.previous_justified_epoch, state.previous_justified_root, hash_tree_root(state.previous_crosslinks[data.shard])),
-    }
-
-    # Check crosslink data root
-    assert data.crosslink_data_root == ZERO_HASH  # [to be removed in phase 1]
-
-    # Check signature and bitfields
-    assert verify_indexed_attestation(state, convert_to_indexed(state, attestation))
-
-    # Cache pending attestation
     pending_attestation = PendingAttestation(
         data=data,
         aggregation_bitfield=attestation.aggregation_bitfield,
         inclusion_delay=state.slot - attestation_slot,
         proposer_index=get_beacon_proposer_index(state),
     )
+
+    assert data.target_epoch in (get_previous_epoch(state), get_current_epoch(state))
     if data.target_epoch == get_current_epoch(state):
+        ffg_data = (state.current_justified_epoch, state.current_justified_root, get_current_epoch(state))
+        parent_crosslink = state.current_crosslinks[data.crosslink.shard]
         state.current_epoch_attestations.append(pending_attestation)
     else:
+        ffg_data = (state.previous_justified_epoch, state.previous_justified_root, get_previous_epoch(state))
+        parent_crosslink = state.previous_crosslinks[data.crosslink.shard]
         state.previous_epoch_attestations.append(pending_attestation)
+
+    # Check FFG data, crosslink data, and signature
+    assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)
+    assert data.crosslink.epoch == min(data.target_epoch, parent_crosslink.epoch + MAX_EPOCHS_PER_CROSSLINK)
+    assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
+    assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
+    validate_indexed_attestation(state, convert_to_indexed(state, attestation))
 ```
 
 ##### Deposits
@@ -1837,7 +1819,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Verify that the pubkey is valid
     assert (
         state.validator_registry[transfer.sender].withdrawal_credentials ==
-        BLS_WITHDRAWAL_PREFIX_BYTE + hash(transfer.pubkey)[1:]
+        int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid
     assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
