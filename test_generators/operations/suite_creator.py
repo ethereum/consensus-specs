@@ -29,7 +29,7 @@ def create_suite(operation_name: str, config_name: str, get_cases: Callable[[], 
 
         return ("%s_%s" % (operation_name, config_name), operation_name, gen_suite.render_suite(
             title="%s operation" % operation_name,
-            summary="Test suite for deposit type operation processing",
+            summary="Test suite for %s type operation processing" % operation_name,
             forks_timeline="testing",
             forks=["phase0"],
             config=config_name,
