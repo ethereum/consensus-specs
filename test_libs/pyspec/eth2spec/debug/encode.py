@@ -25,4 +25,3 @@ def encode(value, typ, include_hash_tree_roots=False):
     else:
         print(value, typ)
         raise Exception("Type not recognized")
-
