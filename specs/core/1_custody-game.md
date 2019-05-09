@@ -690,24 +690,22 @@ Append this to `process_final_updates(state)`:
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
 ```
 
-In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
+Update `initiate_validator_withdrawable` function to the following:
 
 ```python
-def eligible(state: BeaconState, index: ValidatorIndex) -> bool:
-    validator = state.validator_registry[index]
+def initiate_validator_withdrawable(state: BeaconState, index: ValidatorIndex, epoch: Epoch) -> None:
     # Cannot exit if there are still open chunk challenges
     if len([record for record in state.custody_chunk_challenge_records if record.responder_index == index]) > 0:
-        return False
+        return
     # Cannot exit if there are still open bit challenges
-    if len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
-        return False
+    elif len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
+        return
     # Cannot exit if you have not revealed all of your custody keys
     elif validator.next_custody_reveal_period <= get_validators_custody_reveal_period(state, index, validator.exit_epoch):
-        return False
-    # Cannot exit if you already have
-    elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
-        return False
-    # Return minimum time
+        return
+    # Cannot withdrawable before initiate exit
+    elif validator.exit_epoch == FAR_FUTURE_EPOCH:
+        return
     else:
-        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        validator.withdrawable_epoch = epoch
 ```

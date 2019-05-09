@@ -92,6 +92,7 @@
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`initiate_validator_exit`](#initiate_validator_exit)
+            - [`initiate_validator_withdrawable`](#initiate_validator_withdrawable)
             - [`slash_validator`](#slash_validator)
     - [Genesis](#genesis)
         - [`Eth2Genesis`](#eth2genesis)
@@ -1127,10 +1128,10 @@ def get_churn_limit(state: BeaconState) -> int:
 ```python
 def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Initiate the validator of the given ``index``.
+    Initiate exit for the validator of the given ``index``.
     """
-    # Return if validator already initiated exit
     validator = state.validator_registry[index]
+    # Return if validator already initiated exit
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
@@ -1143,7 +1144,21 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Set validator exit epoch and withdrawable epoch
     validator.exit_epoch = exit_queue_epoch
-    validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+```
+
+#### `initiate_validator_withdrawable`
+
+```python
+def initiate_validator_withdrawable(state: BeaconState, index: ValidatorIndex, epoch: Epoch) -> None:
+    """
+    Initiate withdrawable for the validator of the given ``index``.
+    """
+    validator = state.validator_registry[index]
+    # Cannot withdrawable before initiate exit
+    if validator.exit_epoch == FAR_FUTURE_EPOCH:
+        return
+    else:
+        validator.withdrawable_epoch = epoch
 ```
 
 #### `slash_validator`
@@ -1155,8 +1170,8 @@ def slash_validator(state: BeaconState, slashed_index: ValidatorIndex, whistlebl
     """
     current_epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
+    initiate_validator_withdrawable(state, slashed_index, current_epoch + LATEST_SLASHED_EXIT_LENGTH)
     state.validator_registry[slashed_index].slashed = True
-    state.validator_registry[slashed_index].withdrawable_epoch = current_epoch + LATEST_SLASHED_EXIT_LENGTH
     slashed_balance = state.validator_registry[slashed_index].effective_balance
     state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
 
@@ -1483,6 +1498,7 @@ def process_registry_updates(state: BeaconState) -> None:
 
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, index)
+            initiate_validator_withdrawable(state, index, validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 
     # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
     activation_queue = sorted([
