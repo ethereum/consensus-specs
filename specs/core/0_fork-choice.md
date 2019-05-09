@@ -46,42 +46,145 @@ Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Cli
 
 *Note*: Nodes needs to have a clock that is roughly (i.e. within `SECONDS_PER_SLOT` seconds) synchronized with the other nodes.
 
-### Beacon chain fork choice rule
+### Client-side data structures
 
-The beacon chain fork choice rule is a hybrid that combines justification and finality with Latest Message Driven (LMD) Greediest Heaviest Observed SubTree (GHOST). At any point in time, a validator `v` subjectively calculates the beacon chain head as follows.
-
-* Abstractly define `Store` as the type of storage object for the chain data, and let `store` be the set of attestations and blocks that the validator `v` has observed and verified (in particular, block ancestors must be recursively verified). Attestations not yet included in any chain are still included in `store`.
-* Let `finalized_head` be the finalized block with the highest epoch. (A block `B` is finalized if there is a descendant of `B` in `store`, the processing of which sets `B` as finalized.)
-* Let `justified_head` be the descendant of `finalized_head` with the highest epoch that has been justified for at least 1 epoch. (A block `B` is justified if there is a descendant of `B` in `store` the processing of which sets `B` as justified.) If no such descendant exists, set `justified_head` to `finalized_head`.
-* Let `get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock` be the ancestor of `block` with slot number `slot`. The `get_ancestor` function can be defined recursively as:
+#### `AttestationRecord`
 
 ```python
-def get_ancestor(store: Store, block: BeaconBlock, slot: Slot) -> BeaconBlock:
-    """
-    Get the ancestor of ``block`` with slot number ``slot``; return ``None`` if not found.
-    """
-    if block.slot == slot:
-        return block
-    elif block.slot < slot:
-        return None
-    else:
-        return get_ancestor(store, store.get_parent(block), slot)
+{
+    'epoch': 'uint64',
+    'target': 'bytes32'
+}
 ```
 
-* Let `get_latest_attestation(store: Store, index: ValidatorIndex) -> Attestation` be the attestation with the highest slot number in `store` from the validator with the given `index`. If several such attestations exist, use the one the validator `v` observed first.
-* Let `get_latest_attestation_target(store: Store, index: ValidatorIndex) -> BeaconBlock` be the target block in the attestation `get_latest_attestation(store, index)`.
-* Let `get_children(store: Store, block: BeaconBlock) -> List[BeaconBlock]` return the child blocks of the given `block`.
-* Let `justified_head_state` be the resulting `BeaconState` object from processing the chain up to the `justified_head`.
-* The `head` is `lmd_ghost(store, justified_head_state, justified_head)` where the function `lmd_ghost` is defined below. Note that the implementation below is suboptimal; there are implementations that compute the head in time logarithmic in slot count.
+#### `Store`
 
 ```python
-def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) -> BeaconBlock:
+{
+    'blocks': Map['Bytes32', BeaconBlock],
+    'post_states': Map['Bytes32', BeaconState],
+    'time': 'uint64',
+    'genesis_time': 'uint64',
+    'latest_attestations': Map['uint64', AttestationRecord],
+    'finalized_head': 'Bytes32',
+    'justified_head': 'Bytes32',
+}
+```
+
+### Functions
+
+
+### `initialize_store`
+
+```python
+def initialize_store(genesis_state: BeaconState) -> Store:
+    genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
+    return Store(
+        blocks={hash_tree_root(genesis_block): genesis_block},
+        post_states={hash_tree_root(genesis_block): genesis_state},
+        time=0,
+        genesis_time=genesis_state.genesis_time,
+        latest_attestations={},
+        finalized_head=hash_tree_root(genesis_block),
+        justified_head=hash_tree_root(genesis_block),
+    )
+```
+
+### `tick`
+
+```python
+def tick(store: Store, now: Time):
+    """
+    Call whenever the time increments, passing in the new time
+    """
+    store.time = now
+```
+
+### `get_ancestor`
+
+```python
+def get_ancestor(store: Store, block: Bytes32, slot: Slot) -> Bytes32:
+    if store.blocks[block].slot < slot:
+        raise Exception("Cannot get ancestor at later slot than block")
+    elif store.blocks[block].slot == slot:
+        return block
+    else:
+        return get_ancestor(store, store.blocks[block].parent_root, slot)
+```
+
+### `is_ancestor`
+
+```python
+def is_ancestor(store: Store, ancestor: Bytes32, descendant: Bytes32) -> bool:
+    return get_ancestor(store, descendant, store.blocks[ancestor].slot) == ancestor
+
+### `add_block`
+
+```python
+def add_block(store: Store, block: BeaconBlock):
+    """
+    Call upon receiving a block
+    """
+    # Check parent has been processed
+    assert block.parent_root in store.blocks
+    # Check it's a descendant of the finalized block
+    assert is_ancestor(store, store.finalized_head, hash_tree_root(block))
+    # Check it's not too early
+    assert store.time >= store.genesis_time + block.slot * SECONDS_PER_SLOT
+    # Check the block is valid and compute the post-state
+    post_state = process_block(pre_state=store.post_states[block.parent_root], block)
+    # Add it
+    store.blocks[hash_tree_root(block)] = block
+    store.post_states[hash_tree_root(block)] = post_state
+    # Update justified and finalized blocks
+    if post_state.finalized_epoch > get_current_epoch(store.blocks[store.finalized_head]):
+        store.finalized_head = post_state.finalized_root
+    if post_state.current_justified_epoch > get_current_epoch(store.blocks[store.justified_head]):
+        store.justified_head = post_state.current_justified_root
+    if post_state.previous_justified_epoch > get_current_epoch(store.blocks[store.justified_head]):
+        store.justified_head = post_state.previous_justified_root
+```
+
+### `get_children`
+
+```python
+def get_children(store: Store, parent: Bytes32):
+    return [block for block in store.blocks.keys() if store.blocks[block].parent_root == parent]
+```
+
+### `receive_attestation`
+
+```python
+def receive_attestation(store: Store, attestation: Attestation):
+    """
+    Call upon receiving an attestation
+    """
+    head_state = store.post_states[get_head(store)]
+    indexed_attestation = convert_to_indexed(head_state, attestation)
+    assert validate_indexed_attestation(head_state, indexed_attestation)
+    participants = indexed_attestation.bit_0_indices + indexed_attestation.bit_1_indices
+    for p in participants:
+        if p not in store.latest_attestations or attestation.epoch > store.latest_attestations[p].epoch:
+            store.latest_attestations[p] = AttestationRecord(epoch=attestation.epoch, target=attestation.data.target_root)
+```
+
+### `get_head`
+
+```python
+def get_head(store: Store):
+    return lmd_ghost(store=store, validators=store.post_states[store.justified_head], root=store.justified_head)
+```
+
+### `lmd_ghost`
+
+```python
+def lmd_ghost(store: Store, start_state: BeaconState, root: Bytes32) -> BeaconBlock:
     """
     Execute the LMD-GHOST algorithm to find the head ``BeaconBlock``.
     """
     validators = start_state.validator_registry
     active_validator_indices = get_active_validator_indices(validators, slot_to_epoch(start_state.slot))
-    attestation_targets = [(i, get_latest_attestation_target(store, i)) for i in active_validator_indices]
+    attestation_targets = [(i, store.latest_attestations[i].target) for i in active_validator_indices if i in store.latest_attestations]
 
     # Use the rounded-balance-with-hysteresis supplied by the protocol for fork
     # choice voting. This reduces the number of recomputations that need to be
@@ -93,7 +196,7 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
             if get_ancestor(store, target, block.slot) == block
         )
 
-    head = start_block
+    head = root
     while 1:
         children = get_children(store, head)
         if len(children) == 0:
@@ -101,9 +204,3 @@ def lmd_ghost(store: Store, start_state: BeaconState, start_block: BeaconBlock) 
         # Ties broken by favoring block with lexicographically higher root
         head = max(children, key=lambda x: (get_vote_count(x), hash_tree_root(x)))
 ```
-
-## Implementation notes
-
-### Justification and finality at genesis
-
-During genesis, justification and finality root fields within the `BeaconState` reference `ZERO_HASH` rather than a known block. `ZERO_HASH` in `previous_justified_root`, `current_justified_root`, and `finalized_root` should be considered as an alias to the root of the genesis block.
