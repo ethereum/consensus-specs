@@ -2,7 +2,7 @@
 
 This directory contains all the generators for YAML tests, consumed by Eth 2.0 client implementations.
 
-Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs, here: [ethereum/eth2.0-tests](https://github.com/ethereum/eth2.0-tests).
+Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs, here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
 
 Whenever a release is made, the new tests are automatically built, and
 [eth2TestGenBot](https://github.com/eth2TestGenBot) commits the changes to the test repository.
@@ -12,7 +12,7 @@ Whenever a release is made, the new tests are automatically built, and
 Prerequisites:
 - Python 3 installed
 - PIP 3
-- GNU make
+- GNU Make
 
 ### Cleaning
 
@@ -66,7 +66,7 @@ eth-utils==1.4.1
 The config helper and pyspec is optional, but preferred. We encourage generators to derive tests from the spec itself in order to prevent code duplication and outdated tests.
 Applying configurations to the spec is simple and enables you to create test suites with different contexts.
 
-Note: make sure to run `make pyspec` from the root of the specs repository in order to build the pyspec requirement.
+*Note*: Make sure to run `make pyspec` from the root of the specs repository in order to build the pyspec requirement.
 
 Install all the necessary requirements (re-run when you add more):
 ```bash
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 Recommendations:
 - You can have more than just one suite creator, e.g. ` gen_runner.run_generator("foo", [bar_test_suite, abc_test_suite, example_test_suite])`.
 - You can concatenate lists of test cases if you don't want to split it up in suites, however, make sure they can be run with one handler.
-- You can split your suite creators into different python files/packages; this is good for code organization.
+- You can split your suite creators into different Python files/packages; this is good for code organization.
 - Use config "minimal" for performance, but also implement a suite with the default config where necessary. 
 - You may be able to write your test suite creator in a way where it does not make assumptions on constants.
   If so, you can generate test suites with different configurations for the same scenario (see example). 
@@ -157,8 +157,8 @@ To add a new test generator that builds `New Tests`:
  [circleci config file](https://github.com/ethereum/eth2.0-test-generators/blob/master/.circleci/config.yml)
  if desired to increase code quality.
 
-Note: you do not have to change the makefile.
-However, if necessary (e.g. not using python, or mixing in other languages), submit an issue, and it can be a special case.
+*Note*: You do not have to change the makefile.
+However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.
 Do note that generators should be easy to maintain, lean, and based on the spec.
 
 
@@ -167,5 +167,5 @@ Do note that generators should be easy to maintain, lean, and based on the spec.
 If a test generator is not needed anymore, undo the steps described above and make a new release:
 
 1. Remove the generator directory.
-2. Remove the generated tests in the [`eth2.0-tests`](https://github.com/ethereum/eth2.0-tests) repository by opening a PR there.
+2. Remove the generated tests in the [`eth2.0-spec-tests`](https://github.com/ethereum/eth2.0-spec-tests) repository by opening a pull request there.
 3. Make a new release.

@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 1 -- Custody Game
 
-**NOTICE**: This spec is a work-in-progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
@@ -23,7 +23,7 @@
             - [`CustodyChunkChallengeRecord`](#custodychunkchallengerecord)
             - [`CustodyBitChallengeRecord`](#custodybitchallengerecord)
             - [`CustodyResponse`](#custodyresponse)
-        - [New Beacon operations](#new-beacon-operations)
+        - [New beacon operations](#new-beacon-operations)
             - [`CustodyKeyReveal`](#custodykeyreveal)
             - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
         - [Phase 0 container updates](#phase-0-container-updates)
@@ -35,40 +35,30 @@
         - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
+        - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
         - [`get_validators_custody_reveal_period`](#get_validators_custody_reveal_period)
-        - [`get_chunk_bits_root`](#get_chunk_bits_root)
-        - [`replace_empty_or_append`](#replace_empty_or_append)
-    - [Per-block processing](#per-block-processing)
-        - [Operations](#operations)
-            - [Custody key reveals](#custody-key-reveals)
-            - [Early derived secret reveals](#early-derived-secret-reveals)
-            - [Chunk challenges](#chunk-challenges)
-            - [Bit challenges](#bit-challenges)
-            - [Custody responses](#custody-responses)
-    - [Per-epoch processing](#per-epoch-processing)
-        - [Handling of custody-related deadlines](#handling-of-custody-related-deadlines)
 
 <!-- /TOC -->
 
 ## Introduction
 
-This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support the shard data custody game, building upon the [phase 0](0_beacon-chain.md) specification.
+This document details the beacon chain additions and changes in Phase 1 of Ethereum 2.0 to support the shard data custody game, building upon the [Phase 0](0_beacon-chain.md) specification.
 
 ## Terminology
 
-* **Custody game**:
-* **Custody period**:
-* **Custody chunk**:
-* **Custody chunk bit**:
-* **Custody chunk challenge**:
-* **Custody bit**:
-* **Custody bit challenge**:
-* **Custody key**:
-* **Custody key reveal**:
-* **Custody key mask**:
-* **Custody response**:
-* **Custody response deadline**:
+* **Custody game**—
+* **Custody period**—
+* **Custody chunk**—
+* **Custody chunk bit**—
+* **Custody chunk challenge**—
+* **Custody bit**—
+* **Custody bit challenge**—
+* **Custody key**—
+* **Custody key reveal**—
+* **Custody key mask**—
+* **Custody response**—
+* **Custody response deadline**—
 
 ## Constants
 
@@ -147,7 +137,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'inclusion_epoch': Epoch,
-    'crosslink_data_root': Hash,
+    'data_root': Hash,
     'depth': 'uint64',
     'chunk_index': 'uint64',
 }
@@ -161,7 +151,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'inclusion_epoch': Epoch,
-    'crosslink_data_root': Hash,
+    'data_root': Hash,
     'chunk_count': 'uint64',
     'chunk_bits_merkle_root': Hash,
     'responder_key': BLSSignature,
@@ -181,7 +171,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 }
 ```
 
-### New Beacon operations
+### New beacon operations
 
 #### `CustodyKeyReveal`
 
@@ -220,7 +210,7 @@ Add the following fields to the end of the specified container objects. Fields w
 #### `Validator`
 
 ```python
-    # next_custody_reveal_period is initialised to the custody period
+    # next_custody_reveal_period is initialized to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_validators_custody_reveal_period(...)
     'next_custody_reveal_period': 'uint64',
@@ -265,7 +255,7 @@ The `empty` function accepts and SSZ type as input and returns an object of that
 def get_custody_chunk_count(attestation: Attestation) -> int:
     crosslink_start_epoch = attestation.data.latest_crosslink.epoch
     crosslink_end_epoch = slot_to_epoch(attestation.data.slot)
-    crosslink_crosslink_length = min(MAX_CROSSLINK_EPOCHS, end_epoch - start_epoch)
+    crosslink_crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, end_epoch - start_epoch)
     chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK
     return crosslink_crosslink_length * chunks_per_epoch
 ```
@@ -330,7 +320,7 @@ def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
 
 ### Operations
 
-Add the following operations to the per-block processing, in order the given below and after all other operations in phase 0.
+Add the following operations to the per-block processing, in the order given below and after all other operations in Phase 0.
 
 #### Custody key reveals
 
@@ -426,10 +416,10 @@ def process_early_derived_secret_reveal(state: BeaconState,
         # round key
         slash_validator(state, reveal.revealed_index, reveal.masker_index)
     else:
-        # Only a small penalty proportional to proposer slot reward for RANDAO reveal 
+        # Only a small penalty proportional to proposer slot reward for RANDAO reveal
         # that does not interfere with the custody period
-        # The penalty is proportional to the max proposer reward 
-        
+        # The penalty is proportional to the max proposer reward
+
         # Calculate penalty
         max_proposer_slot_reward = (
             get_base_reward(state, reveal.revealed_index) *
@@ -448,7 +438,7 @@ def process_early_derived_secret_reveal(state: BeaconState,
         increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
         decrease_balance(state, reveal.revealed_index, penalty)
 
-        # Mark this derived secret as exposed so validator cannot be punished repeatedly 
+        # Mark this derived secret as exposed so validator cannot be punished repeatedly
         state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS].append(reveal.revealed_index)
 
 ```
@@ -474,7 +464,7 @@ def process_chunk_challenge(state: BeaconState,
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
         assert (
-            record.crosslink_data_root != challenge.attestation.data.crosslink_data_root or
+            record.data_root != challenge.attestation.data.crosslink.data_root or
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
@@ -486,7 +476,7 @@ def process_chunk_challenge(state: BeaconState,
         challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index
         inclusion_epoch=get_current_epoch(state),
-        crosslink_data_root=challenge.attestation.data.crosslink_data_root,
+        data_root=challenge.attestation.data.crosslink.data_root,
         depth=depth,
         chunk_index=challenge.chunk_index,
     )
@@ -563,7 +553,7 @@ def process_bit_challenge(state: BeaconState,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
         inclusion_epoch=get_current_epoch(state),
-        crosslink_data_root=challenge.attestation.data.crosslink_data_root,
+        data_root=challenge.attestation.data.crosslink.data_root,
         chunk_count=chunk_count,
         chunk_bits_merkle_root=merkle_root(pad_to_power_of_2((challenge.chunk_bits))),
         responder_key=challenge.responder_key,
@@ -611,7 +601,7 @@ def process_chunk_challenge_response(state: BeaconState,
         branch=response.data_branch,
         depth=challenge.depth,
         index=response.chunk_index,
-        root=challenge.crosslink_data_root,
+        root=challenge.data_root,
     )
     # Clear the challenge
     records = state.custody_chunk_challenge_records
@@ -636,7 +626,7 @@ def process_bit_challenge_response(state: BeaconState,
         branch=response.data_branch,
         depth=math.log2(next_power_of_two(challenge.chunk_count)),
         index=response.chunk_index,
-        root=challenge.crosslink_data_root,
+        root=challenge.data_root,
     )
     # Verify the chunk bit leaf matches the challenge data
     assert verify_merkle_branch(

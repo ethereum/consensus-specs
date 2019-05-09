@@ -15,15 +15,8 @@ from typing import (
 from eth2spec.utils.minimal_ssz import *
 from eth2spec.utils.bls_stub import *
 
-""")
-    for i in (1, 2, 3, 4, 8, 32, 48, 96):
-        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
-
-    code_lines.append("""
-
 # stub, will get overwritten by real var
 SLOTS_PER_EPOCH = 64
-
 
 Slot = NewType('Slot', int)  # uint64
 Epoch = NewType('Epoch', int)  # uint64
@@ -48,10 +41,8 @@ def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, 
     param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash in committee_cache:
-        print("Cache hit, param_hash: ", param_hash)
         return committee_cache[param_hash]
     else:
-        print("Cache miss, param_hash: ", param_hash)
         ret = _compute_committee(indices, seed, index, count)
         committee_cache[param_hash] = ret
         return ret
