@@ -42,7 +42,7 @@
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
             - [Custody key reveals](#custody-key-reveals)
-                - [Early derived secret reveals](#early-derived-secret-reveals)
+            - [Early derived secret reveals](#early-derived-secret-reveals)
             - [Chunk challenges](#chunk-challenges)
             - [Bit challenges](#bit-challenges)
             - [Custody responses](#custody-responses)
@@ -380,7 +380,7 @@ def process_custody_key_reveal(state: BeaconState,
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 
-##### Early derived secret reveals
+#### Early derived secret reveals
 
 Verify that `len(block.body.early_derived_secret_reveals) <= MAX_EARLY_DERIVED_SECRET_REVEALS`.
 
