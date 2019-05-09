@@ -1,0 +1,152 @@
+openapi: "3.0.2"
+info:
+  title: "Beacon Node API for Validator"
+  description: "A beacon node API for enabling a validator to perform its obligations on the Ethereum 2.0 phase 0 beacon chain."
+  version: "0.1"
+paths:
+  /node/version:
+    get:
+      summary: "Get version string of the running beacon node."
+      description: "Requests that the BeaconNode identify information about its implementation in a format similar to a  [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field."
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                title: Duties
+                type: object
+  
+  /node/genesis_time:
+    get:
+      summary: "Get the genesis_time parameter from beacon node configuration."
+      description: "Requests the genesis_time parameter from the BeaconNode, which should be consistent across all BeaconNodes that follow the same beacon chain."
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                title: genesis_time
+                type: integer
+
+  /node/syncing:
+    get:
+      summary: "Poll to see if the the beacon node is syncing."
+      description: "Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. This is modelled after the Eth1.0 JSON-RPC eth_syncing call.."
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                title: genesis_time
+                type: integer
+  
+                
+                
+  /validator/duties:
+    get:
+      summary: "Get validator duties for the requested validators."
+      description: "Requests the BeaconNode to provide a set of _duties_, which are actions that should be performed by ValidatorClients. This API call should be polled at every slot, to ensure that any chain reorganisations are catered for, and to ensure that the currently connected BeaconNode is properly synchronised."
+      parameters: 
+      - name: validator_pubkeys
+        in: query
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+            format: byte
+      responses:
+        200:
+          description: Success response
+          content:
+            application/json:
+              schema:
+                title: Duties
+                type: object
+        503:
+          description: Beacon node syncing
+          
+          
+  /validator/block:
+    get:
+      summary: "Produce a new block, without signature."
+      description: "Requests a BeaconNode to produce a valid block, which can then be signed by a ValidatorClient."
+      parameters: 
+      - name: slot
+        in: query
+        required: true
+        schema:
+          type: integer
+      - name: randao_reveal
+        in: query
+        required: true
+        schema:
+          type: string
+          format: byte
+      responses:
+        200:
+          description: Success response
+          content:
+            application/json:
+              schema:
+                type: object
+                title: BeaconBlock
+    post:
+      summary: "Publish a signed block"
+      description: "Instructs the BeaconNode to publish a newly signed beacon block to the beacon network, to be included in the beacon chain."
+      parameters: 
+      - name: beacon_block
+        in: query
+        required: true
+        schema:
+          type: object
+          title: BeaconBlock
+      responses:
+        200:
+          description: Success response
+        503:
+          description: Beacon node syncing
+          
+          
+  /validator/attestation:
+    get:
+      summary: "Produce an attestation, without signature."
+      description: "Requests that the BeaconNode produce an IndexedAttestation, with a blank signature field, which the ValidatorClient will then sign."
+      parameters: 
+      - name: slot
+        in: query
+        required: true
+        schema:
+          type: integer
+      - name: shard
+        in: query
+        required: true
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Success response
+          content:
+            application/json:
+              schema:
+                type: object
+                title: IndexedAttestation
+    post:
+      summary: "Published a signed attestation."
+      description: "Instructs the BeaconNode to publish a newly signed IndexedAttestation object, to be incorporated into the beacon chain."
+      parameters:
+      - name: attestation
+        in: query
+        required: true
+        description: "An IndexedAttestation structure, as originally provided by the BeaconNode, but now with the signature field completed."
+        schema:
+          type: object
+          title: IndexedAttestation
+      responses:
+        200:
+          description: Success response
+        503:
+          description: Beacon node syncing
