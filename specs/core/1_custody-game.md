@@ -35,14 +35,14 @@
         - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
+        - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
         - [`get_validators_custody_reveal_period`](#get_validators_custody_reveal_period)
-        - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`replace_empty_or_append`](#replace_empty_or_append)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
             - [Custody key reveals](#custody-key-reveals)
-            - [Early derived secret reveals](#early-derived-secret-reveals)
+                - [Early derived secret reveals](#early-derived-secret-reveals)
             - [Chunk challenges](#chunk-challenges)
             - [Bit challenges](#bit-challenges)
             - [Custody responses](#custody-responses)
@@ -299,7 +299,7 @@ def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorI
 
 ### `get_validators_custody_reveal_period`
 
- ```python
+```python
 def get_validators_custody_reveal_period(state: BeaconState,
                                          validator_index: ValidatorIndex,
                                          epoch: Epoch=None) -> int:
