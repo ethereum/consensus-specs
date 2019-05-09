@@ -683,13 +683,12 @@ Append this to `process_final_updates(state)`:
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
     # Reset withdrawable epochs if challenge records are empty
+    records = state.custody_chunk_challenge_records + state.bit_challenge_records
+    validator_indices_in_records = set(
+        [record.challenger_index for record in records] + [record.responder_index for record in records]
+    )
     for index, validator in enumerate(state.validator_registry):
-        eligible = True
-        for records in (state.custody_chunk_challenge_records, state.bit_challenge_records):
-            for filter_func in (lambda rec: rec.challenger_index == index, lambda rec: rec.responder_index == index):
-                if len(list(filter(filter_func, records))) > 0:
-                    eligible = False
-        if eligible:
+        if index not in validator_indices_in_records:
             if validator.exit_epoch == FAR_FUTURE_EPOCH:
                 validator.withdrawable_epoch = FAR_FUTURE_EPOCH
             else:
