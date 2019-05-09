@@ -709,5 +709,5 @@ def eligible(state: BeaconState, index: ValidatorIndex) -> bool:
         return False
     # Return minimum time
     else:
-        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 ```
