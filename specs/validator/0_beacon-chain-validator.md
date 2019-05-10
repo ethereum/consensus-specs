@@ -246,7 +246,7 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 ##### FFG vote
 
-* Set `attestation_data.source_epoch = head_state.justified_epoch`.
+* Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
 * Set `attestation_data.source_root = head_state.current_justified_root`.
 * Set `attestation_data.target_epoch = get_current_epoch(head_state)`
 * Set `attestation_data.target_root = signing_root(epoch_boundary_block)` where `epoch_boundary_block` is the block at the most recent epoch boundary.
