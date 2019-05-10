@@ -10,12 +10,13 @@ paths:
       description: "Requests that the BeaconNode identify information about its implementation in a format similar to a  [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field."
       responses:
         200:
-          description: Success
+          description: Request successful
           content:
             application/json:
               schema:
-                title: Duties
-                type: object
+                $ref: '#/components/schemas/client_version'
+        500:
+          $ref: '#/components/responses/InternalError' 
   
   /node/genesis_time:
     get:
@@ -23,12 +24,14 @@ paths:
       description: "Requests the genesis_time parameter from the BeaconNode, which should be consistent across all BeaconNodes that follow the same beacon chain."
       responses:
         200:
-          description: Success
+          description: Request successful
           content:
             application/json:
               schema:
-                title: genesis_time
-                type: integer
+                $ref: '#/components/schemas/genesis_time'
+        500:
+          $ref: '#/components/responses/InternalError'
+                
 
   /node/syncing:
     get:
@@ -36,13 +39,19 @@ paths:
       description: "Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. This is modelled after the Eth1.0 JSON-RPC eth_syncing call.."
       responses:
         200:
-          description: Success
+          description: Request successful
           content:
             application/json:
               schema:
-                title: genesis_time
-                type: integer
-  
+                type: object
+                properties:
+                  is_syncing:
+                    type: boolean
+                    description: "A boolean of whether the node is currently syncing or not."
+                  sync_status:
+                    $ref: '#/components/schemas/SyncingStatus'
+        500:
+          $ref: '#/components/responses/InternalError'
                 
                 
   /validator/duties:
@@ -53,21 +62,28 @@ paths:
       - name: validator_pubkeys
         in: query
         required: true
+        description: "An array of hex-encoded BLS public keys"
         schema:
           type: array
           items:
-            type: string
-            format: byte
+            $ref: '#/components/schemas/pubkey'
+          minItems: 1
       responses:
         200:
           description: Success response
           content:
             application/json:
               schema:
-                title: Duties
-                type: object
+                type: array
+                items:
+                  $ref: '#/components/schemas/ValidatorDuty'
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
         503:
-          description: Beacon node syncing
+          $ref: '#/components/responses/CurrentlySyncing'
+        
           
           
   /validator/block:
@@ -78,11 +94,14 @@ paths:
       - name: slot
         in: query
         required: true
+        description: "The slot for which the block should be proposed."
         schema:
           type: integer
+          format: uint64
       - name: randao_reveal
         in: query
         required: true
+        description: "The ValidatorClient's randao reveal value."
         schema:
           type: string
           format: byte
@@ -92,8 +111,13 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                title: BeaconBlock
+                $ref: '#/components/schemas/BeaconBlock'
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+        503:
+          $ref: '#/components/responses/CurrentlySyncing'
     post:
       summary: "Publish a signed block"
       description: "Instructs the BeaconNode to publish a newly signed beacon block to the beacon network, to be included in the beacon chain."
@@ -101,14 +125,18 @@ paths:
       - name: beacon_block
         in: query
         required: true
+        description: "The BeaconBlock object, as sent from the BeaconNode originally, but now with the signature field completed."
         schema:
-          type: object
-          title: BeaconBlock
+          $ref: '#/components/schemas/BeaconBlock'
       responses:
         200:
-          description: Success response
+          $ref: '#/components/responses/Success'
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
         503:
-          description: Beacon node syncing
+          $ref: '#/components/responses/CurrentlySyncing'
           
           
   /validator/attestation:
@@ -119,11 +147,13 @@ paths:
       - name: slot
         in: query
         required: true
+        description: "The slot for which the attestation should be proposed."
         schema:
           type: integer
       - name: shard
         in: query
         required: true
+        description: "The shard number for which the attestation is to be proposed."
         schema:
           type: integer
       responses:
@@ -132,8 +162,14 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                title: IndexedAttestation
+                $ref: '#/components/schemas/IndexedAttestation'
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
+        503:
+          $ref: '#/components/responses/CurrentlySyncing'
+        
     post:
       summary: "Published a signed attestation."
       description: "Instructs the BeaconNode to publish a newly signed IndexedAttestation object, to be incorporated into the beacon chain."
@@ -143,10 +179,160 @@ paths:
         required: true
         description: "An IndexedAttestation structure, as originally provided by the BeaconNode, but now with the signature field completed."
         schema:
-          type: object
-          title: IndexedAttestation
+          $ref: '#/components/schemas/IndexedAttestation'
       responses:
         200:
-          description: Success response
+          $ref: '#/components/responses/Success'
+        400:
+          $ref: '#/components/responses/InvalidRequest'
+        500:
+          $ref: '#/components/responses/InternalError'
         503:
-          description: Beacon node syncing
+          $ref: '#/components/responses/CurrentlySyncing'
+
+components:
+  schemas:
+    ValidatorDuty:
+      type: object
+      properties:
+        validator_pubkey:
+          $ref: '#/components/schemas/pubkey'
+        committee_index:
+          type: integer
+          format: uint64
+          description: "The index of the validator in the committee."
+        attestation_slot:
+          type: integer
+          format: uint64
+          description: "The slot at which the validator must attest."
+        attestation_shard:
+          type: integer
+          format: uint64
+          description: "The shard in which the validator must attest."
+        block_production_slot:
+          type: integer
+          format: uint64
+          nullable: true
+          description: "The slot in which a validator must propose a block, or `null` if block production is not required."
+    SyncingStatus:
+      type: object
+      nullable: true
+      properties:
+        starting_block:
+          type: integer
+          format: uint64
+          description: "The block at which syncing started (will only be reset after the sync reached its head)"
+        current_block:
+          type: integer
+          format: uint64
+          description: "The current highest block sync'd by the beacon node."
+        highest_block:
+          type: integer
+          format: uint64
+          description: "The estimated highest block, or current target block number."
+    BeaconBlock:
+      type: object
+      description: "The [BeaconBlock](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblock) from the Eth2.0 spec."
+    Fork:
+      type: object
+      description: "The [Fork](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#Fork) from the Eth2.0 spec."
+      properties:
+        previous_version:
+          type: string
+          format: byte
+          pattern: "^0x[a-fA-F0-9]{8}$"
+          description: "Previous fork version"
+        current_version:
+          type: string
+          format: byte
+          pattern: "^0x[a-fA-F0-9]{8}$"
+          description: "Current fork version"
+        epoch:
+          type: integer
+          format: uint64
+          description: "Fork epoch number"
+    IndexedAttestation:
+      type: object
+      description: "The [IndexedAttestation](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#indexedattestation) from the Eth2.0 spec."
+      properties:
+        custody_bit_0_indicies:
+          type: array
+          description: "Validator indicies for 0 bits."
+          items:
+            type: integer
+            format: uint64
+        custody_bit_1_indicies:
+          type: array
+          description: "Validator indicies for 1 bits."
+          items:
+            type: integer
+            format: uint64
+        data:
+          $ref: '#/components/schemas/AttestationData'
+        
+    AttestationData: 
+      type: object
+      description: "The [AttestationData](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#attestationdata) from the Eth2.0 spec."
+      properties:
+        beacon_block_root:
+          $ref: '#/components/schemas/merkle_root'
+        source_epoch:
+          type: integer
+          format: uint64
+          description: "Source epoch from FFG vote"
+        source_root:
+          $ref: '#/components/schemas/merkle_root'
+        target_epoch:
+          type: integer
+          format: uint64
+          description: "Target epoch from FFG vote"
+        target_root:
+          $ref: '#/components/schemas/merkle_root'
+        crosslink:
+          $ref: '#/components/schemas/CrossLink'
+    CrossLink:
+      type: object
+      description: "The [Crosslink](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#crosslink) from the Eth2.0 spec."
+      properties:
+        shard:
+          type: integer
+          format: uint64
+          description: "The shard number"
+        epoch:
+          type: integer
+          format: uint64
+          description: "The epoch number"
+        parent_root:
+          $ref: '#/components/schemas/merkle_root'
+        data_root:
+          $ref: '#/components/schemas/merkle_root'
+          
+    pubkey:
+      type: string
+      format: byte
+      pattern: "^0x[a-fA-F0-9]{96}$"
+      description: "The validator's BLS public key, uniquely identifying them."
+    client_version:
+      type: string
+      description: "A string which uniquely identifies the client implementation and its version; similar to [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3)."
+      example: "Lighthouse / v0.1.5 (Linux x86_64)"
+    genesis_time:
+      type: integer
+      format: uint64
+      description: "The genesis_time configured for the beacon node, which is the time the Eth1.0 validator deposit smart contract has enough ETH staked (i.e. Eth2.0 begins)."
+    merkle_root:
+      type: string
+      format: byte
+      pattern: "^0x[a-fA-F0-9]{64}$"
+      description: "A 32 byte merkle root, used in all kinds of scenarios."
+      
+  
+  responses:
+    Success:
+      description: Request successful
+    InvalidRequest:
+      description: Invalid request syntax
+    InternalError:
+      description: Beacon node internal error
+    CurrentlySyncing:
+      description: Beacon node is currently syncing, try again later
