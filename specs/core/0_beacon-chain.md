@@ -1125,7 +1125,7 @@ Note: All functions in this section mutate `state`.
 ```python
 def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     """
-    Initiate the validator of the given ``index``.
+    Initiate the exit of the validator of the given ``index``.
     """
     # Return if validator already initiated exit
     validator = state.validator_registry[index]
