@@ -109,6 +109,26 @@ def test_success_exit_queue(state):
 
 
 @spec_state_test
+def test_validator_exit_in_future(state):
+    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = get_current_epoch(state)
+    validator_index = get_active_validator_indices(state, current_epoch)[0]
+    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+
+    voluntary_exit = build_voluntary_exit(
+        state,
+        current_epoch,
+        validator_index,
+        privkey,
+    )
+    voluntary_exit.epoch += 1
+
+    yield from run_voluntary_exit_processing(state, voluntary_exit, False)
+
+
+@spec_state_test
 def test_validator_invalid_validator_index(state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
