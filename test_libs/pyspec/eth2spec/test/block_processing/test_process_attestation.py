@@ -63,7 +63,7 @@ def test_success(state):
 
 
 @spec_state_test
-def test_success_prevous_epoch(state):
+def test_success_previous_epoch(state):
     attestation = get_valid_attestation(state)
     block = build_empty_block_for_next_slot(state)
     block.slot = state.slot + spec.SLOTS_PER_EPOCH
@@ -92,11 +92,72 @@ def test_after_epoch_slots(state):
 
 
 @spec_state_test
-def test_bad_source_epoch(state):
+def test_old_source_epoch(state):
+    state.slot = spec.SLOTS_PER_EPOCH * 5
+    state.finalized_epoch = 2
+    state.previous_justified_epoch = 3
+    state.current_justified_epoch = 4
+    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
+
+    # test logic sanity check: make sure the attestation is pointing to oldest known source epoch
+    assert attestation.data.source_epoch == state.previous_justified_epoch
+
+    # Now go beyond that, it will be invalid
+    attestation.data.source_epoch -= 1
+
+    yield from run_attestation_processing(state, attestation, False)
+
+
+@spec_state_test
+def test_wrong_shard(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.source_epoch += 10
+    attestation.data.shard += 1
+
+    yield from run_attestation_processing(state, attestation, False)
+
+
+@spec_state_test
+def test_new_source_epoch(state):
+    attestation = get_valid_attestation(state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.data.source_epoch += 1
+
+    yield from run_attestation_processing(state, attestation, False)
+
+
+@spec_state_test
+def test_source_root_is_target_root(state):
+    attestation = get_valid_attestation(state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.data.source_root = attestation.data.target_root
+
+    yield from run_attestation_processing(state, attestation, False)
+
+
+@spec_state_test
+def test_invalid_current_source_root(state):
+    state.slot = spec.SLOTS_PER_EPOCH * 5
+    state.finalized_epoch = 2
+
+    state.previous_justified_epoch = 3
+    state.previous_justified_root = b'\x01' * 32
+
+    state.current_justified_epoch = 4
+    state.current_justified_root = b'\xff' * 32
+
+    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    # Test logic sanity checks:
+    assert state.current_justified_root != state.previous_justified_root
+    assert attestation.data.source_root == state.previous_justified_root
+
+    # Make attestation source root invalid: should be previous justified, not current one
+    attestation.data.source_root = state.current_justified_root
 
     yield from run_attestation_processing(state, attestation, False)
 
