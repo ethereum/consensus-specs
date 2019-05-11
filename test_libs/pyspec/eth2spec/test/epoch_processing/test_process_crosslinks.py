@@ -1,15 +1,15 @@
 from copy import deepcopy
 
 import eth2spec.phase0.spec as spec
-
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 from eth2spec.phase0.spec import (
     cache_state,
     get_crosslink_deltas,
     process_crosslinks,
 )
+from eth2spec.phase0.state_transition import (
+    state_transition,
+)
+from eth2spec.test.context import spec_state_test
 from eth2spec.test.helpers import (
     add_attestation_to_state,
     build_empty_block_for_next_slot,
@@ -18,8 +18,8 @@ from eth2spec.test.helpers import (
     get_valid_attestation,
     next_epoch,
     next_slot,
+    apply_empty_block
 )
-from eth2spec.test.context import spec_state_test
 
 
 def run_process_crosslinks(state, valid=True):
@@ -115,6 +115,8 @@ def test_double_late_crosslink(state):
         if attestation_2.data.shard == attestation_1.data.shard:
             break
         next_slot(state)
+    apply_empty_block(state)
+
     fill_aggregate_attestation(state, attestation_2)
 
     # add attestation_2 in the next epoch after attestation_1 has
@@ -126,7 +128,7 @@ def test_double_late_crosslink(state):
     assert len(state.current_epoch_attestations) == 0
 
     crosslink_deltas = get_crosslink_deltas(state)
-    
+
     yield from run_process_crosslinks(state)
 
     shard = attestation_2.data.shard

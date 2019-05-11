@@ -1,10 +1,10 @@
 from copy import deepcopy
 
 import eth2spec.phase0.spec as spec
-
 from eth2spec.phase0.state_transition import (
     state_transition,
 )
+from .context import spec_state_test
 from .helpers import (
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
@@ -12,9 +12,8 @@ from .helpers import (
     get_epoch_start_slot,
     get_valid_attestation,
     next_epoch,
+    apply_empty_block
 )
-
-from .context import spec_state_test
 
 
 def check_finality(state,
@@ -101,7 +100,9 @@ def test_finality_rule_4(state):
 def test_finality_rule_1(state):
     # get past first two epochs that finality does not run on
     next_epoch(state)
+    apply_empty_block(state)
     next_epoch(state)
+    apply_empty_block(state)
 
     yield 'pre', state
 
@@ -128,7 +129,9 @@ def test_finality_rule_1(state):
 def test_finality_rule_2(state):
     # get past first two epochs that finality does not run on
     next_epoch(state)
+    apply_empty_block(state)
     next_epoch(state)
+    apply_empty_block(state)
 
     yield 'pre', state
 
@@ -161,7 +164,9 @@ def test_finality_rule_3(state):
     """
     # get past first two epochs that finality does not run on
     next_epoch(state)
+    apply_empty_block(state)
     next_epoch(state)
+    apply_empty_block(state)
 
     yield 'pre', state
 

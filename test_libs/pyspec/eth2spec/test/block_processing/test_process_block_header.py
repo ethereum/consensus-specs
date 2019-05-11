@@ -6,12 +6,12 @@ from eth2spec.phase0.spec import (
     advance_slot,
     process_block_header,
 )
+from eth2spec.test.context import spec_state_test, expect_assertion_error
 from eth2spec.test.helpers import (
     build_empty_block_for_next_slot,
     next_slot,
+    make_block_signature
 )
-
-from eth2spec.test.context import spec_state_test, expect_assertion_error
 
 
 def prepare_state_for_header_processing(state):
@@ -43,7 +43,7 @@ def run_block_header_processing(state, block, valid=True):
 
 @spec_state_test
 def test_success(state):
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=True)
     yield from run_block_header_processing(state, block)
 
 
@@ -59,6 +59,7 @@ def test_invalid_slot(state):
 def test_invalid_previous_block_root(state):
     block = build_empty_block_for_next_slot(state)
     block.previous_block_root = b'\12' * 32  # invalid prev root
+    make_block_signature(state, block)
 
     yield from run_block_header_processing(state, block, valid=False)
 
@@ -73,6 +74,6 @@ def test_proposer_slashed(state):
     # set proposer to slashed
     state.validator_registry[proposer_index].slashed = True
 
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=True)
 
     yield from run_block_header_processing(state, block, valid=False)

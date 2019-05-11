@@ -1,17 +1,16 @@
 import eth2spec.phase0.spec as spec
-
 from eth2spec.phase0.spec import (
     get_active_validator_indices,
     get_beacon_proposer_index,
     get_current_epoch,
     process_transfer,
 )
+from eth2spec.test.context import spec_state_test, expect_assertion_error
 from eth2spec.test.helpers import (
     get_valid_transfer,
     next_epoch,
+    apply_empty_block
 )
-
-from eth2spec.test.context import spec_state_test, expect_assertion_error
 
 
 def run_transfer_processing(state, transfer, valid=True):
@@ -58,6 +57,7 @@ def test_success_non_activated(state):
 @spec_state_test
 def test_success_withdrawable(state):
     next_epoch(state)
+    apply_empty_block(state)
 
     transfer = get_valid_transfer(state)
 
@@ -97,7 +97,7 @@ def test_active_but_transfer_past_effective_balance(state):
 
 @spec_state_test
 def test_incorrect_slot(state):
-    transfer = get_valid_transfer(state, slot=state.slot+1)
+    transfer = get_valid_transfer(state, slot=state.slot + 1)
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
 

@@ -2,20 +2,20 @@ from copy import deepcopy
 
 from py_ecc import bls
 
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
+from typing import List
+
 import eth2spec.phase0.spec as spec
-from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
     # SSZ
     Attestation,
+    IndexedAttestation,
     AttestationData,
     AttestationDataAndCustodyBit,
     AttesterSlashing,
     BeaconBlock,
+    BeaconState,
     BeaconBlockHeader,
     Deposit,
     DepositData,
@@ -33,7 +33,6 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     get_domain,
     get_epoch_start_slot,
-    get_genesis_beacon_state,
     get_previous_epoch,
     get_shard_delta,
     hash_tree_root,
@@ -41,12 +40,15 @@ from eth2spec.phase0.spec import (
     verify_merkle_branch,
     hash,
 )
+from eth2spec.phase0.state_transition import (
+    state_transition, state_transition_to
+)
 from eth2spec.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
     get_merkle_proof,
     get_merkle_root,
 )
-
+from eth2spec.utils.minimal_ssz import signing_root
 
 privkeys = [i + 1 for i in range(1024)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
@@ -64,70 +66,107 @@ def set_bitfield_bit(bitfield, i):
     byte_index = i // 8
     bit_index = i % 8
     return (
-        bitfield[:byte_index] +
-        bytes([bitfield[byte_index] | (1 << bit_index)]) +
-        bitfield[byte_index+1:]
+            bitfield[:byte_index] +
+            bytes([bitfield[byte_index] | (1 << bit_index)]) +
+            bitfield[byte_index + 1:]
     )
 
 
-def create_mock_genesis_validator_deposits(num_validators, deposit_data_leaves=None):
-    if not deposit_data_leaves:
-        deposit_data_leaves = []
-    signature = b'\x33' * 96
-
-    deposit_data_list = []
-    for i in range(num_validators):
-        pubkey = pubkeys[i]
-        deposit_data = DepositData(
-            pubkey=pubkey,
-            # insecurely use pubkey as withdrawal key as well
-            withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
-            amount=spec.MAX_EFFECTIVE_BALANCE,
-            signature=signature,
-        )
-        item = deposit_data.hash_tree_root()
-        deposit_data_leaves.append(item)
-        tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
-        root = get_merkle_root((tuple(deposit_data_leaves)))
-        proof = list(get_merkle_proof(tree, item_index=i))
-        assert verify_merkle_branch(item, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH, i, root)
-        deposit_data_list.append(deposit_data)
-
-    genesis_validator_deposits = []
-    for i in range(num_validators):
-        genesis_validator_deposits.append(Deposit(
-            proof=list(get_merkle_proof(tree, item_index=i)),
-            index=i,
-            data=deposit_data_list[i]
-        ))
-    return genesis_validator_deposits, root
-
-
-def create_genesis_state(num_validators, deposit_data_leaves=None):
-    initial_deposits, deposit_root = create_mock_genesis_validator_deposits(
-        num_validators,
-        deposit_data_leaves,
+def build_mock_validator(i: int, balance: int):
+    pubkey = pubkeys[i]
+    # insecurely use pubkey as withdrawal key as well
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:]
+    return spec.Validator(
+        pubkey=pubkeys[i],
+        withdrawal_credentials=withdrawal_credentials,
+        activation_eligibility_epoch=spec.FAR_FUTURE_EPOCH,
+        activation_epoch=spec.FAR_FUTURE_EPOCH,
+        exit_epoch=spec.FAR_FUTURE_EPOCH,
+        withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
+        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
     )
-    return get_genesis_beacon_state(
-        initial_deposits,
+
+
+def create_genesis_state(num_validators):
+    deposit_root = b'\x42' * 32
+
+    state = spec.BeaconState(
         genesis_time=0,
-        genesis_eth1_data=Eth1Data(
+        deposit_index=num_validators,
+        latest_eth1_data=Eth1Data(
             deposit_root=deposit_root,
-            deposit_count=len(initial_deposits),
+            deposit_count=num_validators,
             block_hash=spec.ZERO_HASH,
-        ),
+        ))
+
+    # We "hack" in the initial validators,
+    #  as it is much faster than creating and processing genesis deposits for every single test case.
+    state.balances = [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+    state.validator_registry = [build_mock_validator(i, state.balances[i]) for i in range(num_validators)]
+
+    # Process genesis activations
+    for validator in state.validator_registry:
+        if validator.effective_balance >= spec.MAX_EFFECTIVE_BALANCE:
+            validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
+            validator.activation_epoch = spec.GENESIS_EPOCH
+
+    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, spec.GENESIS_EPOCH))
+    for index in range(spec.LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
+        state.latest_active_index_roots[index] = genesis_active_index_root
+
+    return state
+
+
+def make_block_signature(state, block):
+    assert block.slot == state.slot or block.slot == state.slot + 1
+    if block.slot == state.slot:
+        proposer_index = spec.get_beacon_proposer_index(state)
+    else:
+        # use stub state to get proposer index of next slot
+        stub_state = deepcopy(state)
+        next_slot(stub_state)
+        proposer_index = spec.get_beacon_proposer_index(stub_state)
+
+    privkey = privkeys[proposer_index]
+
+    block.body.randao_reveal = bls.sign(
+        privkey=privkey,
+        message_hash=hash_tree_root(slot_to_epoch(block.slot)),
+        domain=get_domain(
+            state,
+            message_epoch=slot_to_epoch(block.slot),
+            domain_type=spec.DOMAIN_RANDAO,
+        )
     )
+    block.signature = bls.sign(
+        message_hash=signing_root(block),
+        privkey=privkey,
+        domain=get_domain(
+            state,
+            spec.DOMAIN_BEACON_PROPOSER,
+            slot_to_epoch(block.slot)))
+    return block
 
 
-def build_empty_block_for_next_slot(state):
+def build_empty_block(state, slot=None, signed=False):
+    if slot is None:
+        slot = state.slot
     empty_block = BeaconBlock()
-    empty_block.slot = state.slot + 1
+    empty_block.slot = slot
     empty_block.body.eth1_data.deposit_count = state.deposit_index
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
     empty_block.previous_block_root = signing_root(previous_block_header)
+
+    if signed:
+        make_block_signature(state, empty_block)
+
     return empty_block
+
+
+def build_empty_block_for_next_slot(state, signed=False):
+    return build_empty_block(state, state.slot + 1, signed=signed)
 
 
 def build_deposit_data(state, pubkey, privkey, amount):
@@ -172,7 +211,8 @@ def build_attestation_data(state, slot, shard):
         justified_epoch = state.current_justified_epoch
         justified_block_root = state.current_justified_root
 
-    crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
+    crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(
+        state) else state.previous_crosslinks
     return AttestationData(
         shard=shard,
         beacon_block_root=block_root,
@@ -270,6 +310,8 @@ def get_valid_attester_slashing(state):
     attestation_2 = deepcopy(attestation_1)
     attestation_2.data.target_root = b'\x01' * 32
 
+    make_attestation_signature(state, attestation_2)
+
     return AttesterSlashing(
         attestation_1=convert_to_indexed(state, attestation_1),
         attestation_2=convert_to_indexed(state, attestation_2),
@@ -299,26 +341,38 @@ def get_valid_attestation(state, slot=None):
         data=attestation_data,
         custody_bitfield=custody_bitfield,
     )
-    participants = get_attesting_indices(
-        state,
-        attestation.data,
-        attestation.aggregation_bitfield,
-    )
-    assert len(participants) == 2
+    make_attestation_signature(state, attestation)
+    return attestation
 
+
+def make_aggregate_attestation_signature(state: BeaconState, data: AttestationData, participants: List[int]):
     signatures = []
     for validator_index in participants:
         privkey = privkeys[validator_index]
         signatures.append(
             get_attestation_signature(
                 state,
-                attestation.data,
+                data,
                 privkey
             )
         )
 
-    attestation.aggregation_signature = bls.aggregate_signatures(signatures)
-    return attestation
+    return bls.aggregate_signatures(signatures)
+
+
+def make_indexed_attestation_signature(state, indexed_attestation: IndexedAttestation):
+    participants = indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices
+    indexed_attestation.signature = make_aggregate_attestation_signature(state, indexed_attestation.data, participants)
+
+
+def make_attestation_signature(state, attestation: Attestation):
+    participants = get_attesting_indices(
+        state,
+        attestation.data,
+        attestation.aggregation_bitfield,
+    )
+
+    attestation.signature = make_aggregate_attestation_signature(state, attestation.data, participants)
 
 
 def get_valid_transfer(state, slot=None, sender_index=None, amount=None, fee=None):
@@ -357,7 +411,7 @@ def get_valid_transfer(state, slot=None, sender_index=None, amount=None, fee=Non
 
     # ensure withdrawal_credentials reproducable
     state.validator_registry[transfer.sender].withdrawal_credentials = (
-        spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(transfer.pubkey)[1:]
+            spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(transfer.pubkey)[1:]
     )
 
     return transfer
@@ -390,26 +444,32 @@ def add_attestation_to_state(state, attestation, slot):
     block = build_empty_block_for_next_slot(state)
     block.slot = slot
     block.body.attestations.append(attestation)
+    state_transition_to(state, block.slot)
+    make_block_signature(state, block)
     state_transition(state, block)
 
 
 def next_slot(state):
     """
-    Transition to the next slot via an empty block.
-    Return the empty block that triggered the transition.
+    Transition to the next slot.
     """
-    block = build_empty_block_for_next_slot(state)
-    state_transition(state, block)
-    return block
+    state_transition_to(state, state.slot + 1)
 
 
 def next_epoch(state):
     """
-    Transition to the start slot of the next epoch via an empty block.
-    Return the empty block that triggered the transition.
+    Transition to the start slot of the next epoch
     """
-    block = build_empty_block_for_next_slot(state)
-    block.slot += spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
+    slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
+    state_transition_to(state, slot)
+
+
+def apply_empty_block(state):
+    """
+    Transition via an empty block (on current slot, assuming no block has been applied yet).
+    :return: the empty block that triggered the transition.
+    """
+    block = build_empty_block(state)
     state_transition(state, block)
     return block
 

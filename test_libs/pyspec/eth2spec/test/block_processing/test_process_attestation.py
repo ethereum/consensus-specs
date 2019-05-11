@@ -3,17 +3,18 @@ from copy import deepcopy
 import eth2spec.phase0.spec as spec
 
 from eth2spec.phase0.state_transition import (
-    state_transition,
+    state_transition_to,
 )
 from eth2spec.phase0.spec import (
     get_current_epoch,
     process_attestation
 )
 from eth2spec.test.helpers import (
-    build_empty_block_for_next_slot,
     get_valid_attestation,
+    apply_empty_block,
     next_epoch,
     next_slot,
+    make_attestation_signature,
 )
 
 from eth2spec.test.context import spec_state_test, expect_assertion_error
@@ -65,9 +66,8 @@ def test_success(state):
 @spec_state_test
 def test_success_previous_epoch(state):
     attestation = get_valid_attestation(state)
-    block = build_empty_block_for_next_slot(state)
-    block.slot = state.slot + spec.SLOTS_PER_EPOCH
-    state_transition(state, block)
+    next_epoch(state)
+    apply_empty_block(state)
 
     yield from run_attestation_processing(state, attestation)
 
@@ -83,10 +83,9 @@ def test_before_inclusion_delay(state):
 @spec_state_test
 def test_after_epoch_slots(state):
     attestation = get_valid_attestation(state)
-    block = build_empty_block_for_next_slot(state)
     # increment past latest inclusion slot
-    block.slot = state.slot + spec.SLOTS_PER_EPOCH + 1
-    state_transition(state, block)
+    state_transition_to(state, state.slot + spec.SLOTS_PER_EPOCH + 1)
+    apply_empty_block(state)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -105,6 +104,9 @@ def test_old_source_epoch(state):
     # Now go beyond that, it will be invalid
     attestation.data.source_epoch -= 1
 
+    # Re do signature
+    make_attestation_signature(state, attestation)
+
     yield from run_attestation_processing(state, attestation, False)
 
 
@@ -114,6 +116,9 @@ def test_wrong_shard(state):
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.shard += 1
+
+    # Re do signature
+    make_attestation_signature(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -125,6 +130,9 @@ def test_new_source_epoch(state):
 
     attestation.data.source_epoch += 1
 
+    # Re do signature
+    make_attestation_signature(state, attestation)
+
     yield from run_attestation_processing(state, attestation, False)
 
 
@@ -134,6 +142,9 @@ def test_source_root_is_target_root(state):
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_root = attestation.data.target_root
+
+    # Re do signature
+    make_attestation_signature(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -159,6 +170,9 @@ def test_invalid_current_source_root(state):
     # Make attestation source root invalid: should be previous justified, not current one
     attestation.data.source_root = state.current_justified_root
 
+    # Re do signature
+    make_attestation_signature(state, attestation)
+
     yield from run_attestation_processing(state, attestation, False)
 
 
@@ -168,6 +182,9 @@ def test_bad_source_root(state):
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_root = b'\x42' * 32
+
+    # Re do signature
+    make_attestation_signature(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -179,15 +196,21 @@ def test_non_zero_crosslink_data_root(state):
 
     attestation.data.crosslink_data_root = b'\x42' * 32
 
+    # Re do signature
+    make_attestation_signature(state, attestation)
+
     yield from run_attestation_processing(state, attestation, False)
 
 
 @spec_state_test
 def test_bad_previous_crosslink(state):
     next_epoch(state)
+    apply_empty_block(state)
+
     attestation = get_valid_attestation(state)
     for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
         next_slot(state)
+    apply_empty_block(state)
 
     state.current_crosslinks[attestation.data.shard].epoch += 10
 
