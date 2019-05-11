@@ -23,7 +23,6 @@ def run_voluntary_exit_processing(state, voluntary_exit, valid=True):
     If ``valid == False``, run expecting ``AssertionError``
     """
     validator_index = voluntary_exit.validator_index
-    pre_exit_epoch = state.validator_registry[validator_index].exit_epoch
 
     yield 'pre', state
     yield 'voluntary_exit', voluntary_exit
@@ -32,6 +31,8 @@ def run_voluntary_exit_processing(state, voluntary_exit, valid=True):
         expect_assertion_error(lambda: process_voluntary_exit(state, voluntary_exit))
         yield 'post', None
         return
+
+    pre_exit_epoch = state.validator_registry[validator_index].exit_epoch
 
     process_voluntary_exit(state, voluntary_exit)
 
@@ -105,6 +106,26 @@ def test_success_exit_queue(state):
         state.validator_registry[validator_index].exit_epoch ==
         state.validator_registry[initial_indices[0]].exit_epoch + 1
     )
+
+
+@spec_state_test
+def test_validator_invalid_validator_index(state):
+    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = get_current_epoch(state)
+    validator_index = get_active_validator_indices(state, current_epoch)[0]
+    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+
+    voluntary_exit = build_voluntary_exit(
+        state,
+        current_epoch,
+        validator_index,
+        privkey,
+    )
+    voluntary_exit.validator_index = len(state.validator_registry)
+
+    yield from run_voluntary_exit_processing(state, voluntary_exit, False)
 
 
 @spec_state_test
