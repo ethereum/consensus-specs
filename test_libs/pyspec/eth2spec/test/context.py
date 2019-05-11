@@ -19,3 +19,6 @@ def expect_assertion_error(fn):
         raise AssertionError('expected an assertion error, but got none.')
     except AssertionError:
         pass
+    except IndexError:
+        # Index errors are special; the spec is not explicit on bound checking, an IndexError is like a failed assert.
+        pass
