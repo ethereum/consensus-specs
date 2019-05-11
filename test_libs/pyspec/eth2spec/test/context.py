@@ -14,11 +14,14 @@ def spec_state_test(fn):
 
 
 def expect_assertion_error(fn):
+    bad = False
     try:
         fn()
-        raise AssertionError('expected an assertion error, but got none.')
+        bad = True
     except AssertionError:
         pass
     except IndexError:
         # Index errors are special; the spec is not explicit on bound checking, an IndexError is like a failed assert.
         pass
+    if bad:
+        raise AssertionError('expected an assertion error, but got none.')
