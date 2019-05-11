@@ -70,9 +70,17 @@ def test_success_withdrawable(state):
 @spec_state_test
 def test_success_active_above_max_effective(state):
     sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
-    amount = spec.MAX_EFFECTIVE_BALANCE // 32
-    state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + amount
-    transfer = get_valid_transfer(state, sender_index=sender_index, amount=amount, fee=0)
+    state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + 1
+    transfer = get_valid_transfer(state, sender_index=sender_index, amount=1, fee=0)
+
+    yield from run_transfer_processing(state, transfer)
+
+
+@spec_state_test
+def test_success_active_above_max_effective_fee(state):
+    sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
+    state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + 1
+    transfer = get_valid_transfer(state, sender_index=sender_index, amount=0, fee=1)
 
     yield from run_transfer_processing(state, transfer)
 
@@ -97,11 +105,10 @@ def test_incorrect_slot(state):
 
 
 @spec_state_test
-def test_insufficient_balance(state):
+def test_insufficient_balance_for_fee(state):
     sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
-    amount = spec.MAX_EFFECTIVE_BALANCE
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE
-    transfer = get_valid_transfer(state, sender_index=sender_index, amount=amount + 1, fee=0)
+    transfer = get_valid_transfer(state, sender_index=sender_index, amount=0, fee=1)
 
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
@@ -110,10 +117,35 @@ def test_insufficient_balance(state):
 
 
 @spec_state_test
-def test_no_dust(state):
+def test_insufficient_balance(state):
+    sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
+    state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE
+    transfer = get_valid_transfer(state, sender_index=sender_index, amount=1, fee=0)
+
+    # un-activate so validator can transfer
+    state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(state, transfer, False)
+
+
+@spec_state_test
+def test_no_dust_sender(state):
     sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
     balance = state.balances[sender_index]
     transfer = get_valid_transfer(state, sender_index=sender_index, amount=balance - spec.MIN_DEPOSIT_AMOUNT + 1, fee=0)
+
+    # un-activate so validator can transfer
+    state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(state, transfer, False)
+
+
+@spec_state_test
+def test_no_dust_recipient(state):
+    sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
+    state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + 1
+    transfer = get_valid_transfer(state, sender_index=sender_index, amount=1, fee=0)
+    state.balances[transfer.recipient] = 0
 
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
