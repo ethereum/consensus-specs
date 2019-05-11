@@ -72,7 +72,7 @@ Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Depo
 
 ### `Eth2Genesis` log
 
-When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
+When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined [here](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#genesis-state)) where:
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
 * `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
