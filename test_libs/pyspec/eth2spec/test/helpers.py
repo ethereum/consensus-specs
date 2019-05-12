@@ -420,3 +420,26 @@ def get_state_root(state, slot) -> bytes:
     """
     assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
     return state.latest_state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+
+
+def prepare_state_and_deposit(state, validator_index, amount):
+    """
+    Prepare the state for the deposit, and create a deposit for the given validator, depositing the given amount.
+    """
+    pre_validator_count = len(state.validator_registry)
+    # fill previous deposits with zero-hash
+    deposit_data_leaves = [ZERO_HASH] * pre_validator_count
+
+    pubkey = pubkeys[validator_index]
+    privkey = privkeys[validator_index]
+    deposit, root, deposit_data_leaves = build_deposit(
+        state,
+        deposit_data_leaves,
+        pubkey,
+        privkey,
+        amount,
+    )
+
+    state.latest_eth1_data.deposit_root = root
+    state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
+    return deposit

@@ -2,4 +2,3 @@ eth-utils==1.4.1
 ../../test_libs/gen_helpers
 ../../test_libs/config_helpers
 ../../test_libs/pyspec
-py_ecc
