@@ -2,6 +2,22 @@ import sys
 from typing import List
 
 
+def translate_ssz_type_line(line: str) -> str:
+    if ':' not in line:
+        return line
+    start = line[:line.index(':')]
+    field_type = line[line.index(':')+2:]
+    if field_type.startswith('['):
+        if ',' in line:
+            # TODO: translate [Foobar, SOME_THING] to Vector[Foobar, SSZLen(SOME_THING)] cleanly.
+            # just brute it here
+            field_type = 'Vector[%s, SSLen(%s)]' % (field_type[1:field_type.index(',')], field_type[field_type.index(',')+2:len(field_type)-1])
+        else:
+            field_type = 'List[%s]' % field_type[1:len(field_type)-1]
+    line = start + ': ' + field_type
+    return line
+
+
 def get_spec(file_name: str) -> List[str]:
     code_lines = []
     pulling_from = None
@@ -21,24 +37,23 @@ def get_spec(file_name: str) -> List[str]:
             else:
                 if current_typedef is not None:
                     assert code_lines[-1] == '}'
-                    code_lines[-1] = '})'
-                    current_typedef[-1] = '})'
-                    type_defs.append((current_name, current_typedef))
+                    code_lines[-1] = ''
+                    code_lines.append('')
                 pulling_from = None
                 current_typedef = None
         else:
             if pulling_from == linenum and line == '{':
-                code_lines.append('%s = SSZType({' % current_name)
-                current_typedef = ['global_vars["%s"] = SSZType({' % current_name]
+                code_lines.append('class %s(SSZContainer):' % current_name)
+                current_typedef = current_name
+                type_defs.append(current_name)
             elif pulling_from is not None:
                 # Add some whitespace between functions
                 if line[:3] == 'def':
                     code_lines.append('')
                     code_lines.append('')
-                code_lines.append(line)
-                # Remember type def lines
                 if current_typedef is not None:
-                    current_typedef.append(line)
+                    line = translate_ssz_type_line(line)
+                code_lines.append(line)
             elif pulling_from is None and len(line) > 0 and line[0] == '|':
                 row = line[1:].split('|')
                 if len(row) >= 2:
@@ -56,16 +71,8 @@ def get_spec(file_name: str) -> List[str]:
                         code_lines.append(row[0] + ' = ' + (row[1].replace('**TBD**', '0x1234567890123456789012345678901234567890')))
     # Build type-def re-initialization
     code_lines.append('\n')
-    code_lines.append('def init_SSZ_types():')
-    code_lines.append('    global_vars = globals()')
-    for ssz_type_name, ssz_type in type_defs:
-        code_lines.append('')
-        for type_line in ssz_type:
-            if len(type_line) > 0:
-                code_lines.append('    ' + type_line)
-    code_lines.append('\n')
     code_lines.append('ssz_types = [\n')
-    for (ssz_type_name, _) in type_defs:
+    for ssz_type_name in type_defs:
         code_lines.append(f'    {ssz_type_name},\n')
     code_lines.append(']')
     code_lines.append('\n')

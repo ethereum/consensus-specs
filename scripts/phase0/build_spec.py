@@ -12,11 +12,11 @@ from typing import (
     NewType,
     Tuple,
 )
-from eth2spec.utils.minimal_ssz import (
-    SSZType,
+from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
 )
+from eth2spec.utils.ssz.ssz_typing import *
 from eth2spec.utils.bls_stub import (
     bls_aggregate_pubkeys,
     bls_verify,
