@@ -1220,11 +1220,14 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled excpetion (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
-def state_transition(state: BeaconState, block: BeaconBlock) -> BeaconState:
+def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root: bool=False) -> BeaconState:
     # Process slots (including those with no blocks) since block
     process_slots(state, block.slot)
     # Process block
     process_block(state, block)
+    # Validate state root if received from external source
+    if validate_state_root:
+        process_state_root(state, block)
     # Return post-state
     return state
 ```
@@ -1579,7 +1582,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
-    # process_state_root(state, block)
 ```
 
 #### Block header
