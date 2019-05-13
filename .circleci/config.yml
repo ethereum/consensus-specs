@@ -84,11 +84,25 @@ jobs:
           command: make citest
       - store_test_results:
           path: test_libs/pyspec/test-reports
+  lint:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_cached_venv:
+          venv_name: v1-pyspec
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - run:
+          name: Run linter
+          command: make install_lint && make pyspec && make lint
 workflows:
   version: 2.1
   test_spec:
     jobs:
       - checkout_specs
+      - lint
       - install_test:
           requires:
             - checkout_specs

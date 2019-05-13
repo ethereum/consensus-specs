@@ -146,7 +146,7 @@ def compute_committee(header: BeaconBlockHeader,
     ]
     def get_switchover_epoch(index):
         return (
-            bytes_to_int(hash(validator_memory.earlier_period_data.seed + int_to_bytes3(index))[0:8]) %
+            bytes_to_int(hash(validator_memory.earlier_period_data.seed + int_to_bytes(index, length=3))[0:8]) %
             PERSISTENT_COMMITTEE_PERIOD
         )
 

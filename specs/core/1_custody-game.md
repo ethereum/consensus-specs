@@ -104,6 +104,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ### Reward and penalty quotients
 
+| Name | Value |
+| - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
 
 ### Signature domains
@@ -147,7 +149,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'deadline': Epoch,
-    'crosslink_data_root': Hash,
+    'data_root': Hash,
     'depth': 'uint64',
     'chunk_index': 'uint64',
 }
@@ -161,7 +163,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
     'deadline': Epoch,
-    'crosslink_data_root': Hash,
+    'data_root': Hash,
     'chunk_count': 'uint64',
     'chunk_bits_merkle_root': Hash,
     'responder_key': BLSSignature,
@@ -265,7 +267,7 @@ The `empty` function accepts and SSZ type as input and returns an object of that
 def get_custody_chunk_count(attestation: Attestation) -> int:
     crosslink_start_epoch = attestation.data.latest_crosslink.epoch
     crosslink_end_epoch = slot_to_epoch(attestation.data.slot)
-    crosslink_crosslink_length = min(MAX_CROSSLINK_EPOCHS, end_epoch - start_epoch)
+    crosslink_crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, end_epoch - start_epoch)
     chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK
     return crosslink_crosslink_length * chunks_per_epoch
 ```
@@ -426,10 +428,10 @@ def process_early_derived_secret_reveal(state: BeaconState,
         # round key
         slash_validator(state, reveal.revealed_index, reveal.masker_index)
     else:
-        # Only a small penalty proportional to proposer slot reward for RANDAO reveal 
+        # Only a small penalty proportional to proposer slot reward for RANDAO reveal
         # that does not interfere with the custody period
-        # The penalty is proportional to the max proposer reward 
-        
+        # The penalty is proportional to the max proposer reward
+
         # Calculate penalty
         max_proposer_slot_reward = (
             get_base_reward(state, reveal.revealed_index) *
@@ -448,7 +450,7 @@ def process_early_derived_secret_reveal(state: BeaconState,
         increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
         decrease_balance(state, reveal.revealed_index, penalty)
 
-        # Mark this derived secret as exposed so validator cannot be punished repeatedly 
+        # Mark this derived secret as exposed so validator cannot be punished repeatedly
         state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS].append(reveal.revealed_index)
 
 ```
@@ -474,7 +476,7 @@ def process_chunk_challenge(state: BeaconState,
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
         assert (
-            record.crosslink_data_root != challenge.attestation.data.crosslink_data_root or
+            record.data_root != challenge.attestation.data.crosslink.data_root or
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
@@ -486,7 +488,7 @@ def process_chunk_challenge(state: BeaconState,
         challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
-        crosslink_data_root=challenge.attestation.data.crosslink_data_root,
+        data_root=challenge.attestation.data.crosslink.data_root,
         depth=depth,
         chunk_index=challenge.chunk_index,
     )
@@ -564,7 +566,7 @@ def process_bit_challenge(state: BeaconState,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
-        crosslink_data_root=challenge.attestation.data.crosslink_data_root,
+        data_root=challenge.attestation.data.crosslink.data_root,
         chunk_count=chunk_count,
         chunk_bits_merkle_root=merkle_root(pad_to_power_of_2((challenge.chunk_bits))),
         responder_key=challenge.responder_key,
@@ -610,7 +612,7 @@ def process_chunk_challenge_response(state: BeaconState,
         branch=response.data_branch,
         depth=challenge.depth,
         index=response.chunk_index,
-        root=challenge.crosslink_data_root,
+        root=challenge.data_root,
     )
     # Clear the challenge
     records = state.custody_chunk_challenge_records
@@ -632,7 +634,7 @@ def process_bit_challenge_response(state: BeaconState,
         branch=response.data_branch,
         depth=math.log2(next_power_of_two(challenge.chunk_count)),
         index=response.chunk_index,
-        root=challenge.crosslink_data_root,
+        root=challenge.data_root,
     )
     # Verify the chunk bit leaf matches the challenge data
     assert verify_merkle_branch(
