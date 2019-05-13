@@ -1,8 +1,11 @@
 openapi: "3.0.2"
 info:
   title: "Minimal Beacon Node API for Validator"
-  description: "A minimal API specification for the beacon node, which enabling a validator to connect and perform its obligations on the Ethereum 2.0 phase 0 beacon chain."
+  description: "A minimal API specification for the beacon node, which enables a validator to connect and perform its obligations on the Ethereum 2.0 phase 0 beacon chain."
   version: "0.1"
+  license:
+    name: "Apache 2.0"
+    url: "https://www.apache.org/licenses/LICENSE-2.0.html"
 tags:
   - name: Necessary for validator
     description: The minimal set of endpoints to enable a working validator implementation.
