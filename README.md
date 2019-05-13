@@ -28,6 +28,7 @@ Core specifications for eth2.0 client validation can be found in [specs/core](sp
 * [General test format](specs/test_formats/README.md)
 * [Merkle proof formats](specs/light_client/merkle_proofs.md)
 * [Light client syncing protocol](specs/light_client/sync_protocol.md)
+* [Beacon node API for validator](specs/validator/0_beacon-node-validator-api.md)
 
 
 ### Design goals
