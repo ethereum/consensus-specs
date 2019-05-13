@@ -152,7 +152,7 @@ The [RPC Interface](./rpc-interface.md) is specified in this repository.
 **Note: This protocol is a placeholder and will be updated once the discv5
 discovery protocol is added to this document**
 
-#### Protocol Id: `/eth/serentiy/id/1.0.0` 
+#### Protocol Id: `/eth/serenity/id/1.0.0` 
 
 The Identify protocol (defined in go - [identify-go](https://github.com/ipfs/go-ipfs/blob/master/core/commands/id.go) and rust [rust-identify](https://github.com/libp2p/rust-libp2p/blob/master/protocols/identify/src/lib.rs))
 allows a node A to query another node B which information B knows about A. This also includes the addresses B is listening on.
