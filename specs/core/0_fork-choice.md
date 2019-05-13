@@ -50,6 +50,8 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 
 *Note*: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
 
+*Note*: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/validator/0_beacon-chain-validator.md) should ensure that `state.latest_eth1_data` of the canonical Ethereum 2.0 chain remains consistent with the canonical Ethereum 1.0 chain. If not, emergency manual intervension will be required.
+
 ### Containers
 
 #### `Target`
