@@ -1253,7 +1253,6 @@ def process_slot(state: BeaconState) -> None:
     # Cache block root
     previous_block_root = signing_root(state.latest_block_header)
     state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
-
 ```
 
 ### Epoch processing
@@ -1610,7 +1609,12 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
     # Verify that the provided randao value is valid
-    assert bls_verify(proposer.pubkey, hash_tree_root(get_current_epoch(state)), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    assert bls_verify(
+        proposer.pubkey,
+        hash_tree_root(get_current_epoch(state)),
+        body.randao_reveal,
+        get_domain(state, DOMAIN_RANDAO),
+    )
     # Mix it in
     state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
         xor(get_randao_mix(state, get_current_epoch(state)),
