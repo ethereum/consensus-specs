@@ -3,6 +3,11 @@ info:
   title: "Minimal Beacon Node API for Validator"
   description: "A minimal API specification for the beacon node, which enabling a validator to connect and perform its obligations on the Ethereum 2.0 phase 0 beacon chain."
   version: "0.1"
+tags:
+  - name: Necessary for validator
+    description: The minimal set of endpoints to enable a working validator implementation.
+  - name: Optional
+    description: Extra endpoints which are nice-to-haves.
 paths:
   /node/version:
     get:
@@ -19,7 +24,6 @@ paths:
                 $ref: '#/components/schemas/version'
         500:
           $ref: '#/components/responses/InternalError'
-
   /node/genesis_time:
     get:
       tags:
@@ -55,6 +59,28 @@ paths:
                     description: "A boolean of whether the node is currently syncing or not."
                   sync_status:
                     $ref: '#/components/schemas/SyncingStatus'
+        500:
+          $ref: '#/components/responses/InternalError'
+  /node/fork:
+    get:
+      tags:
+        - Optional
+      summary: "Get fork information from running beacon node."
+      description: "Requests the beacon node to provide which fork version it is currently on."
+      responses:
+        200:
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fork:
+                    $ref: '#/components/schemas/Fork'
+                  chain_id:
+                    type: integer
+                    format: uint64
+                    description: "Sometimes called the network id, this number discerns the active chain for the BeaconNode. Analagous to Eth1.0 JSON-RPC net_version."
         500:
           $ref: '#/components/responses/InternalError'
 
@@ -127,7 +153,7 @@ paths:
     post:
       tags:
         - Necessary for validator
-      summary: "Publish a signed block"
+      summary: "Publish a signed block."
       description: "Instructs the beacon node to publish a newly signed beacon block to the beacon network, to be included in the beacon chain."
       parameters:
       - name: beacon_block
@@ -200,29 +226,6 @@ paths:
         503:
           $ref: '#/components/responses/CurrentlySyncing'
 
-  /node/fork:
-    get:
-      tags:
-        - Optional
-      summary: "Get fork information from running beacon node."
-      description: "Requests the beacon node to provide which fork version it is currently on."
-      responses:
-        200:
-          description: Request successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  fork:
-                    $ref: '#/components/schemas/Fork'
-                  chain_id:
-                    type: integer
-                    format: uint64
-                    description: "Sometimes called the network id, this number discerns the active chain for the BeaconNode. Analagous to Eth1.0 JSON-RPC net_version."
-        500:
-          $ref: '#/components/responses/InternalError'
-
 components:
   schemas:
     pubkey:
@@ -231,24 +234,15 @@ components:
       pattern: "^0x[a-fA-F0-9]{96}$"
       description: "The validator's BLS public key, uniquely identifying them. _48-bytes, hex encoded with 0x prefix, case insensitive._"
       example: "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc"
-
     version:
       type: string
       description: "A string which uniquely identifies the client implementation and its version; similar to [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3)."
       example: "Lighthouse / v0.1.5 (Linux x86_64)"
-
     genesis_time:
       type: integer
       format: uint64
       description: "The genesis_time configured for the beacon node, which is the time the Eth1.0 validator deposit smart contract has enough ETH staked (i.e. Eth2.0 begins)."
       example: 1557716289
-
-    merkle_root:
-      type: string
-      format: byte
-      pattern: "^0x[a-fA-F0-9]{64}$"
-      description: "A 32 byte merkle root, used in all kinds of scenarios."
-
     ValidatorDuty:
       type: object
       properties:
@@ -271,7 +265,6 @@ components:
           format: uint64
           nullable: true
           description: "The slot in which a validator must propose a block, or `null` if block production is not required."
-
     SyncingStatus:
       type: object
       nullable: true
@@ -290,15 +283,15 @@ components:
           description: "The estimated highest block, or current target block number."
 
     BeaconBlock:
+      description: "The [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblock) object from the Eth2.0 spec."
       allOf:
         - $ref: '#/components/schemas/BeaconBlockCommon'
         - type: object
-          description: "The [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblock) object from the Eth2.0 spec."
           properties:
             body:
               $ref: '#/components/schemas/BeaconBlockBody'
-
     BeaconBlockHeader:
+      description: "The [`BeaconBlockHeader`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblockheader) object from the Eth2.0 spec."
       allOf:
         - $ref: '#/components/schemas/BeaconBlockCommon'
         - type: object
@@ -308,7 +301,30 @@ components:
               format: bytes
               pattern: "^0x[a-fA-F0-9]{64}$"
               description: "The tree hash merkle root of the `BeaconBlockBody` for the `BeaconBlock`"
-
+    BeaconBlockCommon:
+      # An abstract object to collect the common fields between the BeaconBlockHeader and the BeaconBlock objects
+      type: object
+      properties:
+        slot:
+          type: integer
+          format: uint64
+          description: "The slot to which this block corresponds."
+        parent_root:
+          type: string
+          format: bytes
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          description: "The signing merkle root of the parent `BeaconBlock`."
+        state_root:
+          type: string
+          format: bytes
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          description: "The tree hash merkle root of the `BeaconState` for the `BeaconBlock`."
+        signature:
+          type: string
+          format: bytes
+          pattern: "^0x[a-fA-F0-9]{192}$"
+          example: "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505"
+          description: "The BLS signature of the `BeaconBlock` made by the validator of the block."
     BeaconBlockBody:
       type: object
       description: "The [`BeaconBlockBody`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblockbody) object from the Eth2.0 spec."
@@ -336,7 +352,7 @@ components:
               type: string
               format: byte
               pattern: "^0x[a-fA-F0-9]{64}$"
-              description: "Ethereum 1.x block hash"
+              description: "Ethereum 1.x block hash."
         graffiti:
           type: string
           format: byte
@@ -383,7 +399,7 @@ components:
                 type: string
                 format: byte
                 pattern: "^0x[a-fA-F0-9]+$"
-                description: "Custody bitfield"
+                description: "Custody bitfield."
               signature:
                 type: string
                 format: byte
@@ -476,50 +492,25 @@ components:
               amount:
                 type: integer
                 format: uint64
-                description: "Amount in Gwei"
+                description: "Amount in Gwei."
               fee:
                 type: integer
                 format: uint64
-                description: "Fee in Gwei for block producer"
+                description: "Fee in Gwei for block producer."
               slot:
                 type: integer
                 format: uint64
-                description: "Inclusion slot"
+                description: "Inclusion slot."
               pubkey:
                 type: string
                 format: byte
                 pattern: "^0x[a-fA-F0-9]{96}$"
-                description: "Sender withdrawal public key"
+                description: "Sender withdrawal public key."
               signature:
                 type: string
                 format: byte
                 pattern: "^0x[a-fA-F0-9]{192}$"
-                description: "Sender signature"
-
-    BeaconBlockCommon:
-      # An object to collect the common fields between the BeaconBlockHeader and the BeaconBlock objects
-      type: object
-      properties:
-        slot:
-          type: integer
-          format: uint64
-          description: "The slot to which this block corresponds."
-        parent_root:
-          type: string
-          format: bytes
-          pattern: "^0x[a-fA-F0-9]{64}$"
-          description: "The signing merkle root of the parent `BeaconBlock`"
-        state_root:
-          type: string
-          format: bytes
-          pattern: "^0x[a-fA-F0-9]{64}$"
-          description: "The tree hash merkle root of the `BeaconState` for the `BeaconBlock`"
-        signature:
-          type: string
-          format: bytes
-          pattern: "^0x[a-fA-F0-9]{192}$"
-          example: "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505"
-          description: "The BLS signature of the `BeaconBlock` made by the validator of the block"
+                description: "Sender signature."
 
     Fork:
       type: object
@@ -529,17 +520,16 @@ components:
           type: string
           format: byte
           pattern: "^0x[a-fA-F0-9]{8}$"
-          description: "Previous fork version"
+          description: "Previous fork version."
         current_version:
           type: string
           format: byte
           pattern: "^0x[a-fA-F0-9]{8}$"
-          description: "Current fork version"
+          description: "Current fork version."
         epoch:
           type: integer
           format: uint64
-          description: "Fork epoch number"
-
+          description: "Fork epoch number."
     IndexedAttestation:
       type: object
       description: "The [`IndexedAttestation`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#indexedattestation) object from the Eth2.0 spec."
@@ -558,51 +548,63 @@ components:
             format: uint64
         data:
           $ref: '#/components/schemas/AttestationData'
-
     AttestationData:
       type: object
       description: "The [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#attestationdata) object from the Eth2.0 spec."
       properties:
         beacon_block_root:
-          $ref: '#/components/schemas/merkle_root'
+          type: string
+          format: byte
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          description: "LMD GHOST vote."
         source_epoch:
           type: integer
           format: uint64
-          description: "Source epoch from FFG vote"
+          description: "Source epoch from FFG vote."
         source_root:
-          $ref: '#/components/schemas/merkle_root'
+          type: string
+          format: byte
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          description: "Source root from FFG vote."
         target_epoch:
           type: integer
           format: uint64
-          description: "Target epoch from FFG vote"
+          description: "Target epoch from FFG vote."
         target_root:
-          $ref: '#/components/schemas/merkle_root'
+          type: string
+          format: byte
+          pattern: "^0x[a-fA-F0-9]{64}$"
+          description: "Target root from FFG vote."
         crosslink:
-          $ref: '#/components/schemas/CrossLink'
-
-    CrossLink:
-      type: object
-      description: "The [`Crosslink`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#crosslink) object from the Eth2.0 spec."
-      properties:
-        shard:
-          type: integer
-          format: uint64
-          description: "The shard number"
-        epoch:
-          type: integer
-          format: uint64
-          description: "The epoch number"
-        parent_root:
-          $ref: '#/components/schemas/merkle_root'
-        data_root:
-          $ref: '#/components/schemas/merkle_root'
+          title: CrossLink
+          type: object
+          description: "The [`Crosslink`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#crosslink) object from the Eth2.0 spec."
+          properties:
+            shard:
+              type: integer
+              format: uint64
+              description: "The shard number."
+            epoch:
+              type: integer
+              format: uint64
+              description: "The epoch number."
+            parent_root:
+              type: string
+              format: byte
+              pattern: "^0x[a-fA-F0-9]{64}$"
+              description: "Root of the previous crosslink."
+            data_root:
+              type: string
+              format: byte
+              pattern: "^0x[a-fA-F0-9]{64}$"
+              description: "Root of the crosslinked shard data since the previous crosslink."
 
   responses:
     Success:
-      description: Request successful
+      description: "Request successful."
     InvalidRequest:
-      description: Invalid request syntax
+      description: "Invalid request syntax."
     InternalError:
-      description: Beacon node internal error
+      description: "Beacon node internal error."
     CurrentlySyncing:
-      description: Beacon node is currently syncing, try again later
+      description: "Beacon node is currently syncing, try again later."
