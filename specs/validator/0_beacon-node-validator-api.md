@@ -4,9 +4,9 @@ __NOTICE__: This document is a work-in-progress for researchers and implementers
 
 ## Outline
 
-This document outlines a minimal application programming interface (API) which is exposed by a `BeaconNode` for use by a `ValidatorClient` which aims to facilitate [_phase 0_](../../README.md#phase-0) of Ethereum 2.0.
+This document outlines a minimal application programming interface (API) which is exposed by a beacon node for use by a validator client implementation which aims to facilitate [_phase 0_](../../README.md#phase-0) of Ethereum 2.0.
 
-The API is a REST interface, accessed via HTTP, designed for use as a local communications protocol between binaries.
+The API is a REST interface, accessed via HTTP, designed for use as a local communications protocol between binaries. The only supported return data type is currently JSON.
 
 ###  Background
 The beacon node maintains the state of the beacon chain by communicating with other beacon nodes in the Ethereum Serenity network. Conceptually, it does not maintain keypairs that participate with the beacon chain.
