@@ -1,4 +1,5 @@
 from eth2spec.debug.encode import encode
+from eth2spec.utils import bls
 
 
 def spectest(description: str = None):
@@ -18,6 +19,9 @@ def spectest(description: str = None):
                 else:
                     # description can be explicit
                     out['description'] = description
+                # If BLS is not active, mark the test as BLS-ignorant.
+                if not bls.bls_active:
+                    out['stub_bls'] = True
                 # put all generated data into a dict.
                 for data in fn(*args, **kw):
                     # If there is a type argument, encode it as that type.
