@@ -46,9 +46,12 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 * `on_block(block)` whenever a block `block` is received
 * `on_attestation(attestation)` whenever an attestation `attestation` is received
 
-*Note*: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds.
+*Notes*:
 
-*Note*: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
+1) **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds.
+2) **Honest clocks**: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
+3) **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/validator/0_beacon-chain-validator.md) should ensure that `state.latest_eth1_data` of the canonical Ethereum 2.0 chain remains consistent with the canonical Ethereum 1.0 chain. If not, emergency manual intervension will be required.
+4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`. 
 
 ### Containers
 
