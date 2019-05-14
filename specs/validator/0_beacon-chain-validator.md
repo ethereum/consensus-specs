@@ -149,9 +149,9 @@ def get_committee_assignment(
     committees_per_slot = get_epoch_committee_count(state, epoch) // SLOTS_PER_EPOCH
     epoch_start_slot = get_epoch_start_slot(epoch)
     for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH)
-        offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
+        slot_start_shard = get_epoch_start_shard(state, epoch) + committees_per_slot * (slot % SLOTS_PER_EPOCH)
         for i in range(committees_per_slot):
-            shard = (get_epoch_start_shard(state, epoch) + i) % SHARD_COUNT
+            shard = (slot_start_shard + i) % SHARD_COUNT
             committee = get_crosslink_committee(state, epoch, shard)
             if validator_index in committee:
                 return committee, shard, slot
