@@ -102,12 +102,12 @@ workflows:
   test_spec:
     jobs:
       - checkout_specs
+      - lint:
+          requires:
+            - checkout_specs
       - install_test:
           requires:
             - checkout_specs
       - test:
-          requires:
-            - install_test
-      - lint:
           requires:
             - install_test
