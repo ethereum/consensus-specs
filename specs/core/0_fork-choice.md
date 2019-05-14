@@ -57,7 +57,7 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 ```python
 {
     'epoch': 'uint64',
-    'root': 'Bytes32', 
+    'root': 'Bytes32',
 }
 ```
 
@@ -117,7 +117,7 @@ def get_head(store: Store) -> Bytes32:
         if len(children) == 0:
             return head
         # Sort by attesting balance with ties broken lexicographically
-        head = max(children, key=lambda root: (get_attesting_balance(root), root))
+        head = max(children, key=lambda root: (get_attesting_balance(store, root), root))
 ```
 
 ### Handlers
