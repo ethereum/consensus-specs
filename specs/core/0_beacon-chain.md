@@ -117,7 +117,6 @@
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
                 - [Transfers](#transfers)
-            - [State root verification](#state-root-verification)
 
 <!-- /TOC -->
 
@@ -373,6 +372,7 @@ The types are defined topologically to aid in facilitating an executable version
     'signature': 'bytes96',
 }
 ```
+
 #### `Validator`
 
 ```python
@@ -577,9 +577,7 @@ The types are defined topologically to aid in facilitating an executable version
     'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
-    # Balances slashed at every withdrawal period
     'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],
-    # `latest_block_header.state_root == ZERO_HASH` temporarily
     'latest_block_header': BeaconBlockHeader,
     'historical_roots': ['bytes32'],
 
@@ -1225,9 +1223,9 @@ def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root
     process_slots(state, block.slot)
     # Process block
     process_block(state, block)
-    # Validate state root if received from external source
+    # Validate state root (`validate_state_root == True` in production)
     if validate_state_root:
-        process_state_root(state, block)
+        assert block.state_root == hash_tree_root(state)
     # Return post-state
     return state
 ```
@@ -1837,11 +1835,4 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Verify balances are not dust
     assert not (0 < state.balances[transfer.sender] < MIN_DEPOSIT_AMOUNT)
     assert not (0 < state.balances[transfer.recipient] < MIN_DEPOSIT_AMOUNT)
-```
-
-#### State root verification
-
-```python
-def process_state_root(state: BeaconState, block: BeaconBlock) -> None:
-    assert block.state_root == hash_tree_root(state)
 ```
