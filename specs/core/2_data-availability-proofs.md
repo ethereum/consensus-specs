@@ -171,7 +171,7 @@ def mk_data_root(data: bytes) -> Bytes32:
     """
     square = extend_data_square(get_data_square(data))
     row_roots = [get_merkle_root(r) for r in data]
-    transposed_data = [[data[j][i] for i in range(len(data)] for j in range(len(data))]
+    transposed_data = [[data[j][i] for i in range(len(data))] for j in range(len(data))]
     column_roots = [get_merkle_root(r) for r in transposed_data]
     return hash(get_merkle_root(row_roots) + get_merkle_root(column_roots))
 ```
