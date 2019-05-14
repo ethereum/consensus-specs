@@ -96,9 +96,15 @@ def eval_polynomial_at(polynomial: List[int], x: int) -> int:
     return o
 ```
 
+### `multi_evaluate`
+
+`multi_evaluate` is defined as the function `multi_evaluate(xs: List[int], polynomial: List[int]) -> List[int]` that returns `[eval_polynomial_at(polynomial, x) for x in xs]`, though there are faster Fast Fourier Transform-based algorithms.
+
 ### `interpolate`
 
-`interpolate` is defined as the function `interpolate(xs: List[int], values: List[int]) -> List[int]` that returns the `polynomial` such that for all `0 <= i < len(xs)`, `eval_polynomial_at(polynomial, xs[i]) == values[i]`. This can be implemented via Lagrange interpolation in `O(N**2)` time or Fast Fourier transform in `O(N * log(N))` time. You can find a sample implementation here: [https://github.com/ethereum/research/tree/master/binary_fft](https://github.com/ethereum/research/tree/master/binary_fft)
+`interpolate` is defined as the function `interpolate(xs: List[int], values: List[int]) -> List[int]` that returns the `polynomial` such that for all `0 <= i < len(xs)`, `eval_polynomial_at(polynomial, xs[i]) == values[i]`. This can be implemented via Lagrange interpolation in `O(N**2)` time or Fast Fourier transform in `O(N * log(N))` time.
+
+You can find a sample implementation here: [https://github.com/ethereum/research/tree/master/binary_fft](https://github.com/ethereum/research/tree/master/binary_fft)
 
 ### `fill`
 
@@ -109,7 +115,7 @@ def fill(xs: List[int], values: List[int], length: int) -> List[int]:
     its outputs for all values in range(0, length)
     """
     poly = interpolate(xs, values)
-    return [eval_polynomial_at(poly, i) for i in range(length)]
+    return multi_evaluate(list(range(length)), poly)
 ```
 
 ### `fill_axis`
@@ -123,8 +129,8 @@ def fill_axis(xs: List[int], values: List[Bytes32], length: int) -> List[Bytes32
     range(0, length) and provides the 32-byte chunks that are the packages of the
     extended evaluations of every polynomial at each coordinate.
     """
-    data = [[bytes_to_int(a[i: FIELD_ELEMENT_BITS//8]) for a in axis] for i in range(0, 32, FIELD_ELEMENT_BITS)]
-    newdata = [fill(xs, d) for d in data]
+    data = [[bytes_to_int(a[i: FIELD_ELEMENT_BITS//8]) for a in values] for i in range(0, 32, FIELD_ELEMENT_BITS)]
+    newdata = [fill(xs, d, length) for d in data]
     return [b''.join([int_to_bytes(n[i], FIELD_ELEMENT_BITS//8) for n in newdata]) for i in range(length)]
 ```
 
@@ -135,10 +141,13 @@ def get_data_square(data: bytes) -> List[List[Bytes32]]:
     """
     Converts data into a 2**k x 2**k square, padding with zeroes if necessary.
     """
-    chunks = [data[i: i+32] for i in range(0, 32, len(data))]
-    while chunks != 2**log2(chunks) or log2(chunks) % 2:
-        chunks.append(ZERO_HASH)
+    # Split data into 32 byte chunks
+    chunks = [data[i: i+32] for i in range(0, len(data), 32)]
+    # Extend chunks to a 2**k x 2**k square
+    target_size = 4**(log2(len(chunks) - 1) // 2 + 1)
+    chunks.extend([ZERO_HASH for i in range(len(chunks), target_size)])
     side_length = integer_squareroot(len(chunks))
+    # Encode the chunk list as a square
     return [chunks[i: i + side_length] for i in range(0, len(chunks), side_length)]
 ```
 
@@ -170,9 +179,9 @@ def mk_data_root(data: bytes) -> Bytes32:
     Computes the root of the package of rows and colums of a given piece of data.
     """
     square = extend_data_square(get_data_square(data))
-    row_roots = [get_merkle_root(r) for r in data]
-    transposed_data = [[data[j][i] for i in range(len(data))] for j in range(len(data))]
-    column_roots = [get_merkle_root(r) for r in transposed_data]
+    row_roots = [get_merkle_root(r) for r in square]
+    transposed_square = [[square[j][i] for i in range(len(square))] for j in range(len(square))]
+    column_roots = [get_merkle_root(r) for r in transposed_square]
     return hash(get_merkle_root(row_roots) + get_merkle_root(column_roots))
 ```
 
