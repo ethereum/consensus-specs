@@ -10,15 +10,17 @@ from eth2spec.phase0.state_transition import (
     state_transition,
 )
 from eth2spec.test.context import spec_state_test
-from eth2spec.test.helpers import (
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    next_slot,
+    apply_empty_block
+)
+from eth2spec.test.helpers.attestations import (
     add_attestation_to_state,
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
     get_crosslink_committee,
     get_valid_attestation,
-    next_epoch,
-    next_slot,
-    apply_empty_block
 )
 
 

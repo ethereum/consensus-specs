@@ -5,14 +5,16 @@ from eth2spec.phase0.state_transition import (
     state_transition,
 )
 from .context import spec_state_test
-from .helpers import (
-    build_empty_block_for_next_slot,
+from .helpers.state import (
+    next_epoch,
+    apply_empty_block
+)
+from .helpers.block import build_empty_block_for_next_slot
+from .helpers.attestations import (
     fill_aggregate_attestation,
     get_current_epoch,
     get_epoch_start_slot,
     get_valid_attestation,
-    next_epoch,
-    apply_empty_block
 )
 
 

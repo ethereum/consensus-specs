@@ -19,18 +19,20 @@ from eth2spec.phase0.spec import (
 from eth2spec.phase0.state_transition import (
     state_transition,
 )
-from .helpers import (
+from .helpers.state import (
     get_balance,
-    build_empty_block_for_next_slot,
-    get_state_root,
-    get_valid_attestation,
-    get_valid_attester_slashing,
-    get_valid_proposer_slashing,
-    get_valid_transfer,
-    prepare_state_and_deposit,
+    get_state_root
+)
+from .helpers.transfers import get_valid_transfer
+from .helpers.block import build_empty_block_for_next_slot
+from .helpers.keys import (
     privkeys,
     pubkeys,
 )
+from .helpers.attester_slashings import get_valid_attester_slashing
+from .helpers.proposer_slashings import get_valid_proposer_slashing
+from .helpers.attestations import get_valid_attestation
+from .helpers.deposits import prepare_state_and_deposit
 
 from .context import spec_state_test
 
