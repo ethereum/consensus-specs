@@ -12,9 +12,10 @@ from eth2spec.phase0.state_transition import (
     state_transition, state_transition_to
 )
 from eth2spec.test.helpers.bitfields import set_bitfield_bit
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, make_block_signature
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
+from eth2spec.utils.minimal_ssz import hash_tree_root
 
 
 def build_attestation_data(state, slot, shard):
@@ -77,11 +78,11 @@ def get_valid_attestation(state, slot=None):
         data=attestation_data,
         custody_bitfield=custody_bitfield,
     )
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
     return attestation
 
 
-def make_aggregate_attestation_signature(state: BeaconState, data: AttestationData, participants: List[int]):
+def sign_aggregate_attestation(state: BeaconState, data: AttestationData, participants: List[int]):
     signatures = []
     for validator_index in participants:
         privkey = privkeys[validator_index]
@@ -96,19 +97,19 @@ def make_aggregate_attestation_signature(state: BeaconState, data: AttestationDa
     return bls_aggregate_signatures(signatures)
 
 
-def make_indexed_attestation_signature(state, indexed_attestation: IndexedAttestation):
+def sign_indexed_attestation(state, indexed_attestation: IndexedAttestation):
     participants = indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices
-    indexed_attestation.signature = make_aggregate_attestation_signature(state, indexed_attestation.data, participants)
+    indexed_attestation.signature = sign_aggregate_attestation(state, indexed_attestation.data, participants)
 
 
-def make_attestation_signature(state, attestation: Attestation):
+def sign_attestation(state, attestation: Attestation):
     participants = get_attesting_indices(
         state,
         attestation.data,
         attestation.aggregation_bitfield,
     )
 
-    attestation.signature = make_aggregate_attestation_signature(state, attestation.data, participants)
+    attestation.signature = sign_aggregate_attestation(state, attestation.data, participants)
 
 
 def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0):
@@ -139,5 +140,5 @@ def add_attestation_to_state(state, attestation, slot):
     block.slot = slot
     block.body.attestations.append(attestation)
     state_transition_to(state, block.slot)
-    make_block_signature(state, block)
+    sign_block(state, block)
     state_transition(state, block)

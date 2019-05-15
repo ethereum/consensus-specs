@@ -8,7 +8,7 @@ from eth2spec.utils.bls import bls_sign
 from eth2spec.utils.minimal_ssz import signing_root, hash_tree_root
 
 
-def make_block_signature(state, block):
+def sign_block(state, block):
     assert block.slot == state.slot or block.slot == state.slot + 1
     if block.slot == state.slot:
         proposer_index = get_beacon_proposer_index(state)
@@ -51,7 +51,7 @@ def build_empty_block(state, slot=None, signed=False):
     empty_block.previous_block_root = signing_root(previous_block_header)
 
     if signed:
-        make_block_signature(state, empty_block)
+        sign_block(state, empty_block)
 
     return empty_block
 

@@ -4,7 +4,7 @@ from eth2spec.phase0.spec import (
     process_attester_slashing,
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error
-from eth2spec.test.helpers.attestations import make_indexed_attestation_signature
+from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
 from eth2spec.test.helpers.state import (
     get_balance,
@@ -81,7 +81,7 @@ def test_success_surround(state):
     attester_slashing.attestation_1.data.target_epoch = attester_slashing.attestation_2.data.target_epoch + 1
 
     # correct the signature of attestation 1
-    make_indexed_attestation_signature(state, attester_slashing.attestation_1)
+    sign_indexed_attestation(state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(state, attester_slashing)
 

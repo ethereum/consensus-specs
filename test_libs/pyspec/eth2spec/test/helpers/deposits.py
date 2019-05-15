@@ -8,13 +8,19 @@ from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merk
 from eth2spec.utils.minimal_ssz import signing_root
 
 
-def build_deposit_data(state, pubkey, privkey, amount):
+def build_deposit_data(state, pubkey, privkey, amount, signed=False):
     deposit_data = DepositData(
         pubkey=pubkey,
         # insecurely use pubkey as withdrawal key as well
         withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
         amount=amount,
     )
+    if signed:
+        sign_deposit_data(state, deposit_data, privkey)
+    return deposit_data
+
+
+def sign_deposit_data(state, deposit_data, privkey):
     signature = bls_sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
@@ -24,15 +30,15 @@ def build_deposit_data(state, pubkey, privkey, amount):
         )
     )
     deposit_data.signature = signature
-    return deposit_data
 
 
 def build_deposit(state,
                   deposit_data_leaves,
                   pubkey,
                   privkey,
-                  amount):
-    deposit_data = build_deposit_data(state, pubkey, privkey, amount)
+                  amount,
+                  signed):
+    deposit_data = build_deposit_data(state, pubkey, privkey, amount, signed)
 
     item = deposit_data.hash_tree_root()
     index = len(deposit_data_leaves)
@@ -51,7 +57,7 @@ def build_deposit(state,
     return deposit, root, deposit_data_leaves
 
 
-def prepare_state_and_deposit(state, validator_index, amount):
+def prepare_state_and_deposit(state, validator_index, amount, signed=False):
     """
     Prepare the state for the deposit, and create a deposit for the given validator, depositing the given amount.
     """
@@ -67,6 +73,7 @@ def prepare_state_and_deposit(state, validator_index, amount):
         pubkey,
         privkey,
         amount,
+        signed
     )
 
     state.latest_eth1_data.deposit_root = root

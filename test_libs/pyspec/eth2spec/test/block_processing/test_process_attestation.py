@@ -11,7 +11,7 @@ from eth2spec.phase0.state_transition import (
 from eth2spec.test.context import spec_state_test, expect_assertion_error
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
-    make_attestation_signature,
+    sign_attestation,
 )
 from eth2spec.test.helpers.state import (
     apply_empty_block,
@@ -105,7 +105,7 @@ def test_old_source_epoch(state):
     attestation.data.source_epoch -= 1
 
     # Re do signature
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -118,7 +118,7 @@ def test_wrong_shard(state):
     attestation.data.shard += 1
 
     # Re do signature
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -131,7 +131,7 @@ def test_new_source_epoch(state):
     attestation.data.source_epoch += 1
 
     # Re do signature
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -144,7 +144,7 @@ def test_source_root_is_target_root(state):
     attestation.data.source_root = attestation.data.target_root
 
     # Re do signature
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -171,7 +171,7 @@ def test_invalid_current_source_root(state):
     attestation.data.source_root = state.current_justified_root
 
     # Re do signature
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -184,7 +184,7 @@ def test_bad_source_root(state):
     attestation.data.source_root = b'\x42' * 32
 
     # Re do signature
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -197,7 +197,7 @@ def test_non_zero_crosslink_data_root(state):
     attestation.data.crosslink_data_root = b'\x42' * 32
 
     # Re do signature
-    make_attestation_signature(state, attestation)
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 

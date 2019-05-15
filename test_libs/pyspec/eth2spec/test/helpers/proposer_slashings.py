@@ -1,12 +1,8 @@
 from copy import deepcopy
 
-# Access constants from spec pkg reference.
-import eth2spec.phase0.spec as spec
-from eth2spec.phase0.spec import get_current_epoch, get_active_validator_indices, BeaconBlockHeader, ZERO_HASH, \
-    get_domain, ProposerSlashing
+from eth2spec.phase0.spec import get_current_epoch, get_active_validator_indices, BeaconBlockHeader, ZERO_HASH, ProposerSlashing
+from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import pubkey_to_privkey
-from eth2spec.utils.bls import bls_sign
-from eth2spec.utils.minimal_ssz import signing_root
 
 
 def get_valid_proposer_slashing(state):
@@ -25,20 +21,8 @@ def get_valid_proposer_slashing(state):
     header_2.previous_block_root = b'\x02' * 32
     header_2.slot = slot + 1
 
-    domain = get_domain(
-        state=state,
-        domain_type=spec.DOMAIN_BEACON_PROPOSER,
-    )
-    header_1.signature = bls_sign(
-        message_hash=signing_root(header_1),
-        privkey=privkey,
-        domain=domain,
-    )
-    header_2.signature = bls_sign(
-        message_hash=signing_root(header_2),
-        privkey=privkey,
-        domain=domain,
-    )
+    sign_block_header(state, header_1, privkey)
+    sign_block_header(state, header_2, privkey)
 
     return ProposerSlashing(
         proposer_index=validator_index,
