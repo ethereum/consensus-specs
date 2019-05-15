@@ -1,18 +1,8 @@
 import eth2spec.phase0.spec as spec
-
-from eth2spec.phase0.spec import (
-    ZERO_HASH,
-    process_deposit,
-)
-from eth2spec.test.helpers import (
-    get_balance,
-    build_deposit,
-    prepare_state_and_deposit,
-    privkeys,
-    pubkeys,
-)
-
+from eth2spec.phase0.spec import process_deposit
 from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.helpers.deposits import prepare_state_and_deposit
+from eth2spec.test.helpers.state import get_balance
 
 
 def run_deposit_processing(state, deposit, validator_index, valid=True):

@@ -2,7 +2,6 @@ from copy import deepcopy
 
 # Access constants from spec pkg reference.
 import eth2spec.phase0.spec as spec
-
 from eth2spec.phase0.spec import get_current_epoch, get_active_validator_indices, BeaconBlockHeader, ZERO_HASH, \
     get_domain, ProposerSlashing
 from eth2spec.test.helpers.keys import pubkey_to_privkey

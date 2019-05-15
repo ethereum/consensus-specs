@@ -2,14 +2,12 @@ from typing import List
 
 # Access constants from spec pkg reference.
 import eth2spec.phase0.spec as spec
-
 from eth2spec.phase0.spec import (
     Attestation,
     AttestationData,
     AttestationDataAndCustodyBit,
     get_epoch_start_slot, get_block_root, get_current_epoch, get_previous_epoch, slot_to_epoch, get_shard_delta,
     get_crosslink_committee, get_domain, IndexedAttestation, get_attesting_indices, BeaconState, get_block_root_at_slot)
-
 from eth2spec.phase0.state_transition import (
     state_transition, state_transition_to
 )

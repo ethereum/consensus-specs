@@ -1,8 +1,7 @@
-from eth2spec.phase0 import spec
-from eth2spec.phase0.spec import get_beacon_proposer_index, slot_to_epoch, get_domain, BeaconBlock
-
 from copy import deepcopy
 
+from eth2spec.phase0 import spec
+from eth2spec.phase0.spec import get_beacon_proposer_index, slot_to_epoch, get_domain, BeaconBlock
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import next_slot
 from eth2spec.utils.bls import bls_sign

@@ -1,17 +1,13 @@
 import eth2spec.phase0.spec as spec
-
 from eth2spec.phase0.spec import (
     get_active_validator_indices,
     get_churn_limit,
     get_current_epoch,
     process_voluntary_exit,
 )
-from eth2spec.test.helpers import (
-    build_voluntary_exit,
-    pubkey_to_privkey,
-)
-
 from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.helpers.keys import pubkey_to_privkey
+from eth2spec.test.helpers.voluntary_exits import build_voluntary_exit
 
 
 def run_voluntary_exit_processing(state, voluntary_exit, valid=True):

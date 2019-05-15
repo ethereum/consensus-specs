@@ -4,12 +4,12 @@ from eth2spec.phase0.spec import (
     process_attester_slashing,
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error
-from eth2spec.test.helpers import (
+from eth2spec.test.helpers.attestations import make_indexed_attestation_signature
+from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
+from eth2spec.test.helpers.state import (
     get_balance,
-    get_valid_attester_slashing,
     next_epoch,
     apply_empty_block,
-    make_indexed_attestation_signature
 )
 
 

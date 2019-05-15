@@ -7,11 +7,11 @@ from eth2spec.phase0.spec import (
     process_block_header,
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error
-from eth2spec.test.helpers import (
+from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
-    next_slot,
     make_block_signature
 )
+from eth2spec.test.helpers.state import next_slot
 
 
 def prepare_state_for_header_processing(state):
