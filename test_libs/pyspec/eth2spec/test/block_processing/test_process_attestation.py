@@ -57,7 +57,7 @@ def run_attestation_processing(state, attestation, valid=True):
 
 @spec_state_test
 def test_success(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=True)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     yield from run_attestation_processing(state, attestation)
@@ -65,7 +65,7 @@ def test_success(state):
 
 @spec_state_test
 def test_success_previous_epoch(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=True)
     next_epoch(state)
     apply_empty_block(state)
 
@@ -74,7 +74,7 @@ def test_success_previous_epoch(state):
 
 @spec_state_test
 def test_before_inclusion_delay(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=True)
     # do not increment slot to allow for inclusion delay
 
     yield from run_attestation_processing(state, attestation, False)
@@ -82,7 +82,7 @@ def test_before_inclusion_delay(state):
 
 @spec_state_test
 def test_after_epoch_slots(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=True)
     # increment past latest inclusion slot
     state_transition_to(state, state.slot + spec.SLOTS_PER_EPOCH + 1)
     apply_empty_block(state)
@@ -96,7 +96,7 @@ def test_old_source_epoch(state):
     state.finalized_epoch = 2
     state.previous_justified_epoch = 3
     state.current_justified_epoch = 4
-    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
+    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1, signed=False)
 
     # test logic sanity check: make sure the attestation is pointing to oldest known source epoch
     assert attestation.data.source_epoch == state.previous_justified_epoch
@@ -104,7 +104,6 @@ def test_old_source_epoch(state):
     # Now go beyond that, it will be invalid
     attestation.data.source_epoch -= 1
 
-    # Re do signature
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -112,12 +111,11 @@ def test_old_source_epoch(state):
 
 @spec_state_test
 def test_wrong_shard(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.shard += 1
 
-    # Re do signature
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -125,12 +123,11 @@ def test_wrong_shard(state):
 
 @spec_state_test
 def test_new_source_epoch(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_epoch += 1
 
-    # Re do signature
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -138,12 +135,11 @@ def test_new_source_epoch(state):
 
 @spec_state_test
 def test_source_root_is_target_root(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_root = attestation.data.target_root
 
-    # Re do signature
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -160,7 +156,7 @@ def test_invalid_current_source_root(state):
     state.current_justified_epoch = 4
     state.current_justified_root = b'\xff' * 32
 
-    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
+    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     # Test logic sanity checks:
@@ -170,7 +166,6 @@ def test_invalid_current_source_root(state):
     # Make attestation source root invalid: should be previous justified, not current one
     attestation.data.source_root = state.current_justified_root
 
-    # Re do signature
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -178,12 +173,11 @@ def test_invalid_current_source_root(state):
 
 @spec_state_test
 def test_bad_source_root(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_root = b'\x42' * 32
 
-    # Re do signature
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -191,12 +185,11 @@ def test_bad_source_root(state):
 
 @spec_state_test
 def test_non_zero_crosslink_data_root(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.crosslink_data_root = b'\x42' * 32
 
-    # Re do signature
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -207,7 +200,7 @@ def test_bad_previous_crosslink(state):
     next_epoch(state)
     apply_empty_block(state)
 
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=True)
     for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
         next_slot(state)
     apply_empty_block(state)
@@ -219,19 +212,23 @@ def test_bad_previous_crosslink(state):
 
 @spec_state_test
 def test_non_empty_custody_bitfield(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield)
+    
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
 
 
 @spec_state_test
 def test_empty_aggregation_bitfield(state):
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.aggregation_bitfield = b'\x00' * len(attestation.aggregation_bitfield)
+
+    sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)

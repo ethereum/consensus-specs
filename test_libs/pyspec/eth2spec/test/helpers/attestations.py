@@ -55,7 +55,7 @@ def build_attestation_data(state, slot, shard):
     )
 
 
-def get_valid_attestation(state, slot=None):
+def get_valid_attestation(state, slot=None, signed=False):
     if slot is None:
         slot = state.slot
 
@@ -78,7 +78,8 @@ def get_valid_attestation(state, slot=None):
         data=attestation_data,
         custody_bitfield=custody_bitfield,
     )
-    sign_attestation(state, attestation)
+    if signed:
+        sign_attestation(state, attestation)
     return attestation
 
 
