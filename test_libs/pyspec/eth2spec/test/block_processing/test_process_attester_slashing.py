@@ -74,13 +74,12 @@ def test_success_surround(state):
     apply_empty_block(state)
 
     state.current_justified_epoch += 1
-    attester_slashing = get_valid_attester_slashing(state)
+    attester_slashing = get_valid_attester_slashing(state, signed_1=False, signed_2=True)
 
     # set attestion1 to surround attestation 2
     attester_slashing.attestation_1.data.source_epoch = attester_slashing.attestation_2.data.source_epoch - 1
     attester_slashing.attestation_1.data.target_epoch = attester_slashing.attestation_2.data.target_epoch + 1
 
-    # correct the signature of attestation 1
     sign_indexed_attestation(state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(state, attester_slashing)
@@ -88,25 +87,27 @@ def test_success_surround(state):
 
 @spec_state_test
 def test_same_data(state):
-    attester_slashing = get_valid_attester_slashing(state)
+    attester_slashing = get_valid_attester_slashing(state, signed_1=False, signed_2=True)
 
     attester_slashing.attestation_1.data = attester_slashing.attestation_2.data
+    sign_indexed_attestation(state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(state, attester_slashing, False)
 
 
 @spec_state_test
 def test_no_double_or_surround(state):
-    attester_slashing = get_valid_attester_slashing(state)
+    attester_slashing = get_valid_attester_slashing(state, signed_1=False, signed_2=True)
 
     attester_slashing.attestation_1.data.target_epoch += 1
+    sign_indexed_attestation(state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(state, attester_slashing, False)
 
 
 @spec_state_test
 def test_participants_already_slashed(state):
-    attester_slashing = get_valid_attester_slashing(state)
+    attester_slashing = get_valid_attester_slashing(state, signed_1=True, signed_2=True)
 
     # set all indices to slashed
     attestation_1 = attester_slashing.attestation_1
@@ -119,10 +120,11 @@ def test_participants_already_slashed(state):
 
 @spec_state_test
 def test_custody_bit_0_and_1(state):
-    attester_slashing = get_valid_attester_slashing(state)
+    attester_slashing = get_valid_attester_slashing(state, signed_1=False, signed_2=True)
 
     attester_slashing.attestation_1.custody_bit_1_indices = (
         attester_slashing.attestation_1.custody_bit_0_indices
     )
+    sign_indexed_attestation(state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(state, attester_slashing, False)
