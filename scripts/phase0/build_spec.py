@@ -13,7 +13,7 @@ from typing import (
     Tuple,
 )
 from eth2spec.utils.minimal_ssz import *
-from eth2spec.utils.bls_stub import *
+from eth2spec.utils.bls import *
 
 """)
     for i in (1, 2, 3, 4, 8, 32, 48, 96):
