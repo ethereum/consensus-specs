@@ -22,4 +22,18 @@ def bls_aggregate_pubkeys(pubkeys):
     if bls_active:
         return bls.aggregate_pubkeys(pubkeys)
     else:
-        return b'\x42' * 96
+        return b'\xaa' * 48
+
+
+def bls_aggregate_signatures(signatures):
+    if bls_active:
+        return bls.aggregate_signatures(signatures)
+    else:
+        return b'\x22' * 96
+
+
+def bls_sign(message_hash, privkey, domain):
+    if bls_active:
+        return bls.sign(message_hash=message_hash, privkey=privkey, domain=domain)
+    else:
+        return b'\x11' * 96
