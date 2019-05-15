@@ -17,9 +17,6 @@ from tests.phase0.helpers import (
     next_epoch,
 )
 
-# mark entire file as 'state'
-# pytestmark = pytest.mark.state
-
 from tests.phase0.test_finality import (
     pytestmark,
     check_finality,

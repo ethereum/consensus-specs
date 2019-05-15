@@ -10,9 +10,8 @@ from tests.phase0.helpers import (
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--config", action="store", default="minimal", help="config: make the p  yspec use the specified configuration"
+        "--config", action="store", default="minimal", help="config: make the pyspec use the specified configuration"
     )
-
 
 @pytest.fixture(autouse=True)
 def config(request):
@@ -24,11 +23,9 @@ def config(request):
 def num_validators(config):
     return spec.SLOTS_PER_EPOCH * 8
 
-
 @pytest.fixture
 def deposit_data_leaves():
     return list()
-
 
 @pytest.fixture
 def state(num_validators, deposit_data_leaves):

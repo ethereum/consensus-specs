@@ -61,14 +61,14 @@ def test_reveal_from_current_epoch(state):
 
     return pre_state, randao_key_reveal, post_state
 
-# Not currently possible as we are testing at epoch 0
-#
-#def test_reveal_from_past_epoch(state):
-#    randao_key_reveal = get_valid_early_derived_secret_reveal(state, get_current_epoch(state) - 1)
-#
-#    pre_state, post_state = run_early_derived_secret_reveal_processing(state, randao_key_reveal, False)
-#
-#    return pre_state, randao_key_reveal, post_state
+
+@pytest.mark.skip(reason="Not currently possible as we are testing at epoch 0")
+def test_reveal_from_past_epoch(state):
+   randao_key_reveal = get_valid_early_derived_secret_reveal(state, get_current_epoch(state) - 1)
+
+   pre_state, post_state = run_early_derived_secret_reveal_processing(state, randao_key_reveal, False)
+
+   return pre_state, randao_key_reveal, post_state
 
 def test_reveal_with_custody_padding(state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(state, get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING)
@@ -88,7 +88,7 @@ def test_double_reveal(state):
     pre_state, intermediate_state = run_early_derived_secret_reveal_processing(state, randao_key_reveal1)
     
     randao_key_reveal2 = get_valid_early_derived_secret_reveal(intermediate_state, get_current_epoch(pre_state) + RANDAO_PENALTY_EPOCHS + 1)
-    intermediate_state_, post_state = run_early_derived_secret_reveal_processing(intermediate_state, randao_key_reveal2, False)
+    _, post_state = run_early_derived_secret_reveal_processing(intermediate_state, randao_key_reveal2, False)
 
     return pre_state, [randao_key_reveal1, randao_key_reveal2], post_state
 
