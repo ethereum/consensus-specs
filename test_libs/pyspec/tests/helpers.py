@@ -2,10 +2,14 @@ from copy import deepcopy
 
 from py_ecc import bls
 
+<<<<<<< HEAD
 from eth2spec.phase1.state_transition import (
     state_transition,
 )
 import eth2spec.phase1.spec as spec
+=======
+import eth2spec.phase0.spec as spec
+>>>>>>> dev
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase1.spec import (
     # constants
@@ -40,6 +44,7 @@ from eth2spec.phase1.spec import (
     get_shard_delta,
     hash_tree_root,
     slot_to_epoch,
+    state_transition,
     verify_merkle_branch,
     hash,
 )
@@ -53,6 +58,10 @@ from eth2spec.utils.merkle_minimal import (
 privkeys = [i + 1 for i in range(1024)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
+
+
+def advance_slot(state) -> None:
+    state.slot += 1
 
 
 def get_balance(state, index):

@@ -238,7 +238,7 @@ A validator should create and broadcast the attestation halfway through the `slo
 First the validator should construct `attestation_data`, an [`AttestationData`](../core/0_beacon-chain.md#attestationdata) object based upon the state at the assigned slot.
 
 * Let `head_block` be the result of running the fork choice during the assigned slot.
-* Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot.
+* Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
 
 ##### LMD GHOST vote
 
@@ -246,7 +246,7 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 ##### FFG vote
 
-* Set `attestation_data.source_epoch = head_state.justified_epoch`.
+* Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
 * Set `attestation_data.source_root = head_state.current_justified_root`.
 * Set `attestation_data.target_epoch = get_current_epoch(head_state)`
 * Set `attestation_data.target_root = signing_root(epoch_boundary_block)` where `epoch_boundary_block` is the block at the most recent epoch boundary.
@@ -360,7 +360,7 @@ def is_proposer_at_slot(state: BeaconState,
     return get_beacon_proposer_index(state) == validator_index
 ```
 
-*Note*: To see if a validator is assigned to proposer during the slot, the validator must run an empty slot transition from the previous state to the current slot.
+*Note*: To see if a validator is assigned to proposer during the slot, the validator must run an empty slot transition from the previous state to the current slot using `process_slots(state, current_slot)`.
 
 
 ### Lookahead

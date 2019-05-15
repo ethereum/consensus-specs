@@ -47,7 +47,7 @@
 * **list**: ordered variable-length homogeneous collection of values
     * angle bracket notation `[type]`, e.g. `["uint64"]`
 * **union**: union type containing one of the given subtypes
-    * round bracket notation `(type_1, type_2, ...)`, e.g. `("uint64", "null")`
+    * round bracket notation `(type_1, type_2, ...)`, e.g. `("null", "uint64")`
 
 ### Variable-size and fixed-size
 

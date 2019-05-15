@@ -104,6 +104,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ### Reward and penalty quotients
 
+| Name | Value |
+| - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
 
 ### Signature domains

@@ -5,6 +5,7 @@ from optparse import OptionParser
 def build_phase0_spec(sourcefile, outfile):
     code_lines = []
     code_lines.append("""
+
 from typing import (
     Any,
     Dict,
@@ -12,8 +13,18 @@ from typing import (
     NewType,
     Tuple,
 )
-from eth2spec.utils.minimal_ssz import *
-from eth2spec.utils.bls_stub import *
+from eth2spec.utils.minimal_ssz import (
+    SSZType,
+    hash_tree_root,
+    signing_root,
+)
+from eth2spec.utils.bls_stub import (
+    bls_aggregate_pubkeys,
+    bls_verify,
+    bls_verify_multiple,
+)
+from eth2spec.utils.hash_function import hash
+
 
 # stub, will get overwritten by real var
 SLOTS_PER_EPOCH = 64
@@ -60,6 +71,7 @@ def hash(x):
         ret = _hash(x)
         hash_cache[x] = ret
         return ret
+
 
 # Access to overwrite spec constants based on configuration
 def apply_constants_preset(preset: Dict[str, Any]):

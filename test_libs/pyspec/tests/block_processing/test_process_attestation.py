@@ -10,6 +10,7 @@ from eth2spec.phase1.spec import (
     get_current_epoch,
     process_attestation,
     slot_to_epoch,
+    state_transition,
 )
 from tests.helpers import (
     build_empty_block_for_next_slot,
