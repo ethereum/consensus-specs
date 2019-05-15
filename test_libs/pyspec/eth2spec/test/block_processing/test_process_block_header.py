@@ -49,15 +49,16 @@ def test_success(state):
 
 @spec_state_test
 def test_invalid_slot(state):
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.slot = state.slot + 2  # invalid slot
+    sign_block(state, block)
 
     yield from run_block_header_processing(state, block, valid=False)
 
 
 @spec_state_test
 def test_invalid_previous_block_root(state):
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.previous_block_root = b'\12' * 32  # invalid prev root
     sign_block(state, block)
 
