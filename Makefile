@@ -30,7 +30,6 @@ clean:
 	rm -rf $(GENERATOR_VENVS)
 	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
-	rm -rf $(PY_SPEC_PHASE_1_TARGETS)
 
 # "make gen_yaml_tests" to run generators
 gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
@@ -41,6 +40,12 @@ install_test:
 
 test: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest .
+
+test_phase0: $(PY_SPEC_ALL_TARGETS)
+	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest tests/phase0
+
+test_phase1: $(PY_SPEC_ALL_TARGETS)
+	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest tests/phase1
 
 citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .

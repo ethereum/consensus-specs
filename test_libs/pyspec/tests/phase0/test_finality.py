@@ -2,9 +2,9 @@ from copy import deepcopy
 
 import pytest
 
-import eth2spec.phase1.spec as spec
+import eth2spec.phase0.spec as spec
 
-from eth2spec.phase1.state_transition import (
+from eth2spec.phase0.spec import (
     state_transition,
 )
 

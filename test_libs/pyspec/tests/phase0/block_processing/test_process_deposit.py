@@ -1,13 +1,13 @@
 from copy import deepcopy
 import pytest
 
-import eth2spec.phase1.spec as spec
+import eth2spec.phase0.spec as spec
 
-from eth2spec.phase1.spec import (
+from eth2spec.phase0.spec import (
     ZERO_HASH,
     process_deposit,
 )
-from tests.helpers import (
+from tests.phase0.helpers import (
     get_balance,
     build_deposit,
     privkeys,

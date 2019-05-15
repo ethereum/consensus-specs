@@ -1,12 +1,12 @@
 from copy import deepcopy
 import pytest
 
-import eth2spec.phase1.spec as spec
-from eth2spec.phase1.spec import (
+import eth2spec.phase0.spec as spec
+from eth2spec.phase0.spec import (
     get_current_epoch,
     process_proposer_slashing,
 )
-from tests.helpers import (
+from tests.phase0.helpers import (
     get_balance,
     get_valid_proposer_slashing,
 )

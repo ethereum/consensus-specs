@@ -1,20 +1,15 @@
 from copy import deepcopy
 import pytest
 
-import eth2spec.phase1.spec as spec
+import eth2spec.phase0.spec as spec
 
-<<<<<<< HEAD
-from eth2spec.phase1.state_transition import (
-    state_transition,
-)
-from eth2spec.phase1.spec import (
-    cache_state,
+from eth2spec.phase0.spec import (
     process_slot,
     get_crosslink_deltas,
     process_crosslinks,
     state_transition,
 )
-from tests.helpers import (
+from tests.phase0.helpers import (
     add_attestation_to_state,
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,

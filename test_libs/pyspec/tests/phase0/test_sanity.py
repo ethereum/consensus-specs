@@ -3,10 +3,10 @@ from copy import deepcopy
 import pytest
 
 from py_ecc import bls
-import eth2spec.phase1.spec as spec
+import eth2spec.phase0.spec as spec
 
 from eth2spec.utils.minimal_ssz import signing_root
-from eth2spec.phase1.spec import (
+from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
     SLOTS_PER_HISTORICAL_ROOT,
@@ -22,9 +22,6 @@ from eth2spec.phase1.spec import (
     get_domain,
     process_slot,
     verify_merkle_branch,
-    hash,
-)
-from eth2spec.phase1.state_transition import (
     state_transition,
     hash,
 )

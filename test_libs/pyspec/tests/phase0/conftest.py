@@ -1,16 +1,16 @@
 import pytest
 
-from eth2spec.phase1 import spec
+from eth2spec.phase0 import spec
 from preset_loader import loader
 
-from .helpers import (
+from tests.phase0.helpers import (
     create_genesis_state,
 )
 
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--config", action="store", default="minimal", help="config: make the pyspec use the specified configuration"
+        "--config", action="store", default="minimal", help="config: make the p  yspec use the specified configuration"
     )
 
 

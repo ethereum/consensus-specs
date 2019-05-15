@@ -15,6 +15,7 @@ from typing import (
 )
 from eth2spec.utils.minimal_ssz import (
     SSZType,
+    SSZTypeExtension,
     hash_tree_root,
     signing_root,
 )

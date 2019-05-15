@@ -2,16 +2,10 @@ from copy import deepcopy
 
 from py_ecc import bls
 
-<<<<<<< HEAD
-from eth2spec.phase1.state_transition import (
-    state_transition,
-)
-import eth2spec.phase1.spec as spec
-=======
 import eth2spec.phase0.spec as spec
->>>>>>> dev
+
 from eth2spec.utils.minimal_ssz import signing_root
-from eth2spec.phase1.spec import (
+from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
     MAX_EPOCHS_PER_CROSSLINK,
