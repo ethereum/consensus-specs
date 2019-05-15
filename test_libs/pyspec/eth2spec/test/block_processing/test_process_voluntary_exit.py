@@ -7,7 +7,7 @@ from eth2spec.phase0.spec import (
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error
 from eth2spec.test.helpers.keys import pubkey_to_privkey
-from eth2spec.test.helpers.voluntary_exits import build_voluntary_exit
+from eth2spec.test.helpers.voluntary_exits import build_voluntary_exit, sign_voluntary_exit
 
 
 def run_voluntary_exit_processing(state, voluntary_exit, valid=True):
@@ -52,6 +52,7 @@ def test_success(state):
         current_epoch,
         validator_index,
         privkey,
+        signed=True,
     )
 
     yield from run_voluntary_exit_processing(state, voluntary_exit)
@@ -76,6 +77,7 @@ def test_success_exit_queue(state):
             current_epoch,
             index,
             privkey,
+            signed=True,
         ))
 
     # Now run all the exits
@@ -92,6 +94,7 @@ def test_success_exit_queue(state):
         current_epoch,
         validator_index,
         privkey,
+        signed=True,
     )
 
     # This is the interesting part of the test: on a pre-state with a full exit queue,
@@ -118,8 +121,10 @@ def test_validator_exit_in_future(state):
         current_epoch,
         validator_index,
         privkey,
+        signed=False,
     )
     voluntary_exit.epoch += 1
+    sign_voluntary_exit(state, voluntary_exit, privkey)
 
     yield from run_voluntary_exit_processing(state, voluntary_exit, False)
 
@@ -138,8 +143,10 @@ def test_validator_invalid_validator_index(state):
         current_epoch,
         validator_index,
         privkey,
+        signed=False,
     )
     voluntary_exit.validator_index = len(state.validator_registry)
+    sign_voluntary_exit(state, voluntary_exit, privkey)
 
     yield from run_voluntary_exit_processing(state, voluntary_exit, False)
 
@@ -158,6 +165,7 @@ def test_validator_not_active(state):
         current_epoch,
         validator_index,
         privkey,
+        signed=True,
     )
 
     yield from run_voluntary_exit_processing(state, voluntary_exit, False)
@@ -180,6 +188,7 @@ def test_validator_already_exited(state):
         current_epoch,
         validator_index,
         privkey,
+        signed=True,
     )
 
     yield from run_voluntary_exit_processing(state, voluntary_exit, False)
@@ -196,6 +205,7 @@ def test_validator_not_active_long_enough(state):
         current_epoch,
         validator_index,
         privkey,
+        signed=True,
     )
 
     assert (
