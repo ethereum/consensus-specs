@@ -1,8 +1,9 @@
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import process_deposit
 from eth2spec.test.context import spec_state_test, expect_assertion_error
-from eth2spec.test.helpers.deposits import prepare_state_and_deposit
+from eth2spec.test.helpers.deposits import prepare_state_and_deposit, sign_deposit_data
 from eth2spec.test.helpers.state import get_balance
+from eth2spec.test.helpers.keys import privkeys
 
 
 def run_deposit_processing(state, deposit, validator_index, valid=True):
@@ -51,7 +52,7 @@ def test_success(state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
+    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(state, deposit, validator_index)
 
@@ -60,7 +61,7 @@ def test_success(state):
 def test_success_top_up(state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
+    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(state, deposit, validator_index)
 
@@ -69,10 +70,12 @@ def test_success_top_up(state):
 def test_wrong_index(state):
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
+    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
 
     # mess up deposit_index
     deposit.index = state.deposit_index + 1
+
+    sign_deposit_data(state, deposit.data, privkeys[validator_index])
 
     yield from run_deposit_processing(state, deposit, validator_index, valid=False)
 
@@ -84,9 +87,11 @@ def test_wrong_index(state):
 def test_bad_merkle_proof(state):
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
+    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
 
     # mess up merkle branch
     deposit.proof[-1] = spec.ZERO_HASH
+
+    sign_deposit_data(state, deposit.data, privkeys[validator_index])
 
     yield from run_deposit_processing(state, deposit, validator_index, valid=False)
