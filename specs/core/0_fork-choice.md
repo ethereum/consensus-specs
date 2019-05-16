@@ -128,7 +128,7 @@ def get_head(store: Store) -> Bytes32:
 #### `on_tick`
 
 ```python
-def on_tick(store: Store, time: uint64) -> None:
+def on_tick(store: Store, time: int) -> None:
     store.time = time
 ```
 

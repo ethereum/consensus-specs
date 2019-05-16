@@ -39,10 +39,11 @@ BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
 BLSSignature = NewType('BLSSignature', bytes)  # bytes96
 Store = None
 """)
-    for sourcefile in sourcefiles:
-        code_lines += function_puller.get_spec(sourcefile)
+    for index, sourcefile in enumerate(sourcefiles):
+        code_lines += function_puller.get_spec(sourcefile, index)
 
     code_lines.append("""
+
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
 committee_cache = {}
