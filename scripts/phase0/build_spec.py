@@ -2,7 +2,7 @@ import sys
 import function_puller
 
 
-def build_phase0_spec(sourcefile, outfile):
+def build_phase0_spec(outfile, sourcefiles):
     code_lines = []
     code_lines.append("""
 
@@ -39,8 +39,8 @@ BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
 BLSSignature = NewType('BLSSignature', bytes)  # bytes96
 Store = None
 """)
-
-    code_lines += function_puller.get_spec(sourcefile)
+    for sourcefile in sourcefiles:
+        code_lines += function_puller.get_spec(sourcefile)
 
     code_lines.append("""
 # Monkey patch validator compute committee code
@@ -91,7 +91,7 @@ def apply_constants_preset(preset: Dict[str, Any]):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print("Usage: <source phase0> <output phase0 pyspec>")
-    build_phase0_spec(sys.argv[1], sys.argv[2])
-
+    if len(sys.argv) <= 3:
+        print("Usage: <output phase0 pyspec> <source 0_beacon-chain> <source 0_fork-choice>")
+    files = sys.argv[2:]
+    build_phase0_spec(sys.argv[1], files)

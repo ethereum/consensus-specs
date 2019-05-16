@@ -54,7 +54,7 @@ phase0: $(PY_SPEC_PHASE_0_TARGETS)
 
 
 $(PY_SPEC_DIR)/eth2spec/phase0/spec.py:
-	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@
+	python3 $(SCRIPT_DIR)/phase0/build_spec.py $@ $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/0_fork-choice.md
 
 
 CURRENT_DIR = ${CURDIR}
