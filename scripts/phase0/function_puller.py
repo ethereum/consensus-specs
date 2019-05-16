@@ -8,7 +8,7 @@ def get_spec(file_name: str) -> List[str]:
     current_name = None
     current_typedef = None
     type_defs = []
-    for linenum, line in enumerate(open(file_name).readlines()):
+    for linenum, line in enumerate(open(sys.argv[1]).readlines()):
         line = line.rstrip()
         if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
             current_name = line[line[:-1].rfind('`') + 1: -1]
