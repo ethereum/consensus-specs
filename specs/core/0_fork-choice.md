@@ -17,7 +17,7 @@
         - [Helpers](#helpers)
             - [`get_genesis_store`](#get_genesis_store)
             - [`get_ancestor`](#get_ancestor)
-            - [`get_attesting_balance`](#get_attesting_balance)
+            - [`get_attesting_balance_from_store`](#get_attesting_balance_from_store)
             - [`get_head`](#get_head)
         - [Handlers](#handlers)
             - [`on_tick`](#on_tick)
@@ -84,7 +84,7 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 ```python
 def get_genesis_store(genesis_state: BeaconState) -> Store:
     genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
-    root = signed_root(genesis_block)
+    root = signing_root(genesis_block)
     return Store(blocks={root: genesis_block}, states={root: genesis_state}, finalized_root=root, justified_root=root)
 ```
 
@@ -97,10 +97,10 @@ def get_ancestor(store: Store, root: Bytes32, slot: Slot) -> Bytes32:
     return root if block.slot == slot else get_ancestor(store, block.parent_root, slot)
 ```
 
-#### `get_attesting_balance`
+#### `get_attesting_balance_from_store`
 
 ```python
-def get_attesting_balance(store: Store, root: Bytes32) -> Gwei:
+def get_attesting_balance_from_store(store: Store, root: Bytes32) -> Gwei:
     state = store.states[store.justified_root]
     active_indices = get_active_validator_indices(state.validator_registry, slot_to_epoch(state.slot))
     return sum(
@@ -120,7 +120,7 @@ def get_head(store: Store) -> Bytes32:
         if len(children) == 0:
             return head
         # Sort by attesting balance with ties broken lexicographically
-        head = max(children, key=lambda root: (get_attesting_balance(store, root), root))
+        head = max(children, key=lambda root: (get_attesting_balance_from_store(store, root), root))
 ```
 
 ### Handlers
@@ -137,15 +137,15 @@ def on_tick(store: Store, time: uint64) -> None:
 ```python
 def on_block(store: Store, block: BeaconBlock) -> None:
     # Check block is a descendant of the finalized block
-    assert get_ancestor(store, signed_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
+    assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
     # Check block slot against Unix time
     pre_state = store.states[block.parent_root]
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
     # Add new block and state to the store
-    store.blocks[signed_root(block)] = block
-    store.states[signed_root(block)] = state
+    store.blocks[signing_root(block)] = block
+    store.states[signing_root(block)] = state
     # Update justified and finalized blocks
     if state.finalized_epoch > slot_to_epoch(store.blocks[store.finalized_root].slot):
         store.finalized_root = state.finalized_root
