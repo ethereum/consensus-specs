@@ -1,11 +1,5 @@
 from . import spec
 
-from typing import (
-    Any,
-    Callable,
-    List
-)
-
 from .spec import (
     BeaconState,
     BeaconBlock,
@@ -13,18 +7,14 @@ from .spec import (
 )
 
 from eth2spec.phase0.state_transition import (
-    expected_deposit_count,
     process_operation_type,
     process_operations as process_operations_phase0,
-    process_block as process_block_phase0,
-    process_epoch_transition as process_epoch_transition_phase0,
-    state_transition_to as state_transition_to_phase0,
-    state_transition as state_transition_phase0
 )
+
 
 def process_operations(state: BeaconState, block: BeaconBlock) -> None:
     process_operations_phase0(state, block)
-    
+
     process_operation_type(
         state,
         block.body.custody_key_reveals,
@@ -39,6 +29,7 @@ def process_operations(state: BeaconState, block: BeaconBlock) -> None:
         spec.process_early_derived_secret_reveal,
     )
 
+
 def process_block(state: BeaconState,
                   block: BeaconBlock,
                   verify_state_root: bool=False) -> None:
@@ -49,6 +40,7 @@ def process_block(state: BeaconState,
     process_operations(state, block)
     if verify_state_root:
         spec.verify_block_state_root(state, block)
+
 
 def process_epoch_transition(state: BeaconState) -> None:
     spec.process_justification_and_finalization(state)
@@ -61,6 +53,7 @@ def process_epoch_transition(state: BeaconState) -> None:
     spec.process_slashings(state)
     spec.process_final_updates(state)
     spec.after_process_final_updates(state)
+
 
 def state_transition_to(state: BeaconState, up_to: Slot) -> BeaconState:
     while state.slot < up_to:
