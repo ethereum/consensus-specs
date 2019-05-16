@@ -5,12 +5,14 @@ from argparse import ArgumentParser
 from typing import Tuple, List
 
 
-def split_retain_delimiter(regex_pattern: str, text: str) -> List[str]:
+def split_and_label(regex_pattern: str, text: str) -> List[str]:
     '''
-    Splits a string based on regex, but down not remove the matched text
+    Splits a string based on regex, but down not remove the matched text.
+    It subsequently labels the matches with their match
     '''
-    find_pattern = r'%s.*?(?=%s|$)' % (regex_pattern, regex_pattern)
-    return re.findall(find_pattern, text, re.DOTALL)
+    find_pattern = r'''%s.*?(?=%s|$)''' % (regex_pattern, regex_pattern)
+    matches = re.findall(find_pattern, text, re.DOTALL)
+    return list(map(lambda x: [re.match(regex_pattern, x).group(0), x], matches))
 
 
 def inserter(oldfile: str, newfile: str) -> Tuple[str, str]:
@@ -21,10 +23,10 @@ def inserter(oldfile: str, newfile: str) -> Tuple[str, str]:
         return bar
     # end insert @LabelName
     '''
-    new_insert_objects = re.split(r"(# begin insert |# end insert @[a-zA-Z0-9_]*\n)", newfile)
+    new_insert_objects = re.split(r"(# begin insert |# end insert @[\w\d_]*\n)", newfile)
     # Retrieve label from insert objects
     def get_labeled_object(labeled_text):
-        label = re.match(r"@[a-zA-Z0-9_]*\n", labeled_text)
+        label = re.match(r"@[\w\d_]*\n", labeled_text)
         if label is not None:
             label = label.group(0)
             labeled_text = re.sub(label, '', labeled_text)
@@ -47,20 +49,27 @@ def merger(oldfile:str, newfile:str) -> str:
     Seeks out functions and objects in new and old files.
     Replaces old objects with new ones if they exist.
     '''
-    old_objects = split_retain_delimiter('\n[a-zA-Z]', oldfile)
-    new_objects = split_retain_delimiter('\n[a-zA-Z]', newfile)
-    object_regex = r"\n[#@a-zA-Z_0-9]+[\sa-zA-Z_0-9]*[(){}=:'" "]*"
-    old_object_tuples = list(map(lambda x: [re.match(object_regex, x).group(0),x], old_objects))
+    object_regex = r'''(?:\n[@\w]+[\s\w]*[='" "\.\w]*)|(?:\s{4}global_vars\["\w+"\])'''
+    ssz_object_regex = r'''(?:\w+|\s{4}global_vars\["\w+"\]) = SSZType\(\{\n'''
+    old_objects = split_and_label(object_regex, oldfile)
+    new_objects = split_and_label(object_regex, newfile)
     for new_item in new_objects:
         found_old = False
-        for old_item in old_object_tuples:
-            if old_item[0] == re.match(object_regex, new_item).group(0):
-                old_item[1] = new_item
+        for index, old_item in enumerate(old_objects):
+            if old_item[0] == new_item[0]:
+                ssz_object_match = re.match(ssz_object_regex, new_item[1])
+                if ssz_object_match is not None:
+                    new_item[1] = re.sub(ssz_object_regex, '', new_item[1])
+                    old_item[1] = re.sub(r'\n\w*\}\)', '', old_item[1])
+                    old_item[1] += new_item[1]
+                else:
+                    old_item[1] = new_item[1]
                 found_old = True
+                old_objects[index] = old_item
                 break
         if not found_old:
-            old_object_tuples += [[re.match(object_regex, new_item).group(0), new_item]]
-    return ''.join(elem for elem in map(lambda x: x[1], old_object_tuples))
+            old_objects.append(new_item)
+    return ''.join(elem for elem in map(lambda x: x[1], old_objects))
 
 
 def build_phase0_spec(sourcefile, outfile=None):
