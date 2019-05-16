@@ -47,7 +47,9 @@ test_phase1: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest tests/phase1
 
 citest: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
+	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate;	\
+	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml tests/phase0; \
+	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml tests/phase1
 
 install_lint:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install flake8==3.5.0
