@@ -69,19 +69,6 @@ jobs:
           venv_name: v1-pyspec-03
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
           venv_path: ./test_libs/pyspec/venv
-  build_pyspec:
-    docker:
-      - image: circleci/python:3.6
-    working_directory: ~/specs-repo
-    steps:
-      - restore_cache:
-          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cached_venv:
-          venv_name: v1-pyspec-03
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
-      - run:
-          name: Build pyspec
-          command: make pyspec
   test:
     docker:
       - image: circleci/python:3.6
@@ -118,13 +105,9 @@ workflows:
       - install_env:
           requires:
             - checkout_specs
-      - build_pyspec:
-          requires:
-            - checkout_specs
       - test:
           requires:
             - install_env
-            - build_pyspec
       - lint:
           requires:
-            - build_pyspec
+            - test
