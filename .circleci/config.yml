@@ -96,7 +96,7 @@ jobs:
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Run linter
-          command: make install_lint && make pyspec && make lint
+          command: make install_lint && make lint
 workflows:
   version: 2.1
   test_spec:
