@@ -27,7 +27,7 @@ def inserter(oldfile: str, newfile: str) -> Tuple[str, str]:
         label = re.match(r"@[a-zA-Z0-9_]*\n", labeled_text)
         if label is not None:
             label = label.group(0)
-            labeled_text = re.sub(label, '', labeled_text)            
+            labeled_text = re.sub(label, '', labeled_text)
         return {'label': label, 'text': labeled_text}
     new_insert_objects = map(get_labeled_object, new_insert_objects)
     # Find and replace labels
@@ -53,9 +53,8 @@ def merger(oldfile:str, newfile:str) -> str:
     old_object_tuples = list(map(lambda x: [re.match(object_regex, x).group(0),x], old_objects))
     for new_item in new_objects:
         found_old = False
-        for old_item in old_object_tuples:            
+        for old_item in old_object_tuples:
             if old_item[0] == re.match(object_regex, new_item).group(0):
-                print(old_item[0])
                 old_item[1] = new_item
                 found_old = True
                 break
@@ -67,7 +66,6 @@ def merger(oldfile:str, newfile:str) -> str:
 def build_phase0_spec(sourcefile, outfile=None):
     code_lines = []
     code_lines.append("""
-
 from typing import (
     Any,
     Dict,
@@ -75,16 +73,19 @@ from typing import (
     NewType,
     Tuple,
 )
+
 from eth2spec.utils.minimal_ssz import (
     SSZType,
     hash_tree_root,
     signing_root,
 )
+
 from eth2spec.utils.bls_stub import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
 )
+
 from eth2spec.utils.hash_function import hash
 
 
@@ -146,6 +147,7 @@ def apply_constants_preset(preset: Dict[str, Any]):
 
     # Initialize SSZ types again, to account for changed lengths
     init_SSZ_types()
+
 """)
 
     if outfile is not None:
@@ -160,7 +162,7 @@ def build_phase1_spec(phase0_sourcefile, phase1_sourcefile, outfile=None):
     phase1_code = build_phase0_spec(phase1_sourcefile)
     phase0_code, phase1_code = inserter(phase0_code, phase1_code)
     phase1_code = merger(phase0_code, phase1_code)
-    
+
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(phase1_code)
@@ -172,12 +174,12 @@ if __name__ == '__main__':
     description = '''
 Build the specs from the md docs.
 If building phase 0:
-    1st argument is input spec.md 
+    1st argument is input spec.md
     2nd argument is output spec.py
 
 If building phase 1:
-    1st argument is input spec_phase0.md 
-    2nd argument is input spec_phase1.md 
+    1st argument is input spec_phase0.md
+    2nd argument is input spec_phase1.md
     3rd argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
