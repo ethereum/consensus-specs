@@ -67,11 +67,11 @@ phase0: $(PY_SPEC_PHASE_0_TARGETS)
 # "make phase1" to create pyspec for phase1
 phase1: $(PY_SPEC_PHASE_1_TARGETS)
 
-$(PY_SPEC_DIR)/eth2spec/phase0/spec.py: $(PY_SPEC_PHASE_0_DEPS)
-	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@
+$(PY_SPEC_PHASE_0_TARGETS): $(PY_SPEC_PHASE_0_DEPS)
+	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(SPEC_DIR)/core/0_beacon-chain.md $@
 
 $(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
-	python3 $(SCRIPT_DIR)/phase0/build_spec.py -p1  $(SPEC_DIR)/core/1_custody-game.md $@
+	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/1_custody-game.md $@
 
 CURRENT_DIR = ${CURDIR}
 
