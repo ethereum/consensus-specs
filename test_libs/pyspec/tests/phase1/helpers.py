@@ -3,7 +3,6 @@ from py_ecc import bls
 import eth2spec.phase1.spec as spec
 from eth2spec.phase1.spec import (
     # constants
-    ZERO_HASH,
     CUSTODY_PERIOD_TO_RANDAO_PADDING,
     # SSZ
     EarlyDerivedSecretReveal,
@@ -14,20 +13,7 @@ from eth2spec.phase1.spec import (
     hash_tree_root,
 )
 
-from tests.phase0.helpers import (
-    advance_slot,
-    get_balance,
-    build_deposit_data,
-    build_empty_block_for_next_slot,
-    fill_aggregate_attestation,
-    get_state_root,
-    get_valid_attestation,
-    get_valid_attester_slashing,
-    get_valid_proposer_slashing,
-    next_slot,
-    privkeys,
-    pubkeys,
-)
+from tests.phase0.helpers import *
 
 def get_valid_early_derived_secret_reveal(state, epoch=None):
     current_epoch = get_current_epoch(state)
