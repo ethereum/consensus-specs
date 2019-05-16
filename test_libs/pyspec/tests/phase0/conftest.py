@@ -1,11 +1,9 @@
 import pytest
 
-from eth2spec.phase0 import spec
+from eth2spec.phase0 import spec as _spec
 from preset_loader import loader
 
-from tests.phase0.helpers import (
-    create_genesis_state,
-)
+from tests.phase0 import helpers as _helpers
 
 
 def pytest_addoption(parser):
@@ -17,11 +15,11 @@ def pytest_addoption(parser):
 def config(request):
     config_name = request.config.getoption("--config")
     presets = loader.load_presets('../../configs/', config_name)
-    spec.apply_constants_preset(presets)
+    _spec.apply_constants_preset(presets)
 
 @pytest.fixture
 def num_validators(config):
-    return spec.SLOTS_PER_EPOCH * 8
+    return _spec.SLOTS_PER_EPOCH * 8
 
 @pytest.fixture
 def deposit_data_leaves():
@@ -29,4 +27,13 @@ def deposit_data_leaves():
 
 @pytest.fixture
 def state(num_validators, deposit_data_leaves):
-    return create_genesis_state(num_validators, deposit_data_leaves)
+    return _helpers.create_genesis_state(num_validators, deposit_data_leaves)
+
+@pytest.fixture
+def spec():
+    return _spec
+
+@pytest.fixture
+def helpers():
+    return _helpers
+

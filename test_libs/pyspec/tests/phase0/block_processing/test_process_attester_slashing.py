@@ -1,34 +1,24 @@
 from copy import deepcopy
 import pytest
 
-import eth2spec.phase0.spec as spec
-from eth2spec.phase0.spec import (
-    get_beacon_proposer_index,
-    process_attester_slashing,
-)
-from tests.phase0.helpers import (
-    get_balance,
-    get_valid_attester_slashing,
-    next_epoch,
-)
 
 # mark entire file as 'attester_slashing'
 pytestmark = pytest.mark.attester_slashings
 
 
-def run_attester_slashing_processing(state, attester_slashing, valid=True):
+def run_attester_slashing_processing(spec, helpers, state, attester_slashing, valid=True):
     """
-    Run ``process_attester_slashing`` returning the pre and post state.
+    Run ``spec.process_attester_slashing`` returning the pre and post state.
     If ``valid == False``, run expecting ``AssertionError``
     """
     post_state = deepcopy(state)
 
     if not valid:
         with pytest.raises(AssertionError):
-            process_attester_slashing(post_state, attester_slashing)
+            spec.process_attester_slashing(post_state, attester_slashing)
         return state, None
 
-    process_attester_slashing(post_state, attester_slashing)
+    spec.process_attester_slashing(post_state, attester_slashing)
 
     slashed_index = attester_slashing.attestation_1.custody_bit_0_indices[0]
     slashed_validator = post_state.validator_registry[slashed_index]
@@ -37,63 +27,63 @@ def run_attester_slashing_processing(state, attester_slashing, valid=True):
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
     assert (
-        get_balance(post_state, slashed_index) <
-        get_balance(state, slashed_index)
+        helpers.get_balance(post_state, slashed_index) <
+        helpers.get_balance(state, slashed_index)
     )
-    proposer_index = get_beacon_proposer_index(state)
+    proposer_index = spec.get_beacon_proposer_index(state)
     # gained whistleblower reward
     assert (
-        get_balance(post_state, proposer_index) >
-        get_balance(state, proposer_index)
+        helpers.get_balance(post_state, proposer_index) >
+        helpers.get_balance(state, proposer_index)
     )
 
     return state, post_state
 
 
-def test_success_double(state):
-    attester_slashing = get_valid_attester_slashing(state)
+def test_success_double(spec, helpers, state):
+    attester_slashing = helpers.get_valid_attester_slashing(state)
 
-    pre_state, post_state = run_attester_slashing_processing(state, attester_slashing)
+    pre_state, post_state = run_attester_slashing_processing(spec, helpers, state, attester_slashing)
 
     return pre_state, attester_slashing, post_state
 
 
-def test_success_surround(state):
-    next_epoch(state)
+def test_success_surround(spec, helpers, state):
+    helpers.next_epoch(state)
     state.current_justified_epoch += 1
-    attester_slashing = get_valid_attester_slashing(state)
+    attester_slashing = helpers.get_valid_attester_slashing(state)
 
     # set attestion1 to surround attestation 2
     attester_slashing.attestation_1.data.source_epoch = attester_slashing.attestation_2.data.source_epoch - 1
     attester_slashing.attestation_1.data.target_epoch = attester_slashing.attestation_2.data.target_epoch + 1
 
-    pre_state, post_state = run_attester_slashing_processing(state, attester_slashing)
+    pre_state, post_state = run_attester_slashing_processing(spec, helpers, state, attester_slashing)
 
     return pre_state, attester_slashing, post_state
 
 
-def test_same_data(state):
-    attester_slashing = get_valid_attester_slashing(state)
+def test_same_data(spec, helpers, state):
+    attester_slashing = helpers.get_valid_attester_slashing(state)
 
     attester_slashing.attestation_1.data = attester_slashing.attestation_2.data
 
-    pre_state, post_state = run_attester_slashing_processing(state, attester_slashing, False)
+    pre_state, post_state = run_attester_slashing_processing(spec, helpers, state, attester_slashing, False)
 
     return pre_state, attester_slashing, post_state
 
 
-def test_no_double_or_surround(state):
-    attester_slashing = get_valid_attester_slashing(state)
+def test_no_double_or_surround(spec, helpers, state):
+    attester_slashing = helpers.get_valid_attester_slashing(state)
 
     attester_slashing.attestation_1.data.target_epoch += 1
 
-    pre_state, post_state = run_attester_slashing_processing(state, attester_slashing, False)
+    pre_state, post_state = run_attester_slashing_processing(spec, helpers, state, attester_slashing, False)
 
     return pre_state, attester_slashing, post_state
 
 
-def test_participants_already_slashed(state):
-    attester_slashing = get_valid_attester_slashing(state)
+def test_participants_already_slashed(spec, helpers, state):
+    attester_slashing = helpers.get_valid_attester_slashing(state)
 
     # set all indices to slashed
     attestation_1 = attester_slashing.attestation_1
@@ -101,17 +91,17 @@ def test_participants_already_slashed(state):
     for index in validator_indices:
         state.validator_registry[index].slashed = True
 
-    pre_state, post_state = run_attester_slashing_processing(state, attester_slashing, False)
+    pre_state, post_state = run_attester_slashing_processing(spec, helpers, state, attester_slashing, False)
 
     return pre_state, attester_slashing, post_state
 
 
-def test_custody_bit_0_and_1(state):
-    attester_slashing = get_valid_attester_slashing(state)
+def test_custody_bit_0_and_1(spec, helpers, state):
+    attester_slashing = helpers.get_valid_attester_slashing(state)
 
     attester_slashing.attestation_1.custody_bit_1_indices = (
         attester_slashing.attestation_1.custody_bit_0_indices
     )
-    pre_state, post_state = run_attester_slashing_processing(state, attester_slashing, False)
+    pre_state, post_state = run_attester_slashing_processing(spec, helpers, state, attester_slashing, False)
 
     return pre_state, attester_slashing, post_state
