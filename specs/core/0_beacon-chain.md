@@ -887,7 +887,7 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -
     # See the 'generalized domain' algorithm on page 3
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes(round, length=1))[0:8]) % index_count
-        flip = (pivot - index) % index_count
+        flip = (pivot + index_count - index) % index_count
         position = max(index, flip)
         source = hash(seed + int_to_bytes(round, length=1) + int_to_bytes(position // 256, length=4))
         byte = source[(position % 256) // 8]
