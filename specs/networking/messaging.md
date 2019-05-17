@@ -1,45 +1,46 @@
-# Eth 2.0 Networking Spec - Messaging
+# Eth 2.0 Networking Spec - Minimal Messaging
 
 ## Abstract
 
-This specification describes how individual Ethereum 2.0 messages are represented on the wire.
+This specification describes how individual Ethereum 2.0 messages are represented on the
+wire.
 
-The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL”, NOT", “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
+The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL”, NOT", “SHOULD”, “SHOULD
+NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as
+described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
 ## Motivation
 
-This specification seeks to define a messaging protocol that is flexible enough to be changed easily as the Eth 2.0 specification evolves.
+This specification defines a minimal transport protocol which can be used for client
+interoperability testing.
 
-Note that while `libp2p` is the chosen networking stack for Ethereum 2.0, as of this writing some clients do not have workable `libp2p` implementations. To allow those clients to communicate, we define a message envelope that includes the body's compression, encoding, and body length. Once `libp2p` is available across all implementations, this message envelope will be removed because `libp2p` will negotiate the values defined in the envelope upfront.
+The Ethereum 2.0 networking stack uses two modes of communication: a broadcast protocol
+that gossips information to interested parties, and an RPC protocol that retrieves
+information from specific clients. This specification defines the carrier for both
+application protocols.
 
 ## Specification
 
 ### Message structure
 
-An Eth 2.0 message consists of an envelope that defines the message's compression, encoding, and length followed by the body itself.
+An Eth 2.0 message consists of an envelope that defines the message's command by name, and
+a body which is specific to the message. Visually, a message looks like this:
 
-Visually, a message looks like this:
-
-```
+```text
 +--------------------------+
-|    compression nibble    |
+|  command length (uint16) |
 +--------------------------+
-|    encoding nibble       |
+|  command                 |
 +--------------------------+
 |  body length (uint64)    |
 +--------------------------+
-|                          |
-|           body           |
-|                          |
+|  body                    |
 +--------------------------+
 ```
 
-Clients MUST ignore messages with malformed bodies. The compression/encoding nibbles MUST be one of the following values:
+### Gossip
 
-### Compression nibble values
-
-- `0x0`: no compression
-
-### Encoding nibble values
-
-- `0x1`: SSZ
+Implementations should include a simple boadcast facility. If a message with the "GOSSIP"
+command is received, the message must be passed on to all connected peers. Implementations
+should track recently sent messages (e.g. by keeping a set of message hashes) to avoid
+sending the same message more than once.

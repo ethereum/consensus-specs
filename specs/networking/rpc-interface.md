@@ -8,7 +8,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL", NOT", "SHOULD", 
 
 ## Dependencies
 
-This specification assumes familiarity with the [Messaging](./messaging.md), [Node Identification](./node-identification.md), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
+This specification assumes familiarity with the [Node Identification](./node-identification.md), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
 
 # Specification
 
@@ -89,7 +89,7 @@ The first 1,000 values in `response_code` are reserved for system use. The follo
 
 ### Alternative for non-`libp2p` clients
 
-Since some clients are waiting for `libp2p` implementations in their respective languages. As such, they MAY listen for raw TCP messages on port `9000`. To distinguish RPC messages from other messages on that port, a byte prefix of `ETH` (`0x455448`) MUST be prepended to all messages. This option will be removed once `libp2p` is ready in all supported languages.
+Since some clients are waiting for `libp2p` implementations in their respective languages. As such, they MAY listen for raw TCP messages on port `9000`. The message format used on that port is defined in [messaging.md](./messaging.md). This option will be removed once `libp2p` is ready in all supported languages.
 
 ## Messages
 
