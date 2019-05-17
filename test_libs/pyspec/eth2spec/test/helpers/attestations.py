@@ -71,7 +71,7 @@ def get_valid_attestation(state, slot=None, signed=False):
 
     committee_size = len(crosslink_committee)
     bitfield_length = (committee_size + 7) // 8
-    aggregation_bitfield = b'\xC0' + b'\x00' * (bitfield_length - 1)
+    aggregation_bitfield = b'\x00' * bitfield_length
     custody_bitfield = b'\x00' * bitfield_length
     attestation = Attestation(
         aggregation_bitfield=aggregation_bitfield,
