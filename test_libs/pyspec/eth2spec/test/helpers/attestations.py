@@ -6,8 +6,9 @@ from eth2spec.phase0.spec import (
     Attestation,
     AttestationData,
     AttestationDataAndCustodyBit,
-    get_epoch_start_slot, get_block_root, get_current_epoch, get_previous_epoch, slot_to_epoch, get_shard_delta,
-    get_crosslink_committee, get_domain, IndexedAttestation, get_attesting_indices, BeaconState, get_block_root_at_slot)
+    get_epoch_start_slot, get_block_root, get_current_epoch, get_previous_epoch, slot_to_epoch,
+    get_crosslink_committee, get_domain, IndexedAttestation, get_attesting_indices, BeaconState, get_block_root_at_slot,
+    get_epoch_start_shard, get_epoch_committee_count)
 from eth2spec.phase0.state_transition import (
     state_transition, state_transition_to
 )
@@ -59,11 +60,10 @@ def get_valid_attestation(state, slot=None, signed=False):
     if slot is None:
         slot = state.slot
 
-    if slot_to_epoch(slot) == get_current_epoch(state):
-        shard = (state.latest_start_shard + slot) % spec.SLOTS_PER_EPOCH
-    else:
-        previous_shard_delta = get_shard_delta(state, get_previous_epoch(state))
-        shard = (state.latest_start_shard - previous_shard_delta + slot) % spec.SHARD_COUNT
+    epoch = slot_to_epoch(slot)
+    epoch_start_shard = get_epoch_start_shard(state, epoch)
+    committees_per_slot = get_epoch_committee_count(state, epoch) // spec.SLOTS_PER_EPOCH
+    shard = (epoch_start_shard + committees_per_slot * (slot % spec.SLOTS_PER_EPOCH)) % spec.SHARD_COUNT
 
     attestation_data = build_attestation_data(state, slot, shard)
 

@@ -6,7 +6,7 @@ from .helpers.genesis import create_genesis_state
 from .utils import spectest, with_args
 
 # Provides a genesis state as first argument to the function decorated with this
-with_state = with_args(lambda: [create_genesis_state(spec.SHARD_COUNT * 2)])
+with_state = with_args(lambda: [create_genesis_state(spec.SLOTS_PER_EPOCH * 8)])
 
 
 # shorthand for decorating @with_state @spectest()
