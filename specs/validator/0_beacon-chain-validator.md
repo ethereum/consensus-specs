@@ -157,7 +157,7 @@ def get_committee_assignment(
                 return committee, shard, slot
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question. Proposer selection is only stable within the context of the current epoch.
+A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
 def is_proposer(state: BeaconState,
@@ -171,7 +171,7 @@ def is_proposer(state: BeaconState,
 
 The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
 
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments which involves noting at which future slot one will have to attest and also which shard one should begin syncing (in Phase 1+).
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and also which shard they should begin syncing (in Phase 1+).
 
 Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 
