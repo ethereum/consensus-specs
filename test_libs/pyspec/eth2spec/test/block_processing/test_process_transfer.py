@@ -6,7 +6,8 @@ from eth2spec.phase0.spec import (
     process_transfer,
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error
-from eth2spec.test.helpers.state import next_epoch, apply_empty_block
+from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.transfers import get_valid_transfer
 
 

@@ -2,6 +2,7 @@ from copy import deepcopy
 
 from eth2spec.phase0 import spec
 from eth2spec.phase0.spec import get_beacon_proposer_index, slot_to_epoch, get_domain, BeaconBlock
+from eth2spec.phase0.state_transition import state_transition
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import next_slot
 from eth2spec.utils.bls import bls_sign
@@ -36,6 +37,16 @@ def sign_block(state, block):
             state,
             spec.DOMAIN_BEACON_PROPOSER,
             slot_to_epoch(block.slot)))
+    return block
+
+
+def apply_empty_block(state):
+    """
+    Transition via an empty block (on current slot, assuming no block has been applied yet).
+    :return: the empty block that triggered the transition.
+    """
+    block = build_empty_block(state, signed=True)
+    state_transition(state, block)
     return block
 
 

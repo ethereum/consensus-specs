@@ -67,7 +67,7 @@ def test_epochs_are_different(state):
 
     # set slots to be in different epochs
     proposer_slashing.header_2.slot += spec.SLOTS_PER_EPOCH
-    sign_block_header(state, proposer_slashing.header_2, privkeys[proposer_slashing.validator_index])
+    sign_block_header(state, proposer_slashing.header_2, privkeys[proposer_slashing.proposer_index])
 
     yield from run_proposer_slashing_processing(state, proposer_slashing, False)
 

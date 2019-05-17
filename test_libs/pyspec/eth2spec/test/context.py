@@ -1,7 +1,7 @@
 from eth2spec.phase0 import spec
 from eth2spec.utils import bls
 
-from .helpers import create_genesis_state
+from .helpers.genesis import create_genesis_state
 
 from .utils import spectest, with_args
 

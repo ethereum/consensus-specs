@@ -12,7 +12,7 @@ def build_deposit_data(state, pubkey, privkey, amount, signed=False):
     deposit_data = DepositData(
         pubkey=pubkey,
         # insecurely use pubkey as withdrawal key as well
-        withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + hash(pubkey)[1:],
+        withdrawal_credentials=spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(pubkey)[1:],
         amount=amount,
     )
     if signed:

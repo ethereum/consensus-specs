@@ -14,10 +14,10 @@ from eth2spec.test.helpers.attestations import (
     sign_attestation,
 )
 from eth2spec.test.helpers.state import (
-    apply_empty_block,
     next_epoch,
     next_slot,
 )
+from eth2spec.test.helpers.block import apply_empty_block
 
 
 def run_attestation_processing(state, attestation, valid=True):

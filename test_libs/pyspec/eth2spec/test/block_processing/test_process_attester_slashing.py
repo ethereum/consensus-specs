@@ -6,10 +6,10 @@ from eth2spec.phase0.spec import (
 from eth2spec.test.context import spec_state_test, expect_assertion_error
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
+from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.state import (
     get_balance,
     next_epoch,
-    apply_empty_block,
 )
 
 
@@ -63,7 +63,7 @@ def run_attester_slashing_processing(state, attester_slashing, valid=True):
 
 @spec_state_test
 def test_success_double(state):
-    attester_slashing = get_valid_attester_slashing(state)
+    attester_slashing = get_valid_attester_slashing(state, signed_1=True, signed_2=True)
 
     yield from run_attester_slashing_processing(state, attester_slashing)
 
