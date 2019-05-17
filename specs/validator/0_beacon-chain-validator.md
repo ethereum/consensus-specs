@@ -20,6 +20,8 @@
         - [Process deposit](#process-deposit)
         - [Validator index](#validator-index)
         - [Activation](#activation)
+    - [Validator assignments](#validator-assignments)
+        - [Lookahead](#lookahead)
     - [Beacon chain responsibilities](#beacon-chain-responsibilities)
         - [Block proposal](#block-proposal)
             - [Block header](#block-header)
@@ -45,8 +47,6 @@
                 - [Aggregation bitfield](#aggregation-bitfield)
                 - [Custody bitfield](#custody-bitfield)
                 - [Aggregate signature](#aggregate-signature)
-    - [Validator assignments](#validator-assignments)
-        - [Lookahead](#lookahead)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -127,13 +127,61 @@ Once a validator is activated, the validator is assigned [responsibilities](#bea
 
 *Note*: There is a maximum validator churn per finalized epoch so the delay until activation is variable depending upon finality, total active validator balance, and the number of validators in the queue to be activated.
 
+## Validator assignments
+
+A validator can get committee assignments for a given epoch using the following helper via `get_committee_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
+
+```python
+def get_committee_assignment(
+        state: BeaconState,
+        epoch: Epoch,
+        validator_index: ValidatorIndex) -> Tuple[List[ValidatorIndex], Shard, Slot]:
+    """
+    Return the committee assignment in the ``epoch`` for ``validator_index``.
+    ``assignment`` returned is a tuple of the following form:
+        * ``assignment[0]`` is the list of validators in the committee
+        * ``assignment[1]`` is the shard to which the committee is assigned
+        * ``assignment[2]`` is the slot at which the committee is assigned
+    """
+    next_epoch = get_current_epoch(state) + 1
+    assert epoch <= next_epoch
+
+    committees_per_slot = get_epoch_committee_count(state, epoch) // SLOTS_PER_EPOCH
+    epoch_start_slot = get_epoch_start_slot(epoch)
+    for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH):
+        slot_start_shard = get_epoch_start_shard(state, epoch) + committees_per_slot * (slot % SLOTS_PER_EPOCH)
+        for i in range(committees_per_slot):
+            shard = (slot_start_shard + i) % SHARD_COUNT
+            committee = get_crosslink_committee(state, epoch, shard)
+            if validator_index in committee:
+                return committee, shard, slot
+```
+
+A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
+
+```python
+def is_proposer(state: BeaconState,
+                validator_index: ValidatorIndex) -> bool:
+    return get_beacon_proposer_index(state) == validator_index
+```
+
+*Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
+
+### Lookahead
+
+The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
+
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and also which shard they should begin syncing (in Phase 1+).
+
+Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+
 ## Beacon chain responsibilities
 
 A validator has two primary responsibilities to the beacon chain: [proposing blocks](#block-proposal) and [creating attestations](#attestations-1). Proposals happen infrequently, whereas attestations should be created once per epoch.
 
 ### Block proposal
 
-A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `get_beacon_proposer_index(state)` returns the validator's `validator_index`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator is to create, sign, and broadcast a `block` that is a child of `parent` and that executes a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
+A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator creates, signs, and broadcasts a `block` that is a child of `parent` that satisfies a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
 There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312500 validators = 10 million ETH, that's once per ~3 weeks).
 
@@ -229,7 +277,7 @@ Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](../core/0_beacon-chain.md#voluntar
 
 ### Attestations
 
-A validator is expected to create, sign, and broadcast an attestation during each epoch. The slot during which the validator performs this role is any slot at which `get_crosslink_committees_at_slot(state, slot)` contains a committee that contains `validator_index`.
+A validator is expected to create, sign, and broadcast an attestation during each epoch. The committee, assigned shard, and assigned slot for which the validator performs this role during an epoch is defined by `get_committee_assignment(state, epoch, validator_index)`.
 
 A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned ― that is, `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
 
@@ -259,7 +307,7 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 Construct `attestation_data.crosslink` via the following
 
-* Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee defined by `get_crosslink_committees_at_slot`.
+* Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
 * Set `attestation_data.crosslink.epoch = min(attestation_data.target_epoch, head_state.current_crosslinks[shard].epoch + MAX_EPOCHS_PER_CROSSLINK)`.
 * Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
 * Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
@@ -309,67 +357,6 @@ signed_attestation_data = bls_sign(
     )
 )
 ```
-
-## Validator assignments
-
-A validator can get the current, previous, and next epoch committee assignments using the following helper via `get_committee_assignment(state, epoch, validator_index)` where `previous_epoch <= epoch <= next_epoch`.
-
-```python
-def get_committee_assignment(
-        state: BeaconState,
-        epoch: Epoch,
-        validator_index: ValidatorIndex) -> Tuple[List[ValidatorIndex], Shard, Slot]:
-    """
-    Return the committee assignment in the ``epoch`` for ``validator_index``.
-    ``assignment`` returned is a tuple of the following form:
-        * ``assignment[0]`` is the list of validators in the committee
-        * ``assignment[1]`` is the shard to which the committee is assigned
-        * ``assignment[2]`` is the slot at which the committee is assigned
-    """
-    previous_epoch = get_previous_epoch(state)
-    next_epoch = get_current_epoch(state) + 1
-    assert previous_epoch <= epoch <= next_epoch
-
-    epoch_start_slot = get_epoch_start_slot(epoch)
-    for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH):
-        crosslink_committees = get_crosslink_committees_at_slot(
-            state,
-            slot,
-        )
-        selected_committees = [
-            committee  # Tuple[List[ValidatorIndex], Shard]
-            for committee in crosslink_committees
-            if validator_index in committee[0]
-        ]
-        if len(selected_committees) > 0:
-            validators = selected_committees[0][0]
-            shard = selected_committees[0][1]
-
-            assignment = (validators, shard, slot)
-            return assignment
-```
-
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run during the slot in question. Proposer selection is only stable within the context of the current epoch.
-
-```python
-def is_proposer_at_slot(state: BeaconState,
-                        slot: Slot,
-                        validator_index: ValidatorIndex) -> bool:
-    assert state.slot == slot
-
-    return get_beacon_proposer_index(state) == validator_index
-```
-
-*Note*: To see if a validator is assigned to proposer during the slot, the validator must run an empty slot transition from the previous state to the current slot using `process_slots(state, current_slot)`.
-
-
-### Lookahead
-
-The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the slot in question.
-
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments which involves noting at which future slot one will have to attest and also which shard one should begin syncing (in Phase 1+).
-
-Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 
 ## How to avoid slashing
 
