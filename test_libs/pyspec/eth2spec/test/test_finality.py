@@ -53,13 +53,11 @@ def next_epoch_with_attestations(state,
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
             if slot_to_attest >= get_epoch_start_slot(get_current_epoch(post_state)):
                 cur_attestation = get_valid_attestation(post_state, slot_to_attest)
-                fill_aggregate_attestation(post_state, cur_attestation)
                 block.body.attestations.append(cur_attestation)
 
         if fill_prev_epoch:
             slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
             prev_attestation = get_valid_attestation(post_state, slot_to_attest)
-            fill_aggregate_attestation(post_state, prev_attestation)
             block.body.attestations.append(prev_attestation)
 
         state_transition(post_state, block)

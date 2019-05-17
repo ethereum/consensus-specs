@@ -78,6 +78,7 @@ def get_valid_attestation(state, slot=None, signed=False):
         data=attestation_data,
         custody_bitfield=custody_bitfield,
     )
+    fill_aggregate_attestation(state, attestation)
     if signed:
         sign_attestation(state, attestation)
     return attestation
