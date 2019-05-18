@@ -1,13 +1,21 @@
 import sys
+import re
 from typing import List
+from collections import defaultdict
 
 
-def get_spec(file_name: str) -> List[str]:
+FUNCTION_REGEX = r'^def [\w_]*'
+
+
+def get_spec(file_name: str):
     code_lines = []
-    pulling_from = None
-    current_name = None
-    current_typedef = None
-    type_defs = []
+    pulling_from = None # line number of start of latest object
+    current_name = None # most recent section title
+    functions = defaultdict(str)
+    constants = {}
+    ssz_objects = defaultdict(str)
+    function_matcher = re.compile(FUNCTION_REGEX)
+    # type_defs = []
     for linenum, line in enumerate(open(file_name).readlines()):
         line = line.rstrip()
         if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
@@ -16,29 +24,21 @@ def get_spec(file_name: str) -> List[str]:
             assert pulling_from is None
             pulling_from = linenum + 1
         elif line[:3] == '```':
-            if pulling_from is None:
-                pulling_from = linenum
-            else:
-                if current_typedef is not None:
-                    assert code_lines[-1] == '}'
-                    code_lines[-1] = '})'
-                    current_typedef[-1] = '})'
-                    type_defs.append((current_name, current_typedef))
-                pulling_from = None
-                current_typedef = None
+            pulling_from = None
         else:
-            if pulling_from == linenum and line == '{':
-                code_lines.append('%s = SSZType({' % current_name)
-                current_typedef = ['global_vars["%s"] = SSZType({' % current_name]
-            elif pulling_from is not None:
-                # Add some whitespace between functions
-                if line[:3] == 'def':
-                    code_lines.append('')
-                    code_lines.append('')
-                code_lines.append(line)
-                # Remember type def lines
-                if current_typedef is not None:
-                    current_typedef.append(line)
+            # # Handle SSZObjects
+            # if pulling_from == linenum and line == '{':
+            #     code_lines.append('%s = SSZType({' % current_name)
+            # Handle function definitions
+            if pulling_from is not None:
+                match = function_matcher.match(line)
+                if match is not None:
+                    current_name = match.group(0)
+                if function_matcher.match(current_name) is None:
+                    ssz_objects[current_name] += line + '\n'
+                else:
+                    functions[current_name] += line + '\n'
+            # Handle constant table entries
             elif pulling_from is None and len(line) > 0 and line[0] == '|':
                 row = line[1:].split('|')
                 if len(row) >= 2:
@@ -53,18 +53,5 @@ def get_spec(file_name: str) -> List[str]:
                         if c not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789':
                             eligible = False
                     if eligible:
-                        code_lines.append(row[0] + ' = ' + (row[1].replace('**TBD**', '0x1234567890123456789012345678901234567890')))
-    # Build type-def re-initialization
-    code_lines.append('\n')
-    code_lines.append('def init_SSZ_types():')
-    code_lines.append('    global_vars = globals()')
-    for ssz_type_name, ssz_type in type_defs:
-        code_lines.append('')
-        for type_line in ssz_type:
-            if len(type_line) > 0:
-                code_lines.append('    ' + type_line)
-    code_lines.append('\n')
-    code_lines.append('def get_ssz_type_by_name(name: str) -> SSZType:')
-    code_lines.append('    return globals()[name]')
-    code_lines.append('')
-    return code_lines
+                        constants[row[0]] = row[1].replace('**TBD**', '0x1234567890123456789012345678901234567890')
+    return functions, constants, ssz_objects
