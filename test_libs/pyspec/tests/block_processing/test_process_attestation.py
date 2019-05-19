@@ -64,6 +64,22 @@ def test_success_prevous_epoch(state):
     return pre_state, attestation, post_state
 
 
+def test_success_since_max_epochs_per_crosslink(state):
+    for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
+        next_epoch(state)
+
+    attestation = get_valid_attestation(state)
+    data = attestation.data
+    assert data.crosslink.end_epoch - data.crosslink.start_epoch == spec.MAX_EPOCHS_PER_CROSSLINK
+
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+
+    pre_state, post_state = run_attestation_processing(state, attestation)
+
+    return pre_state, attestation, post_state
+
+
 def test_before_inclusion_delay(state):
     attestation = get_valid_attestation(state)
     # do not increment slot to allow for inclusion delay
@@ -125,6 +141,32 @@ def test_bad_previous_crosslink(state):
         next_slot(state)
 
     state.current_crosslinks[attestation.data.crosslink.shard].end_epoch += 10
+
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
+
+    return pre_state, attestation, post_state
+
+
+def test_bad_crosslink_start_epoch(state):
+    next_epoch(state)
+    attestation = get_valid_attestation(state)
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+
+    attestation.data.crosslink.start_epoch += 1
+
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
+
+    return pre_state, attestation, post_state
+
+
+def test_bad_crosslink_end_epoch(state):
+    next_epoch(state)
+    attestation = get_valid_attestation(state)
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+
+    attestation.data.crosslink.end_epoch += 1
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 
