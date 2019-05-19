@@ -96,6 +96,19 @@ return b"\x01" if value is True else b"\x00"
 return b""
 ```
 
+### `"bigint"`
+
+```python
+return value.to_bytes(log2(value)//8, "little")
+```
+
+### `"Bitfield"`
+
+```python
+as_integer = (1 << len(value)) + sum([value[i] << i for i in range(len(value))])
+return as_integer.to_bytes(log2(as_integer)//8, "little")
+```
+
 ### Vectors, containers, lists, unions
 
 ```python
