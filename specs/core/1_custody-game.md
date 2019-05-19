@@ -255,8 +255,8 @@ The `empty` function accepts and SSZ type as input and returns an object of that
 
 ```python
 def get_custody_chunk_count(attestation: Attestation) -> int:
-    crosslink_start_epoch = attestation.data.latest_crosslink.epoch
-    crosslink_end_epoch = slot_to_epoch(attestation.data.slot)
+    crosslink_start_epoch = attestation.data.latest_crosslink.start_epoch
+    crosslink_end_epoch = attestation.data.latest_crosslink.end_epoch
     crosslink_crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, end_epoch - start_epoch)
     chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK
     return crosslink_crosslink_length * chunks_per_epoch
