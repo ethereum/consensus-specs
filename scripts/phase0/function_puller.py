@@ -31,7 +31,7 @@ def get_spec(file_name: str, file_index: int=0) -> List[str]:
                 current_typedef = ['global_vars["%s"] = SSZType({' % current_name]
             elif pulling_from is not None:
                 # Add some whitespace between functions
-                if line[:3] == 'def':
+                if line[:3] == 'def' or line[:10] == '@dataclass':
                     code_lines.append('')
                     code_lines.append('')
                 code_lines.append(line)

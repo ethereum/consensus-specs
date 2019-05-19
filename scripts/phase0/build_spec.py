@@ -13,6 +13,12 @@ from typing import (
     NewType,
     Tuple,
 )
+
+from dataclasses import (
+    dataclass,
+    field,
+)
+
 from eth2spec.utils.minimal_ssz import (
     SSZType,
     hash_tree_root,

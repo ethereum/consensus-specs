@@ -67,14 +67,14 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 #### `Store`
 
 ```python
-{
-    'blocks': Map['Bytes32', BeaconBlock],
-    'states': Map['Bytes32', BeaconState],
-    'time': 'uint64',
-    'latest_targets': Map['uint64', Target],
-    'justified_root': 'Bytes32',
-    'finalized_root': 'Bytes32',
-}
+@dataclass
+class Store:
+    blocks: Dict[Bytes32, BeaconBlock] = field(default_factory=dict)
+    states: Dict[Bytes32, BeaconState] = field(default_factory=dict)
+    time: int = 0
+    latest_targets: Dict[int, Target] = field(default_factory=dict)
+    justified_root: Bytes32 = ZERO_HASH
+    finalized_root: Bytes32 = ZERO_HASH
 ```
 
 ### Helpers
