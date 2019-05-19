@@ -281,8 +281,9 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Shard number
     'shard': 'uint64',
-    # Epoch number
-    'epoch': 'uint64',
+    # Crosslinking data from epochs [start....end-1]
+    'start_epoch': 'uint64',
+    'end_epoch': 'uint64',
     # Root of the previous crosslink
     'parent_root': 'bytes32',
     # Root of the crosslinked shard data since the previous crosslink
@@ -1728,7 +1729,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Check FFG data, crosslink data, and signature
     assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)
-    assert data.crosslink.epoch == min(data.target_epoch, parent_crosslink.epoch + MAX_EPOCHS_PER_CROSSLINK)
+    assert data.crosslink.start_epoch == parent_crosslink.end_epoch
+    assert data.crosslink.end_epoch == min(data.target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))
