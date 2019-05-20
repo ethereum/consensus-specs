@@ -2,22 +2,26 @@ from copy import deepcopy
 
 from eth2spec.phase0 import spec
 from eth2spec.phase0.spec import get_beacon_proposer_index, slot_to_epoch, get_domain, BeaconBlock
-from eth2spec.phase0.state_transition import state_transition
+from eth2spec.phase0.state_transition import state_transition, state_transition_to
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.test.helpers.state import next_slot
 from eth2spec.utils.bls import bls_sign
 from eth2spec.utils.minimal_ssz import signing_root, hash_tree_root
 
 
-def sign_block(state, block):
-    assert block.slot == state.slot or block.slot == state.slot + 1
-    if block.slot == state.slot:
-        proposer_index = get_beacon_proposer_index(state)
-    else:
-        # use stub state to get proposer index of next slot
-        stub_state = deepcopy(state)
-        next_slot(stub_state)
-        proposer_index = get_beacon_proposer_index(stub_state)
+def sign_block(state, block, proposer_index=None):
+    assert state.slot <= block.slot
+
+    if proposer_index is None:
+        if block.slot == state.slot:
+            proposer_index = get_beacon_proposer_index(state)
+        else:
+            if slot_to_epoch(state.slot) + 1 > slot_to_epoch(block.slot):
+                print("warning: block slot far away, and no proposer index manually given."
+                      " Signing block is slow due to transition for proposer index calculation.")
+            # use stub state to get proposer index of future slot
+            stub_state = deepcopy(state)
+            state_transition_to(stub_state, block.slot)
+            proposer_index = get_beacon_proposer_index(stub_state)
 
     privkey = privkeys[proposer_index]
 
