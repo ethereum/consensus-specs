@@ -141,14 +141,16 @@ def combine_constants(old_constants, new_constants):
         old_constants[key] = value
     return old_constants
 
+
 def combine_ssz_objects(old_objects, new_objects):
-    remove_encasing = lambda x: x[1:-1]
-    old_objects = map(remove_encasing, old_objects)
-    new_objects = map(remove_encasing, new_objects)
     for key, value in new_objects.items():
+        # remove leading "{" and trailing "\n}"
+        old_objects[key] = old_objects[key][1:-3]
+        # remove leading "{"
+        value = value[1:]
         old_objects[key] += value
-    reapply_encasing = lambda x: '{%s}' %x
-    return map(reapply_encasing, old_objects) 
+        old_objects[key] = '{' + old_objects[key]
+    return old_objects
 
 
 def build_phase0_spec(sourcefile, outfile=None):
@@ -166,7 +168,7 @@ def build_phase1_spec(phase0_sourcefile, phase1_sourcefile, outfile=None):
     phase1_functions, phase1_constants, phase1_ssz_objects = function_puller.get_spec(phase1_sourcefile)
     functions = combine_functions(phase0_functions, phase1_functions)
     constants = combine_constants(phase0_constants, phase1_constants)
-    ssz_objects = combine_functions(phase0_ssz_objects, phase1_ssz_objects)
+    ssz_objects = combine_ssz_objects(phase0_ssz_objects, phase1_ssz_objects)
     spec = objects_to_spec(functions, constants, ssz_objects, PHASE1_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
