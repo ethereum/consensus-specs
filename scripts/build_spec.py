@@ -52,17 +52,17 @@ from eth2spec.utils.bls_stub import (
 from eth2spec.utils.hash_function import hash
 import math
 '''
-NEW_TYPE_DEFINITIONS = '''
-Slot = NewType('Slot', int)  # uint64
-Epoch = NewType('Epoch', int)  # uint64
-Shard = NewType('Shard', int)  # uint64
-ValidatorIndex = NewType('ValidatorIndex', int)  # uint64
-Gwei = NewType('Gwei', int)  # uint64
-Bytes32 = NewType('Bytes32', bytes)  # bytes32
-BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
-BLSSignature = NewType('BLSSignature', bytes)  # bytes96
-Store = None
-'''
+NEW_TYPES = {
+    'Slot': 'int',
+    'Epoch': 'int',
+    'Shard': 'int',
+    'ValidatorIndex': 'int',
+    'Gwei': 'int',
+    'Bytes32': 'bytes',
+    'BLSPubkey': 'bytes',
+    'BLSSignature': 'bytes',
+    'Store': 'None',
+}
 SUNDRY_FUNCTIONS = '''
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
@@ -109,6 +109,7 @@ def apply_constants_preset(preset: Dict[str, Any]):
 
 
 def objects_to_spec(functions, constants, ssz_objects, imports):
+    new_type_definitions = '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]),constants))
     ssz_objects_instantiation_spec = '\n'.join(map(lambda x: '%s = SSZType(%s)' % (x, ssz_objects[x][:-1]), ssz_objects))
@@ -120,9 +121,9 @@ def objects_to_spec(functions, constants, ssz_objects, imports):
     )
     return (
         imports
-        + '\n' + NEW_TYPE_DEFINITIONS
-        + '\n' + constants_spec
-        + '\n' + ssz_objects_instantiation_spec
+        + '\n' + new_type_definitions
+        + '\n\n' + constants_spec
+        + '\n\n' + ssz_objects_instantiation_spec
         + '\n\n\n' + functions_spec
         + '\n' + SUNDRY_FUNCTIONS
         + '\n\n' + ssz_objects_reinitialization_spec
@@ -142,14 +143,27 @@ def combine_constants(old_constants, new_constants):
     return old_constants
 
 
+def dependency_order_ssz_objects(objects):
+    items = list(objects.items())
+    for key, value in items:
+        dependencies = re.findall(r'(: [\[]*[A-Z][a-z][\w]+)', value)
+        dependencies = map(lambda x: re.sub(r'\W', '', x), dependencies)
+        for dep in dependencies:
+            if dep in NEW_TYPES:
+                continue
+            key_list = list(objects.keys())
+            for item in [dep, key] + key_list[key_list.index(dep)+1:]:
+                objects[item] = objects.pop(item)
+
+
 def combine_ssz_objects(old_objects, new_objects):
     for key, value in new_objects.items():
         # remove leading "{" and trailing "\n}"
-        old_objects[key] = old_objects[key][1:-3]
+        old_objects[key] = old_objects.get(key, '')[1:-3]
         # remove leading "{"
         value = value[1:]
-        old_objects[key] += value
-        old_objects[key] = '{' + old_objects[key]
+        old_objects[key] = '{' + old_objects.get(key, '') + value
+    dependency_order_ssz_objects(old_objects)
     return old_objects
 
 

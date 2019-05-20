@@ -1,7 +1,6 @@
 import sys
 import re
 from typing import List
-from collections import defaultdict
 
 
 FUNCTION_REGEX = r'^def [\w_]*'
@@ -11,9 +10,9 @@ def get_spec(file_name: str):
     code_lines = []
     pulling_from = None # line number of start of latest object
     current_name = None # most recent section title
-    functions = defaultdict(str)
+    functions = {}
     constants = {}
-    ssz_objects = defaultdict(str)
+    ssz_objects = {}
     function_matcher = re.compile(FUNCTION_REGEX)
     for linenum, line in enumerate(open(file_name).readlines()):
         line = line.rstrip()
@@ -31,9 +30,9 @@ def get_spec(file_name: str):
                 if match is not None:
                     current_name = match.group(0)
                 if function_matcher.match(current_name) is None:
-                    ssz_objects[current_name] += line + '\n'
+                    ssz_objects[current_name] = ssz_objects.get(current_name, '') + line + '\n'
                 else:
-                    functions[current_name] += line + '\n'
+                    functions[current_name] = functions.get(current_name, '') + line + '\n'
             # Handle constant table entries
             elif pulling_from is None and len(line) > 0 and line[0] == '|':
                 row = line[1:].split('|')
