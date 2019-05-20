@@ -273,7 +273,7 @@ The `empty` function accepts and SSZ type as input and returns an object of that
 def get_custody_chunk_count(attestation: Attestation) -> int:
     crosslink_start_epoch = attestation.data.latest_crosslink.epoch
     crosslink_end_epoch = slot_to_epoch(attestation.data.slot)
-    crosslink_crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, end_epoch - start_epoch)
+    crosslink_crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, crosslink_end_epoch - crosslink_start_epoch)
     chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK
     return crosslink_crosslink_length * chunks_per_epoch
 ```
@@ -283,7 +283,7 @@ def get_custody_chunk_count(attestation: Attestation) -> int:
 ```python
 def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
     # TODO: Replace with something MPC-friendly, e.g. the Legendre symbol
-    return get_bitfield_bit(hash(challenge.responder_key + chunk), 0)
+    return get_bitfield_bit(hash(key + chunk), 0)
 ```
 
 ### `get_chunk_bits_root`
@@ -348,8 +348,7 @@ For each `reveal` in `block.body.custody_key_reveals`, run the following functio
 
 ```python
 def process_custody_key_reveal(state: BeaconState,
-                           reveal: CustodyKeyReveal) -> None:
-
+                               reveal: CustodyKeyReveal) -> None:
     """
     Process ``CustodyKeyReveal`` operation.
     Note that this function mutates ``state``.
@@ -377,15 +376,18 @@ def process_custody_key_reveal(state: BeaconState,
 
     # Decrement max reveal lateness if response is timely
     if revealer.next_custody_reveal_period == get_validators_custody_reveal_period(state, reveal.revealer_index) - 2:
-            revealer.max_reveal_lateness -=  MAX_REVEAL_LATENESS_DECREMENT
-    revealer.max_reveal_lateness = max(revealed_validator.max_reveal_lateness, get_validators_custody_reveal_period(state, reveal.revealed_index) - revealer.next_custody_reveal_period)
+        revealer.max_reveal_lateness -= MAX_REVEAL_LATENESS_DECREMENT
+    revealer.max_reveal_lateness = max(
+        revealer.max_reveal_lateness,
+        get_validators_custody_reveal_period(state, reveal.revealed_index) - revealer.next_custody_reveal_period
+    )
 
     # Process reveal
     revealer.next_custody_reveal_period += 1
 
     # Reward Block Preposer
     proposer_index = get_beacon_proposer_index(state)
-    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
+    increase_balance(state, proposer_index, get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT)
 ```
 
 ##### Early derived secret reveals
@@ -396,7 +398,7 @@ For each `reveal` in `block.body.early_derived_secret_reveals`, run the followin
 
 ```python
 def process_early_derived_secret_reveal(state: BeaconState,
-                              reveal: EarlyDerivedSecretReveal) -> None:
+                                        reveal: EarlyDerivedSecretReveal) -> None:
     """
     Process ``EarlyDerivedSecretReveal`` operation.
     Note that this function mutates ``state``.
@@ -404,11 +406,12 @@ def process_early_derived_secret_reveal(state: BeaconState,
 
     revealed_validator = state.validator_registry[reveal.revealed_index]
     masker = state.validator_registry[reveal.masker_index]
+    derived_secret_location = reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
 
     assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
     assert reveal.epoch < get_current_epoch(state) + EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     assert revealed_validator.slashed is False
-    assert reveal.revealed_index not in state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+    assert reveal.revealed_index not in state.exposed_derived_secrets[derived_secret_location]
 
     # Verify signature correctness
     masker = state.validator_registry[reveal.masker_index]
@@ -440,12 +443,16 @@ def process_early_derived_secret_reveal(state: BeaconState,
 
         # Calculate penalty
         max_proposer_slot_reward = (
-            get_base_reward(state, reveal.revealed_index) *
-            SLOTS_PER_EPOCH //
-            len(get_active_validator_indices(state, get_current_epoch(state))) //
-            PROPOSER_REWARD_QUOTIENT
+            get_base_reward(state, reveal.revealed_index)
+            * SLOTS_PER_EPOCH
+            // len(get_active_validator_indices(state, get_current_epoch(state)))
+            // PROPOSER_REWARD_QUOTIENT
         )
-        penalty = max_proposer_slot_reward * EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE * (len(state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]) + 1)
+        penalty = (
+            max_proposer_slot_reward
+            * EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE
+            * (len(state.exposed_derived_secrets[derived_secret_location]) + 1)
+        )
 
         # Apply penalty
         proposer_index = get_beacon_proposer_index(state)
@@ -457,8 +464,7 @@ def process_early_derived_secret_reveal(state: BeaconState,
         decrease_balance(state, reveal.revealed_index, penalty)
 
         # Mark this derived secret as exposed so validator cannot be punished repeatedly
-        state.exposed_derived_secrets[reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS].append(reveal.revealed_index)
-
+        state.exposed_derived_secrets[derived_secret_location].append(reveal.revealed_index)
 ```
 
 #### Chunk challenges
@@ -471,13 +477,13 @@ For each `challenge` in `block.body.custody_chunk_challenges`, run the following
 def process_chunk_challenge(state: BeaconState,
                             challenge: CustodyChunkChallenge) -> None:
     # Verify the attestation
-    assert verify_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
+    assert validate_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
     # Verify it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     responder = state.validator_registry[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
-    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
+    attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
@@ -526,14 +532,14 @@ def process_bit_challenge(state: BeaconState,
     assert is_slashable_validator(challenger, get_current_epoch(state))
 
     # Verify the attestation
-    assert verify_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
+    assert validate_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validator_registry[challenge.responder_index]
     assert (slot_to_epoch(challenge.attestation.data.slot) + responder.max_reveal_lateness <=
             get_validators_custody_reveal_period(state, challenge.responder_index))
 
     # Verify the responder participated in the attestation
-    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
+    attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
 
     # A validator can be the challenger or responder for at most one challenge at a time
@@ -546,7 +552,7 @@ def process_bit_challenge(state: BeaconState,
         get_validators_custody_reveal_period(
             state=state,
             index=challenge.responder_index,
-            epoch=slot_to_epoch(attestation.data.slot)),
+            epoch=slot_to_epoch(challenge.attestation.data.slot)),
         challenge.responder_index
     )
     assert bls_verify(
@@ -564,7 +570,7 @@ def process_bit_challenge(state: BeaconState,
     chunk_count = get_custody_chunk_count(challenge.attestation)
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
-    custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
+    custody_bit = get_bitfield_bit(challenge.attestation.custody_bitfield, attesters.index(challenge.responder_index))
     assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(
@@ -593,11 +599,13 @@ For each `response` in `block.body.custody_responses`, run the following functio
 ```python
 def process_custody_response(state: BeaconState,
                              response: CustodyResponse) -> None:
-    chunk_challenge = next((record for record in state.custody_chunk_challenge_records if record.challenge_index == response.challenge_index), None)
+    chunk_challenge = next((record for record in state.custody_chunk_challenge_records
+                            if record.challenge_index == response.challenge_index), None)
     if chunk_challenge is not None:
         return process_chunk_challenge_response(state, response, chunk_challenge)
 
-    bit_challenge = next((record for record in state.custody_bit_challenge_records if record.challenge_index == response.challenge_index), None)
+    bit_challenge = next((record for record in state.custody_bit_challenge_records
+                          if record.challenge_index == response.challenge_index), None)
     if bit_challenge is not None:
         return process_bit_challenge_response(state, response, bit_challenge)
 
@@ -625,7 +633,7 @@ def process_chunk_challenge_response(state: BeaconState,
     records[records.index(challenge)] = CustodyChunkChallengeRecord()
     # Reward the proposer
     proposer_index = get_beacon_proposer_index(state)
-    increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
+    increase_balance(state, proposer_index, get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT)
 ```
 
 ```python
@@ -651,7 +659,8 @@ def process_bit_challenge_response(state: BeaconState,
         root=challenge.chunk_bits_merkle_root
     )
     # Verify the chunk bit does not match the challenge chunk bit
-    assert get_custody_chunk_bit(challenge.responder_key, response.chunk) != get_bitfield_bit(challenge.chunk_bits_leaf, response.chunk_index % 256)
+    assert (get_custody_chunk_bit(challenge.responder_key, response.chunk)
+        != get_bitfield_bit(challenge.chunk_bits_leaf, response.chunk_index % 256))
     # Clear the challenge
     records = state.custody_bit_challenge_records
     records[records.index(challenge)] = CustodyBitChallengeRecord()
@@ -670,7 +679,7 @@ def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         if (validator.next_custody_reveal_period +
             (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <
-            get_validators_custody_reveal_period(state, index)):
+                get_validators_custody_reveal_period(state, index)):
                 slash_validator(state, index)
 ```
 
@@ -712,12 +721,13 @@ def eligible(state: BeaconState, index: ValidatorIndex) -> bool:
     if len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
         return False
     # Cannot exit if you have not revealed all of your custody keys
-    elif validator.next_custody_reveal_period <= get_validators_custody_reveal_period(state, index, validator.exit_epoch):
+    elif (validator.next_custody_reveal_period 
+            <= get_validators_custody_reveal_period(state, index, validator.exit_epoch)):
         return False
     # Cannot exit if you already have
     elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
         return False
     # Return minimum time
     else:
-        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+        return get_current_epoch(state) >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 ```
