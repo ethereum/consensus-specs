@@ -306,10 +306,12 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 ##### Crosslink vote
 
-Construct `attestation_data.crosslink` via the following
+Construct `attestation_data.crosslink` via the following.
 
 * Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
-* Set `attestation_data.crosslink.epoch = min(attestation_data.target_epoch, head_state.current_crosslinks[shard].epoch + MAX_EPOCHS_PER_CROSSLINK)`.
+* Let `parent_crosslink = head_state.current_crosslinks[shard]`.
+* Set `attestation_data.crosslink.start_epoch = parent_crosslink.end_epoch`.
+* Set `attestation_data.crosslink.end_epoch = min(attestation_data.target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
 * Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
 * Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
 
