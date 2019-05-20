@@ -1189,7 +1189,11 @@ Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.gene
 
 ```python
 def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
-    state = BeaconState(genesis_time=genesis_time, latest_eth1_data=genesis_eth1_data)
+    state = BeaconState(
+        genesis_time=genesis_time,
+        latest_eth1_data=genesis_eth1_data,
+        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
+    )
 
     # Process genesis deposits
     for deposit in deposits:
