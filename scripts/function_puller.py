@@ -15,7 +15,6 @@ def get_spec(file_name: str):
     constants = {}
     ssz_objects = defaultdict(str)
     function_matcher = re.compile(FUNCTION_REGEX)
-    # type_defs = []
     for linenum, line in enumerate(open(file_name).readlines()):
         line = line.rstrip()
         if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
@@ -26,9 +25,6 @@ def get_spec(file_name: str):
         elif line[:3] == '```':
             pulling_from = None
         else:
-            # # Handle SSZObjects
-            # if pulling_from == linenum and line == '{':
-            #     code_lines.append('%s = SSZType({' % current_name)
             # Handle function definitions
             if pulling_from is not None:
                 match = function_matcher.match(line)

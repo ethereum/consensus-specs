@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from typing import Tuple, List
 
 
-IMPORTS = '''from typing import (
+PHASE0_IMPORTS = '''from typing import (
     Any,
     Dict,
     List,
@@ -26,6 +26,31 @@ from eth2spec.utils.bls_stub import (
 )
 
 from eth2spec.utils.hash_function import hash
+'''
+PHASE1_IMPORTS = '''from typing import (
+    Any,
+    Dict,
+    List,
+    NewType,
+    Tuple,
+)
+
+from eth2spec.utils.minimal_ssz import (
+    SSZType,
+    hash_tree_root,
+    signing_root,
+    type_of,
+    empty,
+)
+
+from eth2spec.utils.bls_stub import (
+    bls_aggregate_pubkeys,
+    bls_verify,
+    bls_verify_multiple,
+)
+
+from eth2spec.utils.hash_function import hash
+import math
 '''
 NEW_TYPE_DEFINITIONS = '''
 Slot = NewType('Slot', int)  # uint64
@@ -82,74 +107,8 @@ def apply_constants_preset(preset: Dict[str, Any]):
     init_SSZ_types()
 '''
 
-def split_and_label(regex_pattern: str, text: str) -> List[str]:
-    '''
-    Splits a string based on regex, but down not remove the matched text.
-    It subsequently labels the matches with their match
-    '''
-    find_pattern = r'''%s.*?(?=%s|$)''' % (regex_pattern, regex_pattern)
-    matches = re.findall(find_pattern, text, re.DOTALL)
-    return list(map(lambda x: [re.match(regex_pattern, x).group(0), x], matches))
 
-
-def inserter(oldfile: str, newfile: str) -> Tuple[str, str]:
-    '''
-    Searches for occurrences of @LabelName in oldfile and replaces them with instances of code wraped as follows:
-    # begin insert @LabelName
-    def foo(bar):
-        return bar
-    # end insert @LabelName
-    '''
-    new_insert_objects = re.split(r"(# begin insert |# end insert @[\w\d_]*\n)", newfile)
-    # Retrieve label from insert objects
-    def get_labeled_object(labeled_text):
-        label = re.match(r"@[\w\d_]*\n", labeled_text)
-        if label is not None:
-            label = label.group(0)
-            labeled_text = re.sub(label, '', labeled_text)
-        return {'label': label, 'text': labeled_text}
-    new_insert_objects = map(get_labeled_object, new_insert_objects)
-    # Find and replace labels
-    newfile = ""
-    for item in new_insert_objects:
-        if item['label'] is not None:
-            oldfile, insertions = re.subn('# %s' % item['label'], item['text'], oldfile)
-            if insertions == 0:
-                newfile.join('# begin insert %s/n%s# end insert %s' % (item['label'], item['text'], item['label']))
-        elif re.match(r"(# begin insert |# end insert )", item['text']) is None:
-            newfile += item['text']
-    return oldfile, newfile
-
-
-def merger(oldfile:str, newfile:str) -> str:
-    '''
-    Seeks out functions and objects in new and old files.
-    Replaces old objects with new ones if they exist.
-    '''
-    object_regex = r'''(?:\n[@\w]+[\s\w]*[='" "\.\w]*)|(?:\s{4}global_vars\["\w+"\])'''
-    ssz_object_regex = r'''(?:\w+|\s{4}global_vars\["\w+"\]) = SSZType\(\{\n'''
-    old_objects = split_and_label(object_regex, oldfile)
-    new_objects = split_and_label(object_regex, newfile)
-    for new_item in new_objects:
-        found_old = False
-        for index, old_item in enumerate(old_objects):
-            if old_item[0] == new_item[0]:
-                ssz_object_match = re.match(ssz_object_regex, new_item[1])
-                if ssz_object_match is not None:
-                    new_item[1] = re.sub(ssz_object_regex, '', new_item[1])
-                    old_item[1] = re.sub(r'\n\w*\}\)', '', old_item[1])
-                    old_item[1] += new_item[1]
-                else:
-                    old_item[1] = new_item[1]
-                found_old = True
-                old_objects[index] = old_item
-                break
-        if not found_old:
-            old_objects.append(new_item)
-    return ''.join(elem for elem in map(lambda x: x[1], old_objects))
-
-
-def objects_to_spec(functions, constants, ssz_objects):
+def objects_to_spec(functions, constants, ssz_objects, imports):
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]),constants))
     ssz_objects_instantiation_spec = '\n'.join(map(lambda x: '%s = SSZType(%s)' % (x, ssz_objects[x][:-1]), ssz_objects))
@@ -160,7 +119,7 @@ def objects_to_spec(functions, constants, ssz_objects):
         + ssz_objects_reinitialization_spec
     )
     return (
-        IMPORTS
+        imports
         + '\n' + NEW_TYPE_DEFINITIONS
         + '\n' + constants_spec
         + '\n' + ssz_objects_instantiation_spec
@@ -194,7 +153,7 @@ def combine_ssz_objects(old_objects, new_objects):
 
 def build_phase0_spec(sourcefile, outfile=None):
     functions, constants, ssz_objects = function_puller.get_spec(sourcefile)
-    spec = objects_to_spec(functions, constants, ssz_objects)
+    spec = objects_to_spec(functions, constants, ssz_objects, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -208,7 +167,7 @@ def build_phase1_spec(phase0_sourcefile, phase1_sourcefile, outfile=None):
     functions = combine_functions(phase0_functions, phase1_functions)
     constants = combine_constants(phase0_constants, phase1_constants)
     ssz_objects = combine_functions(phase0_ssz_objects, phase1_ssz_objects)
-    spec = objects_to_spec(functions, constants, ssz_objects)
+    spec = objects_to_spec(functions, constants, ssz_objects, PHASE1_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)

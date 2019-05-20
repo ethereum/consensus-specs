@@ -31,7 +31,7 @@
             - [`BeaconState`](#beaconstate)
             - [`BeaconBlockBody`](#beaconblockbody)
     - [Helpers](#helpers)
-        - [`typeof`](#typeof)
+        - [`type_of`](#type_of)
         - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
@@ -259,13 +259,13 @@ Add the following fields to the end of the specified container objects. Fields w
 
 ## Helpers
 
-### `typeof`
+### `type_of`
 
-The `typeof` function accepts and SSZ object as a single input and returns the corresponding SSZ type.
+The `type_of` function accepts an SSZ object as a single input and returns the corresponding SSZ type.
 
 ### `empty`
 
-The `empty` function accepts and SSZ type as input and returns an object of that type with all fields initialized to default values.
+The `empty` function accepts an SSZ type as input and returns an object of that type with all fields initialized to default values.
 
 ### `get_crosslink_chunk_count`
 
@@ -327,7 +327,7 @@ def get_validators_custody_reveal_period(state: BeaconState,
 ```python
 def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
     for i in range(len(list)):
-        if list[i] == empty(typeof(new_element)):
+        if list[i] == empty(type_of(new_element)):
             list[i] = new_element
             return i
     list.append(new_element)
@@ -492,7 +492,7 @@ def process_chunk_challenge(state: BeaconState,
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
-    depth = math.log2(next_power_of_two(get_custody_chunk_count(challenge.attestation)))
+    depth = math.ceil(math.log2(get_custody_chunk_count(challenge.attestation)))
     assert challenge.chunk_index < 2**depth
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
@@ -580,7 +580,7 @@ def process_bit_challenge(state: BeaconState,
         deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
         data_root=challenge.attestation.data.crosslink.data_root,
         chunk_count=chunk_count,
-        chunk_bits_merkle_root=merkle_root(pad_to_power_of_2((challenge.chunk_bits))),
+        chunk_bits_merkle_root=hash_tree_root(challenge.chunk_bits),
         responder_key=challenge.responder_key,
     )
     replace_empty_or_append(state.custody_bit_challenge_records, new_record)
@@ -646,7 +646,7 @@ def process_bit_challenge_response(state: BeaconState,
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.data_branch,
-        depth=math.log2(next_power_of_two(challenge.chunk_count)),
+        depth=math.ceil(math.log2(challenge.chunk_count)),
         index=response.chunk_index,
         root=challenge.data_root,
     )
@@ -654,13 +654,13 @@ def process_bit_challenge_response(state: BeaconState,
     assert verify_merkle_branch(
         leaf=response.chunk_bits_leaf,
         branch=response.chunk_bits_branch,
-        depth=math.log2(next_power_of_two(challenge.chunk_count) // 256),
+        depth=math.ceil(math.log2(challenge.chunk_count)) >> 8,
         index=response.chunk_index // 256,
         root=challenge.chunk_bits_merkle_root
     )
     # Verify the chunk bit does not match the challenge chunk bit
     assert (get_custody_chunk_bit(challenge.responder_key, response.chunk)
-        != get_bitfield_bit(challenge.chunk_bits_leaf, response.chunk_index % 256))
+            != get_bitfield_bit(challenge.chunk_bits_leaf, response.chunk_index % 256))
     # Clear the challenge
     records = state.custody_bit_challenge_records
     records[records.index(challenge)] = CustodyBitChallengeRecord()

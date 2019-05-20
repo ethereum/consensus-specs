@@ -58,6 +58,16 @@ class Vector():
         return self.length
 
 
+def type_of(obj):
+    return obj.__class__
+
+
+def empty(obj):
+    for field in obj.fields:
+        field = get_zero_value(field)
+    return obj
+
+
 def is_basic(typ):
     # if not a string, it is a complex, and cannot be basic
     if not isinstance(typ, str):
