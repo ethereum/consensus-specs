@@ -17,7 +17,7 @@ from eth2spec.utils.merkle_minimal import (
 pytestmark = pytest.mark.sanity
 
 
-def test_slot_transition(spec, helpers, state):
+def test_slot_transition(state):
     test_state = deepcopy(state)
     spec.process_slot(test_state)
     helpers.advance_slot(test_state)
@@ -26,7 +26,7 @@ def test_slot_transition(spec, helpers, state):
     return test_state
 
 
-def test_empty_block_transition(spec, helpers, state):
+def test_empty_block_transition(state):
     test_state = deepcopy(state)
 
     block = helpers.build_empty_block_for_next_slot(test_state)
@@ -38,7 +38,7 @@ def test_empty_block_transition(spec, helpers, state):
     return state, [block], test_state
 
 
-def test_skipped_slots(spec, helpers, state):
+def test_skipped_slots(state):
     test_state = deepcopy(state)
     block = helpers.build_empty_block_for_next_slot(test_state)
     block.slot += 3
@@ -52,7 +52,7 @@ def test_skipped_slots(spec, helpers, state):
     return state, [block], test_state
 
 
-def test_empty_epoch_transition(spec, helpers, state):
+def test_empty_epoch_transition(state):
     test_state = deepcopy(state)
     block = helpers.build_empty_block_for_next_slot(test_state)
     block.slot += spec.SLOTS_PER_EPOCH
@@ -66,7 +66,7 @@ def test_empty_epoch_transition(spec, helpers, state):
     return state, [block], test_state
 
 
-def test_empty_epoch_transition_not_finalizing(spec, helpers, state):
+def test_empty_epoch_transition_not_finalizing(state):
     test_state = deepcopy(state)
     block = helpers.build_empty_block_for_next_slot(test_state)
     block.slot += spec.SLOTS_PER_EPOCH * 5
@@ -81,7 +81,7 @@ def test_empty_epoch_transition_not_finalizing(spec, helpers, state):
     return state, [block], test_state
 
 
-def test_proposer_slashing(spec, helpers, state):
+def test_proposer_slashing(state):
     test_state = deepcopy(state)
     proposer_slashing = helpers.get_valid_proposer_slashing(state)
     validator_index = proposer_slashing.proposer_index
@@ -105,7 +105,7 @@ def test_proposer_slashing(spec, helpers, state):
     return state, [block], test_state
 
 
-def test_attester_slashing(spec, helpers, state):
+def test_attester_slashing(state):
     test_state = deepcopy(state)
     attester_slashing = helpers.get_valid_attester_slashing(state)
     validator_index = attester_slashing.attestation_1.custody_bit_0_indices[0]
@@ -136,7 +136,7 @@ def test_attester_slashing(spec, helpers, state):
     return state, [block], test_state
 
 
-def test_deposit_in_block(spec, helpers, state):
+def test_deposit_in_block(state):
     pre_state = deepcopy(state)
     test_deposit_data_leaves = [spec.ZERO_HASH] * len(pre_state.validator_registry)
 
@@ -173,7 +173,7 @@ def test_deposit_in_block(spec, helpers, state):
     return pre_state, [block], post_state
 
 
-def test_deposit_top_up(spec, helpers, state):
+def test_deposit_top_up(state):
     pre_state = deepcopy(state)
     test_deposit_data_leaves = [spec.ZERO_HASH] * len(pre_state.validator_registry)
 
@@ -212,7 +212,7 @@ def test_deposit_top_up(spec, helpers, state):
     return pre_state, [block], post_state
 
 
-def test_attestation(spec, helpers, state):
+def test_attestation(state):
     state.slot = spec.SLOTS_PER_EPOCH
     test_state = deepcopy(state)
     attestation = helpers.get_valid_attestation(state)
@@ -243,7 +243,7 @@ def test_attestation(spec, helpers, state):
     return state, [attestation_block, epoch_block], test_state
 
 
-def test_voluntary_exit(spec, helpers, state):
+def test_voluntary_exit(state):
     pre_state = deepcopy(state)
     validator_index = spec.get_active_validator_indices(
         pre_state,
@@ -289,7 +289,7 @@ def test_voluntary_exit(spec, helpers, state):
     return pre_state, [initiate_exit_block, exit_block], post_state
 
 
-def test_transfer(spec, helpers, state):
+def test_transfer(state):
     # overwrite default 0 to test
     spec.apply_constants_preset({"MAX_TRANSFERS": 1})
 
@@ -341,7 +341,7 @@ def test_transfer(spec, helpers, state):
     return pre_state, [block], post_state
 
 
-def test_balance_driven_status_transitions(spec, helpers, state):
+def test_balance_driven_status_transitions(state):
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[-1]
 
@@ -363,7 +363,7 @@ def test_balance_driven_status_transitions(spec, helpers, state):
     return state, [block], post_state
 
 
-def test_historical_batch(spec, helpers, state):
+def test_historical_batch(state):
     state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
 
     post_state = deepcopy(state)
@@ -379,7 +379,7 @@ def test_historical_batch(spec, helpers, state):
     return state, [block], post_state
 
 
-def test_eth1_data_votes(spec, helpers, state):
+def test_eth1_data_votes(state):
     post_state = deepcopy(state)
 
     expected_votes = 0

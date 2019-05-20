@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.state
 
 
-def test_activation(spec, helpers, state):
+def test_activation(state):
     index = 0
     assert spec.is_active_validator(state.validator_registry[index], spec.get_current_epoch(state))
 
@@ -33,7 +33,7 @@ def test_activation(spec, helpers, state):
     return pre_state, blocks, state
 
 
-def test_ejection(spec, helpers, state):
+def test_ejection(state):
     index = 0
     assert spec.is_active_validator(state.validator_registry[index], spec.get_current_epoch(state))
     assert state.validator_registry[index].exit_epoch == spec.FAR_FUTURE_EPOCH

@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.attestations
 
 
-def run_attestation_processing(spec, helpers, state, attestation, valid=True):
+def run_attestation_processing(state, attestation, valid=True):
     """
     Run ``spec.process_attestation`` returning the pre and post state.
     If ``valid == False``, run expecting ``AssertionError``
@@ -29,81 +29,81 @@ def run_attestation_processing(spec, helpers, state, attestation, valid=True):
     return state, post_state
 
 
-def test_success(spec, helpers, state):
+def test_success(state):
     attestation = helpers.get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation)
+    pre_state, post_state = run_attestation_processing(state, attestation)
 
     return pre_state, attestation, post_state
 
 
-def test_success_prevous_epoch(spec, helpers, state):
+def test_success_prevous_epoch(state):
     attestation = helpers.get_valid_attestation(state)
     block = helpers.build_empty_block_for_next_slot(state)
     block.slot = state.slot + spec.SLOTS_PER_EPOCH
     spec.state_transition(state, block)
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation)
+    pre_state, post_state = run_attestation_processing(state, attestation)
 
     return pre_state, attestation, post_state
 
 
-def test_before_inclusion_delay(spec, helpers, state):
+def test_before_inclusion_delay(state):
     attestation = helpers.get_valid_attestation(state)
     # do not increment slot to allow for inclusion delay
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
 
 
-def test_after_epoch_slots(spec, helpers, state):
+def test_after_epoch_slots(state):
     attestation = helpers.get_valid_attestation(state)
     block = helpers.build_empty_block_for_next_slot(state)
     # increment past latest inclusion slot
     block.slot = state.slot + spec.SLOTS_PER_EPOCH + 1
     spec.state_transition(state, block)
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
 
 
-def test_bad_source_epoch(spec, helpers, state):
+def test_bad_source_epoch(state):
     attestation = helpers.get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_epoch += 10
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
 
 
-def test_bad_source_root(spec, helpers, state):
+def test_bad_source_root(state):
     attestation = helpers.get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_root = b'\x42' * 32
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
 
 
-def test_non_zero_crosslink_data_root(spec, helpers, state):
+def test_non_zero_crosslink_data_root(state):
     attestation = helpers.get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.crosslink.data_root = b'\x42' * 32
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
 
 
-def test_bad_previous_crosslink(spec, helpers, state):
+def test_bad_previous_crosslink(state):
     helpers.next_epoch(state)
     attestation = helpers.get_valid_attestation(state)
     for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
@@ -111,28 +111,28 @@ def test_bad_previous_crosslink(spec, helpers, state):
 
     state.current_crosslinks[attestation.data.crosslink.shard].epoch += 10
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
 
 
-def test_non_empty_custody_bitfield(spec, helpers, state):
+def test_non_empty_custody_bitfield(state):
     attestation = helpers.get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield)
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation, False)
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
 
     return pre_state, attestation, post_state
 
 
-def test_empty_aggregation_bitfield(spec, helpers, state):
+def test_empty_aggregation_bitfield(state):
     attestation = helpers.get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.aggregation_bitfield = b'\x00' * len(attestation.aggregation_bitfield)
 
-    pre_state, post_state = run_attestation_processing(spec, helpers, state, attestation)
+    pre_state, post_state = run_attestation_processing(state, attestation)
 
     return pre_state, attestation, post_state

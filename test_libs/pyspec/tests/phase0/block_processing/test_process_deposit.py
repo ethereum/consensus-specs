@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.deposits
 
 
-def test_success(spec, helpers, state):
+def test_success(state):
     pre_state = deepcopy(state)
     # fill previous deposits with zero-hash
     deposit_data_leaves = [spec.ZERO_HASH] * len(pre_state.validator_registry)
@@ -38,7 +38,7 @@ def test_success(spec, helpers, state):
     return pre_state, deposit, post_state
 
 
-def test_success_top_up(spec, helpers, state):
+def test_success_top_up(state):
     pre_state = deepcopy(state)
     deposit_data_leaves = [spec.ZERO_HASH] * len(pre_state.validator_registry)
 
@@ -70,7 +70,7 @@ def test_success_top_up(spec, helpers, state):
     return pre_state, deposit, post_state
 
 
-def test_wrong_index(spec, helpers, state):
+def test_wrong_index(state):
     pre_state = deepcopy(state)
     deposit_data_leaves = [spec.ZERO_HASH] * len(pre_state.validator_registry)
 
@@ -99,7 +99,7 @@ def test_wrong_index(spec, helpers, state):
     return pre_state, deposit, None
 
 
-def test_bad_merkle_proof(spec, helpers, state):
+def test_bad_merkle_proof(state):
     pre_state = deepcopy(state)
     deposit_data_leaves = [spec.ZERO_HASH] * len(pre_state.validator_registry)
 

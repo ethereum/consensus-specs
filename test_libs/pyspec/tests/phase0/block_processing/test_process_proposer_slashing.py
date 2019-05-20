@@ -6,7 +6,7 @@ import pytest
 pytestmark = pytest.mark.proposer_slashings
 
 
-def run_proposer_slashing_processing(spec, helpers, state, proposer_slashing, valid=True):
+def run_proposer_slashing_processing(state, proposer_slashing, valid=True):
     """
     Run ``spec.process_proposer_slashing`` returning the pre and post state.
     If ``valid == False``, run expecting ``AssertionError``
@@ -33,48 +33,48 @@ def run_proposer_slashing_processing(spec, helpers, state, proposer_slashing, va
     return state, post_state
 
 
-def test_success(spec, helpers, state):
+def test_success(state):
     proposer_slashing = helpers.get_valid_proposer_slashing(state)
 
-    pre_state, post_state = run_proposer_slashing_processing(spec, helpers, state, proposer_slashing)
+    pre_state, post_state = run_proposer_slashing_processing(state, proposer_slashing)
 
     return pre_state, proposer_slashing, post_state
 
 
-def test_epochs_are_different(spec, helpers, state):
+def test_epochs_are_different(state):
     proposer_slashing = helpers.get_valid_proposer_slashing(state)
 
     # set slots to be in different epochs
     proposer_slashing.header_2.slot += spec.SLOTS_PER_EPOCH
 
-    pre_state, post_state = run_proposer_slashing_processing(spec, helpers, state, proposer_slashing, False)
+    pre_state, post_state = run_proposer_slashing_processing(state, proposer_slashing, False)
 
     return pre_state, proposer_slashing, post_state
 
 
-def test_headers_are_same(spec, helpers, state):
+def test_headers_are_same(state):
     proposer_slashing = helpers.get_valid_proposer_slashing(state)
 
     # set headers to be the same
     proposer_slashing.header_2 = proposer_slashing.header_1
 
-    pre_state, post_state = run_proposer_slashing_processing(spec, helpers, state, proposer_slashing, False)
+    pre_state, post_state = run_proposer_slashing_processing(state, proposer_slashing, False)
 
     return pre_state, proposer_slashing, post_state
 
 
-def test_proposer_is_slashed(spec, helpers, state):
+def test_proposer_is_slashed(state):
     proposer_slashing = helpers.get_valid_proposer_slashing(state)
 
     # set proposer to slashed
     state.validator_registry[proposer_slashing.proposer_index].slashed = True
 
-    pre_state, post_state = run_proposer_slashing_processing(spec, helpers, state, proposer_slashing, False)
+    pre_state, post_state = run_proposer_slashing_processing(state, proposer_slashing, False)
 
     return pre_state, proposer_slashing, post_state
 
 
-def test_proposer_is_withdrawn(spec, helpers, state):
+def test_proposer_is_withdrawn(state):
     proposer_slashing = helpers.get_valid_proposer_slashing(state)
 
     # set proposer withdrawable_epoch in past
@@ -82,6 +82,6 @@ def test_proposer_is_withdrawn(spec, helpers, state):
     proposer_index = proposer_slashing.proposer_index
     state.validator_registry[proposer_index].withdrawable_epoch = current_epoch - 1
 
-    pre_state, post_state = run_proposer_slashing_processing(spec, helpers, state, proposer_slashing, False)
+    pre_state, post_state = run_proposer_slashing_processing(state, proposer_slashing, False)
 
     return pre_state, proposer_slashing, post_state
