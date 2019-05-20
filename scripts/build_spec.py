@@ -62,6 +62,7 @@ NEW_TYPES = {
     'BLSPubkey': 'bytes',
     'BLSSignature': 'bytes',
     'Store': 'None',
+    'Hash': 'bytes'
 }
 SUNDRY_FUNCTIONS = '''
 # Monkey patch validator compute committee code

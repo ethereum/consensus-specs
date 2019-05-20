@@ -281,8 +281,9 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Shard number
     'shard': 'uint64',
-    # Epoch number
-    'epoch': 'uint64',
+    # Crosslinking data from epochs [start....end-1]
+    'start_epoch': 'uint64',
+    'end_epoch': 'uint64',
     # Root of the previous crosslink
     'parent_root': 'bytes32',
     # Root of the crosslinked shard data since the previous crosslink
@@ -647,7 +648,7 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
     Return the current epoch if it's genesis epoch.
     """
     current_epoch = get_current_epoch(state)
-    return (current_epoch - 1) if current_epoch > GENESIS_EPOCH else current_epoch
+    return GENESIS_EPOCH if current_epoch == GENESIS_EPOCH else current_epoch - 1
 ```
 
 ### `get_current_epoch`
@@ -887,7 +888,7 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -
     # See the 'generalized domain' algorithm on page 3
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes(round, length=1))[0:8]) % index_count
-        flip = (pivot - index) % index_count
+        flip = (pivot + index_count - index) % index_count
         position = max(index, flip)
         source = hash(seed + int_to_bytes(round, length=1) + int_to_bytes(position // 256, length=4))
         byte = source[(position % 256) // 8]
@@ -1189,7 +1190,11 @@ Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.gene
 
 ```python
 def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
-    state = BeaconState(genesis_time=genesis_time, latest_eth1_data=genesis_eth1_data)
+    state = BeaconState(
+        genesis_time=genesis_time,
+        latest_eth1_data=genesis_eth1_data,
+        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
+    )
 
     # Process genesis deposits
     for deposit in deposits:
@@ -1362,19 +1367,19 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Process finalizations
     bitfield = state.justification_bitfield
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_epoch == current_epoch - 3:
+    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_epoch + 3 == current_epoch:
         state.finalized_epoch = old_previous_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_epoch == current_epoch - 2:
+    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_epoch + 2 == current_epoch:
         state.finalized_epoch = old_previous_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_epoch == current_epoch - 2:
+    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_epoch + 2 == current_epoch:
         state.finalized_epoch = old_current_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_epoch == current_epoch - 1:
+    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_epoch + 1 == current_epoch:
         state.finalized_epoch = old_current_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
 ```
@@ -1728,7 +1733,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Check FFG data, crosslink data, and signature
     assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)
-    assert data.crosslink.epoch == min(data.target_epoch, parent_crosslink.epoch + MAX_EPOCHS_PER_CROSSLINK)
+    assert data.crosslink.start_epoch == parent_crosslink.end_epoch
+    assert data.crosslink.end_epoch == min(data.target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))
