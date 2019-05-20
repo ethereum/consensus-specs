@@ -48,10 +48,12 @@
     * angle bracket notation `[type]`, e.g. `["uint64"]`
 * **union**: union type containing one of the given subtypes
     * round bracket notation `(type_1, type_2, ...)`, e.g. `("null", "uint64")`
+* **Bigint**: integer type that can contain a non-negative integer of any magnitude, represented by `"bytes"` of length `log2(value)//8`
+* **Bitfield**: an variable-length list of `"bool"` values
 
 ### Variable-size and fixed-size
 
-We recursively define "variable-size" types to be lists and unions and all types that contain a variable-size type. All other types are said to be "fixed-size".
+We recursively define "variable-size" types to be lists, unions, `Bigint`, `Bitfield` and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
 ### Aliases
 
@@ -64,7 +66,7 @@ For convenience we alias:
 
 ### Default values
 
-The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"` and `Bigint`, `False` for `"bool"`, and `[]` for lists and `Bitfield`. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
 
 ### Illegal types
 
@@ -96,7 +98,7 @@ return b"\x01" if value is True else b"\x00"
 return b""
 ```
 
-### `"bigint"`
+### `"Bigint"`
 
 ```python
 return value.to_bytes(log2(value)//8, "little")
