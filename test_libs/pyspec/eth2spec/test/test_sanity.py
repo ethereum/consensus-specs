@@ -1,7 +1,7 @@
 from copy import deepcopy
 
-from py_ecc import bls
 import eth2spec.phase0.spec as spec
+from eth2spec.utils.bls import bls_sign
 
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
@@ -24,7 +24,7 @@ from .helpers.state import (
     get_state_root
 )
 from .helpers.transfers import get_valid_transfer
-from .helpers.block import build_empty_block_for_next_slot
+from .helpers.block import build_empty_block_for_next_slot, sign_block
 from .helpers.keys import (
     privkeys,
     pubkeys,
@@ -58,7 +58,7 @@ def test_empty_block_transition(state):
 
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=True)
     yield 'blocks', [block], [spec.BeaconBlock]
 
     state_transition(state, block)
@@ -73,8 +73,9 @@ def test_skipped_slots(state):
     pre_slot = state.slot
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.slot += 3
+    sign_block(state, block)
     yield 'blocks', [block], [spec.BeaconBlock]
 
     state_transition(state, block)
@@ -90,8 +91,9 @@ def test_empty_epoch_transition(state):
     pre_slot = state.slot
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.slot += spec.SLOTS_PER_EPOCH
+    sign_block(state, block)
     yield 'blocks', [block], [spec.BeaconBlock]
 
     state_transition(state, block)
@@ -289,7 +291,7 @@ def test_voluntary_exit(state):
         epoch=get_current_epoch(state),
         validator_index=validator_index,
     )
-    voluntary_exit.signature = bls.sign(
+    voluntary_exit.signature = bls_sign(
         message_hash=signing_root(voluntary_exit),
         privkey=privkeys[validator_index],
         domain=get_domain(

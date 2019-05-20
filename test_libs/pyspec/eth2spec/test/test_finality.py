@@ -4,11 +4,10 @@ import eth2spec.phase0.spec as spec
 from eth2spec.phase0.state_transition import (
     state_transition,
 )
-from .context import spec_state_test
+from .context import spec_state_test, never_bls
 from .helpers.state import next_epoch
 from .helpers.block import build_empty_block_for_next_slot, apply_empty_block
 from .helpers.attestations import (
-    fill_aggregate_attestation,
     get_current_epoch,
     get_epoch_start_slot,
     get_valid_attestation,
@@ -66,6 +65,7 @@ def next_epoch_with_attestations(state,
     return state, blocks, post_state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_4(state):
     yield 'pre', state
@@ -93,6 +93,7 @@ def test_finality_rule_4(state):
     yield 'post', state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_1(state):
     # get past first two epochs that finality does not run on
@@ -122,6 +123,7 @@ def test_finality_rule_1(state):
     yield 'post', state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_2(state):
     # get past first two epochs that finality does not run on
@@ -153,6 +155,7 @@ def test_finality_rule_2(state):
     yield 'post', state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_3(state):
     """

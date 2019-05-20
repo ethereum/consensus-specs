@@ -1,7 +1,7 @@
 # Access constants from spec pkg reference.
 import eth2spec.phase0.spec as spec
 
-from eth2spec.phase0.spec import get_current_epoch, get_active_validator_indices, Transfer, ZERO_HASH, get_domain
+from eth2spec.phase0.spec import get_current_epoch, get_active_validator_indices, Transfer, get_domain
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils.bls import bls_sign
@@ -30,7 +30,6 @@ def get_valid_transfer(state, slot=None, sender_index=None, amount=None, fee=Non
         fee=fee,
         slot=slot,
         pubkey=transfer_pubkey,
-        signature=ZERO_HASH,
     )
     if signed:
         sign_transfer(state, transfer, transfer_privkey)

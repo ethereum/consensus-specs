@@ -28,6 +28,17 @@ def expect_assertion_error(fn):
         raise AssertionError('expected an assertion error, but got none.')
 
 
+def never_bls(fn):
+    """
+    Decorator to apply on ``bls_switch`` decorator to force BLS de-activation. Useful to mark tests as BLS-ignorant.
+    """
+    def entry(*args, **kw):
+        # override bls setting
+        kw['bls_active'] = False
+        fn(*args, **kw)
+    return entry
+
+
 def always_bls(fn):
     """
     Decorator to apply on ``bls_switch`` decorator to force BLS activation. Useful to mark tests as BLS-dependent.
