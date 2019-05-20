@@ -42,7 +42,7 @@ def next_epoch_with_attestations(state,
         block = helpers.build_empty_block_for_next_slot(post_state)
         if fill_cur_epoch:
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
-            if slot_to_attest >= helpers.get_epoch_start_slot(helpers.get_current_epoch(post_state)):
+            if slot_to_attest >= spec.get_epoch_start_slot(spec.get_current_epoch(post_state)):
                 cur_attestation = helpers.get_valid_attestation(post_state, slot_to_attest)
                 helpers.fill_aggregate_attestation(post_state, cur_attestation)
                 block.body.attestations.append(cur_attestation)

@@ -13,11 +13,12 @@ def pytest_addoption(parser):
 
 @pytest.fixture(autouse=True)
 def config(request):
-    request.function.__globals__['spec'] = spec
-    request.function.__globals__['helpers'] = helpers
     config_name = request.config.getoption("--config")
     presets = loader.load_presets('../../configs/', config_name)
     spec.apply_constants_preset(presets)
+    helpers.spec = spec
+    request.function.__globals__['spec'] = spec
+    request.function.__globals__['helpers'] = helpers
 
 @pytest.fixture
 def num_validators(config):
