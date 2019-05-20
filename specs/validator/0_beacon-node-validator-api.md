@@ -11,7 +11,7 @@ The API is a REST interface, accessed via HTTP, designed for use as a local comm
 ###  Background
 The beacon node maintains the state of the beacon chain by communicating with other beacon nodes in the Ethereum Serenity network. Conceptually, it does not maintain keypairs that participate with the beacon chain.
 
-The validator client is a conceptually separate entity which utilises private keys to perform validator related tasks on the beacon chain, which we call validator "duties". These duties includes the production of beacon blocks and signing of attestations.
+The validator client is a conceptually separate entity which utilizes private keys to perform validator related tasks on the beacon chain, which we call validator "duties". These duties include the production of beacon blocks and signing of attestations.
 
 Since it is recommended to separate these concerns in the client implementations, we must clearly define the communication between them.
 

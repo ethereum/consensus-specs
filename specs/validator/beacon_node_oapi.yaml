@@ -7,15 +7,15 @@ info:
     name: "Apache 2.0"
     url: "https://www.apache.org/licenses/LICENSE-2.0.html"
 tags:
-  - name: Necessary for validator
+  - name: MinimalSet
     description: The minimal set of endpoints to enable a working validator implementation.
-  - name: Optional
+  - name: OptionalSet
     description: Extra endpoints which are nice-to-haves.
 paths:
   /node/version:
     get:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Get version string of the running beacon node."
       description: "Requests that the beacon node identify information about its implementation in a format similar to a  [HTTP User-Agent](https://tools.ietf.org/html/rfc7231#section-5.5.3) field."
       responses:
@@ -30,7 +30,7 @@ paths:
   /node/genesis_time:
     get:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Get the genesis_time parameter from beacon node configuration."
       description: "Requests the genesis_time parameter from the beacon node, which should be consistent across all beacon nodes that follow the same beacon chain."
       responses:
@@ -46,7 +46,7 @@ paths:
   /node/syncing:
     get:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Poll to see if the the beacon node is syncing."
       description: "Requests the beacon node to describe if it's currently syncing or not, and if it is, what block it is up to. This is modelled after the Eth1.0 JSON-RPC eth_syncing call.."
       responses:
@@ -67,7 +67,7 @@ paths:
   /node/fork:
     get:
       tags:
-        - Optional
+        - OptionalSet
       summary: "Get fork information from running beacon node."
       description: "Requests the beacon node to provide which fork version it is currently on."
       responses:
@@ -83,16 +83,16 @@ paths:
                   chain_id:
                     type: integer
                     format: uint64
-                    description: "Sometimes called the network id, this number discerns the active chain for the BeaconNode. Analagous to Eth1.0 JSON-RPC net_version."
+                    description: "Sometimes called the network id, this number discerns the active chain for the beacon node. Analagous to Eth1.0 JSON-RPC net_version."
         500:
           $ref: '#/components/responses/InternalError'
 
   /validator/duties:
     get:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Get validator duties for the requested validators."
-      description: "Requests the beacon node to provide a set of _duties_, which are actions that should be performed by validators. This API call should be polled at every slot, to ensure that any chain reorganisations are catered for, and to ensure that the currently connected beacon node is properly synchronised."
+      description: "Requests the beacon node to provide a set of _duties_, which are actions that should be performed by validators. This API call should be polled at every slot, to ensure that any chain reorganisations are catered for, and to ensure that the currently connected beacon node is properly synchronized."
       parameters:
       - name: validator_pubkeys
         in: query
@@ -122,7 +122,7 @@ paths:
   /validator/block:
     get:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Produce a new block, without signature."
       description: "Requests a beacon node to produce a valid block, which can then be signed by a validator."
       parameters:
@@ -155,7 +155,7 @@ paths:
           $ref: '#/components/responses/CurrentlySyncing'
     post:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Publish a signed block."
       description: "Instructs the beacon node to publish a newly signed beacon block to the beacon network, to be included in the beacon chain."
       parameters:
@@ -178,7 +178,7 @@ paths:
   /validator/attestation:
     get:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Produce an attestation, without signature."
       description: "Requests that the beacon node produce an IndexedAttestation, with a blank signature field, which the validator will then sign."
       parameters:
@@ -209,7 +209,7 @@ paths:
           $ref: '#/components/responses/CurrentlySyncing'
     post:
       tags:
-        - Necessary for validator
+        - MinimalSet
       summary: "Published a signed attestation."
       description: "Instructs the beacon node to publish a newly signed IndexedAttestation object, to be incorporated into the beacon chain."
       parameters:
@@ -263,7 +263,7 @@ components:
           type: integer
           format: uint64
           description: "The shard in which the validator must attest."
-        block_production_slot:
+        block_proposal_slot:
           type: integer
           format: uint64
           nullable: true
@@ -537,15 +537,15 @@ components:
       type: object
       description: "The [`IndexedAttestation`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#indexedattestation) object from the Eth2.0 spec."
       properties:
-        custody_bit_0_indicies:
+        custody_bit_0_indices:
           type: array
-          description: "Validator indicies for 0 bits."
+          description: "Validator indices for 0 bits."
           items:
             type: integer
             format: uint64
-        custody_bit_1_indicies:
+        custody_bit_1_indices:
           type: array
-          description: "Validator indicies for 1 bits."
+          description: "Validator indices for 1 bits."
           items:
             type: integer
             format: uint64
@@ -611,3 +611,5 @@ components:
       description: "Beacon node internal error."
     CurrentlySyncing:
       description: "Beacon node is currently syncing, try again later."
+    NotFound:
+      description: "The requested API endpoint does not exist."
