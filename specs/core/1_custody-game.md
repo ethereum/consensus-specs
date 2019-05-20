@@ -254,12 +254,10 @@ The `empty` function accepts and SSZ type as input and returns an object of that
 ### `get_crosslink_chunk_count`
 
 ```python
-def get_custody_chunk_count(attestation: Attestation) -> int:
-    crosslink_start_epoch = attestation.data.latest_crosslink.epoch
-    crosslink_end_epoch = slot_to_epoch(attestation.data.slot)
-    crosslink_crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, end_epoch - start_epoch)
+def get_custody_chunk_count(crosslink: Crosslink) -> int:
+    crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, crosslink.end_epoch - crosslink.start_epoch)
     chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK
-    return crosslink_crosslink_length * chunks_per_epoch
+    return crosslink_length * chunks_per_epoch
 ```
 
 ### `get_custody_chunk_bit`
@@ -470,7 +468,7 @@ def process_chunk_challenge(state: BeaconState,
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
-    depth = math.log2(next_power_of_two(get_custody_chunk_count(challenge.attestation)))
+    depth = math.log2(next_power_of_two(get_custody_chunk_count(challenge.attestation.data.crosslink)))
     assert challenge.chunk_index < 2**depth
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
@@ -544,7 +542,7 @@ def process_bit_challenge(state: BeaconState,
     )
 
     # Verify the chunk count
-    chunk_count = get_custody_chunk_count(challenge.attestation)
+    chunk_count = get_custody_chunk_count(challenge.attestation.data.crosslink)
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
     custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
