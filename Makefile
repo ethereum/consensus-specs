@@ -42,7 +42,7 @@ citest: $(PY_SPEC_ALL_TARGETS)
 install_lint:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install flake8==3.5.0
 
-lint:
+lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
 	flake8 --max-line-length=120 ./eth2spec;
 

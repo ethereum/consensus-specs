@@ -52,7 +52,7 @@ jobs:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
           paths:
             - ~/specs-repo
-  install_test:
+  install_env:
     docker:
       - image: circleci/python:3.6
     working_directory: ~/specs-repo
@@ -60,13 +60,13 @@ jobs:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_cached_venv:
-          venv_name: v1-pyspec
+          venv_name: v1-pyspec-03
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Install pyspec requirements
-          command: make install_test
+          command: make install_test && make install_lint
       - save_cached_venv:
-          venv_name: v1-pyspec
+          venv_name: v1-pyspec-03
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
           venv_path: ./test_libs/pyspec/venv
   test:
@@ -77,7 +77,7 @@ jobs:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_cached_venv:
-          venv_name: v1-pyspec
+          venv_name: v1-pyspec-03
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Run py-tests
@@ -92,20 +92,22 @@ jobs:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_cached_venv:
-          venv_name: v1-pyspec
+          venv_name: v1-pyspec-03
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Run linter
-          command: make install_lint && make pyspec && make lint
+          command: make lint
 workflows:
   version: 2.1
   test_spec:
     jobs:
       - checkout_specs
-      - lint
-      - install_test:
+      - install_env:
           requires:
             - checkout_specs
       - test:
           requires:
-            - install_test
+            - install_env
+      - lint:
+          requires:
+            - test
