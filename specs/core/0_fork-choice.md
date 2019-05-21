@@ -58,10 +58,10 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 #### `Target`
 
 ```python
-{
-    'epoch': 'uint64',
-    'root': 'Bytes32',
-}
+@dataclass
+class Target:
+    epoch: Epoch
+    root: Bytes32
 ```
 
 #### `Store`
@@ -72,7 +72,7 @@ class Store:
     blocks: Dict[Bytes32, BeaconBlock] = field(default_factory=dict)
     states: Dict[Bytes32, BeaconState] = field(default_factory=dict)
     time: int = 0
-    latest_targets: Dict[int, Target] = field(default_factory=dict)
+    latest_targets: Dict[ValidatorIndex, Target] = field(default_factory=dict)
     justified_root: Bytes32 = ZERO_HASH
     finalized_root: Bytes32 = ZERO_HASH
 ```
@@ -136,15 +136,16 @@ def on_tick(store: Store, time: int) -> None:
 
 ```python
 def on_block(store: Store, block: BeaconBlock) -> None:
+    # Add new block to the store
+    store.blocks[signing_root(block)] = block
     # Check block is a descendant of the finalized block
     assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
     # Check block slot against Unix time
-    pre_state = store.states[block.parent_root]
+    pre_state = store.states[block.parent_root].copy()
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
-    # Add new block and state to the store
-    store.blocks[signing_root(block)] = block
+    # Add new state to the store
     store.states[signing_root(block)] = state
     # Update justified and finalized blocks
     if state.finalized_epoch > slot_to_epoch(store.blocks[store.finalized_root].slot):
@@ -162,7 +163,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     state = store.states[get_head(store)]
     indexed_attestation = convert_to_indexed(state, attestation)
     validate_indexed_attestation(state, indexed_attestation)
-    for i in indexed_attestation.bit_0_indices + indexed_attestation.bit_1_indices:
+    for i in indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices:
         if i not in store.latest_targets or attestation.data.target_epoch > store.latest_targets[i].epoch:
             store.latest_targets[i] = Target(attestation.data.target_epoch, attestation.data.target_root)
 ```
