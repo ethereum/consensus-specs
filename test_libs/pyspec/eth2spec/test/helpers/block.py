@@ -4,15 +4,14 @@ from eth2spec.phase0 import spec
 from eth2spec.phase0.spec import get_beacon_proposer_index, slot_to_epoch, get_domain, BeaconBlock
 from eth2spec.phase0.state_transition import state_transition, state_transition_to
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils import bls
+from eth2spec.utils.bls import bls_sign, only_with_bls
 from eth2spec.utils.minimal_ssz import signing_root, hash_tree_root
 
 
+# Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.
+@only_with_bls()
 def sign_block(state, block, proposer_index=None):
     assert state.slot <= block.slot
-
-    if not bls.bls_active:
-        return
 
     if proposer_index is None:
         if block.slot == state.slot:
@@ -28,7 +27,7 @@ def sign_block(state, block, proposer_index=None):
 
     privkey = privkeys[proposer_index]
 
-    block.body.randao_reveal = bls.bls_sign(
+    block.body.randao_reveal = bls_sign(
         privkey=privkey,
         message_hash=hash_tree_root(slot_to_epoch(block.slot)),
         domain=get_domain(
@@ -37,14 +36,13 @@ def sign_block(state, block, proposer_index=None):
             domain_type=spec.DOMAIN_RANDAO,
         )
     )
-    block.signature = bls.bls_sign(
+    block.signature = bls_sign(
         message_hash=signing_root(block),
         privkey=privkey,
         domain=get_domain(
             state,
             spec.DOMAIN_BEACON_PROPOSER,
             slot_to_epoch(block.slot)))
-    return block
 
 
 def apply_empty_block(state):

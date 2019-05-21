@@ -3,37 +3,44 @@ from py_ecc import bls
 # Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
 bls_active = True
 
+STUB_SIGNATURE = b'\x11' * 96
+STUB_PUBKEY = b'\x22' * 48
 
+
+def only_with_bls(alt_return=None):
+    """
+    Decorator factory to make a function only run when BLS is active. Otherwise return the default.
+    """
+    def runner(fn):
+        def entry(*args, **kw):
+            if bls_active:
+                return fn(*args, **kw)
+            else:
+                return alt_return
+        return entry
+    return runner
+
+
+@only_with_bls(alt_return=True)
 def bls_verify(pubkey, message_hash, signature, domain):
-    if bls_active:
-        return bls.verify(message_hash=message_hash, pubkey=pubkey, signature=signature, domain=domain)
-    else:
-        return True
+    return bls.verify(message_hash=message_hash, pubkey=pubkey, signature=signature, domain=domain)
 
 
+@only_with_bls(alt_return=True)
 def bls_verify_multiple(pubkeys, message_hashes, signature, domain):
-    if bls_active:
-        return bls.verify_multiple(pubkeys, message_hashes, signature, domain)
-    else:
-        return True
+    return bls.verify_multiple(pubkeys, message_hashes, signature, domain)
 
 
+@only_with_bls(alt_return=STUB_PUBKEY)
 def bls_aggregate_pubkeys(pubkeys):
-    if bls_active:
-        return bls.aggregate_pubkeys(pubkeys)
-    else:
-        return b'\xaa' * 48
+    return bls.aggregate_pubkeys(pubkeys)
 
 
+@only_with_bls(alt_return=STUB_SIGNATURE)
 def bls_aggregate_signatures(signatures):
-    if bls_active:
-        return bls.aggregate_signatures(signatures)
-    else:
-        return b'\x22' * 96
+    return bls.aggregate_signatures(signatures)
 
 
+@only_with_bls(alt_return=STUB_SIGNATURE)
 def bls_sign(message_hash, privkey, domain):
-    if bls_active:
-        return bls.sign(message_hash=message_hash, privkey=privkey, domain=domain)
-    else:
-        return b'\x11' * 96
+    return bls.sign(message_hash=message_hash, privkey=privkey, domain=domain)

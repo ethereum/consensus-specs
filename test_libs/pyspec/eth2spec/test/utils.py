@@ -1,5 +1,5 @@
+from typing import Dict, Any, Callable, Iterable
 from eth2spec.debug.encode import encode
-from eth2spec.utils import bls
 
 
 def spectest(description: str = None):
@@ -19,9 +19,6 @@ def spectest(description: str = None):
                 else:
                     # description can be explicit
                     out['description'] = description
-                # If BLS is not active, mark the test as BLS-ignorant.
-                if not bls.bls_active:
-                    out['stub_bls'] = True
                 # put all generated data into a dict.
                 for data in fn(*args, **kw):
                     # If there is a type argument, encode it as that type.
@@ -44,10 +41,34 @@ def spectest(description: str = None):
     return runner
 
 
-def with_args(create_args):
+def with_tags(tags: Dict[str, Any]):
+    """
+    Decorator factory, adds tags (key, value) pairs to the output of the function.
+    Useful to build test-vector annotations with.
+    This decorator is applied after the ``spectest`` decorator is applied.
+    :param tags: dict of tags
+    :return: Decorator.
+    """
+    def runner(fn):
+        def entry(*args, **kw):
+            fn_out = fn(*args, **kw)
+            # do not add tags if the function is not returning a dict at all (i.e. not in generator mode)
+            if fn_out is None:
+                return fn_out
+            return {**tags, **fn_out}
+        return entry
+    return runner
+
+
+def with_args(create_args: Callable[[], Iterable[Any]]):
+    """
+    Decorator factory, adds given extra arguments to the decorated function.
+    :param create_args: function to create arguments with.
+    :return: Decorator.
+    """
     def runner(fn):
         # this wraps the function, to hide that the function actually yielding data.
         def entry(*args, **kw):
-            return fn(*(create_args() + list(args)), **kw)
+            return fn(*(list(create_args()) + list(args)), **kw)
         return entry
     return runner
