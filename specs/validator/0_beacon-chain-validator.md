@@ -233,7 +233,7 @@ epoch_signature = bls_sign(
     * Let `deposit_root` and `deposit_count` be the deposit root and deposit count of the Eth 1.0 deposit contract in the post-state of the block referenced by `block_hash`
     * Let `best_vote_data = Eth1Data(block_hash=block_hash, deposit_root=deposit_root, deposit_count=deposit_count)`.
 * If `D` is nonempty:
-    * Let `best_vote_data` be the `eth1_data` of the member of `D` that has the highest `vote.vote_count`, breaking ties by favoring block hashes with higher associated block height.
+    * Let `best_vote_data` be the `eth1_data` member of `D` that has the highest vote count (`D.count(eth1_data)`), breaking ties by favoring block hashes with higher associated block height.
 * Set `block.eth1_data = best_vote_data`.
 
 ##### Signature
