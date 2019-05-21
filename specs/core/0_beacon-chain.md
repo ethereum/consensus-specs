@@ -175,7 +175,6 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value |
 | - | - |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
-| `DEPOSIT_FORK_VERSION` | `b'\x00' * 4` |
 
 ### Gwei values
 
@@ -634,9 +633,9 @@ The `hash` function is SHA256.
 ### `bls_domain`
 
 ```python
-def bls_domain(domain_type: int, fork_version: bytes) -> int:
+def bls_domain(domain_type: int, fork_version=b'\x00\x00\x00\x00') -> int:
     """
-    Return the bls domain given by the ``domain_type`` and 4 byte ``fork_version``..
+    Return the bls domain given by the ``domain_type`` and optional 4 byte ``fork_version`` (defaults to zero).
     """
     return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
 ```
@@ -1779,7 +1778,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Verify the deposit signature (proof of possession)
         # Note: deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
         if not bls_verify(
-            pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT, DEPOSIT_FORK_VERSION)
+            pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)
         ):
             return
 

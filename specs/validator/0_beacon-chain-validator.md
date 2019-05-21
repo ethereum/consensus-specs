@@ -98,7 +98,7 @@ To submit a deposit:
 * Pack the validator's [initialization parameters](#initialization) into `deposit_data`, a [`DepositData`](../core/0_beacon-chain.md#depositdata) SSZ object.
 * Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_EFFECTIVE_BALANCE`.
 * Set `deposit_data.amount = amount`.
-* Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=bls_domain(DOMAIN_DEPOSIT, DEPOSIT_FORK_VERSION)`. (Deposits are valid regardless of fork version, hence the static fork version being directly passed into `bls_domain`).
+* Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=bls_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `bls_domain` will default to zeroes there).
 * Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])` along with a deposit of `amount` Gwei.
 
 *Note*: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validator_registry` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_EFFECTIVE_BALANCE`.

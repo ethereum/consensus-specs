@@ -147,7 +147,6 @@ def build_deposit_data(state, pubkey, privkey, amount):
         privkey=privkey,
         domain=bls_domain(
             spec.DOMAIN_DEPOSIT,
-            spec.DEPOSIT_FORK_VERSION,
         )
     )
     deposit_data.signature = signature
