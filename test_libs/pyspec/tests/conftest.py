@@ -7,6 +7,8 @@ from .helpers import (
     create_genesis_state,
 )
 
+from validate_constants import validate_constants
+
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -19,6 +21,8 @@ def config(request):
     config_name = request.config.getoption("--config")
     presets = loader.load_presets('../../configs/', config_name)
     spec.apply_constants_preset(presets)
+    validate_constants(spec)
+
 
 
 @pytest.fixture
