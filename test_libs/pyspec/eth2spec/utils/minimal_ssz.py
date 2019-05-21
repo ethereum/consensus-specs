@@ -267,46 +267,33 @@ def infer_type(value):
         raise Exception("Failed to infer type")
 
 
+def pack_object(value, typ):
+    if is_basic(typ):
+        return pack([value], typ)
+    elif isinstance(typ, list) and is_basic(typ[0]):
+        return pack(value, typ[0])
+    elif isinstance(typ, list):
+        return [hash_tree_root(element, typ[0]) for element in value]
+    elif isinstance(typ, str) and typ[:5] == 'bytes':
+        return chunkify(coerce_to_bytes(value))
+    elif hasattr(typ, 'fields'):
+        return [hash_tree_root(getattr(value, field), subtype) for field, subtype in typ.fields.items()]
+    else:
+        raise Exception("Type not recognized")
+
+
 def hash_tree_root(value, typ=None):
     if typ is None:
         typ = infer_type(value)
-    # -------------------------------------
-    # merkleize(pack(value))
-    # basic object: merkleize packed version (merkleization pads it to 32 bytes if it is not already)
-    if is_basic(typ):
-        return merkleize(pack([value], typ))
-    # or a vector of basic objects
-    elif isinstance(typ, list) and len(typ) == 2 and is_basic(typ[0]):
-        assert len(value) == typ[1]
-        return merkleize(pack(value, typ[0]))
-    # -------------------------------------
-    # mix_in_length(merkleize(pack(value)), len(value))
-    # if value is a list of basic objects
-    elif isinstance(typ, list) and len(typ) == 1 and is_basic(typ[0]):
-        return mix_in_length(merkleize(pack(value, typ[0])), len(value))
-    # (needs some extra work for non-fixed-sized bytes array)
-    elif typ == 'bytes':
-        return mix_in_length(merkleize(chunkify(coerce_to_bytes(value))), len(value))
-    # -------------------------------------
-    # merkleize([hash_tree_root(element) for element in value])
-    # if value is a vector of composite objects
-    elif isinstance(typ, list) and len(typ) == 2 and not is_basic(typ[0]):
-        return merkleize([hash_tree_root(element, typ[0]) for element in value])
-    # (needs some extra work for fixed-sized bytes array)
-    elif isinstance(typ, str) and typ[:5] == 'bytes' and len(typ) > 5:
-        assert len(value) == int(typ[5:])
-        return merkleize(chunkify(coerce_to_bytes(value)))
-    # or a container
-    elif hasattr(typ, 'fields'):
-        return merkleize([hash_tree_root(getattr(value, field), subtype) for field, subtype in typ.fields.items()])
-    # -------------------------------------
-    # mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))
-    # if value is a list of composite objects
-    elif isinstance(typ, list) and len(typ) == 1 and not is_basic(typ[0]):
-        return mix_in_length(merkleize([hash_tree_root(element, typ[0]) for element in value]), len(value))
-    # -------------------------------------
+    chunks = pack_object(value, typ)
+    if (isinstance(typ, list) and len(typ) == 1) or typ == 'bytes':
+        return mix_in_length(merkleize(chunks), len(value))
     else:
-        raise Exception("Type not recognized")
+        if isinstance(typ, list):
+            assert len(value) == typ[1]
+        elif typ[:5] == 'bytes':
+            assert len(value) == int(typ[5:])
+        return merkleize(chunks)
 
 
 def truncate(container):
