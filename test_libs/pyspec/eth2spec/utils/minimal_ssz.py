@@ -1,3 +1,4 @@
+import copy
 from typing import Any
 
 from .hash_function import hash
@@ -33,6 +34,9 @@ def SSZType(fields):
 
         def hash_tree_root(self):
             return hash_tree_root(self, self.__class__)
+
+        def copy(self):
+            return copy.deepcopy(self)
 
     SSZObject.fields = fields
     return SSZObject
