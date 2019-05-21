@@ -57,7 +57,7 @@ def bls_switch(fn):
     """
     def entry(*args, **kw):
         old_state = bls.bls_active
-        bls.bls_active = kw.pop('bls_active', False)
+        bls.bls_active = kw.pop('bls_active', True)
         fn(*args, **kw)
         bls.bls_active = old_state
     return entry

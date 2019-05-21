@@ -49,8 +49,9 @@ def test_success_block_header(state):
 
 @spec_state_test
 def test_invalid_slot_block_header(state):
-    block = build_empty_block_for_next_slot(state, signed=True)
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.slot = state.slot + 2  # invalid slot
+    sign_block(state, block)
 
     yield from run_block_header_processing(state, block, valid=False)
 
