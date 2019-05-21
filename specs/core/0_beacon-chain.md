@@ -31,6 +31,7 @@
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
             - [`Validator`](#validator)
+            - [`ActiveRegistry`](#activeregistry)
             - [`PendingAttestation`](#pendingattestation)
             - [`HistoricalBatch`](#historicalbatch)
         - [Beacon operations](#beacon-operations)
@@ -62,17 +63,17 @@
         - [`decrease_balance`](#decrease_balance)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shard_delta`](#get_shard_delta)
-        - [`get_epoch_start_shard`](#get_epoch_start_shard)
+        - [`get_start_shard`](#get_start_shard)
         - [`get_attestation_data_slot`](#get_attestation_data_slot)
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_randao_mix`](#get_randao_mix)
-        - [`get_active_index_root`](#get_active_index_root)
+        - [`get_active_registry_root`](#get_active_registry_root)
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
         - [`get_shuffled_index`](#get_shuffled_index)
-        - [`compute_committee`](#compute_committee)
+        - [`get_committee_indices`](#get_committee_indices)
         - [`get_crosslink_committee`](#get_crosslink_committee)
         - [`get_attesting_indices`](#get_attesting_indices)
         - [`int_to_bytes`](#int_to_bytes)
@@ -179,10 +180,11 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value | Unit |
 | - | - | :-: |
-| `MIN_DEPOSIT_AMOUNT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
-| `MAX_EFFECTIVE_BALANCE` | `2**5 * 10**9` (= 32,000,000,000) | Gwei |
-| `EJECTION_BALANCE` | `2**4 * 10**9` (= 16,000,000,000) | Gwei |
-| `EFFECTIVE_BALANCE_INCREMENT` | `2**0 * 10**9` (= 1,000,000,000) | Gwei |
+| `GWEI_PER_ETH` | `10**9` (= 1,000,000,000) | Gwei |
+| `MIN_DEPOSIT_AMOUNT` | `2**0 * GWEI_PER_ETH` (= 1,000,000,000) | Gwei |
+| `MAX_EFFECTIVE_BALANCE` | `2**5 * GWEI_PER_ETH` (= 32,000,000,000) | Gwei |
+| `EJECTION_BALANCE` | `2**4 * GWEI_PER_ETH` (= 16,000,000,000) | Gwei |
+| `EFFECTIVE_BALANCE_INCREMENT` | `2**0 * GWEI_PER_ETH` (= 1,000,000,000) | Gwei |
 
 ### Initial values
 
@@ -216,7 +218,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `LATEST_ACTIVE_REGISTRY_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### Reward and penalty quotients
@@ -394,6 +396,17 @@ The types are defined topologically to aid in facilitating an executable version
     'slashed': 'bool',
     # Effective balance
     'effective_balance': 'uint64',
+}
+```
+
+#### `ActiveRegistry`
+
+```python
+{
+    'committees': [
+        'pubkeys': ['bytes48'],
+        'compact_validators': ['uint64'],
+    ],
 }
 ```
 
@@ -577,7 +590,7 @@ The types are defined topologically to aid in facilitating an executable version
     'previous_crosslinks': [Crosslink, SHARD_COUNT],
     'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
-    'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
+    'latest_active_registry_roots': ['bytes32', LATEST_ACTIVE_REGISTRY_ROOTS_LENGTH],
     'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],
     'latest_block_header': BeaconBlockHeader,
     'historical_roots': ['bytes32'],
@@ -748,10 +761,10 @@ def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
     return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
 
-### `get_epoch_start_shard`
+### `get_start_shard`
 
 ```python
-def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
+def get_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
     assert epoch <= get_current_epoch(state) + 1
     check_epoch = get_current_epoch(state) + 1
     shard = (state.latest_start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT
@@ -766,7 +779,7 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 ```python
 def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot:
     committee_count = get_epoch_committee_count(state, data.target_epoch)
-    offset = (data.crosslink.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target_epoch)) % SHARD_COUNT
+    offset = (data.crosslink.shard + SHARD_COUNT - get_start_shard(state, data.target_epoch)) % SHARD_COUNT
     return get_epoch_start_slot(data.target_epoch) + offset // (committee_count // SLOTS_PER_EPOCH)
 ```
 
@@ -805,17 +818,24 @@ def get_randao_mix(state: BeaconState,
     return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
 ```
 
-### `get_active_index_root`
+### `get_active_registry_root`
 
 ```python
-def get_active_index_root(state: BeaconState,
-                          epoch: Epoch) -> Bytes32:
+def get_active_registry_root(state: BeaconState) -> Bytes32:
     """
-    Return the index root at a recent ``epoch``.
-    ``epoch`` expected to be between
-    (current_epoch - LATEST_ACTIVE_INDEX_ROOTS_LENGTH + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
+    Return the active registry root for the current epoch.
     """
-    return state.latest_active_index_roots[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    epoch = get_current_epoch(state)
+    active_registry = ActiveRegistry()
+    for committee_number in range(get_epoch_committee_count(state, epoch)):
+        shard = (get_start_shard(state, epoch) + committee_number) % SHARD_COUNT
+        for index in get_crosslink_committee(state, epoch, shard):
+            validator = validator_registry[index]
+            active_registry[shard].pubkeys.append(validator.pubkey)
+            # index (top 7 bytes) + slashed (8th bit) + effective_balance (bottom 7 bits)
+            compact_validator = index << 8 + validator.slashed << 7 + validator.effective_balance // GWEI_PER_ETH
+            active_registry[shard].compact_validators.append(compact_validator)
+    return hash_tree_root(active_registry)
 ```
 
 ### `generate_seed`
@@ -828,7 +848,7 @@ def generate_seed(state: BeaconState,
     """
     return hash(
         get_randao_mix(state, epoch + LATEST_RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD) +
-        get_active_index_root(state, epoch) +
+        state.latest_active_registry_roots[epoch % LATEST_ACTIVE_REGISTRY_ROOTS_LENGTH] +
         int_to_bytes(epoch, length=32)
     )
 ```
@@ -843,7 +863,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     epoch = get_current_epoch(state)
     committees_per_slot = get_epoch_committee_count(state, epoch) // SLOTS_PER_EPOCH
     offset = committees_per_slot * (state.slot % SLOTS_PER_EPOCH)
-    shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
+    shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
     first_committee = get_crosslink_committee(state, epoch, shard)
     MAX_RANDOM_BYTE = 2**8 - 1
     seed = generate_seed(state, epoch)
@@ -898,10 +918,10 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -
     return index
 ```
 
-### `compute_committee`
+### `get_committee_indices`
 
 ```python
-def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
+def get_committee_indices(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
     return [indices[get_shuffled_index(i, len(indices), seed)] for i in range(start, end)]
@@ -911,10 +931,10 @@ def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, 
 
 ```python
 def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> List[ValidatorIndex]:
-    return compute_committee(
+    return get_committee_indices(
         indices=get_active_validator_indices(state, epoch),
         seed=generate_seed(state, epoch),
-        index=(shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT,
+        index=(shard + SHARD_COUNT - get_start_shard(state, epoch)) % SHARD_COUNT,
         count=get_epoch_committee_count(state, epoch),
     )
 ```
@@ -1206,10 +1226,9 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate latest_active_index_roots
-    genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
-    for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
-        state.latest_active_index_roots[index] = genesis_active_index_root
+    # Populate active registry roots
+    for index in range(LATEST_ACTIVE_REGISTRY_ROOTS_LENGTH):
+        state.latest_active_registry_roots[index] = get_active_registry_root(state)
 
     return state
 ```
@@ -1391,7 +1410,7 @@ def process_crosslinks(state: BeaconState) -> None:
     state.previous_crosslinks = [c for c in state.current_crosslinks]
     for epoch in (get_previous_epoch(state), get_current_epoch(state)):
         for offset in range(get_epoch_committee_count(state, epoch)):
-            shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
+            shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
             crosslink_committee = get_crosslink_committee(state, epoch, shard)
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
             if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
@@ -1461,7 +1480,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     penalties = [0 for index in range(len(state.validator_registry))]
     epoch = get_previous_epoch(state)
     for offset in range(get_epoch_committee_count(state, epoch)):
-        shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
+        shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
         crosslink_committee = get_crosslink_committee(state, epoch, shard)
         winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
         attesting_balance = get_total_balance(state, attesting_indices)
@@ -1554,11 +1573,9 @@ def process_final_updates(state: BeaconState) -> None:
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     # Update start shard
     state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
-    # Set active index root
-    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
-    state.latest_active_index_roots[index_root_position] = hash_tree_root(
-        get_active_validator_indices(state, next_epoch + ACTIVATION_EXIT_DELAY)
-    )
+    # Set active registry root
+    active_registry_index = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_REGISTRY_ROOTS_LENGTH
+    state.latest_active_registry_roots[active_registry_index] = get_active_registry_root(state)
     # Set total slashed balances
     state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = (
         state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
