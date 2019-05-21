@@ -15,7 +15,7 @@ def generate_from_tests(pkg):
     for name in fn_names:
         tfn = getattr(pkg, name)
         try:
-            out.append(tfn(generator_mode=True))
+            out.append(tfn(generator_mode=True, bls_active=True))
         except AssertionError:
             print("ERROR: failed to generate vector from test: %s (pkg: %s)" % (name, pkg.__name__))
     return out
