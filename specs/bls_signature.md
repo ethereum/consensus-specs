@@ -1,6 +1,8 @@
 # BLS signature verification
 
-**Warning: This document is pending academic review and should not yet be considered secure.**
+**Notice**: This document is a placeholder to facilitate the emergence of cross-client testnets. Substantive changes are postponed until [BLS standardisation](https://github.com/pairingwg/bls_standard) is finalized.
+
+**Warning**: The constructions in this document should not be considered secure. In particular, the `hash_to_G2` function is known to be unsecure.
 
 ## Table of contents
 <!-- TOC -->
