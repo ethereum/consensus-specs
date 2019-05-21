@@ -49,7 +49,7 @@ def never_bls(fn):
     def entry(*args, **kw):
         # override bls setting
         kw['bls_active'] = False
-        fn(*args, **kw)
+        return fn(*args, **kw)
     return bls_ignored(entry)
 
 
@@ -64,7 +64,7 @@ def always_bls(fn):
     def entry(*args, **kw):
         # override bls setting
         kw['bls_active'] = True
-        fn(*args, **kw)
+        return fn(*args, **kw)
     return bls_required(entry)
 
 
