@@ -1352,14 +1352,14 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     previous_epoch_matching_target_balance = get_attesting_balance(
         state, get_matching_target_attestations(state, previous_epoch)
     )
-    if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
+    if previous_epoch_matching_target_balance * 3 > get_total_active_balance(state) * 2:
         state.current_justified_epoch = previous_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
         state.justification_bitfield |= (1 << 1)
     current_epoch_matching_target_balance = get_attesting_balance(
         state, get_matching_target_attestations(state, current_epoch)
     )
-    if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
+    if current_epoch_matching_target_balance * 3 > get_total_active_balance(state) * 2:
         state.current_justified_epoch = current_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
         state.justification_bitfield |= (1 << 0)
