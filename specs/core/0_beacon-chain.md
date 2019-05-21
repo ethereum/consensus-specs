@@ -402,12 +402,10 @@ The types are defined topologically to aid in facilitating an executable version
 #### `ActiveRegistry`
 
 ```python
-{
-    'committees': [
+    [{
         'pubkeys': ['bytes48'],
         'compact_validators': ['uint64'],
-    ],
-}
+    }, SHARD_COUNT]
 ```
 
 #### `PendingAttestation`
