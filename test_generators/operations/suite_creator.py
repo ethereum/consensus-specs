@@ -34,6 +34,6 @@ def create_suite(operation_name: str, config_name: str, get_cases: Callable[[], 
             forks=["phase0"],
             config=config_name,
             runner="operations",
-            handler=config_name,
+            handler=operation_name,
             test_cases=get_cases()))
     return suite_definition
