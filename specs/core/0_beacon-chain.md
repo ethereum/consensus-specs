@@ -51,6 +51,7 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signing_root`](#signing_root)
+        - [`bls_domain`](#bls_domain)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
