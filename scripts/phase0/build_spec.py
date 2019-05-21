@@ -5,6 +5,7 @@ import function_puller
 def build_phase0_spec(sourcefile, outfile):
     code_lines = []
     code_lines.append("""
+
 from typing import (
     Any,
     Dict,
@@ -12,18 +13,21 @@ from typing import (
     NewType,
     Tuple,
 )
-from eth2spec.utils.minimal_ssz import *
-from eth2spec.utils.bls_stub import *
+from eth2spec.utils.minimal_ssz import (
+    SSZType,
+    hash_tree_root,
+    signing_root,
+)
+from eth2spec.utils.bls_stub import (
+    bls_aggregate_pubkeys,
+    bls_verify,
+    bls_verify_multiple,
+)
+from eth2spec.utils.hash_function import hash
 
-""")
-    for i in (1, 2, 3, 4, 8, 32, 48, 96):
-        code_lines.append("def int_to_bytes%d(x): return x.to_bytes(%d, 'little')" % (i, i))
-
-    code_lines.append("""
 
 # stub, will get overwritten by real var
 SLOTS_PER_EPOCH = 64
-
 
 Slot = NewType('Slot', int)  # uint64
 Epoch = NewType('Epoch', int)  # uint64
@@ -67,6 +71,7 @@ def hash(x):
         ret = _hash(x)
         hash_cache[x] = ret
         return ret
+
 
 # Access to overwrite spec constants based on configuration
 def apply_constants_preset(preset: Dict[str, Any]):

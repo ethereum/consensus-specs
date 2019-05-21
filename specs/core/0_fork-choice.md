@@ -38,7 +38,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 
 Processing the beacon chain is similar to processing the Ethereum 1.0 chain. Clients download and process blocks and maintain a view of what is the current "canonical chain", terminating at the current "head". For a beacon block, `block`, to be processed by a node, the following conditions must be met:
 
-* The parent block with root `block.previous_block_root` has been processed and accepted.
+* The parent block with root `block.parent_root` has been processed and accepted.
 * An Ethereum 1.0 block pointed to by the `state.latest_eth1_data.block_hash` has been processed and accepted.
 * The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`.
 

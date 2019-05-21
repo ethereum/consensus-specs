@@ -3,13 +3,11 @@ import pytest
 
 import eth2spec.phase0.spec as spec
 
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 from eth2spec.phase0.spec import (
-    cache_state,
+    process_slot,
     get_crosslink_deltas,
     process_crosslinks,
+    state_transition,
 )
 from tests.helpers import (
     add_attestation_to_state,
@@ -35,7 +33,7 @@ def run_process_crosslinks(state, valid=True):
     state_transition(state, block)
 
     # cache state before epoch transition
-    cache_state(state)
+    process_slot(state)
 
     post_state = deepcopy(state)
     process_crosslinks(post_state)
@@ -64,7 +62,7 @@ def test_single_crosslink_update_from_current_epoch(state):
 
     pre_state, post_state = run_process_crosslinks(state)
 
-    shard = attestation.data.shard
+    shard = attestation.data.crosslink.shard
     assert post_state.previous_crosslinks[shard] != post_state.current_crosslinks[shard]
     assert pre_state.current_crosslinks[shard] != post_state.current_crosslinks[shard]
 
@@ -84,11 +82,11 @@ def test_single_crosslink_update_from_previous_epoch(state):
     pre_state, post_state = run_process_crosslinks(state)
     crosslink_deltas = get_crosslink_deltas(state)
 
-    shard = attestation.data.shard
+    shard = attestation.data.crosslink.shard
     assert post_state.previous_crosslinks[shard] != post_state.current_crosslinks[shard]
     assert pre_state.current_crosslinks[shard] != post_state.current_crosslinks[shard]
     # ensure rewarded
-    for index in get_crosslink_committee(state, attestation.data.target_epoch, attestation.data.shard):
+    for index in get_crosslink_committee(state, attestation.data.target_epoch, attestation.data.crosslink.shard):
         assert crosslink_deltas[0][index] > 0
         assert crosslink_deltas[1][index] == 0
 
@@ -108,7 +106,7 @@ def test_double_late_crosslink(state):
 
     for slot in range(spec.SLOTS_PER_EPOCH):
         attestation_2 = get_valid_attestation(state)
-        if attestation_2.data.shard == attestation_1.data.shard:
+        if attestation_2.data.crosslink.shard == attestation_1.data.crosslink.shard:
             break
         next_slot(state)
     fill_aggregate_attestation(state, attestation_2)
@@ -124,12 +122,12 @@ def test_double_late_crosslink(state):
     pre_state, post_state = run_process_crosslinks(state)
     crosslink_deltas = get_crosslink_deltas(state)
 
-    shard = attestation_2.data.shard
+    shard = attestation_2.data.crosslink.shard
 
     # ensure that the current crosslinks were not updated by the second attestation
     assert post_state.previous_crosslinks[shard] == post_state.current_crosslinks[shard]
     # ensure no reward, only penalties for the failed crosslink
-    for index in get_crosslink_committee(state, attestation_2.data.target_epoch, attestation_2.data.shard):
+    for index in get_crosslink_committee(state, attestation_2.data.target_epoch, attestation_2.data.crosslink.shard):
         assert crosslink_deltas[0][index] == 0
         assert crosslink_deltas[1][index] > 0
 

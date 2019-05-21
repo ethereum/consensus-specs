@@ -20,13 +20,10 @@ from eth2spec.phase0.spec import (
     get_block_root_at_slot,
     get_current_epoch,
     get_domain,
-    advance_slot,
-    cache_state,
+    process_slot,
     verify_merkle_branch,
-    hash,
-)
-from eth2spec.phase0.state_transition import (
     state_transition,
+    hash,
 )
 from eth2spec.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
@@ -34,6 +31,7 @@ from eth2spec.utils.merkle_minimal import (
     get_merkle_root,
 )
 from .helpers import (
+    advance_slot,
     get_balance,
     build_deposit_data,
     build_empty_block_for_next_slot,
@@ -54,7 +52,7 @@ pytestmark = pytest.mark.sanity
 
 def test_slot_transition(state):
     test_state = deepcopy(state)
-    cache_state(test_state)
+    process_slot(test_state)
     advance_slot(test_state)
     assert test_state.slot == state.slot + 1
     assert get_state_root(test_state, state.slot) == state.hash_tree_root()
@@ -68,7 +66,7 @@ def test_empty_block_transition(state):
     state_transition(test_state, block)
 
     assert len(test_state.eth1_data_votes) == len(state.eth1_data_votes) + 1
-    assert get_block_root_at_slot(test_state, state.slot) == block.previous_block_root
+    assert get_block_root_at_slot(test_state, state.slot) == block.parent_root
 
     return state, [block], test_state
 
@@ -82,7 +80,7 @@ def test_skipped_slots(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.parent_root
 
     return state, [block], test_state
 
@@ -96,7 +94,7 @@ def test_empty_epoch_transition(state):
 
     assert test_state.slot == block.slot
     for slot in range(state.slot, test_state.slot):
-        assert get_block_root_at_slot(test_state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(test_state, slot) == block.parent_root
 
     return state, [block], test_state
 

@@ -16,11 +16,11 @@ def decode(json, typ):
         for field, subtype in typ.fields.items():
             temp[field] = decode(json[field], subtype)
             if field + "_hash_tree_root" in json:
-                assert(json[field + "_hash_tree_root"][2:] == 
+                assert(json[field + "_hash_tree_root"][2:] ==
                        hash_tree_root(temp[field], subtype).hex())
         ret = typ(**temp)
         if "hash_tree_root" in json:
-            assert(json["hash_tree_root"][2:] == 
+            assert(json["hash_tree_root"][2:] ==
                    hash_tree_root(ret, typ).hex())
         return ret
     else:

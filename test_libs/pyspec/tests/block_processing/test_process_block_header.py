@@ -4,11 +4,11 @@ import pytest
 
 from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
-    cache_state,
-    advance_slot,
+    process_slot,
     process_block_header,
 )
 from tests.helpers import (
+    advance_slot,
     build_empty_block_for_next_slot,
     next_slot,
 )
@@ -18,7 +18,7 @@ pytestmark = pytest.mark.header
 
 
 def prepare_state_for_header_processing(state):
-    cache_state(state)
+    process_slot(state)
     advance_slot(state)
 
 
@@ -53,9 +53,9 @@ def test_invalid_slot(state):
     return pre_state, block, None
 
 
-def test_invalid_previous_block_root(state):
+def test_invalid_parent_block_root(state):
     block = build_empty_block_for_next_slot(state)
-    block.previous_block_root = b'\12' * 32  # invalid prev root
+    block.parent_root = b'\12' * 32  # invalid prev root
 
     pre_state, post_state = run_block_header_processing(state, block, valid=False)
     return pre_state, block, None
