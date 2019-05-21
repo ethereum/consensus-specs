@@ -1394,7 +1394,7 @@ def process_crosslinks(state: BeaconState) -> None:
             shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
             crosslink_committee = get_crosslink_committee(state, epoch, shard)
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
-            if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
+            if 3 * get_total_balance(state, attesting_indices) > 2 * get_total_balance(state, crosslink_committee):
                 state.current_crosslinks[shard] = winning_crosslink
 ```
 
