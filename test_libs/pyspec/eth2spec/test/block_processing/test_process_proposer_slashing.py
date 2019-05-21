@@ -3,7 +3,7 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_proposer_slashing,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
@@ -50,6 +50,27 @@ def test_success(state):
     proposer_slashing = get_valid_proposer_slashing(state, signed_1=True, signed_2=True)
 
     yield from run_proposer_slashing_processing(state, proposer_slashing)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_1(state):
+    proposer_slashing = get_valid_proposer_slashing(state, signed_1=False, signed_2=True)
+    yield from run_proposer_slashing_processing(state, proposer_slashing, False)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_2(state):
+    proposer_slashing = get_valid_proposer_slashing(state, signed_1=True, signed_2=False)
+    yield from run_proposer_slashing_processing(state, proposer_slashing, False)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_1_and_2(state):
+    proposer_slashing = get_valid_proposer_slashing(state, signed_1=False, signed_2=False)
+    yield from run_proposer_slashing_processing(state, proposer_slashing, False)
 
 
 @spec_state_test

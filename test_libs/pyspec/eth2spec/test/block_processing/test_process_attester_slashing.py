@@ -3,7 +3,7 @@ from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
     process_attester_slashing,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
 from eth2spec.test.helpers.block import apply_empty_block
@@ -88,6 +88,27 @@ def test_success_surround(state):
     sign_indexed_attestation(state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(state, attester_slashing)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_1(state):
+    attester_slashing = get_valid_attester_slashing(state, signed_1=False, signed_2=True)
+    yield from run_attester_slashing_processing(state, attester_slashing, False)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_2(state):
+    attester_slashing = get_valid_attester_slashing(state, signed_1=True, signed_2=False)
+    yield from run_attester_slashing_processing(state, attester_slashing, False)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_1_and_2(state):
+    attester_slashing = get_valid_attester_slashing(state, signed_1=False, signed_2=False)
+    yield from run_attester_slashing_processing(state, attester_slashing, False)
 
 
 @spec_state_test

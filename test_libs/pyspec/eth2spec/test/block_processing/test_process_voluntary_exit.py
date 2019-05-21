@@ -5,7 +5,7 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_voluntary_exit,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import build_voluntary_exit, sign_voluntary_exit
 
@@ -47,15 +47,24 @@ def test_success(state):
     validator_index = get_active_validator_indices(state, current_epoch)[0]
     privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
 
-    voluntary_exit = build_voluntary_exit(
-        state,
-        current_epoch,
-        validator_index,
-        privkey,
-        signed=True,
-    )
+    voluntary_exit = build_voluntary_exit(state, current_epoch, validator_index, privkey, signed=True)
 
     yield from run_voluntary_exit_processing(state, voluntary_exit)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_signature(state):
+    # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
+    state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    current_epoch = get_current_epoch(state)
+    validator_index = get_active_validator_indices(state, current_epoch)[0]
+    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+
+    voluntary_exit = build_voluntary_exit(state, current_epoch, validator_index, privkey, signed=False)
+
+    yield from run_voluntary_exit_processing(state, voluntary_exit, False)
 
 
 @spec_state_test

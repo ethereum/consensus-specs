@@ -5,7 +5,7 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     process_transfer,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.transfers import get_valid_transfer
@@ -81,6 +81,16 @@ def test_success_active_above_max_effective_fee(state):
     transfer = get_valid_transfer(state, sender_index=sender_index, amount=0, fee=1, signed=True)
 
     yield from run_transfer_processing(state, transfer)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_signature(state):
+    transfer = get_valid_transfer(state, signed=False)
+    # un-activate so validator can transfer
+    state.validator_registry[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+    
+    yield from run_transfer_processing(state, transfer, False)
 
 
 @spec_state_test

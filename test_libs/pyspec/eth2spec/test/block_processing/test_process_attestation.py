@@ -8,7 +8,7 @@ from eth2spec.phase0.spec import (
 from eth2spec.phase0.state_transition import (
     state_transition_to,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     sign_attestation,
@@ -70,6 +70,15 @@ def test_success_previous_epoch(state):
     apply_empty_block(state)
 
     yield from run_attestation_processing(state, attestation)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_attestation_signature(state):
+    attestation = get_valid_attestation(state, signed=False)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    yield from run_attestation_processing(state, attestation, False)
 
 
 @spec_state_test

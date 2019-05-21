@@ -1,12 +1,12 @@
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import process_deposit
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit, sign_deposit_data
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.keys import privkeys
 
 
-def run_deposit_processing(state, deposit, validator_index, valid=True):
+def run_deposit_processing(state, deposit, validator_index, valid=True, non_effective=False):
     """
     Run ``process_deposit``, yielding:
       - pre-state ('pre')
@@ -34,27 +34,43 @@ def run_deposit_processing(state, deposit, validator_index, valid=True):
 
     yield 'post', state
 
-    if validator_index < pre_validator_count:
-        # top-up
+    if non_effective:
         assert len(state.validator_registry) == pre_validator_count
         assert len(state.balances) == pre_validator_count
+        if validator_index < pre_validator_count:
+            assert get_balance(state, validator_index) == pre_balance
     else:
-        # new validator
-        assert len(state.validator_registry) == pre_validator_count + 1
-        assert len(state.balances) == pre_validator_count + 1
+        if validator_index < pre_validator_count:
+            # top-up
+            assert len(state.validator_registry) == pre_validator_count
+            assert len(state.balances) == pre_validator_count
+        else:
+            # new validator
+            assert len(state.validator_registry) == pre_validator_count + 1
+            assert len(state.balances) == pre_validator_count + 1
+        assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
 
     assert state.deposit_index == state.latest_eth1_data.deposit_count
-    assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
 
 
 @spec_state_test
-def test_success(state):
+def test_new_deposit(state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(state, deposit, validator_index)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_new_deposit(state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validator_registry)
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
+    yield from run_deposit_processing(state, deposit, validator_index, valid=True, non_effective=True)
 
 
 @spec_state_test
@@ -64,6 +80,17 @@ def test_success_top_up(state):
     deposit = prepare_state_and_deposit(state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(state, deposit, validator_index)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_top_up(state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
+
+    # invalid signatures, in top-ups, are allowed!
+    yield from run_deposit_processing(state, deposit, validator_index, valid=True, non_effective=False)
 
 
 @spec_state_test

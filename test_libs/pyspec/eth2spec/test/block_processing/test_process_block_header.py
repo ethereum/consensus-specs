@@ -6,7 +6,7 @@ from eth2spec.phase0.spec import (
     advance_slot,
     process_block_header,
 )
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block
@@ -45,6 +45,13 @@ def run_block_header_processing(state, block, valid=True):
 def test_success_block_header(state):
     block = build_empty_block_for_next_slot(state, signed=True)
     yield from run_block_header_processing(state, block)
+
+
+@always_bls
+@spec_state_test
+def test_invalid_sig_block_header(state):
+    block = build_empty_block_for_next_slot(state, signed=False)
+    yield from run_block_header_processing(state, block, valid=False)
 
 
 @spec_state_test
