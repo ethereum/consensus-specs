@@ -2,6 +2,7 @@ from py_ecc import bls
 
 from tests.phase0.helpers import *
 
+
 def get_valid_early_derived_secret_reveal(state, epoch=None):
     current_epoch = spec.get_current_epoch(state)
     revealed_index = spec.get_active_validator_indices(state, current_epoch)[-1]

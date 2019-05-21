@@ -50,7 +50,6 @@ from eth2spec.utils.bls_stub import (
 )
 
 from eth2spec.utils.hash_function import hash
-import math
 '''
 NEW_TYPES = {
     'Slot': 'int',

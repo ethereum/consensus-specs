@@ -236,7 +236,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 ### `compute_crosslink_data_root`
 
 ```python
-def compute_crosslink_data_root(blocks: List[ShardBlock]) -> 'bytes32':
+def compute_crosslink_data_root(blocks: List[ShardBlock]) -> Bytes32:
     def is_power_of_two(value: int) -> bool:
         return (value > 0) and (value & (value - 1) == 0)
 

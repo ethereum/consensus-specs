@@ -962,7 +962,7 @@ def get_total_balance(state: BeaconState, indices: List[ValidatorIndex]) -> Gwei
 ```python
 def get_domain(state: BeaconState,
                domain_type: int,
-               message_epoch: int=None) -> int:
+               message_epoch: int = None) -> int:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
@@ -1150,7 +1150,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 ```python
 def slash_validator(state: BeaconState,
                     slashed_index: ValidatorIndex,
-                    whistleblower_index: ValidatorIndex=None) -> None:
+                    whistleblower_index: ValidatorIndex = None) -> None:
     """
     Slash the validator with index ``slashed_index``.
     """
@@ -1223,7 +1223,7 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled excpetion (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
-def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root: bool=False) -> BeaconState:
+def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root: bool = False) -> BeaconState:
     # Process slots (including those with no blocks) since block
     process_slots(state, block.slot)
     # Process block

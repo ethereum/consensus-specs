@@ -32,7 +32,7 @@ def process_operations(state: BeaconState, block: BeaconBlock) -> None:
 
 def process_block(state: BeaconState,
                   block: BeaconBlock,
-                  verify_state_root: bool=False) -> None:
+                  verify_state_root: bool = False) -> None:
     spec.process_block_header(state, block)
     spec.process_randao(state, block)
     spec.process_eth1_data(state, block)
@@ -65,6 +65,6 @@ def state_transition_to(state: BeaconState, up_to: Slot) -> BeaconState:
 
 def state_transition(state: BeaconState,
                      block: BeaconBlock,
-                     verify_state_root: bool=False) -> BeaconState:
+                     verify_state_root: bool = False) -> BeaconState:
     state_transition_to(state, block.slot)
     process_block(state, block, verify_state_root)

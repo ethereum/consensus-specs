@@ -227,7 +227,6 @@ def test_attestation(state):
 
     assert len(test_state.current_epoch_attestations) == len(state.current_epoch_attestations) + 1
 
-
     #
     # Epoch transition should move to previous_epoch_attestations
     #

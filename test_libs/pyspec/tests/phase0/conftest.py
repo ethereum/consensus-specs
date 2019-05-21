@@ -4,12 +4,13 @@ from eth2spec.phase0 import spec
 from preset_loader import loader
 
 from tests.phase0 import helpers
-from tests.phase0 import test_finality
+
 
 def pytest_addoption(parser):
     parser.addoption(
         "--config", action="store", default="minimal", help="config: make the pyspec use the specified configuration"
     )
+
 
 @pytest.fixture(autouse=True)
 def config(request):
@@ -20,13 +21,16 @@ def config(request):
     request.function.__globals__['spec'] = spec
     request.function.__globals__['helpers'] = helpers
 
+
 @pytest.fixture
 def num_validators(config):
     return spec.SLOTS_PER_EPOCH * 8
 
+
 @pytest.fixture
 def deposit_data_leaves():
     return list()
+
 
 @pytest.fixture
 def state(num_validators, deposit_data_leaves):

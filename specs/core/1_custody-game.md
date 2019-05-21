@@ -33,6 +33,7 @@
     - [Helpers](#helpers)
         - [`type_of`](#type_of)
         - [`empty`](#empty)
+        - [`ceillog2`](#ceillog2)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`get_chunk_bits_root`](#get_chunk_bits_root)
@@ -126,7 +127,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'attestation': Attestation,
     'challenger_index': ValidatorIndex,
     'responder_key': BLSSignature,
-    'chunk_bits': "bytes",
+    'chunk_bits': 'bytes',
     'signature': BLSSignature,
 }
 ```
@@ -257,6 +258,13 @@ The `type_of` function accepts an SSZ object as a single input and returns the c
 
 The `empty` function accepts an SSZ type as input and returns an object of that type with all fields initialized to default values.
 
+### `ceillog2`
+
+```python
+def ceillog2(x):
+    return x.bit_length()
+```
+
 ### `get_crosslink_chunk_count`
 
 ```python
@@ -298,7 +306,7 @@ def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorI
 ```python
 def get_validators_custody_reveal_period(state: BeaconState,
                                          validator_index: ValidatorIndex,
-                                         epoch: Epoch=None) -> int:
+                                         epoch: Epoch = None) -> int:
     '''
     This function returns the reveal period for a given validator.
     If no epoch is supplied, the current epoch is assumed.
@@ -479,7 +487,7 @@ def process_chunk_challenge(state: BeaconState,
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
-    depth = math.ceil(math.log2(get_custody_chunk_count(challenge.attestation.data.crosslink)))
+    depth = ceillog2(get_custody_chunk_count(challenge.attestation.data.crosslink))
     assert challenge.chunk_index < 2**depth
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
@@ -637,7 +645,7 @@ def process_bit_challenge_response(state: BeaconState,
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.data_branch,
-        depth=math.ceil(math.log2(challenge.chunk_count)),
+        depth=ceillog2(challenge.chunk_count),
         index=response.chunk_index,
         root=challenge.data_root,
     )
@@ -645,7 +653,7 @@ def process_bit_challenge_response(state: BeaconState,
     assert verify_merkle_branch(
         leaf=response.chunk_bits_leaf,
         branch=response.chunk_bits_branch,
-        depth=math.ceil(math.log2(challenge.chunk_count)) >> 8,
+        depth=ceillog2(challenge.chunk_count) >> 8,
         index=response.chunk_index // 256,
         root=challenge.chunk_bits_merkle_root
     )
@@ -668,10 +676,9 @@ Run `process_reveal_deadlines(state)` immediately after `process_registry_update
 ```python
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
-        if (validator.next_custody_reveal_period +
-            (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD) <
-                get_validators_custody_reveal_period(state, index)):
-                slash_validator(state, index)
+        if (validator.next_custody_reveal_period + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
+                < get_validators_custody_reveal_period(state, index)):
+            slash_validator(state, index)
 ```
 
 Run `process_challenge_deadlines(state)` immediately after `process_reveal_deadlines(state)`:

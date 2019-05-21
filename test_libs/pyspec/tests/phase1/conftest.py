@@ -10,6 +10,7 @@ from tests.phase0.conftest import (
     deposit_data_leaves,
 )
 
+
 def pytest_addoption(parser):
     parser.addoption(
         "--config", action="store", default="minimal", help="config: make the pyspec use the specified configuration"
@@ -33,5 +34,5 @@ def num_validators(config):
 
 
 @pytest.fixture
-def state(num_validators, deposit_data_leaves):
+def state(num_validators, deposit_data_leaves):  # noqa: F811
     return helpers.create_genesis_state(num_validators, deposit_data_leaves)

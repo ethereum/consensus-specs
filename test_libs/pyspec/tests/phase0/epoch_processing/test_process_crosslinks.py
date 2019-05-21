@@ -108,7 +108,10 @@ def test_double_late_crosslink(state):
     # ensure that the current crosslinks were not updated by the second attestation
     assert post_state.previous_crosslinks[shard] == post_state.current_crosslinks[shard]
     # ensure no reward, only penalties for the failed crosslink
-    for index in spec.get_crosslink_committee(state, attestation_2.data.target_epoch, attestation_2.data.crosslink.shard):
+    for index in spec.get_crosslink_committee(
+            state,
+            attestation_2.data.target_epoch,
+            attestation_2.data.crosslink.shard):
         assert crosslink_deltas[0][index] == 0
         assert crosslink_deltas[1][index] > 0
 

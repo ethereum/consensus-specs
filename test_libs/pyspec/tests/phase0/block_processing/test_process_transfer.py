@@ -18,7 +18,6 @@ def run_transfer_processing(state, transfer, valid=True):
             spec.process_transfer(post_state, transfer)
         return state, None
 
-
     spec.process_transfer(post_state, transfer)
 
     proposer_index = spec.get_beacon_proposer_index(state)
@@ -106,7 +105,12 @@ def test_insufficient_balance(state):
 def test_no_dust(state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     balance = state.balances[sender_index]
-    transfer = helpers.get_valid_transfer(state, sender_index=sender_index, amount=balance - spec.MIN_DEPOSIT_AMOUNT + 1, fee=0)
+    transfer = helpers.get_valid_transfer(
+        state,
+        sender_index=sender_index,
+        amount=balance - spec.MIN_DEPOSIT_AMOUNT + 1,
+        fee=0
+    )
 
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH

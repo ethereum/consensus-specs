@@ -6,8 +6,6 @@ BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_OFFSET = 4
 ZERO_CHUNK = b'\x00' * BYTES_PER_CHUNK
 
-cached_typedefs = {}
-
 
 def SSZType(fields):
     class SSZObject():

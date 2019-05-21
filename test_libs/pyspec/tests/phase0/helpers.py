@@ -14,6 +14,7 @@ privkeys = [i + 1 for i in range(1024)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
 
+
 def advance_slot(state) -> None:
     state.slot += 1
 
@@ -137,7 +138,10 @@ def build_attestation_data(state, slot, shard):
         justified_epoch = state.current_justified_epoch
         justified_block_root = state.current_justified_root
 
-    crosslinks = state.current_crosslinks if spec.slot_to_epoch(slot) == spec.get_current_epoch(state) else state.previous_crosslinks
+    crosslinks = (
+        state.current_crosslinks if spec.slot_to_epoch(slot) == spec.get_current_epoch(state)
+        else state.previous_crosslinks
+    )
     parent_crosslink = crosslinks[shard]
     return spec.AttestationData(
         beacon_block_root=block_root,
@@ -258,7 +262,11 @@ def get_valid_attestation(state, slot=None):
 
     attestation_data = build_attestation_data(state, slot, shard)
 
-    crosslink_committee = spec.get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
+    crosslink_committee = spec.get_crosslink_committee(
+        state,
+        attestation_data.target_epoch,
+        attestation_data.crosslink.shard
+    )
 
     committee_size = len(crosslink_committee)
     bitfield_length = (committee_size + 7) // 8
@@ -351,7 +359,11 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
 
 
 def fill_aggregate_attestation(state, attestation):
-    crosslink_committee = spec.get_crosslink_committee(state, attestation.data.target_epoch, attestation.data.crosslink.shard)
+    crosslink_committee = spec.get_crosslink_committee(
+        state,
+        attestation.data.target_epoch,
+        attestation.data.crosslink.shard
+    )
     for i in range(len(crosslink_committee)):
         attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
 
@@ -390,6 +402,3 @@ def get_state_root(state, slot) -> bytes:
     """
     assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
     return state.latest_state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
-
-# Stub to be overwritten by config
-import_spec = None
