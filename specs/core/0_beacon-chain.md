@@ -174,6 +174,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | Name | Value |
 | - | - |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+| `DEPOSIT_FORK_VERSION` | `b'\x00' * 4` |
 
 ### Gwei values
 
@@ -629,6 +630,16 @@ The `hash` function is SHA256.
 
 `def signing_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
 
+### `bls_domain`
+
+```python
+def bls_domain(domain_type: int, fork_version: bytes) -> int:
+    """
+    Return the bls domain given by the ``domain_type`` and 4 byte ``fork_version``..
+    """
+    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+```
+
 ### `slot_to_epoch`
 
 ```python
@@ -968,8 +979,7 @@ def get_domain(state: BeaconState,
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    # fork version is on the big-endian side: when signing using only the type (e.g. deposits), the type can be passed directly.
-    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+    return bls_domain(domain_type, fork_version)
 ```
 
 ### `get_bitfield_bit`
@@ -1766,8 +1776,10 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession)
-        # Note: deposits are valid regardless of fork version, hence the type is passed directly as domain.
-        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, DOMAIN_DEPOSIT):
+        # Note: deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
+        if not bls_verify(
+            pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT, DEPOSIT_FORK_VERSION)
+        ):
             return
 
         # Add validator and balance entries

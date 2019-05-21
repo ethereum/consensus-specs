@@ -24,6 +24,7 @@ from eth2spec.phase0.spec import (
     VoluntaryExit,
     # functions
     convert_to_indexed,
+    bls_domain,
     get_active_validator_indices,
     get_attesting_indices,
     get_block_root,
@@ -144,9 +145,9 @@ def build_deposit_data(state, pubkey, privkey, amount):
     signature = bls.sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
-        domain=get_domain(
-            state,
+        domain=bls_domain(
             spec.DOMAIN_DEPOSIT,
+            spec.DEPOSIT_FORK_VERSION,
         )
     )
     deposit_data.signature = signature
