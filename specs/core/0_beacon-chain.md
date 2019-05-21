@@ -1756,7 +1756,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     amount = deposit.data.amount
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession)
+        # Verify the deposit signature (proof of possession).
+        # Invalid signatures are allowed by the deposit contract, and hence included on-chain, but must not be processed.
         if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, get_domain(state, DOMAIN_DEPOSIT)):
             return
 
