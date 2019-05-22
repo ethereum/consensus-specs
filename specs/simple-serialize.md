@@ -49,11 +49,15 @@
 * **union**: union type containing one of the given subtypes
     * round bracket notation `(type_1, type_2, ...)`, e.g. `("null", "uint64")`
 * **Bigint**: integer type that can contain a non-negative integer of any magnitude, represented by `"bytes"` of length `log2(value)//8`
-* **Bitfield**: an variable-length list of `"bool"` values
+    * notation `Bigint`
+* **FixedBitfield**: a fixed-length list of `"bool"` values
+    * notation `FixedBitfield[N]`
+* **VariableBitfield**: a variable-length list of `"bool"` values
+    * notation `VariableBitfield`
 
 ### Variable-size and fixed-size
 
-We recursively define "variable-size" types to be lists, unions, `Bigint`, `Bitfield` and all types that contain a variable-size type. All other types are said to be "fixed-size".
+We recursively define "variable-size" types to be lists, unions, `Bigint`, `VariableBitfield` and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
 ### Aliases
 
@@ -66,7 +70,7 @@ For convenience we alias:
 
 ### Default values
 
-The default value of a type upon initialization is recursively defined using `0` for `"uintN"` and `Bigint`, `False` for `"bool"`, and `[]` for lists and `Bitfield`. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"` and `Bigint`, `False` for `"bool"`, and `[]` for lists and `VariableBitfield`. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
 
 ### Illegal types
 
@@ -104,7 +108,14 @@ return b""
 return value.to_bytes(log2(value)//8, "little")
 ```
 
-### `"Bitfield"`
+### `"FixedBitfield"`
+
+```python
+as_integer = sum([value[i] << i for i in range(len(value))])
+return as_integer.to_bytes(log2(as_integer)//8, "little")
+```
+
+### `"VariableBitfield"`
 
 ```python
 as_integer = (1 << len(value)) + sum([value[i] << i for i in range(len(value))])
