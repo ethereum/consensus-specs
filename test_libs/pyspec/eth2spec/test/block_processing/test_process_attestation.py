@@ -220,6 +220,18 @@ def test_bad_previous_crosslink(state):
 
 
 @spec_state_test
+def test_inconsistent_bitfields(state):
+    attestation = get_valid_attestation(state, signed=False)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield) + b'\x00'
+
+    sign_attestation(state, attestation)
+
+    yield from run_attestation_processing(state, attestation, False)
+
+
+@spec_state_test
 def test_non_empty_custody_bitfield(state):
     attestation = get_valid_attestation(state, signed=False)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
