@@ -16,7 +16,6 @@
         - [Gwei values](#gwei-values)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
-        - [State list lengths](#state-list-lengths)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
@@ -208,16 +207,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-
-* `MAX_EPOCHS_PER_CROSSLINK` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
-
-### State list lengths
-
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `EPOCHS_PER_HISTORICAL_VECTOR ` | `2**16` (= 65,536) | epochs | ~0.8 years |
 
 ### Reward and penalty quotients
 
@@ -558,7 +548,7 @@ The types are defined topologically to aid in facilitating an executable version
     'balances': ['uint64'],
 
     # Randomness and committees
-    'latest_randao_mixes': ['bytes32', LATEST_RANDAO_MIXES_LENGTH],
+    'latest_randao_mixes': ['bytes32', EPOCHS_PER_HISTORICAL_VECTOR],
     'latest_start_shard': 'uint64',
 
     # Finality
@@ -577,8 +567,8 @@ The types are defined topologically to aid in facilitating an executable version
     'previous_crosslinks': [Crosslink, SHARD_COUNT],
     'latest_block_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
     'latest_state_roots': ['bytes32', SLOTS_PER_HISTORICAL_ROOT],
-    'latest_active_index_roots': ['bytes32', LATEST_ACTIVE_INDEX_ROOTS_LENGTH],
-    'latest_slashed_balances': ['uint64', LATEST_SLASHED_EXIT_LENGTH],
+    'latest_active_index_roots': ['bytes32', EPOCHS_PER_HISTORICAL_VECTOR],
+    'latest_slashed_balances': ['uint64', EPOCHS_PER_HISTORICAL_VECTOR],
     'latest_block_header': BeaconBlockHeader,
     'historical_roots': ['bytes32'],
 
@@ -800,9 +790,9 @@ def get_randao_mix(state: BeaconState,
                    epoch: Epoch) -> Bytes32:
     """
     Return the randao mix at a recent ``epoch``.
-    ``epoch`` expected to be between (current_epoch - LATEST_RANDAO_MIXES_LENGTH, current_epoch].
+    ``epoch`` expected to be between (current_epoch - EPOCHS_PER_HISTORICAL_VECTOR, current_epoch].
     """
-    return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
+    return state.latest_randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
 ### `get_active_index_root`
@@ -813,9 +803,9 @@ def get_active_index_root(state: BeaconState,
     """
     Return the index root at a recent ``epoch``.
     ``epoch`` expected to be between
-    (current_epoch - LATEST_ACTIVE_INDEX_ROOTS_LENGTH + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
+    (current_epoch - EPOCHS_PER_HISTORICAL_VECTOR + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
     """
-    return state.latest_active_index_roots[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    return state.latest_active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
 ### `generate_seed`
@@ -827,7 +817,7 @@ def generate_seed(state: BeaconState,
     Generate a seed for the given ``epoch``.
     """
     return hash(
-        get_randao_mix(state, epoch + LATEST_RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD) +
+        get_randao_mix(state, epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD) +
         get_active_index_root(state, epoch) +
         int_to_bytes(epoch, length=32)
     )
@@ -1157,9 +1147,9 @@ def slash_validator(state: BeaconState,
     current_epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
     state.validator_registry[slashed_index].slashed = True
-    state.validator_registry[slashed_index].withdrawable_epoch = current_epoch + LATEST_SLASHED_EXIT_LENGTH
+    state.validator_registry[slashed_index].withdrawable_epoch = current_epoch + EPOCHS_PER_HISTORICAL_VECTOR
     slashed_balance = state.validator_registry[slashed_index].effective_balance
-    state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
+    state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORICAL_VECTOR] += slashed_balance
 
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
@@ -1208,7 +1198,7 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
 
     # Populate latest_active_index_roots
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
-    for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
+    for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
         state.latest_active_index_roots[index] = genesis_active_index_root
 
     return state
@@ -1524,12 +1514,12 @@ def process_slashings(state: BeaconState) -> None:
     total_balance = get_total_balance(state, active_validator_indices)
 
     # Compute `total_penalties`
-    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
-    total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % EPOCHS_PER_HISTORICAL_VECTOR]
+    total_at_end = state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORICAL_VECTOR]
     total_penalties = total_at_end - total_at_start
 
     for index, validator in enumerate(state.validator_registry):
-        if validator.slashed and current_epoch == validator.withdrawable_epoch - LATEST_SLASHED_EXIT_LENGTH // 2:
+        if validator.slashed and current_epoch == validator.withdrawable_epoch - EPOCHS_PER_HISTORICAL_VECTOR // 2:
             penalty = max(
                 validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
                 validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
@@ -1555,16 +1545,16 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
     # Set active index root
-    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
+    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
     state.latest_active_index_roots[index_root_position] = hash_tree_root(
         get_active_validator_indices(state, next_epoch + ACTIVATION_EXIT_DELAY)
     )
     # Set total slashed balances
-    state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = (
-        state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+    state.latest_slashed_balances[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = (
+        state.latest_slashed_balances[current_epoch % EPOCHS_PER_HISTORICAL_VECTOR]
     )
     # Set randao mix
-    state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
+    state.latest_randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(
@@ -1612,19 +1602,13 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
+    epoch = get_current_epoch(state)
+    # Verify RANDAO reveal
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
-    # Verify that the provided randao value is valid
-    assert bls_verify(
-        proposer.pubkey,
-        hash_tree_root(get_current_epoch(state)),
-        body.randao_reveal,
-        get_domain(state, DOMAIN_RANDAO),
-    )
-    # Mix it in
-    state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
-        xor(get_randao_mix(state, get_current_epoch(state)),
-            hash(body.randao_reveal))
-    )
+    assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    # Mix in RANDAO reveal
+    mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
+    state.latest_randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
 ```
 
 #### Eth1 data
