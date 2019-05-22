@@ -51,6 +51,7 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signing_root`](#signing_root)
+        - [`bls_domain`](#bls_domain)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -629,6 +630,16 @@ The `hash` function is SHA256.
 
 `def signing_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
 
+### `bls_domain`
+
+```python
+def bls_domain(domain_type: int, fork_version: bytes=b'\x00\x00\x00\x00') -> int:
+    """
+    Return the bls domain given by the ``domain_type`` and optional 4 byte ``fork_version`` (defaults to zero).
+    """
+    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+```
+
 ### `slot_to_epoch`
 
 ```python
@@ -968,7 +979,7 @@ def get_domain(state: BeaconState,
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return bytes_to_int(fork_version + int_to_bytes(domain_type, length=4))
+    return bls_domain(domain_type, fork_version)
 ```
 
 ### `get_bitfield_bit`
@@ -1765,8 +1776,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession)
+        # Note: deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
         if not bls_verify(
-            pubkey, signing_root(deposit.data), deposit.data.signature, get_domain(state, DOMAIN_DEPOSIT)
+            pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)
         ):
             return
 
