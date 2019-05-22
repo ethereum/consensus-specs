@@ -127,6 +127,8 @@ def test_proposer_is_slashed(state):
 def test_proposer_is_withdrawn(state):
     proposer_slashing = get_valid_proposer_slashing(state, signed_1=True, signed_2=True)
 
+    # move 1 epoch into future, to allow for past withdrawable epoch
+    state.slot += spec.SLOTS_PER_EPOCH
     # set proposer withdrawable_epoch in past
     current_epoch = get_current_epoch(state)
     proposer_index = proposer_slashing.proposer_index
