@@ -1,20 +1,17 @@
 from copy import deepcopy
 
 import eth2spec.phase0.spec as spec
-
 from eth2spec.phase0.state_transition import (
     state_transition,
 )
-from .helpers import (
-    build_empty_block_for_next_slot,
-    fill_aggregate_attestation,
+from .context import spec_state_test, never_bls
+from .helpers.state import next_epoch
+from .helpers.block import build_empty_block_for_next_slot, apply_empty_block
+from .helpers.attestations import (
     get_current_epoch,
     get_epoch_start_slot,
     get_valid_attestation,
-    next_epoch,
 )
-
-from .context import spec_state_test
 
 
 def check_finality(state,
@@ -55,13 +52,11 @@ def next_epoch_with_attestations(state,
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
             if slot_to_attest >= get_epoch_start_slot(get_current_epoch(post_state)):
                 cur_attestation = get_valid_attestation(post_state, slot_to_attest)
-                fill_aggregate_attestation(post_state, cur_attestation)
                 block.body.attestations.append(cur_attestation)
 
         if fill_prev_epoch:
             slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
             prev_attestation = get_valid_attestation(post_state, slot_to_attest)
-            fill_aggregate_attestation(post_state, prev_attestation)
             block.body.attestations.append(prev_attestation)
 
         state_transition(post_state, block)
@@ -70,6 +65,7 @@ def next_epoch_with_attestations(state,
     return state, blocks, post_state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_4(state):
     yield 'pre', state
@@ -97,11 +93,14 @@ def test_finality_rule_4(state):
     yield 'post', state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_1(state):
     # get past first two epochs that finality does not run on
     next_epoch(state)
+    apply_empty_block(state)
     next_epoch(state)
+    apply_empty_block(state)
 
     yield 'pre', state
 
@@ -124,11 +123,14 @@ def test_finality_rule_1(state):
     yield 'post', state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_2(state):
     # get past first two epochs that finality does not run on
     next_epoch(state)
+    apply_empty_block(state)
     next_epoch(state)
+    apply_empty_block(state)
 
     yield 'pre', state
 
@@ -153,6 +155,7 @@ def test_finality_rule_2(state):
     yield 'post', state
 
 
+@never_bls
 @spec_state_test
 def test_finality_rule_3(state):
     """
@@ -161,7 +164,9 @@ def test_finality_rule_3(state):
     """
     # get past first two epochs that finality does not run on
     next_epoch(state)
+    apply_empty_block(state)
     next_epoch(state)
+    apply_empty_block(state)
 
     yield 'pre', state
 

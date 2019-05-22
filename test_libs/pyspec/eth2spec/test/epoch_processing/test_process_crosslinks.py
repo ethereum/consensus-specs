@@ -1,25 +1,27 @@
 from copy import deepcopy
 
 import eth2spec.phase0.spec as spec
-
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 from eth2spec.phase0.spec import (
     cache_state,
     get_crosslink_deltas,
     process_crosslinks,
 )
-from eth2spec.test.helpers import (
+from eth2spec.phase0.state_transition import (
+    state_transition,
+)
+from eth2spec.test.context import spec_state_test
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    next_slot
+)
+from eth2spec.test.helpers.block import apply_empty_block, sign_block
+from eth2spec.test.helpers.attestations import (
     add_attestation_to_state,
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
     get_crosslink_committee,
     get_valid_attestation,
-    next_epoch,
-    next_slot,
 )
-from eth2spec.test.context import spec_state_test
 
 
 def run_process_crosslinks(state, valid=True):
@@ -31,8 +33,9 @@ def run_process_crosslinks(state, valid=True):
     """
     # transition state to slot before state transition
     slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH) - 1
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.slot = slot
+    sign_block(state, block)
     state_transition(state, block)
 
     # cache state before epoch transition
@@ -55,7 +58,7 @@ def test_no_attestations(state):
 def test_single_crosslink_update_from_current_epoch(state):
     next_epoch(state)
 
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=True)
 
     fill_aggregate_attestation(state, attestation)
     add_attestation_to_state(state, attestation, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
@@ -75,7 +78,7 @@ def test_single_crosslink_update_from_current_epoch(state):
 def test_single_crosslink_update_from_previous_epoch(state):
     next_epoch(state)
 
-    attestation = get_valid_attestation(state)
+    attestation = get_valid_attestation(state, signed=True)
 
     fill_aggregate_attestation(state, attestation)
     add_attestation_to_state(state, attestation, state.slot + spec.SLOTS_PER_EPOCH)
@@ -103,7 +106,7 @@ def test_double_late_crosslink(state):
     next_epoch(state)
     state.slot += 4
 
-    attestation_1 = get_valid_attestation(state)
+    attestation_1 = get_valid_attestation(state, signed=True)
     fill_aggregate_attestation(state, attestation_1)
 
     # add attestation_1 in the next epoch
@@ -111,10 +114,12 @@ def test_double_late_crosslink(state):
     add_attestation_to_state(state, attestation_1, state.slot + 1)
 
     for slot in range(spec.SLOTS_PER_EPOCH):
-        attestation_2 = get_valid_attestation(state)
+        attestation_2 = get_valid_attestation(state, signed=True)
         if attestation_2.data.shard == attestation_1.data.shard:
             break
         next_slot(state)
+    apply_empty_block(state)
+
     fill_aggregate_attestation(state, attestation_2)
 
     # add attestation_2 in the next epoch after attestation_1 has
@@ -126,7 +131,7 @@ def test_double_late_crosslink(state):
     assert len(state.current_epoch_attestations) == 0
 
     crosslink_deltas = get_crosslink_deltas(state)
-    
+
     yield from run_process_crosslinks(state)
 
     shard = attestation_2.data.shard

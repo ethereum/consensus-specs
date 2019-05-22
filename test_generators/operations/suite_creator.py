@@ -15,7 +15,7 @@ def generate_from_tests(pkg):
     for name in fn_names:
         tfn = getattr(pkg, name)
         try:
-            out.append(tfn(generator_mode=True))
+            out.append(tfn(generator_mode=True, bls_active=True))
         except AssertionError:
             print("ERROR: failed to generate vector from test: %s (pkg: %s)" % (name, pkg.__name__))
     return out
@@ -34,6 +34,6 @@ def create_suite(operation_name: str, config_name: str, get_cases: Callable[[], 
             forks=["phase0"],
             config=config_name,
             runner="operations",
-            handler=config_name,
+            handler=operation_name,
             test_cases=get_cases()))
     return suite_definition

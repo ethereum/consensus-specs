@@ -6,12 +6,12 @@ from eth2spec.phase0.spec import (
     advance_slot,
     process_block_header,
 )
-from eth2spec.test.helpers import (
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
+from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
-    next_slot,
+    sign_block
 )
-
-from eth2spec.test.context import spec_state_test, expect_assertion_error
+from eth2spec.test.helpers.state import next_slot
 
 
 def prepare_state_for_header_processing(state):
@@ -42,23 +42,32 @@ def run_block_header_processing(state, block, valid=True):
 
 
 @spec_state_test
-def test_success(state):
-    block = build_empty_block_for_next_slot(state)
+def test_success_block_header(state):
+    block = build_empty_block_for_next_slot(state, signed=True)
     yield from run_block_header_processing(state, block)
 
 
+@always_bls
 @spec_state_test
-def test_invalid_slot(state):
-    block = build_empty_block_for_next_slot(state)
+def test_invalid_sig_block_header(state):
+    block = build_empty_block_for_next_slot(state, signed=False)
+    yield from run_block_header_processing(state, block, valid=False)
+
+
+@spec_state_test
+def test_invalid_slot_block_header(state):
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.slot = state.slot + 2  # invalid slot
+    sign_block(state, block)
 
     yield from run_block_header_processing(state, block, valid=False)
 
 
 @spec_state_test
 def test_invalid_previous_block_root(state):
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=False)
     block.previous_block_root = b'\12' * 32  # invalid prev root
+    sign_block(state, block)
 
     yield from run_block_header_processing(state, block, valid=False)
 
@@ -73,6 +82,6 @@ def test_proposer_slashed(state):
     # set proposer to slashed
     state.validator_registry[proposer_index].slashed = True
 
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(state, signed=True)
 
     yield from run_block_header_processing(state, block, valid=False)
