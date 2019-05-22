@@ -6,7 +6,7 @@ from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.keys import privkeys
 
 
-def run_deposit_processing(state, deposit, validator_index, valid=True, non_effective=False):
+def run_deposit_processing(state, deposit, validator_index, valid=True, effective=True):
     """
     Run ``process_deposit``, yielding:
       - pre-state ('pre')
@@ -34,7 +34,7 @@ def run_deposit_processing(state, deposit, validator_index, valid=True, non_effe
 
     yield 'post', state
 
-    if non_effective:
+    if not effective:
         assert len(state.validator_registry) == pre_validator_count
         assert len(state.balances) == pre_validator_count
         if validator_index < pre_validator_count:
@@ -70,7 +70,7 @@ def test_invalid_sig_new_deposit(state):
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
-    yield from run_deposit_processing(state, deposit, validator_index, valid=True, non_effective=True)
+    yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=False)
 
 
 @spec_state_test
@@ -90,7 +90,7 @@ def test_invalid_sig_top_up(state):
     deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
 
     # invalid signatures, in top-ups, are allowed!
-    yield from run_deposit_processing(state, deposit, validator_index, valid=True, non_effective=False)
+    yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=True)
 
 
 @spec_state_test
