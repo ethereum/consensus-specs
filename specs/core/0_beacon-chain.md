@@ -633,7 +633,7 @@ The `hash` function is SHA256.
 ### `bls_domain`
 
 ```python
-def bls_domain(domain_type: int, fork_version=b'\x00\x00\x00\x00') -> int:
+def bls_domain(domain_type: int, fork_version: bytes=b'\x00\x00\x00\x00') -> int:
     """
     Return the bls domain given by the ``domain_type`` and optional 4 byte ``fork_version`` (defaults to zero).
     """
