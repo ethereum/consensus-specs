@@ -6,10 +6,6 @@ from preset_loader import loader
 from tests.phase0 import helpers as phase1_helpers
 from tests.phase1 import helpers as helpers
 
-from tests.phase0.conftest import (
-    deposit_data_leaves,
-)
-
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -34,5 +30,10 @@ def num_validators(config):
 
 
 @pytest.fixture
-def state(num_validators, deposit_data_leaves):  # noqa: F811
+def deposit_data_leaves():
+    return list()
+
+
+@pytest.fixture
+def state(num_validators, deposit_data_leaves):
     return helpers.create_genesis_state(num_validators, deposit_data_leaves)

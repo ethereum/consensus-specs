@@ -79,7 +79,7 @@ def test_active_but_transfer_past_effective_balance(state):
 
 
 def test_incorrect_slot(state):
-    transfer = helpers.get_valid_transfer(state, slot=state.slot+1)
+    transfer = helpers.get_valid_transfer(state, slot=state.slot + 1)
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
 
@@ -109,7 +109,7 @@ def test_no_dust(state):
         state,
         sender_index=sender_index,
         amount=balance - spec.MIN_DEPOSIT_AMOUNT + 1,
-        fee=0
+        fee=0,
     )
 
     # un-activate so validator can transfer

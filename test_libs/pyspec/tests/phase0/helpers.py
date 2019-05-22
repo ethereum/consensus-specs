@@ -32,7 +32,7 @@ def set_bitfield_bit(bitfield, i):
     return (
         bitfield[:byte_index] +
         bytes([bitfield[byte_index] | (1 << bit_index)]) +
-        bitfield[byte_index+1:]
+        bitfield[byte_index + 1:]
     )
 
 
@@ -265,7 +265,7 @@ def get_valid_attestation(state, slot=None):
     crosslink_committee = spec.get_crosslink_committee(
         state,
         attestation_data.target_epoch,
-        attestation_data.crosslink.shard
+        attestation_data.crosslink.shard,
     )
 
     committee_size = len(crosslink_committee)
@@ -362,7 +362,7 @@ def fill_aggregate_attestation(state, attestation):
     crosslink_committee = spec.get_crosslink_committee(
         state,
         attestation.data.target_epoch,
-        attestation.data.crosslink.shard
+        attestation.data.crosslink.shard,
     )
     for i in range(len(crosslink_committee)):
         attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)

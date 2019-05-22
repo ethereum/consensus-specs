@@ -63,7 +63,7 @@ def test_reveal_from_past_epoch(state):
 def test_reveal_with_custody_padding(state):
     randao_key_reveal = helpers.get_valid_early_derived_secret_reveal(
         state,
-        spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING
+        spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING,
     )
     pre_state, post_state = run_early_derived_secret_reveal_processing(state, randao_key_reveal, True)
 
@@ -73,7 +73,7 @@ def test_reveal_with_custody_padding(state):
 def test_reveal_with_custody_padding_minus_one(state):
     randao_key_reveal = helpers.get_valid_early_derived_secret_reveal(
         state,
-        spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING - 1
+        spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING - 1,
     )
     pre_state, post_state = run_early_derived_secret_reveal_processing(state, randao_key_reveal, True)
 
@@ -83,13 +83,13 @@ def test_reveal_with_custody_padding_minus_one(state):
 def test_double_reveal(state):
     randao_key_reveal1 = helpers.get_valid_early_derived_secret_reveal(
         state,
-        spec.get_current_epoch(state) + spec.RANDAO_PENALTY_EPOCHS + 1
+        spec.get_current_epoch(state) + spec.RANDAO_PENALTY_EPOCHS + 1,
     )
     pre_state, intermediate_state = run_early_derived_secret_reveal_processing(state, randao_key_reveal1)
 
     randao_key_reveal2 = helpers.get_valid_early_derived_secret_reveal(
         intermediate_state,
-        spec.get_current_epoch(pre_state) + spec.RANDAO_PENALTY_EPOCHS + 1
+        spec.get_current_epoch(pre_state) + spec.RANDAO_PENALTY_EPOCHS + 1,
     )
     _, post_state = run_early_derived_secret_reveal_processing(intermediate_state, randao_key_reveal2, False)
 
@@ -108,7 +108,7 @@ def test_revealer_is_slashed(state):
 def test_far_future_epoch(state):
     randao_key_reveal = helpers.get_valid_early_derived_secret_reveal(
         state,
-        spec.get_current_epoch(state) + spec.EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
+        spec.get_current_epoch(state) + spec.EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS,
     )
 
     pre_state, post_state = run_early_derived_secret_reveal_processing(state, randao_key_reveal, False)

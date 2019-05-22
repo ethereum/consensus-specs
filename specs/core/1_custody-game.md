@@ -306,7 +306,7 @@ def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorI
 ```python
 def get_validators_custody_reveal_period(state: BeaconState,
                                          validator_index: ValidatorIndex,
-                                         epoch: Epoch = None) -> int:
+                                         epoch: Epoch=None) -> int:
     '''
     This function returns the reveal period for a given validator.
     If no epoch is supplied, the current epoch is assumed.
