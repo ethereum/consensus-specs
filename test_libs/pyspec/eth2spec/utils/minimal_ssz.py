@@ -291,7 +291,7 @@ def hash_tree_root(value, typ=None):
     else:
         if isinstance(typ, list):
             assert len(value) == typ[1]
-        elif typ[:5] == 'bytes':
+        elif isinstance(typ, str) and typ[:5] == 'bytes':
             assert len(value) == int(typ[5:])
         return merkleize(chunks)
 
