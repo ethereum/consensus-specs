@@ -114,7 +114,7 @@ def objects_to_spec(functions, constants, ssz_objects, imports):
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]),constants))
     ssz_objects_instantiation_spec = '\n'.join(map(lambda x: '%s = SSZType(%s)' % (x, ssz_objects[x][:-1]), ssz_objects))
     ssz_objects_reinitialization_spec = '\n'.join(
-        map(lambda x: '    global_vars[%s] = SSZType(%s    })' % (x, re.sub('( ){4}', ' '*8, ssz_objects[x][:-2])), ssz_objects))
+        map(lambda x: '    global_vars[\'%s\'] = SSZType(%s    })' % (x, re.sub('( ){4}', ' '*8, ssz_objects[x][:-2])), ssz_objects))
     ssz_objects_reinitialization_spec = (
         'def init_SSZ_types():\n    global_vars = globals()\n' 
         + ssz_objects_reinitialization_spec
