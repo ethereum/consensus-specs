@@ -145,9 +145,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
     signature = bls.sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
-        domain=bls_domain(
-            spec.DOMAIN_DEPOSIT,
-        )
+        domain=bls_domain(spec.DOMAIN_DEPOSIT),
     )
     deposit_data.signature = signature
     return deposit_data
