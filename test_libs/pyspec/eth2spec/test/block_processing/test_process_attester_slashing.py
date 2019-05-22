@@ -48,16 +48,9 @@ def run_attester_slashing_processing(state, attester_slashing, valid=True):
 
     if slashed_index != proposer_index:
         # lost whistleblower reward
-        assert (
-                get_balance(state, slashed_index) <
-                pre_slashed_balance
-        )
-
+        assert get_balance(state, slashed_index) < pre_slashed_balance
         # gained whistleblower reward
-        assert (
-                get_balance(state, proposer_index) >
-                pre_proposer_balance
-        )
+        assert get_balance(state, proposer_index) > pre_proposer_balance
     else:
         # gained rewards for all slashings, which may include others. And only lost that of themselves.
         # Netto at least 0, if more people where slashed, a balance increase.
