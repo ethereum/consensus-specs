@@ -241,7 +241,7 @@ Requests beacon block headers from the peer starting from `(start_root, start_sl
 
 The function of the `skip_slots` parameter helps facilitate light client sync - for example, in [#459](https://github.com/ethereum/eth2.0-specs/issues/459) - and allows clients to balance the peers from whom they request headers. Clients could, for instance, request every 10th block from a set of peers where each peer has a different starting block in order to populate block data.
 
-If `backward` is `1`, request the blocks preceding the requested one in reverse order. E.g. for block `10` return `[10, 9, 8, ...]`.
+If `backward` is `1`, request the blocks preceding the requested one so that the requested one is the last in the response. E.g. for block `10` return `[..., 8, 9, 10]`.
 
 ### Beacon block bodies
 
