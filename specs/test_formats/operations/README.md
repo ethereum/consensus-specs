@@ -8,9 +8,9 @@ The different kinds of operations ("transactions") are tested individually with 
 description: string                    -- description of test case, purely for debugging purposes
 bls_required: bool                     -- optional, true if the test validity is strictly dependent on BLS being ON. False otherwise.
 bls_ignored: bool                      -- optional, true if the test validity is strictly dependent on BLS being OFF. False otherwise.
-pre: BeaconState                       -- state before applying the deposit
+pre: BeaconState                       -- state before applying the operation
 <operation-name>: <operation-object>   -- the YAML encoded operation, e.g. a "ProposerSlashing", or "Deposit".
-post: BeaconState                      -- state after applying the deposit. No value if deposit processing is aborted.
+post: BeaconState                      -- state after applying the operation. No value if operation processing is aborted.
 ```
 
 Note: if both `bls_required` and `bls_ignored` are false (or simply not included),
@@ -19,7 +19,7 @@ One may choose for OFF for performance reasons during repeated testing. Otherwis
 
 ## Condition
 
-A handler of the `operations` should process these cases, 
+A handler of the `operations` test-runner should process these cases, 
  calling the corresponding processing implementation.
 
 Operations:
