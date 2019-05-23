@@ -16,7 +16,7 @@ def generate_from_tests(src, bls_active=True):
     for name in fn_names:
         tfn = getattr(src, name)
         try:
-            test_case = tfn(generator_mode=True, bls_active=bls_active))
+            test_case = tfn(generator_mode=True, bls_active=bls_active)
             # If no test case data is returned, the test is ignored.
             if test_case is not None:
                 out.append(test_case)
