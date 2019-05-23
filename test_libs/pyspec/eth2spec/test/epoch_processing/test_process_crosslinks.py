@@ -21,6 +21,7 @@ from eth2spec.test.helpers.attestations import (
     fill_aggregate_attestation,
     get_crosslink_committee,
     get_valid_attestation,
+    sign_attestation,
 )
 
 
@@ -109,13 +110,14 @@ def test_double_late_crosslink(state):
     attestation_1 = get_valid_attestation(state, signed=True)
     fill_aggregate_attestation(state, attestation_1)
 
-    # add attestation_1 in the next epoch
+    # add attestation_1 to next epoch
     next_epoch(state)
     add_attestation_to_state(state, attestation_1, state.slot + 1)
 
     for slot in range(spec.SLOTS_PER_EPOCH):
-        attestation_2 = get_valid_attestation(state, signed=True)
+        attestation_2 = get_valid_attestation(state, signed=False)
         if attestation_2.data.shard == attestation_1.data.shard:
+            sign_attestation(state, attestation_2)
             break
         next_slot(state)
     apply_empty_block(state)
