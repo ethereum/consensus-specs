@@ -300,9 +300,9 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 * Set `attestation_data.target_epoch = get_current_epoch(head_state)`
 * Set `attestation_data.target_root = signing_root(epoch_boundary_header)` where `epoch_boundary_header` is the block header at the most recent epoch boundary.
 
-*Note*: `epoch_boundary_block` can be looked up in the state using:
+*Note*: `attestation_data.target_root` can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
-* Let `epoch_boundary_block = head if epoch_start_slot == head_state.slot else get_block_root(state, get_current_epoch(head_state))`.
+* Let `attestation_data.target_root = head if epoch_start_slot == head_state.slot else get_block_root(state, get_current_epoch(head_state))`.
 
 ##### Crosslink vote
 
