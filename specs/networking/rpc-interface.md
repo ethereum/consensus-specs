@@ -41,7 +41,7 @@ Remote method calls are wrapped in a "request" structure:
 (
     id: uint64
     method_id: uint16
-    body: (message_body...)
+    body: bytes
 )
 ```
 
@@ -55,7 +55,7 @@ and their corresponding responses are wrapped in a "response" structure:
 )
 ```
 
-A union type is used to determine the contents of the `body` field in the request structure. Each "body" entry in the RPC calls below corresponds to one subtype in the `body` type union.
+The `method_id` is used to determine the deserialized contents of the `body` field in the request structure. Each "body" entry in the RPC calls below corresponds to the proper ssz deserialization for that method.
 
 The details of the RPC-Over-`libp2p` protocol are similar to [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Specifically:
 
