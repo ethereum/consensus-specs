@@ -147,29 +147,12 @@ an `attestation`.
 
 The [RPC Interface](./rpc-interface.md) is specified in this repository.
 
-## Identify
-
-**Note: This protocol is a placeholder and will be updated once the discv5
-discovery protocol is added to this document**
-
-#### Protocol Id: `/eth/serenity/id/1.0.0` 
-
-The Identify protocol (defined in go - [identify-go](https://github.com/ipfs/go-ipfs/blob/master/core/commands/id.go) and rust [rust-identify](https://github.com/libp2p/rust-libp2p/blob/master/protocols/identify/src/lib.rs))
-allows a node A to query another node B which information B knows about A. This also includes the addresses B is listening on.
-
-This protocol allows nodes to discover addresses of other nodes to be added to
-peer discovery. It further allows nodes to determine the capabilities of all it's connected
-peers.
-
-### Configuration Parameters
-
-The protocol has two configurable parameters, which can be used to identify the
-type of connecting node. Suggested format:
-```
-	version: `/eth/serenity/1.0.0`
-	user_agent: <client name and version>
-```
-
 ## Discovery
 
-**To be updated to incorporate discv5**
+Discovery Version 5
+([discv5])(https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)
+will be used for discovery. This protocol uses a UDP transport and specifies
+its own encryption, ip-discovery and topic advertisement. Therefore, it has no
+need to establish establish streams through `multistream-select`, rather, act
+as a standalone implementation that feeds discovered peers/topics (ENR-records) as
+`multiaddrs` into the libp2p service.
