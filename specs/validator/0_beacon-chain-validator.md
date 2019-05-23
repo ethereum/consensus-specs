@@ -291,7 +291,7 @@ First the validator should construct `attestation_data`, an [`AttestationData`](
 
 ##### LMD GHOST vote
 
-Set `attestation_data.beacon_block_root = signing_root(head_block)`.
+Set `attestation_data.beacon_block_root = signing_root(head_header)`.
 
 ##### FFG vote
 
