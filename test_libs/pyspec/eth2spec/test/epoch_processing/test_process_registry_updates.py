@@ -4,6 +4,7 @@ from eth2spec.phase0.spec import (
     get_current_epoch,
     is_active_validator,
 )
+from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.context import spec_state_test
 
@@ -19,15 +20,13 @@ def test_activation(state):
     state.validator_registry[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
     assert not is_active_validator(state.validator_registry[index], get_current_epoch(state))
 
+    for _ in range(spec.ACTIVATION_EXIT_DELAY):
+        next_epoch(state)
+
     yield 'pre', state
 
-    blocks = []
-    for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
-        block = next_epoch(state)
-        blocks.append(block)
-
-    # provide extra type hinting here, since it is wrapped in a list.
-    yield 'blocks', blocks, [spec.BeaconBlock]
+    next_epoch(state)
+    yield 'trigger_block', apply_empty_block(state)
 
     yield 'post', state
 
@@ -48,15 +47,13 @@ def test_ejection(state):
     # Mock an ejection
     state.validator_registry[index].effective_balance = spec.EJECTION_BALANCE
 
+    for _ in range(spec.ACTIVATION_EXIT_DELAY):
+        next_epoch(state)
+
     yield 'pre', state
 
-    blocks = []
-    for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
-        block = next_epoch(state)
-        blocks.append(block)
-
-    # provide extra type hinting here, since it is wrapped in a list.
-    yield 'blocks', blocks, [spec.BeaconBlock]
+    next_epoch(state)
+    yield 'trigger_block', apply_empty_block(state)
 
     yield 'post', state
 
