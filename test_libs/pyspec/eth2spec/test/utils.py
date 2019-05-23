@@ -60,7 +60,7 @@ def with_tags(tags: Dict[str, Any]):
             fn_out = fn(*args, **kw)
             # do not add tags if the function is not returning a dict at all (i.e. not in generator mode)
             if fn_out is None:
-                return fn_out
+                return None
             return {**tags, **fn_out}
         return entry
     return runner
