@@ -13,42 +13,20 @@ from eth2spec.phase0.spec import (
     get_block_root_at_slot,
     get_current_epoch,
     get_domain,
-    advance_slot,
-    cache_state,
 )
 from eth2spec.phase0.state_transition import (
     state_transition,
 )
-from .helpers.state import (
-    get_balance,
-    get_state_root
-)
-from .helpers.transfers import get_valid_transfer
-from .helpers.block import build_empty_block_for_next_slot, sign_block
-from .helpers.keys import (
-    privkeys,
-    pubkeys,
-)
-from .helpers.attester_slashings import get_valid_attester_slashing
-from .helpers.proposer_slashings import get_valid_proposer_slashing
-from .helpers.attestations import get_valid_attestation
-from .helpers.deposits import prepare_state_and_deposit
+from eth2spec.test.helpers.state import get_balance
+from eth2spec.test.helpers.transfers import get_valid_transfer
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
+from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
+from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
+from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from .context import spec_state_test, never_bls
-
-
-@spec_state_test
-def test_slot_transition(state):
-    pre_slot = state.slot
-    pre_root = state.hash_tree_root()
-    yield 'pre', state
-
-    cache_state(state)
-    advance_slot(state)
-    yield 'post', state
-
-    assert state.slot == pre_slot + 1
-    assert get_state_root(state, pre_slot) == pre_root
+from eth2spec.test.context import spec_state_test, never_bls
 
 
 @never_bls
