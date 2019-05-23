@@ -699,6 +699,6 @@ Append this to `process_final_updates(state)`:
     )
     for index, validator in enumerate(state.validator_registry):
         if index not in validator_indices_in_records:
-            if validator.exit_epoch != FAR_FUTURE_EPOCH:
+            if validator.exit_epoch != FAR_FUTURE_EPOCH and validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
                 validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 ```
