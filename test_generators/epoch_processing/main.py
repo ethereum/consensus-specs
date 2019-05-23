@@ -1,3 +1,5 @@
+from typing import Callable, Iterable
+
 from eth2spec.test.epoch_processing import (
     test_process_crosslinks,
     test_process_registry_updates
@@ -5,7 +7,6 @@ from eth2spec.test.epoch_processing import (
 
 from gen_base import gen_runner, gen_suite, gen_typing
 from gen_from_tests.gen import generate_from_tests
-from typing import Callable, Iterable
 from preset_loader import loader
 from eth2spec.phase0 import spec
 
