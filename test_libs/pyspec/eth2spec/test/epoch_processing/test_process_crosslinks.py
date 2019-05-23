@@ -104,6 +104,10 @@ def test_single_crosslink_update_from_previous_epoch(state):
 
 @spec_state_test
 def test_double_late_crosslink(state):
+    if spec.SLOTS_PER_EPOCH < spec.SHARD_COUNT:
+        print("warning: ignoring test, test-assumptions are incompatible with configuration")
+        return
+
     next_epoch(state)
     state.slot += 4
 

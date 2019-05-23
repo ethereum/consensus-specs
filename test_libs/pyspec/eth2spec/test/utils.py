@@ -19,8 +19,10 @@ def spectest(description: str = None):
                 else:
                     # description can be explicit
                     out['description'] = description
+                has_contents = False
                 # put all generated data into a dict.
                 for data in fn(*args, **kw):
+                    has_contents = True
                     # If there is a type argument, encode it as that type.
                     if len(data) == 3:
                         (key, value, typ) = data
@@ -32,11 +34,15 @@ def spectest(description: str = None):
                             out[key] = encode(value, value.__class__)
                         else:
                             out[key] = value
-                return out
+                if has_contents:
+                    return out
+                else:
+                    return None
             else:
                 # just complete the function, ignore all yielded data, we are not using it
                 for _ in fn(*args, **kw):
                     continue
+                return None
         return entry
     return runner
 
