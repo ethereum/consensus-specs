@@ -34,7 +34,7 @@ def run_process_crosslinks(state, valid=True):
     """
     # transition state to slot before state transition
     slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH) - 1
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot = slot
     sign_block(state, block)
     state_transition(state, block)
@@ -119,7 +119,7 @@ def test_double_late_crosslink(state):
     add_attestation_to_state(state, attestation_1, state.slot + 1)
 
     for slot in range(spec.SLOTS_PER_EPOCH):
-        attestation_2 = get_valid_attestation(state, signed=False)
+        attestation_2 = get_valid_attestation(state)
         if attestation_2.data.shard == attestation_1.data.shard:
             sign_attestation(state, attestation_2)
             break

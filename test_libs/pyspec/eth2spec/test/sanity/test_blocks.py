@@ -53,7 +53,7 @@ def test_skipped_slots(state):
     pre_slot = state.slot
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot += 3
     sign_block(state, block)
     yield 'blocks', [block], [spec.BeaconBlock]
@@ -71,7 +71,7 @@ def test_empty_epoch_transition(state):
     pre_slot = state.slot
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot += spec.SLOTS_PER_EPOCH
     sign_block(state, block)
     yield 'blocks', [block], [spec.BeaconBlock]
@@ -90,7 +90,7 @@ def test_empty_epoch_transition(state):
 #     pre_state = deepcopy(state)
 #     yield 'pre', state
 #
-#     block = build_empty_block_for_next_slot(state, signed=False)
+#     block = build_empty_block_for_next_slot(state)
 #     block.slot += spec.SLOTS_PER_EPOCH * 5
 #     sign_block(state, block, proposer_index=0)
 #     yield 'blocks', [block], [spec.BeaconBlock]
@@ -118,7 +118,7 @@ def test_proposer_slashing(state):
     #
     # Add to state via block transition
     #
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.body.proposer_slashings.append(proposer_slashing)
     sign_block(state, block)
     yield 'blocks', [block], [spec.BeaconBlock]
@@ -151,7 +151,7 @@ def test_attester_slashing(state):
     #
     # Add to state via block transition
     #
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.body.attester_slashings.append(attester_slashing)
     sign_block(state, block)
     yield 'blocks', [block], [spec.BeaconBlock]
@@ -187,7 +187,7 @@ def test_deposit_in_block(state):
 
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.body.deposits.append(deposit)
     sign_block(state, block)
 
@@ -214,7 +214,7 @@ def test_deposit_top_up(state):
 
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.body.deposits.append(deposit)
     sign_block(state, block)
 
@@ -238,7 +238,7 @@ def test_attestation(state):
 
     # Add to state via block transition
     pre_current_attestations_len = len(state.current_epoch_attestations)
-    attestation_block = build_empty_block_for_next_slot(state, signed=False)
+    attestation_block = build_empty_block_for_next_slot(state)
     attestation_block.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
     attestation_block.body.attestations.append(attestation)
     sign_block(state, attestation_block)
@@ -249,7 +249,7 @@ def test_attestation(state):
     # Epoch transition should move to previous_epoch_attestations
     pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
 
-    epoch_block = build_empty_block_for_next_slot(state, signed=False)
+    epoch_block = build_empty_block_for_next_slot(state)
     epoch_block.slot += spec.SLOTS_PER_EPOCH
     sign_block(state, epoch_block)
     state_transition(state, epoch_block)
@@ -287,7 +287,7 @@ def test_voluntary_exit(state):
     )
 
     # Add to state via block transition
-    initiate_exit_block = build_empty_block_for_next_slot(state, signed=False)
+    initiate_exit_block = build_empty_block_for_next_slot(state)
     initiate_exit_block.body.voluntary_exits.append(voluntary_exit)
     sign_block(state, initiate_exit_block)
     state_transition(state, initiate_exit_block)
@@ -295,7 +295,7 @@ def test_voluntary_exit(state):
     assert state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     # Process within epoch transition
-    exit_block = build_empty_block_for_next_slot(state, signed=False)
+    exit_block = build_empty_block_for_next_slot(state)
     exit_block.slot += spec.SLOTS_PER_EPOCH
     sign_block(state, exit_block)
     state_transition(state, exit_block)
@@ -324,7 +324,7 @@ def test_transfer(state):
     yield 'pre', state
 
     # Add to state via block transition
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.body.transfers.append(transfer)
     sign_block(state, block)
 
@@ -352,7 +352,7 @@ def test_balance_driven_status_transitions(state):
     yield 'pre', state
 
     # trigger epoch transition
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot += spec.SLOTS_PER_EPOCH
     sign_block(state, block)
     state_transition(state, block)
@@ -390,13 +390,13 @@ def test_historical_batch(state):
 #
 #     blocks = []
 #     for _ in range(spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1):
-#         block = build_empty_block_for_next_slot(state, signed=False)
+#         block = build_empty_block_for_next_slot(state)
 #         state_transition(state, block)
 #         expected_votes += 1
 #         assert len(state.eth1_data_votes) == expected_votes
 #         blocks.append(block)
 #
-#     block = build_empty_block_for_next_slot(state, signed=False)
+#     block = build_empty_block_for_next_slot(state)
 #     blocks.append(block)
 #
 #     state_transition(state, block)

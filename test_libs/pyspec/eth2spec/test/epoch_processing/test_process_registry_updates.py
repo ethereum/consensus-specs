@@ -20,7 +20,7 @@ def run_process_registry_updates(state, valid=True):
     """
     # transition state to slot before state transition
     slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH) - 1
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot = slot
     sign_block(state, block)
     state_transition(state, block)
