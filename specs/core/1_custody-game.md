@@ -674,6 +674,9 @@ def process_bit_challenge_response(state: BeaconState,
 Run `process_reveal_deadlines(state)` immediately after `process_registry_updates(state)`:
 
 ```python
+# begin insert @process_reveal_deadlines
+    process_reveal_deadlines(state)
+# end insert @process_reveal_deadlines
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validator_registry):
         if (validator.next_custody_reveal_period + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
@@ -684,6 +687,9 @@ def process_reveal_deadlines(state: BeaconState) -> None:
 Run `process_challenge_deadlines(state)` immediately after `process_reveal_deadlines(state)`:
 
 ```python
+# begin insert @process_challenge_deadlines
+    process_challenge_deadlines(state)
+# end insert @process_challenge_deadlines
 def process_challenge_deadlines(state: BeaconState) -> None:
     for challenge in state.custody_chunk_challenge_records:
         if get_current_epoch(state) > challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
@@ -701,12 +707,15 @@ def process_challenge_deadlines(state: BeaconState) -> None:
 Append this to `process_final_updates(state)`:
 
 ```python
+# begin insert @after_process_final_updates
+    after_process_final_updates(state)
+# end insert @after_process_final_updates
 def after_process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
     # Reset withdrawable epochs if challenge records are empty
-    records = state.custody_chunk_challenge_records + state.bit_challenge_records
+    records = state.custody_chunk_challenge_records + state.custody_bit_challenge_records
     validator_indices_in_records = set(
         [record.challenger_index for record in records] + [record.responder_index for record in records]
     )

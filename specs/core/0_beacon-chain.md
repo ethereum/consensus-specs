@@ -1280,8 +1280,11 @@ def process_epoch(state: BeaconState) -> None:
     process_crosslinks(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)
+    # @process_reveal_deadlines
+    # @process_challenge_deadlines
     process_slashings(state)
     process_final_updates(state)
+    # @after_process_final_updates
 ```
 
 #### Helper functions

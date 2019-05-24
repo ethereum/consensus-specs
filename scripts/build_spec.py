@@ -1,4 +1,3 @@
-import sys
 import re
 import function_puller
 from argparse import ArgumentParser
@@ -108,7 +107,7 @@ def apply_constants_preset(preset: Dict[str, Any]):
 '''
 
 
-def objects_to_spec(functions, constants, ssz_objects, imports):
+def objects_to_spec(functions, constants, ssz_objects, imports, inserts={}):
     new_type_definitions = '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]),constants))
@@ -119,7 +118,7 @@ def objects_to_spec(functions, constants, ssz_objects, imports):
         'def init_SSZ_types():\n    global_vars = globals()\n' 
         + ssz_objects_reinitialization_spec
     )
-    return (
+    spec = (
         imports
         + '\n' + new_type_definitions
         + '\n\n' + constants_spec
@@ -129,11 +128,15 @@ def objects_to_spec(functions, constants, ssz_objects, imports):
         + '\n\n' + ssz_objects_reinitialization_spec
         + '\n'
     )
+    # Handle @inserts
+    for key, value in inserts.items():
+        spec = re.sub('[ ]*# %s\\n' % key, value, spec)
+    return spec
+
 
 def combine_functions(old_funcitons, new_functions):
     for key, value in new_functions.items():
         old_funcitons[key] = value
-    # TODO: Add insert functionality
     return old_funcitons
 
 
@@ -167,8 +170,12 @@ def combine_ssz_objects(old_objects, new_objects):
     return old_objects
 
 
+# inserts are handeled the same way as functions
+combine_inserts = combine_functions
+
+
 def build_phase0_spec(sourcefile, outfile=None):
-    functions, constants, ssz_objects = function_puller.get_spec(sourcefile)
+    functions, constants, ssz_objects, _ = function_puller.get_spec(sourcefile)
     spec = objects_to_spec(functions, constants, ssz_objects, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
@@ -178,12 +185,13 @@ def build_phase0_spec(sourcefile, outfile=None):
 
 
 def build_phase1_spec(phase0_sourcefile, phase1_sourcefile, outfile=None):
-    phase0_functions, phase0_constants, phase0_ssz_objects = function_puller.get_spec(phase0_sourcefile)
-    phase1_functions, phase1_constants, phase1_ssz_objects = function_puller.get_spec(phase1_sourcefile)
+    phase0_functions, phase0_constants, phase0_ssz_objects, phase0_inserts = function_puller.get_spec(phase0_sourcefile)
+    phase1_functions, phase1_constants, phase1_ssz_objects, phase1_inserts = function_puller.get_spec(phase1_sourcefile)
     functions = combine_functions(phase0_functions, phase1_functions)
     constants = combine_constants(phase0_constants, phase1_constants)
     ssz_objects = combine_ssz_objects(phase0_ssz_objects, phase1_ssz_objects)
-    spec = objects_to_spec(functions, constants, ssz_objects, PHASE1_IMPORTS)
+    inserts = combine_inserts(phase0_inserts, phase1_inserts)
+    spec = objects_to_spec(functions, constants, ssz_objects, PHASE1_IMPORTS, inserts)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
