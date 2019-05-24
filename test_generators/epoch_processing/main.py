@@ -1,14 +1,13 @@
 from typing import Callable, Iterable
 
+from eth2spec.phase0 import spec
 from eth2spec.test.epoch_processing import (
     test_process_crosslinks,
     test_process_registry_updates
 )
-
 from gen_base import gen_runner, gen_suite, gen_typing
 from gen_from_tests.gen import generate_from_tests
 from preset_loader import loader
-from eth2spec.phase0 import spec
 
 
 def create_suite(transition_name: str, config_name: str, get_cases: Callable[[], Iterable[gen_typing.TestCase]]) \
@@ -26,13 +25,14 @@ def create_suite(transition_name: str, config_name: str, get_cases: Callable[[],
             runner="epoch_processing",
             handler=transition_name,
             test_cases=get_cases()))
+
     return suite_definition
 
 
 if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
-        create_suite('crosslinks',       'minimal', lambda: generate_from_tests(test_process_crosslinks)),
-        create_suite('crosslinks',       'mainnet', lambda: generate_from_tests(test_process_crosslinks)),
+        create_suite('crosslinks', 'minimal', lambda: generate_from_tests(test_process_crosslinks)),
+        create_suite('crosslinks', 'mainnet', lambda: generate_from_tests(test_process_crosslinks)),
         create_suite('registry_updates', 'minimal', lambda: generate_from_tests(test_process_registry_updates)),
         create_suite('registry_updates', 'mainnet', lambda: generate_from_tests(test_process_registry_updates)),
     ])
