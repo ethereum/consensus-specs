@@ -92,7 +92,7 @@ paths:
       tags:
         - MinimalSet
       summary: "Get validator duties for the requested validators."
-      description: "Requests the beacon node to provide a set of _duties_, which are actions that should be performed by validators. This API call should be polled at every slot, to ensure that any chain reorganisations are catered for, and to ensure that the currently connected beacon node is properly synchronized."
+      description: "Requests the beacon node to provide a set of _duties_, which are actions that should be performed by validators, for a particular epoch. Duties should only need to be checked once per epoch, however a chain reorganisation (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, this API call should be polled at every slot to ensure that chain reorganisations are recognised, and to ensure that the beacon node is properly synchronized."
       parameters:
       - name: validator_pubkeys
         in: query
@@ -103,6 +103,11 @@ paths:
           items:
             $ref: '#/components/schemas/pubkey'
           minItems: 1
+      - name: epoch
+        in: query
+        required: false
+        schema:
+            type: integer
       responses:
         200:
           description: Success response
@@ -114,6 +119,8 @@ paths:
                   $ref: '#/components/schemas/ValidatorDuty'
         400:
           $ref: '#/components/responses/InvalidRequest'
+        406:
+          description: "Duties cannot be provided for the requested epoch."
         500:
           $ref: '#/components/responses/InternalError'
         503:
@@ -157,7 +164,7 @@ paths:
       tags:
         - MinimalSet
       summary: "Publish a signed block."
-      description: "Instructs the beacon node to publish a newly signed beacon block to the beacon network, to be included in the beacon chain."
+      description: "Instructs the beacon node to broadcast a newly signed beacon block to the beacon network, to be included in the beacon chain. The beacon node is not required to validate the signed `BeaconBlock`, and a successful response (20X) only indicates that the broadcast has been successful. The beacon node is expected to integrate the new block into its state, and therefore validate the block internally, however blocks which fail the validation are still broadcast but a different status code is returned (202)"
       parameters:
       - name: beacon_block
         in: query
@@ -167,7 +174,9 @@ paths:
           $ref: '#/components/schemas/BeaconBlock'
       responses:
         200:
-          $ref: '#/components/responses/Success'
+          description: "The block was validated successfully and has been broadcast. It has also been integrated into the beacon node's database."
+        202:
+          description: "The block failed validation, but was successfully broadcast anyway. It was not integrated into the beacon node's database."
         400:
           $ref: '#/components/responses/InvalidRequest'
         500:
@@ -182,6 +191,18 @@ paths:
       summary: "Produce an attestation, without signature."
       description: "Requests that the beacon node produce an IndexedAttestation, with a blank signature field, which the validator will then sign."
       parameters:
+      - name: validator_pubkey
+        in: query
+        required: true
+        description: "Uniquely identifying which validator this attestation is to be produced for."
+        schema:
+          $ref: '#/components/schemas/pubkey'
+      - name: poc_bit
+        in: query
+        required: true
+        description: "The proof-of-custody bit that is reported by this "
+        schema:
+            # Still need to establish a schema for this.
       - name: slot
         in: query
         required: true
@@ -210,8 +231,8 @@ paths:
     post:
       tags:
         - MinimalSet
-      summary: "Published a signed attestation."
-      description: "Instructs the beacon node to publish a newly signed IndexedAttestation object, to be incorporated into the beacon chain."
+      summary: "Publish a signed attestation."
+      description: "Instructs the beacon node to broadcast a newly signed IndexedAttestation object to the intended shard subnet. The beacon node is not required to validate the signed IndexedAttestation, and a successful response (20X) only indicates that the broadcast has been successful. The beacon node is expected to integrate the new attestation into its state, and therefore validate the attestation internally, however attestations which fail the validation are still broadcast but a different status code is returned (202)"
       parameters:
       - name: attestation
         in: query
@@ -221,7 +242,9 @@ paths:
           $ref: '#/components/schemas/IndexedAttestation'
       responses:
         200:
-          $ref: '#/components/responses/Success'
+          description: "The attestation was validated successfully and has been broadcast. It has also been integrated into the beacon node's database."
+        202:
+          description: "The attestation failed validation, but was successfully broadcast anyway. It was not integrated into the beacon node's database."
         400:
           $ref: '#/components/responses/InvalidRequest'
         500:
@@ -244,17 +267,13 @@ components:
     genesis_time:
       type: integer
       format: uint64
-      description: "The genesis_time configured for the beacon node, which is the time the Eth1.0 validator deposit smart contract has enough ETH staked (i.e. Eth2.0 begins)."
+      description: "The genesis_time configured for the beacon node, which is the unix time at which the Eth2.0 chain began."
       example: 1557716289
     ValidatorDuty:
       type: object
       properties:
         validator_pubkey:
           $ref: '#/components/schemas/pubkey'
-        committee_index:
-          type: integer
-          format: uint64
-          description: "The index of the validator in the committee."
         attestation_slot:
           type: integer
           format: uint64
@@ -272,18 +291,18 @@ components:
       type: object
       nullable: true
       properties:
-        starting_block:
+        starting_slot:
           type: integer
           format: uint64
-          description: "The block at which syncing started (will only be reset after the sync reached its head)"
-        current_block:
+          description: "The slot at which syncing started (will only be reset after the sync reached its head)"
+        current_slot:
           type: integer
           format: uint64
-          description: "The current highest block sync'd by the beacon node."
-        highest_block:
+          description: "The most recent slot sync'd by the beacon node."
+        highest_slot:
           type: integer
           format: uint64
-          description: "The estimated highest block, or current target block number."
+          description: "Globally, the estimated most recent slot number, or current target slot number."
 
     BeaconBlock:
       description: "The [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblock) object from the Eth2.0 spec."
@@ -543,6 +562,12 @@ components:
           items:
             type: integer
             format: uint64
+        signature:
+          type: string
+          format: bytes
+          pattern: "^0x[a-fA-F0-9]{192}$"
+          example: "0x1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505cc411d61252fb6cb3fa0017b679f8bb2305b26a285fa2737f175668d0dff91cc1b66ac1fb663c9bc59509846d6ec05345bd908eda73e670af888da41af171505"
+          description: "The BLS signature of the `IndexedAttestation`, created by the validator of the attestation."
         data:
           $ref: '#/components/schemas/AttestationData'
     AttestationData:
@@ -575,16 +600,20 @@ components:
         crosslink:
           title: CrossLink
           type: object
-          description: "The [`Crosslink`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#crosslink) object from the Eth2.0 spec."
+          description: "The [`Crosslink`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#crosslink) object from the Eth2.0 spec, contains data from epochs [`start_epoch`, `end_epoch`)."
           properties:
             shard:
               type: integer
               format: uint64
               description: "The shard number."
-            epoch:
+            start_epoch:
               type: integer
               format: uint64
-              description: "The epoch number."
+              description: "The first epoch which the crosslinking data references."
+            end_epoch:
+              type: integer
+              format: uint64
+              description: "The 'end' epoch referred to by the crosslinking data; no data in this Crosslink should refer to the `end_epoch` since it is not included in the crosslinking data interval."
             parent_root:
               type: string
               format: byte

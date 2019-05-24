@@ -15,7 +15,7 @@ The validator client is a conceptually separate entity which utilizes private ke
 
 Since it is recommended to separate these concerns in the client implementations, we must clearly define the communication between them.
 
-The goal of this specification is to promote interoperability between beacon nodes and validator clients derived from different projects and to encourage innovation in validator clients independet of beacon node development. For example, the validator client from Lighthouse could communicate with a running instance of the beacon node from Prysm, or a staking pool might create a decentrally managed validator client plugging into the same API.
+The goal of this specification is to promote interoperability between beacon nodes and validator clients derived from different projects and to encourage innovation in validator client implementations, independently from beacon node development. For example, the validator client from Lighthouse could communicate with a running instance of the beacon node from Prysm, or a staking pool might create a decentrally managed validator client which utilises the same API.
 
 This specification is derived from a proposal and discussion on Issues [#1011](https://github.com/ethereum/eth2.0-specs/issues/1011) and [#1012](https://github.com/ethereum/eth2.0-specs/issues/1012)
 
