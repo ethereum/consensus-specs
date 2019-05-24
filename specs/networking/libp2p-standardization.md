@@ -150,9 +150,9 @@ The [RPC Interface](./rpc-interface.md) is specified in this repository.
 ## Discovery
 
 Discovery Version 5
-([discv5])(https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)
+([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md))
 will be used for discovery. This protocol uses a UDP transport and specifies
 its own encryption, ip-discovery and topic advertisement. Therefore, it has no
-need to establish establish streams through `multistream-select`, rather, act
+need to establish streams through `multistream-select`, rather, act
 as a standalone implementation that feeds discovered peers/topics (ENR-records) as
 `multiaddrs` into the libp2p service.
