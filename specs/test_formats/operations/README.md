@@ -27,7 +27,7 @@ Operations:
 | *`operation-name`*      | *`operation-object`* | *`input name`*       | *`processing call`*                                    |
 |-------------------------|----------------------|----------------------|--------------------------------------------------------|
 | `attestation`           | `Attestation`        | `attestation`        | `process_deposit(state, attestation)`                  |
-| `attester_slashing`     | `AttesterSlashing`   | `attester_slashing`  | `process_deposit(state, attester_slashing)`            |
+| `attester_slashing`     | `AttesterSlashing`   | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`            |
 | `block_header`          | `Block`              | `block`              | `process_block_header(state, block)`                   |
 | `deposit`               | `Deposit`            | `deposit`            | `process_deposit(state, deposit)`                      |
 | `proposer_slashing`     | `ProposerSlashing`   | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`  |
