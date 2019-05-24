@@ -2,7 +2,7 @@
 
 The different epoch sub-transitions are tested individually with test handlers.
 The format is similar to block-processing state-transition tests.
-There is no "change" factor however, the transitions are a pure functions with just the pre-state as input.
+There is no "change" factor however, the transitions are pure functions with just the pre-state as input.
 Hence, the format is shared between each test-handler. (See test condition documentation on how to run the tests.)
 
 ## Test case format
