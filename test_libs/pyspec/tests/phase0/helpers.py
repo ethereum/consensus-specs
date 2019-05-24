@@ -3,7 +3,6 @@ from copy import deepcopy
 from py_ecc import bls
 
 from eth2spec.utils.minimal_ssz import signing_root
-
 from eth2spec.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
     get_merkle_proof,
@@ -106,10 +105,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
     signature = bls.sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
-        domain=spec.get_domain(
-            state,
-            spec.DOMAIN_DEPOSIT,
-        )
+        domain=spec.bls_domain(spec.DOMAIN_DEPOSIT),
     )
     deposit_data.signature = signature
     return deposit_data
