@@ -340,8 +340,8 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Validator indices
-    custody_bit_0_indices: [uint64]
-    custody_bit_1_indices: [uint64]
+    custody_bit_0_indices: List[uint64]
+    custody_bit_1_indices: List[uint64]
     # Attestation data
     data: AttestationData
     # Aggregate signature
@@ -418,9 +418,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Block roots
-    block_roots: [bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    block_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
     # State roots
-    state_roots: [bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
 }
 ```
 
@@ -470,7 +470,7 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 {
     # Branch in the deposit tree
-    proof: [bytes32, DEPOSIT_CONTRACT_TREE_DEPTH]
+    proof: Vector[bytes32, DEPOSIT_CONTRACT_TREE_DEPTH]
     # Index in the deposit tree
     index: uint64
     # Data
@@ -521,12 +521,12 @@ The types are defined topologically to aid in facilitating an executable version
     randao_reveal: bytes96
     eth1_data: Eth1Data
     graffiti: bytes32
-    proposer_slashings: [ProposerSlashing]
-    attester_slashings: [AttesterSlashing]
-    attestations: [Attestation]
-    deposits: [Deposit]
-    voluntary_exits: [VoluntaryExit]
-    transfers: [Transfer]
+    proposer_slashings: List[ProposerSlashing]
+    attester_slashings: List[AttesterSlashing]
+    attestations: List[Attestation]
+    deposits: List[Deposit]
+    voluntary_exits: List[VoluntaryExit]
+    transfers: List[Transfer]
 }
 ```
 
@@ -555,16 +555,16 @@ The types are defined topologically to aid in facilitating an executable version
     fork: Fork  # For versioning hard forks
     
     # Validator registry
-    validator_registry: [Validator]
-    balances: [uint64]
+    validator_registry: List[Validator]
+    balances: List[uint64]
     
     # Randomness and committees
-    latest_randao_mixes: [bytes32, LATEST_RANDAO_MIXES_LENGTH]
+    latest_randao_mixes: Vector[bytes32, LATEST_RANDAO_MIXES_LENGTH]
     latest_start_shard: uint64
     
     # Finality
-    previous_epoch_attestations: [PendingAttestation]
-    current_epoch_attestations: [PendingAttestation]
+    previous_epoch_attestations: List[PendingAttestation]
+    current_epoch_attestations: List[PendingAttestation]
     previous_justified_epoch: uint64
     current_justified_epoch: uint64
     previous_justified_root: bytes32
@@ -574,20 +574,20 @@ The types are defined topologically to aid in facilitating an executable version
     finalized_root: bytes32
     
     # Recent state
-    current_crosslinks: [Crosslink, SHARD_COUNT]
-    previous_crosslinks: [Crosslink, SHARD_COUNT]
-    latest_block_roots: [bytes32, SLOTS_PER_HISTORICAL_ROOT]
-    latest_state_roots: [bytes32, SLOTS_PER_HISTORICAL_ROOT]
-    latest_active_index_roots: [bytes32, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    current_crosslinks: Vector[Crosslink, SHARD_COUNT]
+    previous_crosslinks: Vector[Crosslink, SHARD_COUNT]
+    latest_block_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    latest_state_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    latest_active_index_roots: Vector[bytes32, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
     # Balances slashed at every withdrawal period
-    latest_slashed_balances: [uint64, LATEST_SLASHED_EXIT_LENGTH]
+    latest_slashed_balances: Vector[uint64, LATEST_SLASHED_EXIT_LENGTH]
     # `latest_block_header.state_root == ZERO_HASH` temporarily
     latest_block_header: BeaconBlockHeader
-    historical_roots: [bytes32]
+    historical_roots: List[bytes32]
     
     # Ethereum 1.0 chain data
     latest_eth1_data: Eth1Data
-    eth1_data_votes: [Eth1Data]
+    eth1_data_votes: List[Eth1Data]
     deposit_index: uint64
 }
 ```

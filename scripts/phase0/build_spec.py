@@ -33,9 +33,9 @@ Epoch = NewType('Epoch', int)  # uint64
 Shard = NewType('Shard', int)  # uint64
 ValidatorIndex = NewType('ValidatorIndex', int)  # uint64
 Gwei = NewType('Gwei', int)  # uint64
-Bytes32 = NewType('Bytes32', bytes)  # bytes32
-BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
-BLSSignature = NewType('BLSSignature', bytes)  # bytes96
+Bytes32 = BytesN[32]
+BLSPubkey = NewType('BLSPubkey', BytesN[48])
+BLSSignature = NewType('BLSSignature', BytesN[96])
 Store = None
 """)
 

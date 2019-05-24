@@ -2,22 +2,6 @@ import sys
 from typing import List
 
 
-def translate_ssz_type_line(line: str) -> str:
-    if ':' not in line:
-        return line
-    start = line[:line.index(':')]
-    field_type = line[line.index(':')+2:]
-    if field_type.startswith('['):
-        if ',' in line:
-            # TODO: translate [Foobar, SOME_THING] to Vector[Foobar, SSZLen(SOME_THING)] cleanly.
-            # just brute it here
-            field_type = 'Vector[%s, SSLen(%s)]' % (field_type[1:field_type.index(',')], field_type[field_type.index(',')+2:len(field_type)-1])
-        else:
-            field_type = 'List[%s]' % field_type[1:len(field_type)-1]
-    line = start + ': ' + field_type
-    return line
-
-
 def get_spec(file_name: str) -> List[str]:
     code_lines = []
     pulling_from = None
@@ -51,8 +35,6 @@ def get_spec(file_name: str) -> List[str]:
                 if line[:3] == 'def':
                     code_lines.append('')
                     code_lines.append('')
-                if current_typedef is not None:
-                    line = translate_ssz_type_line(line)
                 code_lines.append(line)
             elif pulling_from is None and len(line) > 0 and line[0] == '|':
                 row = line[1:].split('|')
