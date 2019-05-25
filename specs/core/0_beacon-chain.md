@@ -268,20 +268,19 @@ The types are defined topologically to aid in facilitating an executable version
 #### `Fork`
 
 ```python
-{
+class Fork(SSZContainer):
     # Previous fork version
     previous_version: bytes4
     # Current fork version
     current_version: bytes4
     # Fork epoch number
     epoch: uint64
-}
 ```
 
 #### `Crosslink`
 
 ```python
-{
+class Crosslink(SSZContainer):
     # Shard number
     shard: uint64
     # Epoch number
@@ -290,26 +289,24 @@ The types are defined topologically to aid in facilitating an executable version
     parent_root: bytes32
     # Root of the crosslinked shard data since the previous crosslink
     data_root: bytes32
-}
 ```
 
 #### `Eth1Data`
 
 ```python
-{
+class Eth1Data(SSZContainer):
     # Root of the deposit tree
     deposit_root: bytes32
     # Total number of deposits
     deposit_count: uint64
     # Block hash
     block_hash: bytes32
-}
 ```
 
 #### `AttestationData`
 
 ```python
-{
+class AttestationData(SSZContainer):
     # LMD GHOST vote
     beacon_block_root: bytes32
     
@@ -321,24 +318,22 @@ The types are defined topologically to aid in facilitating an executable version
     
     # Crosslink vote
     crosslink: Crosslink
-}
 ```
 
 #### `AttestationDataAndCustodyBit`
 
 ```python
-{
+class AttestationDataAndCustodyBit(SSZContainer):
     # Attestation data
     data: AttestationData
     # Custody bit
     custody_bit: bool
-}
 ```
 
 #### `IndexedAttestation`
 
 ```python
-{
+class IndexedAttestation(SSZContainer):
     # Validator indices
     custody_bit_0_indices: List[uint64]
     custody_bit_1_indices: List[uint64]
@@ -346,13 +341,12 @@ The types are defined topologically to aid in facilitating an executable version
     data: AttestationData
     # Aggregate signature
     signature: bytes96
-}
 ```
 
 #### `DepositData`
 
 ```python
-{
+class DepositData(SSZContainer):
     # BLS pubkey
     pubkey: bytes48
     # Withdrawal credentials
@@ -361,24 +355,22 @@ The types are defined topologically to aid in facilitating an executable version
     amount: uint64
     # Container self-signature
     signature: bytes96
-}
 ```
 
 #### `BeaconBlockHeader`
 
 ```python
-{
+class BeaconBlockHeader(SSZContainer):
     slot: uint64
     parent_root: bytes32
     state_root: bytes32
     body_root: bytes32
     signature: bytes96
-}
 ```
 #### `Validator`
 
 ```python
-{
+class Validator(SSZContainer):
     # BLS public key
     pubkey: bytes48
     # Withdrawal credentials
@@ -395,13 +387,12 @@ The types are defined topologically to aid in facilitating an executable version
     slashed: bool
     # Effective balance
     effective_balance: uint64
-}
 ```
 
 #### `PendingAttestation`
 
 ```python
-{
+class PendingAttestation(SSZContainer):
     # Attester aggregation bitfield
     aggregation_bitfield: bytes
     # Attestation data
@@ -410,18 +401,16 @@ The types are defined topologically to aid in facilitating an executable version
     inclusion_delay: uint64
     # Proposer index
     proposer_index: uint64
-}
 ```
 
 #### `HistoricalBatch`
 
 ```python
-{
+class HistoricalBatch(SSZContainer):
     # Block roots
     block_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
     # State roots
     state_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
-}
 ```
 
 ### Beacon operations
@@ -429,31 +418,29 @@ The types are defined topologically to aid in facilitating an executable version
 #### `ProposerSlashing`
 
 ```python
-{
+class ProposerSlashing(SSZContainer):
     # Proposer index
     proposer_index: uint64
     # First block header
     header_1: BeaconBlockHeader
     # Second block header
     header_2: BeaconBlockHeader
-}
 ```
 
 #### `AttesterSlashing`
 
 ```python
-{
+class AttesterSlashing(SSZContainer):
     # First attestation
     attestation_1: IndexedAttestation
     # Second attestation
     attestation_2: IndexedAttestation
-}
 ```
 
 #### `Attestation`
 
 ```python
-{
+class Attestation(SSZContainer):
     # Attester aggregation bitfield
     aggregation_bitfield: bytes
     # Attestation data
@@ -462,39 +449,36 @@ The types are defined topologically to aid in facilitating an executable version
     custody_bitfield: bytes
     # BLS aggregate signature
     signature: bytes96
-}
 ```
 
 #### `Deposit`
 
 ```python
-{
+class Deposit(SSZContainer):
     # Branch in the deposit tree
     proof: Vector[bytes32, DEPOSIT_CONTRACT_TREE_DEPTH]
     # Index in the deposit tree
     index: uint64
     # Data
     data: DepositData
-}
 ```
 
 #### `VoluntaryExit`
 
 ```python
-{
+class VoluntaryExit(SSZContainer):
     # Minimum epoch for processing exit
     epoch: uint64
     # Index of the exiting validator
     validator_index: uint64
     # Validator signature
     signature: bytes96
-}
 ```
 
 #### `Transfer`
 
 ```python
-{
+class Transfer(SSZContainer):
     # Sender index
     sender: uint64
     # Recipient index
@@ -509,7 +493,6 @@ The types are defined topologically to aid in facilitating an executable version
     pubkey: bytes48
     # Sender signature
     signature: bytes96
-}
 ```
 
 ### Beacon blocks
@@ -517,7 +500,7 @@ The types are defined topologically to aid in facilitating an executable version
 #### `BeaconBlockBody`
 
 ```python
-{
+class BeaconBlockBody(SSZContainer):
     randao_reveal: bytes96
     eth1_data: Eth1Data
     graffiti: bytes32
@@ -527,20 +510,18 @@ The types are defined topologically to aid in facilitating an executable version
     deposits: List[Deposit]
     voluntary_exits: List[VoluntaryExit]
     transfers: List[Transfer]
-}
 ```
 
 #### `BeaconBlock`
 
 ```python
-{
+class BeaconBlock(SSZContainer):
     # Header
     slot: uint64
     parent_root: bytes32
     state_root: bytes32
     body: BeaconBlockBody
     signature: bytes96
-}
 ```
 
 ### Beacon state
@@ -548,7 +529,7 @@ The types are defined topologically to aid in facilitating an executable version
 #### `BeaconState`
 
 ```python
-{
+class BeaconState(SSZContainer):
     # Misc
     slot: uint64
     genesis_time: uint64
@@ -589,7 +570,6 @@ The types are defined topologically to aid in facilitating an executable version
     latest_eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data]
     deposit_index: uint64
-}
 ```
 
 ## Custom types
