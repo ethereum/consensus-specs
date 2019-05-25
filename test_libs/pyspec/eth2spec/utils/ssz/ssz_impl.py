@@ -1,64 +1,13 @@
-from eth2spec.utils.merkle_minimal import merkleize_chunks
+from ..merkle_minimal import merkleize_chunks, hash
 from .ssz_typing import *
-
-
-# SSZ Defaults
-# -----------------------------
-
-
-def get_zero_value(typ):
-    if is_uint(typ):
-        return 0
-    if issubclass(typ, bool):
-        return False
-    if issubclass(typ, list):
-        return []
-    if issubclass(typ, Vector):
-        return typ()
-    if issubclass(typ, BytesN):
-        return typ()
-    if issubclass(typ, bytes):
-        return b''
-    if issubclass(typ, SSZContainer):
-        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields().items()}),
-
-
-# SSZ Helpers
-# -----------------------------
-
-
-def pack(values, subtype):
-    return b''.join([serialize(value, subtype) for value in values])
-
-
-def chunkify(byte_string):
-    byte_string += b'\x00' * (-len(byte_string) % 32)
-    return [byte_string[i:i + 32] for i in range(0, len(byte_string), 32)]
-
 
 # SSZ Serialization
 # -----------------------------
 
 BYTES_PER_LENGTH_OFFSET = 4
 
-serialize = ssz_switch({
-    ssz_bool: lambda value: b'\x01' if value else b'\x00',
-    ssz_uint: lambda value, byte_len: value.to_bytes(byte_len, 'little'),
-    ssz_list: lambda value, elem_typ: encode_series(value, [elem_typ] * len(value)),
-    ssz_vector: lambda value, elem_typ, length: encode_series(value, [elem_typ] * length),
-    ssz_container: lambda value, get_field_values, field_types: encode_series(get_field_values(value), field_types),
-})
-
-is_fixed_size = ssz_type_switch({
-    ssz_basic_type: lambda: True,
-    ssz_vector: lambda elem_typ: is_fixed_size(elem_typ),
-    ssz_container: lambda field_types: all(is_fixed_size(f_typ) for f_typ in field_types),
-    ssz_list: lambda: False,
-})
-
-
-# SSZ Hash-tree-root
-# -----------------------------
+def is_basic_type(typ):
+    return is_uint(typ) or typ == bool
 
 def serialize_basic(value, typ):
     if is_uint(typ):
@@ -69,41 +18,29 @@ def serialize_basic(value, typ):
         else:
             return b'\x00'
 
-
-def pack(values, subtype):
-    return b''.join([serialize_basic(value, subtype) for value in values])
-
-
-def is_basic_type(typ):
-    return is_uint(typ) or issubclass(typ, bool)
-
-
-def hash_tree_root_list(value, elem_typ):
-    if is_basic_type(elem_typ):
-        return merkleize_chunks(chunkify(pack(value, elem_typ)))
+def is_fixed_size(typ):
+    if is_basic_type(typ):
+        return True
+    elif is_list_type(typ):
+        return False
+    elif is_vector_type(typ):
+        return is_fixed_size(read_vector_elem_typ(typ))
+    elif is_container_typ(typ):
+        return all([is_fixed_size(t) for t in typ.get_field_types()])
     else:
-        return merkleize_chunks([hash_tree_root(element, elem_typ) for element in value])
+        raise Exception("Type not supported: {}".format(typ))
 
-
-def mix_in_length(root, length):
-    return hash(root + length.to_bytes(32, 'little'))
-
-
-def hash_tree_root_container(fields):
-    return merkleize_chunks([hash_tree_root(field, subtype) for field, subtype in fields])
-
-
-hash_tree_root = ssz_switch({
-    ssz_basic_type: lambda value, typ: merkleize_chunks(chunkify(pack([value], typ))),
-    ssz_list: lambda value, elem_typ: mix_in_length(hash_tree_root_list(value, elem_typ), len(value)),
-    ssz_vector: lambda value, elem_typ: hash_tree_root_list(value, elem_typ),
-    ssz_container: lambda value, get_field_values, field_types: hash_tree_root_container(zip(get_field_values(value), field_types)),
-})
-
-# todo: signing root
-def signing_root(value, typ):
-    pass
-
+def serialize(obj, typ=None):
+    if typ is None:
+        typ = infer_type(obj)
+    if is_basic_type(typ):
+        return serialize_basic(obj, typ)
+    elif is_list_type(typ) or is_vector_type(typ):
+        return encode_series(list(obj), [read_elem_typ(typ)]*len(obj))
+    elif is_container_typ(typ):
+        return encode_series(obj.get_field_values(), typ.get_field_types())
+    else:
+        raise Exception("Type not supported: {}".format(typ))
 
 def encode_series(values, types):
     # bytes and bytesN are already in the right format.
@@ -138,6 +75,46 @@ def encode_series(values, types):
     # Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
     return b''.join(fixed_parts + variable_parts)
 
+# SSZ Hash-tree-root
+# -----------------------------
+
+def pack(values, subtype):
+    if isinstance(values, bytes):
+        return values
+    return b''.join([serialize_basic(value, subtype) for value in values])
+
+def chunkify(bytez):
+    bytez += b'\x00' * (-len(bytez) % 32)
+    return [bytez[i:i + 32] for i in range(0, len(bytez), 32)]
+
+def mix_in_length(root, length):
+    return hash(root + length.to_bytes(32, 'little'))
+
+def hash_tree_root(obj, typ=None):
+    if typ is None:
+        typ = infer_type(obj)
+    if is_basic_type(typ):
+        return merkleize_chunks(chunkify(serialize_basic(obj, typ)))
+    elif is_list_type(typ) or is_vector_type(typ):
+        subtype = read_elem_typ(typ)
+        if is_basic_type(subtype):
+            leaves = chunkify(pack(obj, subtype))
+        else:
+            leaves = [hash_tree_root(elem, subtype) for elem in obj]
+        leaf_root = merkleize_chunks(leaves)
+        return mix_in_length(leaf_root, len(obj)) if is_list_type(typ) else leaf_root
+    elif is_container_typ(typ):
+        leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in zip(obj.get_field_values(), typ.get_field_types())]
+        return merkleize_chunks(chunkify(b''.join(leaves)))
+    else:
+        raise Exception("Type not supported: obj {} type {}".format(obj, typ))
+
+def signing_root(value, typ):
+    if typ is None:
+        typ = infer_type(obj)
+    assert is_container_typ(typ)
+    leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in zip(obj.get_field_values(), typ.get_field_types())[:-1]]
+    return merkleize_chunks(chunkify(b''.join(leaves)))
 
 # Implementation notes:
 # - SSZContainer,Vector/BytesN.hash_tree_root/serialize functions are for ease, implementation here

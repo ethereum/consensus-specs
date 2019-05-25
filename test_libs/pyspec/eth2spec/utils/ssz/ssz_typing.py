@@ -3,14 +3,7 @@ from typing import Union
 from inspect import isclass
 
 T = TypeVar('T')
-
-# SSZ list
-# -----------------------------
-
-
-def read_list_elem_typ(list_typ: Type[List[T]]) -> T:
-    assert list_typ.__args__ is not None
-    return list_typ.__args__[0]
+L = TypeVar('L')
 
 
 
@@ -41,7 +34,6 @@ class SSZContainer(object):
 
     def __init__(self, **kwargs):
         cls = self.__class__
-        from .ssz_impl import get_zero_value
         for f, t in cls.get_fields().items():
             if f not in kwargs:
                 setattr(self, f, get_zero_value(t))
@@ -125,7 +117,11 @@ class VectorMeta(type):
         return out
 
     def __getitem__(self, params):
-        return self.__class__(self.__name__, (Vector,), {'elem_type': params[0], 'length': params[1]})
+        if not isinstance(params, tuple) or len(params) != 2:
+            raise Exception("Vector must be instantiated with two args: elem type and length")
+        o = self.__class__(self.__name__, (Vector,), {'elem_type': params[0], 'length': params[1]})
+        o._name = 'Vector'
+        return o
 
     def __subclasscheck__(self, sub):
         return _is_vector_instance_of(self, sub)
@@ -152,7 +148,6 @@ class Vector(metaclass=VectorMeta):
 
         if len(args) != cls.length:
             if len(args) == 0:
-                from .ssz_impl import get_zero_value
                 args = [get_zero_value(cls.elem_type) for _ in range(cls.length)]
             else:
                 raise TypeError("Typed vector with length %d cannot hold %d items" % (cls.length, len(args)))
@@ -218,6 +213,8 @@ class BytesNMeta(type):
         out = type.__new__(cls, class_name, parents, attrs)
         if 'length' in attrs:
             setattr(out, 'length', attrs['length'])
+        out._name = 'Vector'
+        out.elem_type = byte
         return out
 
     def __getitem__(self, n):
@@ -277,3 +274,63 @@ class BytesN(bytes, metaclass=BytesNMeta):
     def hash_tree_root(self):
         from .ssz_impl import hash_tree_root
         return hash_tree_root(self, self.__class__)
+
+# SSZ Defaults
+# -----------------------------
+
+def get_zero_value(typ):
+    if is_uint(typ):
+        return 0
+    if issubclass(typ, bool):
+        return False
+    if issubclass(typ, list):
+        return []
+    if issubclass(typ, Vector):
+        return typ()
+    if issubclass(typ, BytesN):
+        return typ()
+    if issubclass(typ, bytes):
+        return b''
+    if issubclass(typ, SSZContainer):
+        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields().items()}),
+
+# Type helpers
+# -----------------------------
+
+def infer_type(obj):
+    if is_uint(obj.__class__):
+        return obj.__class__
+    elif isinstance(obj, int):
+        return uint64
+    elif isinstance(obj, list):
+        return List[infer_type(obj[0])]
+    elif isinstance(obj, (Vector, SSZContainer, bool, BytesN, bytes)):
+        return obj.__class__
+    else:
+        raise Exception("Unknown type for {}".format(obj))
+
+def is_list_type(typ):
+    return (hasattr(typ, '_name') and typ._name == 'List') or typ == bytes
+
+def is_vector_type(typ):
+    return hasattr(typ, '_name') and typ._name == 'Vector'
+
+def is_container_typ(typ):
+    return hasattr(typ, 'get_fields')
+
+def read_list_elem_typ(list_typ: Type[List[T]]) -> T:
+    assert list_typ.__args__ is not None
+    return list_typ.__args__[0]
+
+def read_vector_elem_typ(vector_typ: Type[Vector[T, L]]) -> T:
+    return vector_typ.elem_type
+
+def read_elem_typ(typ):
+    if typ == bytes:
+        return byte
+    elif is_list_type(typ):
+        return read_list_elem_typ(typ)
+    elif is_vector_type(typ):
+        return read_vector_elem_typ(typ)
+    else:
+        raise Exception("Unexpected type: {}".format(typ))
