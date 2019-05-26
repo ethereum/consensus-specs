@@ -47,7 +47,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `PHASE_1_GENESIS_EPOCH` | **TBD** |
-| `PHASE_1_GENESIS_SLOT` | get_epoch_start_slot(PHASE_1_GENESIS_EPOCH) |
+| `PHASE_1_GENESIS_SLOT` | **TBD** |
 
 ### Time parameters
 
@@ -291,7 +291,7 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
     # Check beacon block
     beacon_block = beacon_blocks[candidate.slot]
     assert candidate.beacon_block_root == signing_root(beacon_block)
-    assert beacon_block.slot <= candidate.slot:
+    assert beacon_block.slot <= candidate.slot
 
     # Check state root
     assert candidate.state_root == ZERO_HASH  # [to be removed in phase 2]
@@ -344,9 +344,9 @@ def is_valid_shard_attestation(valid_shard_blocks: List[ShardBlock],
                                candidate: ShardAttestation) -> bool:
     # Check shard block
     shard_block = next(
-        block for block in valid_shard_blocks if
-        signing_root(block) == candidate.data.shard_block_root
-    , None)
+        (block for block in valid_shard_blocks if signing_root(block) == candidate.data.shard_block_root),
+        None,
+    )
     assert shard_block != None
     assert shard_block.slot == candidate.data.slot
     assert shard_block.shard == candidate.data.shard

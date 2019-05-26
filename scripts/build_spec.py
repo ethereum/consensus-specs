@@ -107,7 +107,7 @@ def apply_constants_preset(preset: Dict[str, Any]):
 '''
 
 
-def objects_to_spec(functions, constants, ssz_objects, imports, inserts={}):
+def objects_to_spec(functions, constants, ssz_objects, inserts, imports):
     new_type_definitions = '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]),constants))
@@ -174,9 +174,19 @@ def combine_ssz_objects(old_objects, new_objects):
 combine_inserts = combine_functions
 
 
+def combine_spec_objects(spec0, spec1):
+    functions0, constants0, ssz_objects0, inserts0 = spec0
+    functions1, constants1, ssz_objects1, inserts1 = spec1
+    functions = combine_functions(functions0, functions1)
+    constants = combine_constants(constants0, constants1)
+    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1)
+    inserts = combine_inserts(inserts0, inserts1)
+    return functions, constants, ssz_objects, inserts
+
+
 def build_phase0_spec(sourcefile, outfile=None):
-    functions, constants, ssz_objects, _ = function_puller.get_spec(sourcefile)
-    spec = objects_to_spec(functions, constants, ssz_objects, PHASE0_IMPORTS)
+    functions, constants, ssz_objects, inserts = function_puller.get_spec(sourcefile)
+    spec = objects_to_spec(functions, constants, ssz_objects, inserts, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -184,14 +194,14 @@ def build_phase0_spec(sourcefile, outfile=None):
         return spec
 
 
-def build_phase1_spec(phase0_sourcefile, phase1_sourcefile, outfile=None):
-    phase0_functions, phase0_constants, phase0_ssz_objects, phase0_inserts = function_puller.get_spec(phase0_sourcefile)
-    phase1_functions, phase1_constants, phase1_ssz_objects, phase1_inserts = function_puller.get_spec(phase1_sourcefile)
-    functions = combine_functions(phase0_functions, phase1_functions)
-    constants = combine_constants(phase0_constants, phase1_constants)
-    ssz_objects = combine_ssz_objects(phase0_ssz_objects, phase1_ssz_objects)
-    inserts = combine_inserts(phase0_inserts, phase1_inserts)
-    spec = objects_to_spec(functions, constants, ssz_objects, PHASE1_IMPORTS, inserts)
+def build_phase1_spec(phase0_sourcefile, phase1_custody_sourcefile, phase1_shard_sourcefile, outfile=None):
+    phase0_spec = function_puller.get_spec(phase0_sourcefile)
+    phase1_custody = function_puller.get_spec(phase1_custody_sourcefile)
+    phase1_shard_data = function_puller.get_spec(phase1_shard_sourcefile)
+    spec_objects = phase0_spec
+    for value in [phase1_custody, phase1_shard_data]:
+        spec_objects = combine_spec_objects(spec_objects, value)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -219,9 +229,10 @@ If building phase 1:
     if args.phase == 0:
         build_phase0_spec(*args.files)
     elif args.phase == 1:
-        if len(args.files) == 3:
+        print(args.files)
+        if len(args.files) == 4:
             build_phase1_spec(*args.files)
         else:
-            print(" Phase 1 requires an output as well as 2 input files (phase0.md and phase1.md)")
+            print(" Phase 1 requires an output as well as 3 input files (phase0.md and phase1.md, phase1.md)")
     else:
         print("Invalid phase: {0}".format(args.phase))
