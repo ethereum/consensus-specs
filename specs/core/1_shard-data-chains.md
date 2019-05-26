@@ -48,6 +48,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `PHASE_1_GENESIS_EPOCH` | **TBD** |
 | `PHASE_1_GENESIS_SLOT` | **TBD** |
+| `GENESIS_SHARD_SLOT` | 0 |
 
 ### Time parameters
 
@@ -55,6 +56,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 | - | - | :-: | :-: |
 | `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs  | 6.2 minutes |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
+| `SECONDS_PER_SLOT` | `2**1 * 3**1` (= 6) | 6 seconds |
 
 ### Signature domains
 
@@ -122,7 +124,11 @@ This document describes the shard data layer and the shard fork choice rule in P
 ### `get_period_committee`
 
 ```python
-def get_period_committee(state: BeaconState, epoch: Epoch, shard: Shard, index: int, count: int) -> List[ValidatorIndex]:
+def get_period_committee(state: BeaconState,
+                         epoch: Epoch,
+                         shard: Shard,
+                         index: int,
+                         count: int) -> List[ValidatorIndex]:
     """
     Return committee for a period. Used to construct persistent committees.
     """
@@ -139,7 +145,8 @@ def get_period_committee(state: BeaconState, epoch: Epoch, shard: Shard, index: 
 ```python
 def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex):
     earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
-    return bytes_to_int(hash(generate_seed(state, earlier_start_epoch) + bytes3(index))[0:8]) % PERSISTENT_COMMITTEE_PERIOD
+    return (bytes_to_int(hash(generate_seed(state, earlier_start_epoch) + bytes3(index))[0:8]) 
+            % PERSISTENT_COMMITTEE_PERIOD)
 ```
 
 ### `get_persistent_committee`
@@ -245,15 +252,15 @@ def compute_crosslink_data_root(blocks: List[ShardBlock]) -> Bytes32:
             values += [b'\x00' * BYTES_PER_SHARD_BLOCK_BODY]
         return values
 
-    def merkle_root_of_bytes(data: bytes) -> bytes:
-        return merkle_root([data[i:i + 32] for i in range(0, len(data), 32)])
+    def hash_tree_root_of_bytes(data: bytes) -> bytes:
+        return hash_tree_root([data[i:i + 32] for i in range(0, len(data), 32)])
 
     return hash(
-        merkle_root(pad_to_power_of_2([
-            merkle_root_of_bytes(zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)) for block in blocks
+        hash_tree_root(pad_to_power_of_2([
+            hash_tree_root_of_bytes(zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)) for block in blocks
         ])) +
-        merkle_root(pad_to_power_of_2([
-                merkle_root_of_bytes(block.body) for block in blocks
+        hash_tree_root(pad_to_power_of_2([
+                hash_tree_root_of_bytes(block.body) for block in blocks
         ]))
     )
 ```
@@ -301,10 +308,10 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
         assert candidate.parent_root == ZERO_HASH
     else:
         parent_block = next(
-            (block for block in valid_shard_blocks if
-            signing_root(block) == candidate.parent_root)
-        , None)
-        assert parent_block != None
+            (block for block in valid_shard_blocks if signing_root(block) == candidate.parent_root),
+            None
+        )
+        assert parent_block is not None
         assert parent_block.shard == candidate.shard
         assert parent_block.slot < candidate.slot
         assert signing_root(beacon_blocks[parent_block.slot]) == parent_block.beacon_chain_root
@@ -321,10 +328,10 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
     proposer_index = get_shard_proposer_index(beacon_state, candidate.shard, candidate.slot)
     assert proposer_index is not None
     assert bls_verify(
-        pubkey=validators[proposer_index].pubkey,
+        pubkey=beacon_state.validator_registry[proposer_index].pubkey,
         message_hash=signing_root(block),
         signature=candidate.signature,
-        domain=get_domain(beacon_state, slot_to_epoch(candidate.slot), DOMAIN_SHARD_PROPOSER)
+        domain=get_domain(beacon_state, slot_to_epoch(candidate.slot), DOMAIN_SHARD_PROPOSER),
     )
 
     return True
@@ -347,7 +354,7 @@ def is_valid_shard_attestation(valid_shard_blocks: List[ShardBlock],
         (block for block in valid_shard_blocks if signing_root(block) == candidate.data.shard_block_root),
         None,
     )
-    assert shard_block != None
+    assert shard_block is not None
     assert shard_block.slot == candidate.data.slot
     assert shard_block.shard == candidate.data.shard
 
@@ -384,13 +391,14 @@ def is_valid_beacon_attestation(shard: Shard,
     else:
         previous_attestation = next(
             (attestation for attestation in valid_attestations if
-            attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root)
-        , None)
-        assert previous_attestation != None
+                attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root),
+            None,
+        )
+        assert previous_attestation is not None
         assert candidate.data.previous_attestation.epoch < slot_to_epoch(candidate.data.slot)
 
     # Check crosslink data root
-    start_epoch = state.latest_crosslinks[shard].epoch
+    start_epoch = beacon_state.latest_crosslinks[shard].epoch
     end_epoch = min(slot_to_epoch(candidate.data.slot) - CROSSLINK_LOOKBACK, start_epoch + MAX_EPOCHS_PER_CROSSLINK)
     blocks = []
     for slot in range(start_epoch * SLOTS_PER_EPOCH, end_epoch * SLOTS_PER_EPOCH):
