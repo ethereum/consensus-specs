@@ -963,9 +963,9 @@ def bytes_to_int(data: bytes) -> int:
 ```python
 def get_total_balance(state: BeaconState, indices: List[ValidatorIndex]) -> Gwei:
     """
-    Return the combined effective balance of an array of ``validators``.
+    Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
-    return sum([state.validator_registry[index].effective_balance for index in indices])
+    return max(sum([state.validator_registry[index].effective_balance for index in indices]), 1)
 ```
 
 ### `get_domain`
@@ -1413,10 +1413,9 @@ def process_crosslinks(state: BeaconState) -> None:
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    adjusted_quotient = integer_squareroot(get_total_active_balance(state)) // BASE_REWARD_QUOTIENT
-    if adjusted_quotient == 0:
-        return 0
-    return state.validator_registry[index].effective_balance // adjusted_quotient // BASE_REWARDS_PER_EPOCH
+    total_balance = get_total_active_balance(state)
+    effective_balance = state.validator_registry[index].effective_balance
+    return effective_balance * BASE_REWARD_QUOTIENT // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH
 ```
 
 ```python
@@ -1531,10 +1530,9 @@ def process_registry_updates(state: BeaconState) -> None:
 ```python
 def process_slashings(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    active_validator_indices = get_active_validator_indices(state, current_epoch)
-    total_balance = get_total_balance(state, active_validator_indices)
+    total_balance = get_total_active_balance(state)
 
-    # Compute `total_penalties`
+    # Compute slashed balances in the current epoch
     total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
     total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
     total_penalties = total_at_end - total_at_start
