@@ -138,7 +138,7 @@ def fill_aggregate_attestation(state, attestation):
 
 
 def add_attestation_to_state(state, attestation, slot):
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot = slot
     block.body.attestations.append(attestation)
     state_transition_to(state, block.slot)

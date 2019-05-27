@@ -69,7 +69,7 @@ def test_invalid_sig_new_deposit(state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
     yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=False)
 
 
@@ -87,7 +87,7 @@ def test_success_top_up(state):
 def test_invalid_sig_top_up(state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
-    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
 
     # invalid signatures, in top-ups, are allowed!
     yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=True)
@@ -97,7 +97,7 @@ def test_invalid_sig_top_up(state):
 def test_wrong_index(state):
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
 
     # mess up deposit_index
     deposit.index = state.deposit_index + 1
@@ -114,7 +114,7 @@ def test_wrong_index(state):
 def test_bad_merkle_proof(state):
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=False)
+    deposit = prepare_state_and_deposit(state, validator_index, amount)
 
     # mess up merkle branch
     deposit.proof[-1] = spec.ZERO_HASH

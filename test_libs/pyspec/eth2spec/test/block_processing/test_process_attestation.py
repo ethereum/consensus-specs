@@ -75,7 +75,7 @@ def test_success_previous_epoch(state):
 @always_bls
 @spec_state_test
 def test_invalid_attestation_signature(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     yield from run_attestation_processing(state, attestation, False)
@@ -105,7 +105,7 @@ def test_old_source_epoch(state):
     state.finalized_epoch = 2
     state.previous_justified_epoch = 3
     state.current_justified_epoch = 4
-    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1, signed=False)
+    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
 
     # test logic sanity check: make sure the attestation is pointing to oldest known source epoch
     assert attestation.data.source_epoch == state.previous_justified_epoch
@@ -120,7 +120,7 @@ def test_old_source_epoch(state):
 
 @spec_state_test
 def test_wrong_shard(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.shard += 1
@@ -132,7 +132,7 @@ def test_wrong_shard(state):
 
 @spec_state_test
 def test_new_source_epoch(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_epoch += 1
@@ -144,7 +144,7 @@ def test_new_source_epoch(state):
 
 @spec_state_test
 def test_source_root_is_target_root(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_root = attestation.data.target_root
@@ -165,7 +165,7 @@ def test_invalid_current_source_root(state):
     state.current_justified_epoch = 4
     state.current_justified_root = b'\xff' * 32
 
-    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1, signed=False)
+    attestation = get_valid_attestation(state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     # Test logic sanity checks:
@@ -182,7 +182,7 @@ def test_invalid_current_source_root(state):
 
 @spec_state_test
 def test_bad_source_root(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.source_root = b'\x42' * 32
@@ -194,7 +194,7 @@ def test_bad_source_root(state):
 
 @spec_state_test
 def test_non_zero_crosslink_data_root(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.data.crosslink_data_root = b'\x42' * 32
@@ -221,7 +221,7 @@ def test_bad_previous_crosslink(state):
 
 @spec_state_test
 def test_inconsistent_bitfields(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield) + b'\x00'
@@ -233,7 +233,7 @@ def test_inconsistent_bitfields(state):
 
 @spec_state_test
 def test_non_empty_custody_bitfield(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield)
@@ -245,7 +245,7 @@ def test_non_empty_custody_bitfield(state):
 
 @spec_state_test
 def test_empty_aggregation_bitfield(state):
-    attestation = get_valid_attestation(state, signed=False)
+    attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.aggregation_bitfield = b'\x00' * len(attestation.aggregation_bitfield)

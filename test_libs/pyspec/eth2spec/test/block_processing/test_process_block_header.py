@@ -50,13 +50,13 @@ def test_success_block_header(state):
 @always_bls
 @spec_state_test
 def test_invalid_sig_block_header(state):
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     yield from run_block_header_processing(state, block, valid=False)
 
 
 @spec_state_test
 def test_invalid_slot_block_header(state):
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot = state.slot + 2  # invalid slot
     sign_block(state, block)
 
@@ -65,7 +65,7 @@ def test_invalid_slot_block_header(state):
 
 @spec_state_test
 def test_invalid_previous_block_root(state):
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.previous_block_root = b'\12' * 32  # invalid prev root
     sign_block(state, block)
 

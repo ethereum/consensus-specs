@@ -86,7 +86,7 @@ def test_success_active_above_max_effective_fee(state):
 @always_bls
 @spec_state_test
 def test_invalid_signature(state):
-    transfer = get_valid_transfer(state, signed=False)
+    transfer = get_valid_transfer(state)
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
     

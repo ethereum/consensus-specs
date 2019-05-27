@@ -62,7 +62,7 @@ def test_invalid_signature(state):
     validator_index = get_active_validator_indices(state, current_epoch)[0]
     privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
 
-    voluntary_exit = build_voluntary_exit(state, current_epoch, validator_index, privkey, signed=False)
+    voluntary_exit = build_voluntary_exit(state, current_epoch, validator_index, privkey)
 
     yield from run_voluntary_exit_processing(state, voluntary_exit, False)
 

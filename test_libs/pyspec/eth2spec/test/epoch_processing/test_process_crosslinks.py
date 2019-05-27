@@ -21,6 +21,7 @@ from eth2spec.test.helpers.attestations import (
     fill_aggregate_attestation,
     get_crosslink_committee,
     get_valid_attestation,
+    sign_attestation,
 )
 
 
@@ -33,7 +34,7 @@ def run_process_crosslinks(state, valid=True):
     """
     # transition state to slot before state transition
     slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH) - 1
-    block = build_empty_block_for_next_slot(state, signed=False)
+    block = build_empty_block_for_next_slot(state)
     block.slot = slot
     sign_block(state, block)
     state_transition(state, block)
@@ -103,19 +104,24 @@ def test_single_crosslink_update_from_previous_epoch(state):
 
 @spec_state_test
 def test_double_late_crosslink(state):
+    if spec.get_epoch_committee_count(state, spec.get_current_epoch(state)) < spec.SHARD_COUNT:
+        print("warning: ignoring test, test-assumptions are incompatible with configuration")
+        return
+
     next_epoch(state)
     state.slot += 4
 
     attestation_1 = get_valid_attestation(state, signed=True)
     fill_aggregate_attestation(state, attestation_1)
 
-    # add attestation_1 in the next epoch
+    # add attestation_1 to next epoch
     next_epoch(state)
     add_attestation_to_state(state, attestation_1, state.slot + 1)
 
     for slot in range(spec.SLOTS_PER_EPOCH):
-        attestation_2 = get_valid_attestation(state, signed=True)
+        attestation_2 = get_valid_attestation(state)
         if attestation_2.data.shard == attestation_1.data.shard:
+            sign_attestation(state, attestation_2)
             break
         next_slot(state)
     apply_empty_block(state)
