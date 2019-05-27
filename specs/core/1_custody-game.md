@@ -38,6 +38,16 @@
         - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
         - [`get_validators_custody_reveal_period`](#get_validators_custody_reveal_period)
+        - [`replace_empty_or_append`](#replace_empty_or_append)
+    - [Per-block processing](#per-block-processing)
+        - [Operations](#operations)
+            - [Custody key reveals](#custody-key-reveals)
+            - [Early derived secret reveals](#early-derived-secret-reveals)
+            - [Chunk challenges](#chunk-challenges)
+            - [Bit challenges](#bit-challenges)
+            - [Custody responses](#custody-responses)
+    - [Per-epoch processing](#per-epoch-processing)
+        - [Handling of custody-related deadlines](#handling-of-custody-related-deadlines)
 
 <!-- /TOC -->
 
@@ -289,7 +299,7 @@ def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorI
 
 ### `get_validators_custody_reveal_period`
 
- ```python
+```python
 def get_validators_custody_reveal_period(state: BeaconState,
                                          validator_index: ValidatorIndex,
                                          epoch: Epoch=None) -> int:
@@ -370,7 +380,7 @@ def process_custody_key_reveal(state: BeaconState,
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 
-##### Early derived secret reveals
+#### Early derived secret reveals
 
 Verify that `len(block.body.early_derived_secret_reveals) <= MAX_EARLY_DERIVED_SECRET_REVEALS`.
 
@@ -691,26 +701,4 @@ Append this to `process_final_updates(state)`:
         if index not in validator_indices_in_records:
             if validator.exit_epoch != FAR_FUTURE_EPOCH and validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
                 validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-```
-
-In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
-
-```python
-def eligible(state: BeaconState, index: ValidatorIndex) -> bool:
-    validator = state.validator_registry[index]
-    # Cannot exit if there are still open chunk challenges
-    if len([record for record in state.custody_chunk_challenge_records if record.responder_index == index]) > 0:
-        return False
-    # Cannot exit if there are still open bit challenges
-    if len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
-        return False
-    # Cannot exit if you have not revealed all of your custody keys
-    elif validator.next_custody_reveal_period <= get_validators_custody_reveal_period(state, index, validator.exit_epoch):
-        return False
-    # Cannot exit if you already have
-    elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
-        return False
-    # Return minimum time
-    else:
-        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
 ```
