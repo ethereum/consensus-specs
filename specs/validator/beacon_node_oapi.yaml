@@ -83,7 +83,7 @@ paths:
                   chain_id:
                     type: integer
                     format: uint64
-                    description: "Sometimes called the network id, this number discerns the active chain for the beacon node. Analagous to Eth1.0 JSON-RPC net_version."
+                    description: "Sometimes called the network id, this number discerns the active chain for the beacon node. Analogous to Eth1.0 JSON-RPC net_version."
         500:
           $ref: '#/components/responses/InternalError'
 
@@ -92,7 +92,7 @@ paths:
       tags:
         - MinimalSet
       summary: "Get validator duties for the requested validators."
-      description: "Requests the beacon node to provide a set of _duties_, which are actions that should be performed by validators, for a particular epoch. Duties should only need to be checked once per epoch, however a chain reorganisation (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, this API call should be polled at every slot to ensure that chain reorganisations are recognised, and to ensure that the beacon node is properly synchronized."
+      description: "Requests the beacon node to provide a set of _duties_, which are actions that should be performed by validators, for a particular epoch. Duties should only need to be checked once per epoch, however a chain reorganization (of > MIN_SEED_LOOKAHEAD epochs) could occur, resulting in a change of duties. For full safety, this API call should be polled at every slot to ensure that chain reorganizations are recognized, and to ensure that the beacon node is properly synchronized."
       parameters:
       - name: validator_pubkeys
         in: query
@@ -200,9 +200,12 @@ paths:
       - name: poc_bit
         in: query
         required: true
-        description: "The proof-of-custody bit that is reported by this "
+        description: "The proof-of-custody bit that is to be reported by the requesting validator. This bit will be inserted into the appropriate location in the returned `IndexedAttestation`."
         schema:
-            # Still need to establish a schema for this.
+            type: integer
+            format: uint32
+            minimum: 0
+            maximum: 1
       - name: slot
         in: query
         required: true
