@@ -3,22 +3,22 @@ from eth2spec.utils.ssz.ssz_typing import *
 
 
 def decode(data, typ):
-    if is_uint(typ):
+    if is_uint_type(typ):
         return data
     elif is_bool_type(typ):
         assert data in (True, False)
         return data
-    elif issubclass(typ, list):
-        elem_typ = read_list_elem_typ(typ)
+    elif is_list_type(typ):
+        elem_typ = read_list_elem_type(typ)
         return [decode(element, elem_typ) for element in data]
-    elif issubclass(typ, Vector):
-        elem_typ = read_vector_elem_typ(typ)
+    elif is_vector_type(typ):
+        elem_typ = read_vector_elem_type(typ)
         return Vector(decode(element, elem_typ) for element in data)
-    elif issubclass(typ, bytes):
+    elif is_bytes_type(typ):
         return bytes.fromhex(data[2:])
-    elif issubclass(typ, BytesN):
+    elif is_bytesn_type(typ):
         return BytesN(bytes.fromhex(data[2:]))
-    elif is_container_typ(typ):
+    elif is_container_type(typ):
         temp = {}
         for field, subtype in typ.get_fields():
             temp[field] = decode(data[field], subtype)

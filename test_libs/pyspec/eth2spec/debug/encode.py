@@ -3,19 +3,20 @@ from eth2spec.utils.ssz.ssz_typing import *
 
 
 def encode(value, typ, include_hash_tree_roots=False):
-    if is_uint(typ):
+    if is_uint_type(typ):
+        # Larger uints are boxed and the class declares their byte length
         if issubclass(typ, uint) and typ.byte_len > 8:
             return str(value)
         return value
     elif is_bool_type(typ):
         assert value in (True, False)
         return value
-    elif issubclass(typ, list) or issubclass(typ, Vector):
-        elem_typ = read_elem_typ(typ)
+    elif is_list_type(typ) or is_vector_type(typ):
+        elem_typ = read_elem_type(typ)
         return [encode(element, elem_typ, include_hash_tree_roots) for element in value]
-    elif issubclass(typ, bytes):
+    elif issubclass(typ, bytes): # both bytes and BytesN
         return '0x' + value.hex()
-    elif is_container_typ(typ):
+    elif is_container_type(typ):
         ret = {}
         for field, subtype in typ.get_fields():
             field_value = getattr(value, field)
