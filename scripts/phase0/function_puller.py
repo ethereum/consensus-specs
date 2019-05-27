@@ -66,7 +66,7 @@ def get_spec(file_name: str) -> List[str]:
     code_lines.append('\n')
     code_lines.append('ssz_types = [\n')
     for (ssz_type_name, _) in type_defs:
-        code_lines.append(f'    {ssz_type_name},\n')
+        code_lines.append(f'    "{ssz_type_name}",\n')
     code_lines.append(']')
     code_lines.append('\n')
     code_lines.append('def get_ssz_type_by_name(name: str) -> SSZType:')
