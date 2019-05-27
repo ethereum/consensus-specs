@@ -2,9 +2,6 @@ from copy import deepcopy
 
 from py_ecc import bls
 
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 import eth2spec.phase0.spec as spec
 from eth2spec.utils.minimal_ssz import signing_root
 from eth2spec.phase0.spec import (
@@ -27,6 +24,7 @@ from eth2spec.phase0.spec import (
     VoluntaryExit,
     # functions
     convert_to_indexed,
+    bls_domain,
     get_active_validator_indices,
     get_attesting_indices,
     get_block_root,
@@ -40,6 +38,7 @@ from eth2spec.phase0.spec import (
     get_shard_delta,
     hash_tree_root,
     slot_to_epoch,
+    state_transition,
     verify_merkle_branch,
     hash,
 )
@@ -53,6 +52,10 @@ from eth2spec.utils.merkle_minimal import (
 privkeys = [i + 1 for i in range(1024)]
 pubkeys = [bls.privtopub(privkey) for privkey in privkeys]
 pubkey_to_privkey = {pubkey: privkey for privkey, pubkey in zip(privkeys, pubkeys)}
+
+
+def advance_slot(state) -> None:
+    state.slot += 1
 
 
 def get_balance(state, index):
@@ -142,10 +145,7 @@ def build_deposit_data(state, pubkey, privkey, amount):
     signature = bls.sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
-        domain=get_domain(
-            state,
-            spec.DOMAIN_DEPOSIT,
-        )
+        domain=bls_domain(spec.DOMAIN_DEPOSIT),
     )
     deposit_data.signature = signature
     return deposit_data
@@ -175,6 +175,7 @@ def build_attestation_data(state, slot, shard):
         justified_block_root = state.current_justified_root
 
     crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(state) else state.previous_crosslinks
+    parent_crosslink = crosslinks[shard]
     return AttestationData(
         beacon_block_root=block_root,
         source_epoch=justified_epoch,
@@ -183,9 +184,10 @@ def build_attestation_data(state, slot, shard):
         target_root=epoch_boundary_root,
         crosslink=Crosslink(
             shard=shard,
-            epoch=min(slot_to_epoch(slot), crosslinks[shard].epoch + MAX_EPOCHS_PER_CROSSLINK),
+            start_epoch=parent_crosslink.end_epoch,
+            end_epoch=min(slot_to_epoch(slot), parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK),
             data_root=spec.ZERO_HASH,
-            parent_root=hash_tree_root(crosslinks[shard]),
+            parent_root=hash_tree_root(parent_crosslink),
         ),
     )
 

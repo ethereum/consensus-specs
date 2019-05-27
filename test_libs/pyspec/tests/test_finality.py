@@ -4,9 +4,6 @@ import pytest
 
 import eth2spec.phase0.spec as spec
 
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 from .helpers import (
     build_empty_block_for_next_slot,
     fill_aggregate_attestation,
@@ -67,7 +64,7 @@ def next_epoch_with_attestations(state,
             fill_aggregate_attestation(post_state, prev_attestation)
             block.body.attestations.append(prev_attestation)
 
-        state_transition(post_state, block)
+        spec.state_transition(post_state, block)
         blocks.append(block)
 
     return state, blocks, post_state
