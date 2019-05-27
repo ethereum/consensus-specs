@@ -2,7 +2,7 @@ from random import Random
 
 from eth2spec.debug import random_value, encode
 from eth2spec.phase0 import spec
-from eth2spec.utils.minimal_ssz import (
+from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
     serialize,
