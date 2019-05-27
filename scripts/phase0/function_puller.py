@@ -70,10 +70,10 @@ def get_spec(file_name: str) -> List[str]:
                 code_lines.append('    ' + type_line)
     code_lines.append('\n')
     for (ssz_type_name, _) in type_defs:
-        code_lines.append(f'    global_vars["{ssz_type_name}"] = {ssz_type_name},')
+        code_lines.append(f'    global_vars["{ssz_type_name}"] = {ssz_type_name}')
     code_lines.append('    global_vars["ssz_types"] = [')
     for (ssz_type_name, _) in type_defs:
-        code_lines.append(f'        {ssz_type_name},')
+        code_lines.append(f'        "{ssz_type_name}",')
     code_lines.append('    ]')
     code_lines.append('\n')
     code_lines.append('def get_ssz_type_by_name(name: str) -> Container:')
