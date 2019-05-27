@@ -14,7 +14,7 @@ def is_basic_type(typ):
 def serialize_basic(value, typ):
     if is_uint(typ):
         return value.to_bytes(uint_byte_size(typ), 'little')
-    if issubclass(typ, bool):
+    if is_bool_type(typ):
         if value:
             return b'\x01'
         else:
@@ -39,7 +39,7 @@ def serialize(obj, typ):
     if is_basic_type(typ):
         return serialize_basic(obj, typ)
     elif is_list_type(typ) or is_vector_type(typ):
-        return encode_series(list(obj), [read_elem_typ(typ)]*len(obj))
+        return encode_series(obj, [read_elem_typ(typ)]*len(obj))
     elif is_container_typ(typ):
         return encode_series(obj.get_field_values(), typ.get_field_types())
     else:

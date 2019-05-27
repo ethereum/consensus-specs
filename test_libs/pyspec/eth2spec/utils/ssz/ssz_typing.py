@@ -376,12 +376,20 @@ def infer_input_type(fn):
         return fn(obj, typ)
     return infer_helper
 
+def is_bool_type(typ):
+    return issubclass(typ, bool)
 
 def is_list_type(typ):
+    """
+    Checks if the given type is a kind of list. Can be bytes.
+    """
     return (hasattr(typ, '_name') and typ._name == 'List') or typ == bytes
 
 def is_vector_type(typ):
-    return issubclass(typ, Vector)
+    """
+    Checks if the given type is a kind of vector. Can be BytesN.
+    """
+    return issubclass(typ, Vector) or issubclass(typ, BytesN)
 
 def is_container_typ(typ):
     return issubclass(typ, Container)
