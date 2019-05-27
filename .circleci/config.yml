@@ -128,4 +128,4 @@ workflows:
             - test
       - deposit_contract:
           requires:
-            - test
+            - lint
