@@ -64,7 +64,7 @@ jobs:
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Install pyspec requirements
-          command: make install_test && make install_lint
+          command: make install_test && make install_lint && make install_deposit_contract_test
       - save_cached_venv:
           venv_name: v1-pyspec-03
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
@@ -97,6 +97,19 @@ jobs:
       - run:
           name: Run linter
           command: make lint
+  deposit_contract:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_cached_venv:
+          venv_name: v1-pyspec-03
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - run:
+          name: Run deposit contract test
+          command: make test_deposit_contract
 workflows:
   version: 2.1
   test_spec:
@@ -109,5 +122,8 @@ workflows:
           requires:
             - install_env
       - lint:
+          requires:
+            - test
+      - deposit_contract:
           requires:
             - test

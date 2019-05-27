@@ -5,10 +5,6 @@ import re
 
 import pytest
 
-from deposit_contract.contracts.utils import (
-    get_deposit_contract_code,
-    get_deposit_contract_json,
-)
 import eth_tester
 from eth_tester import (
     EthereumTester,
@@ -21,6 +17,11 @@ from web3 import Web3
 from web3.providers.eth_tester import (
     EthereumTesterProvider,
 )
+from .utils import (
+    get_deposit_contract_code,
+    get_deposit_contract_json,
+)
+
 
 # Constants
 MIN_DEPOSIT_AMOUNT = 1000000000  # Gwei

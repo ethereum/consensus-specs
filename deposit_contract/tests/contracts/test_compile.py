@@ -1,9 +1,10 @@
-from deposit_contract.contracts.utils import (
-    get_deposit_contract_code,
-    get_deposit_contract_json,
-)
 from vyper import (
     compiler,
+)
+
+from .utils import (
+    get_deposit_contract_code,
+    get_deposit_contract_json,
 )
 
 

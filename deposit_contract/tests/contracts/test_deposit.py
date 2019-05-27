@@ -13,22 +13,13 @@ from tests.contracts.conftest import (
     FULL_DEPOSIT_AMOUNT,
     MIN_DEPOSIT_AMOUNT,
 )
-from eth2spec.utils.minimal_ssz import
+from eth2spec.utils.minimal_ssz import (
     SSZType,
     hash_tree_root,
 )
-
-
-DepositData = SSZType({
-    # BLS pubkey
-    'pubkey': 'bytes48',
-    # Withdrawal credentials
-    'withdrawal_credentials': 'bytes32',
-    # Amount in Gwei
-    'amount': 'uint64',
-    # Container self-signature
-    'signature': 'bytes96',
-})
+from eth2spec.phase0.spec import (
+    DepositData,
+)
 
 
 def hash(data):

@@ -4,6 +4,7 @@ TEST_LIBS_DIR = ./test_libs
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 YAML_TEST_DIR = ./eth2.0-spec-tests/tests
 GENERATOR_DIR = ./test_generators
+DEPOSIT_CONTRACT_DIR = ./deposit_contract
 CONFIGS_DIR = ./configs
 
 # Collect a list of generator names
@@ -45,6 +46,15 @@ install_lint:
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
 	flake8 --max-line-length=120 ./eth2spec;
+
+install_deposit_contract_test:
+	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
+	cd ../..; cd $(DEPOSIT_CONTRACT_DIR); \
+	pip3 install -r requirements-testing.txt
+
+test_deposit_contract:
+	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
+	cd ../.. && cd $(DEPOSIT_CONTRACT_DIR) && python -m pytest .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
