@@ -28,6 +28,11 @@ def run_process_registry_updates(state, valid=True):
     # cache state before epoch transition
     spec.cache_state(state)
 
+    # process components of epoch transition before registry update
+    spec.process_justification_and_finalization(state)
+    spec.process_crosslinks(state)
+    spec.process_rewards_and_penalties(state)
+
     yield 'pre', state
     process_registry_updates(state)
     yield 'post', state
