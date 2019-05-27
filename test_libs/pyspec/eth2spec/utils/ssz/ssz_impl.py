@@ -110,7 +110,7 @@ def hash_tree_root(obj, typ):
         else:
             leaves = [hash_tree_root(elem, subtype) for elem in obj]
         leaf_root = merkleize_chunks(leaves)
-        return mix_in_length(leaf_root, len(obj)) if is_list_type(typ) else leaf_root
+        return mix_in_length(leaf_root, len(obj)) if is_list_kind(typ) else leaf_root
     elif is_container_type(typ):
         leaves = [hash_tree_root(field_value, field_typ) for field_value, field_typ in obj.get_typed_values()]
         return merkleize_chunks(chunkify(b''.join(leaves)))
