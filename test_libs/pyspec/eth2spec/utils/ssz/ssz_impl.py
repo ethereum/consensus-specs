@@ -104,7 +104,7 @@ def hash_tree_root(obj, typ=None):
         leaf_root = merkleize_chunks(leaves)
         return mix_in_length(leaf_root, len(obj)) if is_list_type(typ) else leaf_root
     elif is_container_typ(typ):
-        leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in zip(obj.get_field_values(), typ.get_field_types())]
+        leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields().items()]
         return merkleize_chunks(chunkify(b''.join(leaves)))
     else:
         raise Exception("Type not supported: obj {} type {}".format(obj, typ))
@@ -113,11 +113,11 @@ def signing_root(value, typ):
     if typ is None:
         typ = infer_type(obj)
     assert is_container_typ(typ)
-    leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in zip(obj.get_field_values(), typ.get_field_types())[:-1]]
+    leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields().items()]
     return merkleize_chunks(chunkify(b''.join(leaves)))
 
 # Implementation notes:
-# - SSZContainer,Vector/BytesN.hash_tree_root/serialize functions are for ease, implementation here
+# - Container,Vector/BytesN.hash_tree_root/serialize functions are for ease, implementation here
 # - uint types have a 'byte_len' attribute
 # - uint types are not classes. They use NewType(), for performance.
 #    This forces us to check type equivalence by exact reference.

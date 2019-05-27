@@ -30,7 +30,7 @@ byte = NewType('byte', uint8)
 
 # Note: importing ssz functionality locally, to avoid import loop
 
-class SSZContainer(object):
+class Container(object):
 
     def __init__(self, **kwargs):
         cls = self.__class__
@@ -291,7 +291,7 @@ def get_zero_value(typ):
         return typ()
     if issubclass(typ, bytes):
         return b''
-    if issubclass(typ, SSZContainer):
+    if issubclass(typ, Container):
         return typ(**{f: get_zero_value(t) for f, t in typ.get_fields().items()}),
 
 # Type helpers
@@ -304,7 +304,7 @@ def infer_type(obj):
         return uint64
     elif isinstance(obj, list):
         return List[infer_type(obj[0])]
-    elif isinstance(obj, (Vector, SSZContainer, bool, BytesN, bytes)):
+    elif isinstance(obj, (Vector, Container, bool, BytesN, bytes)):
         return obj.__class__
     else:
         raise Exception("Unknown type for {}".format(obj))
