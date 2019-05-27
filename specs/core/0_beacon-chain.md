@@ -268,11 +268,11 @@ The types are defined topologically to aid in facilitating an executable version
 #### `Fork`
 
 ```python
-class Fork(SSZContainer):
+class Fork(Container):
     # Previous fork version
-    previous_version: bytes4
+    previous_version: Bytes4
     # Current fork version
-    current_version: bytes4
+    current_version: Bytes4
     # Fork epoch number
     epoch: uint64
 ```
@@ -280,41 +280,41 @@ class Fork(SSZContainer):
 #### `Crosslink`
 
 ```python
-class Crosslink(SSZContainer):
+class Crosslink(Container):
     # Shard number
     shard: uint64
     # Epoch number
     epoch: uint64
     # Root of the previous crosslink
-    parent_root: bytes32
+    parent_root: Bytes32
     # Root of the crosslinked shard data since the previous crosslink
-    data_root: bytes32
+    data_root: Bytes32
 ```
 
 #### `Eth1Data`
 
 ```python
-class Eth1Data(SSZContainer):
+class Eth1Data(Container):
     # Root of the deposit tree
-    deposit_root: bytes32
+    deposit_root: Bytes32
     # Total number of deposits
     deposit_count: uint64
     # Block hash
-    block_hash: bytes32
+    block_hash: Bytes32
 ```
 
 #### `AttestationData`
 
 ```python
-class AttestationData(SSZContainer):
+class AttestationData(Container):
     # LMD GHOST vote
-    beacon_block_root: bytes32
+    beacon_block_root: Bytes32
     
     # FFG vote
     source_epoch: uint64
-    source_root: bytes32
+    source_root: Bytes32
     target_epoch: uint64
-    target_root: bytes32
+    target_root: Bytes32
     
     # Crosslink vote
     crosslink: Crosslink
@@ -323,7 +323,7 @@ class AttestationData(SSZContainer):
 #### `AttestationDataAndCustodyBit`
 
 ```python
-class AttestationDataAndCustodyBit(SSZContainer):
+class AttestationDataAndCustodyBit(Container):
     # Attestation data
     data: AttestationData
     # Custody bit
@@ -333,48 +333,48 @@ class AttestationDataAndCustodyBit(SSZContainer):
 #### `IndexedAttestation`
 
 ```python
-class IndexedAttestation(SSZContainer):
+class IndexedAttestation(Container):
     # Validator indices
     custody_bit_0_indices: List[uint64]
     custody_bit_1_indices: List[uint64]
     # Attestation data
     data: AttestationData
     # Aggregate signature
-    signature: bytes96
+    signature: Bytes96
 ```
 
 #### `DepositData`
 
 ```python
-class DepositData(SSZContainer):
+class DepositData(Container):
     # BLS pubkey
-    pubkey: bytes48
+    pubkey: Bytes48
     # Withdrawal credentials
-    withdrawal_credentials: bytes32
+    withdrawal_credentials: Bytes32
     # Amount in Gwei
     amount: uint64
     # Container self-signature
-    signature: bytes96
+    signature: Bytes96
 ```
 
 #### `BeaconBlockHeader`
 
 ```python
-class BeaconBlockHeader(SSZContainer):
+class BeaconBlockHeader(Container):
     slot: uint64
-    parent_root: bytes32
-    state_root: bytes32
-    body_root: bytes32
-    signature: bytes96
+    parent_root: Bytes32
+    state_root: Bytes32
+    body_root: Bytes32
+    signature: Bytes96
 ```
 #### `Validator`
 
 ```python
-class Validator(SSZContainer):
+class Validator(Container):
     # BLS public key
-    pubkey: bytes48
+    pubkey: Bytes48
     # Withdrawal credentials
-    withdrawal_credentials: bytes32
+    withdrawal_credentials: Bytes32
     # Epoch when became eligible for activation
     activation_eligibility_epoch: uint64
     # Epoch when validator activated
@@ -392,7 +392,7 @@ class Validator(SSZContainer):
 #### `PendingAttestation`
 
 ```python
-class PendingAttestation(SSZContainer):
+class PendingAttestation(Container):
     # Attester aggregation bitfield
     aggregation_bitfield: bytes
     # Attestation data
@@ -406,11 +406,11 @@ class PendingAttestation(SSZContainer):
 #### `HistoricalBatch`
 
 ```python
-class HistoricalBatch(SSZContainer):
+class HistoricalBatch(Container):
     # Block roots
-    block_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
     # State roots
-    state_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 ### Beacon operations
@@ -418,7 +418,7 @@ class HistoricalBatch(SSZContainer):
 #### `ProposerSlashing`
 
 ```python
-class ProposerSlashing(SSZContainer):
+class ProposerSlashing(Container):
     # Proposer index
     proposer_index: uint64
     # First block header
@@ -430,7 +430,7 @@ class ProposerSlashing(SSZContainer):
 #### `AttesterSlashing`
 
 ```python
-class AttesterSlashing(SSZContainer):
+class AttesterSlashing(Container):
     # First attestation
     attestation_1: IndexedAttestation
     # Second attestation
@@ -440,7 +440,7 @@ class AttesterSlashing(SSZContainer):
 #### `Attestation`
 
 ```python
-class Attestation(SSZContainer):
+class Attestation(Container):
     # Attester aggregation bitfield
     aggregation_bitfield: bytes
     # Attestation data
@@ -448,15 +448,15 @@ class Attestation(SSZContainer):
     # Custody bitfield
     custody_bitfield: bytes
     # BLS aggregate signature
-    signature: bytes96
+    signature: Bytes96
 ```
 
 #### `Deposit`
 
 ```python
-class Deposit(SSZContainer):
+class Deposit(Container):
     # Branch in the deposit tree
-    proof: Vector[bytes32, DEPOSIT_CONTRACT_TREE_DEPTH]
+    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH]
     # Index in the deposit tree
     index: uint64
     # Data
@@ -466,19 +466,19 @@ class Deposit(SSZContainer):
 #### `VoluntaryExit`
 
 ```python
-class VoluntaryExit(SSZContainer):
+class VoluntaryExit(Container):
     # Minimum epoch for processing exit
     epoch: uint64
     # Index of the exiting validator
     validator_index: uint64
     # Validator signature
-    signature: bytes96
+    signature: Bytes96
 ```
 
 #### `Transfer`
 
 ```python
-class Transfer(SSZContainer):
+class Transfer(Container):
     # Sender index
     sender: uint64
     # Recipient index
@@ -490,9 +490,9 @@ class Transfer(SSZContainer):
     # Inclusion slot
     slot: uint64
     # Sender withdrawal pubkey
-    pubkey: bytes48
+    pubkey: Bytes48
     # Sender signature
-    signature: bytes96
+    signature: Bytes96
 ```
 
 ### Beacon blocks
@@ -500,10 +500,10 @@ class Transfer(SSZContainer):
 #### `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(SSZContainer):
-    randao_reveal: bytes96
+class BeaconBlockBody(Container):
+    randao_reveal: Bytes96
     eth1_data: Eth1Data
-    graffiti: bytes32
+    graffiti: Bytes32
     proposer_slashings: List[ProposerSlashing]
     attester_slashings: List[AttesterSlashing]
     attestations: List[Attestation]
@@ -515,13 +515,13 @@ class BeaconBlockBody(SSZContainer):
 #### `BeaconBlock`
 
 ```python
-class BeaconBlock(SSZContainer):
+class BeaconBlock(Container):
     # Header
     slot: uint64
-    parent_root: bytes32
-    state_root: bytes32
+    parent_root: Bytes32
+    state_root: Bytes32
     body: BeaconBlockBody
-    signature: bytes96
+    signature: Bytes96
 ```
 
 ### Beacon state
@@ -529,7 +529,7 @@ class BeaconBlock(SSZContainer):
 #### `BeaconState`
 
 ```python
-class BeaconState(SSZContainer):
+class BeaconState(Container):
     # Misc
     slot: uint64
     genesis_time: uint64
@@ -540,7 +540,7 @@ class BeaconState(SSZContainer):
     balances: List[uint64]
     
     # Randomness and committees
-    latest_randao_mixes: Vector[bytes32, LATEST_RANDAO_MIXES_LENGTH]
+    latest_randao_mixes: Vector[Bytes32, LATEST_RANDAO_MIXES_LENGTH]
     latest_start_shard: uint64
     
     # Finality
@@ -548,23 +548,23 @@ class BeaconState(SSZContainer):
     current_epoch_attestations: List[PendingAttestation]
     previous_justified_epoch: uint64
     current_justified_epoch: uint64
-    previous_justified_root: bytes32
-    current_justified_root: bytes32
+    previous_justified_root: Bytes32
+    current_justified_root: Bytes32
     justification_bitfield: uint64
     finalized_epoch: uint64
-    finalized_root: bytes32
+    finalized_root: Bytes32
     
     # Recent state
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]
-    latest_block_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
-    latest_state_roots: Vector[bytes32, SLOTS_PER_HISTORICAL_ROOT]
-    latest_active_index_roots: Vector[bytes32, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    latest_block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    latest_state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    latest_active_index_roots: Vector[Bytes32, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
     # Balances slashed at every withdrawal period
     latest_slashed_balances: Vector[uint64, LATEST_SLASHED_EXIT_LENGTH]
     # `latest_block_header.state_root == ZERO_HASH` temporarily
     latest_block_header: BeaconBlockHeader
-    historical_roots: List[bytes32]
+    historical_roots: List[Bytes32]
     
     # Ethereum 1.0 chain data
     latest_eth1_data: Eth1Data
@@ -583,9 +583,9 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Bytes32` | `bytes32` | 32 bytes of binary data |
-| `BLSPubkey` | `bytes48` | a BLS12-381 public key |
-| `BLSSignature` | `bytes96` | a BLS12-381 signature |
+| `Bytes32` | `Bytes32` | 32 bytes of binary data |
+| `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
+| `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
 ## Helper functions
 
@@ -595,7 +595,7 @@ We define the following Python custom types for type hinting and readability:
 
 ```python
 def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
-    return bytes(a ^ b for a, b in zip(bytes1, bytes2))
+    return Bytes32(a ^ b for a, b in zip(bytes1, bytes2))
 ```
 
 ### `hash`
@@ -610,7 +610,7 @@ The `hash` function is SHA256.
 
 ### `signing_root`
 
-`def signing_root(object: SSZContainer) -> Bytes32` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
+`def signing_root(object: Container) -> Bytes32` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
 
 ### `slot_to_epoch`
 

@@ -29,7 +29,7 @@ def is_fixed_size(typ):
     elif is_vector_type(typ):
         return is_fixed_size(read_vector_elem_typ(typ))
     elif is_container_typ(typ):
-        return all([is_fixed_size(t) for t in typ.get_field_types()])
+        return all(is_fixed_size(t) for t in typ.get_field_types())
     else:
         raise Exception("Type not supported: {}".format(typ))
 

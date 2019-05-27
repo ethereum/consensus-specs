@@ -108,6 +108,9 @@ class Container(object):
         cls = self.__class__
         return [getattr(self, field) for field in cls.get_field_names()]
 
+    def __repr__(self):
+        return {field: getattr(self, field) for field in self.get_field_names()}
+
     @classmethod
     def get_fields_dict(cls):
         return dict(cls.__annotations__)
@@ -216,6 +219,9 @@ class Vector(metaclass=VectorMeta):
     def hash_tree_root(self):
         from .ssz_impl import hash_tree_root
         return hash_tree_root(self, self.__class__)
+
+    def __repr__(self):
+        return {'length': self.__class__.length, 'items': self.items}
 
     def __getitem__(self, key):
         return self.items[key]
