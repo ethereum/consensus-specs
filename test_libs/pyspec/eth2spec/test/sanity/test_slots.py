@@ -1,6 +1,6 @@
 import eth2spec.phase0.spec as spec
 
-from eth2spec.phase0.state_transition import state_transition_to
+from eth2spec.phase0.spec import process_slots
 from eth2spec.test.helpers.state import get_state_root
 from eth2spec.test.context import spec_state_test
 
@@ -13,7 +13,7 @@ def test_slots_1(state):
 
     slots = 1
     yield 'slots', slots
-    state_transition_to(state, state.slot + slots)
+    process_slots(state, state.slot + slots)
 
     yield 'post', state
     assert state.slot == pre_slot + 1
@@ -25,7 +25,7 @@ def test_slots_2(state):
     yield 'pre', state
     slots = 2
     yield 'slots', slots
-    state_transition_to(state, state.slot + slots)
+    process_slots(state, state.slot + slots)
     yield 'post', state
 
 
@@ -34,7 +34,7 @@ def test_empty_epoch(state):
     yield 'pre', state
     slots = spec.SLOTS_PER_EPOCH
     yield 'slots', slots
-    state_transition_to(state, state.slot + slots)
+    process_slots(state, state.slot + slots)
     yield 'post', state
 
 
@@ -43,16 +43,16 @@ def test_double_empty_epoch(state):
     yield 'pre', state
     slots = spec.SLOTS_PER_EPOCH * 2
     yield 'slots', slots
-    state_transition_to(state, state.slot + slots)
+    process_slots(state, state.slot + slots)
     yield 'post', state
 
 
 @spec_state_test
 def test_over_epoch_boundary(state):
-    state_transition_to(state, state.slot + (spec.SLOTS_PER_EPOCH // 2))
+    process_slots(state, state.slot + (spec.SLOTS_PER_EPOCH // 2))
     yield 'pre', state
     slots = spec.SLOTS_PER_EPOCH
     yield 'slots', slots
-    state_transition_to(state, state.slot + slots)
+    process_slots(state, state.slot + slots)
     yield 'post', state
 

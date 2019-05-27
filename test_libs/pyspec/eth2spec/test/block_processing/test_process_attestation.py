@@ -3,10 +3,8 @@ from copy import deepcopy
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import (
     get_current_epoch,
-    process_attestation
-)
-from eth2spec.phase0.state_transition import (
-    state_transition_to,
+    process_attestation,
+    process_slots,
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
 from eth2spec.test.helpers.attestations import (
@@ -72,6 +70,24 @@ def test_success_previous_epoch(state):
     yield from run_attestation_processing(state, attestation)
 
 
+@spec_state_test
+def test_success_since_max_epochs_per_crosslink(state):
+    for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
+        next_epoch(state)
+    apply_empty_block(state)
+
+    attestation = get_valid_attestation(state, signed=True)
+    data = attestation.data
+    # test logic sanity check: make sure the attestation only includes MAX_EPOCHS_PER_CROSSLINK epochs
+    assert data.crosslink.end_epoch - data.crosslink.start_epoch == spec.MAX_EPOCHS_PER_CROSSLINK
+
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+    apply_empty_block(state)
+
+    yield from run_attestation_processing(state, attestation)
+
+
 @always_bls
 @spec_state_test
 def test_invalid_attestation_signature(state):
@@ -93,7 +109,7 @@ def test_before_inclusion_delay(state):
 def test_after_epoch_slots(state):
     attestation = get_valid_attestation(state, signed=True)
     # increment past latest inclusion slot
-    state_transition_to(state, state.slot + spec.SLOTS_PER_EPOCH + 1)
+    process_slots(state, state.slot + spec.SLOTS_PER_EPOCH + 1)
     apply_empty_block(state)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -123,7 +139,7 @@ def test_wrong_shard(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.shard += 1
+    attestation.data.crosslink.shard += 1
 
     sign_attestation(state, attestation)
 
@@ -197,7 +213,7 @@ def test_non_zero_crosslink_data_root(state):
     attestation = get_valid_attestation(state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.crosslink_data_root = b'\x42' * 32
+    attestation.data.crosslink.data_root = b'\x42' * 32
 
     sign_attestation(state, attestation)
 
@@ -205,7 +221,7 @@ def test_non_zero_crosslink_data_root(state):
 
 
 @spec_state_test
-def test_bad_previous_crosslink(state):
+def test_bad_parent_crosslink(state):
     next_epoch(state)
     apply_empty_block(state)
 
@@ -214,7 +230,37 @@ def test_bad_previous_crosslink(state):
         next_slot(state)
     apply_empty_block(state)
 
-    state.current_crosslinks[attestation.data.shard].epoch += 10
+    attestation.data.crosslink.parent_root = b'\x27' * 32
+
+    yield from run_attestation_processing(state, attestation, False)
+
+
+@spec_state_test
+def test_bad_crosslink_start_epoch(state):
+    next_epoch(state)
+    apply_empty_block(state)
+
+    attestation = get_valid_attestation(state, signed=True)
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+    apply_empty_block(state)
+
+    attestation.data.crosslink.start_epoch += 1
+
+    yield from run_attestation_processing(state, attestation, False)
+
+
+@spec_state_test
+def test_bad_crosslink_end_epoch(state):
+    next_epoch(state)
+    apply_empty_block(state)
+
+    attestation = get_valid_attestation(state, signed=True)
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+    apply_empty_block(state)
+
+    attestation.data.crosslink.end_epoch += 1
 
     yield from run_attestation_processing(state, attestation, False)
 
@@ -237,7 +283,7 @@ def test_non_empty_custody_bitfield(state):
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield)
-    
+
     sign_attestation(state, attestation)
 
     yield from run_attestation_processing(state, attestation, False)
@@ -252,4 +298,4 @@ def test_empty_aggregation_bitfield(state):
 
     sign_attestation(state, attestation)
 
-    yield from run_attestation_processing(state, attestation, False)
+    yield from run_attestation_processing(state, attestation)

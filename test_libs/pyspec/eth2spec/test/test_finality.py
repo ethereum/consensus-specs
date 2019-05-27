@@ -1,17 +1,14 @@
 from copy import deepcopy
 
 import eth2spec.phase0.spec as spec
-from eth2spec.phase0.state_transition import (
-    state_transition,
+from eth2spec.phase0.spec import (
+    get_current_epoch,
+    get_epoch_start_slot,
 )
 from .context import spec_state_test, never_bls
 from .helpers.state import next_epoch
 from .helpers.block import build_empty_block_for_next_slot, apply_empty_block
-from .helpers.attestations import (
-    get_current_epoch,
-    get_epoch_start_slot,
-    get_valid_attestation,
-)
+from .helpers.attestations import get_valid_attestation
 
 
 def check_finality(state,
@@ -59,7 +56,7 @@ def next_epoch_with_attestations(state,
             prev_attestation = get_valid_attestation(post_state, slot_to_attest)
             block.body.attestations.append(prev_attestation)
 
-        state_transition(post_state, block)
+        spec.state_transition(post_state, block)
         blocks.append(block)
 
     return state, blocks, post_state

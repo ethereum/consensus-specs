@@ -1,6 +1,6 @@
 # Ethereum 2.0 Phase 0 -- Deposit Contract
 
-**NOTICE**: This document is a work in progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 <!-- TOC -->
@@ -24,7 +24,7 @@
 
 ## Introduction
 
-This document represents is the specification for the beacon chain deposit contract, part of Ethereum 2.0 phase 0.
+This document represents the specification for the beacon chain deposit contract, part of Ethereum 2.0 Phase 0.
 
 ## Constants
 
@@ -40,11 +40,11 @@ This document represents is the specification for the beacon chain deposit contr
 | - | - |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
-| `CHAIN_START_FULL_DEPOSIT_THRESHOLD` | `2**16` (=65,536) |
+| `CHAIN_START_FULL_DEPOSIT_THRESHOLD` | `2**16` (= 65,536) |
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in phase 2, i.e. when the EVM2.0 is deployed and the shards have state.
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2 (i.e. when the EVM 2.0 is deployed and the shards have state).
 
 ### Arguments
 
@@ -52,7 +52,7 @@ The deposit contract has a `deposit` function which takes the amount in Ethereum
 
 #### Withdrawal credentials
 
-One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawals to shards. The first byte of `withdrawal_credentials` is a version number. As of now the only expected format is as follows:
+One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawals to shards. The first byte of `withdrawal_credentials` is a version number. As of now, the only expected format is as follows:
 
 * `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
@@ -72,7 +72,7 @@ Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Depo
 
 ### `Eth2Genesis` log
 
-When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined below) where:
+When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined [here](./0_beacon-chain.md#genesis-state)) where:
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
 * `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
@@ -84,10 +84,10 @@ When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the d
 
 The source for the Vyper contract lives in a [separate repository](https://github.com/ethereum/deposit_contract) at [https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py](https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py).
 
-Note: to save ~10x on gas this contract uses a somewhat unintuitive progressive Merkle root calculation algo that requires only O(log(n)) storage. See https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py for an implementation of the same algo in python tested for correctness.
+*Note*: To save ~10x on gas, this contract uses a somewhat unintuitive progressive Merkle root calculation algo that requires only O(log(n)) storage. See https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py for an implementation of the same algo in Python tested for correctness.
 
 For convenience, we provide the interface to the contract here:
 
 * `__init__()`: initializes the contract
 * `get_deposit_root() -> bytes32`: returns the current root of the deposit tree
-* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. Note: the amount of value transferred *must* be at least `MIN_DEPOSIT_AMOUNT`. Each of these constants are specified in units of Gwei.
+* `deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])`: adds a deposit instance to the deposit tree, incorporating the input arguments and the value transferred in the given call. *Note*: The amount of value transferred *must* be at least `MIN_DEPOSIT_AMOUNT`. Each of these constants are specified in units of Gwei.

@@ -15,12 +15,12 @@ def get_valid_proposer_slashing(state, signed_1=False, signed_2=False):
 
     header_1 = BeaconBlockHeader(
         slot=slot,
-        previous_block_root=b'\x33' * 32,
+        parent_root=b'\x33' * 32,
         state_root=b'\x44' * 32,
         block_body_root=b'\x55' * 32,
     )
     header_2 = deepcopy(header_1)
-    header_2.previous_block_root = b'\x99' * 32
+    header_2.parent_root = b'\x99' * 32
     header_2.slot = slot + 1
 
     if signed_1:

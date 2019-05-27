@@ -5,7 +5,7 @@ from eth2spec.phase0.spec import (
     is_active_validator,
     process_registry_updates
 )
-from eth2spec.phase0.state_transition import state_transition
+from eth2spec.phase0.spec import state_transition
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.context import spec_state_test
@@ -26,7 +26,7 @@ def run_process_registry_updates(state, valid=True):
     state_transition(state, block)
 
     # cache state before epoch transition
-    spec.cache_state(state)
+    spec.process_slot(state)
 
     # process components of epoch transition before registry update
     spec.process_justification_and_finalization(state)

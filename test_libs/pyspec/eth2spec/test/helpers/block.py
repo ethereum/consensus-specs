@@ -1,8 +1,11 @@
 from copy import deepcopy
 
 from eth2spec.phase0 import spec
-from eth2spec.phase0.spec import get_beacon_proposer_index, slot_to_epoch, get_domain, BeaconBlock
-from eth2spec.phase0.state_transition import state_transition, state_transition_to
+from eth2spec.phase0.spec import (
+    BeaconBlock,
+    get_beacon_proposer_index, slot_to_epoch, get_domain,
+    process_slots, state_transition,
+)
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, only_with_bls
 from eth2spec.utils.minimal_ssz import signing_root, hash_tree_root
@@ -22,7 +25,7 @@ def sign_block(state, block, proposer_index=None):
                       " Signing block is slow due to transition for proposer index calculation.")
             # use stub state to get proposer index of future slot
             stub_state = deepcopy(state)
-            state_transition_to(stub_state, block.slot)
+            process_slots(stub_state, block.slot)
             proposer_index = get_beacon_proposer_index(stub_state)
 
     privkey = privkeys[proposer_index]
@@ -64,7 +67,7 @@ def build_empty_block(state, slot=None, signed=False):
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
-    empty_block.previous_block_root = signing_root(previous_block_header)
+    empty_block.parent_root = signing_root(previous_block_header)
 
     if signed:
         sign_block(state, empty_block)

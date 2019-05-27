@@ -2,8 +2,7 @@ from copy import deepcopy
 
 from eth2spec.phase0.spec import (
     get_beacon_proposer_index,
-    cache_state,
-    advance_slot,
+    process_slots,
     process_block_header,
 )
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
@@ -15,8 +14,7 @@ from eth2spec.test.helpers.state import next_slot
 
 
 def prepare_state_for_header_processing(state):
-    cache_state(state)
-    advance_slot(state)
+    process_slots(state, state.slot + 1)
 
 
 def run_block_header_processing(state, block, valid=True):
@@ -64,9 +62,9 @@ def test_invalid_slot_block_header(state):
 
 
 @spec_state_test
-def test_invalid_previous_block_root(state):
+def test_invalid_parent_root(state):
     block = build_empty_block_for_next_slot(state)
-    block.previous_block_root = b'\12' * 32  # invalid prev root
+    block.parent_root = b'\12' * 32  # invalid prev root
     sign_block(state, block)
 
     yield from run_block_header_processing(state, block, valid=False)

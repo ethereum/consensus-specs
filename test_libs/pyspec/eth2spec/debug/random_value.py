@@ -31,7 +31,12 @@ class RandomizationMode(Enum):
         return self.value in [0, 4, 5]
 
 
-def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list_length: int, mode: RandomizationMode, chaos: bool) -> Any:
+def get_random_ssz_object(rng: Random,
+                          typ: Any,
+                          max_bytes_length: int,
+                          max_list_length: int,
+                          mode: RandomizationMode,
+                          chaos: bool) -> Any:
     """
     Create an object for a given type, filled with random data.
     :param rng: The random number generator to use.
@@ -77,7 +82,10 @@ def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list
             return get_random_basic_value(rng, typ)
     # Vector:
     elif isinstance(typ, list) and len(typ) == 2:
-        return [get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode, chaos) for _ in range(typ[1])]
+        return [
+            get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode, chaos)
+            for _ in range(typ[1])
+        ]
     # List:
     elif isinstance(typ, list) and len(typ) == 1:
         length = rng.randint(0, max_list_length)
@@ -85,10 +93,17 @@ def get_random_ssz_object(rng: Random, typ: Any, max_bytes_length: int, max_list
             length = 1
         if mode == RandomizationMode.mode_max_count:
             length = max_list_length
-        return [get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode, chaos) for _ in range(length)]
+        return [
+            get_random_ssz_object(rng, typ[0], max_bytes_length, max_list_length, mode, chaos)
+            for _ in range(length)
+        ]
     # Container:
     elif hasattr(typ, 'fields'):
-        return typ(**{field: get_random_ssz_object(rng, subtype, max_bytes_length, max_list_length, mode, chaos) for field, subtype in typ.fields.items()})
+        return typ(**{
+            field:
+                get_random_ssz_object(rng, subtype, max_bytes_length, max_list_length, mode, chaos)
+                for field, subtype in typ.fields.items()
+        })
     else:
         print(typ)
         raise Exception("Type not recognized")

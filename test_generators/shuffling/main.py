@@ -15,7 +15,7 @@ def shuffling_case(seed: spec.Bytes32, count: int):
 
 @to_tuple
 def shuffling_test_cases():
-    for seed in [spec.hash(spec.int_to_bytes4(seed_init_value)) for seed_init_value in range(30)]:
+    for seed in [spec.hash(spec.int_to_bytes(seed_init_value, length=4)) for seed_init_value in range(30)]:
         for count in [0, 1, 2, 3, 5, 10, 33, 100, 1000]:
             yield shuffling_case(seed, count)
 

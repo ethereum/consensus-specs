@@ -6,11 +6,11 @@ from eth2spec.phase0.spec import (
     Attestation,
     AttestationData,
     AttestationDataAndCustodyBit,
+    Crosslink,
     get_epoch_start_slot, get_block_root, get_current_epoch, get_previous_epoch, slot_to_epoch,
     get_crosslink_committee, get_domain, IndexedAttestation, get_attesting_indices, BeaconState, get_block_root_at_slot,
-    get_epoch_start_shard, get_epoch_committee_count)
-from eth2spec.phase0.state_transition import (
-    state_transition, state_transition_to
+    get_epoch_start_shard, get_epoch_committee_count,
+    state_transition, process_slots,
 )
 from eth2spec.test.helpers.bitfields import set_bitfield_bit
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
@@ -23,7 +23,7 @@ def build_attestation_data(state, slot, shard):
     assert state.slot >= slot
 
     if slot == state.slot:
-        block_root = build_empty_block_for_next_slot(state).previous_block_root
+        block_root = build_empty_block_for_next_slot(state).parent_root
     else:
         block_root = get_block_root_at_slot(state, slot)
 
@@ -42,17 +42,24 @@ def build_attestation_data(state, slot, shard):
         justified_epoch = state.current_justified_epoch
         justified_block_root = state.current_justified_root
 
-    crosslinks = state.current_crosslinks if slot_to_epoch(slot) == get_current_epoch(
-        state) else state.previous_crosslinks
+    if slot_to_epoch(slot) == get_current_epoch(state):
+        parent_crosslink = state.current_crosslinks[shard]
+    else:
+        parent_crosslink = state.previous_crosslinks[shard]
+
     return AttestationData(
-        shard=shard,
         beacon_block_root=block_root,
         source_epoch=justified_epoch,
         source_root=justified_block_root,
         target_epoch=slot_to_epoch(slot),
         target_root=epoch_boundary_root,
-        crosslink_data_root=spec.ZERO_HASH,
-        previous_crosslink_root=hash_tree_root(crosslinks[shard]),
+        crosslink=Crosslink(
+            shard=shard,
+            start_epoch=parent_crosslink.end_epoch,
+            end_epoch=min(slot_to_epoch(slot), parent_crosslink.end_epoch + spec.MAX_EPOCHS_PER_CROSSLINK),
+            data_root=spec.ZERO_HASH,
+            parent_root=hash_tree_root(parent_crosslink),
+        ),
     )
 
 
@@ -67,7 +74,11 @@ def get_valid_attestation(state, slot=None, signed=False):
 
     attestation_data = build_attestation_data(state, slot, shard)
 
-    crosslink_committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.shard)
+    crosslink_committee = get_crosslink_committee(
+        state,
+        attestation_data.target_epoch,
+        attestation_data.crosslink.shard
+    )
 
     committee_size = len(crosslink_committee)
     bitfield_length = (committee_size + 7) // 8
@@ -132,7 +143,11 @@ def get_attestation_signature(state, attestation_data, privkey, custody_bit=0b0)
 
 
 def fill_aggregate_attestation(state, attestation):
-    crosslink_committee = get_crosslink_committee(state, attestation.data.target_epoch, attestation.data.shard)
+    crosslink_committee = get_crosslink_committee(
+        state,
+        attestation.data.target_epoch,
+        attestation.data.crosslink.shard,
+    )
     for i in range(len(crosslink_committee)):
         attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
 
@@ -141,6 +156,6 @@ def add_attestation_to_state(state, attestation, slot):
     block = build_empty_block_for_next_slot(state)
     block.slot = slot
     block.body.attestations.append(attestation)
-    state_transition_to(state, block.slot)
+    process_slots(state, block.slot)
     sign_block(state, block)
     state_transition(state, block)

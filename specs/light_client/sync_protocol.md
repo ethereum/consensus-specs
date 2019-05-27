@@ -1,13 +1,13 @@
 # Beacon Chain Light Client Syncing
 
-__NOTICE__: This document is a work-in-progress for researchers and implementers. One of the design goals of the eth2 beacon chain is light-client friendliness, both to allow low-resource clients (mobile phones, IoT, etc) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the eth2 beacon chain and other chains.
+**Notice**: This document is a work-in-progress for researchers and implementers. One of the design goals of the Eth 2.0 beacon chain is light-client friendliness, not only to allow low-resource clients (mobile phones, IoT, etc.) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the Eth 2.0 beacon chain and other chains.
 
-## Table of Contents
+## Table of contents
 
 <!-- TOC -->
 
 - [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
-    - [Table of Contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
     - [Preliminaries](#preliminaries)
         - [Expansions](#expansions)
         - [`get_active_validator_indices`](#get_active_validator_indices)
@@ -146,7 +146,7 @@ def compute_committee(header: BeaconBlockHeader,
     ]
     def get_switchover_epoch(index):
         return (
-            bytes_to_int(hash(validator_memory.earlier_period_data.seed + int_to_bytes3(index))[0:8]) %
+            bytes_to_int(hash(validator_memory.earlier_period_data.seed + int_to_bytes(index, length=3))[0:8]) %
             PERSISTENT_COMMITTEE_PERIOD
         )
 

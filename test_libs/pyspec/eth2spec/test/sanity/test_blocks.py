@@ -13,8 +13,6 @@ from eth2spec.phase0.spec import (
     get_block_root_at_slot,
     get_current_epoch,
     get_domain,
-)
-from eth2spec.phase0.state_transition import (
     state_transition,
 )
 from eth2spec.test.helpers.state import get_balance
@@ -44,7 +42,7 @@ def test_empty_block_transition(state):
     yield 'post', state
 
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
-    assert get_block_root_at_slot(state, pre_slot) == block.previous_block_root
+    assert get_block_root_at_slot(state, pre_slot) == block.parent_root
 
 
 @never_bls
@@ -63,7 +61,7 @@ def test_skipped_slots(state):
 
     assert state.slot == block.slot
     for slot in range(pre_slot, state.slot):
-        assert get_block_root_at_slot(state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(state, slot) == block.parent_root
 
 
 @spec_state_test
@@ -81,7 +79,7 @@ def test_empty_epoch_transition(state):
 
     assert state.slot == block.slot
     for slot in range(pre_slot, state.slot):
-        assert get_block_root_at_slot(state, slot) == block.previous_block_root
+        assert get_block_root_at_slot(state, slot) == block.parent_root
 
 
 # @spec_state_test
