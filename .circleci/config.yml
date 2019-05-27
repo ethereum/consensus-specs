@@ -1,7 +1,7 @@
 version: 2.1
 commands:
   restore_cached_venv:
-    description: "Restores a cached venv"
+    description: "Restore a cached venv"
     parameters:
       reqs_checksum:
         type: string
@@ -16,7 +16,7 @@ commands:
             # fallback to using the latest cache if no exact match is found
             - << parameters.venv_name >>-venv-
   save_cached_venv:
-    description: "Saves a venv into a cache"
+    description: "Save a venv into a cache"
     parameters:
       reqs_checksum:
         type: string
@@ -37,6 +37,13 @@ commands:
       - restore_cached_venv:
           venv_name: v1-pyspec-01
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}--{{ checksum "deposit_contract/requirements-testing.txt" }}'
+  save_default_cached_venv:
+    description: Save a venv into a cache with default keys"
+    steps:
+      - save_cached_venv:
+          venv_name: v1-pyspec-01
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}--{{ checksum "deposit_contract/requirements-testing.txt" }}'
+          venv_path: ./test_libs/pyspec/venv
 jobs:
   checkout_specs:
     docker:
@@ -69,10 +76,7 @@ jobs:
       - run:
           name: Install pyspec requirements
           command: make install_test && make install_lint && make install_deposit_contract_test
-      - save_cached_venv:
-          venv_name: v1-pyspec-03
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
-          venv_path: ./test_libs/pyspec/venv
+      - save_default_cached_venv
   test:
     docker:
       - image: circleci/python:3.6
