@@ -224,7 +224,7 @@ epoch_signature = bls_sign(
 
 `block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.latest_eth1_data` is updated, and validator deposits up to this root can be processed. The deposit root can be calculated by calling the `get_deposit_root()` function of the deposit contract using the post-state of the block hash.
 
-* Let `D` be the set of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
+* Let `D` be the list of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
     * `vote.eth1_data.block_hash` is the hash of an Eth 1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_hash`.
     * `vote.eth1_data.deposit_count` is the deposit count of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
     * `vote.eth1_data.deposit_root` is the deposit root of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
