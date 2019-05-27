@@ -54,7 +54,9 @@ install_deposit_contract_test:
 
 test_deposit_contract: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
-	cd ../.. && cd $(DEPOSIT_CONTRACT_DIR) && python -m pytest .
+	cd ../.. && cd $(DEPOSIT_CONTRACT_DIR); \
+	pip3 install -r requirements-testing.txt; \
+	python -m pytest .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
