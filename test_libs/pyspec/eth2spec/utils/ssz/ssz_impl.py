@@ -6,17 +6,20 @@ from .ssz_typing import *
 
 BYTES_PER_LENGTH_OFFSET = 4
 
+
 def is_basic_type(typ):
     return is_uint(typ) or typ == bool
 
+
 def serialize_basic(value, typ):
     if is_uint(typ):
-        return value.to_bytes(typ.byte_len, 'little')
+        return value.to_bytes(uint_byte_size(typ), 'little')
     if issubclass(typ, bool):
         if value:
             return b'\x01'
         else:
             return b'\x00'
+
 
 def is_fixed_size(typ):
     if is_basic_type(typ):
@@ -30,9 +33,9 @@ def is_fixed_size(typ):
     else:
         raise Exception("Type not supported: {}".format(typ))
 
-def serialize(obj, typ=None):
-    if typ is None:
-        typ = infer_type(obj)
+
+@infer_input_type
+def serialize(obj, typ):
     if is_basic_type(typ):
         return serialize_basic(obj, typ)
     elif is_list_type(typ) or is_vector_type(typ):
@@ -41,6 +44,7 @@ def serialize(obj, typ=None):
         return encode_series(obj.get_field_values(), typ.get_field_types())
     else:
         raise Exception("Type not supported: {}".format(typ))
+
 
 def encode_series(values, types):
     # bytes and bytesN are already in the right format.
@@ -75,24 +79,28 @@ def encode_series(values, types):
     # Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
     return b''.join(fixed_parts + variable_parts)
 
+
 # SSZ Hash-tree-root
 # -----------------------------
+
 
 def pack(values, subtype):
     if isinstance(values, bytes):
         return values
     return b''.join([serialize_basic(value, subtype) for value in values])
 
+
 def chunkify(bytez):
     bytez += b'\x00' * (-len(bytez) % 32)
     return [bytez[i:i + 32] for i in range(0, len(bytez), 32)]
 
+
 def mix_in_length(root, length):
     return hash(root + length.to_bytes(32, 'little'))
 
-def hash_tree_root(obj, typ=None):
-    if typ is None:
-        typ = infer_type(obj)
+
+@infer_input_type
+def hash_tree_root(obj, typ):
     if is_basic_type(typ):
         return merkleize_chunks(chunkify(serialize_basic(obj, typ)))
     elif is_list_type(typ) or is_vector_type(typ):
@@ -104,31 +112,15 @@ def hash_tree_root(obj, typ=None):
         leaf_root = merkleize_chunks(leaves)
         return mix_in_length(leaf_root, len(obj)) if is_list_type(typ) else leaf_root
     elif is_container_typ(typ):
-        leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields().items()]
+        leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields()]
         return merkleize_chunks(chunkify(b''.join(leaves)))
     else:
         raise Exception("Type not supported: obj {} type {}".format(obj, typ))
 
-def signing_root(value, typ):
-    if typ is None:
-        typ = infer_type(obj)
+
+@infer_input_type
+def signing_root(obj, typ):
     assert is_container_typ(typ)
-    leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields().items()]
+    leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields()[:-1]]
     return merkleize_chunks(chunkify(b''.join(leaves)))
 
-# Implementation notes:
-# - Container,Vector/BytesN.hash_tree_root/serialize functions are for ease, implementation here
-# - uint types have a 'byte_len' attribute
-# - uint types are not classes. They use NewType(), for performance.
-#    This forces us to check type equivalence by exact reference.
-#    There's no class. The type data comes from an annotation/argument from the context of the value.
-# - Vector is not valid to create instances with. Give it a elem-type and length: Vector[FooBar, 123]
-# - *The class of* a Vector instance has a `elem_type` (type, may not be a class, see uint) and `length` (int)
-# - BytesN is not valid to create instances with. Give it a length: BytesN[123]
-# - *The class of* a BytesN instance has a `length` (int)
-# Where possible, it is preferable to create helpers that just act on the type, and don't unnecessarily use a value
-# E.g. is_basic_type(). This way, we can use them in type-only contexts and have no duplicate logic.
-# For every class-instance, you can get the type with my_object.__class__
-# For uints, and other NewType related, you have to rely on type information. It cannot be retrieved from the value.
-# Note: we may just want to box integers instead. And then we can do bounds checking too. But it is SLOW and MEMORY INTENSIVE.
-#

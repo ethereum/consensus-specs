@@ -1,28 +1,80 @@
-from typing import List, Iterable, TypeVar, Type, NewType
+from typing import List, Iterable, Type, NewType
 from typing import Union
 from inspect import isclass
 
-T = TypeVar('T')
-L = TypeVar('L')
 
-
-
-# SSZ integer types, with 0 computational overhead (NewType)
+# SSZ integers
 # -----------------------------
 
-uint8 = NewType('uint8', int)
-uint8.byte_len = 1
-uint16 = NewType('uint16', int)
-uint16.byte_len = 2
-uint32 = NewType('uint32', int)
-uint32.byte_len = 4
-uint64 = NewType('uint64', int)
-uint64.byte_len = 8
-uint128 = NewType('uint128', int)
-uint128.byte_len = 16
-uint256 = NewType('uint256', int)
-uint256.byte_len = 32
+class uint(int):
+    byte_len = 0
+    def __new__(cls, value, *args, **kwargs):
+        if value < 0:
+            raise ValueError("unsigned types must not be negative")
+        return super().__new__(cls, value)
+
+
+class uint8(uint):
+    byte_len = 1
+    def __new__(cls, value, *args, **kwargs):
+        if value.bit_length() > 8:
+            raise ValueError("value out of bounds for uint8")
+        return super().__new__(cls, value)
+
+# Alias for uint8
 byte = NewType('byte', uint8)
+
+
+class uint16(uint):
+    byte_len = 2
+    def __new__(cls, value, *args, **kwargs):
+        if value.bit_length() > 16:
+            raise ValueError("value out of bounds for uint16")
+        return super().__new__(cls, value)
+
+
+class uint32(uint):
+    byte_len = 4
+    def __new__(cls, value, *args, **kwargs):
+        if value.bit_length() > 32:
+            raise ValueError("value out of bounds for uint16")
+        return super().__new__(cls, value)
+
+
+# We simply default to uint64. But do give it a name, for readability
+uint64 = NewType('uint64', int)
+
+
+class uint128(uint):
+    byte_len = 16
+    def __new__(cls, value, *args, **kwargs):
+        if value.bit_length() > 128:
+            raise ValueError("value out of bounds for uint128")
+        return super().__new__(cls, value)
+
+
+class uint256(uint):
+    byte_len = 32
+    def __new__(cls, value, *args, **kwargs):
+        if value.bit_length() > 256:
+            raise ValueError("value out of bounds for uint256")
+        return super().__new__(cls, value)
+
+
+def is_uint(typ):
+    # All integers are uint in the scope of the spec here.
+    # Since we default to uint64. Bounds can be checked elsewhere.
+    return issubclass(typ, int)
+
+
+def uint_byte_size(typ):
+    if issubclass(typ, uint):
+        return typ.byte_len
+    elif issubclass(typ, int):
+        # Default to uint64
+        return 8
+    else:
+        raise TypeError("Type %s is not an uint (or int-default uint64) type" % typ)
 
 
 # SSZ Container base class
@@ -57,8 +109,12 @@ class Container(object):
         return [getattr(self, field) for field in cls.get_field_names()]
 
     @classmethod
-    def get_fields(cls):
+    def get_fields_dict(cls):
         return dict(cls.__annotations__)
+
+    @classmethod
+    def get_fields(cls):
+        return dict(cls.__annotations__).items()
 
     @classmethod
     def get_field_names(cls):
@@ -69,14 +125,6 @@ class Container(object):
         # values of annotations are the types corresponding to the fields, not instance values.
         return list(cls.__annotations__.values())
 
-
-def is_uint(typ):
-    # Note: only the type reference exists,
-    #  but it really resolves to 'int' during run-time for zero computational/memory overhead.
-    # Hence, we check equality to the type references (which are really just 'NewType' instances),
-    #  and don't use any sub-classing like we normally would.
-    return typ == uint8 or typ == uint16 or typ == uint32 or typ == uint64 \
-           or typ == uint128 or typ == uint256 or typ == byte
 
 # SSZ vector
 # -----------------------------
@@ -138,7 +186,7 @@ class VectorMeta(type):
 
 class Vector(metaclass=VectorMeta):
 
-    def __init__(self, *args: Iterable[T]):
+    def __init__(self, *args: Iterable):
 
         cls = self.__class__
         if not hasattr(cls, 'elem_type'):
@@ -275,6 +323,7 @@ class BytesN(bytes, metaclass=BytesNMeta):
         from .ssz_impl import hash_tree_root
         return hash_tree_root(self, self.__class__)
 
+
 # SSZ Defaults
 # -----------------------------
 
@@ -292,7 +341,8 @@ def get_zero_value(typ):
     if issubclass(typ, bytes):
         return b''
     if issubclass(typ, Container):
-        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields().items()}),
+        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()}),
+
 
 # Type helpers
 # -----------------------------
@@ -309,17 +359,30 @@ def infer_type(obj):
     else:
         raise Exception("Unknown type for {}".format(obj))
 
+
+def infer_input_type(fn):
+    """
+    Decorator to run infer_type on the obj if typ argument is None
+    """
+    def infer_helper(obj, typ=None):
+        if typ is None:
+            typ = infer_type(obj)
+        return fn(obj, typ)
+    return infer_helper
+
+
 def is_list_type(typ):
     return (hasattr(typ, '_name') and typ._name == 'List') or typ == bytes
 
 def is_vector_type(typ):
-    return hasattr(typ, '_name') and typ._name == 'Vector'
+    return issubclass(typ, Vector)
 
 def is_container_typ(typ):
-    return hasattr(typ, 'get_fields')
+    return issubclass(typ, Container)
 
 def read_list_elem_typ(list_typ: Type[List[T]]) -> T:
-    assert list_typ.__args__ is not None
+    if list_typ.__args__ is None or len(list_typ.__args__) != 1:
+        raise TypeError("Supplied list-type is invalid, no element type found.")
     return list_typ.__args__[0]
 
 def read_vector_elem_typ(vector_typ: Type[Vector[T, L]]) -> T:
@@ -333,4 +396,4 @@ def read_elem_typ(typ):
     elif is_vector_type(typ):
         return read_vector_elem_typ(typ)
     else:
-        raise Exception("Unexpected type: {}".format(typ))
+        raise TypeError("Unexpected type: {}".format(typ))
