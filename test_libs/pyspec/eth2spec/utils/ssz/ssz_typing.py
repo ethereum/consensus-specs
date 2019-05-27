@@ -70,7 +70,7 @@ def is_uint_type(typ):
         # get the type that the NewType is wrapping
         typ = typ.__supertype__
 
-    return isinstance(typ, type) and issubclass(typ, int)
+    return isinstance(typ, type) and issubclass(typ, int) and not issubclass(typ, bool)
 
 
 def uint_byte_size(typ):
