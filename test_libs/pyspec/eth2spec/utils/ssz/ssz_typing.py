@@ -61,7 +61,7 @@ class uint256(uint):
         return super().__new__(cls, value)
 
 
-def is_uint(typ):
+def is_uint_type(typ):
     # All integers are uint in the scope of the spec here.
     # Since we default to uint64. Bounds can be checked elsewhere.
     return issubclass(typ, int)
@@ -381,28 +381,47 @@ def is_bool_type(typ):
 
 def is_list_type(typ):
     """
+    Checks if the given type is a list.
+    """
+    return (hasattr(typ, '_name') and typ._name == 'List')
+
+def is_bytes_type(typ):
+    # Do not accept subclasses of bytes here, to avoid confusion with BytesN
+    return typ == bytes
+
+def is_list_kind(typ):
+    """
     Checks if the given type is a kind of list. Can be bytes.
     """
-    return (hasattr(typ, '_name') and typ._name == 'List') or typ == bytes
+    return is_list_type(typ) or is_bytes_type(typ)
 
 def is_vector_type(typ):
     """
+    Checks if the given type is a vector.
+    """
+    return issubclass(typ, Vector)
+
+def is_bytesn_type(typ):
+    return issubclass(typ, BytesN)
+
+def is_vector_kind(typ):
+    """
     Checks if the given type is a kind of vector. Can be BytesN.
     """
-    return issubclass(typ, Vector) or issubclass(typ, BytesN)
+    return is_vector_type(typ) or is_bytesn_type(typ)
 
-def is_container_typ(typ):
+def is_container_type(typ):
     return issubclass(typ, Container)
 
-def read_list_elem_typ(list_typ: Type[List[T]]) -> T:
+def read_list_elem_type(list_typ: Type[List[T]]) -> T:
     if list_typ.__args__ is None or len(list_typ.__args__) != 1:
         raise TypeError("Supplied list-type is invalid, no element type found.")
     return list_typ.__args__[0]
 
-def read_vector_elem_typ(vector_typ: Type[Vector[T, L]]) -> T:
+def read_vector_elem_type(vector_typ: Type[Vector[T, L]]) -> T:
     return vector_typ.elem_type
 
-def read_elem_typ(typ):
+def read_elem_type(typ):
     if typ == bytes:
         return byte
     elif is_list_type(typ):
