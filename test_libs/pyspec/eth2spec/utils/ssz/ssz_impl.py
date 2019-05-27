@@ -112,7 +112,7 @@ def hash_tree_root(obj, typ):
         leaf_root = merkleize_chunks(leaves)
         return mix_in_length(leaf_root, len(obj)) if is_list_type(typ) else leaf_root
     elif is_container_type(typ):
-        leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields()]
+        leaves = [hash_tree_root(field_value, field_typ) for field_value, field_typ in obj.get_typed_values()]
         return merkleize_chunks(chunkify(b''.join(leaves)))
     else:
         raise Exception("Type not supported: obj {} type {}".format(obj, typ))
@@ -121,6 +121,7 @@ def hash_tree_root(obj, typ):
 @infer_input_type
 def signing_root(obj, typ):
     assert is_container_type(typ)
-    leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields()[:-1]]
+    # ignore last field
+    leaves = [hash_tree_root(field_value, field_typ) for field_value, field_typ in obj.get_typed_values()[:-1]]
     return merkleize_chunks(chunkify(b''.join(leaves)))
 

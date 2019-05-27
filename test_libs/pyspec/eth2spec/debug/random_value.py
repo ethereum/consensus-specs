@@ -115,7 +115,7 @@ def get_random_bytes_list(rng: Random, length: int) -> bytes:
     return bytes(rng.getrandbits(8) for _ in range(length))
 
 
-def get_random_basic_value(rng: Random, typ: str) -> Any:
+def get_random_basic_value(rng: Random, typ) -> Any:
     if is_bool_type(typ):
         return rng.choice((True, False))
     if is_uint_type(typ):
@@ -126,7 +126,7 @@ def get_random_basic_value(rng: Random, typ: str) -> Any:
         raise ValueError("Not a basic type")
 
 
-def get_min_basic_value(typ: str) -> Any:
+def get_min_basic_value(typ) -> Any:
     if is_bool_type(typ):
         return False
     if is_uint_type(typ):
@@ -137,7 +137,7 @@ def get_min_basic_value(typ: str) -> Any:
         raise ValueError("Not a basic type")
 
 
-def get_max_basic_value(typ: str) -> Any:
+def get_max_basic_value(typ) -> Any:
     if is_bool_type(typ):
         return True
     if is_uint_type(typ):

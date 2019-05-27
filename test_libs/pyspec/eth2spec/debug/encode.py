@@ -4,6 +4,8 @@ from eth2spec.utils.ssz.ssz_typing import *
 
 def encode(value, typ, include_hash_tree_roots=False):
     if is_uint_type(typ):
+        if hasattr(typ, '__supertype__'):
+            typ = typ.__supertype__
         # Larger uints are boxed and the class declares their byte length
         if issubclass(typ, uint) and typ.byte_len > 8:
             return str(value)
@@ -14,7 +16,7 @@ def encode(value, typ, include_hash_tree_roots=False):
     elif is_list_type(typ) or is_vector_type(typ):
         elem_typ = read_elem_type(typ)
         return [encode(element, elem_typ, include_hash_tree_roots) for element in value]
-    elif issubclass(typ, bytes): # both bytes and BytesN
+    elif isinstance(typ, type) and issubclass(typ, bytes):  # both bytes and BytesN
         return '0x' + value.hex()
     elif is_container_type(typ):
         ret = {}
