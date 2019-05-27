@@ -77,13 +77,6 @@ def test_to_little_endian_64(registration_contract, value, success, assert_tx_fa
         )
 
 
-def test_from_little_endian_64(registration_contract, assert_tx_failed):
-    values = [0, 2**64 - 1] + [randint(1, 2**64 - 2) for _ in range(10)]
-    for value in values:
-        call = registration_contract.functions.from_little_endian_64((value).to_bytes(8, 'little'))
-        assert call.call() == value
-
-
 @pytest.mark.parametrize(
     'success,deposit_amount',
     [
@@ -105,6 +98,43 @@ def test_deposit_amount(registration_contract,
     else:
         assert_tx_failed(
             lambda: call.transact({"value": deposit_amount * eth_utils.denoms.gwei})
+        )
+
+
+@pytest.mark.parametrize(
+    'invalid_pubkey,invalid_withdrawal_credentials,invalid_signature,success',
+    [
+        (False, False, False, True),
+        (True, False, False, False),
+        (False, True, False, False),
+        (False, False, True, False),
+    ]
+)
+def test_deposit_inputs(registration_contract,
+                        w3,
+                        assert_tx_failed,
+                        deposit_input,
+                        invalid_pubkey,
+                        invalid_withdrawal_credentials,
+                        invalid_signature,
+                        success):
+    pubkey = deposit_input[0][2:] if invalid_pubkey else deposit_input[0]
+    if invalid_withdrawal_credentials:  # this one is different to satisfy linter
+        withdrawal_credentials = deposit_input[1][2:]
+    else:
+        withdrawal_credentials = deposit_input[1]
+    signature = deposit_input[2][2:] if invalid_signature else deposit_input[2]
+
+    call = registration_contract.functions.deposit(
+        pubkey,
+        withdrawal_credentials,
+        signature,
+    )
+    if success:
+        assert call.transact({"value": FULL_DEPOSIT_AMOUNT * eth_utils.denoms.gwei})
+    else:
+        assert_tx_failed(
+            lambda: call.transact({"value": FULL_DEPOSIT_AMOUNT * eth_utils.denoms.gwei})
         )
 
 
@@ -151,7 +181,7 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input
         assert log["merkle_tree_index"] == i.to_bytes(8, 'little')
 
         deposit_data = DepositData(
-            pubkey=deposit_input[0][:20],
+            pubkey=deposit_input[0],
             withdrawal_credentials=deposit_input[1],
             amount=deposit_amount_list[i],
             signature=deposit_input[2],

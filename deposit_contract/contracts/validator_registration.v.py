@@ -4,6 +4,10 @@ CHAIN_START_FULL_DEPOSIT_THRESHOLD: constant(uint256) = 65536  # 2**16
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 SECONDS_PER_DAY: constant(uint256) = 86400
 MAX_64_BIT_VALUE: constant(uint256) = 18446744073709551615  # 2**64 - 1
+PUBKEY_LENGTH: constant(uint256) = 48  # bytes
+WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes
+SIGNATURE_LENGTH: constant(uint256) = 96  # bytes
+MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1
 
 Deposit: event({
     pubkey: bytes[48],
@@ -25,7 +29,6 @@ chainStarted: public(bool)
 def __init__():
     for i in range(DEPOSIT_CONTRACT_TREE_DEPTH - 1):
         self.zerohashes[i+1] = sha256(concat(self.zerohashes[i], self.zerohashes[i]))
-        self.branch[i+1] = self.zerohashes[i + 1]
 
 
 @public
@@ -43,18 +46,6 @@ def to_little_endian_64(value: uint256) -> bytes[8]:
         x = shift(x, -8)
 
     return slice(convert(y, bytes32), start=24, len=8)
-
-
-@public
-@constant
-def from_little_endian_64(value: bytes[8]) -> uint256:
-    y: uint256 = 0
-    x: uint256 = convert(value, uint256)
-    for i in range(8):
-        y = y + shift(bitwise_and(x, 255), 8 * (7-i))
-        x = shift(x, -8)
-
-    return y
 
 
 @public
@@ -77,7 +68,18 @@ def get_deposit_count() -> bytes[8]:
 
 @payable
 @public
-def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]):
+def deposit(pubkey: bytes[PUBKEY_LENGTH],
+            withdrawal_credentials: bytes[WITHDRAWAL_CREDENTIALS_LENGTH],
+            signature: bytes[SIGNATURE_LENGTH]):
+    # Prevent edge case in computing `self.branch` when `self.deposit_count == MAX_DEPOSIT_COUNT`
+    # NOTE: reaching this point with the constants as currently defined is impossible due to the
+    # uni-directional nature of transfers from eth1 to eth2 and the total ether supply (< 130M).
+    assert self.deposit_count < MAX_DEPOSIT_COUNT
+
+    assert len(pubkey) == PUBKEY_LENGTH
+    assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
+    assert len(signature) == SIGNATURE_LENGTH
+
     deposit_amount: uint256 = msg.value / as_wei_value(1, "gwei")
     assert deposit_amount >= MIN_DEPOSIT_AMOUNT
     amount: bytes[8] = self.to_little_endian_64(deposit_amount)
@@ -115,7 +117,6 @@ def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: byt
     self.branch[i] = value
 
     self.deposit_count += 1
-    new_deposit_root: bytes32 = self.get_deposit_root()
     log.Deposit(
         pubkey,
         withdrawal_credentials,
@@ -132,6 +133,7 @@ def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: byt
                 as_unitless_number(block.timestamp) % SECONDS_PER_DAY +
                 2 * SECONDS_PER_DAY
             )
+            new_deposit_root: bytes32 = self.get_deposit_root()
             log.Eth2Genesis(new_deposit_root,
                             self.to_little_endian_64(self.deposit_count),
                             self.to_little_endian_64(timestamp_day_boundary))
