@@ -83,33 +83,45 @@ def test_success_top_up(state):
     return pre_state, deposit, post_state
 
 
-def test_wrong_index(state):
+def test_wrong_deposit_for_deposit_count(state):
     pre_state = deepcopy(state)
     deposit_data_leaves = [ZERO_HASH] * len(pre_state.validator_registry)
 
-    index = len(deposit_data_leaves)
-    pubkey = pubkeys[index]
-    privkey = privkeys[index]
-    deposit, root, deposit_data_leaves = build_deposit(
+    # build root for deposit_1
+    index_1 = len(deposit_data_leaves)
+    pubkey_1 = pubkeys[index_1]
+    privkey_1 = privkeys[index_1]
+    deposit_1, root_1, deposit_data_leaves = build_deposit(
         pre_state,
         deposit_data_leaves,
-        pubkey,
-        privkey,
+        pubkey_1,
+        privkey_1,
+        spec.MAX_EFFECTIVE_BALANCE,
+    )
+    deposit_count_1 = len(deposit_data_leaves)
+
+    # build root for deposit_2
+    index_2 = len(deposit_data_leaves)
+    pubkey_2 = pubkeys[index_2]
+    privkey_2 = privkeys[index_2]
+    deposit_2, root_2, deposit_data_leaves = build_deposit(
+        pre_state,
+        deposit_data_leaves,
+        pubkey_2,
+        privkey_2,
         spec.MAX_EFFECTIVE_BALANCE,
     )
 
-    # mess up deposit_index
-    deposit.index = pre_state.deposit_index + 1
-
-    pre_state.latest_eth1_data.deposit_root = root
-    pre_state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
+    # state has root for deposit_2 but is at deposit_count for deposit_1
+    pre_state.latest_eth1_data.deposit_root = root_2
+    pre_state.latest_eth1_data.deposit_count = deposit_count_1
 
     post_state = deepcopy(pre_state)
 
     with pytest.raises(AssertionError):
-        process_deposit(post_state, deposit)
+        process_deposit(post_state, deposit_2)
 
-    return pre_state, deposit, None
+    return pre_state, deposit_2, None
 
 
 def test_bad_merkle_proof(state):
