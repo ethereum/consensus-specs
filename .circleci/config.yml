@@ -35,8 +35,8 @@ commands:
     description: "Restore the cache with default keys"
     steps:
       - restore_cached_venv:
-          venv_name: v1-pyspec-04
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+          venv_name: v1-pyspec-01
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}--{{ checksum "deposit_contract/requirements-testing.txt" }}'
 jobs:
   checkout_specs:
     docker:
