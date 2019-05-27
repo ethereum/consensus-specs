@@ -31,6 +31,12 @@ commands:
       - save_cache:
           key: << parameters.venv_name >>-venv-<< parameters.reqs_checksum >>
           paths: << parameters.venv_path >>
+  restore_default_cached_venv:
+    description: "Restore the cache with default keys"
+    steps:
+      - restore_cached_venv:
+          venv_name: v1-pyspec-04
+          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
 jobs:
   checkout_specs:
     docker:
@@ -59,9 +65,7 @@ jobs:
     steps:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cached_venv:
-          venv_name: v1-pyspec-03
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - restore_default_cached_venv
       - run:
           name: Install pyspec requirements
           command: make install_test && make install_lint && make install_deposit_contract_test
@@ -76,9 +80,7 @@ jobs:
     steps:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cached_venv:
-          venv_name: v1-pyspec-03
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - restore_default_cached_venv
       - run:
           name: Run py-tests
           command: make citest
@@ -91,9 +93,7 @@ jobs:
     steps:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cached_venv:
-          venv_name: v1-pyspec-03
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - restore_default_cached_venv
       - run:
           name: Run linter
           command: make lint
@@ -104,9 +104,7 @@ jobs:
     steps:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cached_venv:
-          venv_name: v1-pyspec-03
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - restore_default_cached_venv
       - run:
           name: Run deposit contract test
           command: make test_deposit_contract
