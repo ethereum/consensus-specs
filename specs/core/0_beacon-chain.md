@@ -1707,7 +1707,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
     attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
-    for index in set(attesting_indices_1).intersection(attesting_indices_2):
+    for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
         if is_slashable_validator(state.validator_registry[index], get_current_epoch(state)):
             slash_validator(state, index)
             slashed_any = True
