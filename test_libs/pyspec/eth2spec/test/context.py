@@ -39,7 +39,7 @@ def expect_assertion_error(fn):
 
 
 # Tags a test to be ignoring BLS for it to pass.
-bls_ignored = with_tags({'bls_ignored': True})
+bls_ignored = with_tags({'bls_setting': 2})
 
 
 def never_bls(fn):
@@ -54,7 +54,7 @@ def never_bls(fn):
 
 
 # Tags a test to be requiring BLS for it to pass.
-bls_required = with_tags({'bls_required': True})
+bls_required = with_tags({'bls_setting': 1})
 
 
 def always_bls(fn):
