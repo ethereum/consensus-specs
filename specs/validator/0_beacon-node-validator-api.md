@@ -25,4 +25,4 @@ This specification is derived from a proposal and discussion on Issues [#1011](h
 The API specification has been written in [OpenAPI 3.0](https://swagger.io/docs/specification/about/) and is provided in the [beacon_node_oapi.yaml](beacon_node_oapi.yaml) file alongside this document.
 
 For convenience, this specification has been uploaded to [SwaggerHub](https://swagger.io/tools/swaggerhub/) at the following URL:
-[https://app.swaggerhub.com/apis/spble/beacon_node_api_for_validator/0.1](https://app.swaggerhub.com/apis/spble/beacon_node_api_for_validator/0.1)
+[https://app.swaggerhub.com/apis/spble/beacon_node_api_for_validator](https://app.swaggerhub.com/apis/spble/beacon_node_api_for_validator)
