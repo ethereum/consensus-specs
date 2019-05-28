@@ -1,6 +1,9 @@
-from typing import List, Iterable, Type, NewType
+from typing import List, Iterable, Type, NewType, TypeVar
 from typing import Union
 from inspect import isclass
+
+T = TypeVar('T')
+L = TypeVar('L')
 
 
 # SSZ integers
@@ -64,13 +67,13 @@ class uint256(uint):
 def is_uint(typ):
     # All integers are uint in the scope of the spec here.
     # Since we default to uint64. Bounds can be checked elsewhere.
-    return issubclass(typ, int)
+    return (isinstance(typ, int.__class__) and issubclass(typ, int)) or typ == uint64
 
 
 def uint_byte_size(typ):
-    if issubclass(typ, uint):
+    if isinstance(typ, int.__class__) and issubclass(typ, uint):
         return typ.byte_len
-    elif issubclass(typ, int):
+    elif typ in (int, uint64):
         # Default to uint64
         return 8
     else:
@@ -109,7 +112,7 @@ class Container(object):
         return [getattr(self, field) for field in cls.get_field_names()]
 
     def __repr__(self):
-        return {field: getattr(self, field) for field in self.get_field_names()}
+        return repr({field: getattr(self, field) for field in self.get_field_names()})
 
     @classmethod
     def get_fields_dict(cls):
@@ -221,7 +224,7 @@ class Vector(metaclass=VectorMeta):
         return hash_tree_root(self, self.__class__)
 
     def __repr__(self):
-        return {'length': self.__class__.length, 'items': self.items}
+        return repr({'length': self.__class__.length, 'items': self.items})
 
     def __getitem__(self, key):
         return self.items[key]
@@ -370,10 +373,10 @@ def infer_input_type(fn):
     """
     Decorator to run infer_type on the obj if typ argument is None
     """
-    def infer_helper(obj, typ=None):
+    def infer_helper(obj, *args, typ=None, **kwargs):
         if typ is None:
             typ = infer_type(obj)
-        return fn(obj, typ)
+        return fn(obj, *args, typ=typ, **kwargs)
     return infer_helper
 
 
@@ -381,10 +384,10 @@ def is_list_type(typ):
     return (hasattr(typ, '_name') and typ._name == 'List') or typ == bytes
 
 def is_vector_type(typ):
-    return issubclass(typ, Vector)
+    return isinstance(typ, int.__class__) and issubclass(typ, Vector)
 
 def is_container_typ(typ):
-    return issubclass(typ, Container)
+    return isinstance(typ, int.__class__) and issubclass(typ, Container)
 
 def read_list_elem_typ(list_typ: Type[List[T]]) -> T:
     if list_typ.__args__ is None or len(list_typ.__args__) != 1:

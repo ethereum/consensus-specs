@@ -35,7 +35,7 @@ def is_fixed_size(typ):
 
 
 @infer_input_type
-def serialize(obj, typ):
+def serialize(obj, typ=None):
     if is_basic_type(typ):
         return serialize_basic(obj, typ)
     elif is_list_type(typ) or is_vector_type(typ):
@@ -100,7 +100,7 @@ def mix_in_length(root, length):
 
 
 @infer_input_type
-def hash_tree_root(obj, typ):
+def hash_tree_root(obj, typ=None):
     if is_basic_type(typ):
         return merkleize_chunks(chunkify(serialize_basic(obj, typ)))
     elif is_list_type(typ) or is_vector_type(typ):
@@ -119,7 +119,7 @@ def hash_tree_root(obj, typ):
 
 
 @infer_input_type
-def signing_root(obj, typ):
+def signing_root(obj, typ=None):
     assert is_container_typ(typ)
     leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields()[:-1]]
     return merkleize_chunks(chunkify(b''.join(leaves)))
