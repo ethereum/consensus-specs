@@ -53,12 +53,12 @@ def is_bottom_layer_type(typ):
     )
 
 @infer_input_type
-def get_fields(obj, typ=None):
+def get_typed_values(obj, typ=None):
     if is_container_typ(typ):
-        return obj.get_fields()
+        return obj.get_typed_values()
     elif is_list_type(typ) or is_vector_type(typ):
-        subtype = read_elem_typ(typ)
-        return zip([subtype] * len(obj), obj)
+        elem_type = read_elem_typ(typ)
+        return zip(obj, [elem_type] * len(obj))
     else:
         raise Exception("Invalid type")
 
@@ -74,8 +74,8 @@ def ssz_all(obj, typ=None, root=1):
         data = serialize_basic(obj, typ) if is_basic_type(typ) else pack(obj, read_elem_typ(typ))
         return {**o, **merkle_tree_of_chunks(chunkify(data), base)}
     else:
-        fields = get_fields(obj, typ=typ)
+        fields = get_typed_values(obj, typ=typ)
         sub_base = base * next_power_of_two(len(fields))
-        for i, (elem, subtype) in enumerate(fields):
-            o = {**o, **ssz_all(elem, typ=subtype, root=sub_base+i)}
+        for i, (elem, elem_type) in enumerate(fields):
+            o = {**o, **ssz_all(elem, typ=elem_type, root=sub_base+i)}
         return {**o, **filter(sub_base, len(fields))}

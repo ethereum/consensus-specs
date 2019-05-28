@@ -35,9 +35,9 @@
         - [`empty`](#empty)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
+        - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
         - [`get_validators_custody_reveal_period`](#get_validators_custody_reveal_period)
-        - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`replace_empty_or_append`](#replace_empty_or_append)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
@@ -104,6 +104,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ### Reward and penalty quotients
 
+| Name | Value |
+| - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
 
 ### Signature domains
@@ -146,7 +148,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenge_index': 'uint64',
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
-    'deadline': Epoch,
+    'inclusion_epoch': Epoch,
     'data_root': Hash,
     'depth': 'uint64',
     'chunk_index': 'uint64',
@@ -160,7 +162,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
     'challenge_index': 'uint64',
     'challenger_index': ValidatorIndex,
     'responder_index': ValidatorIndex,
-    'deadline': Epoch,
+    'inclusion_epoch': Epoch,
     'data_root': Hash,
     'chunk_count': 'uint64',
     'chunk_bits_merkle_root': Hash,
@@ -262,12 +264,10 @@ The `empty` function accepts and SSZ type as input and returns an object of that
 ### `get_crosslink_chunk_count`
 
 ```python
-def get_custody_chunk_count(attestation: Attestation) -> int:
-    crosslink_start_epoch = attestation.data.latest_crosslink.epoch
-    crosslink_end_epoch = slot_to_epoch(attestation.data.slot)
-    crosslink_crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, end_epoch - start_epoch)
+def get_custody_chunk_count(crosslink: Crosslink) -> int:
+    crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, crosslink.end_epoch - crosslink.start_epoch)
     chunks_per_epoch = 2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK
-    return crosslink_crosslink_length * chunks_per_epoch
+    return crosslink_length * chunks_per_epoch
 ```
 
 ### `get_custody_chunk_bit`
@@ -299,7 +299,7 @@ def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorI
 
 ### `get_validators_custody_reveal_period`
 
- ```python
+```python
 def get_validators_custody_reveal_period(state: BeaconState,
                                          validator_index: ValidatorIndex,
                                          epoch: Epoch=None) -> int:
@@ -380,7 +380,7 @@ def process_custody_key_reveal(state: BeaconState,
     increase_balance(state, proposer_index, base_reward(state, index) // MINOR_REWARD_QUOTIENT)
 ```
 
-##### Early derived secret reveals
+#### Early derived secret reveals
 
 Verify that `len(block.body.early_derived_secret_reveals) <= MAX_EARLY_DERIVED_SECRET_REVEALS`.
 
@@ -478,14 +478,14 @@ def process_chunk_challenge(state: BeaconState,
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
-    depth = math.log2(next_power_of_two(get_custody_chunk_count(challenge.attestation)))
+    depth = math.log2(next_power_of_two(get_custody_chunk_count(challenge.attestation.data.crosslink)))
     assert challenge.chunk_index < 2**depth
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
         challenge_index=state.custody_challenge_index,
         challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index
-        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
+        inclusion_epoch=get_current_epoch(state),
         data_root=challenge.attestation.data.crosslink.data_root,
         depth=depth,
         chunk_index=challenge.chunk_index,
@@ -528,10 +528,9 @@ def process_bit_challenge(state: BeaconState,
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     assert challenge.responder_index in attesters
 
-    # A validator can be the challenger or responder for at most one challenge at a time
+    # A validator can be the challenger for at most one challenge at a time
     for record in state.custody_bit_challenge_records:
         assert record.challenger_index != challenge.challenger_index
-        assert record.responder_index != challenge.responder_index
 
     # Verify the responder is a valid custody key
     epoch_to_sign = get_randao_epoch_for_custody_period(
@@ -553,7 +552,7 @@ def process_bit_challenge(state: BeaconState,
     )
 
     # Verify the chunk count
-    chunk_count = get_custody_chunk_count(challenge.attestation)
+    chunk_count = get_custody_chunk_count(challenge.attestation.data.crosslink)
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
     custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(responder_index))
@@ -563,7 +562,7 @@ def process_bit_challenge(state: BeaconState,
         challenge_index=state.custody_challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
-        deadline=get_current_epoch(state) + CUSTODY_RESPONSE_DEADLINE,
+        inclusion_epoch=get_current_epoch(state),
         data_root=challenge.attestation.data.crosslink.data_root,
         chunk_count=chunk_count,
         chunk_bits_merkle_root=merkle_root(pad_to_power_of_2((challenge.chunk_bits))),
@@ -604,6 +603,8 @@ def process_chunk_challenge_response(state: BeaconState,
     assert response.chunk_index == challenge.chunk_index
     # Verify bit challenge data is null
     assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == ZERO_HASH
+    # Verify minimum delay
+    assert get_current_epoch(state) >= challenge.inclusion_epoch + ACTIVATION_EXIT_DELAY
     # Verify the chunk matches the crosslink data root
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.chunk),
@@ -626,6 +627,9 @@ def process_bit_challenge_response(state: BeaconState,
                                    challenge: CustodyBitChallengeRecord) -> None:
     # Verify chunk index
     assert response.chunk_index < challenge.chunk_count
+    # Verify responder has not been slashed
+    responder = state.validator_registry[challenge.responder_index]
+    assert not responder.slashed
     # Verify the chunk matches the crosslink data root
     assert verify_merkle_branch(
         leaf=hash_tree_root(response.chunk),
@@ -671,13 +675,13 @@ Run `process_challenge_deadlines(state)` immediately after `process_reveal_deadl
 ```python
 def process_challenge_deadlines(state: BeaconState) -> None:
     for challenge in state.custody_chunk_challenge_records:
-        if get_current_epoch(state) > challenge.deadline:
+        if get_current_epoch(state) > challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
             records = state.custody_chunk_challenge_records
             records[records.index(challenge)] = CustodyChunkChallengeRecord()
 
     for challenge in state.custody_bit_challenge_records:
-        if get_current_epoch(state) > challenge.deadline:
+        if get_current_epoch(state) > challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
             slash_validator(state, challenge.responder_index, challenge.challenger_index)
             records = state.custody_bit_challenge_records
             records[records.index(challenge)] = CustodyBitChallengeRecord()
@@ -688,26 +692,13 @@ Append this to `process_final_updates(state)`:
 ```python
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
-```
-
-In `process_penalties_and_exits`, change the definition of `eligible` to the following (note that it is not a pure function because `state` is declared in the surrounding scope):
-
-```python
-def eligible(state: BeaconState, index: ValidatorIndex) -> bool:
-    validator = state.validator_registry[index]
-    # Cannot exit if there are still open chunk challenges
-    if len([record for record in state.custody_chunk_challenge_records if record.responder_index == index]) > 0:
-        return False
-    # Cannot exit if there are still open bit challenges
-    if len([record for record in state.custody_bit_challenge_records if record.responder_index == index]) > 0:
-        return False
-    # Cannot exit if you have not revealed all of your custody keys
-    elif validator.next_custody_reveal_period <= get_validators_custody_reveal_period(state, index, validator.exit_epoch):
-        return False
-    # Cannot exit if you already have
-    elif validator.withdrawable_epoch < FAR_FUTURE_EPOCH:
-        return False
-    # Return minimum time
-    else:
-        return current_epoch >= validator.exit_epoch + MIN_VALIDATOR_WITHDRAWAL_EPOCHS
+    # Reset withdrawable epochs if challenge records are empty
+    records = state.custody_chunk_challenge_records + state.bit_challenge_records
+    validator_indices_in_records = set(
+        [record.challenger_index for record in records] + [record.responder_index for record in records]
+    )
+    for index, validator in enumerate(state.validator_registry):
+        if index not in validator_indices_in_records:
+            if validator.exit_epoch != FAR_FUTURE_EPOCH and validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
+                validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
 ```

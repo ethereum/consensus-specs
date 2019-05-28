@@ -5,7 +5,7 @@ from eth_utils import (
 from gen_base import gen_suite, gen_typing
 from preset_loader import loader
 from eth2spec.debug.encode import encode
-from eth2spec.utils.minimal_ssz import signing_root
+from eth2spec.utils.ssz.ssz_impl import signing_root
 from eth2spec.utils.merkle_minimal import get_merkle_root, calc_merkle_tree_from_leaves, get_merkle_proof
 
 from typing import List, Tuple

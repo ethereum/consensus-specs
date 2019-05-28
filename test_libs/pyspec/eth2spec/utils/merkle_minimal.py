@@ -34,10 +34,13 @@ def get_merkle_proof(tree, item_index):
 
 def next_power_of_two(v: int) -> int:
     """
-    Get the next power of 2. (for 64 bit range ints)
+    Get the next power of 2. (for 64 bit range ints).
+    0 is a special case, to have non-empty defaults.
     Examples:
-    0 -> 0, 1 -> 1, 2 -> 2, 3 -> 4, 32 -> 32, 33 -> 64
+    0 -> 1, 1 -> 1, 2 -> 2, 3 -> 4, 32 -> 32, 33 -> 64
     """
+    if v == 0:
+        return 1
     # effectively fill the bitstring (1 less, do not want to  with ones, then increment for next power of 2.
     v -= 1
     v |= v >> (1 << 0)

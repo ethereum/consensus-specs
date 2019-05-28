@@ -3,13 +3,11 @@ import pytest
 
 import eth2spec.phase0.spec as spec
 
-from eth2spec.phase0.state_transition import (
-    state_transition,
-)
 from eth2spec.phase0.spec import (
     get_current_epoch,
     process_attestation,
     slot_to_epoch,
+    state_transition,
 )
 from tests.helpers import (
     build_empty_block_for_next_slot,
@@ -60,6 +58,22 @@ def test_success_prevous_epoch(state):
     block = build_empty_block_for_next_slot(state)
     block.slot = state.slot + spec.SLOTS_PER_EPOCH
     state_transition(state, block)
+
+    pre_state, post_state = run_attestation_processing(state, attestation)
+
+    return pre_state, attestation, post_state
+
+
+def test_success_since_max_epochs_per_crosslink(state):
+    for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
+        next_epoch(state)
+
+    attestation = get_valid_attestation(state)
+    data = attestation.data
+    assert data.crosslink.end_epoch - data.crosslink.start_epoch == spec.MAX_EPOCHS_PER_CROSSLINK
+
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
 
     pre_state, post_state = run_attestation_processing(state, attestation)
 
@@ -126,7 +140,33 @@ def test_bad_previous_crosslink(state):
     for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
         next_slot(state)
 
-    state.current_crosslinks[attestation.data.crosslink.shard].epoch += 10
+    attestation.data.crosslink.parent_root = b'\x27' * 32
+
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
+
+    return pre_state, attestation, post_state
+
+
+def test_bad_crosslink_start_epoch(state):
+    next_epoch(state)
+    attestation = get_valid_attestation(state)
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+
+    attestation.data.crosslink.start_epoch += 1
+
+    pre_state, post_state = run_attestation_processing(state, attestation, False)
+
+    return pre_state, attestation, post_state
+
+
+def test_bad_crosslink_end_epoch(state):
+    next_epoch(state)
+    attestation = get_valid_attestation(state)
+    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        next_slot(state)
+
+    attestation.data.crosslink.end_epoch += 1
 
     pre_state, post_state = run_attestation_processing(state, attestation, False)
 

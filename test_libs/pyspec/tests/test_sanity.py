@@ -5,7 +5,7 @@ import pytest
 from py_ecc import bls
 import eth2spec.phase0.spec as spec
 
-from eth2spec.utils.minimal_ssz import signing_root
+from eth2spec.utils.ssz.ssz_impl import signing_root
 from eth2spec.phase0.spec import (
     # constants
     ZERO_HASH,
@@ -20,13 +20,10 @@ from eth2spec.phase0.spec import (
     get_block_root_at_slot,
     get_current_epoch,
     get_domain,
-    advance_slot,
-    cache_state,
+    process_slot,
     verify_merkle_branch,
-    hash,
-)
-from eth2spec.phase0.state_transition import (
     state_transition,
+    hash,
 )
 from eth2spec.utils.merkle_minimal import (
     calc_merkle_tree_from_leaves,
@@ -34,6 +31,7 @@ from eth2spec.utils.merkle_minimal import (
     get_merkle_root,
 )
 from .helpers import (
+    advance_slot,
     get_balance,
     build_deposit_data,
     build_empty_block_for_next_slot,
@@ -54,7 +52,7 @@ pytestmark = pytest.mark.sanity
 
 def test_slot_transition(state):
     test_state = deepcopy(state)
-    cache_state(test_state)
+    process_slot(test_state)
     advance_slot(test_state)
     assert test_state.slot == state.slot + 1
     assert get_state_root(test_state, state.slot) == state.hash_tree_root()

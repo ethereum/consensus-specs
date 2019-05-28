@@ -1,6 +1,7 @@
-from typing import List, Iterable, Type, NewType, TypeVar
-from typing import Union
 from inspect import isclass
+from typing import List, Iterable, TypeVar, Type, NewType
+from typing import Union
+from typing_inspect import get_origin
 
 T = TypeVar('T')
 L = TypeVar('L')
@@ -64,20 +65,27 @@ class uint256(uint):
         return super().__new__(cls, value)
 
 
-def is_uint(typ):
+def is_uint_type(typ):
     # All integers are uint in the scope of the spec here.
     # Since we default to uint64. Bounds can be checked elsewhere.
-    return (isinstance(typ, int.__class__) and issubclass(typ, int)) or typ == uint64
+    # However, some are wrapped in a NewType
+    if hasattr(typ, '__supertype__'):
+        # get the type that the NewType is wrapping
+        typ = typ.__supertype__
+
+    return isinstance(typ, type) and issubclass(typ, int) and not issubclass(typ, bool)
 
 
 def uint_byte_size(typ):
-    if isinstance(typ, int.__class__) and issubclass(typ, uint):
-        return typ.byte_len
-    elif typ in (int, uint64):
-        # Default to uint64
-        return 8
-    else:
-        raise TypeError("Type %s is not an uint (or int-default uint64) type" % typ)
+    if hasattr(typ, '__supertype__'):
+        typ = typ.__supertype__
+    if isinstance(typ, type):
+        if issubclass(typ, uint):
+            return typ.byte_len
+        elif issubclass(typ, int):
+            # Default to uint64
+            return 8
+    raise TypeError("Type %s is not an uint (or int-default uint64) type" % typ)
 
 
 # SSZ Container base class
@@ -89,7 +97,7 @@ class Container(object):
 
     def __init__(self, **kwargs):
         cls = self.__class__
-        for f, t in cls.get_fields().items():
+        for f, t in cls.get_fields():
             if f not in kwargs:
                 setattr(self, f, get_zero_value(t))
             else:
@@ -114,13 +122,28 @@ class Container(object):
     def __repr__(self):
         return repr({field: getattr(self, field) for field in self.get_field_names()})
 
+    def __str__(self):
+        output = []
+        for field in self.get_field_names():
+            output.append(f'{field}: {getattr(self, field)}')
+        return "\n".join(output)
+
+    def __eq__(self, other):
+        return self.hash_tree_root() == other.hash_tree_root()
+
+    def __hash__(self):
+        return hash(self.hash_tree_root())
+
     @classmethod
     def get_fields_dict(cls):
         return dict(cls.__annotations__)
 
     @classmethod
     def get_fields(cls):
-        return dict(cls.__annotations__).items()
+        return list(dict(cls.__annotations__).items())
+
+    def get_typed_values(self):
+        return list(zip(self.get_field_values(), self.get_field_types()))
 
     @classmethod
     def get_field_names(cls):
@@ -137,6 +160,9 @@ class Container(object):
 
 
 def _is_vector_instance_of(a, b):
+    # Other must not be a BytesN
+    if issubclass(b, bytes):
+        return False
     if not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
         # Vector (b) is not an instance of Vector[X, Y] (a)
         return False
@@ -149,6 +175,9 @@ def _is_vector_instance_of(a, b):
 
 
 def _is_equal_vector_type(a, b):
+    # Other must not be a BytesN
+    if issubclass(b, bytes):
+        return False
     if not hasattr(a, 'elem_type') or not hasattr(a, 'length'):
         if not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
             # Vector == Vector
@@ -188,6 +217,9 @@ class VectorMeta(type):
 
     def __ne__(self, other):
         return not _is_equal_vector_type(self, other)
+
+    def __hash__(self):
+        return hash(self.__class__)
 
 
 class Vector(metaclass=VectorMeta):
@@ -238,8 +270,14 @@ class Vector(metaclass=VectorMeta):
     def __len__(self):
         return len(self.items)
 
+    def __eq__(self, other):
+        return self.hash_tree_root() == other.hash_tree_root()
+
 
 def _is_bytes_n_instance_of(a, b):
+    # Other has to be a Bytes derivative class to be a BytesN
+    if not issubclass(b, bytes):
+        return False
     if not hasattr(b, 'length'):
         # BytesN (b) is not an instance of BytesN[X] (a)
         return False
@@ -252,6 +290,9 @@ def _is_bytes_n_instance_of(a, b):
 
 
 def _is_equal_bytes_n_type(a, b):
+    # Other has to be a Bytes derivative class to be a BytesN
+    if not issubclass(b, bytes):
+        return False
     if not hasattr(a, 'length'):
         if not hasattr(b, 'length'):
             # BytesN == BytesN
@@ -270,7 +311,7 @@ class BytesNMeta(type):
         out = type.__new__(cls, class_name, parents, attrs)
         if 'length' in attrs:
             setattr(out, 'length', attrs['length'])
-        out._name = 'Vector'
+        out._name = 'BytesN'
         out.elem_type = byte
         return out
 
@@ -288,6 +329,9 @@ class BytesNMeta(type):
 
     def __ne__(self, other):
         return not _is_equal_bytes_n_type(self, other)
+
+    def __hash__(self):
+        return hash(self.__class__)
 
 
 def parse_bytes(val):
@@ -321,7 +365,7 @@ class BytesN(bytes, metaclass=BytesNMeta):
             else:
                 bytesval = b'\x00' * cls.length
         if len(bytesval) != cls.length:
-            raise TypeError("bytesN[%d] cannot be initialized with value of %d bytes" % (cls.length, len(bytesval)))
+            raise TypeError("BytesN[%d] cannot be initialized with value of %d bytes" % (cls.length, len(bytesval)))
         return super().__new__(cls, bytesval)
 
     def serialize(self):
@@ -335,29 +379,31 @@ class BytesN(bytes, metaclass=BytesNMeta):
 
 # SSZ Defaults
 # -----------------------------
-
 def get_zero_value(typ):
-    if is_uint(typ):
-        return 0
-    if issubclass(typ, bool):
-        return False
-    if issubclass(typ, list):
-        return []
-    if issubclass(typ, Vector):
-        return typ()
-    if issubclass(typ, BytesN):
-        return typ()
-    if issubclass(typ, bytes):
-        return b''
-    if issubclass(typ, Container):
-        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()}),
-
+    result = None
+    if is_uint_type(typ):
+        result = 0
+    elif is_list_type(typ):
+        result = []
+    elif issubclass(typ, bool):
+        result = False
+    elif issubclass(typ, Vector):
+        result = typ()
+    elif issubclass(typ, BytesN):
+        result = typ()
+    elif issubclass(typ, bytes):
+        result = b''
+    elif issubclass(typ, Container):
+        result = typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
+    else:
+       return Exception("Type not supported: {}".format(typ))
+    return result
 
 # Type helpers
 # -----------------------------
 
 def infer_type(obj):
-    if is_uint(obj.__class__):
+    if is_uint_type(obj.__class__):
         return obj.__class__
     elif isinstance(obj, int):
         return uint64
@@ -380,29 +426,75 @@ def infer_input_type(fn):
     return infer_helper
 
 
+def is_bool_type(typ):
+    if hasattr(typ, '__supertype__'):
+        typ = typ.__supertype__
+    return isinstance(typ, type) and issubclass(typ, bool)
+
+
 def is_list_type(typ):
-    return (hasattr(typ, '_name') and typ._name == 'List') or typ == bytes
+    """
+    Checks if the given type is a list.
+    """
+    return get_origin(typ) is List or get_origin(typ) is list
+
+
+def is_bytes_type(typ):
+    # Do not accept subclasses of bytes here, to avoid confusion with BytesN
+    return typ == bytes
+
+
+def is_list_kind(typ):
+    """
+    Checks if the given type is a kind of list. Can be bytes.
+    """
+    return is_list_type(typ) or is_bytes_type(typ)
+
 
 def is_vector_type(typ):
-    return isinstance(typ, int.__class__) and issubclass(typ, Vector)
+    """
+    Checks if the given type is a vector.
+    """
+    return isinstance(typ, type) and issubclass(typ, Vector)
 
-def is_container_typ(typ):
-    return isinstance(typ, int.__class__) and issubclass(typ, Container)
 
-def read_list_elem_typ(list_typ: Type[List[T]]) -> T:
+def is_bytesn_type(typ):
+    return isinstance(typ, type) and issubclass(typ, BytesN)
+
+
+def is_vector_kind(typ):
+    """
+    Checks if the given type is a kind of vector. Can be BytesN.
+    """
+    return is_vector_type(typ) or is_bytesn_type(typ)
+
+
+def is_container_type(typ):
+    return isinstance(typ, type) and issubclass(typ, Container)
+
+
+T = TypeVar('T')
+L = TypeVar('L')
+
+
+def read_list_elem_type(list_typ: Type[List[T]]) -> T:
     if list_typ.__args__ is None or len(list_typ.__args__) != 1:
         raise TypeError("Supplied list-type is invalid, no element type found.")
     return list_typ.__args__[0]
 
-def read_vector_elem_typ(vector_typ: Type[Vector[T, L]]) -> T:
+
+def read_vector_elem_type(vector_typ: Type[Vector[T, L]]) -> T:
     return vector_typ.elem_type
 
-def read_elem_typ(typ):
+
+def read_elem_type(typ):
     if typ == bytes:
         return byte
     elif is_list_type(typ):
-        return read_list_elem_typ(typ)
+        return read_list_elem_type(typ)
     elif is_vector_type(typ):
-        return read_vector_elem_typ(typ)
+        return read_vector_elem_type(typ)
+    elif issubclass(typ, bytes):
+        return byte
     else:
         raise TypeError("Unexpected type: {}".format(typ))

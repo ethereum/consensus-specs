@@ -51,6 +51,7 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signing_root`](#signing_root)
+        - [`bls_domain`](#bls_domain)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
         - [`get_current_epoch`](#get_current_epoch)
@@ -98,8 +99,7 @@
         - [Genesis state](#genesis-state)
         - [Genesis block](#genesis-block)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-        - [State caching](#state-caching)
-        - [Per-epoch processing](#per-epoch-processing)
+        - [Epoch processing](#epoch-processing)
             - [Helper functions](#helper-functions-1)
             - [Justification and finalization](#justification-and-finalization)
             - [Crosslinks](#crosslinks)
@@ -107,8 +107,7 @@
             - [Registry updates](#registry-updates)
             - [Slashings](#slashings)
             - [Final updates](#final-updates)
-        - [Per-slot processing](#per-slot-processing)
-        - [Per-block processing](#per-block-processing)
+        - [Block processing](#block-processing)
             - [Block header](#block-header)
             - [RANDAO](#randao)
             - [Eth1 data](#eth1-data)
@@ -119,7 +118,6 @@
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
                 - [Transfers](#transfers)
-            - [State root verification](#state-root-verification)
 
 <!-- /TOC -->
 
@@ -283,8 +281,9 @@ class Fork(Container):
 class Crosslink(Container):
     # Shard number
     shard: uint64
-    # Epoch number
-    epoch: uint64
+    # Crosslinking data from epochs [start....end-1]
+    start_epoch: uint64
+    end_epoch: uint64
     # Root of the previous crosslink
     parent_root: Bytes32
     # Root of the crosslinked shard data since the previous crosslink
@@ -367,6 +366,7 @@ class BeaconBlockHeader(Container):
     body_root: Bytes32
     signature: Bytes96
 ```
+
 #### `Validator`
 
 ```python
@@ -560,9 +560,7 @@ class BeaconState(Container):
     latest_block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
     latest_state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
     latest_active_index_roots: Vector[Bytes32, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
-    # Balances slashed at every withdrawal period
     latest_slashed_balances: Vector[uint64, LATEST_SLASHED_EXIT_LENGTH]
-    # `latest_block_header.state_root == ZERO_HASH` temporarily
     latest_block_header: BeaconBlockHeader
     historical_roots: List[Bytes32]
     
@@ -612,6 +610,16 @@ The `hash` function is SHA256.
 
 `def signing_root(object: Container) -> Bytes32` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
 
+### `bls_domain`
+
+```python
+def bls_domain(domain_type: int, fork_version: bytes=b'\x00\x00\x00\x00') -> int:
+    """
+    Return the bls domain given by the ``domain_type`` and optional 4 byte ``fork_version`` (defaults to zero).
+    """
+    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+```
+
 ### `slot_to_epoch`
 
 ```python
@@ -631,7 +639,7 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
     Return the current epoch if it's genesis epoch.
     """
     current_epoch = get_current_epoch(state)
-    return (current_epoch - 1) if current_epoch > GENESIS_EPOCH else current_epoch
+    return GENESIS_EPOCH if current_epoch == GENESIS_EPOCH else current_epoch - 1
 ```
 
 ### `get_current_epoch`
@@ -871,7 +879,7 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Bytes32) -
     # See the 'generalized domain' algorithm on page 3
     for round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes(round, length=1))[0:8]) % index_count
-        flip = (pivot - index) % index_count
+        flip = (pivot + index_count - index) % index_count
         position = max(index, flip)
         source = hash(seed + int_to_bytes(round, length=1) + int_to_bytes(position // 256, length=4))
         byte = source[(position % 256) // 8]
@@ -951,7 +959,7 @@ def get_domain(state: BeaconState,
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return bytes_to_int(fork_version + int_to_bytes(domain_type, length=4))
+    return bls_domain(domain_type, fork_version)
 ```
 
 ### `get_bitfield_bit`
@@ -1173,7 +1181,11 @@ Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.gene
 
 ```python
 def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
-    state = BeaconState(genesis_time=genesis_time, latest_eth1_data=genesis_eth1_data)
+    state = BeaconState(
+        genesis_time=genesis_time,
+        latest_eth1_data=genesis_eth1_data,
+        latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
+    )
 
     # Process genesis deposits
     for deposit in deposits:
@@ -1199,49 +1211,60 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ## Beacon chain state transition function
 
-We now define the state transition function. At a high level, the state transition is made up of four parts:
-
-1. State caching, which happens at the start of every slot.
-2. The per-epoch transitions, which happens at the start of the first slot of every epoch.
-3. The per-slot transitions, which happens at every slot.
-4. The per-block transitions, which happens at every block.
-
-Transition section notes:
-* The state caching caches the state root of the previous slot and updates block and state roots records.
-* The per-epoch transitions focus on the [validator](#dfn-validator) registry, including adjusting balances and activating and exiting [validators](#dfn-validator), as well as processing crosslinks and managing block justification/finalization.
-* The per-slot transitions focus on the slot counter.
-* The per-block transitions generally focus on verifying aggregate signatures and saving temporary records relating to the per-block activity in the `BeaconState`.
-
-Beacon blocks that trigger unhandled Python exceptions (e.g. out-of-range list accesses) and failed `assert`s during the state transition are considered invalid.
-
-*Note*: If there are skipped slots between a block and its parent block, run the steps in the [state-root](#state-caching), [per-epoch](#per-epoch-processing), and [per-slot](#per-slot-processing) sections once for each skipped slot and then once for the slot containing the new block.
-
-### State caching
-
-At every `slot > GENESIS_SLOT` run the following function:
+The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled excpetion (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
-def cache_state(state: BeaconState) -> None:
-    # Cache latest known state root (for previous slot)
-    latest_state_root = hash_tree_root(state)
-    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_state_root
-
-    # Store latest known state root (for previous slot) in latest_block_header if it is empty
-    if state.latest_block_header.state_root == ZERO_HASH:
-        state.latest_block_header.state_root = latest_state_root
-
-    # Cache latest known block root (for previous slot)
-    latest_block_root = signing_root(state.latest_block_header)
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = latest_block_root
+def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root: bool=False) -> BeaconState:
+    # Process slots (including those with no blocks) since block
+    process_slots(state, block.slot)
+    # Process block
+    process_block(state, block)
+    # Validate state root (`validate_state_root == True` in production)
+    if validate_state_root:
+        assert block.state_root == hash_tree_root(state)
+    # Return post-state
+    return state
 ```
 
-### Per-epoch processing
+```python
+def process_slots(state: BeaconState, slot: Slot) -> None:
+    assert state.slot < slot
+    while state.slot < slot:
+        process_slot(state)
+        # Process epoch on the first slot of the next epoch
+        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
+            process_epoch(state)
+        state.slot += 1
+```
 
-The steps below happen when `state.slot > GENESIS_SLOT and (state.slot + 1) % SLOTS_PER_EPOCH == 0`.
+```python
+def process_slot(state: BeaconState) -> None:
+    # Cache state root
+    previous_state_root = hash_tree_root(state)
+    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
+
+    # Cache latest block header state root
+    if state.latest_block_header.state_root == ZERO_HASH:
+        state.latest_block_header.state_root = previous_state_root
+
+    # Cache block root
+    previous_block_root = signing_root(state.latest_block_header)
+    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
+```
+
+### Epoch processing
+
+```python
+def process_epoch(state: BeaconState) -> None:
+    process_justification_and_finalization(state)
+    process_crosslinks(state)
+    process_rewards_and_penalties(state)
+    process_registry_updates(state)
+    process_slashings(state)
+    process_final_updates(state)
+```
 
 #### Helper functions
-
-We define epoch transition helper functions:
 
 ```python
 def get_total_active_balance(state: BeaconState) -> Gwei:
@@ -1303,8 +1326,6 @@ def get_winning_crosslink_and_attesting_indices(state: BeaconState,
 
 #### Justification and finalization
 
-Run the following function:
-
 ```python
 def process_justification_and_finalization(state: BeaconState) -> None:
     if get_current_epoch(state) <= GENESIS_EPOCH + 1:
@@ -1337,26 +1358,24 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Process finalizations
     bitfield = state.justification_bitfield
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_epoch == current_epoch - 3:
+    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_epoch + 3 == current_epoch:
         state.finalized_epoch = old_previous_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_epoch == current_epoch - 2:
+    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_epoch + 2 == current_epoch:
         state.finalized_epoch = old_previous_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_epoch == current_epoch - 2:
+    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_epoch + 2 == current_epoch:
         state.finalized_epoch = old_current_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_epoch == current_epoch - 1:
+    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_epoch + 1 == current_epoch:
         state.finalized_epoch = old_current_justified_epoch
         state.finalized_root = get_block_root(state, state.finalized_epoch)
 ```
 
 #### Crosslinks
-
-Run the following function:
 
 ```python
 def process_crosslinks(state: BeaconState) -> None:
@@ -1371,8 +1390,6 @@ def process_crosslinks(state: BeaconState) -> None:
 ```
 
 #### Rewards and penalties
-
-First, we define additional helpers:
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
@@ -1449,8 +1466,6 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     return rewards, penalties
 ```
 
-Run the following function:
-
 ```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
@@ -1464,8 +1479,6 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 ```
 
 #### Registry updates
-
-Run the following function:
 
 ```python
 def process_registry_updates(state: BeaconState) -> None:
@@ -1495,8 +1508,6 @@ def process_registry_updates(state: BeaconState) -> None:
 
 #### Slashings
 
-Run the following function:
-
 ```python
 def process_slashings(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
@@ -1518,8 +1529,6 @@ def process_slashings(state: BeaconState) -> None:
 ```
 
 #### Final updates
-
-Run the following function:
 
 ```python
 def process_final_updates(state: BeaconState) -> None:
@@ -1559,18 +1568,15 @@ def process_final_updates(state: BeaconState) -> None:
     state.current_epoch_attestations = []
 ```
 
-### Per-slot processing
-
-At every `slot > GENESIS_SLOT` run the following function:
+### Block processing
 
 ```python
-def advance_slot(state: BeaconState) -> None:
-    state.slot += 1
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    process_block_header(state, block)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    process_operations(state, block.body)
 ```
-
-### Per-block processing
-
-For every `block` except the genesis block, run `process_block_header(state, block)`, `process_randao(state, block)` and `process_eth1_data(state, block)`.
 
 #### Block header
 
@@ -1596,44 +1602,57 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 #### RANDAO
 
 ```python
-def process_randao(state: BeaconState, block: BeaconBlock) -> None:
+def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     proposer = state.validator_registry[get_beacon_proposer_index(state)]
     # Verify that the provided randao value is valid
     assert bls_verify(
         proposer.pubkey,
         hash_tree_root(get_current_epoch(state)),
-        block.body.randao_reveal,
+        body.randao_reveal,
         get_domain(state, DOMAIN_RANDAO),
     )
     # Mix it in
     state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
         xor(get_randao_mix(state, get_current_epoch(state)),
-            hash(block.body.randao_reveal))
+            hash(body.randao_reveal))
     )
 ```
 
 #### Eth1 data
 
 ```python
-def process_eth1_data(state: BeaconState, block: BeaconBlock) -> None:
-    state.eth1_data_votes.append(block.body.eth1_data)
-    if state.eth1_data_votes.count(block.body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
-        state.latest_eth1_data = block.body.eth1_data
+def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
+    state.eth1_data_votes.append(body.eth1_data)
+    if state.eth1_data_votes.count(body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
+        state.latest_eth1_data = body.eth1_data
 ```
 
 #### Operations
 
-*Note*: All functions in this section mutate `state`.
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # Verify that outstanding deposits are processed up to the maximum number of deposits
+    assert len(body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)
+    # Verify that there are no duplicate transfers
+    assert len(body.transfers) == len(set(body.transfers))
+
+    for operations, max_operations, function in (
+        (body.proposer_slashings, MAX_PROPOSER_SLASHINGS, process_proposer_slashing),
+        (body.attester_slashings, MAX_ATTESTER_SLASHINGS, process_attester_slashing),
+        (body.attestations, MAX_ATTESTATIONS, process_attestation),
+        (body.deposits, MAX_DEPOSITS, process_deposit),
+        (body.voluntary_exits, MAX_VOLUNTARY_EXITS, process_voluntary_exit),
+        (body.transfers, MAX_TRANSFERS, process_transfer),
+    ):
+        assert len(operations) <= max_operations
+        for operation in operations:
+            function(state, operation)
+```
 
 ##### Proposer slashings
 
-Verify that `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`.
-
-For each `proposer_slashing` in `block.body.proposer_slashings`, run the following function:
-
 ```python
-def process_proposer_slashing(state: BeaconState,
-                              proposer_slashing: ProposerSlashing) -> None:
+def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     """
     Process ``ProposerSlashing`` operation.
     """
@@ -1654,13 +1673,8 @@ def process_proposer_slashing(state: BeaconState,
 
 ##### Attester slashings
 
-Verify that `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS`.
-
-For each `attester_slashing` in `block.body.attester_slashings`, run the following function:
-
 ```python
-def process_attester_slashing(state: BeaconState,
-                              attester_slashing: AttesterSlashing) -> None:
+def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
     """
     Process ``AttesterSlashing`` operation.
     """
@@ -1673,7 +1687,7 @@ def process_attester_slashing(state: BeaconState,
     slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
     attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
-    for index in set(attesting_indices_1).intersection(attesting_indices_2):
+    for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
         if is_slashable_validator(state.validator_registry[index], get_current_epoch(state)):
             slash_validator(state, index)
             slashed_any = True
@@ -1681,10 +1695,6 @@ def process_attester_slashing(state: BeaconState,
 ```
 
 ##### Attestations
-
-Verify that `len(block.body.attestations) <= MAX_ATTESTATIONS`.
-
-For each `attestation` in `block.body.attestations`, run the following function:
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -1714,17 +1724,14 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     # Check FFG data, crosslink data, and signature
     assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)
-    assert data.crosslink.epoch == min(data.target_epoch, parent_crosslink.epoch + MAX_EPOCHS_PER_CROSSLINK)
+    assert data.crosslink.start_epoch == parent_crosslink.end_epoch
+    assert data.crosslink.end_epoch == min(data.target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))
 ```
 
 ##### Deposits
-
-Verify that `len(block.body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)`.
-
-For each `deposit` in `block.body.deposits`, run the following function:
 
 ```python
 def process_deposit(state: BeaconState, deposit: Deposit) -> None:
@@ -1749,8 +1756,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession)
+        # Note: deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
         if not bls_verify(
-            pubkey, signing_root(deposit.data), deposit.data.signature, get_domain(state, DOMAIN_DEPOSIT)
+            pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)
         ):
             return
 
@@ -1772,10 +1780,6 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 ```
 
 ##### Voluntary exits
-
-Verify that `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`.
-
-For each `exit` in `block.body.voluntary_exits`, run the following function:
 
 ```python
 def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
@@ -1799,10 +1803,6 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
 ```
 
 ##### Transfers
-
-Verify that `len(block.body.transfers) <= MAX_TRANSFERS` and that all transfers are distinct.
-
-For each `transfer` in `block.body.transfers`, run the following function:
 
 ```python
 def process_transfer(state: BeaconState, transfer: Transfer) -> None:
@@ -1833,13 +1833,4 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Verify balances are not dust
     assert not (0 < state.balances[transfer.sender] < MIN_DEPOSIT_AMOUNT)
     assert not (0 < state.balances[transfer.recipient] < MIN_DEPOSIT_AMOUNT)
-```
-
-#### State root verification
-
-Verify the block's `state_root` by running the following function:
-
-```python
-def verify_block_state_root(state: BeaconState, block: BeaconBlock) -> None:
-    assert block.state_root == hash_tree_root(state)
 ```

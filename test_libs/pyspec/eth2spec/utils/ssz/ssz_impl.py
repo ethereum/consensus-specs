@@ -8,13 +8,13 @@ BYTES_PER_LENGTH_OFFSET = 4
 
 
 def is_basic_type(typ):
-    return is_uint(typ) or typ == bool
+    return is_uint_type(typ) or is_bool_type(typ)
 
 
 def serialize_basic(value, typ):
-    if is_uint(typ):
+    if is_uint_type(typ):
         return value.to_bytes(uint_byte_size(typ), 'little')
-    if issubclass(typ, bool):
+    if is_bool_type(typ):
         if value:
             return b'\x01'
         else:
@@ -24,11 +24,11 @@ def serialize_basic(value, typ):
 def is_fixed_size(typ):
     if is_basic_type(typ):
         return True
-    elif is_list_type(typ):
+    elif is_list_kind(typ):
         return False
-    elif is_vector_type(typ):
-        return is_fixed_size(read_vector_elem_typ(typ))
-    elif is_container_typ(typ):
+    elif is_vector_kind(typ):
+        return is_fixed_size(read_vector_elem_type(typ))
+    elif is_container_type(typ):
         return all(is_fixed_size(t) for t in typ.get_field_types())
     else:
         raise Exception("Type not supported: {}".format(typ))
@@ -38,9 +38,9 @@ def is_fixed_size(typ):
 def serialize(obj, typ=None):
     if is_basic_type(typ):
         return serialize_basic(obj, typ)
-    elif is_list_type(typ) or is_vector_type(typ):
-        return encode_series(list(obj), [read_elem_typ(typ)]*len(obj))
-    elif is_container_typ(typ):
+    elif is_list_kind(typ) or is_vector_kind(typ):
+        return encode_series(obj, [read_elem_type(typ)]*len(obj))
+    elif is_container_type(typ):
         return encode_series(obj.get_field_values(), typ.get_field_types())
     else:
         raise Exception("Type not supported: {}".format(typ))
@@ -103,24 +103,25 @@ def mix_in_length(root, length):
 def hash_tree_root(obj, typ=None):
     if is_basic_type(typ):
         return merkleize_chunks(chunkify(serialize_basic(obj, typ)))
-    elif is_list_type(typ) or is_vector_type(typ):
-        subtype = read_elem_typ(typ)
+    elif is_list_kind(typ) or is_vector_kind(typ):
+        subtype = read_elem_type(typ)
         if is_basic_type(subtype):
             leaves = chunkify(pack(obj, subtype))
         else:
             leaves = [hash_tree_root(elem, subtype) for elem in obj]
         leaf_root = merkleize_chunks(leaves)
-        return mix_in_length(leaf_root, len(obj)) if is_list_type(typ) else leaf_root
-    elif is_container_typ(typ):
-        leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields()]
+        return mix_in_length(leaf_root, len(obj)) if is_list_kind(typ) else leaf_root
+    elif is_container_type(typ):
+        leaves = [hash_tree_root(field_value, field_typ) for field_value, field_typ in obj.get_typed_values()]
         return merkleize_chunks(chunkify(b''.join(leaves)))
     else:
         raise Exception("Type not supported: obj {} type {}".format(obj, typ))
 
 
 @infer_input_type
-def signing_root(obj, typ=None):
-    assert is_container_typ(typ)
-    leaves = [hash_tree_root(elem, subtyp) for elem, subtyp in obj.get_fields()[:-1]]
+def signing_root(obj, typ):
+    assert is_container_type(typ)
+    # ignore last field
+    leaves = [hash_tree_root(field_value, field_typ) for field_value, field_typ in obj.get_typed_values()[:-1]]
     return merkleize_chunks(chunkify(b''.join(leaves)))
 
