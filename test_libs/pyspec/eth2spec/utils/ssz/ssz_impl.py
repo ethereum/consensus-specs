@@ -52,7 +52,7 @@ def encode_series(values, types):
         return values
 
     # Recursively serialize
-    parts = [(is_fixed_size(types[i]), serialize(values[i], types[i])) for i in range(len(values))]
+    parts = [(is_fixed_size(types[i]), serialize(values[i], typ=types[i])) for i in range(len(values))]
 
     # Compute and check lengths
     fixed_lengths = [len(serialized) if constant_size else BYTES_PER_LENGTH_OFFSET
@@ -99,29 +99,42 @@ def mix_in_length(root, length):
     return hash(root + length.to_bytes(32, 'little'))
 
 
+def is_bottom_layer_kind(typ):
+    return (
+        is_basic_type(typ) or
+        (is_list_kind(typ) or is_vector_kind(typ)) and is_basic_type(read_elem_type(typ))
+    )
+
+
+@infer_input_type
+def get_typed_values(obj, typ=None):
+    if is_container_type(typ):
+        return obj.get_typed_values()
+    elif is_list_kind(typ) or is_vector_kind(typ):
+        elem_type = read_elem_type(typ)
+        return zip(obj, [elem_type] * len(obj))
+    else:
+        raise Exception("Invalid type")
+
+
 @infer_input_type
 def hash_tree_root(obj, typ=None):
-    if is_basic_type(typ):
-        return merkleize_chunks(chunkify(serialize_basic(obj, typ)))
-    elif is_list_kind(typ) or is_vector_kind(typ):
-        subtype = read_elem_type(typ)
-        if is_basic_type(subtype):
-            leaves = chunkify(pack(obj, subtype))
-        else:
-            leaves = [hash_tree_root(elem, subtype) for elem in obj]
-        leaf_root = merkleize_chunks(leaves)
-        return mix_in_length(leaf_root, len(obj)) if is_list_kind(typ) else leaf_root
-    elif is_container_type(typ):
-        leaves = [hash_tree_root(field_value, field_typ) for field_value, field_typ in obj.get_typed_values()]
-        return merkleize_chunks(chunkify(b''.join(leaves)))
+    if is_bottom_layer_kind(typ):
+        data = serialize_basic(obj, typ) if is_basic_type(typ) else pack(obj, read_elem_type(typ))
+        leaves = chunkify(data)
     else:
-        raise Exception("Type not supported: obj {} type {}".format(obj, typ))
+        fields = get_typed_values(obj, typ=typ)
+        leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in fields]
+    if is_list_kind(typ):
+        return mix_in_length(merkleize_chunks(leaves), len(obj))
+    else:
+        return merkleize_chunks(leaves)
 
 
 @infer_input_type
 def signing_root(obj, typ):
     assert is_container_type(typ)
     # ignore last field
-    leaves = [hash_tree_root(field_value, field_typ) for field_value, field_typ in obj.get_typed_values()[:-1]]
+    leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in obj.get_typed_values()[:-1]]
     return merkleize_chunks(chunkify(b''.join(leaves)))
 

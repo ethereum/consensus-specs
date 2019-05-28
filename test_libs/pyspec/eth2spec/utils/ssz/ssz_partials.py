@@ -46,22 +46,6 @@ def merkle_tree_of_chunks(chunks, root):
     o = {**o, **filler(starting_index, len(chunks))}
     return o
 
-def is_bottom_layer_type(typ):
-    return (
-        is_basic_type(typ) or
-        (is_list_type(typ) or is_vector_type(typ)) and is_basic_type(read_elem_typ(typ))
-    )
-
-@infer_input_type
-def get_typed_values(obj, typ=None):
-    if is_container_typ(typ):
-        return obj.get_typed_values()
-    elif is_list_type(typ) or is_vector_type(typ):
-        elem_type = read_elem_typ(typ)
-        return zip(obj, [elem_type] * len(obj))
-    else:
-        raise Exception("Invalid type")
-
 @infer_input_type
 def ssz_all(obj, typ=None, root=1):
     if is_list_type(typ):
