@@ -12,10 +12,6 @@ pre: BeaconState                       -- state before applying the operation
 post: BeaconState                      -- state after applying the operation. No value if operation processing is aborted.
 ```
 
-Note: if both `bls_required` and `bls_ignored` are false (or simply not included),
- then the test consumer can freely choose to run with BLS ON or OFF.
-One may choose for OFF for performance reasons during repeated testing. Otherwise it is recommended to run with BLS ON.
-
 ## Condition
 
 A handler of the `operations` test-runner should process these cases, 
