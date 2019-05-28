@@ -18,15 +18,19 @@ MAX_LIST_LENGTH = 10
 
 
 @to_dict
-def create_test_case(rng: Random, name: str, mode: random_value.RandomizationMode, chaos: bool):
-    typ = spec.get_ssz_type_by_name(name)
-    value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
-    yield "type_name", name
+def create_test_case_contents(value, typ):
     yield "value", encode.encode(value, typ)
     yield "serialized", '0x' + serialize(value).hex()
     yield "root", '0x' + hash_tree_root(value).hex()
     if hasattr(value, "signature"):
         yield "signing_root", '0x' + signing_root(value).hex()
+
+
+@to_dict
+def create_test_case(rng: Random, name: str, mode: random_value.RandomizationMode, chaos: bool):
+    typ = spec.get_ssz_type_by_name(name)
+    value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
+    yield name, create_test_case_contents(value, typ)
 
 
 @to_tuple
