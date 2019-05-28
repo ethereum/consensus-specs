@@ -1248,6 +1248,7 @@ def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root
 
 ```python
 def process_slots(state: BeaconState, slot: Slot) -> None:
+    assert state.slot <= slot
     while state.slot < slot:
         process_slot(state)
         # Process epoch on the first slot of the next epoch
