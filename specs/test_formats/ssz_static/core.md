@@ -9,11 +9,11 @@ This test-format ensures these direct serializations are covered.
 ## Test case format
 
 ```yaml
-type_name: string  -- string, object name, formatted as in spec. E.g. "BeaconBlock"
-value: dynamic     -- the YAML-encoded value, of the type specified by type_name.
-serialized: bytes  -- string, SSZ-serialized data, hex encoded, with prefix 0x
-root: bytes32      -- string, hash-tree-root of the value, hex encoded, with prefix 0x
-signing_root: bytes32 -- string, signing-root of the value, hex encoded, with prefix 0x. Optional, present if type contains ``signature`` field
+SomeObjectName:        -- key, object name, formatted as in spec. E.g. "BeaconBlock".
+    value: dynamic     -- the YAML-encoded value, of the type specified by type_name.
+    serialized: bytes  -- string, SSZ-serialized data, hex encoded, with prefix 0x
+    root: bytes32      -- string, hash-tree-root of the value, hex encoded, with prefix 0x
+    signing_root: bytes32 -- string, signing-root of the value, hex encoded, with prefix 0x. Optional, present if type contains ``signature`` field
 ```
 
 ## Condition
