@@ -145,7 +145,7 @@ def get_period_committee(state: BeaconState,
 ```python
 def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex):
     earlier_start_epoch = epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2
-    return (bytes_to_int(hash(generate_seed(state, earlier_start_epoch) + bytes3(index))[0:8]) 
+    return (bytes_to_int(hash(generate_seed(state, earlier_start_epoch) + int_to_bytes(index, length=3)[0:8]))
             % PERSISTENT_COMMITTEE_PERIOD)
 ```
 
@@ -255,11 +255,16 @@ def compute_crosslink_data_root(blocks: List[ShardBlock]) -> Bytes32:
     def hash_tree_root_of_bytes(data: bytes) -> bytes:
         return hash_tree_root([data[i:i + 32] for i in range(0, len(data), 32)])
 
+    def zpad(data: bytes, length: int) -> bytes:
+        return data + b'\x00' * (length - len(data))
+
     return hash(
         hash_tree_root(pad_to_power_of_2([
-            hash_tree_root_of_bytes(zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)) for block in blocks
-        ])) +
-        hash_tree_root(pad_to_power_of_2([
+            hash_tree_root_of_bytes(
+                zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)
+            ) for block in blocks
+        ]))
+        + hash_tree_root(pad_to_power_of_2([
                 hash_tree_root_of_bytes(block.body) for block in blocks
         ]))
     )

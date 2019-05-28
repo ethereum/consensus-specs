@@ -40,6 +40,7 @@ from eth2spec.utils.minimal_ssz import (
     signing_root,
     type_of,
     empty,
+    serialize,
 )
 
 from eth2spec.utils.bls_stub import (
