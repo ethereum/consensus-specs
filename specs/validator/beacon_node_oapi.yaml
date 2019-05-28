@@ -308,7 +308,7 @@ components:
           description: "Globally, the estimated most recent slot number, or current target slot number."
 
     BeaconBlock:
-      description: "The [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblock) object from the Eth2.0 spec."
+      description: "The [`BeaconBlock`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beaconblock) object from the Eth2.0 spec."
       allOf:
         - $ref: '#/components/schemas/BeaconBlockCommon'
         - type: object
@@ -316,7 +316,7 @@ components:
             body:
               $ref: '#/components/schemas/BeaconBlockBody'
     BeaconBlockHeader:
-      description: "The [`BeaconBlockHeader`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblockheader) object from the Eth2.0 spec."
+      description: "The [`BeaconBlockHeader`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beaconblockheader) object from the Eth2.0 spec."
       allOf:
         - $ref: '#/components/schemas/BeaconBlockCommon'
         - type: object
@@ -352,7 +352,7 @@ components:
           description: "The BLS signature of the `BeaconBlock` made by the validator of the block."
     BeaconBlockBody:
       type: object
-      description: "The [`BeaconBlockBody`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#beaconblockbody) object from the Eth2.0 spec."
+      description: "The [`BeaconBlockBody`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#beaconblockbody) object from the Eth2.0 spec."
       properties:
         randao_reveal:
           type: string
@@ -362,7 +362,7 @@ components:
         eth1_data:
           title: Eth1Data
           type: object
-          description: "The [`Eth1Data`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#eth1data) object from the Eth2.0 spec."
+          description: "The [`Eth1Data`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#eth1data) object from the Eth2.0 spec."
           properties:
             deposit_root:
               type: string
@@ -387,7 +387,7 @@ components:
           items:
             title: ProposerSlashings
             type: object
-            description: "The [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#proposerslashing) object from the Eth2.0 spec."
+            description: "The [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#proposerslashing) object from the Eth2.0 spec."
             properties:
               proposer_index:
                 type: integer
@@ -402,7 +402,7 @@ components:
           items:
             title: AttesterSlashings
             type: object
-            description: "The [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#attesterslashing) object from the Eth2.0 spec."
+            description: "The [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attesterslashing) object from the Eth2.0 spec."
             properties:
               attestation_1:
                 $ref: '#/components/schemas/IndexedAttestation'
@@ -413,7 +413,7 @@ components:
           items:
             title: Attestation
             type: object
-            description: "The [`Attestation`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#attestation) object from the Eth2.0 spec."
+            description: "The [`Attestation`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestation) object from the Eth2.0 spec."
             properties:
               aggregation_bitfield:
                 type: string
@@ -437,7 +437,7 @@ components:
           items:
             title: Deposit
             type: object
-            description: "The [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#deposit) object from the Eth2.0 spec."
+            description: "The [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#deposit) object from the Eth2.0 spec."
             properties:
               proof:
                 type: array
@@ -455,7 +455,7 @@ components:
               data:
                 title: DepositData
                 type: object
-                description: "The [`DepositData`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#depositdata) object from the Eth2.0 spec."
+                description: "The [`DepositData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#depositdata) object from the Eth2.0 spec."
                 properties:
                   pubkey:
                     $ref: '#/components/schemas/pubkey'
@@ -478,7 +478,7 @@ components:
           items:
             title: VoluntaryExit
             type: object
-            description: "The [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#voluntaryexit) object from the Eth2.0 spec."
+            description: "The [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#voluntaryexit) object from the Eth2.0 spec."
             properties:
               epoch:
                 type: integer
@@ -498,7 +498,7 @@ components:
           items:
             title: Transfer
             type: object
-            description: "The [`Transfer`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#transfer) object from the Eth2.0 spec."
+            description: "The [`Transfer`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#transfer) object from the Eth2.0 spec."
             properties:
               sender:
                 type: integer
@@ -533,7 +533,7 @@ components:
 
     Fork:
       type: object
-      description: "The [`Fork`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#Fork) object from the Eth2.0 spec."
+      description: "The [`Fork`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#Fork) object from the Eth2.0 spec."
       properties:
         previous_version:
           type: string
@@ -551,7 +551,7 @@ components:
           description: "Fork epoch number."
     IndexedAttestation:
       type: object
-      description: "The [`IndexedAttestation`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#indexedattestation) object from the Eth2.0 spec."
+      description: "The [`IndexedAttestation`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#indexedattestation) object from the Eth2.0 spec."
       properties:
         custody_bit_0_indices:
           type: array
@@ -575,7 +575,7 @@ components:
           $ref: '#/components/schemas/AttestationData'
     AttestationData:
       type: object
-      description: "The [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#attestationdata) object from the Eth2.0 spec."
+      description: "The [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestationdata) object from the Eth2.0 spec."
       properties:
         beacon_block_root:
           type: string
@@ -603,7 +603,7 @@ components:
         crosslink:
           title: CrossLink
           type: object
-          description: "The [`Crosslink`](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/core/0_beacon-chain.md#crosslink) object from the Eth2.0 spec, contains data from epochs [`start_epoch`, `end_epoch`)."
+          description: "The [`Crosslink`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#crosslink) object from the Eth2.0 spec, contains data from epochs [`start_epoch`, `end_epoch`)."
           properties:
             shard:
               type: integer
