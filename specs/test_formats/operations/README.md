@@ -6,8 +6,7 @@ The different kinds of operations ("transactions") are tested individually with 
 
 ```yaml
 description: string                    -- description of test case, purely for debugging purposes
-bls_required: bool                     -- optional, true if the test validity is strictly dependent on BLS being ON. False otherwise.
-bls_ignored: bool                      -- optional, true if the test validity is strictly dependent on BLS being OFF. False otherwise.
+bls_setting: int                       -- see general test-format spec.
 pre: BeaconState                       -- state before applying the operation
 <operation-name>: <operation-object>   -- the YAML encoded operation, e.g. a "ProposerSlashing", or "Deposit".
 post: BeaconState                      -- state after applying the operation. No value if operation processing is aborted.
