@@ -1,6 +1,7 @@
 from inspect import isclass
 from typing import List, Iterable, TypeVar, Type, NewType
 from typing import Union
+from typing_inspect import get_origin
 
 
 # SSZ integers
@@ -119,6 +120,18 @@ class Container(object):
     def __repr__(self):
         return {field: getattr(self, field) for field in self.get_field_names()}
 
+    def __str__(self):
+        output = []
+        for field in self.get_field_names():
+            output.append(f'{field}: {getattr(self, field)}')
+        return "\n".join(output)
+
+    def __eq__(self, other):
+        return self.hash_tree_root() == other.hash_tree_root()
+
+    def __hash__(self):
+        return hash(self.hash_tree_root())
+
     @classmethod
     def get_fields_dict(cls):
         return dict(cls.__annotations__)
@@ -203,6 +216,9 @@ class VectorMeta(type):
     def __ne__(self, other):
         return not _is_equal_vector_type(self, other)
 
+    def __hash__(self):
+        return hash(self.__class__)
+
 
 class Vector(metaclass=VectorMeta):
 
@@ -251,6 +267,9 @@ class Vector(metaclass=VectorMeta):
 
     def __len__(self):
         return len(self.items)
+
+    def __eq__(self, other):
+        return self.hash_tree_root() == other.hash_tree_root()
 
 
 def _is_bytes_n_instance_of(a, b):
@@ -309,6 +328,9 @@ class BytesNMeta(type):
     def __ne__(self, other):
         return not _is_equal_bytes_n_type(self, other)
 
+    def __hash__(self):
+        return hash(self.__class__)
+
 
 def parse_bytes(val):
     if val is None:
@@ -355,23 +377,25 @@ class BytesN(bytes, metaclass=BytesNMeta):
 
 # SSZ Defaults
 # -----------------------------
-
 def get_zero_value(typ):
+    result = None
     if is_uint_type(typ):
-        return 0
-    if issubclass(typ, bool):
-        return False
-    if issubclass(typ, list):
-        return []
-    if issubclass(typ, Vector):
-        return typ()
-    if issubclass(typ, BytesN):
-        return typ()
-    if issubclass(typ, bytes):
-        return b''
-    if issubclass(typ, Container):
-        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()}),
-
+        result = 0
+    elif is_list_type(typ):
+        result = []
+    elif issubclass(typ, bool):
+        result = False
+    elif issubclass(typ, Vector):
+        result = typ()
+    elif issubclass(typ, BytesN):
+        result = typ()
+    elif issubclass(typ, bytes):
+        result = b''
+    elif issubclass(typ, Container):
+        result = typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
+    else:
+       return Exception("Type not supported: {}".format(typ))
+    return result
 
 # Type helpers
 # -----------------------------
@@ -412,7 +436,7 @@ def is_list_type(typ):
     """
     Checks if the given type is a list.
     """
-    return hasattr(typ, '_name') and typ._name == 'List'
+    return get_origin(typ) is List or get_origin(typ) is list
 
 
 def is_bytes_type(typ):
