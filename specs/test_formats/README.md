@@ -25,7 +25,8 @@ Test formats:
 - [`bls`](./bls/README.md)
 - [`operations`](./operations/README.md)
 - [`shuffling`](./shuffling/README.md)
-- [`ssz`](./ssz/README.md)
+- [`ssz_generic`](./ssz_generic/README.md)
+- [`ssz_static`](./ssz_static/README.md)
 - More formats are planned, see tracking issues for CI/testing
 
 ## Glossary
