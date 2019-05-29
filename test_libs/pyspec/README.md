@@ -46,8 +46,9 @@ The `-B` flag may be helpful to force-overwrite the `pyspec` output after you ma
 
 Run the tests:
 ```
-pytest --config=minimal
+pytest --config=minimal eth2spec
 ```
+Note the package-name, this is to locate the tests.
 
 
 ## Contributing

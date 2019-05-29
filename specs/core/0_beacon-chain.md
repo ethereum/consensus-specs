@@ -1246,7 +1246,7 @@ def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root
 
 ```python
 def process_slots(state: BeaconState, slot: Slot) -> None:
-    assert state.slot < slot
+    assert state.slot <= slot
     while state.slot < slot:
         process_slot(state)
         # Process epoch on the first slot of the next epoch
@@ -1705,7 +1705,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
     attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
-    for index in set(attesting_indices_1).intersection(attesting_indices_2):
+    for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
         if is_slashable_validator(state.validator_registry[index], get_current_epoch(state)):
             slash_validator(state, index)
             slashed_any = True
@@ -1772,7 +1772,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     amount = deposit.data.amount
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession)
+        # Verify the deposit signature (proof of possession).
+        # Invalid signatures are allowed by the deposit contract, and hence included on-chain, but must not be processed.
         # Note: deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
         if not bls_verify(
             pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)

@@ -13,17 +13,9 @@ from typing import (
     NewType,
     Tuple,
 )
-from eth2spec.utils.minimal_ssz import (
-    SSZType,
-    hash_tree_root,
-    signing_root,
-)
-from eth2spec.utils.bls_stub import (
-    bls_aggregate_pubkeys,
-    bls_verify,
-    bls_verify_multiple,
-)
+from eth2spec.utils.minimal_ssz import *
 from eth2spec.utils.hash_function import hash
+from eth2spec.utils.bls import *
 
 
 # stub, will get overwritten by real var

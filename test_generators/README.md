@@ -58,7 +58,7 @@ It's recommended to extend the base-generator.
 
 Create a `requirements.txt` in the root of your generator directory:
 ```
-eth-utils==1.4.1
+eth-utils==1.6.0
 ../../test_libs/gen_helpers
 ../../test_libs/config_helpers
 ../../test_libs/pyspec

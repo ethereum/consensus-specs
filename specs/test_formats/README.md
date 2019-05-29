@@ -186,6 +186,18 @@ To prevent parsing of hundreds of different YAML files to test a specific test t
 ...                           <--- more test types
 ```
 
+## Common test-case properties
+
+Some test-case formats share some common key-value pair patterns, and these are documented here:
+
+```
+bls_setting: int     -- optional, can have 3 different values:
+                            0: (default, applies if key-value pair is absent). Free to choose either BLS ON or OFF.
+                                 Tests are generated with valid BLS data in this case,
+                                 but there is no change of outcome when running the test if BLS is ON or OFF.
+                            1: known as "BLS required" - if the test validity is strictly dependent on BLS being ON
+                            2: known as "BLS ignored"  - if the test validity is strictly dependent on BLS being OFF
+```
 
 ## Note for implementers
 
