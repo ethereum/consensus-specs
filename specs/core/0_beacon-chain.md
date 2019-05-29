@@ -402,10 +402,12 @@ The types are defined topologically to aid in facilitating an executable version
 #### `ActiveRegistry`
 
 ```python
-    [{
+{
+    'committees': [{
         'pubkeys': ['bytes48'],
         'compact_validators': ['uint64'],
     }, SHARD_COUNT]
+}
 ```
 
 #### `PendingAttestation`
@@ -819,21 +821,20 @@ def get_randao_mix(state: BeaconState,
 ### `get_active_registry_root`
 
 ```python
-def get_active_registry_root(state: BeaconState) -> Bytes32:
+def get_active_registry_root(state: BeaconState, epoch: Epoch) -> Bytes32:
     """
     Return the active registry root for the current epoch.
     """
-    epoch = get_current_epoch(state)
-    active_registry = ActiveRegistry()
+    committees = ActiveRegistry().committees
     for committee_number in range(get_epoch_committee_count(state, epoch)):
         shard = (get_start_shard(state, epoch) + committee_number) % SHARD_COUNT
         for index in get_crosslink_committee(state, epoch, shard):
             validator = validator_registry[index]
-            active_registry[shard].pubkeys.append(validator.pubkey)
+            committees[shard].pubkeys.append(validator.pubkey)
             # index (top 7 bytes) + slashed (8th bit) + effective_balance (bottom 7 bits)
             compact_validator = index << 8 + validator.slashed << 7 + validator.effective_balance // GWEI_PER_ETH
-            active_registry[shard].compact_validators.append(compact_validator)
-    return hash_tree_root(active_registry)
+            committees[shard].compact_validators.append(compact_validator)
+    return hash_tree_root(committees)
 ```
 
 ### `generate_seed`
@@ -1226,7 +1227,7 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
 
     # Populate active registry roots
     for index in range(LATEST_ACTIVE_REGISTRY_ROOTS_LENGTH):
-        state.latest_active_registry_roots[index] = get_active_registry_root(state)
+        state.latest_active_registry_roots[index] = get_active_registry_root(state, GENESIS_EPOCH)
 
     return state
 ```
@@ -1573,7 +1574,7 @@ def process_final_updates(state: BeaconState) -> None:
     state.latest_start_shard = (state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT
     # Set active registry root
     active_registry_index = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_REGISTRY_ROOTS_LENGTH
-    state.latest_active_registry_roots[active_registry_index] = get_active_registry_root(state)
+    state.latest_active_registry_roots[active_registry_index] = get_active_registry_root(state, next_epoch + ACTIVATION_EXIT_DELAY)
     # Set total slashed balances
     state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = (
         state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
