@@ -93,6 +93,21 @@ def test_invalid_sig_top_up(state):
     # invalid signatures, in top-ups, are allowed!
     yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=True)
 
+@spec_state_test
+def test_invalid_withdrawal_credentials_top_up(state):
+    validator_index = 0
+    amount = spec.MAX_EFFECTIVE_BALANCE // 4
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(b"junk")[1:]
+    deposit = prepare_state_and_deposit(
+        state,
+        validator_index,
+        amount,
+        withdrawal_credentials=withdrawal_credentials
+    )
+
+    # inconsistent withdrawal credentials, in top-ups, are allowed!
+    yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=True)
+
 
 @spec_state_test
 def test_wrong_index(state):
