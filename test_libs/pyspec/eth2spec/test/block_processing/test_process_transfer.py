@@ -89,7 +89,7 @@ def test_invalid_signature(state):
     transfer = get_valid_transfer(state)
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
-    
+
     yield from run_transfer_processing(state, transfer, False)
 
 
@@ -140,7 +140,13 @@ def test_insufficient_balance(state):
 def test_no_dust_sender(state):
     sender_index = get_active_validator_indices(state, get_current_epoch(state))[-1]
     balance = state.balances[sender_index]
-    transfer = get_valid_transfer(state, sender_index=sender_index, amount=balance - spec.MIN_DEPOSIT_AMOUNT + 1, fee=0, signed=True)
+    transfer = get_valid_transfer(
+        state,
+        sender_index=sender_index,
+        amount=balance - spec.MIN_DEPOSIT_AMOUNT + 1,
+        fee=0,
+        signed=True,
+    )
 
     # un-activate so validator can transfer
     state.validator_registry[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH

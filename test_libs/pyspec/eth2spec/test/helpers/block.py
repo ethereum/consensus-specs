@@ -77,4 +77,3 @@ def build_empty_block(state, slot=None, signed=False):
 
 def build_empty_block_for_next_slot(state, signed=False):
     return build_empty_block(state, state.slot + 1, signed=signed)
-

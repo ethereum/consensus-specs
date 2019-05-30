@@ -3,6 +3,7 @@ from eth2spec.phase0 import spec
 # We import pytest only when it's present, i.e. when we are running tests.
 # The test-cases themselves can be generated without installing pytest.
 
+
 def module_exists(module_name):
     try:
         __import__(module_name)
