@@ -137,6 +137,7 @@ def test_wrong_deposit_for_deposit_count(state):
         pubkey_1,
         privkey_1,
         spec.MAX_EFFECTIVE_BALANCE,
+        withdrawal_credentials=b'\x00'*32,
         signed=True,
     )
     deposit_count_1 = len(deposit_data_leaves)
@@ -151,6 +152,7 @@ def test_wrong_deposit_for_deposit_count(state):
         pubkey_2,
         privkey_2,
         spec.MAX_EFFECTIVE_BALANCE,
+        withdrawal_credentials=b'\x00'*32,
         signed=True,
     )
 
