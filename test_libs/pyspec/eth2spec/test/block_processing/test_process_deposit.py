@@ -93,6 +93,7 @@ def test_invalid_sig_top_up(state):
     # invalid signatures, in top-ups, are allowed!
     yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=True)
 
+
 @spec_state_test
 def test_invalid_withdrawal_credentials_top_up(state):
     validator_index = 0
