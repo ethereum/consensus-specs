@@ -13,17 +13,15 @@ from tests.contracts.conftest import (
     FULL_DEPOSIT_AMOUNT,
     MIN_DEPOSIT_AMOUNT,
 )
+
+from eth2spec.phase0.spec import (
+    DepositData,
+)
+from eth2spec.utils.hash_function import hash
 from eth2spec.utils.minimal_ssz import (
     SSZType,
     hash_tree_root,
 )
-from eth2spec.phase0.spec import (
-    DepositData,
-)
-
-
-def hash(data):
-    return sha256(data).digest()
 
 
 def compute_merkle_root(leaf_nodes):
