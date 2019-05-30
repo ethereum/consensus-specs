@@ -17,7 +17,7 @@
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
-        - [Reward and penalty quotients](#reward-and-penalty-quotients)
+        - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
@@ -103,7 +103,7 @@
             - [Helper functions](#helper-functions-1)
             - [Justification and finalization](#justification-and-finalization)
             - [Crosslinks](#crosslinks)
-            - [Rewards and penalties](#rewards-and-penalties)
+            - [Rewards and penalties](#rewards-and-penalties-1)
             - [Registry updates](#registry-updates)
             - [Slashings](#slashings)
             - [Final updates](#final-updates)
@@ -220,17 +220,17 @@ These configurations are updated for releases, but may be out of sync during `de
 | `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
-### Reward and penalty quotients
+### Rewards and penalties
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
+| `BASE_REWARD_FACTOR` | `2**5` (= 32) |
 | `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* **The `BASE_REWARD_QUOTIENT` is NOT final. Once all other protocol details are finalized, it will be adjusted to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc.)**
+* **The `BASE_REWARD_FACTOR` is NOT final. Once all other protocol details are finalized, it will be adjusted to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc.)**
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
@@ -471,8 +471,6 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Branch in the deposit tree
     'proof': ['bytes32', DEPOSIT_CONTRACT_TREE_DEPTH],
-    # Index in the deposit tree
-    'index': 'uint64',
     # Data
     'data': DepositData,
 }
@@ -963,9 +961,9 @@ def bytes_to_int(data: bytes) -> int:
 ```python
 def get_total_balance(state: BeaconState, indices: List[ValidatorIndex]) -> Gwei:
     """
-    Return the combined effective balance of an array of ``validators``.
+    Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
-    return sum([state.validator_registry[index].effective_balance for index in indices])
+    return max(sum([state.validator_registry[index].effective_balance for index in indices]), 1)
 ```
 
 ### `get_domain`
@@ -1248,7 +1246,7 @@ def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root
 
 ```python
 def process_slots(state: BeaconState, slot: Slot) -> None:
-    assert state.slot < slot
+    assert state.slot <= slot
     while state.slot < slot:
         process_slot(state)
         # Process epoch on the first slot of the next epoch
@@ -1416,10 +1414,9 @@ def process_crosslinks(state: BeaconState) -> None:
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    adjusted_quotient = integer_squareroot(get_total_active_balance(state)) // BASE_REWARD_QUOTIENT
-    if adjusted_quotient == 0:
-        return 0
-    return state.validator_registry[index].effective_balance // adjusted_quotient // BASE_REWARDS_PER_EPOCH
+    total_balance = get_total_active_balance(state)
+    effective_balance = state.validator_registry[index].effective_balance
+    return effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH
 ```
 
 ```python
@@ -1534,10 +1531,9 @@ def process_registry_updates(state: BeaconState) -> None:
 ```python
 def process_slashings(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    active_validator_indices = get_active_validator_indices(state, current_epoch)
-    total_balance = get_total_balance(state, active_validator_indices)
+    total_balance = get_total_active_balance(state)
 
-    # Compute `total_penalties`
+    # Compute slashed balances in the current epoch
     total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
     total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
     total_penalties = total_at_end - total_at_start
@@ -1766,19 +1762,20 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
-        index=deposit.index,
+        index=state.deposit_index,
         root=state.latest_eth1_data.deposit_root,
     )
 
     # Deposits must be processed in order
-    assert deposit.index == state.deposit_index
     state.deposit_index += 1
 
     pubkey = deposit.data.pubkey
     amount = deposit.data.amount
     validator_pubkeys = [v.pubkey for v in state.validator_registry]
     if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession)
+        # Verify the deposit signature (proof of possession).
+        # Invalid signatures are allowed by the deposit contract,
+        # and hence included on-chain, but must not be processed.
         # Note: deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
         if not bls_verify(
             pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)

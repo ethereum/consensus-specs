@@ -38,13 +38,8 @@ gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
 install_test:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt;
 
-test: test_phase0 test_phase1
-
-test_phase0: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest tests/phase0
-
-test_phase1: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest tests/phase1
+test: $(PY_SPEC_ALL_TARGETS)
+	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest eth2spec
 
 citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate;	\

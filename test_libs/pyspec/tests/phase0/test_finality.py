@@ -1,9 +1,21 @@
 from copy import deepcopy
 
+<<<<<<< HEAD:test_libs/pyspec/tests/phase0/test_finality.py
 import pytest
 
 # mark entire file as 'state'
 pytestmark = pytest.mark.state
+=======
+import eth2spec.phase0.spec as spec
+from eth2spec.phase0.spec import (
+    get_current_epoch,
+    get_epoch_start_slot,
+)
+from .context import spec_state_test, never_bls
+from .helpers.state import next_epoch
+from .helpers.block import build_empty_block_for_next_slot, apply_empty_block
+from .helpers.attestations import get_valid_attestation
+>>>>>>> dev:test_libs/pyspec/eth2spec/test/test_finality.py
 
 
 def check_finality(state,
@@ -42,15 +54,24 @@ def next_epoch_with_attestations(state,
         block = helpers.build_empty_block_for_next_slot(post_state)
         if fill_cur_epoch:
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
+<<<<<<< HEAD:test_libs/pyspec/tests/phase0/test_finality.py
             if slot_to_attest >= spec.get_epoch_start_slot(spec.get_current_epoch(post_state)):
                 cur_attestation = helpers.get_valid_attestation(post_state, slot_to_attest)
                 helpers.fill_aggregate_attestation(post_state, cur_attestation)
+=======
+            if slot_to_attest >= get_epoch_start_slot(get_current_epoch(post_state)):
+                cur_attestation = get_valid_attestation(post_state, slot_to_attest)
+>>>>>>> dev:test_libs/pyspec/eth2spec/test/test_finality.py
                 block.body.attestations.append(cur_attestation)
 
         if fill_prev_epoch:
             slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
+<<<<<<< HEAD:test_libs/pyspec/tests/phase0/test_finality.py
             prev_attestation = helpers.get_valid_attestation(post_state, slot_to_attest)
             helpers.fill_aggregate_attestation(post_state, prev_attestation)
+=======
+            prev_attestation = get_valid_attestation(post_state, slot_to_attest)
+>>>>>>> dev:test_libs/pyspec/eth2spec/test/test_finality.py
             block.body.attestations.append(prev_attestation)
 
         spec.state_transition(post_state, block)
@@ -59,126 +80,155 @@ def next_epoch_with_attestations(state,
     return state, blocks, post_state
 
 
+@never_bls
+@spec_state_test
 def test_finality_rule_4(state):
-    test_state = deepcopy(state)
+    yield 'pre', state
 
     blocks = []
     for epoch in range(4):
-        prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, True, False)
+        prev_state, new_blocks, state = next_epoch_with_attestations(state, True, False)
         blocks += new_blocks
 
         # justification/finalization skipped at GENESIS_EPOCH
         if epoch == 0:
-            check_finality(test_state, prev_state, False, False, False)
+            check_finality(state, prev_state, False, False, False)
         # justification/finalization skipped at GENESIS_EPOCH + 1
         elif epoch == 1:
-            check_finality(test_state, prev_state, False, False, False)
+            check_finality(state, prev_state, False, False, False)
         elif epoch == 2:
-            check_finality(test_state, prev_state, True, False, False)
+            check_finality(state, prev_state, True, False, False)
         elif epoch >= 3:
             # rule 4 of finality
-            check_finality(test_state, prev_state, True, True, True)
-            assert test_state.finalized_epoch == prev_state.current_justified_epoch
-            assert test_state.finalized_root == prev_state.current_justified_root
+            check_finality(state, prev_state, True, True, True)
+            assert state.finalized_epoch == prev_state.current_justified_epoch
+            assert state.finalized_root == prev_state.current_justified_root
 
-    return state, blocks, test_state
+    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'post', state
 
 
+@never_bls
+@spec_state_test
 def test_finality_rule_1(state):
     # get past first two epochs that finality does not run on
+<<<<<<< HEAD:test_libs/pyspec/tests/phase0/test_finality.py
     helpers.next_epoch(state)
     helpers.next_epoch(state)
+=======
+    next_epoch(state)
+    apply_empty_block(state)
+    next_epoch(state)
+    apply_empty_block(state)
+>>>>>>> dev:test_libs/pyspec/eth2spec/test/test_finality.py
 
-    pre_state = deepcopy(state)
-    test_state = deepcopy(state)
+    yield 'pre', state
 
     blocks = []
     for epoch in range(3):
-        prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, False, True)
+        prev_state, new_blocks, state = next_epoch_with_attestations(state, False, True)
         blocks += new_blocks
 
         if epoch == 0:
-            check_finality(test_state, prev_state, True, False, False)
+            check_finality(state, prev_state, True, False, False)
         elif epoch == 1:
-            check_finality(test_state, prev_state, True, True, False)
+            check_finality(state, prev_state, True, True, False)
         elif epoch == 2:
             # finalized by rule 1
-            check_finality(test_state, prev_state, True, True, True)
-            assert test_state.finalized_epoch == prev_state.previous_justified_epoch
-            assert test_state.finalized_root == prev_state.previous_justified_root
+            check_finality(state, prev_state, True, True, True)
+            assert state.finalized_epoch == prev_state.previous_justified_epoch
+            assert state.finalized_root == prev_state.previous_justified_root
 
-    return pre_state, blocks, test_state
+    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'post', state
 
 
+@never_bls
+@spec_state_test
 def test_finality_rule_2(state):
     # get past first two epochs that finality does not run on
+<<<<<<< HEAD:test_libs/pyspec/tests/phase0/test_finality.py
     helpers.next_epoch(state)
     helpers.next_epoch(state)
+=======
+    next_epoch(state)
+    apply_empty_block(state)
+    next_epoch(state)
+    apply_empty_block(state)
+>>>>>>> dev:test_libs/pyspec/eth2spec/test/test_finality.py
 
-    pre_state = deepcopy(state)
-    test_state = deepcopy(state)
+    yield 'pre', state
 
     blocks = []
     for epoch in range(3):
         if epoch == 0:
-            prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, True, False)
-            check_finality(test_state, prev_state, True, False, False)
+            prev_state, new_blocks, state = next_epoch_with_attestations(state, True, False)
+            check_finality(state, prev_state, True, False, False)
         elif epoch == 1:
-            prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, False, False)
-            check_finality(test_state, prev_state, False, True, False)
+            prev_state, new_blocks, state = next_epoch_with_attestations(state, False, False)
+            check_finality(state, prev_state, False, True, False)
         elif epoch == 2:
-            prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, False, True)
+            prev_state, new_blocks, state = next_epoch_with_attestations(state, False, True)
             # finalized by rule 2
-            check_finality(test_state, prev_state, True, False, True)
-            assert test_state.finalized_epoch == prev_state.previous_justified_epoch
-            assert test_state.finalized_root == prev_state.previous_justified_root
+            check_finality(state, prev_state, True, False, True)
+            assert state.finalized_epoch == prev_state.previous_justified_epoch
+            assert state.finalized_root == prev_state.previous_justified_root
 
         blocks += new_blocks
 
-    return pre_state, blocks, test_state
+    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'post', state
 
 
+@never_bls
+@spec_state_test
 def test_finality_rule_3(state):
     """
     Test scenario described here
     https://github.com/ethereum/eth2.0-specs/issues/611#issuecomment-463612892
     """
-
     # get past first two epochs that finality does not run on
+<<<<<<< HEAD:test_libs/pyspec/tests/phase0/test_finality.py
     helpers.next_epoch(state)
     helpers.next_epoch(state)
+=======
+    next_epoch(state)
+    apply_empty_block(state)
+    next_epoch(state)
+    apply_empty_block(state)
+>>>>>>> dev:test_libs/pyspec/eth2spec/test/test_finality.py
 
-    pre_state = deepcopy(state)
-    test_state = deepcopy(state)
+    yield 'pre', state
 
     blocks = []
-    prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, True, False)
+    prev_state, new_blocks, state = next_epoch_with_attestations(state, True, False)
     blocks += new_blocks
-    check_finality(test_state, prev_state, True, False, False)
+    check_finality(state, prev_state, True, False, False)
 
     # In epoch N, JE is set to N, prev JE is set to N-1
-    prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, True, False)
+    prev_state, new_blocks, state = next_epoch_with_attestations(state, True, False)
     blocks += new_blocks
-    check_finality(test_state, prev_state, True, True, True)
+    check_finality(state, prev_state, True, True, True)
 
     # In epoch N+1, JE is N, prev JE is N-1, and not enough messages get in to do anything
-    prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, False, False)
+    prev_state, new_blocks, state = next_epoch_with_attestations(state, False, False)
     blocks += new_blocks
-    check_finality(test_state, prev_state, False, True, False)
+    check_finality(state, prev_state, False, True, False)
 
     # In epoch N+2, JE is N, prev JE is N, and enough messages from the previous epoch get in to justify N+1.
     # N+1 now becomes the JE. Not enough messages from epoch N+2 itself get in to justify N+2
-    prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, False, True)
+    prev_state, new_blocks, state = next_epoch_with_attestations(state, False, True)
     blocks += new_blocks
     # rule 2
-    check_finality(test_state, prev_state, True, False, True)
+    check_finality(state, prev_state, True, False, True)
 
     # In epoch N+3, LJE is N+1, prev LJE is N, and enough messages get in to justify epochs N+2 and N+3.
-    prev_state, new_blocks, test_state = next_epoch_with_attestations(test_state, True, True)
+    prev_state, new_blocks, state = next_epoch_with_attestations(state, True, True)
     blocks += new_blocks
     # rule 3
-    check_finality(test_state, prev_state, True, True, True)
-    assert test_state.finalized_epoch == prev_state.current_justified_epoch
-    assert test_state.finalized_root == prev_state.current_justified_root
+    check_finality(state, prev_state, True, True, True)
+    assert state.finalized_epoch == prev_state.current_justified_epoch
+    assert state.finalized_root == prev_state.current_justified_root
 
-    return pre_state, blocks, test_state
+    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'post', state

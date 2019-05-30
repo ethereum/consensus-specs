@@ -1,7 +1,6 @@
 import re
 import function_puller
 from argparse import ArgumentParser
-from typing import Tuple, List
 
 
 PHASE0_IMPORTS = '''from typing import (
@@ -18,7 +17,7 @@ from eth2spec.utils.minimal_ssz import (
     signing_root,
 )
 
-from eth2spec.utils.bls_stub import (
+from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
@@ -43,7 +42,7 @@ from eth2spec.utils.minimal_ssz import (
     serialize,
 )
 
-from eth2spec.utils.bls_stub import (
+from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
@@ -111,10 +110,15 @@ def apply_constants_preset(preset: Dict[str, Any]):
 def objects_to_spec(functions, constants, ssz_objects, inserts, imports):
     new_type_definitions = '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
     functions_spec = '\n\n'.join(functions.values())
-    constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]),constants))
-    ssz_objects_instantiation_spec = '\n'.join(map(lambda x: '%s = SSZType(%s)' % (x, ssz_objects[x][:-1]), ssz_objects))
-    ssz_objects_reinitialization_spec = '\n'.join(
-        map(lambda x: '    global_vars[\'%s\'] = SSZType(%s    })' % (x, re.sub('( ){4}', ' '*8, ssz_objects[x][:-2])), ssz_objects))
+    constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
+    ssz_objects_instantiation_spec = '\n'.join(map(
+        lambda x: '%s = SSZType(%s)' % (x, ssz_objects[x][:-1]),
+        ssz_objects
+    ))
+    ssz_objects_reinitialization_spec = '\n'.join(map(
+            lambda x: '    global_vars[\'%s\'] = SSZType(%s    })' % (x, re.sub('( ){4}', ' '*8, ssz_objects[x][:-2])),
+            ssz_objects
+        ))
     ssz_objects_reinitialization_spec = (
         'def init_SSZ_types():\n    global_vars = globals()\n' 
         + ssz_objects_reinitialization_spec
@@ -219,8 +223,9 @@ If building phase 0:
 
 If building phase 1:
     1st argument is input spec_phase0.md
-    2nd argument is input spec_phase1.md
-    3rd argument is output spec.py
+    2nd argument is input spec_phase1_custody.md
+    3rd argument is input spec_phase1_shard_data.md
+    4th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -230,7 +235,6 @@ If building phase 1:
     if args.phase == 0:
         build_phase0_spec(*args.files)
     elif args.phase == 1:
-        print(args.files)
         if len(args.files) == 4:
             build_phase1_spec(*args.files)
         else:
