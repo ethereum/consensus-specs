@@ -1,9 +1,13 @@
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import process_deposit
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
-from eth2spec.test.helpers.deposits import prepare_state_and_deposit, sign_deposit_data
+from eth2spec.test.helpers.deposits import (
+    build_deposit,
+    prepare_state_and_deposit,
+    sign_deposit_data,
+)
 from eth2spec.test.helpers.state import get_balance
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import privkeys, pubkeys
 
 
 def run_deposit_processing(state, deposit, validator_index, valid=True, effective=True):
@@ -18,9 +22,6 @@ def run_deposit_processing(state, deposit, validator_index, valid=True, effectiv
     pre_balance = 0
     if validator_index < pre_validator_count:
         pre_balance = get_balance(state, validator_index)
-    else:
-        # if it is a new validator, it should be right at the end of the current registry.
-        assert validator_index == pre_validator_count
 
     yield 'pre', state
     yield 'deposit', deposit
@@ -105,6 +106,44 @@ def test_wrong_index(state):
     sign_deposit_data(state, deposit.data, privkeys[validator_index])
 
     yield from run_deposit_processing(state, deposit, validator_index, valid=False)
+
+
+@spec_state_test
+def test_wrong_deposit_for_deposit_count(state):
+    deposit_data_leaves = [spec.ZERO_HASH] * len(state.validator_registry)
+
+    # build root for deposit_1
+    index_1 = len(deposit_data_leaves)
+    pubkey_1 = pubkeys[index_1]
+    privkey_1 = privkeys[index_1]
+    deposit_1, root_1, deposit_data_leaves = build_deposit(
+        state,
+        deposit_data_leaves,
+        pubkey_1,
+        privkey_1,
+        spec.MAX_EFFECTIVE_BALANCE,
+        signed=True,
+    )
+    deposit_count_1 = len(deposit_data_leaves)
+
+    # build root for deposit_2
+    index_2 = len(deposit_data_leaves)
+    pubkey_2 = pubkeys[index_2]
+    privkey_2 = privkeys[index_2]
+    deposit_2, root_2, deposit_data_leaves = build_deposit(
+        state,
+        deposit_data_leaves,
+        pubkey_2,
+        privkey_2,
+        spec.MAX_EFFECTIVE_BALANCE,
+        signed=True,
+    )
+
+    # state has root for deposit_2 but is at deposit_count for deposit_1
+    state.latest_eth1_data.deposit_root = root_2
+    state.latest_eth1_data.deposit_count = deposit_count_1
+
+    yield from run_deposit_processing(state, deposit_2, index_2, valid=False)
 
 
 # TODO: test invalid signature

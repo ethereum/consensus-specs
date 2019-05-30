@@ -471,8 +471,6 @@ The types are defined topologically to aid in facilitating an executable version
 {
     # Branch in the deposit tree
     'proof': ['bytes32', DEPOSIT_CONTRACT_TREE_DEPTH],
-    # Index in the deposit tree
-    'index': 'uint64',
     # Data
     'data': DepositData,
 }
@@ -1761,12 +1759,11 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
-        index=deposit.index,
+        index=state.deposit_index,
         root=state.latest_eth1_data.deposit_root,
     )
 
     # Deposits must be processed in order
-    assert deposit.index == state.deposit_index
     state.deposit_index += 1
 
     pubkey = deposit.data.pubkey
