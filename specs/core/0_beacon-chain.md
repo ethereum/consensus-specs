@@ -17,7 +17,7 @@
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
-        - [Reward and penalty quotients](#reward-and-penalty-quotients)
+        - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
     - [Data structures](#data-structures)
@@ -103,7 +103,7 @@
             - [Helper functions](#helper-functions-1)
             - [Justification and finalization](#justification-and-finalization)
             - [Crosslinks](#crosslinks)
-            - [Rewards and penalties](#rewards-and-penalties)
+            - [Rewards and penalties](#rewards-and-penalties-1)
             - [Registry updates](#registry-updates)
             - [Slashings](#slashings)
             - [Final updates](#final-updates)
@@ -220,17 +220,17 @@ These configurations are updated for releases, but may be out of sync during `de
 | `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
-### Reward and penalty quotients
+### Rewards and penalties
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_QUOTIENT` | `2**5` (= 32) |
+| `BASE_REWARD_FACTOR` | `2**5` (= 32) |
 | `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* **The `BASE_REWARD_QUOTIENT` is NOT final. Once all other protocol details are finalized, it will be adjusted to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc.)**
+* **The `BASE_REWARD_FACTOR` is NOT final. Once all other protocol details are finalized, it will be adjusted to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc.)**
 * The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
@@ -963,9 +963,9 @@ def bytes_to_int(data: bytes) -> int:
 ```python
 def get_total_balance(state: BeaconState, indices: List[ValidatorIndex]) -> Gwei:
     """
-    Return the combined effective balance of an array of ``validators``.
+    Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
-    return sum([state.validator_registry[index].effective_balance for index in indices])
+    return max(sum([state.validator_registry[index].effective_balance for index in indices]), 1)
 ```
 
 ### `get_domain`
@@ -1413,10 +1413,9 @@ def process_crosslinks(state: BeaconState) -> None:
 
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    adjusted_quotient = integer_squareroot(get_total_active_balance(state)) // BASE_REWARD_QUOTIENT
-    if adjusted_quotient == 0:
-        return 0
-    return state.validator_registry[index].effective_balance // adjusted_quotient // BASE_REWARDS_PER_EPOCH
+    total_balance = get_total_active_balance(state)
+    effective_balance = state.validator_registry[index].effective_balance
+    return effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH
 ```
 
 ```python
@@ -1531,10 +1530,9 @@ def process_registry_updates(state: BeaconState) -> None:
 ```python
 def process_slashings(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    active_validator_indices = get_active_validator_indices(state, current_epoch)
-    total_balance = get_total_balance(state, active_validator_indices)
+    total_balance = get_total_active_balance(state)
 
-    # Compute `total_penalties`
+    # Compute slashed balances in the current epoch
     total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
     total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
     total_penalties = total_at_end - total_at_start
