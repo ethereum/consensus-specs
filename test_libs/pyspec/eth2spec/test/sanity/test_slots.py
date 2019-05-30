@@ -55,4 +55,3 @@ def test_over_epoch_boundary(state):
     yield 'slots', slots
     process_slots(state, state.slot + slots)
     yield 'post', state
-
