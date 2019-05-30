@@ -47,6 +47,11 @@ lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
 	flake8 --max-line-length=120 ./eth2spec;
 
+compile_deposit_contract:
+	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
+	cd ../..; cd $(DEPOSIT_CONTRACT_DIR); \
+	python tool/compile_deposit_contract.py contracts/validator_registration.v.py;
+
 install_deposit_contract_test:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
 	cd ../..; cd $(DEPOSIT_CONTRACT_DIR); \
