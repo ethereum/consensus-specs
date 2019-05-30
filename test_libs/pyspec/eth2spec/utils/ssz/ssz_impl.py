@@ -14,11 +14,22 @@ def is_basic_type(typ):
 def serialize_basic(value, typ):
     if is_uint_type(typ):
         return value.to_bytes(uint_byte_size(typ), 'little')
-    if is_bool_type(typ):
+    elif is_bool_type(typ):
         if value:
             return b'\x01'
         else:
             return b'\x00'
+    else:
+        raise Exception("Type not supported: {}".format(typ))
+
+def deserialize_basic(value, typ):
+    if is_uint_type(typ):
+        return typ(int.from_bytes(value, 'little'))
+    elif is_bool_type(typ):
+        assert value in (b'\x00', b'\x01')
+        return True if value == b'\x01' else False
+    else:
+        raise Exception("Type not supported: {}".format(typ))
 
 
 def is_fixed_size(typ):
@@ -112,7 +123,7 @@ def get_typed_values(obj, typ=None):
         return obj.get_typed_values()
     elif is_list_kind(typ) or is_vector_kind(typ):
         elem_type = read_elem_type(typ)
-        return zip(obj, [elem_type] * len(obj))
+        return list(zip(obj, [elem_type] * len(obj)))
     else:
         raise Exception("Invalid type")
 
