@@ -12,6 +12,7 @@ L = TypeVar('L')
 
 class uint(int):
     byte_len = 0
+
     def __new__(cls, value, *args, **kwargs):
         if value < 0:
             raise ValueError("unsigned types must not be negative")
