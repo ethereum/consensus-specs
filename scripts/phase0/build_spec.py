@@ -21,12 +21,12 @@ from eth2spec.utils.ssz.ssz_typing import (
     uint8, uint16, uint32, uint64, uint128, uint256,
     Container, Vector, BytesN
 )
-from eth2spec.utils.bls_stub import (
+from eth2spec.utils.hash_function import hash
+from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
 )
-from eth2spec.utils.hash_function import hash
 
 # Note: 'int' type defaults to being interpreted as a uint64 by SSZ implementation.
 Slot = NewType('Slot', int)  # uint64

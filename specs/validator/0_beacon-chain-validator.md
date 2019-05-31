@@ -224,7 +224,7 @@ epoch_signature = bls_sign(
 
 `block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.latest_eth1_data` is updated, and validator deposits up to this root can be processed. The deposit root can be calculated by calling the `get_deposit_root()` function of the deposit contract using the post-state of the block hash.
 
-* Let `D` be the set of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
+* Let `D` be the list of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
     * `vote.eth1_data.block_hash` is the hash of an Eth 1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_hash`.
     * `vote.eth1_data.deposit_count` is the deposit count of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
     * `vote.eth1_data.deposit_root` is the deposit root of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
@@ -233,7 +233,7 @@ epoch_signature = bls_sign(
     * Let `deposit_root` and `deposit_count` be the deposit root and deposit count of the Eth 1.0 deposit contract in the post-state of the block referenced by `block_hash`
     * Let `best_vote_data = Eth1Data(block_hash=block_hash, deposit_root=deposit_root, deposit_count=deposit_count)`.
 * If `D` is nonempty:
-    * Let `best_vote_data` be the `eth1_data` of the member of `D` that has the highest `vote.vote_count`, breaking ties by favoring block hashes with higher associated block height.
+    * Let `best_vote_data` be the `eth1_data` member of `D` that has the highest vote count (`D.count(eth1_data)`), breaking ties by favoring block hashes with higher associated block height.
 * Set `block.eth1_data = best_vote_data`.
 
 ##### Signature
