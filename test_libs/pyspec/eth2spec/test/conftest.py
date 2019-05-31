@@ -1,5 +1,5 @@
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.phase0 import spec as spec_phase1
+from eth2spec.phase1 import spec as spec_phase1
 
 # We import pytest only when it's present, i.e. when we are running tests.
 # The test-cases themselves can be generated without installing pytest.

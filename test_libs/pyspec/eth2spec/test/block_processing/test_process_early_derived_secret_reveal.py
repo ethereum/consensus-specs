@@ -28,10 +28,10 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
         assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
     # lost whistleblower reward
     # FIXME: Currently broken because get_base_reward in genesis epoch is 0
-    assert (
-        state.balances[randao_key_reveal.revealed_index] <
-        state.balances[randao_key_reveal.revealed_index]
-    )
+    # assert (
+    #     state.balances[randao_key_reveal.revealed_index] <
+    #     state.balances[randao_key_reveal.revealed_index]
+    # )
     yield 'post', state
 
 
@@ -81,24 +81,27 @@ def test_reveal_with_custody_padding_minus_one(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, True)
 
 
-# @with_phase1
-# @spec_state_test
-# def test_double_reveal(spec, state):
-#     randao_key_reveal1 = get_valid_early_derived_secret_reveal(
-#         spec,
-#         state,
-#         spec.get_current_epoch(state) + spec.RANDAO_PENALTY_EPOCHS + 1,
-#     )
-#     pre_state, intermediate_state = run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal1)
+@with_phase1
+@spec_state_test
+def test_double_reveal(spec, state):
+    randao_key_reveal1 = get_valid_early_derived_secret_reveal(
+        spec,
+        state,
+        spec.get_current_epoch(state) + spec.RANDAO_PENALTY_EPOCHS + 1,
+    )
+    res = dict(run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal1))
+    pre_state = res['pre']
+    yield 'pre', pre_state
+    intermediate_state = res['post']
 
-#     randao_key_reveal2 = get_valid_early_derived_secret_reveal(
-#         spec,
-#         intermediate_state,
-#         spec.get_current_epoch(pre_state) + spec.RANDAO_PENALTY_EPOCHS + 1,
-#     )
-#     _, post_state = run_early_derived_secret_reveal_processing(spec, intermediate_state, randao_key_reveal2, False)
-
-#     return pre_state, [randao_key_reveal1, randao_key_reveal2], post_state
+    randao_key_reveal2 = get_valid_early_derived_secret_reveal(
+        spec,
+        intermediate_state,
+        spec.get_current_epoch(pre_state) + spec.RANDAO_PENALTY_EPOCHS + 1,
+    )
+    post_state = dict(run_early_derived_secret_reveal_processing(spec, intermediate_state, randao_key_reveal2, False))['post']
+    yield 'randao_key_reveal', [randao_key_reveal1, randao_key_reveal2]
+    yield 'post', post_state
 
 
 @with_phase1

@@ -43,8 +43,7 @@ test: $(PY_SPEC_ALL_TARGETS)
 
 citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate;	\
-	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml tests/phase0; \
-	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml tests/phase1
+	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml eth2spec
 
 install_lint:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install flake8==3.5.0
@@ -56,12 +55,6 @@ lint: $(PY_SPEC_ALL_TARGETS)
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
-
-# "make phase0" to create pyspec for phase0
-phase0: $(PY_SPEC_PHASE_0_TARGETS)
-
-# "make phase1" to create pyspec for phase1
-phase1: $(PY_SPEC_PHASE_1_TARGETS)
 
 $(PY_SPEC_PHASE_0_TARGETS): $(PY_SPEC_PHASE_0_DEPS)
 	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(SPEC_DIR)/core/0_beacon-chain.md $@
