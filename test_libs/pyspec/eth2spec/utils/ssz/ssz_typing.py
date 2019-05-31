@@ -420,10 +420,10 @@ def infer_input_type(fn):
     """
     Decorator to run infer_type on the obj if typ argument is None
     """
-    def infer_helper(obj, *args, typ=None, **kwargs):
+    def infer_helper(obj, typ=None, **kwargs):
         if typ is None:
             typ = infer_type(obj)
-        return fn(obj, *args, typ=typ, **kwargs)
+        return fn(obj, typ=typ, **kwargs)
     return infer_helper
 
 
