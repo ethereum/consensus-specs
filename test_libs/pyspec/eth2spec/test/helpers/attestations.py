@@ -16,7 +16,7 @@ from eth2spec.test.helpers.bitfields import set_bitfield_bit
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
-from eth2spec.utils.minimal_ssz import hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
 def build_attestation_data(state, slot, shard):

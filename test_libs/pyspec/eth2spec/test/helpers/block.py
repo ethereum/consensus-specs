@@ -8,7 +8,7 @@ from eth2spec.phase0.spec import (
 )
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, only_with_bls
-from eth2spec.utils.minimal_ssz import signing_root, hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import signing_root, hash_tree_root
 
 
 # Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.

@@ -5,7 +5,7 @@ from eth2spec.phase0.spec import get_current_epoch, get_active_validator_indices
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils.bls import bls_sign
-from eth2spec.utils.minimal_ssz import signing_root
+from eth2spec.utils.ssz.ssz_impl import signing_root
 
 
 def get_valid_transfer(state, slot=None, sender_index=None, amount=None, fee=None, signed=False):

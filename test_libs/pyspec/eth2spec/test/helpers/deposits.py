@@ -5,7 +5,7 @@ from eth2spec.phase0.spec import get_domain, DepositData, verify_merkle_branch, 
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.utils.bls import bls_sign
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_root, get_merkle_proof
-from eth2spec.utils.minimal_ssz import signing_root
+from eth2spec.utils.ssz.ssz_impl import signing_root
 
 
 def build_deposit_data(state, pubkey, privkey, amount, withdrawal_credentials, signed=False):
