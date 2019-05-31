@@ -9,7 +9,10 @@ from .utils import spectest, with_tags
 
 def with_state(fn):
     def entry(*args, **kw):
-        kw['state'] = create_genesis_state(spec=spec_phase0, num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
+        try:
+            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
+        except KeyError:
+            raise TypeError('Spec decorator must come before state decorator to inject spec into state.')
         return fn(*args, **kw)
     return entry
 
