@@ -4,10 +4,14 @@ from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
 
-from .utils import spectest, with_args, with_tags
+from .utils import spectest, with_tags
 
-# Provides a genesis state as first argument to the function decorated with this
-with_state = with_args(lambda: [create_genesis_state(spec.SLOTS_PER_EPOCH * 8)])
+
+def with_state(fn):
+    def entry(*args, **kw):
+        kw['state'] = create_genesis_state(spec=spec_phase0, num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
+        return fn(*args, **kw)
+    return entry
 
 
 # BLS is turned off by default *for performance purposes during TESTING*.
@@ -88,18 +92,17 @@ def with_phase0(fn):
     Decorator to use phase 0's spec and helpers
     """
     def entry(*args, **kw):
-        args = (spec_phase0, *args)
-        print(args)
+        kw['spec'] = spec_phase0
         return fn(*args, **kw)
     return entry
 
 
 def with_phase1(fn):
     """
-    Decorator to use phase 0's spec and helpers
+    Decorator to use phase 1's spec and helpers
     """
     def entry(*args, **kw):
-        args = (spec_phase1, *args)
+        kw['spec'] = spec_phase1
         return fn(*args, **kw)
     return entry
 

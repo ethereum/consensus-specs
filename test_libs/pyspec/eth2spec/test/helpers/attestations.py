@@ -89,6 +89,7 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
         privkey = privkeys[validator_index]
         signatures.append(
             get_attestation_signature(
+                spec,
                 state,
                 attestation_data,
                 privkey

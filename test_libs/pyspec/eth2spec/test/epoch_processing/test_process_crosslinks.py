@@ -24,13 +24,13 @@ def run_process_crosslinks(spec, state, valid=True):
     """
     # transition state to slot before state transition
     slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH) - 1
-    block = build_empty_block_for_next_slot(state)
+    block = build_empty_block_for_next_slot(spec, state)
     block.slot = slot
     sign_block(spec, state, block)
     spec.state_transition(state, block)
 
     # cache state before epoch transition
-    spec.spec.process_slot(state)
+    spec.process_slot(state)
 
     yield 'pre', state
     spec.process_crosslinks(state)
@@ -91,7 +91,6 @@ def test_single_crosslink_update_from_previous_epoch(spec, state):
 
     # ensure rewarded
     for index in spec.get_crosslink_committee(
-            spec,
             state,
             attestation.data.target_epoch,
             attestation.data.crosslink.shard):
@@ -144,7 +143,6 @@ def test_double_late_crosslink(spec, state):
     assert state.previous_crosslinks[shard] == state.current_crosslinks[shard]
     # ensure no reward, only penalties for the failed crosslink
     for index in spec.get_crosslink_committee(
-            spec,
             state,
             attestation_2.data.target_epoch,
             attestation_2.data.crosslink.shard):
