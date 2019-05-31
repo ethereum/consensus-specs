@@ -55,7 +55,7 @@ def test_reveal_from_current_epoch(spec, state):
 # @spec_state_test
 # def test_reveal_from_past_epoch(state):
 #     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state) - 1)
-#     
+#
 #     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
@@ -99,7 +99,8 @@ def test_double_reveal(spec, state):
         intermediate_state,
         spec.get_current_epoch(pre_state) + spec.RANDAO_PENALTY_EPOCHS + 1,
     )
-    post_state = dict(run_early_derived_secret_reveal_processing(spec, intermediate_state, randao_key_reveal2, False))['post']
+    res = dict(run_early_derived_secret_reveal_processing(spec, intermediate_state, randao_key_reveal2, False))
+    post_state = res['post']
     yield 'randao_key_reveal', [randao_key_reveal1, randao_key_reveal2]
     yield 'post', post_state
 

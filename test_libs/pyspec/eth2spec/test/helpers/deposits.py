@@ -70,7 +70,7 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(pubkey)[1:]
 
     deposit, root, deposit_data_leaves = build_deposit(
-        spec, 
+        spec,
         state,
         deposit_data_leaves,
         pubkey,

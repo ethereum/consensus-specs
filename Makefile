@@ -50,8 +50,7 @@ install_lint:
 
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
-	flake8 --max-line-length=120 ./eth2spec; \
-	flake8 --max-line-length=120 --ignore=F401,F403,F405,F821 ./tests;
+	flake8 --max-line-length=120 ./eth2spec
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
