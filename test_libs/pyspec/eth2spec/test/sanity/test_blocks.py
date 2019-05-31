@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import List
 
 import eth2spec.phase0.spec as spec
 from eth2spec.utils.bls import bls_sign
@@ -36,7 +37,7 @@ def test_empty_block_transition(state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(state, signed=True)
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -54,7 +55,7 @@ def test_skipped_slots(state):
     block = build_empty_block_for_next_slot(state)
     block.slot += 3
     sign_block(state, block)
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -72,7 +73,7 @@ def test_empty_epoch_transition(state):
     block = build_empty_block_for_next_slot(state)
     block.slot += spec.SLOTS_PER_EPOCH
     sign_block(state, block)
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -91,7 +92,7 @@ def test_empty_epoch_transition(state):
 #     block = build_empty_block_for_next_slot(state)
 #     block.slot += spec.SLOTS_PER_EPOCH * 5
 #     sign_block(state, block, proposer_index=0)
-#     yield 'blocks', [block], [spec.BeaconBlock]
+#     yield 'blocks', [block], List[spec.BeaconBlock]
 #
 #     state_transition(state, block)
 #     yield 'post', state
@@ -119,7 +120,7 @@ def test_proposer_slashing(state):
     block = build_empty_block_for_next_slot(state)
     block.body.proposer_slashings.append(proposer_slashing)
     sign_block(state, block)
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -152,7 +153,7 @@ def test_attester_slashing(state):
     block = build_empty_block_for_next_slot(state)
     block.body.attester_slashings.append(attester_slashing)
     sign_block(state, block)
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -189,7 +190,7 @@ def test_deposit_in_block(state):
     block.body.deposits.append(deposit)
     sign_block(state, block)
 
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -216,7 +217,7 @@ def test_deposit_top_up(state):
     block.body.deposits.append(deposit)
     sign_block(state, block)
 
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -252,7 +253,7 @@ def test_attestation(state):
     sign_block(state, epoch_block)
     state_transition(state, epoch_block)
 
-    yield 'blocks', [attestation_block, epoch_block], [spec.BeaconBlock]
+    yield 'blocks', [attestation_block, epoch_block], List[spec.BeaconBlock]
     yield 'post', state
 
     assert len(state.current_epoch_attestations) == 0
@@ -298,7 +299,7 @@ def test_voluntary_exit(state):
     sign_block(state, exit_block)
     state_transition(state, exit_block)
 
-    yield 'blocks', [initiate_exit_block, exit_block], [spec.BeaconBlock]
+    yield 'blocks', [initiate_exit_block, exit_block], List[spec.BeaconBlock]
     yield 'post', state
 
     assert state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
@@ -326,7 +327,7 @@ def test_transfer(state):
     block.body.transfers.append(transfer)
     sign_block(state, block)
 
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
 
     state_transition(state, block)
     yield 'post', state
@@ -355,7 +356,7 @@ def test_balance_driven_status_transitions(state):
     sign_block(state, block)
     state_transition(state, block)
 
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
     yield 'post', state
 
     assert state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
@@ -371,7 +372,7 @@ def test_historical_batch(state):
     block = build_empty_block_for_next_slot(state, signed=True)
     state_transition(state, block)
 
-    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'blocks', [block], List[spec.BeaconBlock]
     yield 'post', state
 
     assert state.slot == block.slot
@@ -399,7 +400,7 @@ def test_historical_batch(state):
 #
 #     state_transition(state, block)
 #
-#     yield 'blocks', [block], [spec.BeaconBlock]
+#     yield 'blocks', [block], List[spec.BeaconBlock]
 #     yield 'post', state
 #
 #     assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
