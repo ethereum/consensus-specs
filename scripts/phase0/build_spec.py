@@ -18,8 +18,8 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    uint8, uint16, uint32, uint64, uint128, uint256,
-    Container, Vector, BytesN
+    # unused: uint8, uint16, uint32, uint128, uint256,
+    uint64, Container, Vector, BytesN
 )
 from eth2spec.utils.hash_function import hash
 from eth2spec.utils.bls import (

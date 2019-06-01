@@ -2,8 +2,14 @@ from random import Random
 from typing import Any
 from enum import Enum
 
-from eth2spec.utils.ssz.ssz_typing import *
 from eth2spec.utils.ssz.ssz_impl import is_basic_type
+
+from eth2spec.utils.ssz.ssz_typing import (
+    is_uint_type, is_bool_type, is_list_type,
+    is_vector_type, is_bytes_type, is_bytesn_type, is_container_type,
+    read_vector_elem_type, read_list_elem_type,
+    uint_byte_size
+)
 
 # in bytes
 UINT_SIZES = [1, 2, 4, 8, 16, 32]

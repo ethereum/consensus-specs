@@ -1,5 +1,10 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.utils.ssz.ssz_typing import *
+from eth2spec.utils.ssz.ssz_typing import (
+    is_uint_type, is_bool_type, is_list_type,
+    is_vector_type, is_bytes_type, is_bytesn_type, is_container_type,
+    read_vector_elem_type, read_list_elem_type,
+    Vector, BytesN
+)
 
 
 def decode(data, typ):

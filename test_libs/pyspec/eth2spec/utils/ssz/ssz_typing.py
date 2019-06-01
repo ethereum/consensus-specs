@@ -3,10 +3,6 @@ from typing import List, Iterable, TypeVar, Type, NewType
 from typing import Union
 from typing_inspect import get_origin
 
-T = TypeVar('T')
-L = TypeVar('L')
-
-
 # SSZ integers
 # -----------------------------
 
@@ -21,6 +17,7 @@ class uint(int):
 
 class uint8(uint):
     byte_len = 1
+
     def __new__(cls, value, *args, **kwargs):
         if value.bit_length() > 8:
             raise ValueError("value out of bounds for uint8")
@@ -32,6 +29,7 @@ byte = NewType('byte', uint8)
 
 class uint16(uint):
     byte_len = 2
+
     def __new__(cls, value, *args, **kwargs):
         if value.bit_length() > 16:
             raise ValueError("value out of bounds for uint16")
@@ -40,6 +38,7 @@ class uint16(uint):
 
 class uint32(uint):
     byte_len = 4
+
     def __new__(cls, value, *args, **kwargs):
         if value.bit_length() > 32:
             raise ValueError("value out of bounds for uint16")
@@ -52,6 +51,7 @@ uint64 = NewType('uint64', int)
 
 class uint128(uint):
     byte_len = 16
+
     def __new__(cls, value, *args, **kwargs):
         if value.bit_length() > 128:
             raise ValueError("value out of bounds for uint128")
@@ -60,6 +60,7 @@ class uint128(uint):
 
 class uint256(uint):
     byte_len = 32
+
     def __new__(cls, value, *args, **kwargs):
         if value.bit_length() > 256:
             raise ValueError("value out of bounds for uint256")
@@ -397,11 +398,13 @@ def get_zero_value(typ):
     elif issubclass(typ, Container):
         result = typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
     else:
-       return Exception("Type not supported: {}".format(typ))
+        return Exception("Type not supported: {}".format(typ))
     return result
+
 
 # Type helpers
 # -----------------------------
+
 
 def infer_type(obj):
     if is_uint_type(obj.__class__):

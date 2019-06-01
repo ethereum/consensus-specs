@@ -1,5 +1,11 @@
 from ..merkle_minimal import merkleize_chunks, hash
-from .ssz_typing import *
+from eth2spec.utils.ssz.ssz_typing import (
+    is_uint_type, is_bool_type, is_container_type,
+    is_list_kind, is_vector_kind,
+    read_vector_elem_type, read_elem_type,
+    uint_byte_size,
+    infer_input_type
+)
 
 # SSZ Serialization
 # -----------------------------
@@ -21,6 +27,7 @@ def serialize_basic(value, typ):
             return b'\x00'
     else:
         raise Exception("Type not supported: {}".format(typ))
+
 
 def deserialize_basic(value, typ):
     if is_uint_type(typ):
@@ -148,4 +155,3 @@ def signing_root(obj, typ):
     # ignore last field
     leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in obj.get_typed_values()[:-1]]
     return merkleize_chunks(chunkify(b''.join(leaves)))
-
