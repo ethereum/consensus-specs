@@ -40,11 +40,11 @@ citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
 
 install_lint:
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install flake8==3.5.0
+	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install flake8==3.7.7
 
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
-	flake8 --max-line-length=120 ./eth2spec;
+	flake8  --ignore=E252,W504 --max-line-length=120 ./eth2spec;
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
