@@ -57,7 +57,7 @@ def serialize(obj, typ=None):
     if is_basic_type(typ):
         return serialize_basic(obj, typ)
     elif is_list_kind(typ) or is_vector_kind(typ):
-        return encode_series(obj, [read_elem_type(typ)]*len(obj))
+        return encode_series(obj, [read_elem_type(typ)] * len(obj))
     elif is_container_type(typ):
         return encode_series(obj.get_field_values(), typ.get_field_types())
     else:
