@@ -6,6 +6,7 @@ from typing_inspect import get_origin
 # SSZ integers
 # -----------------------------
 
+
 class uint(int):
     byte_len = 0
 
@@ -22,6 +23,7 @@ class uint8(uint):
         if value.bit_length() > 8:
             raise ValueError("value out of bounds for uint8")
         return super().__new__(cls, value)
+
 
 # Alias for uint8
 byte = NewType('byte', uint8)
