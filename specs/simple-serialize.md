@@ -1,423 +1,167 @@
-# [WIP] SimpleSerialize (SSZ) Spec
+# SimpleSerialize (SSZ)
 
-This is the **work in progress** document to describe `SimpleSerialize`, the
-current selected serialization method for Ethereum 2.0 using the Beacon Chain.
+**Notice**: This document is a work-in-progress describing typing, serialization, and Merkleization of Eth 2.0 objects.
 
-This document specifies the general information for serializing and
-deserializing objects and data types.
+## Table of contents
+<!-- TOC -->
 
-## ToC
+- [SimpleSerialize (SSZ)](#simpleserialize-ssz)
+    - [Table of contents](#table-of-contents)
+    - [Constants](#constants)
+    - [Typing](#typing)
+        - [Basic types](#basic-types)
+        - [Composite types](#composite-types)
+        - [Aliases](#aliases)
+        - [Default values](#default-values)
+    - [Serialization](#serialization)
+        - [`"uintN"`](#uintn)
+        - [`"bool"`](#bool)
+        - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
+    - [Deserialization](#deserialization)
+    - [Merkleization](#merkleization)
+    - [Self-signed containers](#self-signed-containers)
+    - [Implementations](#implementations)
 
-* [About](#about)
-* [Variables and Functions](#variables-and-functions)
-* [Constants](#constants)
-* [Overview](#overview)
-   + [Serialize/Encode](#serializeencode)
-      - [uintN](#uintn)
-      - [bool](#bool)
-      - [bytesN](#bytesn)
-      - [List/Vectors](#listvectors)
-      - [Container](#container)
-   + [Deserialize/Decode](#deserializedecode)
-      - [uintN](#uintn-1)
-      - [bool](#bool-1)
-      - [bytesN](#bytesn-1)
-      - [List/Vectors](#listvectors-1)
-      - [Container](#container-1)
-   + [Tree Hash](#tree-hash)
-      - [`uint8`..`uint256`, `bool`, `bytes1`..`bytes32`](#uint8uint256-bool-bytes1bytes32)
-      - [`uint264`..`uintN`, `bytes33`..`bytesN`](#uint264uintn-bytes33bytesn)
-      - [List/Vectors](#listvectors-2)
-      - [Container](#container-2)
-   + [Signed Roots](#signed-roots)
-* [Implementations](#implementations)
-
-## About
-
-`SimpleSerialize` was first proposed by Vitalik Buterin as the serialization
-protocol for use in the Ethereum 2.0 Beacon Chain.
-
-The core feature of `ssz` is the simplicity of the serialization with low
-overhead.
-
-## Variables and Functions
-
-| Term         | Definition                                                                                     |
-|:-------------|:-----------------------------------------------------------------------------------------------|
-| `little`     | Little endian.                                                                                 |
-| `byteorder`  | Specifies [endianness](https://en.wikipedia.org/wiki/Endianness): big endian or little endian. |
-| `len`        | Length/number of bytes.                                                                        |
-| `to_bytes`   | Convert to bytes. Should take parameters ``size`` and ``byteorder``.                           |
-| `from_bytes` | Convert from bytes to object. Should take ``bytes`` and ``byteorder``.                         |
-| `value`      | The value to serialize.                                                                        |
-| `rawbytes`   | Raw serialized bytes.                                                                          |
-| `deserialized_object` | The deserialized data in the data structure of your programming language.             |
-| `new_index`  | An index to keep track the latest position where the `rawbytes` have been deserialized.        |
+<!-- /TOC -->
 
 ## Constants
 
-| Constant          | Value | Definition                                                                            |
-|:------------------|:-----:|:--------------------------------------------------------------------------------------|
-| `LENGTH_BYTES`    |   4   | Number of bytes used for the length added before a variable-length serialized object. |
-| `SSZ_CHUNK_SIZE`  |  128  | Number of bytes for the chunk size of the Merkle tree leaf.                           |
+| Name | Value | Description |
+|-|-|-|
+| `BYTES_PER_CHUNK` | `32` | Number of bytes per chunk. |
+| `BYTES_PER_LENGTH_OFFSET` | `4` | Number of bytes per serialized length offset. |
+| `BITS_PER_BYTE` | `8` | Number of bits per byte. |
 
-## Overview
+## Typing
+### Basic types
 
-### Serialize/Encode
+* `"uintN"`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
+* `"bool"`: `True` or `False`
 
-#### uintN
+### Composite types
 
-| uint Type | Usage                                                      |
-|:---------:|:-----------------------------------------------------------|
-| `uintN`   | Type of `N` bits unsigned integer, where ``N % 8 == 0``.   |
+* **container**: ordered heterogeneous collection of values
+    * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
+* **vector**: ordered fixed-length homogeneous collection of values
+    * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
+* **list**: ordered variable-length homogeneous collection of values
+    * angle bracket notation `[type]`, e.g. `["uint64"]`
+* **union**: union type containing one of the given subtypes
+    * round bracket notation `(type_1, type_2, ...)`, e.g. `("null", "uint64")`
 
-Convert directly to bytes the size of the int. (e.g. ``uint16 = 2 bytes``)
+### Variable-size and fixed-size
 
-All integers are serialized as **little endian**.
+We recursively define "variable-size" types to be lists and unions and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
-| Check to perform       | Code                  |
-|:-----------------------|:----------------------|
-| Size is a byte integer | ``int_size % 8 == 0`` |
+### Aliases
 
-```python
-assert(int_size % 8 == 0)
-buffer_size = int_size / 8
-return value.to_bytes(buffer_size, 'little')
-```
+For convenience we alias:
 
-#### bool
+* `"byte"` to `"uint8"` (this is a basic type)
+* `"bytes"` to `["byte"]` (this is *not* a basic type)
+* `"bytesN"` to `["byte", N]` (this is *not* a basic type)
+* `"null"`: `{}`, i.e. the empty container
 
-Convert directly to a single 0x00 or 0x01 byte.
+### Default values
 
-| Check to perform  | Code                       |
-|:------------------|:---------------------------|
-| Value is boolean  | ``value in (True, False)`` |
+The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
 
-```python
-assert(value in (True, False))
-return b'\x01' if value is True else b'\x00'
-```
+### Illegal types
 
-#### bytesN
+Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as the first type in a union subtype (i.e., with type index zero).
 
-A fixed-size byte array.
+## Serialization
 
-| Checks to perform                      | Code                 |
-|:---------------------------------------|:---------------------|
-| Length in bytes is correct for `bytesN` | ``len(value) == N`` |
+We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
-```python
-assert(len(value) == N)
+> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
 
-return value
-```
-
-#### List/Vectors
-
-Lists are a collection of elements of the same homogeneous type.
-
-| Check to perform                            | Code                        |
-|:--------------------------------------------|:----------------------------|
-| Length of serialized list fits into 4 bytes | ``len(serialized) < 2**32`` |
-
-1. Serialize all list elements individually and concatenate them.
-2. Prefix the concatenation with its length encoded as a `4-byte` **little-endian** unsigned integer.
-
-We define `bytes` to be a synonym of `List[bytes1]`.
-
-**Example in Python**
+### `"uintN"`
 
 ```python
-
-serialized_list_string = b''
-
-for item in value:
-   serialized_list_string += serialize(item)
-
-assert(len(serialized_list_string) < 2**32)
-
-serialized_len = (len(serialized_list_string).to_bytes(LENGTH_BYTES, 'little'))
-
-return serialized_len + serialized_list_string
+assert N in [8, 16, 32, 64, 128, 256]
+return value.to_bytes(N // 8, "little")
 ```
 
-#### Container
-
-A container represents a heterogenous, associative collection of key-value pairs. Each pair is referred to as a `field`. To get the value for a given field, you supply the key which is a symbol unique to the container referred to as the field's `name`. The container data type is analogous to the `struct` type found in many languages like C or Go.
-
-To serialize a container, obtain the list of its field's names in the specified order. For each field name in this list, obtain the corresponding value and serialize it. Tightly pack the complete set of serialized values in the same order as the field names into a buffer. Calculate the size of this buffer of serialized bytes and encode as a `4-byte` **little endian** `uint32`. Prepend the encoded length to the buffer. The result of this concatenation is the final serialized value of the container.
-
-| Check to perform                              | Code                        |
-|:----------------------------------------------|:----------------------------|
-| Length of serialized fields fits into 4 bytes | ``len(serialized) < 2**32`` |
-
-To serialize:
-
-1. Get the list of the container's fields.
-
-2. For each name in the list, obtain the corresponding value from the container and serialize it. Place this serialized value into a buffer. The serialized values should be tightly packed.
-
-3. Get the number of raw bytes in the serialized buffer. Encode that number as a `4-byte` **little endian** `uint32`.
-
-4. Prepend the length to the serialized buffer.
-
-**Example in Python**
+### `"bool"`
 
 ```python
-def get_field_names(typ):
-    return typ.fields.keys()
-
-def get_value_for_field_name(value, field_name):
-    return getattr(value, field_name)
-
-def get_type_for_field_name(typ, field_name):
-    return typ.fields[field_name]
-
-serialized_buffer = b''
-
-typ = type(value)
-for field_name in get_field_names(typ):
-    field_value = get_value_for_field_name(value, field_name)
-    field_type = get_type_for_field_name(typ, field_name)
-    serialized_buffer += serialize(field_value, field_type)
-
-assert(len(serialized_buffer) < 2**32)
-
-serialized_len = (len(serialized_buffer).to_bytes(LENGTH_BYTES, 'little'))
-
-return serialized_len + serialized_buffer
+assert value in (True, False)
+return b"\x01" if value is True else b"\x00"
 ```
 
-### Deserialize/Decode
-
-The decoding requires knowledge of the type of the item to be decoded. When
-performing decoding on an entire serialized string, it also requires knowledge
-of the order in which the objects have been serialized.
-
-Note: Each return will provide:
-- `deserialized_object`
-- `new_index`
-
-At each step, the following checks should be made:
-
-| Check to perform         | Check                                                      |
-|:-------------------------|:-----------------------------------------------------------|
-| Ensure sufficient length | ``len(rawbytes) >= current_index + deserialize_length``    |
-
-At the final step, the following checks should be made:
-
-| Check to perform         | Check                                |
-|:-------------------------|:-------------------------------------|
-| Ensure no extra length   | `new_index == len(rawbytes)`         |
-
-#### uintN
-
-Convert directly from bytes into integer utilising the number of bytes the same
-size as the integer length. (e.g. ``uint16 == 2 bytes``)
-
-All integers are interpreted as **little endian**.
+### `"null"`
 
 ```python
-byte_length = int_size / 8
-new_index = current_index + byte_length
-assert(len(rawbytes) >= new_index)
-return int.from_bytes(rawbytes[current_index:current_index+byte_length], 'little'), new_index
+return b""
 ```
 
-#### bool
-
-Return True if 0x01, False if 0x00.
+### Vectors, containers, lists, unions
 
 ```python
-assert rawbytes in (b'\x00', b'\x01')
-return True if rawbytes == b'\x01' else False
+# Recursively serialize
+fixed_parts = [serialize(element) if not is_variable_size(element) else None for element in value]
+variable_parts = [serialize(element) if is_variable_size(element) else b"" for element in value]
+
+# Compute and check lengths
+fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts]
+variable_lengths = [len(part) for part in variable_parts]
+assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
+
+# Interleave offsets of variable-size parts with fixed-size parts
+variable_offsets = [serialize(sum(fixed_lengths + variable_lengths[:i])) for i in range(len(value))]
+fixed_parts = [part if part != None else variable_offsets[i] for i, part in enumerate(fixed_parts)]
+
+# Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts
+return b"".join(fixed_parts + variable_parts)
 ```
 
-#### bytesN
+If `value` is a union type:
 
-Return the `N` bytes.
+Define value as an object that has properties `value.value` with the contained value, and `value.type_index` which indexes the type.
 
 ```python
-assert(len(rawbytes) >= current_index + N)
-new_index = current_index + N
-return rawbytes[current_index:current_index+N], new_index
+serialized_bytes = serialize(value.value)
+serialized_type_index = value.type_index.to_bytes(BYTES_PER_LENGTH_OFFSET, "little")
+return serialized_type_index + serialized_bytes
 ```
 
-#### List/Vectors
+## Deserialization
 
-Deserialize each element in the list.
-1. Get the length of the serialized list.
-2. Loop through deserializing each item in the list until you reach the
-entire length of the list.
+Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
-| Check to perform                          | code                                                            |
-|:------------------------------------------|:----------------------------------------------------------------|
-| ``rawbytes`` has enough left for length   | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
-| list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
+## Merkleization
 
-```python
-assert(len(rawbytes) > current_index + LENGTH_BYTES)
-total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'little')
-new_index = current_index + LENGTH_BYTES + total_length
-assert(len(rawbytes) >= new_index)
-item_index = current_index + LENGTH_BYTES
-deserialized_list = []
+We first define helper functions:
 
-while item_index < new_index:
-   object, item_index = deserialize(rawbytes, item_index, item_type)
-   deserialized_list.append(object)
+* `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
+* `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root. Note that `merkleize` on a single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
+* `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
+* `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
-return deserialized_list, new_index
-```
+We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
-#### Container
+* `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects
+* `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
+* `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
+* `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
+* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
 
-Refer to the section on container encoding for some definitions.
+## Self-signed containers
 
-To deserialize a container, loop over each field in the container and use the type of that field to know what kind of deserialization to perform. Consume successive elements of the data stream for each successful deserialization.
-
-Instantiate a container with the full set of deserialized data, matching each member with the corresponding field.
-
-| Check to perform                          | code                                                            |
-|:------------------------------------------|:----------------------------------------------------------------|
-| ``rawbytes`` has enough left for length   | ``len(rawbytes) > current_index + LENGTH_BYTES``                |
-| list is not greater than serialized bytes | ``len(rawbytes) > current_index + LENGTH_BYTES + total_length`` |
-
-To deserialize:
-
-1. Get the list of the container's fields.
-2. For each name in the list, attempt to deserialize a value for that type. Collect these values as they will be used to construct an instance of the container.
-3. Construct a container instance after successfully consuming the entire subset of the stream for the serialized container.
-
-**Example in Python**
-
-```python
-def get_field_names(typ):
-    return typ.fields.keys()
-
-def get_value_for_field_name(value, field_name):
-    return getattr(value, field_name)
-
-def get_type_for_field_name(typ, field_name):
-    return typ.fields[field_name]
-
-class Container:
-    # this is the container; here we will define an empty class for demonstration
-    pass
-
-# get a reference to the type in some way...
-container = Container()
-typ = type(container)
-
-assert(len(rawbytes) > current_index + LENGTH_BYTES)
-total_length = int.from_bytes(rawbytes[current_index:current_index + LENGTH_BYTES], 'little')
-new_index = current_index + LENGTH_BYTES + total_length
-assert(len(rawbytes) >= new_index)
-item_index = current_index + LENGTH_BYTES
-
-values = {}
-for field_name in get_field_names(typ):
-    field_name_type = get_type_for_field_name(typ, field_name)
-    values[field_name], item_index = deserialize(data, item_index, field_name_type)
-assert item_index == new_index
-return typ(**values), item_index
-```
-
-### Tree Hash
-
-The below `hash_tree_root_internal` algorithm is defined recursively in the case of lists and containers, and it outputs a value equal to or less than 32 bytes in size. For use as a "final output" (eg. for signing), use `hash_tree_root(x) = zpad(hash_tree_root_internal(x), 32)`, where `zpad` is a helper that extends the given `bytes` value to the desired `length` by adding zero bytes on the right:
-
-```python
-def zpad(input: bytes, length: int) -> bytes:
-   return input + b'\x00' * (length - len(input))
-```
-
-Refer to [the helper function `hash`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#hash) of Phase 0 of the [Eth2.0 specs](https://github.com/ethereum/eth2.0-specs) for a definition of the hash function used below, `hash(x)`.
-
-#### `uint8`..`uint256`, `bool`, `bytes1`..`bytes32`
-
-Return the serialization of the value.
-
-#### `uint264`..`uintN`, `bytes33`..`bytesN`
-
-Return the hash of the serialization of the value.
-
-#### List/Vectors
-
-First, we define the Merkle tree function.
-
-```python
-# Merkle tree hash of a list of homogenous, non-empty items
-def merkle_hash(lst):
-    # Store length of list (to compensate for non-bijectiveness of padding)
-    datalen = len(lst).to_bytes(32, 'little')
-
-    if len(lst) == 0:
-        # Handle empty list case
-        chunkz = [b'\x00' * SSZ_CHUNK_SIZE]
-    elif len(lst[0]) < SSZ_CHUNK_SIZE:
-        # See how many items fit in a chunk
-        items_per_chunk = SSZ_CHUNK_SIZE // len(lst[0])
-
-        # Build a list of chunks based on the number of items in the chunk
-        chunkz = [
-            zpad(b''.join(lst[i:i + items_per_chunk]), SSZ_CHUNK_SIZE) 
-            for i in range(0, len(lst), items_per_chunk)
-        ]
-    else:
-        # Leave large items alone
-        chunkz = lst
-
-    # Merkleise
-    def next_power_of_2(x):  
-        return 1 if x == 0 else 2**(x - 1).bit_length()
-
-    for i in range(len(chunkz), next_power_of_2(len(chunkz))):
-        chunkz.append(b'\x00' * SSZ_CHUNK_SIZE)
-    while len(chunkz) > 1:     
-        chunkz = [hash(chunkz[i] + chunkz[i+1]) for i in range(0, len(chunkz), 2)]
-
-    # Return hash of root and data length
-    return hash(chunkz[0] + datalen)
-```
-
-To `hash_tree_root_internal` a list, we simply do:
-
-```python
-return merkle_hash([hash_tree_root_internal(item) for item in value])
-```
-
-Where the inner `hash_tree_root_internal` is a recursive application of the tree-hashing function (returning less than 32 bytes for short single values).
-
-#### Container
-
-Recursively tree hash the values in the container in the same order as the fields, and Merkle hash the results.
-
-```python
-return merkle_hash([hash_tree_root_internal(getattr(x, field)) for field in value.fields])
-```
-
-### Signed roots
-
-Let `field_name` be a field name in an SSZ container `container`. We define `truncate(container, field_name)` to be the `container` with the fields from `field_name` onwards truncated away. That is, `truncate(container, field_name) = [getattr(container, field)) for field in value.fields[:i]]` where `i = value.fields.index(field_name)`.
-
-When `field_name` maps to a signature (e.g. a BLS12-381 signature of type `Bytes96`) the convention is that the corresponding signed message be `signed_root(container, field_name) = hash_tree_root(truncate(container, field_name))`. For example if `container = {"foo": sub_object_1, "bar": sub_object_2, "signature": bytes96, "baz": sub_object_3}` then `signed_root(container, "signature") = merkle_hash([hash_tree_root(sub_object_1), hash_tree_root(sub_object_2)])`.
-
-Note that this convention means that fields after the signature are _not_ signed over. If there are multiple signatures in `container` then those are expected to be signing over the fields in the order specified. If multiple signatures of the same value are expected the convention is that the signature field be an array of signatures.
+Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
 ## Implementations
 
-| Language | Implementation                                                                                                                                                     | Description                                              |
-|:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
-|  Python  | [ https://github.com/ethereum/py-ssz ](https://github.com/ethereum/py-ssz) | Python implementation of SSZ |
-|   Rust   | [ https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz ](https://github.com/sigp/lighthouse/tree/master/beacon_chain/utils/ssz)                                                         | Lighthouse (Rust Ethereum 2.0 Node) maintained SSZ.      |
-|    Nim   | [ https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim ](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) | Nim Implementation maintained SSZ.                       |
-|   Rust   | [ https://github.com/paritytech/shasper/tree/master/util/ssz ](https://github.com/paritytech/shasper/tree/master/util/ssz)                                         | Shasper implementation of SSZ maintained by ParityTech.  |
-|   Javascript   | [ https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js ](https://github.com/ChainSafeSystems/ssz-js/blob/master/src/index.js)                                         | Javascript Implementation maintained SSZ |
-|   Java   | [ https://www.github.com/ConsenSys/cava/tree/master/ssz ](https://www.github.com/ConsenSys/cava/tree/master/ssz) | SSZ Java library part of the Cava suite |
-|   Go   | [ https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz ](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) | Go implementation of SSZ mantained by Prysmatic Labs |
-|  Swift | [ https://github.com/yeeth/SimpleSerialize.swift ](https://github.com/yeeth/SimpleSerialize.swift) | Swift implementation maintained SSZ |
-|  C# | [ https://github.com/codingupastorm/csharp-ssz ](https://github.com/codingupastorm/csharp-ssz) | C# implementation maintained SSZ |
-
-## Copyright
-Copyright and related rights waived via [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+| Language | Project | Maintainer | Implementation |
+|-|-|-|-|
+| Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
+| Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz](https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz) |
+| Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
+| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/util/ssz](https://github.com/paritytech/shasper/tree/master/util/ssz) |
+| TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz-js) |
+| Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
+| Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz](https://github.com/prysmaticlabs/prysm/tree/master/shared/ssz) |
+| Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |
+| C# | | Jordan Andrews | [https://github.com/codingupastorm/csharp-ssz](https://github.com/codingupastorm/csharp-ssz) |
+| C++ | | Jiyun Kim | [https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) |
