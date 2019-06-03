@@ -68,7 +68,6 @@ def get_spec(file_name: str) -> List[str]:
         for type_line in ssz_type:
             if len(type_line) > 0:
                 code_lines.append('    ' + type_line)
-    code_lines.append('')
     for (ssz_type_name, _) in type_defs:
         code_lines.append(f'    global_vars["{ssz_type_name}"] = {ssz_type_name}')
     code_lines.append('    global_vars["ssz_types"] = [')
