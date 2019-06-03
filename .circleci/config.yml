@@ -60,13 +60,13 @@ jobs:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_cached_venv:
-          venv_name: v1-pyspec-03
+          venv_name: v2-pyspec
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Install pyspec requirements
-          command: make install_test && make install_lint
+          command: make install_test
       - save_cached_venv:
-          venv_name: v1-pyspec-03
+          venv_name: v2-pyspec
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
           venv_path: ./test_libs/pyspec/venv
   test:
@@ -77,7 +77,7 @@ jobs:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_cached_venv:
-          venv_name: v1-pyspec-03
+          venv_name: v2-pyspec
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Run py-tests
@@ -92,7 +92,7 @@ jobs:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
       - restore_cached_venv:
-          venv_name: v1-pyspec-03
+          venv_name: v2-pyspec
           reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
       - run:
           name: Run linter
