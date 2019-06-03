@@ -154,10 +154,10 @@ def objects_to_spec(functions: Dict[str, str],
     return spec
 
 
-def combine_functions(old_funcitons: Dict[str, str], new_functions: Dict[str, str]) -> Dict[str, str]:
+def combine_functions(old_functions: Dict[str, str], new_functions: Dict[str, str]) -> Dict[str, str]:
     for key, value in new_functions.items():
-        old_funcitons[key] = value
-    return old_funcitons
+        old_functions[key] = value
+    return old_functions
 
 
 def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, str]) -> Dict[str, str]:
@@ -184,7 +184,7 @@ def dependency_order_ssz_objects(objects: Dict[str, str]) -> Dict[str, str]:
 
 def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
     """
-    Thakes in old spec and new spec ssz objects, combines them,
+    Takes in old spec and new spec ssz objects, combines them,
     and returns the newer versions of the objects in dependency order.
     """
     for key, value in new_objects.items():
