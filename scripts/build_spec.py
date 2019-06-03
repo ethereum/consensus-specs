@@ -1,6 +1,13 @@
 import re
-import function_puller
+from function_puller import (
+    get_spec,
+    SpecObject,
+)
 from argparse import ArgumentParser
+from typing import (
+    Dict,
+    Optional,
+)
 
 
 PHASE0_IMPORTS = '''from typing import (
@@ -107,8 +114,16 @@ def apply_constants_preset(preset: Dict[str, Any]):
 '''
 
 
-def objects_to_spec(functions, constants, ssz_objects, inserts, imports):
-    new_type_definitions = '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
+def objects_to_spec(functions: Dict[str, str],
+                    constants: Dict[str, str],
+                    ssz_objects: Dict[str, str],
+                    inserts: Dict[str, str],
+                    imports: Dict[str, str]) -> str:
+    """
+    Given all the objects that constitute a spec, combine them into a single pyfile.
+    """
+    new_type_definitions = \
+        '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n'.join(map(
@@ -120,7 +135,7 @@ def objects_to_spec(functions, constants, ssz_objects, inserts, imports):
             ssz_objects
         ))
     ssz_objects_reinitialization_spec = (
-        'def init_SSZ_types():\n    global_vars = globals()\n' 
+        'def init_SSZ_types():\n    global_vars = globals()\n'
         + ssz_objects_reinitialization_spec
     )
     spec = (
@@ -139,19 +154,22 @@ def objects_to_spec(functions, constants, ssz_objects, inserts, imports):
     return spec
 
 
-def combine_functions(old_funcitons, new_functions):
+def combine_functions(old_funcitons: Dict[str, str], new_functions: Dict[str, str]) -> Dict[str, str]:
     for key, value in new_functions.items():
         old_funcitons[key] = value
     return old_funcitons
 
 
-def combine_constants(old_constants, new_constants):
+def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, str]) -> Dict[str, str]:
     for key, value in new_constants.items():
         old_constants[key] = value
     return old_constants
 
 
-def dependency_order_ssz_objects(objects):
+def dependency_order_ssz_objects(objects: Dict[str, str]) -> Dict[str, str]:
+    """
+    Determines which SSZ Object is depenedent on which other and orders them appropriately
+    """
     items = list(objects.items())
     for key, value in items:
         dependencies = re.findall(r'(: [\[]*[A-Z][a-z][\w]+)', value)
@@ -164,7 +182,11 @@ def dependency_order_ssz_objects(objects):
                 objects[item] = objects.pop(item)
 
 
-def combine_ssz_objects(old_objects, new_objects):
+def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
+    """
+    Thakes in old spec and new spec ssz objects, combines them,
+    and returns the newer versions of the objects in dependency order.
+    """
     for key, value in new_objects.items():
         # remove leading "{" and trailing "\n}"
         old_objects[key] = old_objects.get(key, '')[1:-3]
@@ -179,7 +201,10 @@ def combine_ssz_objects(old_objects, new_objects):
 combine_inserts = combine_functions
 
 
-def combine_spec_objects(spec0, spec1):
+def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
+    """
+    Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
+    """
     functions0, constants0, ssz_objects0, inserts0 = spec0
     functions1, constants1, ssz_objects1, inserts1 = spec1
     functions = combine_functions(functions0, functions1)
@@ -189,8 +214,8 @@ def combine_spec_objects(spec0, spec1):
     return functions, constants, ssz_objects, inserts
 
 
-def build_phase0_spec(sourcefile, outfile=None):
-    functions, constants, ssz_objects, inserts = function_puller.get_spec(sourcefile)
+def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
+    functions, constants, ssz_objects, inserts = get_spec(sourcefile)
     spec = objects_to_spec(functions, constants, ssz_objects, inserts, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
@@ -199,10 +224,13 @@ def build_phase0_spec(sourcefile, outfile=None):
         return spec
 
 
-def build_phase1_spec(phase0_sourcefile, phase1_custody_sourcefile, phase1_shard_sourcefile, outfile=None):
-    phase0_spec = function_puller.get_spec(phase0_sourcefile)
-    phase1_custody = function_puller.get_spec(phase1_custody_sourcefile)
-    phase1_shard_data = function_puller.get_spec(phase1_shard_sourcefile)
+def build_phase1_spec(phase0_sourcefile: str,
+                      phase1_custody_sourcefile: str,
+                      phase1_shard_sourcefile: str,
+                      outfile: str=None) -> Optional[str]:
+    phase0_spec = get_spec(phase0_sourcefile)
+    phase1_custody = get_spec(phase1_custody_sourcefile)
+    phase1_shard_data = get_spec(phase1_shard_sourcefile)
     spec_objects = phase0_spec
     for value in [phase1_custody, phase1_shard_data]:
         spec_objects = combine_spec_objects(spec_objects, value)

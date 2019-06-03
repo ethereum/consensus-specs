@@ -1,13 +1,25 @@
 import re
-from typing import Dict, Tuple
+from typing import Dict, Tuple, NewType
 
 
 FUNCTION_REGEX = r'^def [\w_]*'
 BEGIN_INSERT_REGEX = r'# begin insert '
 END_INSERT_REGEX = r'# end insert'
 
+SpecObject = NewType('SpecObjects', Tuple[Dict[str, str], Dict[str, str], Dict[str, str], Dict[str, str]])
 
-def get_spec(file_name: str) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str], Dict[str, str]]:
+
+def get_spec(file_name: str) -> SpecObject:
+    """
+    Takes in the file name of a spec.md file, opens it and returns the following objects:
+    functions = {function_name: function_code}
+    constants= {constant_name: constant_code}
+    ssz_objects= {object_name: object}
+    inserts= {insert_tag: code to be inserted}
+
+    Note: This function makes heavy use of the inherent ordering of dicts,
+    if this is not supported by your python version, it will not work.
+    """
     pulling_from = None  # line number of start of latest object
     current_name = None  # most recent section title
     insert_name = None  # stores the label of the current insert object
@@ -27,21 +39,23 @@ def get_spec(file_name: str) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, 
         elif line[:3] == '```':
             pulling_from = None
         elif inserts_matcher.match(line) is not None:
+            # Find @insert names
             insert_name = re.search(r'@[\w]*', line).group(0)
         elif insert_name is not None:
+            # In insert mode, either the next line is more code, or the end of the insert
             if re.match(END_INSERT_REGEX, line) is not None:
                 insert_name = None
             else:
                 inserts[insert_name] = inserts.get(insert_name, '') + line + '\n'
         else:
-            # Handle function definitions
+            # Handle function definitions & ssz_objects
             if pulling_from is not None:
                 func_match = function_matcher.match(line)
                 if func_match is not None:
                     current_name = func_match.group(0)
-                if function_matcher.match(current_name) is None:
+                if function_matcher.match(current_name) is None:  # The current line is an SSZ Object
                     ssz_objects[current_name] = ssz_objects.get(current_name, '') + line + '\n'
-                else:
+                else:  # The current line is code
                     functions[current_name] = functions.get(current_name, '') + line + '\n'
             # Handle constant table entries
             elif pulling_from is None and len(line) > 0 and line[0] == '|':
