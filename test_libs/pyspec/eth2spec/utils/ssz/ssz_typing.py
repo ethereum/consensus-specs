@@ -394,24 +394,22 @@ class BytesN(bytes, metaclass=BytesNMeta):
 # SSZ Defaults
 # -----------------------------
 def get_zero_value(typ):
-    result = None
     if is_uint_type(typ):
-        result = 0
+        return 0
     elif is_list_type(typ):
-        result = []
-    elif issubclass(typ, bool):
-        result = False
-    elif issubclass(typ, Vector):
-        result = typ()
-    elif issubclass(typ, BytesN):
-        result = typ()
-    elif issubclass(typ, bytes):
-        result = b''
-    elif issubclass(typ, Container):
-        result = typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
+        return []
+    elif is_bool_type(typ):
+        return False
+    elif is_vector_type(typ):
+        return typ()
+    elif is_bytesn_type(typ):
+        return typ()
+    elif is_bytes_type(typ):
+        return b''
+    elif is_container_type(typ):
+        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
     else:
-        return Exception("Type not supported: {}".format(typ))
-    return result
+        raise Exception("Type not supported: {}".format(typ))
 
 
 # Type helpers
@@ -522,7 +520,7 @@ def read_elem_type(typ):
         return read_list_elem_type(typ)
     elif is_vector_type(typ):
         return read_vector_elem_type(typ)
-    elif issubclass(typ, bytes):
+    elif issubclass(typ, bytes):  # bytes or bytesN
         return byte
     else:
         raise TypeError("Unexpected type: {}".format(typ))
