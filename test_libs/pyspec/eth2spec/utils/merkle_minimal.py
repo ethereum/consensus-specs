@@ -41,16 +41,7 @@ def next_power_of_two(v: int) -> int:
     """
     if v == 0:
         return 1
-    # effectively fill the bitstring (1 less, do not want to  with ones, then increment for next power of 2.
-    v -= 1
-    v |= v >> (1 << 0)
-    v |= v >> (1 << 1)
-    v |= v >> (1 << 2)
-    v |= v >> (1 << 3)
-    v |= v >> (1 << 4)
-    v |= v >> (1 << 5)
-    v += 1
-    return v
+    return 1 << (v-1).bit_length()
 
 
 def merkleize_chunks(chunks):
