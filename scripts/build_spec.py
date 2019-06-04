@@ -166,7 +166,7 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
     return old_constants
 
 
-def dependency_order_ssz_objects(objects: Dict[str, str]) -> Dict[str, str]:
+def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
     """
     Determines which SSZ Object is depenedent on which other and orders them appropriately
     """

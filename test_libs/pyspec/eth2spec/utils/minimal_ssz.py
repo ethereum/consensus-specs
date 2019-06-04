@@ -56,8 +56,7 @@ class Vector():
         return self.length
 
 
-def type_of(obj):
-    return obj.__class__
+type_of = type
 
 
 def empty(obj):

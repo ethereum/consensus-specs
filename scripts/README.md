@@ -10,7 +10,7 @@ For usage of the spec builder run `python3 -m build_spec --help`.
 
 ## `@Labels` and inserts
 
-The functioning of the spec combiner is largely automatic in that given `spec0.md` and `spec1.md`, in that SSZ Objects will be extended and old functions will be overwritten. Extra functionality is provided for more granular control over how files are combined. In the event that only a small portion of code is to be added to an existing function, insert functionality is provided. This saves having to completely redefine the old function from `spec0.md` in `spec1.md`. This is done by marking where the change is to occur in the old file and marking which code is to be inserted in the new file. This is done as follows:
+The functioning of the spec combiner is largely automatic in that given `spec0.md` and `spec1.md`, SSZ Objects will be extended and old functions will be overwritten. Extra functionality is provided for more granular control over how files are combined. In the event that only a small portion of code is to be added to an existing function, insert functionality is provided. This saves having to completely redefine the old function from `spec0.md` in `spec1.md`. This is done by marking where the change is to occur in the old file and marking which code is to be inserted in the new file. This is done as follows:
 
 * In the old file, a label is added as a python comment marking where the code is to be inserted. This would appear as follows in `spec0.md`:
 
