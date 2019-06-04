@@ -12,9 +12,9 @@ from eth2spec.utils.ssz.ssz_typing import (
 )
 
 # in bytes
-UINT_SIZES = [1, 2, 4, 8, 16, 32]
+UINT_SIZES = (1, 2, 4, 8, 16, 32)
 
-random_mode_names = ["random", "zero", "max", "nil", "one", "lengthy"]
+random_mode_names = ("random", "zero", "max", "nil", "one", "lengthy")
 
 
 class RandomizationMode(Enum):
@@ -128,7 +128,7 @@ def get_random_bytes_list(rng: Random, length: int) -> bytes:
 def get_random_basic_value(rng: Random, typ) -> Any:
     if is_bool_type(typ):
         return rng.choice((True, False))
-    if is_uint_type(typ):
+    elif is_uint_type(typ):
         size = uint_byte_size(typ)
         assert size in UINT_SIZES
         return rng.randint(0, 256**size - 1)
@@ -139,7 +139,7 @@ def get_random_basic_value(rng: Random, typ) -> Any:
 def get_min_basic_value(typ) -> Any:
     if is_bool_type(typ):
         return False
-    if is_uint_type(typ):
+    elif is_uint_type(typ):
         size = uint_byte_size(typ)
         assert size in UINT_SIZES
         return 0
@@ -150,7 +150,7 @@ def get_min_basic_value(typ) -> Any:
 def get_max_basic_value(typ) -> Any:
     if is_bool_type(typ):
         return True
-    if is_uint_type(typ):
+    elif is_uint_type(typ):
         size = uint_byte_size(typ)
         assert size in UINT_SIZES
         return 256**size - 1
