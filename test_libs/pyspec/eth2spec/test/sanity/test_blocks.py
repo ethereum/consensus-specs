@@ -72,24 +72,25 @@ def test_empty_epoch_transition(spec, state):
         assert spec.get_block_root_at_slot(state, slot) == block.parent_root
 
 
-# @spec_state_test
-# def test_empty_epoch_transition_not_finalizing(spec, state):
-#     # copy for later balance lookups.
-#     pre_state = deepcopy(state)
-#     yield 'pre', state
-#
-#     block = build_empty_block_for_next_slot(spec, state)
-#     block.slot += spec.SLOTS_PER_EPOCH * 5
-#     sign_block(spec, state, block, proposer_index=0)
-#     yield 'blocks', [block], [spec.BeaconBlock]
-#
-#     spec.state_transition(state, block)
-#     yield 'post', state
-#
-#     assert state.slot == block.slot
-#     assert state.finalized_epoch < spec.get_current_epoch(state) - 4
-#     for index in range(len(state.validator_registry)):
-#         assert get_balance(state, index) < get_balance(pre_state, index)
+@with_all_phases
+@spec_state_test
+def test_empty_epoch_transition_not_finalizing(spec, state):
+    # copy for later balance lookups.
+    pre_state = deepcopy(state)
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.slot += spec.SLOTS_PER_EPOCH * 5
+    sign_block(spec, state, block, proposer_index=0)
+    yield 'blocks', [block], [spec.BeaconBlock]
+
+    spec.state_transition(state, block)
+    yield 'post', state
+
+    assert state.slot == block.slot
+    assert state.finalized_epoch < spec.get_current_epoch(state) - 4
+    for index in range(len(state.validator_registry)):
+        assert get_balance(state, index) < get_balance(pre_state, index)
 
 
 @with_all_phases
@@ -378,28 +379,29 @@ def test_historical_batch(spec, state):
     assert len(state.historical_roots) == pre_historical_roots_len + 1
 
 
-# @spec_state_test
-# def test_eth1_data_votes(spec, state):
-#     yield 'pre', state
-#
-#     expected_votes = 0
-#     assert len(state.eth1_data_votes) == expected_votes
-#
-#     blocks = []
-#     for _ in range(spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1):
-#         block = build_empty_block_for_next_slot(spec, state)
-#         spec.state_transition(state, block)
-#         expected_votes += 1
-#         assert len(state.eth1_data_votes) == expected_votes
-#         blocks.append(block)
-#
-#     block = build_empty_block_for_next_slot(spec, state)
-#     blocks.append(block)
-#
-#     spec.state_transition(state, block)
-#
-#     yield 'blocks', [block], [spec.BeaconBlock]
-#     yield 'post', state
-#
-#     assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
-#     assert len(state.eth1_data_votes) == 1
+@with_all_phases
+@spec_state_test
+def test_eth1_data_votes(spec, state):
+    yield 'pre', state
+
+    expected_votes = 0
+    assert len(state.eth1_data_votes) == expected_votes
+
+    blocks = []
+    for _ in range(spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1):
+        block = build_empty_block_for_next_slot(spec, state)
+        spec.state_transition(state, block)
+        expected_votes += 1
+        assert len(state.eth1_data_votes) == expected_votes
+        blocks.append(block)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    blocks.append(block)
+
+    spec.state_transition(state, block)
+
+    yield 'blocks', [block], [spec.BeaconBlock]
+    yield 'post', state
+
+    assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
+    assert len(state.eth1_data_votes) == 1

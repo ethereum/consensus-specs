@@ -1,3 +1,5 @@
+import pytest
+
 from eth2spec.test.helpers.custody import get_valid_early_derived_secret_reveal
 from eth2spec.test.context import with_phase1, spec_state_test, expect_assertion_error
 
@@ -51,12 +53,14 @@ def test_reveal_from_current_epoch(spec, state):
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
-# @with_phase1
-# @spec_state_test
-# def test_reveal_from_past_epoch(state):
-#     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state) - 1)
-#
-#     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
+@with_phase1
+@spec_state_test
+def test_reveal_from_past_epoch(spec, state):
+    if spec.get_current_epoch(state) < 1:
+        pytest.skip('testing of previous epoch requires epoch of at least 1')
+    randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state) - 1)
+
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
 @with_phase1
