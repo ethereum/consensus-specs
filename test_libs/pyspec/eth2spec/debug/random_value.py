@@ -56,65 +56,69 @@ def get_random_ssz_object(rng: Random,
     """
     if chaos:
         mode = rng.choice(list(RandomizationMode))
-    # Bytes array
     if is_bytes_type(typ):
+        # Bytes array
         if mode == RandomizationMode.mode_nil_count:
             return b''
-        if mode == RandomizationMode.mode_max_count:
+        elif mode == RandomizationMode.mode_max_count:
             return get_random_bytes_list(rng, max_bytes_length)
-        if mode == RandomizationMode.mode_one_count:
+        elif mode == RandomizationMode.mode_one_count:
             return get_random_bytes_list(rng, 1)
-        if mode == RandomizationMode.mode_zero:
+        elif mode == RandomizationMode.mode_zero:
             return b'\x00'
-        if mode == RandomizationMode.mode_max:
+        elif mode == RandomizationMode.mode_max:
             return b'\xff'
-        return get_random_bytes_list(rng, rng.randint(0, max_bytes_length))
+        else:
+            return get_random_bytes_list(rng, rng.randint(0, max_bytes_length))
     elif is_bytesn_type(typ):
+        # BytesN
         length = typ.length
         # Sanity, don't generate absurdly big random values
         # If a client is aiming to performance-test, they should create a benchmark suite.
         assert length <= max_bytes_length
         if mode == RandomizationMode.mode_zero:
             return b'\x00' * length
-        if mode == RandomizationMode.mode_max:
+        elif mode == RandomizationMode.mode_max:
             return b'\xff' * length
-        return get_random_bytes_list(rng, length)
-    # Basic types
+        else:
+            return get_random_bytes_list(rng, length)
     elif is_basic_type(typ):
+        # Basic types
         if mode == RandomizationMode.mode_zero:
             return get_min_basic_value(typ)
-        if mode == RandomizationMode.mode_max:
+        elif mode == RandomizationMode.mode_max:
             return get_max_basic_value(typ)
-        return get_random_basic_value(rng, typ)
-    # Vector:
+        else:
+            return get_random_basic_value(rng, typ)
     elif is_vector_type(typ):
+        # Vector
         elem_typ = read_vector_elem_type(typ)
         return [
             get_random_ssz_object(rng, elem_typ, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(typ.length)
         ]
-    # List:
     elif is_list_type(typ):
+        # List
         elem_typ = read_list_elem_type(typ)
         length = rng.randint(0, max_list_length)
         if mode == RandomizationMode.mode_one_count:
             length = 1
-        if mode == RandomizationMode.mode_max_count:
+        elif mode == RandomizationMode.mode_max_count:
             length = max_list_length
+
         return [
             get_random_ssz_object(rng, elem_typ, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(length)
         ]
-    # Container:
     elif is_container_type(typ):
+        # Container
         return typ(**{
             field:
                 get_random_ssz_object(rng, subtype, max_bytes_length, max_list_length, mode, chaos)
                 for field, subtype in typ.get_fields()
         })
     else:
-        print(typ)
-        raise Exception("Type not recognized")
+        raise Exception(f"Type not recognized: typ={typ}")
 
 
 def get_random_bytes_list(rng: Random, length: int) -> bytes:
@@ -129,7 +133,7 @@ def get_random_basic_value(rng: Random, typ) -> Any:
         assert size in UINT_SIZES
         return rng.randint(0, 256**size - 1)
     else:
-        raise ValueError("Not a basic type")
+        raise ValueError(f"Not a basic type: typ={typ}")
 
 
 def get_min_basic_value(typ) -> Any:
@@ -140,7 +144,7 @@ def get_min_basic_value(typ) -> Any:
         assert size in UINT_SIZES
         return 0
     else:
-        raise ValueError("Not a basic type")
+        raise ValueError(f"Not a basic type: typ={typ}")
 
 
 def get_max_basic_value(typ) -> Any:
@@ -151,4 +155,4 @@ def get_max_basic_value(typ) -> Any:
         assert size in UINT_SIZES
         return 256**size - 1
     else:
-        raise ValueError("Not a basic type")
+        raise ValueError(f"Not a basic type: typ={typ}")

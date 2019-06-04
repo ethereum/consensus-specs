@@ -33,5 +33,4 @@ def encode(value, typ, include_hash_tree_roots=False):
             ret["hash_tree_root"] = '0x' + hash_tree_root(value, typ).hex()
         return ret
     else:
-        print(value, typ)
-        raise Exception("Type not recognized")
+        raise Exception(f"Type not recognized: value={value}, typ={typ}")

@@ -36,5 +36,4 @@ def decode(data, typ):
                    hash_tree_root(ret, typ).hex())
         return ret
     else:
-        print(data, typ)
-        raise Exception("Type not recognized")
+        raise Exception(f"Type not recognized: data={data}, typ={typ}")

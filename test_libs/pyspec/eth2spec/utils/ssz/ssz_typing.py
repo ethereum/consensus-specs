@@ -83,13 +83,15 @@ def is_uint_type(typ):
 def uint_byte_size(typ):
     if hasattr(typ, '__supertype__'):
         typ = typ.__supertype__
+
     if isinstance(typ, type):
         if issubclass(typ, uint):
             return typ.byte_len
         elif issubclass(typ, int):
             # Default to uint64
             return 8
-    raise TypeError("Type %s is not an uint (or int-default uint64) type" % typ)
+    else:
+        raise TypeError("Type %s is not an uint (or int-default uint64) type" % typ)
 
 
 # SSZ Container base class
@@ -167,32 +169,34 @@ def _is_vector_instance_of(a, b):
     # Other must not be a BytesN
     if issubclass(b, bytes):
         return False
-    if not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
+    elif not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
         # Vector (b) is not an instance of Vector[X, Y] (a)
         return False
-    if not hasattr(a, 'elem_type') or not hasattr(a, 'length'):
+    elif not hasattr(a, 'elem_type') or not hasattr(a, 'length'):
         # Vector[X, Y] (b) is an instance of Vector (a)
         return True
-
-    # Vector[X, Y] (a) is an instance of Vector[X, Y] (b)
-    return a.elem_type == b.elem_type and a.length == b.length
+    else:
+        # Vector[X, Y] (a) is an instance of Vector[X, Y] (b)
+        return a.elem_type == b.elem_type and a.length == b.length
 
 
 def _is_equal_vector_type(a, b):
     # Other must not be a BytesN
     if issubclass(b, bytes):
         return False
-    if not hasattr(a, 'elem_type') or not hasattr(a, 'length'):
+    elif not hasattr(a, 'elem_type') or not hasattr(a, 'length'):
         if not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
             # Vector == Vector
             return True
-        # Vector != Vector[X, Y]
-        return False
-    if not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
+        else:
+            # Vector != Vector[X, Y]
+            return False
+    elif not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
         # Vector[X, Y] != Vector
         return False
-    # Vector[X, Y] == Vector[X, Y]
-    return a.elem_type == b.elem_type and a.length == b.length
+    else:
+        # Vector[X, Y] == Vector[X, Y]
+        return a.elem_type == b.elem_type and a.length == b.length
 
 
 class VectorMeta(type):
@@ -233,7 +237,7 @@ class Vector(metaclass=VectorMeta):
         cls = self.__class__
         if not hasattr(cls, 'elem_type'):
             raise TypeError("Type Vector without elem_type data cannot be instantiated")
-        if not hasattr(cls, 'length'):
+        elif not hasattr(cls, 'length'):
             raise TypeError("Type Vector without length data cannot be instantiated")
 
         if len(args) != cls.length:
@@ -282,32 +286,34 @@ def _is_bytes_n_instance_of(a, b):
     # Other has to be a Bytes derivative class to be a BytesN
     if not issubclass(b, bytes):
         return False
-    if not hasattr(b, 'length'):
+    elif not hasattr(b, 'length'):
         # BytesN (b) is not an instance of BytesN[X] (a)
         return False
-    if not hasattr(a, 'length'):
+    elif not hasattr(a, 'length'):
         # BytesN[X] (b) is an instance of BytesN (a)
         return True
-
-    # BytesN[X] (a) is an instance of BytesN[X] (b)
-    return a.length == b.length
+    else:
+        # BytesN[X] (a) is an instance of BytesN[X] (b)
+        return a.length == b.length
 
 
 def _is_equal_bytes_n_type(a, b):
     # Other has to be a Bytes derivative class to be a BytesN
     if not issubclass(b, bytes):
         return False
-    if not hasattr(a, 'length'):
+    elif not hasattr(a, 'length'):
         if not hasattr(b, 'length'):
             # BytesN == BytesN
             return True
-        # BytesN != BytesN[X]
-        return False
-    if not hasattr(b, 'length'):
+        else:
+            # BytesN != BytesN[X]
+            return False
+    elif not hasattr(b, 'length'):
         # BytesN[X] != BytesN
         return False
-    # BytesN[X] == BytesN[X]
-    return a.length == b.length
+    else:
+        # BytesN[X] == BytesN[X]
+        return a.length == b.length
 
 
 class BytesNMeta(type):
@@ -341,14 +347,15 @@ class BytesNMeta(type):
 def parse_bytes(val):
     if val is None:
         return None
-    if isinstance(val, str):
+    elif isinstance(val, str):
         # TODO: import from eth-utils instead, and do: hexstr_if_str(to_bytes, val)
         return None
-    if isinstance(val, bytes):
+    elif isinstance(val, bytes):
         return val
-    if isinstance(val, int):
+    elif isinstance(val, int):
         return bytes([val])
-    return None
+    else:
+        return None
 
 
 class BytesN(bytes, metaclass=BytesNMeta):
@@ -433,6 +440,9 @@ def infer_input_type(fn):
 
 
 def is_bool_type(typ):
+    """
+    Checks if the given type is a bool.
+    """
     if hasattr(typ, '__supertype__'):
         typ = typ.__supertype__
     return isinstance(typ, type) and issubclass(typ, bool)
@@ -446,36 +456,45 @@ def is_list_type(typ):
 
 
 def is_bytes_type(typ):
+    """
+    Check if the given type is a ``bytes``.
+    """
     # Do not accept subclasses of bytes here, to avoid confusion with BytesN
     return typ == bytes
 
 
+def is_bytesn_type(typ):
+    """
+    Check if the given type is a BytesN.
+    """
+    return isinstance(typ, type) and issubclass(typ, BytesN)
+
+
 def is_list_kind(typ):
     """
-    Checks if the given type is a kind of list. Can be bytes.
+    Check if the given type is a kind of list. Can be bytes.
     """
     return is_list_type(typ) or is_bytes_type(typ)
 
 
 def is_vector_type(typ):
     """
-    Checks if the given type is a vector.
+    Check if the given type is a vector.
     """
     return isinstance(typ, type) and issubclass(typ, Vector)
 
 
-def is_bytesn_type(typ):
-    return isinstance(typ, type) and issubclass(typ, BytesN)
-
-
 def is_vector_kind(typ):
     """
-    Checks if the given type is a kind of vector. Can be BytesN.
+    Check if the given type is a kind of vector. Can be BytesN.
     """
     return is_vector_type(typ) or is_bytesn_type(typ)
 
 
 def is_container_type(typ):
+    """
+    Check if the given type is a container.
+    """
     return isinstance(typ, type) and issubclass(typ, Container)
 
 
