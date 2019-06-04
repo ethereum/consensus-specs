@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import List
 
 import eth2spec.phase0.spec as spec
 from eth2spec.phase0.spec import (
@@ -86,7 +87,7 @@ def test_finality_rule_4(state):
             assert state.finalized_epoch == prev_state.current_justified_epoch
             assert state.finalized_root == prev_state.current_justified_root
 
-    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'blocks', blocks, List[spec.BeaconBlock]
     yield 'post', state
 
 
@@ -116,7 +117,7 @@ def test_finality_rule_1(state):
             assert state.finalized_epoch == prev_state.previous_justified_epoch
             assert state.finalized_root == prev_state.previous_justified_root
 
-    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'blocks', blocks, List[spec.BeaconBlock]
     yield 'post', state
 
 
@@ -148,7 +149,7 @@ def test_finality_rule_2(state):
 
         blocks += new_blocks
 
-    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'blocks', blocks, List[spec.BeaconBlock]
     yield 'post', state
 
 
@@ -197,5 +198,5 @@ def test_finality_rule_3(state):
     assert state.finalized_epoch == prev_state.current_justified_epoch
     assert state.finalized_root == prev_state.current_justified_root
 
-    yield 'blocks', blocks, [spec.BeaconBlock]
+    yield 'blocks', blocks, List[spec.BeaconBlock]
     yield 'post', state

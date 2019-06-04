@@ -13,10 +13,13 @@ from typing import (
     NewType,
     Tuple,
 )
-from eth2spec.utils.minimal_ssz import (
-    SSZType,
+from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
+)
+from eth2spec.utils.ssz.ssz_typing import (
+    # unused: uint8, uint16, uint32, uint128, uint256,
+    uint64, Container, Vector, BytesN
 )
 from eth2spec.utils.hash_function import hash
 from eth2spec.utils.bls import (
@@ -25,19 +28,18 @@ from eth2spec.utils.bls import (
     bls_verify_multiple,
 )
 
-
-# stub, will get overwritten by real var
-SLOTS_PER_EPOCH = 64
-
+# Note: 'int' type defaults to being interpreted as a uint64 by SSZ implementation.
 Slot = NewType('Slot', int)  # uint64
 Epoch = NewType('Epoch', int)  # uint64
 Shard = NewType('Shard', int)  # uint64
 ValidatorIndex = NewType('ValidatorIndex', int)  # uint64
 Gwei = NewType('Gwei', int)  # uint64
-Bytes32 = NewType('Bytes32', bytes)  # bytes32
-BLSPubkey = NewType('BLSPubkey', bytes)  # bytes48
-BLSSignature = NewType('BLSSignature', bytes)  # bytes96
-Store = None
+
+Bytes4 = BytesN[4]
+Bytes32 = BytesN[32]
+Bytes48 = BytesN[48]
+Bytes96 = BytesN[96]
+
 """)
 
     code_lines += function_puller.get_spec(sourcefile)
