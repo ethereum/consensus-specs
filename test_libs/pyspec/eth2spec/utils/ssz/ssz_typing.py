@@ -233,7 +233,6 @@ class VectorMeta(type):
 class Vector(metaclass=VectorMeta):
 
     def __init__(self, *args: Iterable):
-
         cls = self.__class__
         if not hasattr(cls, 'elem_type'):
             raise TypeError("Type Vector without elem_type data cannot be instantiated")
@@ -280,6 +279,10 @@ class Vector(metaclass=VectorMeta):
 
     def __eq__(self, other):
         return self.hash_tree_root() == other.hash_tree_root()
+
+
+# SSZ BytesN
+# -----------------------------
 
 
 def _is_bytes_n_instance_of(a, b):
@@ -441,7 +444,7 @@ def infer_input_type(fn):
 
 def is_bool_type(typ):
     """
-    Checks if the given type is a bool.
+    Check if the given type is a bool.
     """
     if hasattr(typ, '__supertype__'):
         typ = typ.__supertype__
@@ -450,7 +453,7 @@ def is_bool_type(typ):
 
 def is_list_type(typ):
     """
-    Checks if the given type is a list.
+    Check if the given type is a list.
     """
     return get_origin(typ) is List or get_origin(typ) is list
 
