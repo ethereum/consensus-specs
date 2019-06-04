@@ -532,15 +532,12 @@ class BeaconState(Container):
     slot: uint64
     genesis_time: uint64
     fork: Fork  # For versioning hard forks
-    
     # Validator registry
     validator_registry: List[Validator]
     balances: List[uint64]
-    
     # Randomness and committees
     latest_randao_mixes: Vector[Bytes32, LATEST_RANDAO_MIXES_LENGTH]
     latest_start_shard: uint64
-    
     # Finality
     previous_epoch_attestations: List[PendingAttestation]
     current_epoch_attestations: List[PendingAttestation]
@@ -551,7 +548,6 @@ class BeaconState(Container):
     justification_bitfield: uint64
     finalized_epoch: uint64
     finalized_root: Bytes32
-    
     # Recent state
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]
@@ -561,7 +557,6 @@ class BeaconState(Container):
     latest_slashed_balances: Vector[uint64, LATEST_SLASHED_EXIT_LENGTH]
     latest_block_header: BeaconBlockHeader
     historical_roots: List[Bytes32]
-    
     # Ethereum 1.0 chain data
     latest_eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data]
