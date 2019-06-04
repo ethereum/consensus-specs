@@ -41,7 +41,7 @@ def next_power_of_two(v: int) -> int:
     """
     if v == 0:
         return 1
-    return 1 << (v-1).bit_length()
+    return 1 << (v - 1).bit_length()
 
 
 def merkleize_chunks(chunks):
