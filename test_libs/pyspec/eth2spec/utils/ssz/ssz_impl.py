@@ -109,6 +109,7 @@ def pack(values, subtype):
 
 
 def chunkify(bytez):
+    # pad `bytez` to nearest 32-byte multiple
     bytez += b'\x00' * (-len(bytez) % 32)
     return [bytez[i:i + 32] for i in range(0, len(bytez), 32)]
 
