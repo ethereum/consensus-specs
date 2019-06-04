@@ -92,7 +92,7 @@ def bls_switch(fn):
 
 def with_phase0(fn):
     """
-    Decorator to use phase 0's spec and helpers
+    Decorator to use phase 0's spec.
     """
     def entry(*args, **kw):
         kw['spec'] = spec_phase0
@@ -102,7 +102,7 @@ def with_phase0(fn):
 
 def with_phase1(fn):
     """
-    Decorator to use phase 1's spec and helpers
+    Decorator to use phase 1's spec
     """
     def entry(*args, **kw):
         kw['spec'] = spec_phase1

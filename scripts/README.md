@@ -1,8 +1,8 @@
 # Building pyspecs from specs.md
 
-The benefits of the particular spec design is that a given `spec.md` file can be converted to a `spec.py` file for the purposes of testing and linting. The result of this is that bugs are discovered and patched more quickly.
+The benefit of the particular spec design is that the given markdown files can be converted to a `spec.py` file for the purposes of testing and linting. The result of this is that bugs are discovered and patched more quickly.
 
-Specs can bue built from either a single markdown document or multiple files that must be combined in a given order. Given 2 spec objects, `build_spec.combine_spec_objects` will combine them into a single spec object which, subsequently, can be converted into a `specs.py`.
+Specs can be built from either a single markdown document or multiple files that must be combined in a given order. Given 2 spec objects, `build_spec.combine_spec_objects` will combine them into a single spec object which, subsequently, can be converted into a `specs.py`.
 
 ## Usage
 
