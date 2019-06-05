@@ -32,6 +32,7 @@
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
+            - [`BeaconBlockHeader`](#beaconblockheader)
         - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
@@ -351,17 +352,6 @@ class IndexedAttestation(Container):
     signature: Bytes96
 ```
 
-#### `BeaconBlockHeader`
-
-```python
-class BeaconBlockHeader(Container):
-    slot: uint64
-    parent_root: Bytes32
-    state_root: Bytes32
-    body_root: Bytes32
-    signature: Bytes96
-```
-
 #### `PendingAttestation`
 
 ```python
@@ -409,6 +399,17 @@ class DepositData(Container):
     # Amount in Gwei
     amount: uint64
     # Container self-signature
+    signature: Bytes96
+```
+
+#### `BeaconBlockHeader`
+
+```python
+class BeaconBlockHeader(Container):
+    slot: uint64
+    parent_root: Bytes32
+    state_root: Bytes32
+    body_root: Bytes32
     signature: Bytes96
 ```
 
