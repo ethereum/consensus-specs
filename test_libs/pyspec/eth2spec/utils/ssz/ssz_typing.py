@@ -246,8 +246,8 @@ class Vector(metaclass=VectorMeta):
 
         self.items = list(args)
 
-        # cannot check non-type objects
-        if isinstance(cls.elem_type, type):
+        # cannot check non-type objects, or parametrized types
+        if isinstance(cls.elem_type, type) and not hasattr(cls.elem_type, '__args__'):
             for i, item in enumerate(self.items):
                 if not issubclass(type(item), cls.elem_type):
                     raise TypeError("Typed vector cannot hold differently typed value"
