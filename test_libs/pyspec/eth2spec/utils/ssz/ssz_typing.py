@@ -1,4 +1,3 @@
-from inspect import isclass
 from typing import List, Iterable, TypeVar, Type, NewType
 from typing import Union
 from typing_inspect import get_origin
@@ -247,8 +246,8 @@ class Vector(metaclass=VectorMeta):
 
         self.items = list(args)
 
-        # cannot check non-class objects
-        if isclass(cls.elem_type):
+        # cannot check non-type objects
+        if isinstance(cls.elem_type, type):
             for i, item in enumerate(self.items):
                 if not isinstance(item, cls.elem_type):
                     raise TypeError("Typed vector cannot hold differently typed value"
