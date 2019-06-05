@@ -274,31 +274,26 @@ class Fork(Container):
     epoch: uint64
 ```
 
-#### `Crosslink`
+#### `Validator`
 
 ```python
-class Crosslink(Container):
-    # Shard number
-    shard: uint64
-    # Crosslinking data from epochs [start....end-1]
-    start_epoch: uint64
-    end_epoch: uint64
-    # Root of the previous crosslink
-    parent_root: Bytes32
-    # Root of the crosslinked shard data since the previous crosslink
-    data_root: Bytes32
-```
-
-#### `Eth1Data`
-
-```python
-class Eth1Data(Container):
-    # Root of the deposit tree
-    deposit_root: Bytes32
-    # Total number of deposits
-    deposit_count: uint64
-    # Block hash
-    block_hash: Bytes32
+class Validator(Container):
+    # BLS public key
+    pubkey: Bytes48
+    # Withdrawal credentials
+    withdrawal_credentials: Bytes32
+    # Epoch when became eligible for activation
+    activation_eligibility_epoch: uint64
+    # Epoch when validator activated
+    activation_epoch: uint64
+    # Epoch when validator exited
+    exit_epoch: uint64
+    # Epoch when validator is eligible to withdraw
+    withdrawable_epoch: uint64
+    # Was the validator slashed
+    slashed: bool
+    # Effective balance
+    effective_balance: uint64
 ```
 
 #### `AttestationData`
@@ -341,20 +336,6 @@ class IndexedAttestation(Container):
     signature: Bytes96
 ```
 
-#### `DepositData`
-
-```python
-class DepositData(Container):
-    # BLS pubkey
-    pubkey: Bytes48
-    # Withdrawal credentials
-    withdrawal_credentials: Bytes32
-    # Amount in Gwei
-    amount: uint64
-    # Container self-signature
-    signature: Bytes96
-```
-
 #### `BeaconBlockHeader`
 
 ```python
@@ -364,28 +345,6 @@ class BeaconBlockHeader(Container):
     state_root: Bytes32
     body_root: Bytes32
     signature: Bytes96
-```
-
-#### `Validator`
-
-```python
-class Validator(Container):
-    # BLS public key
-    pubkey: Bytes48
-    # Withdrawal credentials
-    withdrawal_credentials: Bytes32
-    # Epoch when became eligible for activation
-    activation_eligibility_epoch: uint64
-    # Epoch when validator activated
-    activation_epoch: uint64
-    # Epoch when validator exited
-    exit_epoch: uint64
-    # Epoch when validator is eligible to withdraw
-    withdrawable_epoch: uint64
-    # Was the validator slashed
-    slashed: bool
-    # Effective balance
-    effective_balance: uint64
 ```
 
 #### `PendingAttestation`
@@ -402,6 +361,33 @@ class PendingAttestation(Container):
     proposer_index: uint64
 ```
 
+#### `Crosslink`
+
+```python
+class Crosslink(Container):
+    # Shard number
+    shard: uint64
+    # Crosslinking data from epochs [start....end-1]
+    start_epoch: uint64
+    end_epoch: uint64
+    # Root of the previous crosslink
+    parent_root: Bytes32
+    # Root of the crosslinked shard data since the previous crosslink
+    data_root: Bytes32
+```
+
+#### `Eth1Data`
+
+```python
+class Eth1Data(Container):
+    # Root of the deposit tree
+    deposit_root: Bytes32
+    # Total number of deposits
+    deposit_count: uint64
+    # Block hash
+    block_hash: Bytes32
+```
+
 #### `HistoricalBatch`
 
 ```python
@@ -410,6 +396,20 @@ class HistoricalBatch(Container):
     block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
     # State roots
     state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
+```
+
+#### `DepositData`
+
+```python
+class DepositData(Container):
+    # BLS pubkey
+    pubkey: Bytes48
+    # Withdrawal credentials
+    withdrawal_credentials: Bytes32
+    # Amount in Gwei
+    amount: uint64
+    # Container self-signature
+    signature: Bytes96
 ```
 
 ### Beacon operations
