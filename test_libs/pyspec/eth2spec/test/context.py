@@ -112,11 +112,11 @@ def with_phase1(fn):
 
 def with_all_phases(fn):
     """
-    Decorator to run everything with all availible spec phases
+    Decorator to run everything with all available spec phases
     """
     def entry(*args, **kw):
         kw['spec'] = spec_phase0
         fn(*args, **kw)
         kw['spec'] = spec_phase1
-        return fn(*args, **kw)
+        fn(*args, **kw)
     return entry

@@ -1246,6 +1246,8 @@ def process_slot(state: BeaconState) -> None:
 
 ### Epoch processing
 
+Note: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
+
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)

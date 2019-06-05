@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phase0
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     sign_attestation,
@@ -214,7 +214,7 @@ def test_bad_source_root(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phase0
 @spec_state_test
 def test_non_zero_crosslink_data_root(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -288,7 +288,7 @@ def test_inconsistent_bitfields(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phase0
 @spec_state_test
 def test_non_empty_custody_bitfield(spec, state):
     attestation = get_valid_attestation(spec, state)

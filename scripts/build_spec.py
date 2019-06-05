@@ -6,6 +6,7 @@ from function_puller import (
 from argparse import ArgumentParser
 from typing import (
     Dict,
+    List,
     Optional,
 )
 
@@ -122,13 +123,16 @@ def objects_to_spec(functions: Dict[str, str],
                     constants: Dict[str, str],
                     ssz_objects: Dict[str, str],
                     inserts: Dict[str, str],
-                    imports: Dict[str, str]) -> str:
+                    imports: Dict[str, str],
+                    new_types: Dict[str, str],
+                    byte_types: List[int],
+                    ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
     new_type_definitions = \
-        '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
-    new_type_definitions += '\n' + '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in BYTE_TYPES])
+        '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in new_types.items()])
+    new_type_definitions += '\n' + '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in byte_types])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
@@ -217,12 +221,11 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 
 def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
     functions, constants, ssz_objects, inserts = get_spec(sourcefile)
-    spec = objects_to_spec(functions, constants, ssz_objects, inserts, PHASE0_IMPORTS)
+    spec = objects_to_spec(functions, constants, ssz_objects, inserts, PHASE0_IMPORTS, NEW_TYPES, BYTE_TYPES)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
-    else:
-        return spec
+    return spec
 
 
 def build_phase1_spec(phase0_sourcefile: str,
@@ -235,12 +238,11 @@ def build_phase1_spec(phase0_sourcefile: str,
     spec_objects = phase0_spec
     for value in [phase1_custody, phase1_shard_data]:
         spec_objects = combine_spec_objects(spec_objects, value)
-    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, NEW_TYPES, BYTE_TYPES)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
-    else:
-        return spec
+    return spec
 
 
 if __name__ == '__main__':
@@ -262,7 +264,10 @@ If building phase 1:
 
     args = parser.parse_args()
     if args.phase == 0:
-        build_phase0_spec(*args.files)
+        if len(args.files) == 2:
+            build_phase0_spec(*args.files)
+        else:
+            print(" Phase 0 requires an output as well as an input file.")
     elif args.phase == 1:
         if len(args.files) == 4:
             build_phase1_spec(*args.files)
