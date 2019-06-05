@@ -1407,7 +1407,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     matching_head_attestations = get_matching_head_attestations(state, previous_epoch)
     for attestations in (matching_source_attestations, matching_target_attestations, matching_head_attestations):
         unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
-        attesting_balance = get_attesting_balance(state, attestations)
+        attesting_balance = get_total_balance(state, unslashed_attesting_indices)
         for index in eligible_validator_indices:
             if index in unslashed_attesting_indices:
                 rewards[index] += get_base_reward(state, index) * attesting_balance // total_balance
