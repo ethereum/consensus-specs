@@ -24,11 +24,11 @@
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
             - [`Validator`](#validator)
+            - [`Crosslink`](#crosslink)
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
             - [`PendingAttestation`](#pendingattestation)
-            - [`Crosslink`](#crosslink)
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
@@ -296,6 +296,21 @@ class Validator(Container):
     effective_balance: uint64
 ```
 
+#### `Crosslink`
+
+```python
+class Crosslink(Container):
+    # Shard number
+    shard: uint64
+    # Crosslinking data from epochs [start....end-1]
+    start_epoch: uint64
+    end_epoch: uint64
+    # Root of the previous crosslink
+    parent_root: Bytes32
+    # Root of the crosslinked shard data since the previous crosslink
+    data_root: Bytes32
+```
+
 #### `AttestationData`
 
 ```python
@@ -359,21 +374,6 @@ class PendingAttestation(Container):
     inclusion_delay: uint64
     # Proposer index
     proposer_index: uint64
-```
-
-#### `Crosslink`
-
-```python
-class Crosslink(Container):
-    # Shard number
-    shard: uint64
-    # Crosslinking data from epochs [start....end-1]
-    start_epoch: uint64
-    end_epoch: uint64
-    # Root of the previous crosslink
-    parent_root: Bytes32
-    # Root of the crosslinked shard data since the previous crosslink
-    data_root: Bytes32
 ```
 
 #### `Eth1Data`
