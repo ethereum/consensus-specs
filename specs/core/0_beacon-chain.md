@@ -23,16 +23,16 @@
     - [Data structures](#data-structures)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
+            - [`Validator`](#validator)
             - [`Crosslink`](#crosslink)
-            - [`Eth1Data`](#eth1data)
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
+            - [`PendingAttestation`](#pendingattestation)
+            - [`Eth1Data`](#eth1data)
+            - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
-            - [`Validator`](#validator)
-            - [`PendingAttestation`](#pendingattestation)
-            - [`HistoricalBatch`](#historicalbatch)
         - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
@@ -275,6 +275,28 @@ class Fork(Container):
     epoch: uint64
 ```
 
+#### `Validator`
+
+```python
+class Validator(Container):
+    # BLS public key
+    pubkey: Bytes48
+    # Withdrawal credentials
+    withdrawal_credentials: Bytes32
+    # Epoch when became eligible for activation
+    activation_eligibility_epoch: uint64
+    # Epoch when validator activated
+    activation_epoch: uint64
+    # Epoch when validator exited
+    exit_epoch: uint64
+    # Epoch when validator is eligible to withdraw
+    withdrawable_epoch: uint64
+    # Was the validator slashed
+    slashed: bool
+    # Effective balance
+    effective_balance: uint64
+```
+
 #### `Crosslink`
 
 ```python
@@ -288,18 +310,6 @@ class Crosslink(Container):
     parent_root: Bytes32
     # Root of the crosslinked shard data since the previous crosslink
     data_root: Bytes32
-```
-
-#### `Eth1Data`
-
-```python
-class Eth1Data(Container):
-    # Root of the deposit tree
-    deposit_root: Bytes32
-    # Total number of deposits
-    deposit_count: uint64
-    # Block hash
-    block_hash: Bytes32
 ```
 
 #### `AttestationData`
@@ -342,6 +352,42 @@ class IndexedAttestation(Container):
     signature: Bytes96
 ```
 
+#### `PendingAttestation`
+
+```python
+class PendingAttestation(Container):
+    # Attester aggregation bitfield
+    aggregation_bitfield: bytes
+    # Attestation data
+    data: AttestationData
+    # Inclusion delay
+    inclusion_delay: uint64
+    # Proposer index
+    proposer_index: uint64
+```
+
+#### `Eth1Data`
+
+```python
+class Eth1Data(Container):
+    # Root of the deposit tree
+    deposit_root: Bytes32
+    # Total number of deposits
+    deposit_count: uint64
+    # Block hash
+    block_hash: Bytes32
+```
+
+#### `HistoricalBatch`
+
+```python
+class HistoricalBatch(Container):
+    # Block roots
+    block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    # State roots
+    state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
+```
+
 #### `DepositData`
 
 ```python
@@ -365,52 +411,6 @@ class BeaconBlockHeader(Container):
     state_root: Bytes32
     body_root: Bytes32
     signature: Bytes96
-```
-
-#### `Validator`
-
-```python
-class Validator(Container):
-    # BLS public key
-    pubkey: Bytes48
-    # Withdrawal credentials
-    withdrawal_credentials: Bytes32
-    # Epoch when became eligible for activation
-    activation_eligibility_epoch: uint64
-    # Epoch when validator activated
-    activation_epoch: uint64
-    # Epoch when validator exited
-    exit_epoch: uint64
-    # Epoch when validator is eligible to withdraw
-    withdrawable_epoch: uint64
-    # Was the validator slashed
-    slashed: bool
-    # Effective balance
-    effective_balance: uint64
-```
-
-#### `PendingAttestation`
-
-```python
-class PendingAttestation(Container):
-    # Attester aggregation bitfield
-    aggregation_bitfield: bytes
-    # Attestation data
-    data: AttestationData
-    # Inclusion delay
-    inclusion_delay: uint64
-    # Proposer index
-    proposer_index: uint64
-```
-
-#### `HistoricalBatch`
-
-```python
-class HistoricalBatch(Container):
-    # Block roots
-    block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
-    # State roots
-    state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 ### Beacon operations
@@ -1410,7 +1410,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     matching_head_attestations = get_matching_head_attestations(state, previous_epoch)
     for attestations in (matching_source_attestations, matching_target_attestations, matching_head_attestations):
         unslashed_attesting_indices = get_unslashed_attesting_indices(state, attestations)
-        attesting_balance = get_attesting_balance(state, attestations)
+        attesting_balance = get_total_balance(state, unslashed_attesting_indices)
         for index in eligible_validator_indices:
             if index in unslashed_attesting_indices:
                 rewards[index] += get_base_reward(state, index) * attesting_balance // total_balance
