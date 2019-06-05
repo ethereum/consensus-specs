@@ -18,17 +18,20 @@ PHASE0_IMPORTS = '''from typing import (
     Tuple,
 )
 
-from eth2spec.utils.minimal_ssz import (
-    SSZType,
+from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
 )
-
+from eth2spec.utils.ssz.ssz_typing import (
+    # unused: uint8, uint16, uint32, uint128, uint256,
+    uint64, Container, Vector, BytesN
+)
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
 )
+# Note: 'int' type defaults to being interpreted as a uint64 by SSZ implementation.
 
 from eth2spec.utils.hash_function import hash
 '''
@@ -40,15 +43,16 @@ PHASE1_IMPORTS = '''from typing import (
     Tuple,
 )
 
-from eth2spec.utils.minimal_ssz import (
-    SSZType,
+from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
-    type_of,
-    empty,
     serialize,
+    is_empty,
 )
-
+from eth2spec.utils.ssz.ssz_typing import (
+    # unused: uint8, uint16, uint32, uint128, uint256,
+    uint64, Container, Vector, BytesN
+)
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
@@ -63,13 +67,13 @@ NEW_TYPES = {
     'Shard': 'int',
     'ValidatorIndex': 'int',
     'Gwei': 'int',
-    'Bytes32': 'bytes',
-    'BLSPubkey': 'bytes',
-    'BLSSignature': 'bytes',
-    'Store': 'None',
-    'Hash': 'bytes'
 }
+BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
+def get_ssz_type_by_name(name: str) -> Container:
+    return globals()[name]
+
+
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
 committee_cache = {}
@@ -124,26 +128,22 @@ def objects_to_spec(functions: Dict[str, str],
     """
     new_type_definitions = \
         '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in NEW_TYPES.items()])
+    new_type_definitions += '\n' + '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in BYTE_TYPES])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
-    ssz_objects_instantiation_spec = '\n'.join(map(
-        lambda x: '%s = SSZType(%s)' % (x, ssz_objects[x][:-1]),
-        ssz_objects
-    ))
-    ssz_objects_reinitialization_spec = '\n'.join(map(
-            lambda x: '    global_vars[\'%s\'] = SSZType(%s    })' % (x, re.sub('( ){4}', ' '*8, ssz_objects[x][:-2])),
-            ssz_objects
-        ))
+    ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
-        'def init_SSZ_types():\n    global_vars = globals()\n'
-        + ssz_objects_reinitialization_spec
+        'def init_SSZ_types():\n    global_vars = globals()\n\n    '
+        + '\n\n    '.join([re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]) for value in ssz_objects.values()])
+        + '\n\n'
+        + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
     )
     spec = (
         imports
         + '\n' + new_type_definitions
         + '\n\n' + constants_spec
-        + '\n\n' + ssz_objects_instantiation_spec
-        + '\n\n\n' + functions_spec
+        + '\n\n\n' + ssz_objects_instantiation_spec
+        + '\n\n' + functions_spec
         + '\n' + SUNDRY_FUNCTIONS
         + '\n\n' + ssz_objects_reinitialization_spec
         + '\n'
@@ -172,10 +172,10 @@ def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
     """
     items = list(objects.items())
     for key, value in items:
-        dependencies = re.findall(r'(: [\[]*[A-Z][a-z][\w]+)', value)
-        dependencies = map(lambda x: re.sub(r'\W', '', x), dependencies)
+        dependencies = re.findall(r'(: [A-Z][\w[]*)', value)
+        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|uint\d+|Bytes\d+|bytes', '', x), dependencies)
         for dep in dependencies:
-            if dep in NEW_TYPES:
+            if dep in NEW_TYPES or len(dep) == 0:
                 continue
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
@@ -188,11 +188,12 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
     and returns the newer versions of the objects in dependency order.
     """
     for key, value in new_objects.items():
-        # remove leading "{" and trailing "\n}"
-        old_objects[key] = old_objects.get(key, '')[1:-3]
-        # remove leading "{"
-        value = value[1:]
-        old_objects[key] = '{' + old_objects.get(key, '') + value
+        if key in old_objects:
+            # remove trailing newline
+            old_objects[key] = old_objects[key]
+            # remove leading variable name
+            value = re.sub(r'^class [\w]*\(Container\):\n', '', value)
+        old_objects[key] = old_objects.get(key, '') + value
     dependency_order_ssz_objects(old_objects)
     return old_objects
 

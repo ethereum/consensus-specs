@@ -1,5 +1,5 @@
 from eth2spec.utils.bls import bls_sign
-from eth2spec.utils.minimal_ssz import signing_root
+from eth2spec.utils.ssz.ssz_impl import signing_root
 
 
 def sign_block_header(spec, state, header, privkey):

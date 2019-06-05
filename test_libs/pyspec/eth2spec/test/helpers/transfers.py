@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils.bls import bls_sign
-from eth2spec.utils.minimal_ssz import signing_root
+from eth2spec.utils.ssz.ssz_impl import signing_root
 
 
 def get_valid_transfer(spec, state, slot=None, sender_index=None, amount=None, fee=None, signed=False):
@@ -32,7 +32,7 @@ def get_valid_transfer(spec, state, slot=None, sender_index=None, amount=None, f
 
     # ensure withdrawal_credentials reproducible
     state.validator_registry[transfer.sender].withdrawal_credentials = (
-            spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(transfer.pubkey)[1:]
+        spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(transfer.pubkey)[1:]
     )
 
     return transfer

@@ -70,53 +70,48 @@ This document describes the shard data layer and the shard fork choice rule in P
 ### `ShardBlockBody`
 
 ```python
-{
-    'data': ['byte', BYTES_PER_SHARD_BLOCK_BODY],
-}
+class ShardBlockBody(Container):
+    data: Vector[bytes, BYTES_PER_SHARD_BLOCK_BODY]
 ```
 
 ### `ShardAttestation`
 
 ```python
-{
-    'data': {
-        'slot': Slot,
-        'shard': Shard,
-        'shard_block_root': 'bytes32',
-    },
-    'aggregation_bitfield': 'bytes',
-    'aggregate_signature': BLSSignature,
-}
+class ShardAttestation(Container):
+    class data(Container):
+        slot: uint64
+        shard: uint64
+        shard_block_root: Bytes32
+    aggregation_bitfield: bytes
+    aggregate_signature: Bytes96
 ```
 
 ### `ShardBlock`
 
 ```python
-{
-    'slot': Slot,
-    'shard': Shard,
-    'beacon_chain_root': 'bytes32',
-    'parent_root': 'bytes32',
-    'data': ShardBlockBody,
-    'state_root': 'bytes32',
-    'attestations': [ShardAttestation],
-    'signature': BLSSignature,
-}
+class ShardBlock(Container):
+    slot: uint64
+    shard: uint64
+    beacon_chain_root: Bytes32
+    parent_root: Bytes32
+    data: ShardBlockBody
+    state_root: Bytes32
+    attestations: List[ShardAttestation]
+    signature: Bytes96
 ```
 
 ### `ShardBlockHeader`
 
 ```python
-{
-    'slot': Slot,
-    'shard': Shard,
-    'beacon_chain_root': 'bytes32',
-    'parent_root': 'bytes32',
-    'body_root': 'bytes32',
-    'state_root': 'bytes32',
-    'attestations': [ShardAttestation],
-    'signature': BLSSignature,
-}
+class ShardBlockHeader(Container):
+    slot: uint64
+    shard: uint64
+    beacon_chain_root: Bytes32
+    parent_root: Bytes32
+    body_root: Bytes32
+    state_root: Bytes32
+    attestations: List[ShardAttestation]
+    signature: Bytes96
 ```
 
 ## Helper functions
@@ -265,7 +260,7 @@ def compute_crosslink_data_root(blocks: List[ShardBlock]) -> Bytes32:
             ) for block in blocks
         ]))
         + hash_tree_root(pad_to_power_of_2([
-                hash_tree_root_of_bytes(block.body) for block in blocks
+            hash_tree_root_of_bytes(block.body) for block in blocks
         ]))
     )
 ```

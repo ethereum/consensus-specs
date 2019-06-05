@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.utils.minimal_ssz import hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
 def build_mock_validator(spec, i: int, balance: int):

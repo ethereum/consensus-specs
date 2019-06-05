@@ -31,8 +31,6 @@
             - [`BeaconState`](#beaconstate)
             - [`BeaconBlockBody`](#beaconblockbody)
     - [Helpers](#helpers)
-        - [`type_of`](#type_of)
-        - [`empty`](#empty)
         - [`ceillog2`](#ceillog2)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
@@ -122,66 +120,61 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 #### `CustodyChunkChallenge`
 
 ```python
-{
-    'responder_index': ValidatorIndex,
-    'attestation': Attestation,
-    'chunk_index': 'uint64',
-}
+class CustodyChunkChallenge(Container):
+    responder_index: ValidatorIndex
+    attestation: Attestation
+    chunk_index: uint64
 ```
 
 #### `CustodyBitChallenge`
 
 ```python
-{
-    'responder_index': ValidatorIndex,
-    'attestation': Attestation,
-    'challenger_index': ValidatorIndex,
-    'responder_key': BLSSignature,
-    'chunk_bits': 'bytes',
-    'signature': BLSSignature,
-}
+class CustodyBitChallenge(Container):
+    responder_index: ValidatorIndex
+    attestation: Attestation
+    challenger_index: ValidatorIndex
+    responder_key: Bytes96
+    chunk_bits: bytes
+    signature: Bytes96
 ```
 
 #### `CustodyChunkChallengeRecord`
 
 ```python
-{
-    'challenge_index': 'uint64',
-    'challenger_index': ValidatorIndex,
-    'responder_index': ValidatorIndex,
-    'inclusion_epoch': Epoch,
-    'data_root': Hash,
-    'depth': 'uint64',
-    'chunk_index': 'uint64',
-}
+class CustodyChunkChallengeRecord(Container):
+    challenge_index: uint64
+    challenger_index: ValidatorIndex
+    responder_index: ValidatorIndex
+    inclusion_epoch: Epoch
+    data_root: Bytes32
+    depth: uint64
+    chunk_index: uint64
 ```
 
 #### `CustodyBitChallengeRecord`
 
 ```python
-{
-    'challenge_index': 'uint64',
-    'challenger_index': ValidatorIndex,
-    'responder_index': ValidatorIndex,
-    'inclusion_epoch': Epoch,
-    'data_root': Hash,
-    'chunk_count': 'uint64',
-    'chunk_bits_merkle_root': 'bytes32',
-    'responder_key': BLSSignature,
-}
+class CustodyBitChallengeRecord(Container):
+    challenge_index: uint64
+    challenger_index: ValidatorIndex
+    responder_index: ValidatorIndex
+    inclusion_epoch: Epoch
+    data_root: Bytes32
+    chunk_count: uint64
+    chunk_bits_merkle_root: Bytes32
+    responder_key: Bytes96
 ```
 
 #### `CustodyResponse`
 
 ```python
-{
-    'challenge_index': 'uint64',
-    'chunk_index': 'uint64',
-    'chunk': ['byte', BYTES_PER_CUSTODY_CHUNK],
-    'data_branch': ['bytes32'],
-    'chunk_bits_branch': ['bytes32'],
-    'chunk_bits_leaf': 'bytes32',
-}
+class CustodyResponse(Container):
+    challenge_index: uint64
+    chunk_index: uint64
+    chunk: Vector[bytes, BYTES_PER_CUSTODY_CHUNK]
+    data_branch: List[Bytes32]
+    chunk_bits_branch: List[Bytes32]
+    chunk_bits_leaf: Bytes32
 ```
 
 ### New beacon operations
@@ -189,12 +182,11 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 #### `CustodyKeyReveal`
 
 ```python
-{
+class CustodyKeyReveal(Container):
     # Index of the validator whose key is being revealed
-    'revealer_index': 'uint64',
+    revealer_index: uint64
     # Reveal (masked signature)
-    'reveal': 'bytes96',
-}
+    reveal: Bytes96
 ```
 
 #### `EarlyDerivedSecretReveal`
@@ -202,18 +194,17 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both are part of the same domain).
 
 ```python
-{
+class EarlyDerivedSecretReveal(Container):
     # Index of the validator whose key is being revealed
-    'revealed_index': 'uint64',
+    revealed_index: uint64
     # RANDAO epoch of the key that is being revealed
-    'epoch': 'uint64',
+    epoch: uint64
     # Reveal (masked signature)
-    'reveal': 'bytes96',
+    reveal: Bytes96
     # Index of the validator who revealed (whistleblower)
-    'masker_index': 'uint64',
+    masker_index: uint64
     # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
-    'mask': 'bytes32',
-}
+    mask: Bytes32
 ```
 
 ### Phase 0 container updates
@@ -223,50 +214,39 @@ Add the following fields to the end of the specified container objects. Fields w
 #### `Validator`
 
 ```python
-{
+class Validator(Container):
     # next_custody_reveal_period is initialised to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_validators_custody_reveal_period(...)
-    'next_custody_reveal_period': 'uint64',
-    'max_reveal_lateness': 'uint64',
-}
+    next_custody_reveal_period: uint64
+    max_reveal_lateness: uint64
 ```
 
 #### `BeaconState`
 
 ```python
-{
-    'custody_chunk_challenge_records': [CustodyChunkChallengeRecord],
-    'custody_bit_challenge_records': [CustodyBitChallengeRecord],
-    'custody_challenge_index': 'uint64',
+class BeaconState(Container):
+    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord]
+    custody_bit_challenge_records: List[CustodyBitChallengeRecord]
+    custody_challenge_index: uint64
 
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    'exposed_derived_secrets': [['uint64'], EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS],
-}
+    exposed_derived_secrets: Vector[List[uint64], EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
 ```
 
 #### `BeaconBlockBody`
 
 ```python
-{
-    'custody_chunk_challenges': [CustodyChunkChallenge],
-    'custody_bit_challenges': [CustodyBitChallenge],
-    'custody_responses': [CustodyResponse],
-    'custody_key_reveals': [CustodyKeyReveal],
-    'early_derived_secret_reveals': [EarlyDerivedSecretReveal],
-}
+class BeaconBlockBody(Container):
+    custody_chunk_challenges: List[CustodyChunkChallenge]
+    custody_bit_challenges: List[CustodyBitChallenge]
+    custody_responses: List[CustodyResponse]
+    custody_key_reveals: List[CustodyKeyReveal]
+    early_derived_secret_reveals: List[EarlyDerivedSecretReveal]
 ```
 
 ## Helpers
-
-### `type_of`
-
-The `type_of` function accepts an SSZ object as a single input and returns the corresponding SSZ type.
-
-### `empty`
-
-The `empty` function accepts an SSZ type as input and returns an object of that type with all fields initialized to default values.
 
 ### `ceillog2`
 
@@ -287,7 +267,7 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
 ### `get_custody_chunk_bit`
 
 ```python
-def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
+def get_custody_chunk_bit(key: Bytes96, chunk: bytes) -> bool:
     # TODO: Replace with something MPC-friendly, e.g. the Legendre symbol
     return get_bitfield_bit(hash(key + chunk), 0)
 ```
@@ -299,7 +279,7 @@ def get_chunk_bits_root(chunk_bitfield: bytes) -> Bytes32:
     aggregated_bits = bytearray([0] * 32)
     for i in range(0, len(chunk_bitfield), 32):
         for j in range(32):
-            aggregated_bits[j] ^= chunk_bitfield[i+j]
+            aggregated_bits[j] ^= chunk_bitfield[i + j]
     return hash(aggregated_bits)
 ```
 
@@ -332,7 +312,7 @@ def get_validators_custody_reveal_period(state: BeaconState,
 ```python
 def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
     for i in range(len(list)):
-        if list[i] == empty(type_of(new_element)):
+        if is_empty(list[i]):
             list[i] = new_element
             return i
     list.append(new_element)

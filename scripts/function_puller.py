@@ -50,12 +50,19 @@ def get_spec(file_name: str) -> SpecObject:
         else:
             # Handle function definitions & ssz_objects
             if pulling_from is not None:
-                func_match = function_matcher.match(line)
-                if func_match is not None:
-                    current_name = func_match.group(0)
-                if function_matcher.match(current_name) is None:  # The current line is an SSZ Object
+                # SSZ Object
+                if len(line) > 18 and line[:6] == 'class ' and line[-12:] == '(Container):':
+                    name = line[6:-12]
+                    # Check consistency with markdown header
+                    assert name == current_name
+                    is_ssz = True
+                # function definition
+                elif function_matcher.match(line) is not None:
+                    current_name = function_matcher.match(line).group(0)
+                    is_ssz = False
+                if is_ssz:
                     ssz_objects[current_name] = ssz_objects.get(current_name, '') + line + '\n'
-                else:  # The current line is code
+                else:
                     functions[current_name] = functions.get(current_name, '') + line + '\n'
             # Handle constant table entries
             elif pulling_from is None and len(line) > 0 and line[0] == '|':

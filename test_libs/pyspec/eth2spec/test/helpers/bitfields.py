@@ -5,7 +5,7 @@ def set_bitfield_bit(bitfield, i):
     byte_index = i // 8
     bit_index = i % 8
     return (
-            bitfield[:byte_index] +
-            bytes([bitfield[byte_index] | (1 << bit_index)]) +
-            bitfield[byte_index + 1:]
+        bitfield[:byte_index] +
+        bytes([bitfield[byte_index] | (1 << bit_index)]) +
+        bitfield[byte_index + 1:]
     )
