@@ -249,7 +249,7 @@ class Vector(metaclass=VectorMeta):
         # cannot check non-type objects
         if isinstance(cls.elem_type, type):
             for i, item in enumerate(self.items):
-                if not isinstance(item, cls.elem_type):
+                if not issubclass(type(item), cls.elem_type):
                     raise TypeError("Typed vector cannot hold differently typed value"
                                     " at index %d. Got type: %s, expected type: %s" % (i, type(item), cls.elem_type))
 
