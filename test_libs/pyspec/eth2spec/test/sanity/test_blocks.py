@@ -13,10 +13,10 @@ from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, never_bls, with_phases
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @never_bls
 @spec_state_test
 def test_empty_block_transition(spec, state):
@@ -35,7 +35,7 @@ def test_empty_block_transition(spec, state):
     assert spec.get_block_root_at_slot(state, pre_slot) == block.parent_root
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @never_bls
 @spec_state_test
 def test_skipped_slots(spec, state):
@@ -55,7 +55,7 @@ def test_skipped_slots(spec, state):
         assert spec.get_block_root_at_slot(state, slot) == block.parent_root
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_empty_epoch_transition(spec, state):
     pre_slot = state.slot
@@ -74,7 +74,7 @@ def test_empty_epoch_transition(spec, state):
         assert spec.get_block_root_at_slot(state, slot) == block.parent_root
 
 
-# @with_all_phases
+# @with_phases(['phase0', 'phase1'])
 # @spec_state_test
 # def test_empty_epoch_transition_not_finalizing(spec, state):
 #     # copy for later balance lookups.
@@ -95,7 +95,7 @@ def test_empty_epoch_transition(spec, state):
 #         assert get_balance(state, index) < get_balance(pre_state, index)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_proposer_slashing(spec, state):
     # copy for later balance lookups.
@@ -127,7 +127,7 @@ def test_proposer_slashing(spec, state):
     assert get_balance(state, validator_index) < get_balance(pre_state, validator_index)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_attester_slashing(spec, state):
     # copy for later balance lookups.
@@ -169,7 +169,7 @@ def test_attester_slashing(spec, state):
 
 # TODO update functions below to be like above, i.e. with @spec_state_test and yielding data to put into the test vector
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_deposit_in_block(spec, state):
     initial_registry_len = len(state.validator_registry)
@@ -196,7 +196,7 @@ def test_deposit_in_block(spec, state):
     assert state.validator_registry[validator_index].pubkey == pubkeys[validator_index]
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_deposit_top_up(spec, state):
     validator_index = 0
@@ -223,7 +223,7 @@ def test_deposit_top_up(spec, state):
     assert get_balance(state, validator_index) == validator_pre_balance + amount
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_attestation(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH
@@ -257,7 +257,7 @@ def test_attestation(spec, state):
     assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(
@@ -303,7 +303,7 @@ def test_voluntary_exit(spec, state):
     assert state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_transfer(spec, state):
     # overwrite default 0 to test
@@ -337,7 +337,7 @@ def test_transfer(spec, state):
     assert recipient_balance == pre_transfer_recipient_balance + amount
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_balance_driven_status_transitions(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -362,7 +362,7 @@ def test_balance_driven_status_transitions(spec, state):
     assert state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_historical_batch(spec, state):
     state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
@@ -381,7 +381,7 @@ def test_historical_batch(spec, state):
     assert len(state.historical_roots) == pre_historical_roots_len + 1
 
 
-# @with_all_phases
+# @with_phases(['phase0', 'phase1'])
 # @spec_state_test
 # def test_eth1_data_votes(spec, state):
 #     yield 'pre', state

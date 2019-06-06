@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_phases
 from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
@@ -40,7 +40,7 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
     )
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -48,7 +48,7 @@ def test_success(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @always_bls
 @spec_state_test
 def test_invalid_sig_1(spec, state):
@@ -56,7 +56,7 @@ def test_invalid_sig_1(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @always_bls
 @spec_state_test
 def test_invalid_sig_2(spec, state):
@@ -64,7 +64,7 @@ def test_invalid_sig_2(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @always_bls
 @spec_state_test
 def test_invalid_sig_1_and_2(spec, state):
@@ -72,7 +72,7 @@ def test_invalid_sig_1_and_2(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_invalid_proposer_index(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -82,7 +82,7 @@ def test_invalid_proposer_index(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_epochs_are_different(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
@@ -94,7 +94,7 @@ def test_epochs_are_different(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_headers_are_same(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
@@ -105,7 +105,7 @@ def test_headers_are_same(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_proposer_is_not_activated(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -116,7 +116,7 @@ def test_proposer_is_not_activated(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_proposer_is_slashed(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -127,7 +127,7 @@ def test_proposer_is_slashed(spec, state):
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_proposer_is_withdrawn(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)

@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import List
 
-from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, never_bls, with_phases
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, apply_empty_block
 from eth2spec.test.helpers.attestations import get_valid_attestation
@@ -60,7 +60,7 @@ def next_epoch_with_attestations(spec,
     return state, blocks, post_state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @never_bls
 @spec_state_test
 def test_finality_rule_4(spec, state):
@@ -89,7 +89,7 @@ def test_finality_rule_4(spec, state):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @never_bls
 @spec_state_test
 def test_finality_rule_1(spec, state):
@@ -120,7 +120,7 @@ def test_finality_rule_1(spec, state):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @never_bls
 @spec_state_test
 def test_finality_rule_2(spec, state):
@@ -153,7 +153,7 @@ def test_finality_rule_2(spec, state):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @never_bls
 @spec_state_test
 def test_finality_rule_3(spec, state):

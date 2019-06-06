@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import spec_state_test, with_phases
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot
@@ -37,7 +37,7 @@ def run_process_crosslinks(spec, state, valid=True):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_no_attestations(spec, state):
     yield from run_process_crosslinks(spec, state)
@@ -46,7 +46,7 @@ def test_no_attestations(spec, state):
         assert state.previous_crosslinks[shard] == state.current_crosslinks[shard]
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_single_crosslink_update_from_current_epoch(spec, state):
     next_epoch(spec, state)
@@ -67,7 +67,7 @@ def test_single_crosslink_update_from_current_epoch(spec, state):
     assert pre_crosslink != state.current_crosslinks[shard]
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_single_crosslink_update_from_previous_epoch(spec, state):
     next_epoch(spec, state)
@@ -98,7 +98,7 @@ def test_single_crosslink_update_from_previous_epoch(spec, state):
         assert crosslink_deltas[1][index] == 0
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_double_late_crosslink(spec, state):
     if spec.get_epoch_committee_count(state, spec.get_current_epoch(state)) < spec.SHARD_COUNT:

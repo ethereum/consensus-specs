@@ -1,8 +1,8 @@
 from eth2spec.test.helpers.state import get_state_root
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import spec_state_test, with_phases
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_slots_1(spec, state):
     pre_slot = state.slot
@@ -18,7 +18,7 @@ def test_slots_1(spec, state):
     assert get_state_root(spec, state, pre_slot) == pre_root
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_slots_2(spec, state):
     yield 'pre', state
@@ -28,7 +28,7 @@ def test_slots_2(spec, state):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_empty_epoch(spec, state):
     yield 'pre', state
@@ -38,7 +38,7 @@ def test_empty_epoch(spec, state):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_double_empty_epoch(spec, state):
     yield 'pre', state
@@ -48,7 +48,7 @@ def test_double_empty_epoch(spec, state):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_over_epoch_boundary(spec, state):
     spec.process_slots(state, state.slot + (spec.SLOTS_PER_EPOCH // 2))

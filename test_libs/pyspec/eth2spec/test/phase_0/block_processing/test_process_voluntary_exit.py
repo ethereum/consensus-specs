@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_phases
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import build_voluntary_exit, sign_voluntary_exit
 
@@ -31,7 +31,7 @@ def run_voluntary_exit_processing(spec, state, voluntary_exit, valid=True):
     assert state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success(spec, state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
@@ -46,7 +46,7 @@ def test_success(spec, state):
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @always_bls
 @spec_state_test
 def test_invalid_signature(spec, state):
@@ -62,7 +62,7 @@ def test_invalid_signature(spec, state):
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_exit_queue(spec, state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
@@ -114,7 +114,7 @@ def test_success_exit_queue(spec, state):
     )
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_validator_exit_in_future(spec, state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
@@ -138,7 +138,7 @@ def test_validator_exit_in_future(spec, state):
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_validator_invalid_validator_index(spec, state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
@@ -162,7 +162,7 @@ def test_validator_invalid_validator_index(spec, state):
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_validator_not_active(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -184,7 +184,7 @@ def test_validator_not_active(spec, state):
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_validator_already_exited(spec, state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow validator able to exit
@@ -209,7 +209,7 @@ def test_validator_already_exited(spec, state):
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_validator_not_active_long_enough(spec, state):
     current_epoch = spec.get_current_epoch(state)

@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phase0
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_phases
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     sign_attestation,
@@ -47,7 +47,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
@@ -56,7 +56,7 @@ def test_success(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_previous_epoch(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
@@ -66,7 +66,7 @@ def test_success_previous_epoch(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_since_max_epochs_per_crosslink(spec, state):
     for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
@@ -85,7 +85,7 @@ def test_success_since_max_epochs_per_crosslink(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @always_bls
 @spec_state_test
 def test_invalid_attestation_signature(spec, state):
@@ -95,7 +95,7 @@ def test_invalid_attestation_signature(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_before_inclusion_delay(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
@@ -104,7 +104,7 @@ def test_before_inclusion_delay(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_after_epoch_slots(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
@@ -115,7 +115,7 @@ def test_after_epoch_slots(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_old_source_epoch(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 5
@@ -135,7 +135,7 @@ def test_old_source_epoch(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_wrong_shard(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -148,7 +148,7 @@ def test_wrong_shard(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_new_source_epoch(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -161,7 +161,7 @@ def test_new_source_epoch(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_source_root_is_target_root(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -174,7 +174,7 @@ def test_source_root_is_target_root(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_invalid_current_source_root(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 5
@@ -201,7 +201,7 @@ def test_invalid_current_source_root(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_bad_source_root(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -214,7 +214,7 @@ def test_bad_source_root(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_phase0
+@with_phases(['phase0'])
 @spec_state_test
 def test_non_zero_crosslink_data_root(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -227,7 +227,7 @@ def test_non_zero_crosslink_data_root(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_bad_parent_crosslink(spec, state):
     next_epoch(spec, state)
@@ -243,7 +243,7 @@ def test_bad_parent_crosslink(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_bad_crosslink_start_epoch(spec, state):
     next_epoch(spec, state)
@@ -259,7 +259,7 @@ def test_bad_crosslink_start_epoch(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_bad_crosslink_end_epoch(spec, state):
     next_epoch(spec, state)
@@ -275,7 +275,7 @@ def test_bad_crosslink_end_epoch(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_inconsistent_bitfields(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -288,7 +288,7 @@ def test_inconsistent_bitfields(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_phase0
+@with_phases(['phase0'])
 @spec_state_test
 def test_non_empty_custody_bitfield(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -301,7 +301,7 @@ def test_non_empty_custody_bitfield(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_empty_aggregation_bitfield(spec, state):
     attestation = get_valid_attestation(spec, state)

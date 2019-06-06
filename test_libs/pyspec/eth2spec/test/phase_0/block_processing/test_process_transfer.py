@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_phases
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.transfers import get_valid_transfer
@@ -36,7 +36,7 @@ def run_transfer_processing(spec, state, transfer, valid=True):
     assert state.balances[proposer_index] == pre_transfer_proposer_balance + transfer.fee
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_non_activated(spec, state):
     transfer = get_valid_transfer(spec, state, signed=True)
@@ -46,7 +46,7 @@ def test_success_non_activated(spec, state):
     yield from run_transfer_processing(spec, state, transfer)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_withdrawable(spec, state):
     next_epoch(spec, state)
@@ -60,7 +60,7 @@ def test_success_withdrawable(spec, state):
     yield from run_transfer_processing(spec, state, transfer)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_active_above_max_effective(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -70,7 +70,7 @@ def test_success_active_above_max_effective(spec, state):
     yield from run_transfer_processing(spec, state, transfer)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_active_above_max_effective_fee(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -80,7 +80,7 @@ def test_success_active_above_max_effective_fee(spec, state):
     yield from run_transfer_processing(spec, state, transfer)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @always_bls
 @spec_state_test
 def test_invalid_signature(spec, state):
@@ -91,7 +91,7 @@ def test_invalid_signature(spec, state):
     yield from run_transfer_processing(spec, state, transfer, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_active_but_transfer_past_effective_balance(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -102,7 +102,7 @@ def test_active_but_transfer_past_effective_balance(spec, state):
     yield from run_transfer_processing(spec, state, transfer, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_incorrect_slot(spec, state):
     transfer = get_valid_transfer(spec, state, slot=state.slot + 1, signed=True)
@@ -112,7 +112,7 @@ def test_incorrect_slot(spec, state):
     yield from run_transfer_processing(spec, state, transfer, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_insufficient_balance_for_fee(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -125,7 +125,7 @@ def test_insufficient_balance_for_fee(spec, state):
     yield from run_transfer_processing(spec, state, transfer, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_insufficient_balance(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -138,7 +138,7 @@ def test_insufficient_balance(spec, state):
     yield from run_transfer_processing(spec, state, transfer, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_no_dust_sender(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -158,7 +158,7 @@ def test_no_dust_sender(spec, state):
     yield from run_transfer_processing(spec, state, transfer, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_no_dust_recipient(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -172,7 +172,7 @@ def test_no_dust_recipient(spec, state):
     yield from run_transfer_processing(spec, state, transfer, False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_invalid_pubkey(spec, state):
     transfer = get_valid_transfer(spec, state, signed=True)

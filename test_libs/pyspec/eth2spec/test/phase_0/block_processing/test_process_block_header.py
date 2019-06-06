@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_phases
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block
@@ -34,14 +34,14 @@ def run_block_header_processing(spec, state, block, valid=True):
     yield 'post', state
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_success_block_header(spec, state):
     block = build_empty_block_for_next_slot(spec, state, signed=True)
     yield from run_block_header_processing(spec, state, block)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @always_bls
 @spec_state_test
 def test_invalid_sig_block_header(spec, state):
@@ -49,7 +49,7 @@ def test_invalid_sig_block_header(spec, state):
     yield from run_block_header_processing(spec, state, block, valid=False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_invalid_slot_block_header(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
@@ -59,7 +59,7 @@ def test_invalid_slot_block_header(spec, state):
     yield from run_block_header_processing(spec, state, block, valid=False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_invalid_parent_root(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
@@ -69,7 +69,7 @@ def test_invalid_parent_root(spec, state):
     yield from run_block_header_processing(spec, state, block, valid=False)
 
 
-@with_all_phases
+@with_phases(['phase0', 'phase1'])
 @spec_state_test
 def test_proposer_slashed(spec, state):
     # use stub state to get proposer index of next slot

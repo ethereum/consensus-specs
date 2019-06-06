@@ -90,33 +90,19 @@ def bls_switch(fn):
     return entry
 
 
-def with_phase0(fn):
+def with_phases(phases):
     """
-    Decorator to use phase 0's spec.
+    Decorator factory that returns a decorator that runs a test for the appropriate phases
     """
-    def entry(*args, **kw):
-        kw['spec'] = spec_phase0
-        return fn(*args, **kw)
-    return entry
+    def decorator(fn):
+        def run_with_spec_version(spec, *args, **kw):
+            kw['spec'] = spec
+            fn(*args, **kw)
 
-
-def with_phase1(fn):
-    """
-    Decorator to use phase 1's spec
-    """
-    def entry(*args, **kw):
-        kw['spec'] = spec_phase1
-        return fn(*args, **kw)
-    return entry
-
-
-def with_all_phases(fn):
-    """
-    Decorator to run everything with all available spec phases
-    """
-    def entry(*args, **kw):
-        kw['spec'] = spec_phase0
-        fn(*args, **kw)
-        kw['spec'] = spec_phase1
-        fn(*args, **kw)
-    return entry
+        def wrapper(*args, **kw):
+            if 'phase0' in phases:
+                run_with_spec_version(spec_phase0, *args, **kw)
+            if 'phase1' in phases:
+                run_with_spec_version(spec_phase1, *args, **kw)
+        return wrapper
+    return decorator
