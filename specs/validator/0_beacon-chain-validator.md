@@ -277,7 +277,7 @@ Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](../core/0_beacon-chain.md#voluntar
 
 ### Attestations
 
-A validator is expected to create, sign, and broadcast an attestation during each epoch. The committee, assigned shard, and assigned slot for which the validator performs this role during an epoch is defined by `get_committee_assignment(state, epoch, validator_index)`.
+A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `shard`, and assigned `slot` for which the validator performs this role during an epoch is defined by `get_committee_assignment(state, epoch, validator_index)`.
 
 A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned ― that is, `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
 
