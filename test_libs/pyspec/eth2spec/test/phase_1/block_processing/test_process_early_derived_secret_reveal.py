@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.custody import get_valid_early_derived_secret_reveal
 from eth2spec.test.helpers.block import apply_empty_block
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import next_epoch, get_balance
 from eth2spec.test.context import with_phase1, spec_state_test, expect_assertion_error
 
 
@@ -19,6 +19,8 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
         expect_assertion_error(lambda: spec.process_early_derived_secret_reveal(state, randao_key_reveal))
         yield 'post', None
         return
+    
+    pre_slashed_balance = get_balance(state, randao_key_reveal.revealed_index)
 
     spec.process_early_derived_secret_reveal(state, randao_key_reveal)
 
@@ -28,12 +30,8 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
         assert slashed_validator.slashed
         assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
         assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
-    # lost whistleblower reward
-    # FIXME: Currently broken because get_base_reward in genesis epoch is 0
-    # assert (
-    #     state.balances[randao_key_reveal.revealed_index] <
-    #     state.balances[randao_key_reveal.revealed_index]
-    # )
+
+    assert get_balance(state, randao_key_reveal.revealed_index) < pre_slashed_balance
     yield 'post', state
 
 
