@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
 from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -52,7 +52,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
     assert state.deposit_index == state.latest_eth1_data.deposit_count
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
@@ -63,7 +63,7 @@ def test_new_deposit(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @always_bls
 @spec_state_test
 def test_invalid_sig_new_deposit(spec, state):
@@ -74,7 +74,7 @@ def test_invalid_sig_new_deposit(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_success_top_up(spec, state):
     validator_index = 0
@@ -84,7 +84,7 @@ def test_success_top_up(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @always_bls
 @spec_state_test
 def test_invalid_sig_top_up(spec, state):
@@ -96,7 +96,7 @@ def test_invalid_sig_top_up(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_invalid_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
@@ -114,7 +114,7 @@ def test_invalid_withdrawal_credentials_top_up(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_wrong_index(spec, state):
     validator_index = len(state.validator_registry)
@@ -129,7 +129,7 @@ def test_wrong_index(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_wrong_deposit_for_deposit_count(spec, state):
     deposit_data_leaves = [spec.ZERO_HASH] * len(state.validator_registry)
@@ -175,7 +175,7 @@ def test_wrong_deposit_for_deposit_count(spec, state):
 # TODO: test invalid signature
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_bad_merkle_proof(spec, state):
     validator_index = len(state.validator_registry)

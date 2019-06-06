@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_phases
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
 from eth2spec.test.helpers.block import apply_empty_block
@@ -54,7 +54,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
     yield 'post', state
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_success_double(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
@@ -62,7 +62,7 @@ def test_success_double(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_success_surround(spec, state):
     next_epoch(spec, state)
@@ -80,7 +80,7 @@ def test_success_surround(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @always_bls
 @spec_state_test
 def test_invalid_sig_1(spec, state):
@@ -88,7 +88,7 @@ def test_invalid_sig_1(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @always_bls
 @spec_state_test
 def test_invalid_sig_2(spec, state):
@@ -96,7 +96,7 @@ def test_invalid_sig_2(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @always_bls
 @spec_state_test
 def test_invalid_sig_1_and_2(spec, state):
@@ -104,7 +104,7 @@ def test_invalid_sig_1_and_2(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_same_data(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
@@ -115,7 +115,7 @@ def test_same_data(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_no_double_or_surround(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
@@ -126,7 +126,7 @@ def test_no_double_or_surround(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_participants_already_slashed(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
@@ -140,7 +140,7 @@ def test_participants_already_slashed(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_custody_bit_0_and_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)

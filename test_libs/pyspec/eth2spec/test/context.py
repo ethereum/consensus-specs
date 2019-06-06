@@ -90,6 +90,25 @@ def bls_switch(fn):
     return entry
 
 
+all_phases = ['phase0', 'phase1']
+
+
+def with_all_phases(fn):
+    """
+    A decorator for running a test wil every phase
+    """
+    return with_phases(all_phases)(fn)
+
+
+def with_all_phases_except(exclusion_phases):
+    """
+    A decorator factory for running a tests with every phase except the ones listed
+    """
+    def decorator(fn):
+        return with_phases([phase for phase in all_phases if phase not in exclusion_phases])(fn)
+    return decorator
+
+
 def with_phases(phases):
     """
     Decorator factory that returns a decorator that runs a test for the appropriate phases

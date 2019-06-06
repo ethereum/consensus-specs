@@ -1,7 +1,7 @@
 from eth2spec.phase0.spec import state_transition
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.state import next_epoch
-from eth2spec.test.context import spec_state_test, with_phases
+from eth2spec.test.context import spec_state_test, with_all_phases
 
 
 def run_process_registry_updates(spec, state, valid=True):
@@ -31,7 +31,7 @@ def run_process_registry_updates(spec, state, valid=True):
     yield 'post', state
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_activation(spec, state):
     index = 0
@@ -56,7 +56,7 @@ def test_activation(spec, state):
     )
 
 
-@with_phases(['phase0', 'phase1'])
+@with_all_phases
 @spec_state_test
 def test_ejection(spec, state):
     index = 0
