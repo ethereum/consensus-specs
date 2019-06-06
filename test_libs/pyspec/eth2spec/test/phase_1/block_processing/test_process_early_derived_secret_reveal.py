@@ -19,7 +19,7 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
         expect_assertion_error(lambda: spec.process_early_derived_secret_reveal(state, randao_key_reveal))
         yield 'post', None
         return
-    
+
     pre_slashed_balance = get_balance(state, randao_key_reveal.revealed_index)
 
     spec.process_early_derived_secret_reveal(state, randao_key_reveal)

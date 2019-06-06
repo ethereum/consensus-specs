@@ -46,8 +46,8 @@ This document describes the shard data layer and the shard fork choice rule in P
 | - | - |
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
-| `PHASE_1_GENESIS_EPOCH` | **TBD** |
-| `PHASE_1_GENESIS_SLOT` | **TBD** |
+| `PHASE_1_FORK_EPOCH` | **TBD** |
+| `PHASE_1_FORK_SLOT` | **TBD** |
 | `GENESIS_SHARD_SLOT` | 0 |
 
 ### Time parameters
@@ -274,14 +274,12 @@ Let:
 * `beacon_blocks` be the `BeaconBlock` list such that `beacon_blocks[slot]` is the canonical `BeaconBlock` at slot `slot`
 * `beacon_state` be the canonical `BeaconState` after processing `beacon_blocks[-1]`
 * `valid_shard_blocks` be the list of valid `ShardBlock`, recursively defined
-* `unix_time` be the current unix time
 * `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
 
 ```python
 def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
                          beacon_state: BeaconState,
                          valid_shard_blocks: List[ShardBlock],
-                         unix_time: int,
                          candidate: ShardBlock) -> bool:
     # Check if block is already determined valid
     for _, block in enumerate(valid_shard_blocks):
@@ -289,8 +287,7 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
             return True
 
     # Check slot number
-    assert candidate.slot >= PHASE_1_GENESIS_SLOT
-    assert unix_time >= beacon_state.genesis_time + (block.slot - GENESIS_SLOT) * SECONDS_PER_SLOT
+    assert candidate.slot >= PHASE_1_FORK_SLOT
 
     # Check shard number
     assert candidate.shard <= SHARD_COUNT
@@ -304,7 +301,7 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
     assert candidate.state_root == ZERO_HASH  # [to be removed in phase 2]
 
     # Check parent block
-    if candidate.slot == PHASE_1_GENESIS_SLOT:
+    if candidate.slot == PHASE_1_FORK_SLOT:
         assert candidate.parent_root == ZERO_HASH
     else:
         parent_block = next(
@@ -386,7 +383,7 @@ def is_valid_beacon_attestation(shard: Shard,
             return True
 
     # Check previous attestation
-    if candidate.data.previous_crosslink.epoch <= PHASE_1_GENESIS_EPOCH:
+    if candidate.data.previous_crosslink.epoch <= PHASE_1_FORK_EPOCH:
         assert candidate.data.previous_crosslink.data_root == ZERO_HASH
     else:
         previous_attestation = next(
