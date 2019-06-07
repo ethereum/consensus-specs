@@ -4,7 +4,8 @@ from eth2spec.utils.ssz.ssz_typing import (
     is_list_kind, is_vector_kind,
     read_vector_elem_type, read_elem_type,
     uint_byte_size,
-    infer_input_type
+    infer_input_type,
+    get_zero_value,
 )
 
 # SSZ Serialization
@@ -50,6 +51,10 @@ def is_fixed_size(typ):
         return all(is_fixed_size(t) for t in typ.get_field_types())
     else:
         raise Exception("Type not supported: {}".format(typ))
+
+
+def is_empty(obj):
+    return get_zero_value(type(obj)) == obj
 
 
 @infer_input_type

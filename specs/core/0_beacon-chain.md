@@ -318,13 +318,13 @@ class Crosslink(Container):
 class AttestationData(Container):
     # LMD GHOST vote
     beacon_block_root: Bytes32
-    
+
     # FFG vote
     source_epoch: uint64
     source_root: Bytes32
     target_epoch: uint64
     target_root: Bytes32
-    
+
     # Crosslink vote
     crosslink: Crosslink
 ```
@@ -1246,14 +1246,19 @@ def process_slot(state: BeaconState) -> None:
 
 ### Epoch processing
 
+Note: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
+
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)
     process_crosslinks(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)
+    # @process_reveal_deadlines
+    # @process_challenge_deadlines
     process_slashings(state)
     process_final_updates(state)
+    # @after_process_final_updates
 ```
 
 #### Helper functions

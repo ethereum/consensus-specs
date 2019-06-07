@@ -5,14 +5,16 @@ from eth2spec.test.sanity import test_blocks, test_slots
 from gen_base import gen_runner, gen_suite, gen_typing
 from gen_from_tests.gen import generate_from_tests
 from preset_loader import loader
-from eth2spec.phase0 import spec
+from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.phase1 import spec as spec_phase1
 
 
 def create_suite(handler_name: str, config_name: str, get_cases: Callable[[], Iterable[gen_typing.TestCase]]) \
         -> Callable[[str], gen_typing.TestSuiteOutput]:
     def suite_definition(configs_path: str) -> gen_typing.TestSuiteOutput:
         presets = loader.load_presets(configs_path, config_name)
-        spec.apply_constants_preset(presets)
+        spec_phase0.apply_constants_preset(presets)
+        spec_phase1.apply_constants_preset(presets)
 
         return ("%sanity_s_%s" % (handler_name, config_name), handler_name, gen_suite.render_suite(
             title="sanity testing",

@@ -1,29 +1,23 @@
-# Access constants from spec pkg reference.
-import eth2spec.phase0.spec as spec
-
-from eth2spec.phase0.spec import process_slots
-
-
 def get_balance(state, index):
     return state.balances[index]
 
 
-def next_slot(state):
+def next_slot(spec, state):
     """
     Transition to the next slot.
     """
-    process_slots(state, state.slot + 1)
+    spec.process_slots(state, state.slot + 1)
 
 
-def next_epoch(state):
+def next_epoch(spec, state):
     """
     Transition to the start slot of the next epoch
     """
     slot = state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
-    process_slots(state, slot)
+    spec.process_slots(state, slot)
 
 
-def get_state_root(state, slot) -> bytes:
+def get_state_root(spec, state, slot) -> bytes:
     """
     Return the state root at a recent ``slot``.
     """

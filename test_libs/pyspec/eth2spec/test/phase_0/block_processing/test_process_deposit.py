@@ -1,6 +1,4 @@
-import eth2spec.phase0.spec as spec
-from eth2spec.phase0.spec import process_deposit
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls
+from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
 from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -10,7 +8,7 @@ from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 
 
-def run_deposit_processing(state, deposit, validator_index, valid=True, effective=True):
+def run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True):
     """
     Run ``process_deposit``, yielding:
       - pre-state ('pre')
@@ -27,11 +25,11 @@ def run_deposit_processing(state, deposit, validator_index, valid=True, effectiv
     yield 'deposit', deposit
 
     if not valid:
-        expect_assertion_error(lambda: process_deposit(state, deposit))
+        expect_assertion_error(lambda: spec.process_deposit(state, deposit))
         yield 'post', None
         return
 
-    process_deposit(state, deposit)
+    spec.process_deposit(state, deposit)
 
     yield 'post', state
 
@@ -54,52 +52,58 @@ def run_deposit_processing(state, deposit, validator_index, valid=True, effectiv
     assert state.deposit_index == state.latest_eth1_data.deposit_count
 
 
+@with_all_phases
 @spec_state_test
-def test_new_deposit(state):
+def test_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=True)
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
-    yield from run_deposit_processing(state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
+@with_all_phases
 @always_bls
 @spec_state_test
-def test_invalid_sig_new_deposit(state):
+def test_invalid_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
-    yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=False)
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=False)
 
 
+@with_all_phases
 @spec_state_test
-def test_success_top_up(state):
+def test_success_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
-    deposit = prepare_state_and_deposit(state, validator_index, amount, signed=True)
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
-    yield from run_deposit_processing(state, deposit, validator_index)
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
+@with_all_phases
 @always_bls
 @spec_state_test
-def test_invalid_sig_top_up(state):
+def test_invalid_sig_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # invalid signatures, in top-ups, are allowed!
-    yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
 
 
+@with_all_phases
 @spec_state_test
-def test_invalid_withdrawal_credentials_top_up(state):
+def test_invalid_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(b"junk")[1:]
     deposit = prepare_state_and_deposit(
+        spec,
         state,
         validator_index,
         amount,
@@ -107,32 +111,35 @@ def test_invalid_withdrawal_credentials_top_up(state):
     )
 
     # inconsistent withdrawal credentials, in top-ups, are allowed!
-    yield from run_deposit_processing(state, deposit, validator_index, valid=True, effective=True)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
 
 
+@with_all_phases
 @spec_state_test
-def test_wrong_index(state):
+def test_wrong_index(spec, state):
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # mess up deposit_index
     deposit.index = state.deposit_index + 1
 
-    sign_deposit_data(state, deposit.data, privkeys[validator_index])
+    sign_deposit_data(spec, state, deposit.data, privkeys[validator_index])
 
-    yield from run_deposit_processing(state, deposit, validator_index, valid=False)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
 
 
+@with_all_phases
 @spec_state_test
-def test_wrong_deposit_for_deposit_count(state):
+def test_wrong_deposit_for_deposit_count(spec, state):
     deposit_data_leaves = [spec.ZERO_HASH] * len(state.validator_registry)
 
     # build root for deposit_1
     index_1 = len(deposit_data_leaves)
     pubkey_1 = pubkeys[index_1]
     privkey_1 = privkeys[index_1]
-    deposit_1, root_1, deposit_data_leaves = build_deposit(
+    _, _, deposit_data_leaves = build_deposit(
+        spec,
         state,
         deposit_data_leaves,
         pubkey_1,
@@ -148,6 +155,7 @@ def test_wrong_deposit_for_deposit_count(state):
     pubkey_2 = pubkeys[index_2]
     privkey_2 = privkeys[index_2]
     deposit_2, root_2, deposit_data_leaves = build_deposit(
+        spec,
         state,
         deposit_data_leaves,
         pubkey_2,
@@ -161,21 +169,22 @@ def test_wrong_deposit_for_deposit_count(state):
     state.latest_eth1_data.deposit_root = root_2
     state.latest_eth1_data.deposit_count = deposit_count_1
 
-    yield from run_deposit_processing(state, deposit_2, index_2, valid=False)
+    yield from run_deposit_processing(spec, state, deposit_2, index_2, valid=False)
 
 
 # TODO: test invalid signature
 
 
+@with_all_phases
 @spec_state_test
-def test_bad_merkle_proof(state):
+def test_bad_merkle_proof(spec, state):
     validator_index = len(state.validator_registry)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(state, validator_index, amount)
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # mess up merkle branch
     deposit.proof[-1] = spec.ZERO_HASH
 
-    sign_deposit_data(state, deposit.data, privkeys[validator_index])
+    sign_deposit_data(spec, state, deposit.data, privkeys[validator_index])
 
-    yield from run_deposit_processing(state, deposit, validator_index, valid=False)
+    yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)

@@ -1,12 +1,20 @@
-from eth2spec.phase0 import spec
+from eth2spec.phase0 import spec as spec_phase0
+from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
 
-from .utils import spectest, with_args, with_tags
+from .utils import spectest, with_tags
 
-# Provides a genesis state as first argument to the function decorated with this
-with_state = with_args(lambda: [create_genesis_state(spec.SLOTS_PER_EPOCH * 8)])
+
+def with_state(fn):
+    def entry(*args, **kw):
+        try:
+            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
+        except KeyError:
+            raise TypeError('Spec decorator must come before state decorator to inject spec into state.')
+        return fn(*args, **kw)
+    return entry
 
 
 # BLS is turned off by default *for performance purposes during TESTING*.
@@ -80,3 +88,40 @@ def bls_switch(fn):
         bls.bls_active = old_state
         return out
     return entry
+
+
+all_phases = ['phase0', 'phase1']
+
+
+def with_all_phases(fn):
+    """
+    A decorator for running a test wil every phase
+    """
+    return with_phases(all_phases)(fn)
+
+
+def with_all_phases_except(exclusion_phases):
+    """
+    A decorator factory for running a tests with every phase except the ones listed
+    """
+    def decorator(fn):
+        return with_phases([phase for phase in all_phases if phase not in exclusion_phases])(fn)
+    return decorator
+
+
+def with_phases(phases):
+    """
+    Decorator factory that returns a decorator that runs a test for the appropriate phases
+    """
+    def decorator(fn):
+        def run_with_spec_version(spec, *args, **kw):
+            kw['spec'] = spec
+            fn(*args, **kw)
+
+        def wrapper(*args, **kw):
+            if 'phase0' in phases:
+                run_with_spec_version(spec_phase0, *args, **kw)
+            if 'phase1' in phases:
+                run_with_spec_version(spec_phase1, *args, **kw)
+        return wrapper
+    return decorator
