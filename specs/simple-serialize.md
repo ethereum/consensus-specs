@@ -107,7 +107,7 @@ variable_parts = [serialize(element) if is_variable_size(element) else b"" for e
 
 # Compute and check lengths
 fixed_lengths = [len(part) if part != None else BYTES_PER_LENGTH_OFFSET for part in fixed_parts]
-variable_lengths = [len(part) for part in variable_parts]
+variable_lengths = [len(part) if len(part) != 0 for part in variable_parts]
 assert sum(fixed_lengths + variable_lengths) < 2**(BYTES_PER_LENGTH_OFFSET * BITS_PER_BYTE)
 
 # Interleave offsets of variable-size parts with fixed-size parts
