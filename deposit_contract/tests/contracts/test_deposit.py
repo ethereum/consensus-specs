@@ -1,6 +1,3 @@
-from hashlib import (
-    sha256,
-)
 from random import (
     randint,
 )
@@ -18,8 +15,7 @@ from eth2spec.phase0.spec import (
     DepositData,
 )
 from eth2spec.utils.hash_function import hash
-from eth2spec.utils.minimal_ssz import (
-    SSZType,
+from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
 )
 
