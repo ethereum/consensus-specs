@@ -7,6 +7,6 @@ phase0: 67108864
 # phase0_funny_fork_name: 67116000
 
 # Example 2:
-# Should be equal to PHASE_1_GENESIS_EPOCH
+# Should be equal to PHASE_1_FORK_EPOCH
 # (placeholder in example value here)
 # phase1: 67163000

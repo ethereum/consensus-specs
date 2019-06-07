@@ -115,12 +115,11 @@ Once a validator has been processed and added to the beacon state's `validator_r
 
 In normal operation, the validator is quickly activated at which point the validator is added to the shuffling and begins validation after an additional `ACTIVATION_EXIT_DELAY` epochs (25.6 minutes).
 
-The function [`is_active_validator`](../core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given shuffling epoch. Note that the `BeaconState` contains a field `current_shuffling_epoch` which dictates from which epoch the current active validators are taken. Usage is as follows:
+The function [`is_active_validator`](../core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
 ```python
-shuffling_epoch = state.current_shuffling_epoch
 validator = state.validator_registry[validator_index]
-is_active = is_active_validator(validator, shuffling_epoch)
+is_active = is_active_validator(validator, get_current_epoch(state))
 ```
 
 Once a validator is activated, the validator is assigned [responsibilities](#beacon-chain-responsibilities) until exited.
@@ -278,7 +277,7 @@ Up to `MAX_VOLUNTARY_EXITS` [`VoluntaryExit`](../core/0_beacon-chain.md#voluntar
 
 ### Attestations
 
-A validator is expected to create, sign, and broadcast an attestation during each epoch. The committee, assigned shard, and assigned slot for which the validator performs this role during an epoch is defined by `get_committee_assignment(state, epoch, validator_index)`.
+A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `shard`, and assigned `slot` for which the validator performs this role during an epoch is defined by `get_committee_assignment(state, epoch, validator_index)`.
 
 A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned ― that is, `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
 

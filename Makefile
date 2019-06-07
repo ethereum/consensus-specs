@@ -14,10 +14,15 @@ YAML_TEST_TARGETS = $(patsubst $(GENERATOR_DIR)/%, $(YAML_TEST_DIR)/%, $(GENERAT
 GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
 
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
-PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS)
+PY_SPEC_PHASE_0_DEPS = $(SPEC_DIR)/core/0_*.md
+
+PY_SPEC_PHASE_1_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase1/spec.py
+PY_SPEC_PHASE_1_DEPS = $(SPEC_DIR)/core/1_*.md
+
+PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
 
-.PHONY: clean all test citest gen_yaml_tests pyspec phase0 install_test
+.PHONY: clean all test citest gen_yaml_tests pyspec phase0 phase1 install_test
 
 all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
@@ -38,14 +43,12 @@ test: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest eth2spec
 
 citest: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
-
-install_lint:
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install flake8==3.5.0
+	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate;	\
+	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml eth2spec
 
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
-	flake8 --max-line-length=120 ./eth2spec;
+	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec;
 
 compile_deposit_contract:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
@@ -66,13 +69,11 @@ test_deposit_contract: $(PY_SPEC_ALL_TARGETS)
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
 
-# "make phase0" to create pyspec for phase0
-phase0: $(PY_SPEC_PHASE_0_TARGETS)
+$(PY_SPEC_PHASE_0_TARGETS): $(PY_SPEC_PHASE_0_DEPS)
+	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(SPEC_DIR)/core/0_beacon-chain.md $@
 
-
-$(PY_SPEC_DIR)/eth2spec/phase0/spec.py:
-	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@
-
+$(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
+	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/1_custody-game.md $(SPEC_DIR)/core/1_shard-data-chains.md $@
 
 CURRENT_DIR = ${CURDIR}
 

@@ -35,13 +35,13 @@ commands:
     description: "Restore the cache with default keys"
     steps:
       - restore_cached_venv:
-          venv_name: v1-pyspec-05
+          venv_name: v2-pyspec
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
   save_default_cached_venv:
     description: Save a venv into a cache with default keys"
     steps:
       - save_cached_venv:
-          venv_name: v1-pyspec-05
+          venv_name: v2-pyspec
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
           venv_path: ./test_libs/pyspec/venv
 jobs:
