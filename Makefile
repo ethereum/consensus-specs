@@ -51,16 +51,15 @@ lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
 	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec;
 
-install_deposit_contract_test:
+install_deposit_contract_test: $(PY_SPEC_ALL_TARGETS)
 	cd $(DEPOSIT_CONTRACT_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt
 
 compile_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
 	python tool/compile_deposit_contract.py contracts/validator_registration.v.py;
 
-test_deposit_contract: $(PY_SPEC_ALL_TARGETS)
+test_deposit_contract:
 	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
-	pip3 install -r requirements-testing.txt; \
 	python -m pytest .
 
 # "make pyspec" to create the pyspec for all phases.
