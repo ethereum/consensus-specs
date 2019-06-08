@@ -22,7 +22,7 @@ PY_SPEC_PHASE_1_DEPS = $(SPEC_DIR)/core/1_*.md
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
 
-.PHONY: clean all test citest gen_yaml_tests pyspec phase0 phase1 install_test
+.PHONY: clean all test citest lint gen_yaml_tests pyspec phase0 phase1 install_test install_deposit_contract_test test_deposit_contract compile_deposit_contract 
 
 all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
