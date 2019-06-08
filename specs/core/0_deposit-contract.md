@@ -82,7 +82,7 @@ When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the d
 
 ## Vyper code
 
-The source for the Vyper contract lives in a [separate repository](https://github.com/ethereum/deposit_contract) at [https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py](https://github.com/ethereum/deposit_contract/blob/master/deposit_contract/contracts/validator_registration.v.py).
+The source for the Vyper contract lives [here](./../../deposit_contract/contracts/validator_registration.v.py).
 
 *Note*: To save ~10x on gas, this contract uses a somewhat unintuitive progressive Merkle root calculation algo that requires only O(log(n)) storage. See https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py for an implementation of the same algo in Python tested for correctness.
 
