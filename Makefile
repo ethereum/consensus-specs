@@ -31,6 +31,7 @@ clean:
 	rm -rf $(GENERATOR_VENVS)
 	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
+	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv $(DEPOSIT_CONTRACT_DIR)/.pytest_cache
 
 # "make gen_yaml_tests" to run generators
 gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
@@ -50,19 +51,15 @@ lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
 	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec;
 
+install_deposit_contract_test:
+	cd $(DEPOSIT_CONTRACT_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt
+
 compile_deposit_contract:
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
-	cd ../..; cd $(DEPOSIT_CONTRACT_DIR); \
+	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
 	python tool/compile_deposit_contract.py contracts/validator_registration.v.py;
 
-install_deposit_contract_test:
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
-	cd ../..; cd $(DEPOSIT_CONTRACT_DIR); \
-	pip3 install -r requirements-testing.txt
-
 test_deposit_contract: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; \
-	cd ../.. && cd $(DEPOSIT_CONTRACT_DIR); \
+	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
 	pip3 install -r requirements-testing.txt; \
 	python -m pytest .
 

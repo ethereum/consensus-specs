@@ -48,15 +48,15 @@ commands:
     description: "Restore the cache with deposit_contract keys"
     steps:
       - restore_cached_venv:
-          venv_name: v2-deposit-contract
+          venv_name: v3-deposit-contract
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
   save_deposit_contract_cached_venv:
     description: Save a venv into a cache with deposit_contract keys"
     steps:
       - save_cached_venv:
-          venv_name: v2-deposit-contract
+          venv_name: v3-deposit-contract
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
-          venv_path: ./test_libs/pyspec/venv
+          venv_path: ./deposit_contract/venv
 jobs:
   checkout_specs:
     docker:

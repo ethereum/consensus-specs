@@ -1,6 +1,5 @@
-tox==3.0.0
-eth-tester[py-evm]==0.1.0b29
+eth-tester[py-evm]==0.1.0b39
 vyper==0.1.0b9
-web3==4.8.3
+web3==5.0.0b2
 pytest==3.6.1
 ../test_libs/pyspec
