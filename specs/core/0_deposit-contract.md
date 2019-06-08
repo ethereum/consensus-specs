@@ -9,7 +9,6 @@
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Constants](#constants)
-        - [Gwei values](#gwei-values)
         - [Contract](#contract)
     - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
         - [Arguments](#arguments)
@@ -17,7 +16,6 @@
             - [Amount](#amount)
     - [Event logs](#event-logs)
         - [`Deposit` logs](#deposit-logs)
-        - [`Eth2Genesis` log](#eth2genesis-log)
     - [Vyper code](#vyper-code)
 
 <!-- /TOC -->
@@ -28,19 +26,12 @@ This document represents the specification for the beacon chain deposit contract
 
 ## Constants
 
-### Gwei values
-
-| Name | Value | Unit |
-| - | - | - |
-| `FULL_DEPOSIT_AMOUNT` | `32 * 10**9` | Gwei |
-
 ### Contract
 
 | Name | Value |
 | - | - |
 | `DEPOSIT_CONTRACT_ADDRESS` | **TBD** |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
-| `CHAIN_START_FULL_DEPOSIT_THRESHOLD` | `2**16` (= 65,536) |
 
 ## Ethereum 1.0 deposit contract
 
@@ -62,23 +53,12 @@ The private key corresponding to `withdrawal_pubkey` will be required to initiat
 #### Amount
 
 * A valid deposit amount should be at least `MIN_DEPOSIT_AMOUNT` in Gwei.
-* A deposit with an amount greater than or equal to `FULL_DEPOSIT_AMOUNT` in Gwei is considered as a full deposit.
 
 ## Event logs
 
 ### `Deposit` logs
 
 Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
-
-### `Eth2Genesis` log
-
-When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined [here](./0_beacon-chain.md#genesis-state)) where:
-
-* `genesis_time` equals `time` in the `Eth2Genesis` log
-* `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
-* `latest_eth1_data.deposit_count` equals `deposit_count` in the `Eth2Genesis` log
-* `latest_eth1_data.block_hash` equals the hash of the block that included the log
-* `genesis_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `Eth2Genesis` log, processed in the order in which they were emitted (oldest to newest)
 
 ## Vyper code
 

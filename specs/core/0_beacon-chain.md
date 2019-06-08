@@ -95,7 +95,7 @@
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
     - [Genesis](#genesis)
-        - [`Eth2Genesis`](#eth2genesis)
+        - [Genesis trigger](#genesis-trigger)
         - [Genesis state](#genesis-state)
         - [Genesis block](#genesis-block)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -370,12 +370,12 @@ class PendingAttestation(Container):
 
 ```python
 class Eth1Data(Container):
+    # Block hash
+    block_hash: Bytes32
     # Root of the deposit tree
     deposit_root: Bytes32
     # Total number of deposits
     deposit_count: uint64
-    # Block hash
-    block_hash: Bytes32
 ```
 
 #### `HistoricalBatch`
@@ -1156,20 +1156,45 @@ def slash_validator(state: BeaconState,
 
 ## Genesis
 
-### `Eth2Genesis`
+### Genesis trigger
 
-When enough deposits of size `MAX_EFFECTIVE_BALANCE` have been made to the deposit contract an `Eth2Genesis` log is emitted triggering the genesis of the beacon chain. Let:
+Whenever the deposit contract emits a `Deposit` log call the function `is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool` where:
 
-* `eth2genesis` be the object corresponding to `Eth2Genesis`
-* `genesis_eth1_data` be object of type `Eth1Data` where
-    * `genesis_eth1_data.deposit_root = eth2genesis.deposit_root`
-    * `genesis_eth1_data.deposit_count = eth2genesis.deposit_count`
-    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log
-* `genesis_deposits` be the object of type `List[Deposit]` with deposits ordered chronologically up to and including the deposit that triggered the `Eth2Genesis` log
+* `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
+* `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
+
+When `is_genesis_trigger(deposits, timestamp) == True` for the first time let:
+
+* `genesis_deposits = deposits`
+* `genesis_time = timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
+* `genesis_eth1_data` be the object of type `Eth1Data` where:
+    * `genesis_eth1_data.block_hash` is the block hash corresponding to `deposits`
+    * `genesis_eth1_data.deposit_root` is the deposit root corresponding to `deposits`
+    * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
+
+*Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
+
+```python
+def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
+    # Process deposits
+    state = BeaconState()
+    for deposit in deposits:
+        process_deposit(state, deposit)
+
+    # Count active validators at genesis
+    active_validator_count = 0
+    for validator in state.validator_registry:
+        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
+            active_validator_count += 1
+
+    # Check effective balance to trigger genesis
+    GENESIS_EFFECTIVE_BALANCE = 2**21
+    return active_validator_count * MAX_EFFECTIVE_BALANCE == GENESIS_EFFECTIVE_BALANCE
+```
 
 ### Genesis state
 
-Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.genesis_time, genesis_eth1_data)`.
+Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_data)`.
 
 ```python
 def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
@@ -1246,7 +1271,7 @@ def process_slot(state: BeaconState) -> None:
 
 ### Epoch processing
 
-Note: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
+*Note*: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
