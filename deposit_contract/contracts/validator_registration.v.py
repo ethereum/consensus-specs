@@ -24,6 +24,7 @@ def __init__():
     for i in range(DEPOSIT_CONTRACT_TREE_DEPTH - 1):
         self.zerohashes[i+1] = sha256(concat(self.zerohashes[i], self.zerohashes[i]))
 
+
 @public
 @constant
 def to_little_endian_64(value: uint256) -> bytes[8]:
@@ -40,6 +41,7 @@ def to_little_endian_64(value: uint256) -> bytes[8]:
 
     return slice(convert(y, bytes32), start=24, len=8)
 
+
 @public
 @constant
 def get_deposit_root() -> bytes32:
@@ -53,10 +55,12 @@ def get_deposit_root() -> bytes32:
         size /= 2
     return root
 
+
 @public
 @constant
 def get_deposit_count() -> bytes[8]:
     return self.to_little_endian_64(self.deposit_count)
+
 
 @payable
 @public

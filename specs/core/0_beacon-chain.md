@@ -1163,13 +1163,13 @@ Whenever the deposit contract emits a `Deposit` log call the function `is_genesi
 * `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
 
-When `is_genesis_trigger(deposits, timestamp) == True` for the first time let:
+When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
 
 * `genesis_deposits = deposits`
 * `genesis_time = timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
 * `genesis_eth1_data` be the object of type `Eth1Data` where:
-    * `genesis_eth1_data.block_hash` is the block hash corresponding to `deposits`
-    * `genesis_eth1_data.deposit_root` is the deposit root corresponding to `deposits`
+    * `genesis_eth1_data.block_hash` is the block hash for the last deposit in `deposits`
+    * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
 
 *Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
@@ -1184,12 +1184,12 @@ def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
     # Count active validators at genesis
     active_validator_count = 0
     for validator in state.validator_registry:
-        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             active_validator_count += 1
 
     # Check effective balance to trigger genesis
-    GENESIS_EFFECTIVE_BALANCE = 2**21
-    return active_validator_count * MAX_EFFECTIVE_BALANCE == GENESIS_EFFECTIVE_BALANCE
+    GENESIS_ACTIVE_VALIDATOR_COUNT = 2**16
+    return active_validator_count == GENESIS_ACTIVE_VALIDATOR_COUNT
 ```
 
 ### Genesis state
