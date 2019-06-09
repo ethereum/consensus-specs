@@ -56,7 +56,7 @@ def deposit_input():
         (10, True),
         (55555, True),
         (2**64 - 1, True),
-        (2**64, True),  # Note that all calls to `to_little_endian_64` have an input less than 2**64
+        # (2**64, True),  # Note that all calls to `to_little_endian_64` have an input less than 2**64
     ]
 )
 def test_to_little_endian_64(registration_contract, value, success, assert_tx_failed):

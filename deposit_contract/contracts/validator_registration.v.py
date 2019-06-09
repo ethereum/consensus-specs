@@ -72,11 +72,8 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
     assert len(signature) == SIGNATURE_LENGTH
 
-    # Emit `Deposit` log
-    amount: bytes[8] = self.to_little_endian_64(deposit_amount)
-    log.Deposit(pubkey, withdrawal_credentials, amount, signature)
-
     # Compute `DepositData` root
+    amount: bytes[8] = self.to_little_endian_64(deposit_amount)
     zero_bytes32: bytes32
     pubkey_root: bytes32 = sha256(concat(pubkey, slice(zero_bytes32, start=0, len=64 - PUBKEY_LENGTH)))
     signature_root: bytes32 = sha256(concat(
@@ -97,3 +94,6 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
             break
         node = sha256(concat(self.branch[height], node))
         size /= 2
+
+    # Emit `Deposit` log
+    log.Deposit(pubkey, withdrawal_credentials, amount, signature)
