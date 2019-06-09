@@ -75,9 +75,9 @@ Every Ethereum 1.0 deposit, of size at least `MIN_DEPOSIT_AMOUNT`, emits a `Depo
 When `CHAIN_START_FULL_DEPOSIT_THRESHOLD` of full deposits have been made, the deposit contract emits the `Eth2Genesis` log. The beacon chain state may then be initialized by calling the `get_genesis_beacon_state` function (defined [here](./0_beacon-chain.md#genesis-state)) where:
 
 * `genesis_time` equals `time` in the `Eth2Genesis` log
-* `latest_eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
-* `latest_eth1_data.deposit_count` equals `deposit_count` in the `Eth2Genesis` log
-* `latest_eth1_data.block_hash` equals the hash of the block that included the log
+* `eth1_data.deposit_root` equals `deposit_root` in the `Eth2Genesis` log
+* `eth1_data.deposit_count` equals `deposit_count` in the `Eth2Genesis` log
+* `eth1_data.block_hash` equals the hash of the block that included the log
 * `genesis_validator_deposits` is a list of `Deposit` objects built according to the `Deposit` logs up to the deposit that triggered the `Eth2Genesis` log, processed in the order in which they were emitted (oldest to newest)
 
 ## Vyper code

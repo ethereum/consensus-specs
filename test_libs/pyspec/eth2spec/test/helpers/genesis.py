@@ -22,8 +22,8 @@ def create_genesis_state(spec, num_validators):
 
     state = spec.BeaconState(
         genesis_time=0,
-        deposit_index=num_validators,
-        latest_eth1_data=spec.Eth1Data(
+        eth1_deposit_index=num_validators,
+        eth1_data=spec.Eth1Data(
             deposit_root=deposit_root,
             deposit_count=num_validators,
             block_hash=spec.ZERO_HASH,
@@ -32,16 +32,16 @@ def create_genesis_state(spec, num_validators):
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
     state.balances = [spec.MAX_EFFECTIVE_BALANCE] * num_validators
-    state.validator_registry = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
+    state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
 
     # Process genesis activations
-    for validator in state.validator_registry:
+    for validator in state.validators:
         if validator.effective_balance >= spec.MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 
     genesis_active_index_root = hash_tree_root(spec.get_active_validator_indices(state, spec.GENESIS_EPOCH))
-    for index in range(spec.LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
-        state.latest_active_index_roots[index] = genesis_active_index_root
+    for index in range(spec.ACTIVE_INDEX_ROOTS_LENGTH):
+        state.active_index_roots[index] = genesis_active_index_root
 
     return state
