@@ -199,7 +199,7 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 6 seconds |
 | `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
