@@ -297,11 +297,11 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 * Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
 * Set `attestation_data.source_root = head_state.current_justified_root`.
 * Set `attestation_data.target_epoch = get_current_epoch(head_state)`
-* Set `attestation_data.target_root = signing_root(epoch_boundary_block)` where `epoch_boundary_block` is the block at the most recent epoch boundary.
+* Set `attestation_data.target_root = epoch_boundary_block_root` where `epoch_boundary_block_root` is the root of block at the most recent epoch boundary.
 
-*Note*: `epoch_boundary_block` can be looked up in the state using:
+*Note*: `epoch_boundary_block_root` can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
-* Let `epoch_boundary_block = head if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
+* Let `epoch_boundary_block_root = signing_root(head_block) if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
 
 ##### Crosslink vote
 
