@@ -77,7 +77,7 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
         privkey,
         amount,
         withdrawal_credentials,
-        signed
+        signed,
     )
 
     state.latest_eth1_data.deposit_root = root
