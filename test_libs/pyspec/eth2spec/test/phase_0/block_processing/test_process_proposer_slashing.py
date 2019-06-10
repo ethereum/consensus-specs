@@ -1,5 +1,5 @@
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
-from eth2spec.test.helpers.parent_block_header import sign_block_header
+from eth2spec.test.helpers.block_header import sign_block_header
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.state import get_balance
