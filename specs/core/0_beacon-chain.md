@@ -1166,7 +1166,7 @@ Whenever the deposit contract emits a `Deposit` log call the function `is_genesi
 When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
 
 * `genesis_deposits = deposits`
-* `genesis_time = timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
+* `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
 * `genesis_eth1_data` be the object of type `Eth1Data` where:
     * `genesis_eth1_data.block_hash` is the block hash for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
