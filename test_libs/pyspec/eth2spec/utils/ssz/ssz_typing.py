@@ -390,6 +390,22 @@ class BytesN(bytes, metaclass=BytesNMeta):
         return hash_tree_root(self, self.__class__)
 
 
+class Bytes4(BytesN):
+    length = 4
+
+
+class Bytes32(BytesN):
+    length = 32
+
+
+class Bytes48(BytesN):
+    length = 48
+
+
+class Bytes96(BytesN):
+    length = 96
+
+
 # SSZ Defaults
 # -----------------------------
 def get_zero_value(typ):

@@ -25,7 +25,8 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector, BytesN
+    uint64, Container, Vector,
+    Bytes4, Bytes32, Bytes48, Bytes96,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -52,7 +53,8 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector, BytesN
+    uint64, Container, Vector,
+    Bytes4, Bytes32, Bytes48, Bytes96,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -132,7 +134,6 @@ def objects_to_spec(functions: Dict[str, str],
     """
     new_type_definitions = \
         '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in new_types.items()])
-    new_type_definitions += '\n' + '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in byte_types])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
