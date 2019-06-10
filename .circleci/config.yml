@@ -1,7 +1,7 @@
 version: 2.1
 commands:
   restore_cached_venv:
-    description: "Restores a cached venv"
+    description: "Restore a cached venv"
     parameters:
       reqs_checksum:
         type: string
@@ -16,7 +16,7 @@ commands:
             # fallback to using the latest cache if no exact match is found
             - << parameters.venv_name >>-venv-
   save_cached_venv:
-    description: "Saves a venv into a cache"
+    description: "Save a venv into a cache"
     parameters:
       reqs_checksum:
         type: string
@@ -31,6 +31,32 @@ commands:
       - save_cache:
           key: << parameters.venv_name >>-venv-<< parameters.reqs_checksum >>
           paths: << parameters.venv_path >>
+  restore_pyspec_cached_venv:
+    description: "Restore the cache with pyspec keys"
+    steps:
+      - restore_cached_venv:
+          venv_name: v2-pyspec
+          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}
+  save_pyspec_cached_venv:
+    description: Save a venv into a cache with pyspec keys"
+    steps:
+      - save_cached_venv:
+          venv_name: v2-pyspec
+          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}
+          venv_path: ./test_libs/pyspec/venv
+  restore_deposit_contract_cached_venv:
+    description: "Restore the cache with deposit_contract keys"
+    steps:
+      - restore_cached_venv:
+          venv_name: v4-deposit-contract
+          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
+  save_deposit_contract_cached_venv:
+    description: Save a venv into a cache with deposit_contract keys"
+    steps:
+      - save_cached_venv:
+          venv_name: v4-deposit-contract
+          reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
+          venv_path: ./deposit_contract/venv
 jobs:
   checkout_specs:
     docker:
@@ -52,23 +78,18 @@ jobs:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
           paths:
             - ~/specs-repo
-  install_test:
+  install_pyspec_test:
     docker:
       - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cached_venv:
-          venv_name: v1-pyspec
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - restore_pyspec_cached_venv
       - run:
           name: Install pyspec requirements
           command: make install_test
-      - save_cached_venv:
-          venv_name: v1-pyspec
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
-          venv_path: ./test_libs/pyspec/venv
+      - save_pyspec_cached_venv
   test:
     docker:
       - image: circleci/python:3.6
@@ -76,22 +97,63 @@ jobs:
     steps:
       - restore_cache:
           key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-      - restore_cached_venv:
-          venv_name: v1-pyspec
-          reqs_checksum: '{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}'
+      - restore_pyspec_cached_venv
       - run:
           name: Run py-tests
           command: make citest
       - store_test_results:
           path: test_libs/pyspec/test-reports
+  lint:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_pyspec_cached_venv
+      - run:
+          name: Run linter
+          command: make lint
+  install_deposit_contract_test:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_deposit_contract_cached_venv
+      - run:
+          name: Install deposit contract requirements
+          command: make install_deposit_contract_test
+      - save_deposit_contract_cached_venv
+  deposit_contract:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - restore_cache:
+          key: v1-specs-repo-{{ .Branch }}-{{ .Revision }}
+      - restore_deposit_contract_cached_venv
+      - run:
+          name: Run deposit contract test
+          command: make test_deposit_contract
 workflows:
   version: 2.1
   test_spec:
     jobs:
       - checkout_specs
-      - install_test:
+      - install_pyspec_test:
           requires:
             - checkout_specs
       - test:
           requires:
-            - install_test
+            - install_pyspec_test
+      - lint:
+          requires:
+            - test
+      - install_deposit_contract_test:
+          requires:
+            - checkout_specs
+      - deposit_contract:
+          requires:
+            - install_deposit_contract_test

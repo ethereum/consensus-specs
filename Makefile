@@ -4,6 +4,7 @@ TEST_LIBS_DIR = ./test_libs
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 YAML_TEST_DIR = ./eth2.0-spec-tests/tests
 GENERATOR_DIR = ./test_generators
+DEPOSIT_CONTRACT_DIR = ./deposit_contract
 CONFIGS_DIR = ./configs
 
 # Collect a list of generator names
@@ -13,10 +14,15 @@ YAML_TEST_TARGETS = $(patsubst $(GENERATOR_DIR)/%, $(YAML_TEST_DIR)/%, $(GENERAT
 GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
 
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
-PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS)
+PY_SPEC_PHASE_0_DEPS = $(SPEC_DIR)/core/0_*.md
+
+PY_SPEC_PHASE_1_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase1/spec.py
+PY_SPEC_PHASE_1_DEPS = $(SPEC_DIR)/core/1_*.md
+
+PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
 
-.PHONY: clean all test citest gen_yaml_tests pyspec phase0 install_test
+.PHONY: clean all test citest lint gen_yaml_tests pyspec phase0 phase1 install_test install_deposit_contract_test test_deposit_contract compile_deposit_contract 
 
 all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
@@ -25,6 +31,7 @@ clean:
 	rm -rf $(GENERATOR_VENVS)
 	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
+	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv $(DEPOSIT_CONTRACT_DIR)/.pytest_cache
 
 # "make gen_yaml_tests" to run generators
 gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
@@ -37,18 +44,32 @@ test: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest eth2spec
 
 citest: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; python -m pytest --junitxml=test-reports/eth2spec/test_results.xml .
+	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate;	\
+	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml eth2spec
+
+lint: $(PY_SPEC_ALL_TARGETS)
+	cd $(PY_SPEC_DIR); . venv/bin/activate; \
+	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec;
+
+install_deposit_contract_test: $(PY_SPEC_ALL_TARGETS)
+	cd $(DEPOSIT_CONTRACT_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt
+
+compile_deposit_contract:
+	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
+	python tool/compile_deposit_contract.py contracts/validator_registration.v.py;
+
+test_deposit_contract:
+	cd $(DEPOSIT_CONTRACT_DIR); . venv/bin/activate; \
+	python -m pytest .
 
 # "make pyspec" to create the pyspec for all phases.
 pyspec: $(PY_SPEC_ALL_TARGETS)
 
-# "make phase0" to create pyspec for phase0
-phase0: $(PY_SPEC_PHASE_0_TARGETS)
+$(PY_SPEC_PHASE_0_TARGETS): $(PY_SPEC_PHASE_0_DEPS)
+	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(SPEC_DIR)/core/0_beacon-chain.md $@
 
-
-$(PY_SPEC_DIR)/eth2spec/phase0/spec.py:
-	python3 $(SCRIPT_DIR)/phase0/build_spec.py  $(SPEC_DIR)/core/0_beacon-chain.md $@
-
+$(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
+	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/1_custody-game.md $(SPEC_DIR)/core/1_shard-data-chains.md $@
 
 CURRENT_DIR = ${CURDIR}
 

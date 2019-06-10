@@ -1,19 +1,18 @@
-ETH 2.0 Networking Spec - RPC Interface
-===
+# Eth 2.0 Networking Spec - RPC Interface
 
-# Abstract
+## Abstract
 
 The Ethereum 2.0 networking stack uses two modes of communication: a broadcast protocol that gossips information to interested parties via GossipSub, and an RPC protocol that retrieves information from specific clients. This specification defines the RPC protocol.
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL", NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL", NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
-# Dependencies
+## Dependencies
 
 This specification assumes familiarity with the [Messaging](./messaging.md), [Node Identification](./node-identification.md), and [Beacon Chain](../core/0_beacon-chain.md) specifications.
 
 # Specification
 
-## Message Schemas
+## Message schemas
 
 Message body schemas are notated like this:
 
@@ -26,13 +25,13 @@ Message body schemas are notated like this:
 
 Embedded types are serialized as SSZ Containers unless otherwise noted.
 
-All referenced data structures can be found in the [0-beacon-chain](../core/0_beacon-chain.md#data-structures) specification.
+All referenced data structures can be found in the [Beacon Chain](../core/0_beacon-chain.md#data-structures) specification.
 
-## `libp2p` Protocol Names
+## `libp2p` protocol names
 
-A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp2p` uses in order to identify sub-protocols and stream messages of different types over the same connection. Peers exchange supported protocol IDs via the `Identify` protocol upon connection. When opening a new stream, peers pin a particular protocol ID to it, and the stream remains contextualised thereafter. Since messages are sent inside a stream, they do not need to bear the protocol ID.
+A "Protocol ID" in `libp2p` parlance refers to a human-readable identifier `libp2p` uses in order to identify sub-protocols and stream messages of different types over the same connection. Peers exchange supported protocol IDs via the `Identify` protocol upon connection. When opening a new stream, peers pin a particular protocol ID to it, and the stream remains contextualized thereafter. Since messages are sent inside a stream, they do not need to bear the protocol ID.
 
-## RPC-Over-`libp2p`
+## RPC-over-`libp2p`
 
 To facilitate RPC-over-`libp2p`, a single protocol name is used: `/eth/serenity/beacon/rpc/1`. The version number in the protocol name is neither backwards or forwards compatible, and will be incremented whenever changes to the below structures are required.
 
@@ -42,7 +41,7 @@ Remote method calls are wrapped in a "request" structure:
 (
     id: uint64
     method_id: uint16
-    body: Request
+    body: (message_body...)
 )
 ```
 
@@ -56,15 +55,7 @@ and their corresponding responses are wrapped in a "response" structure:
 )
 ```
 
-If an error occurs, a variant of the response structure is returned:
-
-```
-(
-    id: uint64
-    response_code: uint16
-    result: bytes
-)
-```
+A union type is used to determine the contents of the `body` field in the request structure. Each "body" entry in the RPC calls below corresponds to one subtype in the `body` type union.
 
 The details of the RPC-Over-`libp2p` protocol are similar to [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Specifically:
 
@@ -88,7 +79,7 @@ The first 1,000 values in `response_code` are reserved for system use. The follo
 3. `30`: Method not found.
 4. `40`: Server error.
 
-### Alternative for Non-`libp2p` Clients
+### Alternative for non-`libp2p` clients
 
 Since some clients are waiting for `libp2p` implementations in their respective languages. As such, they MAY listen for raw TCP messages on port `9000`. To distinguish RPC messages from other messages on that port, a byte prefix of `ETH` (`0x455448`) MUST be prepended to all messages. This option will be removed once `libp2p` is ready in all supported languages.
 
@@ -145,7 +136,7 @@ Root B          ^
        +---+
 ```
 
-Once the handshake completes, the client with the higher `latest_finalized_epoch` or `best_slot` (if the clients have equal `latest_finalized_epoch`s) SHOULD request beacon block roots from its counterparty via `beacon_block_roots` (i.e., RPC method `10`).
+Once the handshake completes, the client with the higher `latest_finalized_epoch` or `best_slot` (if the clients have equal `latest_finalized_epoch`s) SHOULD request beacon block roots from its counterparty via `beacon_block_roots` (i.e. RPC method `10`).
 
 ### Goodbye
 
@@ -167,11 +158,11 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MAY be o
 
 Clients MAY define custom goodbye reasons as long as the value is larger than `1000`.
 
-### Get Status
+### Get status
 
 **Method ID:** `2`
 
-**Request Body:**
+**Request body:**
 
 ```
 (
@@ -181,7 +172,7 @@ Clients MAY define custom goodbye reasons as long as the value is larger than `1
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 (
@@ -193,11 +184,11 @@ Clients MAY define custom goodbye reasons as long as the value is larger than `1
 
 Returns metadata about the remote node.
 
-### Request Beacon Block Roots
+### Request beacon block roots
 
 **Method ID:** `10`
 
-**Request Body**
+**Request body**
 
 ```
 (
@@ -206,7 +197,7 @@ Returns metadata about the remote node.
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 # BlockRootSlot
@@ -222,11 +213,11 @@ Returns metadata about the remote node.
 
 Requests a list of block roots and slots from the peer. The `count` parameter MUST be less than or equal to `32768`. The slots MUST be returned in ascending slot order.
 
-### Beacon Block Headers
+### Beacon block headers
 
 **Method ID:** `11`
 
-**Request Body**
+**Request body**
 
 ```
 (
@@ -237,7 +228,7 @@ Requests a list of block roots and slots from the peer. The `count` parameter MU
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 (
@@ -245,15 +236,15 @@ Requests a list of block roots and slots from the peer. The `count` parameter MU
 )
 ```
 
-Requests beacon block headers from the peer starting from `(start_root, start_slot)`. The response MUST contain no more than `max_headers` headers. `skip_slots` defines the maximum number of slots to skip between blocks. For example, requesting blocks starting at slots `2` a `skip_slots` value of `1` would return the blocks at `[2, 4, 6, 8, 10]`. In cases where a slot is empty for a given slot number, the closest previous block MUST be returned. For example, if slot `4` were empty in the previous example, the returned array would contain `[2, 3, 6, 8, 10]`. If slot three were further empty, the array would contain `[2, 6, 8, 10]` - i.e., duplicate blocks MUST be collapsed. A `skip_slots` value of `0` returns all blocks.
+Requests beacon block headers from the peer starting from `(start_root, start_slot)`. The response MUST contain no more than `max_headers` headers. `skip_slots` defines the maximum number of slots to skip between blocks. For example, requesting blocks starting at slots `2` a `skip_slots` value of `1` would return the blocks at `[2, 4, 6, 8, 10]`. In cases where a slot is empty for a given slot number, the closest previous block MUST be returned. For example, if slot `4` were empty in the previous example, the returned array would contain `[2, 3, 6, 8, 10]`. If slot three were further empty, the array would contain `[2, 6, 8, 10]`—i.e. duplicate blocks MUST be collapsed. A `skip_slots` value of `0` returns all blocks.
 
 The function of the `skip_slots` parameter helps facilitate light client sync - for example, in [#459](https://github.com/ethereum/eth2.0-specs/issues/459) - and allows clients to balance the peers from whom they request headers. Clients could, for instance, request every 10th block from a set of peers where each peer has a different starting block in order to populate block data.
 
-### Beacon Block Bodies
+### Beacon block bodies
 
 **Method ID:** `12`
 
-**Request Body:**
+**Request body:**
 
 ```
 (
@@ -261,7 +252,7 @@ The function of the `skip_slots` parameter helps facilitate light client sync - 
 )
 ```
 
-**Response Body:**
+**Response body:**
 
 ```
 (
@@ -269,15 +260,15 @@ The function of the `skip_slots` parameter helps facilitate light client sync - 
 )
 ```
 
-Requests the `block_bodies` associated with the provided `block_roots` from the peer. Responses MUST return `block_roots` in the order provided in the request. If the receiver does not have a particular `block_root`, it must return a zero-value `block_body` (i.e., a `block_body` container with all zero fields).
+Requests the `block_bodies` associated with the provided `block_roots` from the peer. Responses MUST return `block_roots` in the order provided in the request. If the receiver does not have a particular `block_root`, it must return a zero-value `block_body` (i.e. a `block_body` container with all zero fields).
 
-### Beacon Chain State
+### Beacon chain state
 
-**Note:** This section is preliminary, pending the definition of the data structures to be transferred over the wire during fast sync operations.
+*Note*: This section is preliminary, pending the definition of the data structures to be transferred over the wire during fast sync operations.
 
 **Method ID:** `13`
 
-**Request Body:**
+**Request body:**
 
 ```
 (
@@ -285,7 +276,7 @@ Requests the `block_bodies` associated with the provided `block_roots` from the 
 )
 ```
 
-**Response Body:** TBD
+**Response body:** TBD
 
 Requests contain the hashes of Merkle tree nodes that when merkleized yield the block's `state_root`.
 
