@@ -58,7 +58,7 @@ def build_empty_block(spec, state, slot=None, signed=False):
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
     empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
-    previous_block_header = deepcopy(state.block_header)
+    previous_block_header = deepcopy(state.parent_block_header)
     if previous_block_header.state_root == spec.ZERO_HASH:
         previous_block_header.state_root = state.hash_tree_root()
     empty_block.parent_root = signing_root(previous_block_header)

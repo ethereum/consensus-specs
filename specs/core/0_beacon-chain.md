@@ -493,7 +493,7 @@ class BeaconState(Container):
     slot: Slot
     fork: Fork
     # History
-    block_header: BeaconBlockHeader
+    parent_block_header: BeaconBlockHeader
     block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
     historical_roots: List[Hash]
@@ -511,8 +511,8 @@ class BeaconState(Container):
     # Slashings
     slashed_balances: Vector[Gwei, SLASHED_EXIT_LENGTH]
     # Attestations
-    previous_attestations: List[PendingAttestation]
-    current_attestations: List[PendingAttestation]
+    previous_epoch_attestations: List[PendingAttestation]
+    current_epoch_attestations: List[PendingAttestation]
     # Crosslinks
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
@@ -1126,7 +1126,7 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
     state = BeaconState(
         genesis_time=genesis_time,
         eth1_data=genesis_eth1_data,
-        block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
+        parent_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
 
     # Process genesis deposits
@@ -1186,11 +1186,11 @@ def process_slot(state: BeaconState) -> None:
     state.state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
 
     # Cache latest block header state root
-    if state.block_header.state_root == ZERO_HASH:
-        state.block_header.state_root = previous_state_root
+    if state.parent_block_header.state_root == ZERO_HASH:
+        state.parent_block_header.state_root = previous_state_root
 
     # Cache block root
-    previous_block_root = signing_root(state.block_header)
+    previous_block_root = signing_root(state.parent_block_header)
     state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
 ```
 
@@ -1221,7 +1221,7 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 ```python
 def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
     assert epoch in (get_current_epoch(state), get_previous_epoch(state))
-    return state.current_attestations if epoch == get_current_epoch(state) else state.previous_attestations
+    return state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
 ```
 
 ```python
@@ -1509,8 +1509,8 @@ def process_final_updates(state: BeaconState) -> None:
         )
         state.historical_roots.append(hash_tree_root(historical_batch))
     # Rotate current/previous epoch attestations
-    state.previous_attestations = state.current_attestations
-    state.current_attestations = []
+    state.previous_epoch_attestations = state.current_epoch_attestations
+    state.current_epoch_attestations = []
 ```
 
 ### Block processing
@@ -1530,9 +1530,9 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
     # Verify that the parent matches
-    assert block.parent_root == signing_root(state.block_header)
+    assert block.parent_root == signing_root(state.parent_block_header)
     # Save current block as the new latest block
-    state.block_header = BeaconBlockHeader(
+    state.parent_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
         body_root=hash_tree_root(block.body),
@@ -1661,11 +1661,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     if data.target_epoch == get_current_epoch(state):
         ffg_data = (state.current_justified_epoch, state.current_justified_root, get_current_epoch(state))
         parent_crosslink = state.current_crosslinks[data.crosslink.shard]
-        state.current_attestations.append(pending_attestation)
+        state.current_epoch_attestations.append(pending_attestation)
     else:
         ffg_data = (state.previous_justified_epoch, state.previous_justified_root, get_previous_epoch(state))
         parent_crosslink = state.previous_crosslinks[data.crosslink.shard]
-        state.previous_attestations.append(pending_attestation)
+        state.previous_epoch_attestations.append(pending_attestation)
 
     # Check FFG data, crosslink data, and signature
     assert ffg_data == (data.source_epoch, data.source_root, data.target_epoch)

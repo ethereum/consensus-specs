@@ -233,17 +233,17 @@ def test_attestation(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     # Add to state via block transition
-    pre_current_attestations_len = len(state.current_attestations)
+    pre_current_attestations_len = len(state.current_epoch_attestations)
     attestation_block = build_empty_block_for_next_slot(spec, state)
     attestation_block.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
     attestation_block.body.attestations.append(attestation)
     sign_block(spec, state, attestation_block)
     spec.state_transition(state, attestation_block)
 
-    assert len(state.current_attestations) == pre_current_attestations_len + 1
+    assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
 
-    # Epoch transition should move to previous_attestations
-    pre_current_attestations_root = spec.hash_tree_root(state.current_attestations)
+    # Epoch transition should move to previous_epoch_attestations
+    pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
 
     epoch_block = build_empty_block_for_next_slot(spec, state)
     epoch_block.slot += spec.SLOTS_PER_EPOCH
@@ -253,8 +253,8 @@ def test_attestation(spec, state):
     yield 'blocks', [attestation_block, epoch_block], List[spec.BeaconBlock]
     yield 'post', state
 
-    assert len(state.current_attestations) == 0
-    assert spec.hash_tree_root(state.previous_attestations) == pre_current_attestations_root
+    assert len(state.current_epoch_attestations) == 0
+    assert spec.hash_tree_root(state.previous_epoch_attestations) == pre_current_attestations_root
 
 
 @with_all_phases

@@ -31,17 +31,17 @@ def run_attestation_processing(spec, state, attestation, valid=True):
         yield 'post', None
         return
 
-    current_epoch_count = len(state.current_attestations)
-    previous_epoch_count = len(state.previous_attestations)
+    current_epoch_count = len(state.current_epoch_attestations)
+    previous_epoch_count = len(state.previous_epoch_attestations)
 
     # process attestation
     spec.process_attestation(state, attestation)
 
     # Make sure the attestation has been processed
     if attestation.data.target_epoch == spec.get_current_epoch(state):
-        assert len(state.current_attestations) == current_epoch_count + 1
+        assert len(state.current_epoch_attestations) == current_epoch_count + 1
     else:
-        assert len(state.previous_attestations) == previous_epoch_count + 1
+        assert len(state.previous_epoch_attestations) == previous_epoch_count + 1
 
     # yield post-state
     yield 'post', state

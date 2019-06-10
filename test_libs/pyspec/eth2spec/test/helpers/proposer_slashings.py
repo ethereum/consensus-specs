@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from eth2spec.test.helpers.block_header import sign_block_header
+from eth2spec.test.helpers.parent_block_header import sign_block_header
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 
 

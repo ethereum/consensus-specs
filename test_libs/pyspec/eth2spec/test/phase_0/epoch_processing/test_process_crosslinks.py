@@ -56,7 +56,7 @@ def test_single_crosslink_update_from_current_epoch(spec, state):
     fill_aggregate_attestation(spec, state, attestation)
     add_attestation_to_state(spec, state, attestation, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
-    assert len(state.current_attestations) == 1
+    assert len(state.current_epoch_attestations) == 1
 
     shard = attestation.data.crosslink.shard
     pre_crosslink = deepcopy(state.current_crosslinks[shard])
@@ -77,7 +77,7 @@ def test_single_crosslink_update_from_previous_epoch(spec, state):
     fill_aggregate_attestation(spec, state, attestation)
     add_attestation_to_state(spec, state, attestation, state.slot + spec.SLOTS_PER_EPOCH)
 
-    assert len(state.previous_attestations) == 1
+    assert len(state.previous_epoch_attestations) == 1
 
     shard = attestation.data.crosslink.shard
     pre_crosslink = deepcopy(state.current_crosslinks[shard])
@@ -130,8 +130,8 @@ def test_double_late_crosslink(spec, state):
     next_epoch(spec, state)
     add_attestation_to_state(spec, state, attestation_2, state.slot + 1)
 
-    assert len(state.previous_attestations) == 1
-    assert len(state.current_attestations) == 0
+    assert len(state.previous_epoch_attestations) == 1
+    assert len(state.current_epoch_attestations) == 0
 
     crosslink_deltas = spec.get_crosslink_deltas(state)
 
