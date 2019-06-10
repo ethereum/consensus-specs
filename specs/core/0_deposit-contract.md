@@ -42,7 +42,7 @@ The deposit contract has a public `deposit` function to make deposits. It takes 
 
 #### Deposit amount
 
-The ETH sent to the deposit contract, i.e. the deposit amount, is burnt on Ethereum 1.0. The minimum deposit amount is `MIN_DEPOSIT_AMOUNT` Gwei.
+The amount of ETH (rounded down to the closest Gwei) sent to the deposit contract is the deposit amount, which must be of size at least `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no longer usable on Ethereum 1.0.
 
 #### Withdrawal credentials
 

@@ -1,5 +1,6 @@
 MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
+MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1
 PUBKEY_LENGTH: constant(uint256) = 48  # bytes
 WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes
 AMOUNT_LENGTH: constant(uint256) = 8  # bytes
@@ -27,7 +28,8 @@ def __init__():
 @constant
 def to_little_endian_64(value: uint256) -> bytes[8]:
     # Reversing bytes using bitwise uint256 manipulations
-    # (array accesses of bytes[] are not currently supported in Vyper)
+    # Note: array accesses of bytes[] are not currently supported in Vyper
+    # Note: this function is only called when `value < 2**64`
     y: uint256 = 0
     x: uint256 = value
     for _ in range(8):
@@ -62,8 +64,8 @@ def get_deposit_count() -> bytes[8]:
 def deposit(pubkey: bytes[PUBKEY_LENGTH],
             withdrawal_credentials: bytes[WITHDRAWAL_CREDENTIALS_LENGTH],
             signature: bytes[SIGNATURE_LENGTH]):
-    # Avoid overflowing the Merkle tree
-    assert self.deposit_count < 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1
+    # Avoid overflowing the Merkle tree (and prevent edge case in computing `self.branch`)
+    assert self.deposit_count < MAX_DEPOSIT_COUNT
 
     # Validate deposit data
     deposit_amount: uint256 = msg.value / as_wei_value(1, "gwei")
