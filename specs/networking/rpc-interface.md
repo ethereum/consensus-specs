@@ -67,17 +67,20 @@ The details of the RPC-Over-`libp2p` protocol are similar to [JSON-RPC 2.0](http
 6. The `result` member is OPTIONAL on errors, and MAY contain additional information about the error.
 7. `response_code` MUST be `0` on success.
 
-Structuring RPC requests in this manner allows multiple calls and responses to be multiplexed over the same stream without switching. Note that this implies that responses MAY arrive in a different order than requests.
+A single LibP2P stream provides duplex mode communication for the connected peers. Requests and responses MAY be sent in arbitrary order by both parties. Requests and responses are discriminated through the value of their `id` member. Each request MUST use an even number as `id`, while the correponding response MUST use the value `id + 1`.
 
 The "method ID" fields in the below messages refer to the `method` field in the request structure above.
 
 The first 1,000 values in `response_code` are reserved for system use. The following response codes are predefined:
 
 1. `0`: No error.
-2. `10`: Parse error.
-2. `20`: Invalid request.
-3. `30`: Method not found.
-4. `40`: Server error.
+2. `1`: Response Chunk
+4. `10`: Parse error.
+5. `20`: Invalid request.
+6. `30`: Method not found.
+7. `40`: Server error.
+
+Very large responses MAY be delivered in chunks. This MUST be indicated by sending multiple response messages using the same `id` and the `response_code` value `Response Chunk`. The last chunk MUST be indicated with a `response_code` value `No error`.
 
 ### Alternative for non-`libp2p` clients
 
@@ -102,7 +105,7 @@ Since some clients are waiting for `libp2p` implementations in their respective 
 )
 ```
 
-Clients exchange `hello` messages upon connection, forming a two-phase handshake. The first message the initiating client sends MUST be the `hello` message. In response, the receiving client MUST respond with its own `hello` message.
+Clients exchange `hello` messages upon connection, forming a two-phase handshake. The first message the initiating client sends MUST be the `hello` message. In response, the receiving client MUST respond with its own `hello` message within 10 seconds.
 
 Clients SHOULD immediately disconnect from one another following the handshake above under the following conditions:
 
@@ -154,7 +157,11 @@ Client MAY send `goodbye` messages upon disconnection. The reason field MAY be o
 
 - `1`: Client shut down.
 - `2`: Irrelevant network.
-- `3`: Fault/error.
+- `3`: Breach of protocol.
+- `4`: Useless peer.
+- `5`: Already Connected.
+- `6`: Self-connection.
+- `7`: Fault/error.
 
 Clients MAY define custom goodbye reasons as long as the value is larger than `1000`.
 
@@ -281,3 +288,4 @@ Requests the `block_bodies` associated with the provided `block_roots` from the 
 Requests contain the hashes of Merkle tree nodes that when merkleized yield the block's `state_root`.
 
 The response will contain the values that, when hashed, yield the hashes inside the request body.
+
