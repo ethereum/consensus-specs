@@ -67,7 +67,7 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
 
     # insecurely use pubkey as withdrawal key if no credentials provided
     if withdrawal_credentials is None:
-        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX_BYTE + spec.hash(pubkey)[1:]
+        withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
 
     deposit, root, deposit_data_leaves = build_deposit(
         spec,
