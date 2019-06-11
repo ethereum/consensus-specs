@@ -30,8 +30,8 @@ def create_suite(handler_name: str, config_name: str, get_cases: Callable[[], It
 
 if __name__ == "__main__":
     gen_runner.run_generator("sanity", [
-        create_suite('blocks', 'minimal', lambda: generate_from_tests(test_blocks)),
-        create_suite('blocks', 'mainnet', lambda: generate_from_tests(test_blocks)),
-        create_suite('slots', 'minimal', lambda: generate_from_tests(test_slots)),
-        create_suite('slots', 'mainnet', lambda: generate_from_tests(test_slots)),
+        create_suite('blocks', 'minimal', lambda: generate_from_tests(test_blocks, 'phase0')),
+        create_suite('blocks', 'mainnet', lambda: generate_from_tests(test_blocks, 'phase0')),
+        create_suite('slots', 'minimal', lambda: generate_from_tests(test_slots, 'phase0')),
+        create_suite('slots', 'mainnet', lambda: generate_from_tests(test_slots, 'phase0')),
     ])
