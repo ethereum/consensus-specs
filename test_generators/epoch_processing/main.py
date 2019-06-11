@@ -35,6 +35,8 @@ if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
         create_suite('crosslinks', 'minimal', lambda: generate_from_tests(test_process_crosslinks, 'phase0')),
         create_suite('crosslinks', 'mainnet', lambda: generate_from_tests(test_process_crosslinks, 'phase0')),
-        create_suite('registry_updates', 'minimal', lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
-        create_suite('registry_updates', 'mainnet', lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
+        create_suite('registry_updates', 'minimal',
+                     lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
+        create_suite('registry_updates', 'mainnet',
+                     lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
     ])
