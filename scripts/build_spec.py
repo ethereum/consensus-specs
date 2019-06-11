@@ -15,6 +15,7 @@ PHASE0_IMPORTS = '''from typing import (
     Any,
     Dict,
     List,
+    Set,
     Tuple,
 )
 
@@ -40,6 +41,7 @@ PHASE1_IMPORTS = '''from typing import (
     Any,
     Dict,
     List,
+    Set,
     Tuple,
 )
 
@@ -77,10 +79,13 @@ def get_ssz_type_by_name(name: str) -> Container:
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache = {}  # type: Dict[Tuple[Bytes32, Bytes32, ValidatorIndex, int], List[ValidatorIndex]]
+committee_cache: Dict[Tuple[Bytes32, Bytes32, int, int], List[ValidatorIndex]] = {}
 
 
-def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
+def compute_committee(indices: List[ValidatorIndex],  # type: ignore
+                      seed: Bytes32,
+                      index: int,
+                      count: int) -> List[ValidatorIndex]:
     param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash in committee_cache:
