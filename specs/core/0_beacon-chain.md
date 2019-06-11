@@ -1427,7 +1427,9 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             if index in get_attesting_indices(state, a.data, a.aggregation_bitfield)
         ], key=lambda a: a.inclusion_delay)
         rewards[attestation.proposer_index] += Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
-        rewards[index] += Gwei(get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // attestation.inclusion_delay)
+        rewards[index] += Gwei(
+            get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // attestation.inclusion_delay
+        )
 
     # Inactivity penalty
     finality_delay = previous_epoch - state.finalized_epoch
