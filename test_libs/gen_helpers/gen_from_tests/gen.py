@@ -1,9 +1,10 @@
 from inspect import getmembers, isfunction
 
-def generate_from_tests(src, bls_active=True):
+def generate_from_tests(src, phase, bls_active=True):
     """
     Generate a list of test cases by running tests from the given src in generator-mode.
-    :param src: to retrieve tests from (discovered using inspect.getmembers)
+    :param src: to retrieve tests from (discovered using inspect.getmembers).
+    :param phase: to run tests against particular phase.
     :param bls_active: optional, to override BLS switch preference. Defaults to True.
     :return: the list of test cases.
     """
@@ -16,7 +17,7 @@ def generate_from_tests(src, bls_active=True):
     for name in fn_names:
         tfn = getattr(src, name)
         try:
-            test_case = tfn(generator_mode=True, bls_active=bls_active)
+            test_case = tfn(generator_mode=True, phase=phase, bls_active=bls_active)
             # If no test case data is returned, the test is ignored.
             if test_case is not None:
                 out.append(test_case)

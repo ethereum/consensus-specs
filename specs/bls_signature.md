@@ -1,6 +1,8 @@
 # BLS signature verification
 
-**Warning: This document is pending academic review and should not yet be considered secure.**
+**Notice**: This document is a placeholder to facilitate the emergence of cross-client testnets. Substantive changes are postponed until [BLS standardisation](https://github.com/pairingwg/bls_standard) is finalized.
+
+**Warning**: The constructions in this document should not be considered secure. In particular, the `hash_to_G2` function is known to be unsecure.
 
 ## Table of contents
 <!-- TOC -->
@@ -118,7 +120,7 @@ Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `sig
 
 ## Signature verification
 
-In the following `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
+In the following, `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
 
 ```python
 g_x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507

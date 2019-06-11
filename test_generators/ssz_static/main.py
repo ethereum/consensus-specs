@@ -1,8 +1,11 @@
 from random import Random
 
+from inspect import getmembers, isclass
+
 from eth2spec.debug import random_value, encode
 from eth2spec.phase0 import spec
-from eth2spec.utils.minimal_ssz import (
+from eth2spec.utils.ssz.ssz_typing import Container
+from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
     serialize,
@@ -27,17 +30,23 @@ def create_test_case_contents(value, typ):
 
 
 @to_dict
-def create_test_case(rng: Random, name: str, mode: random_value.RandomizationMode, chaos: bool):
-    typ = spec.get_ssz_type_by_name(name)
+def create_test_case(rng: Random, name: str, typ, mode: random_value.RandomizationMode, chaos: bool):
     value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
     yield name, create_test_case_contents(value, typ)
 
 
+def get_spec_ssz_types():
+    return [
+        (name, value) for (name, value) in getmembers(spec, isclass)
+        if issubclass(value, Container) and value != Container  # only the subclasses, not the imported base class
+    ]
+
+
 @to_tuple
 def ssz_static_cases(rng: Random, mode: random_value.RandomizationMode, chaos: bool, count: int):
-    for type_name in spec.ssz_types:
+    for (name, ssz_type) in get_spec_ssz_types():
         for i in range(count):
-            yield create_test_case(rng, type_name, mode, chaos)
+            yield create_test_case(rng, name, ssz_type, mode, chaos)
 
 
 def get_ssz_suite(seed: int, config_name: str, mode: random_value.RandomizationMode, chaos: bool, cases_if_random: int):
@@ -80,8 +89,6 @@ if __name__ == "__main__":
     seed += 1
     settings.append((seed, "mainnet", random_value.RandomizationMode.mode_random, False, 5))
     seed += 1
-
-    print("Settings: %d, SSZ-types: %d" % (len(settings), len(spec.ssz_types)))
 
     gen_runner.run_generator("ssz_static", [
         get_ssz_suite(seed, config_name, mode, chaos, cases_if_random)

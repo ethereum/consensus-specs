@@ -47,7 +47,7 @@ GENESIS_FORK_VERSION: 0x00000000
 GENESIS_SLOT: 0
 # 2**64 - 1
 FAR_FUTURE_EPOCH: 18446744073709551615
-BLS_WITHDRAWAL_PREFIX_BYTE: 0x00
+BLS_WITHDRAWAL_PREFIX: 0
 
 
 # Time parameters
@@ -58,22 +58,24 @@ SECONDS_PER_SLOT: 6
 MIN_ATTESTATION_INCLUSION_DELAY: 2
 # [customized] fast epochs
 SLOTS_PER_EPOCH: 8
-# 2**0 (= 1) epochs 6.4 minutes
+# 2**0 (= 1) epochs
 MIN_SEED_LOOKAHEAD: 1
-# 2**2 (= 4) epochs 25.6 minutes
+# 2**2 (= 4) epochs
 ACTIVATION_EXIT_DELAY: 4
 # [customized] higher frequency new deposits from eth1 for testing
 SLOTS_PER_ETH1_VOTING_PERIOD: 16
 # [customized] smaller state
 SLOTS_PER_HISTORICAL_ROOT: 64
-# 2**8 (= 256) epochs ~27 hours
+# 2**8 (= 256) epochs
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
-# 2**11 (= 2,048) epochs 9 days
+# 2**11 (= 2,048) epochs
 PERSISTENT_COMMITTEE_PERIOD: 2048
-# 2**6 (= 64) epochs ~7 hours
-MAX_CROSSLINK_EPOCHS: 64
-# 2**2 (= 4) epochs 25.6 minutes
+# 2**6 (= 64) epochs
+MAX_EPOCHS_PER_CROSSLINK: 64
+# 2**2 (= 4) epochs
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
+# [customized] 2**12 (= 4,096) epochs
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 4096
 
 
 # State list lengths
@@ -89,7 +91,7 @@ LATEST_SLASHED_EXIT_LENGTH: 64
 # Reward and penalty quotients
 # ---------------------------------------------------------------
 # 2**5 (= 32)
-BASE_REWARD_QUOTIENT: 32
+BASE_REWARD_FACTOR: 32
 # 2**9 (= 512)
 WHISTLEBLOWING_REWARD_QUOTIENT: 512
 # 2**3 (= 8)
