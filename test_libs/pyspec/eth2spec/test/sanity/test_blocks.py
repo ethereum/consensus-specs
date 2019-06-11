@@ -5,7 +5,7 @@ from eth2spec.utils.ssz.ssz_impl import signing_root
 from eth2spec.utils.bls import bls_sign
 
 from eth2spec.test.helpers.state import get_balance
-from eth2spec.test.helpers.transfers import get_valid_transfer
+# from eth2spec.test.helpers.transfers import get_valid_transfer
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
