@@ -1168,7 +1168,7 @@ When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
 * `genesis_deposits = deposits`
 * `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
 * `genesis_eth1_data` be the object of type `Eth1Data` where:
-    * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted to log for the last deposit in `deposits`
+    * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
 
