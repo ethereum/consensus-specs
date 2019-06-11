@@ -16,7 +16,7 @@ def create_suite(handler_name: str, config_name: str, get_cases: Callable[[], It
         spec_phase0.apply_constants_preset(presets)
         spec_phase1.apply_constants_preset(presets)
 
-        return ("%sanity_s_%s" % (handler_name, config_name), handler_name, gen_suite.render_suite(
+        return ("sanity_%s_%s" % (handler_name, config_name), handler_name, gen_suite.render_suite(
             title="sanity testing",
             summary="Sanity test suite, %s type, generated from pytests" % handler_name,
             forks_timeline="testing",
