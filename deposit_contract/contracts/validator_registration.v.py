@@ -75,9 +75,12 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
     assert len(signature) == SIGNATURE_LENGTH
 
-    # Compute `DepositData` root
+    # Emit `Deposit` log
     amount: bytes[8] = self.to_little_endian_64(deposit_amount)
-    zero_bytes32: bytes32
+    log.Deposit(pubkey, withdrawal_credentials, amount, signature, self.to_little_endian_64(self.deposit_count))
+
+    # Compute `DepositData` root
+    zero_bytes32: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
     pubkey_root: bytes32 = sha256(concat(pubkey, slice(zero_bytes32, start=0, len=64 - PUBKEY_LENGTH)))
     signature_root: bytes32 = sha256(concat(
         sha256(slice(signature, start=0, len=64)),
@@ -87,9 +90,6 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
         sha256(concat(pubkey_root, withdrawal_credentials)),
         sha256(concat(amount, slice(zero_bytes32, start=0, len=32 - AMOUNT_LENGTH), signature_root)),
     ))
-
-    # Emit `Deposit` log
-    log.Deposit(pubkey, withdrawal_credentials, amount, signature, self.to_little_endian_64(self.deposit_count))
 
     # Add `DepositData` root to Merkle tree (update a single `branch` node)
     self.deposit_count += 1
