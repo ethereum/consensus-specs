@@ -513,7 +513,7 @@ def read_vector_elem_type(vector_typ: Type[Vector[T, L]]) -> T:
 
 
 def read_elem_type(typ):
-    if issubclass(typ, bytes):  # bytes or bytesN
+    if typ == bytes or (isinstance(typ, type) and issubclass(typ, bytes)):  # bytes or bytesN
         return byte
     elif is_list_type(typ):
         return read_list_elem_type(typ)
