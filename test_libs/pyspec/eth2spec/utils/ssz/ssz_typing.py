@@ -46,8 +46,13 @@ class uint32(uint):
         return super().__new__(cls, value)
 
 
-# We simply default to uint64. But do give it a name, for readability
-uint64 = NewType('uint64', int)
+class uint64(uint):
+    byte_len = 8
+
+    def __new__(cls, value, *args, **kwargs):
+        if value.bit_length() > 64:
+            raise ValueError("value out of bounds for uint128")
+        return super().__new__(cls, value)
 
 
 class uint128(uint):
@@ -409,12 +414,12 @@ class Bytes96(BytesN):
 # SSZ Defaults
 # -----------------------------
 def get_zero_value(typ):
-    if is_uint_type(typ):
-        return 0
-    elif is_list_type(typ):
+    if is_list_type(typ):
         return []
     elif is_bool_type(typ):
         return False
+    elif is_uint_type(typ):
+        return uint64(0)
     elif is_vector_type(typ):
         return typ()
     elif is_bytesn_type(typ):
@@ -432,12 +437,12 @@ def get_zero_value(typ):
 
 
 def infer_type(obj):
-    if is_uint_type(obj.__class__):
-        return obj.__class__
-    elif isinstance(obj, int):
+    if isinstance(obj, int):
         return uint64
     elif isinstance(obj, list):
         return List[infer_type(obj[0])]
+    elif is_uint_type(obj.__class__):
+        return obj.__class__
     elif isinstance(obj, (Vector, Container, bool, BytesN, bytes)):
         return obj.__class__
     else:

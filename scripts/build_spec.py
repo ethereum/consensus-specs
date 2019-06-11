@@ -15,7 +15,6 @@ PHASE0_IMPORTS = '''from typing import (
     Any,
     Dict,
     List,
-    NewType,
     Tuple,
 )
 
@@ -41,7 +40,6 @@ PHASE1_IMPORTS = '''from typing import (
     Any,
     Dict,
     List,
-    NewType,
     Tuple,
 )
 
@@ -65,11 +63,11 @@ from eth2spec.utils.bls import (
 from eth2spec.utils.hash_function import hash
 '''
 NEW_TYPES = {
-    'Slot': 'int',
-    'Epoch': 'int',
-    'Shard': 'int',
-    'ValidatorIndex': 'int',
-    'Gwei': 'int',
+    'Slot': 'uint64',
+    'Epoch': 'uint64',
+    'Shard': 'uint64',
+    'ValidatorIndex': 'uint64',
+    'Gwei': 'uint64',
 }
 BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
@@ -79,7 +77,7 @@ def get_ssz_type_by_name(name: str) -> Container:
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache = {}
+committee_cache = {}  # type: Dict[Tuple[Bytes32, Bytes32, ValidatorIndex, int], List[ValidatorIndex]]
 
 
 def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
@@ -95,10 +93,10 @@ def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, 
 
 # Monkey patch hash cache
 _hash = hash
-hash_cache = {}
+hash_cache: Dict[bytes, Bytes32] = {}
 
 
-def hash(x):
+def hash(x: bytes) -> Bytes32:
     if x in hash_cache:
         return hash_cache[x]
     else:
@@ -108,7 +106,7 @@ def hash(x):
 
 
 # Access to overwrite spec constants based on configuration
-def apply_constants_preset(preset: Dict[str, Any]):
+def apply_constants_preset(preset: Dict[str, Any]) -> None:
     global_vars = globals()
     for k, v in preset.items():
         global_vars[k] = v
@@ -132,20 +130,28 @@ def objects_to_spec(functions: Dict[str, str],
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
-    new_type_definitions = \
-        '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in new_types.items()])
+    new_type_definitions = (
+        '\n\n'.join(
+            [
+                f"class {key}({value}):\n"
+                f"    def __init__(self, _x: uint64) -> None:\n"
+                f"        ...\n"
+                for key, value in new_types.items()
+            ]
+        )
+    )
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
-        'def init_SSZ_types():\n    global_vars = globals()\n\n    '
+        'def init_SSZ_types() -> None:\n    global_vars = globals()\n\n    '
         + '\n\n    '.join([re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]) for value in ssz_objects.values()])
         + '\n\n'
         + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
     )
     spec = (
         imports
-        + '\n' + new_type_definitions
+        + '\n\n' + new_type_definitions
         + '\n\n' + constants_spec
         + '\n\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec
