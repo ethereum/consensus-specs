@@ -11,6 +11,7 @@ Deposit: event({
     withdrawal_credentials: bytes[32],
     amount: bytes[8],
     signature: bytes[96],
+    index: bytes[8],
 })
 
 branch: bytes32[DEPOSIT_CONTRACT_TREE_DEPTH]
@@ -24,7 +25,7 @@ def __init__():
         self.zero_hashes[i + 1] = sha256(concat(self.zero_hashes[i], self.zero_hashes[i]))
 
 
-@public
+@private
 @constant
 def to_little_endian_64(value: uint256) -> bytes[8]:
     # Reversing bytes using bitwise uint256 manipulations
@@ -87,6 +88,9 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
         sha256(concat(amount, slice(zero_bytes32, start=0, len=32 - AMOUNT_LENGTH), signature_root)),
     ))
 
+    # Emit `Deposit` log
+    log.Deposit(pubkey, withdrawal_credentials, amount, signature, self.to_little_endian_64(self.deposit_count))
+
     # Add `DepositData` root to Merkle tree (update a single `branch` node)
     self.deposit_count += 1
     size: uint256 = self.deposit_count
@@ -97,5 +101,3 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
         node = sha256(concat(self.branch[height], node))
         size /= 2
 
-    # Emit `Deposit` log
-    log.Deposit(pubkey, withdrawal_credentials, amount, signature)

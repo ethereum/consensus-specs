@@ -50,28 +50,6 @@ def deposit_input():
 
 
 @pytest.mark.parametrize(
-    'value,success',
-    [
-        (0, True),
-        (10, True),
-        (55555, True),
-        (2**64 - 1, True),
-        # (2**64, True),  # Note that all calls to `to_little_endian_64` have an input less than 2**64
-    ]
-)
-def test_to_little_endian_64(registration_contract, value, success, assert_tx_failed):
-    call = registration_contract.functions.to_little_endian_64(value)
-
-    if success:
-        little_endian_64 = call.call()
-        assert little_endian_64 == (value).to_bytes(8, 'little')
-    else:
-        assert_tx_failed(
-            lambda: call.call()
-        )
-
-
-@pytest.mark.parametrize(
     'success,deposit_amount',
     [
         (True, FULL_DEPOSIT_AMOUNT),
@@ -151,7 +129,7 @@ def test_deposit_log(registration_contract, a0, w3, deposit_input):
         assert log['withdrawal_credentials'] == deposit_input[1]
         assert log['amount'] == deposit_amount_list[i].to_bytes(8, 'little')
         assert log['signature'] == deposit_input[2]
-
+        assert log['index'] == i.to_bytes(8, 'little')
 
 def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input):
     log_filter = registration_contract.events.Deposit.createFilter(
@@ -170,6 +148,8 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input
         logs = log_filter.get_new_entries()
         assert len(logs) == 1
         log = logs[0]['args']
+
+        assert log["index"] == i.to_bytes(8, 'little')
 
         deposit_data = DepositData(
             pubkey=deposit_input[0],
