@@ -1,5 +1,4 @@
-from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.phase1 import spec as spec_phase1
+from eth2spec.phase0 import spec as spec
 from eth_utils import (
     to_dict, to_tuple
 )
@@ -8,7 +7,7 @@ from preset_loader import loader
 
 
 @to_dict
-def shuffling_case(seed: spec.Bytes32, count: int):
+def shuffling_case(seed, count):
     yield 'seed', '0x' + seed.hex()
     yield 'count', count
     yield 'shuffled', [spec.get_shuffled_index(i, count, seed) for i in range(count)]
@@ -23,8 +22,7 @@ def shuffling_test_cases():
 
 def mini_shuffling_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
     presets = loader.load_presets(configs_path, 'minimal')
-    spec_phase0.apply_constants_preset(presets)
-    spec_phase1.apply_constants_preset(presets)
+    spec.apply_constants_preset(presets)
 
     return ("shuffling_minimal", "core", gen_suite.render_suite(
         title="Swap-or-Not Shuffling tests with minimal config",
@@ -39,8 +37,7 @@ def mini_shuffling_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
 
 def full_shuffling_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
     presets = loader.load_presets(configs_path, 'mainnet')
-    spec_phase0.apply_constants_preset(presets)
-    spec_phase1.apply_constants_preset(presets)
+    spec.apply_constants_preset(presets)
 
     return ("shuffling_full", "core", gen_suite.render_suite(
         title="Swap-or-Not Shuffling tests with mainnet config",
