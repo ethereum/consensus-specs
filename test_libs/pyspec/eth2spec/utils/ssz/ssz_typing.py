@@ -414,12 +414,12 @@ class Bytes96(BytesN):
 # SSZ Defaults
 # -----------------------------
 def get_zero_value(typ):
-    if is_list_type(typ):
+    if is_uint_type(typ):
+        return uint64(0)
+    elif is_list_type(typ):
         return []
     elif is_bool_type(typ):
         return False
-    elif is_uint_type(typ):
-        return uint64(0)
     elif is_vector_type(typ):
         return typ()
     elif is_bytesn_type(typ):
@@ -437,12 +437,12 @@ def get_zero_value(typ):
 
 
 def infer_type(obj):
-    if isinstance(obj, int):
+    if is_uint_type(obj.__class__):
+        return obj.__class__
+    elif isinstance(obj, int):
         return uint64
     elif isinstance(obj, list):
         return List[infer_type(obj[0])]
-    elif is_uint_type(obj.__class__):
-        return obj.__class__
     elif isinstance(obj, (Vector, Container, bool, BytesN, bytes)):
         return obj.__class__
     else:

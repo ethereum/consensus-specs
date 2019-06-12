@@ -1634,15 +1634,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     assert len(body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)
     # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
-
-    for operations, max_operations, function in (
+    all_operations = [
         (body.proposer_slashings, MAX_PROPOSER_SLASHINGS, process_proposer_slashing),
         (body.attester_slashings, MAX_ATTESTER_SLASHINGS, process_attester_slashing),
         (body.attestations, MAX_ATTESTATIONS, process_attestation),
         (body.deposits, MAX_DEPOSITS, process_deposit),
         (body.voluntary_exits, MAX_VOLUNTARY_EXITS, process_voluntary_exit),
         (body.transfers, MAX_TRANSFERS, process_transfer),
-    ):
+    ]  # type: List[Tuple[List[Container], int, Callable]]
+    for operations, max_operations, function in all_operations:
         assert len(operations) <= max_operations
         for operation in operations:
             function(state, operation)

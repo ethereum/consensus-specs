@@ -13,6 +13,7 @@ from typing import (
 
 PHASE0_IMPORTS = '''from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Set,
@@ -39,6 +40,7 @@ from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Set,
