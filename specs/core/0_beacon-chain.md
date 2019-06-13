@@ -1158,7 +1158,7 @@ def slash_validator(state: BeaconState,
 
 ### Genesis trigger
 
-Before genesis has been triggered and whenever the deposit contract emits a `Deposit`, log call the function `is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool` where:
+Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool` where:
 
 * `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
