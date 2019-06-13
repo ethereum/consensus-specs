@@ -13,11 +13,10 @@ from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
+from eth2spec.test.context import spec_state_test, with_all_phases
 
 
 @with_all_phases
-@never_bls
 @spec_state_test
 def test_empty_block_transition(spec, state):
     pre_slot = state.slot
@@ -36,7 +35,6 @@ def test_empty_block_transition(spec, state):
 
 
 @with_all_phases
-@never_bls
 @spec_state_test
 def test_skipped_slots(spec, state):
     pre_slot = state.slot
