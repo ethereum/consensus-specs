@@ -1,3 +1,4 @@
+from types import GeneratorType
 from typing import List, Iterable, TypeVar, Type, NewType
 from typing import Union
 from typing_inspect import get_origin
@@ -356,6 +357,8 @@ def parse_bytes(val):
         return val
     elif isinstance(val, int):
         return bytes([val])
+    elif isinstance(val, (list, GeneratorType)):
+        return bytes(val)
     else:
         return None
 
