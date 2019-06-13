@@ -43,6 +43,7 @@ PHASE1_IMPORTS = '''from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     Set,
     Tuple,
 )
