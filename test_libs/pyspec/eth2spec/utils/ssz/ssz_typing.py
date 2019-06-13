@@ -1,4 +1,6 @@
+import abc
 from typing import List, Iterable, TypeVar, Type, NewType
+from typing import List as BaseList
 from typing import Union
 from typing_inspect import get_origin
 
@@ -93,13 +95,37 @@ def uint_byte_size(typ):
         raise TypeError("Type %s is not an uint (or int-default uint64) type" % typ)
 
 
+class HashCache(object):
+    USE_CACHE = True
+
+    def __init__(self, **kwargs):
+        self.hash_cache = None
+
+    def hash_tree_root(self):
+        from .ssz_impl import hash_tree_root
+        if self.USE_CACHE:
+            if not self.is_dirty() and self.hash_cache:
+                return self.hash_cache
+            else:
+                self.hash_cache = hash_tree_root(self, self.__class__)
+                return self.hash_cache
+        else:
+            return hash_tree_root(self, self.__class__)
+
+    def is_dirty(self):
+        return self.hash_cache is None and self.children_are_dirty()
+
+    @abc.abstractmethod
+    def children_are_dirty(self):
+        pass
+
+
 # SSZ Container base class
 # -----------------------------
 
 # Note: importing ssz functionality locally, to avoid import loop
 
-class Container(object):
-
+class Container(HashCache):
     def __init__(self, **kwargs):
         cls = self.__class__
         for f, t in cls.get_fields():
@@ -107,14 +133,26 @@ class Container(object):
                 setattr(self, f, get_zero_value(t))
             else:
                 setattr(self, f, kwargs[f])
+        super().__init__()
+
+    def __setattr__(self, item, value):
+        if item != 'hash_cache':
+            self.hash_cache = None
+        super().__setattr__(item, value)
 
     def serialize(self):
         from .ssz_impl import serialize
         return serialize(self, self.__class__)
 
-    def hash_tree_root(self):
-        from .ssz_impl import hash_tree_root
-        return hash_tree_root(self, self.__class__)
+    # def hash_tree_root(self):
+        # from .ssz_impl import hash_tree_root
+        # return hash_tree_root(self, self.__class__)
+
+    def children_are_dirty(self):
+        for value in self.get_field_values():
+            if isinstance(value, HashCache) and value.is_dirty():
+                return True
+        return False
 
     def signing_root(self):
         from .ssz_impl import signing_root
@@ -229,7 +267,7 @@ class VectorMeta(type):
         return hash(self.__class__)
 
 
-class Vector(metaclass=VectorMeta):
+class Vector(HashCache, metaclass=VectorMeta):
 
     def __init__(self, *args: Iterable):
         cls = self.__class__
@@ -253,13 +291,21 @@ class Vector(metaclass=VectorMeta):
                     raise TypeError("Typed vector cannot hold differently typed value"
                                     " at index %d. Got type: %s, expected type: %s" % (i, type(item), cls.elem_type))
 
+        super().__init__()
+
+    def children_are_dirty(self):
+        for value in self:
+            if isinstance(value, HashCache) and value.is_dirty():
+                return True
+        return False
+
     def serialize(self):
         from .ssz_impl import serialize
         return serialize(self, self.__class__)
 
-    def hash_tree_root(self):
-        from .ssz_impl import hash_tree_root
-        return hash_tree_root(self, self.__class__)
+    # def hash_tree_root(self):
+        # from .ssz_impl import hash_tree_root
+        # return hash_tree_root(self, self.__class__)
 
     def __repr__(self):
         return repr({'length': self.__class__.length, 'items': self.items})
@@ -268,6 +314,7 @@ class Vector(metaclass=VectorMeta):
         return self.items[key]
 
     def __setitem__(self, key, value):
+        self.hash_cache = None
         self.items[key] = value
 
     def __iter__(self):
@@ -384,10 +431,6 @@ class BytesN(bytes, metaclass=BytesNMeta):
     def serialize(self):
         from .ssz_impl import serialize
         return serialize(self, self.__class__)
-
-    def hash_tree_root(self):
-        from .ssz_impl import hash_tree_root
-        return hash_tree_root(self, self.__class__)
 
 
 # SSZ Defaults

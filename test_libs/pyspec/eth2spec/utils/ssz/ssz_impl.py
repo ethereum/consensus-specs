@@ -6,6 +6,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     uint_byte_size,
     infer_input_type,
     get_zero_value,
+    HashCache,
 )
 
 # SSZ Serialization
@@ -148,7 +149,11 @@ def hash_tree_root(obj, typ=None):
         leaves = chunkify(data)
     else:
         fields = get_typed_values(obj, typ=typ)
-        leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in fields]
+        leaves = [
+            field_value.hash_tree_root() if isinstance(field_value, HashCache) else
+            hash_tree_root(field_value, typ=field_typ)
+            for field_value, field_typ in fields
+        ]
     if is_list_kind(typ):
         return mix_in_length(merkleize_chunks(leaves), len(obj))
     else:
