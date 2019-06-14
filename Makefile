@@ -21,7 +21,8 @@ PY_SPEC_PHASE_1_DEPS = $(SPEC_DIR)/core/1_*.md
 
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
-COV_INDEX_FILE=$(PY_SPEC_DIR)/.htmlcov/index.html
+COV_HTML_OUT=.htmlcov
+COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
 .PHONY: clean all test citest lint gen_yaml_tests pyspec phase0 phase1 install_test open_cov \
         install_deposit_contract_test test_deposit_contract compile_deposit_contract
@@ -34,6 +35,9 @@ clean:
 	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
 	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv $(DEPOSIT_CONTRACT_DIR)/.pytest_cache
+	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
+	rm -rf $(PY_SPEC_DIR)/.coverage
+	rm -rf $(PY_SPEC_DIR)/test-reports
 
 # "make gen_yaml_tests" to run generators
 gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
@@ -44,7 +48,7 @@ install_test:
 
 test: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate;	export PYTHONPATH="./"; \
-	python -m pytest --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:.htmlcov" --cov-branch eth2spec
+	python -m pytest --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec -k transfer
 
 citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; \
