@@ -1,9 +1,8 @@
-from ..merkle_minimal import merkleize_chunks, hash
-from eth2spec.utils.ssz.ssz_typing import (
+from ..merkle_minimal import merkleize_chunks, hash, ZERO_BYTES32
+from .ssz_typing import (
     is_uint_type, is_bool_type, is_container_type,
     is_list_kind, is_vector_kind,
-    read_vector_elem_type, read_elem_type,
-    uint_byte_size,
+    read_elem_type,
     infer_input_type,
     get_zero_value,
 )
@@ -20,7 +19,7 @@ def is_basic_type(typ):
 
 def serialize_basic(value, typ):
     if is_uint_type(typ):
-        return value.to_bytes(uint_byte_size(typ), 'little')
+        return value.to_bytes(typ.byte_len, 'little')
     elif is_bool_type(typ):
         if value:
             return b'\x01'
@@ -140,6 +139,8 @@ def get_typed_values(obj, typ=None):
     else:
         raise Exception("Invalid type")
 
+def item_length(typ):
+    return 1 if typ == bool else typ.byte_len if is_uint_type(typ) else 32
 
 @infer_input_type
 def hash_tree_root(obj, typ=None):
@@ -150,6 +151,8 @@ def hash_tree_root(obj, typ=None):
         fields = get_typed_values(obj, typ=typ)
         leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in fields]
     if is_list_kind(typ):
+        full_chunk_length = (item_length(read_elem_type(typ)) * typ.length + 31) // 32
+        leaves += [ZERO_BYTES32] * (full_chunk_length - len(obj))
         return mix_in_length(merkleize_chunks(leaves), len(obj))
     else:
         return merkleize_chunks(leaves)
