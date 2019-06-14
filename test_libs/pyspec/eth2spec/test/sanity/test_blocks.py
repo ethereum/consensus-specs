@@ -16,7 +16,6 @@ from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.context import spec_state_test, with_all_phases
 
 
-
 @with_all_phases
 @spec_state_test
 def test_empty_block_transition(spec, state):
@@ -256,7 +255,6 @@ def test_attestation(spec, state):
     epoch_block.slot += spec.SLOTS_PER_EPOCH
     sign_block(spec, state, epoch_block)
     state_transition_and_sign_block(spec, state, epoch_block)
-
 
     yield 'blocks', [attestation_block, epoch_block], List[spec.BeaconBlock]
     yield 'post', state
