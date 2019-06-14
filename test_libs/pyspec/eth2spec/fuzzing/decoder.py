@@ -69,7 +69,7 @@ def translate_value(value, typ):
         elem_typ = spec_ssz.read_elem_type(typ)
         return [translate_value(elem, elem_typ) for elem in value]
     elif spec_ssz.is_bool_type(typ):
-        return False
+        return value
     elif spec_ssz.is_vector_type(typ):
         elem_typ = spec_ssz.read_elem_type(typ)
         return typ(translate_value(elem, elem_typ) for elem in value)
