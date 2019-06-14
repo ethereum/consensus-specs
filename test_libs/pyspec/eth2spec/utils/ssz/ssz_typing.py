@@ -118,6 +118,8 @@ class Container(object):
 def get_zero_value(typ):
     if typ == int:
         return 0
+    elif is_container_type(typ):
+        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
     else:
         return typ.default()
 
