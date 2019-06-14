@@ -10,6 +10,6 @@ setup(
         "pycryptodome==3.7.3",
         "py_ecc>=1.6.0",
         "typing_inspect==0.4.0",
-        "ssz==0.1.0a9"
+        "ssz==0.1.0a10"
     ]
 )
