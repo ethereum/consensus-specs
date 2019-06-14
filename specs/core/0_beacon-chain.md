@@ -95,7 +95,7 @@
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
     - [Genesis](#genesis)
-        - [`Eth2Genesis`](#eth2genesis)
+        - [Genesis trigger](#genesis-trigger)
         - [Genesis state](#genesis-state)
         - [Genesis block](#genesis-block)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -941,6 +941,7 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bitfield)
+    assert set(custody_bit_1_indices).issubset(attesting_indices)
     custody_bit_0_indices = [index for index in attesting_indices if index not in custody_bit_1_indices]
 
     return IndexedAttestation(
@@ -1106,20 +1107,45 @@ def slash_validator(state: BeaconState,
 
 ## Genesis
 
-### `Eth2Genesis`
+### Genesis trigger
 
-When enough deposits of size `MAX_EFFECTIVE_BALANCE` have been made to the deposit contract an `Eth2Genesis` log is emitted triggering the genesis of the beacon chain. Let:
+Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool` where:
 
-* `eth2genesis` be the object corresponding to `Eth2Genesis`
-* `genesis_eth1_data` be object of type `Eth1Data` where
-    * `genesis_eth1_data.deposit_root = eth2genesis.deposit_root`
-    * `genesis_eth1_data.deposit_count = eth2genesis.deposit_count`
-    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log
-* `genesis_deposits` be the object of type `List[Deposit]` with deposits ordered chronologically up to and including the deposit that triggered the `Eth2Genesis` log
+* `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
+* `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
+
+When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
+
+* `genesis_deposits = deposits`
+* `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
+* `genesis_eth1_data` be the object of type `Eth1Data` where:
+    * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
+    * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
+    * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
+
+*Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
+
+```python
+def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
+    # Process deposits
+    state = BeaconState()
+    for deposit in deposits:
+        process_deposit(state, deposit)
+
+    # Count active validators at genesis
+    active_validator_count = 0
+    for validator in state.validator_registry:
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+            active_validator_count += 1
+
+    # Check effective balance to trigger genesis
+    GENESIS_ACTIVE_VALIDATOR_COUNT = 2**16
+    return active_validator_count == GENESIS_ACTIVE_VALIDATOR_COUNT
+```
 
 ### Genesis state
 
-Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.genesis_time, genesis_eth1_data)`.
+Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_data)`.
 
 ```python
 def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
@@ -1196,7 +1222,7 @@ def process_slot(state: BeaconState) -> None:
 
 ### Epoch processing
 
-Note: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
+*Note*: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -1647,6 +1673,10 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` operation.
     """
     data = attestation.data
+
+    assert data.crosslink.shard < SHARD_COUNT
+    assert data.target_epoch in (get_previous_epoch(state), get_current_epoch(state))
+
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
@@ -1657,7 +1687,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         proposer_index=get_beacon_proposer_index(state),
     )
 
-    assert data.target_epoch in (get_previous_epoch(state), get_current_epoch(state))
     if data.target_epoch == get_current_epoch(state):
         ffg_data = (state.current_justified_epoch, state.current_justified_root, get_current_epoch(state))
         parent_crosslink = state.current_crosslinks[data.crosslink.shard]
