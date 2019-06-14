@@ -1,4 +1,5 @@
-from ..merkle_minimal import merkleize_chunks, hash, ZERO_BYTES32
+from ..merkle_minimal import merkleize_chunks, ZERO_BYTES32
+from .hash_function import hash
 from .ssz_typing import (
     is_uint_type, is_bool_type, is_container_type,
     is_list_kind, is_vector_kind,
