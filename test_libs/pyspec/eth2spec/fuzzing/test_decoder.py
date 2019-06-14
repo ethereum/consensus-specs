@@ -1,17 +1,11 @@
 from eth2spec.fuzzing.decoder import translate_typ, translate_value
 from eth2spec.phase0 import spec
-from preset_loader import loader
 from eth2spec.utils.ssz import ssz_impl as spec_ssz_impl
 from random import Random
 from eth2spec.debug import random_value
 
 
 def test_decoder():
-    configs_path = "../../../../configs/"
-    config_name = "minimal"
-    presets = loader.load_presets(configs_path, config_name)
-    spec.apply_constants_preset(presets)
-
     rng = Random(123)
 
     # check these types only, Block covers a lot of operation types already.
