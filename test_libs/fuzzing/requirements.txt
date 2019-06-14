@@ -1,3 +1,0 @@
-../../test_libs/pyspec
-../../test_libs/config_helpers
-ssz==0.1.0a8

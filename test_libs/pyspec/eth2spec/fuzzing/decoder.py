@@ -10,7 +10,7 @@ def translate_typ(typ) -> ssz.BaseSedes:
     """
     if spec_ssz.is_container_type(typ):
         return ssz.Container(
-            [(field_name, translate_typ(field_typ)) for (field_name, field_typ) in typ.get_fields()])
+            [translate_typ(field_typ) for (field_name, field_typ) in typ.get_fields()])
     elif spec_ssz.is_bytesn_type(typ):
         return ssz.ByteVector(typ.length)
     elif spec_ssz.is_bytes_type(typ):
@@ -38,7 +38,7 @@ def translate_typ(typ) -> ssz.BaseSedes:
         else:
             raise TypeError("invalid uint size")
     else:
-        raise Exception("Type not supported: {}".format(typ))
+        raise TypeError("Type not supported: {}".format(typ))
 
 
 def translate_value(value, typ):
@@ -79,6 +79,6 @@ def translate_value(value, typ):
         return value
     elif spec_ssz.is_container_type(typ):
         return typ(**{f_name: translate_value(f_val, f_typ) for (f_name, f_val, f_typ)
-                      in zip(typ.get_field_names(), value.values(), typ.get_field_types())})
+                      in zip(typ.get_field_names(), value, typ.get_field_types())})
     else:
-        raise Exception("Type not supported: {}".format(typ))
+        raise TypeError("Type not supported: {}".format(typ))
