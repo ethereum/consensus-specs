@@ -72,7 +72,7 @@ def translate_value(value, typ):
         return value
     elif spec_ssz.is_vector_type(typ):
         elem_typ = spec_ssz.read_elem_type(typ)
-        return typ(translate_value(elem, elem_typ) for elem in value)
+        return typ(*(translate_value(elem, elem_typ) for elem in value))
     elif spec_ssz.is_bytesn_type(typ):
         return typ(value)
     elif spec_ssz.is_bytes_type(typ):
