@@ -3,7 +3,8 @@ from copy import deepcopy
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.state import (
     next_epoch,
-    next_slot
+    next_slot,
+    state_transition_and_sign_block,
 )
 from eth2spec.test.helpers.block import apply_empty_block, sign_block
 from eth2spec.test.helpers.attestations import (
@@ -27,10 +28,13 @@ def run_process_crosslinks(spec, state, valid=True):
     block = build_empty_block_for_next_slot(spec, state)
     block.slot = slot
     sign_block(spec, state, block)
-    spec.state_transition(state, block)
+    state_transition_and_sign_block(spec, state, block)
 
     # cache state before epoch transition
     spec.process_slot(state)
+
+    # process components of epoch transition before processing crosslinks
+    spec.process_justification_and_finalization(state)
 
     yield 'pre', state
     spec.process_crosslinks(state)
