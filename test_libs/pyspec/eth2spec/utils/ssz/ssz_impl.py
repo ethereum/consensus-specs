@@ -153,7 +153,13 @@ def item_length(typ):
         return typ.byte_len
     else:
         return 32
-
+def chunk_count(typ):
+    if is_basic_type(typ):
+       return 1
+   elif is_list_kind(typ) or is_vector_kind(typ):
+       return (typ.length * item_length(typ.elem_type) + 31) // 32
+   else:
+       return len(typ.get_fields())
 
 def hash_tree_root(obj, typ):
     if is_bottom_layer_kind(typ):
