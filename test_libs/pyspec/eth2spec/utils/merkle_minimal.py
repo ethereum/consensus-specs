@@ -44,11 +44,31 @@ def next_power_of_two(v: int) -> int:
     return 1 << (v - 1).bit_length()
 
 
-def merkleize_chunks(chunks):
-    tree = chunks[::]
-    margin = next_power_of_two(len(chunks)) - len(chunks)
-    tree.extend([ZERO_BYTES32] * margin)
-    tree = [ZERO_BYTES32] * len(tree) + tree
-    for i in range(len(tree) // 2 - 1, 0, -1):
-        tree[i] = hash(tree[i * 2] + tree[i * 2 + 1])
-    return tree[1]
+def merkleize_chunks(chunks, pad_to: int = None):
+    count = len(chunks)
+    depth = max(count - 1, 0).bit_length()
+    max_depth = max(depth, (pad_to - 1).bit_length())
+    tmp = [None for _ in range(max_depth + 1)]
+
+    def merge(h, i):
+        j = 0
+        while True:
+            if i & (1 << j) == 0:
+                if i == count and j < depth:
+                    h = hash(h + zerohashes[j])
+                else:
+                    break
+            else:
+                h = hash(tmp[j] + h)
+            j += 1
+        tmp[j] = h
+
+    for i in range(count):
+        merge(chunks[i], i)
+
+    merge(zerohashes[0], count)
+
+    for j in range(depth, max_depth):
+        tmp[j + 1] = hash(tmp[j] + zerohashes[j])
+
+    return tmp[max_depth]
