@@ -142,8 +142,10 @@ def objects_to_spec(functions: Dict[str, str],
         '\n\n'.join(
             [
                 f"class {key}({value}):\n"
-                f"    def __init__(self, _x: uint64) -> None:\n"
+                f"    def __init__(self, _x: {value}) -> None:\n"
                 f"        ...\n"
+                if value.startswith("uint")
+                else f"class {key}({value}):\n    pass\n"
                 for key, value in custom_types.items()
             ]
         )
@@ -185,7 +187,7 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
     return old_constants
 
 
-def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
+def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str, str]) -> None:
     """
     Determines which SSZ Object is depenedent on which other and orders them appropriately
     """
@@ -194,14 +196,14 @@ def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
         dependencies = re.findall(r'(: [A-Z][\w[]*)', value)
         dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|uint\d+|Bytes\d+|bytes', '', x), dependencies)
         for dep in dependencies:
-            if dep in NEW_TYPES or len(dep) == 0:
+            if dep in custom_types or len(dep) == 0:
                 continue
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
 
 
-def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
+def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
     and returns the newer versions of the objects in dependency order.
@@ -213,7 +215,7 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
             # remove leading variable name
             value = re.sub(r'^class [\w]*\(Container\):\n', '', value)
         old_objects[key] = old_objects.get(key, '') + value
-    dependency_order_ssz_objects(old_objects)
+    dependency_order_ssz_objects(old_objects, custom_types)
     return old_objects
 
 
@@ -230,7 +232,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     functions = combine_functions(functions0, functions1)
     custom_types = combine_constants(custom_types0, custom_types1)
     constants = combine_constants(constants0, constants1)
-    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1)
+    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1, custom_types)
     inserts = combine_inserts(inserts0, inserts1)
     return functions, custom_types, constants, ssz_objects, inserts
 

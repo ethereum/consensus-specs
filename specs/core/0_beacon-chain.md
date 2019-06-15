@@ -294,7 +294,7 @@ class Fork(Container):
 ```python
 class Validator(Container):
     # BLS public key
-    pubkey: Bytes48
+    pubkey: BLSPubkey
     # Withdrawal credentials
     withdrawal_credentials: Bytes32
     # Epoch when became eligible for activation
@@ -363,7 +363,7 @@ class IndexedAttestation(Container):
     # Attestation data
     data: AttestationData
     # Aggregate signature
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 #### `PendingAttestation`
@@ -407,13 +407,13 @@ class HistoricalBatch(Container):
 ```python
 class DepositData(Container):
     # BLS pubkey
-    pubkey: Bytes48
+    pubkey: BLSPubkey
     # Withdrawal credentials
     withdrawal_credentials: Bytes32
     # Amount in Gwei
     amount: Gwei
     # Container self-signature
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 #### `BeaconBlockHeader`
@@ -424,7 +424,7 @@ class BeaconBlockHeader(Container):
     parent_root: Bytes32
     state_root: Bytes32
     body_root: Bytes32
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 ### Beacon operations
@@ -462,7 +462,7 @@ class Attestation(Container):
     # Custody bitfield
     custody_bitfield: bytes
     # BLS aggregate signature
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 #### `Deposit`
@@ -484,7 +484,7 @@ class VoluntaryExit(Container):
     # Index of the exiting validator
     validator_index: ValidatorIndex
     # Validator signature
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 #### `Transfer`
@@ -502,9 +502,9 @@ class Transfer(Container):
     # Inclusion slot
     slot: Slot
     # Sender withdrawal pubkey
-    pubkey: Bytes48
+    pubkey: BLSPubkey
     # Sender signature
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 ### Beacon blocks
@@ -513,7 +513,7 @@ class Transfer(Container):
 
 ```python
 class BeaconBlockBody(Container):
-    randao_reveal: Bytes96
+    randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
     proposer_slashings: List[ProposerSlashing]
@@ -533,7 +533,7 @@ class BeaconBlock(Container):
     parent_root: Bytes32
     state_root: Bytes32
     body: BeaconBlockBody
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 ### Beacon state

@@ -73,7 +73,7 @@ def get_spec(file_name: str) -> SpecObject:
                         row[i] = row[i].strip().strip('`')
                         if '`' in row[i]:
                             row[i] = row[i][:row[i].find('`')]
-                    if row[1].startswith('uint') or row[1].startswith('bytes'):
+                    if row[1].startswith('uint') or row[1].startswith('Bytes'):
                         custom_types[row[0]] = row[1]
                     else:
                         eligible = True
