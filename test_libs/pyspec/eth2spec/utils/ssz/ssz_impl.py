@@ -169,7 +169,7 @@ def hash_tree_root(obj, typ):
         fields = get_typed_values(obj, typ=typ)
         leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in fields]
     if is_list_kind(typ):
-        return mix_in_length(merkleize_chunks(leaves, pad_to=typ.length), len(obj))
+        return mix_in_length(merkleize_chunks(leaves, pad_to=chunk_count(typ)), len(obj))
     else:
         return merkleize_chunks(leaves)
 
