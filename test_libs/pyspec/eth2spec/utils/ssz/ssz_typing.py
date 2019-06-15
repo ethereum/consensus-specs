@@ -73,7 +73,7 @@ class uint256(uint):
 
 # Note: importing ssz functionality locally, to avoid import loop
 
-class Container(object):
+class Container(object, metaclass=DefaultingTypeMeta):
 
     def __init__(self, **kwargs):
         cls = self.__class__
