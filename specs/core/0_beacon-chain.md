@@ -283,7 +283,7 @@ The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containe
 class Fork(Container):
     previous_version: Bytes4
     current_version: Bytes4
-    epoch: Epoch
+    epoch: Epoch  # Epoch of latest fork
 ```
 
 #### `Validator`
@@ -291,14 +291,14 @@ class Fork(Container):
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Hash
-    effective_balance: Gwei
+    withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals and transfers
+    effective_balance: Gwei  # Balance at stake
     slashed: bool
     # Status epochs
-    activation_eligibility_epoch: Epoch
+    activation_eligibility_epoch: Epoch  # When criteria for activation were met
     activation_epoch: Epoch
     exit_epoch: Epoch
-    withdrawable_epoch: Epoch
+    withdrawable_epoch: Epoch # When validator can withdraw or transfer funds
 ```
 
 #### `Crosslink`
@@ -333,7 +333,7 @@ class AttestationData(Container):
 ```python
 class AttestationDataAndCustodyBit(Container):
     data: AttestationData
-    custody_bit: bool
+    custody_bit: bool  # Challengeable bit for the custody of crosslink data
 ```
 
 #### `IndexedAttestation`
@@ -350,7 +350,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bitfield: bytes
+    aggregation_bitfield: bytes  # Bit set for every attesting participant within a committee
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -427,7 +427,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH]
+    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH]  # Merkle path to deposit root
     data: DepositData
 ```
 
@@ -435,7 +435,7 @@ class Deposit(Container):
 
 ```python
 class VoluntaryExit(Container):
-    epoch: Epoch
+    epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
     signature: BLSSignature
 ```
@@ -448,9 +448,9 @@ class Transfer(Container):
     recipient: ValidatorIndex
     amount: Gwei
     fee: Gwei
-    slot: Slot
-    pubkey: BLSPubkey
-    signature: BLSSignature
+    slot: Slot  # Slot at which transfer must be processed
+    pubkey: BLSPubkey  # Withdrawal pubkey
+    signature: BLSSignature  # Signature checked against withdrawal pubkey
 ```
 
 ### Beacon blocks
@@ -460,8 +460,8 @@ class Transfer(Container):
 ```python
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
-    eth1_data: Eth1Data
-    graffiti: Bytes32
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
     # Operations
     proposer_slashings: List[ProposerSlashing]
     attester_slashings: List[AttesterSlashing]
@@ -507,21 +507,21 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, RANDAO_MIXES_LENGTH]
-    active_index_roots: Vector[Hash, ACTIVE_INDEX_ROOTS_LENGTH]
+    active_index_roots: Vector[Hash, ACTIVE_INDEX_ROOTS_LENGTH]  # Digests of the active registry, for light clients
     # Slashings
-    slashed_balances: Vector[Gwei, SLASHED_EXIT_LENGTH]
+    slashed_balances: Vector[Gwei, SLASHED_EXIT_LENGTH]  # Sums of the effective balances of slashed validators
     # Attestations
     previous_epoch_attestations: List[PendingAttestation]
     current_epoch_attestations: List[PendingAttestation]
     # Crosslinks
-    previous_crosslinks: Vector[Crosslink, SHARD_COUNT]
+    previous_crosslinks: Vector[Crosslink, SHARD_COUNT]  # Previous epoch snapshot
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
     # Justification
-    previous_justified_epoch: Epoch
-    previous_justified_root: Hash
+    previous_justified_epoch: Epoch  # Previous epoch snapshot
+    previous_justified_root: Hash  # Previous epoch snapshot
     current_justified_epoch: Epoch
     current_justified_root: Hash
-    justification_bitfield: uint64
+    justification_bitfield: uint64  # Bit set for every recent justified epoch
     # Finality
     finalized_epoch: Epoch
     finalized_root: Hash
