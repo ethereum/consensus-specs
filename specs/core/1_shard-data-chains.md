@@ -83,7 +83,7 @@ class ShardAttestation(Container):
         shard: Shard
         shard_block_root: Bytes32
     aggregation_bitfield: bytes
-    aggregate_signature: Bytes96
+    aggregate_signature: BLSSignature
 ```
 
 ### `ShardBlock`
@@ -97,7 +97,7 @@ class ShardBlock(Container):
     data: ShardBlockBody
     state_root: Bytes32
     attestations: List[ShardAttestation]
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 ### `ShardBlockHeader`
@@ -111,7 +111,7 @@ class ShardBlockHeader(Container):
     body_root: Bytes32
     state_root: Bytes32
     attestations: List[ShardAttestation]
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 ## Helper functions

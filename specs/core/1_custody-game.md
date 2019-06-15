@@ -133,9 +133,9 @@ class CustodyBitChallenge(Container):
     responder_index: ValidatorIndex
     attestation: Attestation
     challenger_index: ValidatorIndex
-    responder_key: Bytes96
+    responder_key: BLSSignature
     chunk_bits: bytes
-    signature: Bytes96
+    signature: BLSSignature
 ```
 
 #### `CustodyChunkChallengeRecord`
@@ -162,7 +162,7 @@ class CustodyBitChallengeRecord(Container):
     data_root: Bytes32
     chunk_count: uint64
     chunk_bits_merkle_root: Bytes32
-    responder_key: Bytes96
+    responder_key: BLSSignature
 ```
 
 #### `CustodyResponse`
@@ -186,7 +186,7 @@ class CustodyKeyReveal(Container):
     # Index of the validator whose key is being revealed
     revealer_index: ValidatorIndex
     # Reveal (masked signature)
-    reveal: Bytes96
+    reveal: BLSSignature
 ```
 
 #### `EarlyDerivedSecretReveal`
@@ -196,13 +196,13 @@ Represents an early (punishable) reveal of one of the derived secrets, where der
 ```python
 class EarlyDerivedSecretReveal(Container):
     # Index of the validator whose key is being revealed
-    revealed_index: uint64
+    revealed_index: ValidatorIndex
     # RANDAO epoch of the key that is being revealed
     epoch: Epoch
     # Reveal (masked signature)
-    reveal: Bytes96
+    reveal: BLSSignature
     # Index of the validator who revealed (whistleblower)
-    masker_index: uint64
+    masker_index: ValidatorIndex
     # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
     mask: Bytes32
 ```
@@ -232,7 +232,7 @@ class BeaconState(Container):
 
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    exposed_derived_secrets: Vector[List[uint64], EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+    exposed_derived_secrets: Vector[List[ValidatorIndex], EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
 ```
 
 #### `BeaconBlockBody`
@@ -267,7 +267,7 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
 ### `get_custody_chunk_bit`
 
 ```python
-def get_custody_chunk_bit(key: Bytes96, chunk: bytes) -> bool:
+def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
     # TODO: Replace with something MPC-friendly, e.g. the Legendre symbol
     return bool(get_bitfield_bit(hash(key + chunk), 0))
 ```
