@@ -62,7 +62,6 @@ from eth2spec.utils.bls import (
 
 from eth2spec.utils.hash_function import hash
 '''
-BYTE_TYPES = [4, 32, 48, 96]
 NEW_TYPES = {
     'Slot': 'int',
     'Epoch': 'int',
@@ -70,6 +69,7 @@ NEW_TYPES = {
     'ValidatorIndex': 'int',
     'Gwei': 'int',
 }
+BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
 def get_ssz_type_by_name(name: str) -> Container:
     return globals()[name]
