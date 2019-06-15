@@ -128,11 +128,11 @@ def apply_constants_preset(preset: Dict[str, Any]) -> None:
 
 
 def objects_to_spec(functions: Dict[str, str],
+                    custom_types: Dict[str, str],
                     constants: Dict[str, str],
                     ssz_objects: Dict[str, str],
                     inserts: Dict[str, str],
                     imports: Dict[str, str],
-                    new_types: Dict[str, str],
                     byte_types: List[int],
                     ) -> str:
     """
@@ -144,7 +144,7 @@ def objects_to_spec(functions: Dict[str, str],
                 f"class {key}({value}):\n"
                 f"    def __init__(self, _x: uint64) -> None:\n"
                 f"        ...\n"
-                for key, value in new_types.items()
+                for key, value in custom_types.items()
             ]
         )
     )
@@ -225,18 +225,19 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     """
     Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
     """
-    functions0, constants0, ssz_objects0, inserts0 = spec0
-    functions1, constants1, ssz_objects1, inserts1 = spec1
+    functions0, custom_types0, constants0, ssz_objects0, inserts0 = spec0
+    functions1, custom_types1, constants1, ssz_objects1, inserts1 = spec1
     functions = combine_functions(functions0, functions1)
+    custom_types = combine_constants(custom_types0, custom_types1)
     constants = combine_constants(constants0, constants1)
     ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1)
     inserts = combine_inserts(inserts0, inserts1)
-    return functions, constants, ssz_objects, inserts
+    return functions, custom_types, constants, ssz_objects, inserts
 
 
 def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
-    functions, constants, ssz_objects, inserts = get_spec(sourcefile)
-    spec = objects_to_spec(functions, constants, ssz_objects, inserts, PHASE0_IMPORTS, NEW_TYPES, BYTE_TYPES)
+    functions, custom_types, constants, ssz_objects, inserts = get_spec(sourcefile)
+    spec = objects_to_spec(functions, custom_types, constants, ssz_objects, inserts, PHASE0_IMPORTS, BYTE_TYPES)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -253,7 +254,7 @@ def build_phase1_spec(phase0_sourcefile: str,
     spec_objects = phase0_spec
     for value in [phase1_custody, phase1_shard_data]:
         spec_objects = combine_spec_objects(spec_objects, value)
-    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, NEW_TYPES, BYTE_TYPES)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, BYTE_TYPES)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)

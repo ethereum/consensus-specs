@@ -51,7 +51,7 @@ class uint64(uint):
 
     def __new__(cls, value, *args, **kwargs):
         if value.bit_length() > 64:
-            raise ValueError("value out of bounds for uint128")
+            raise ValueError("value out of bounds for uint64")
         return super().__new__(cls, value)
 
 

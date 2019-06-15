@@ -10,6 +10,7 @@
     - [Introduction](#introduction)
     - [Notation](#notation)
     - [Terminology](#terminology)
+    - [Custom types](#custom-types)
     - [Constants](#constants)
         - [Misc](#misc)
         - [Deposit contract](#deposit-contract)
@@ -45,7 +46,6 @@
             - [`BeaconBlock`](#beaconblock)
         - [Beacon state](#beacon-state)
             - [`BeaconState`](#beaconstate)
-    - [Custom types](#custom-types)
     - [Helper functions](#helper-functions)
         - [`xor`](#xor)
         - [`hash`](#hash)
@@ -150,6 +150,20 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 * **Withdrawal period**—the number of slots between a [validator](#dfn-validator) exit and the [validator](#dfn-validator) balance being withdrawable.
 * **Genesis time**—the Unix time of the genesis beacon chain block at slot 0.
 
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `Slot` | `uint64` | a slot number |
+| `Epoch` | `uint64` | an epoch number |
+| `Shard` | `uint64` | a shard number |
+| `ValidatorIndex` | `uint64` | a validator registry index |
+| `Gwei` | `uint64` | an amount in Gwei |
+| `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
+| `BLSSignature` | `Bytes96` | a BLS12-381 signature |
+
 ## Constants
 
 *Note*: The default mainnet values for the constants are included here for spec-design purposes.
@@ -178,12 +192,12 @@ These configurations are updated for releases, but may be out of sync during `de
 
 ### Gwei values
 
-| Name | Value | Unit |
+| Name | Value |
 | - | - | :-: |
-| `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) | Gwei |
-| `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) | Gwei |
-| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) | Gwei |
-| `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) | Gwei |
+| `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
+| `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
+| `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
+| `EFFECTIVE_BALANCE_INCREMENT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
 
 ### Initial values
 
@@ -562,20 +576,6 @@ class BeaconState(Container):
     eth1_data_votes: List[Eth1Data]
     deposit_index: uint64
 ```
-
-## Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Slot` | `uint64` | a slot number |
-| `Epoch` | `uint64` | an epoch number |
-| `Shard` | `uint64` | a shard number |
-| `ValidatorIndex` | `uint64` | a validator registry index |
-| `Gwei` | `uint64` | an amount in Gwei |
-| `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
-| `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
 ## Helper functions
 
