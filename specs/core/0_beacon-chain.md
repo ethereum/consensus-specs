@@ -298,7 +298,7 @@ class Validator(Container):
     activation_eligibility_epoch: Epoch  # When criteria for activation were met
     activation_epoch: Epoch
     exit_epoch: Epoch
-    withdrawable_epoch: Epoch # When validator can withdraw or transfer funds
+    withdrawable_epoch: Epoch  # When validator can withdraw or transfer funds
 ```
 
 #### `Crosslink`
