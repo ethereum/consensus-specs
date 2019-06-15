@@ -45,7 +45,8 @@ class uint8(uint):
 
 
 # Alias for uint8
-byte = NewType('byte', uint8)
+class byte(uint8):
+    pass
 
 
 class uint16(uint):
