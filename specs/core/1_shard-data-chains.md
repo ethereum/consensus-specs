@@ -56,7 +56,6 @@ This document describes the shard data layer and the shard fork choice rule in P
 | - | - | :-: | :-: |
 | `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs  | 6.2 minutes |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
-| `SECONDS_PER_SLOT` | `2**1 * 3**1` (= 6) | 6 seconds |
 
 ### Signature domains
 
