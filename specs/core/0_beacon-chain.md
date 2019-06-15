@@ -161,6 +161,7 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
+| `Version` | `Bytes4` | a fork version number |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -282,9 +283,9 @@ The types are defined topologically to aid in facilitating an executable version
 ```python
 class Fork(Container):
     # Previous fork version
-    previous_version: Bytes4
+    previous_version: Version
     # Current fork version
-    current_version: Bytes4
+    current_version: Version
     # Fork epoch number
     epoch: Epoch
 ```

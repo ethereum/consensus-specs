@@ -67,13 +67,6 @@ from eth2spec.utils.bls import (
 
 from eth2spec.utils.hash_function import hash
 '''
-NEW_TYPES = {
-    'Slot': 'uint64',
-    'Epoch': 'uint64',
-    'Shard': 'uint64',
-    'ValidatorIndex': 'uint64',
-    'Gwei': 'uint64',
-}
 BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
 def get_ssz_type_by_name(name: str) -> Container:
