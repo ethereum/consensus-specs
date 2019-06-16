@@ -83,6 +83,7 @@ class Store(Container):
 def get_genesis_store(genesis_state: BeaconState) -> Store:
     genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
     root = signing_root(genesis_block)
+    print('groot', root)
     return Store(blocks={root: genesis_block}, states={root: genesis_state}, finalized_root=root, justified_root=root)
 ```
 
@@ -90,6 +91,7 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
 
 ```python
 def get_ancestor(store: Store, root: Bytes32, slot: Slot) -> Bytes32:
+    print('ruut', root)
     block = store.blocks[root]
     assert block.slot >= slot
     return root if block.slot == slot else get_ancestor(store, block.parent_root, slot)
@@ -135,14 +137,17 @@ def on_tick(store: Store, time: int) -> None:
 ```python
 def on_block(store: Store, block: BeaconBlock) -> None:
     # Add new block to the store
+    print('setting', signing_root(block))
     store.blocks[signing_root(block)] = block
     # Check block is a descendant of the finalized block
     assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
     # Check block slot against Unix time
     pre_state = store.states[block.parent_root].copy()
+    print('store.states[block.parent_root]', hash_tree_root(store.states[block.parent_root]))
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
+    print('store.states[block.parent_root]', hash_tree_root(store.states[block.parent_root]))
     # Add new state to the store
     store.states[signing_root(block)] = state
     # Update justified and finalized blocks
@@ -150,7 +155,7 @@ def on_block(store: Store, block: BeaconBlock) -> None:
         store.finalized_root = state.finalized_root
     if state.current_justified_epoch > slot_to_epoch(store.blocks[store.justified_root].slot):
         store.justified_root = state.current_justified_root
-    if state.previous_justified_epoch > slot_to_epoch(store.blocks[store.justified_root].slot):
+    elif state.previous_justified_epoch > slot_to_epoch(store.blocks[store.justified_root].slot):
         store.justified_root = state.previous_justified_root
 ```
 

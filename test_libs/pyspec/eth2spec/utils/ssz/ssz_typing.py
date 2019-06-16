@@ -1,5 +1,13 @@
-from typing import List, Iterable, TypeVar, Type, NewType, Dict
-from typing import Union
+import copy
+from typing import (
+    List,
+    Iterable,
+    TypeVar,
+    Type,
+    NewType,
+    Dict,
+    Union,
+)
 from typing_inspect import get_origin
 
 # SSZ integers
@@ -123,6 +131,9 @@ class Container(object):
     def get_field_values(self):
         cls = self.__class__
         return [getattr(self, field) for field in cls.get_field_names()]
+    
+    def copy(self):
+        return self.deepcopy(self)
 
     def __repr__(self):
         return repr({field: getattr(self, field) for field in self.get_field_names()})
@@ -279,32 +290,6 @@ class Vector(metaclass=VectorMeta):
     def __eq__(self, other):
         return self.hash_tree_root() == other.hash_tree_root()
 
-
-# # Super Secret Un-documented SSZ Dict (for forkchoice)
-# # -----------------------------
-class Dict(dict):
-    def __init__(self,*args,**kwargs) : dict.__init__(self,*args,**kwargs) 
-
-    def serialize(self):
-        raise NotImplementedError
-
-    def hash_tree_root(self):
-        raise NotImplementedError
-
-    def __getitem__(self, key):
-        return self.items[key]
-
-    def __setitem__(self, key, value):
-        self.items[key] = value
-
-    def __iter__(self):
-        return iter(self.items)
-
-    def __len__(self):
-        return len(self.items)
-
-    def __eq__(self, other):
-        raise NotImplementedError
 
 # SSZ BytesN
 # -----------------------------

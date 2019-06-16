@@ -58,7 +58,7 @@ def test_on_attestation(spec, state):
          store.latest_targets[indexed_attestation.custody_bit_0_indices[0]] ==
          spec.Target(
               epoch = attestation.data.target_epoch,
-              root = attestation.data.target_root
+              root = attestation.data.target_root,
           )
      )
 
