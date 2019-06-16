@@ -232,6 +232,20 @@ class AbstractList(ParamsBase, metaclass=AbstractListMeta):
     def __setitem__(self, k, v):
         self.items[k] = v
 
+    def append(self, v):
+        if isinstance(self.items, list):
+            self.items.append(v)
+        else:
+            self.items += bytes([v])
+
+    def pop(self):
+        if isinstance(self.items, list):
+            return self.items.pop()
+        else:
+            x = byte(self.items[-1])
+            self.items = self.items[:-1]
+            return x
+
     def __len__(self):
         return len(self.items)
 

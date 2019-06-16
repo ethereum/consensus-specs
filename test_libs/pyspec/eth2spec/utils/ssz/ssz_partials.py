@@ -60,7 +60,7 @@ def filler(starting_position, list_size, max_list_size):
     value = ZERO_CHUNK
     o = {}
     while at < end:
-        while at % (skip * 2) == 0:
+        while (at+end) % (skip * 2) == 0:
             skip *= 2
             value = hash(value + value)
         o[(starting_position + at) // skip] = value
@@ -189,7 +189,17 @@ class SSZPartial():
                 get_generalized_index(self.typ, self.root, [index])
             )
 
-    def setter(self, index, value):
+    def clear_subtree(self, tree_index):
+        for k in list(self.objects.keys()):
+            if is_generalized_index_child(k, tree_index):
+                del self.objects[k]
+
+    def renew_branch(self, tree_index):
+        while tree_index > 1:
+            self.objects[tree_index // 2] = hash(self.objects[tree_index & -2] + self.objects[tree_index | 1])
+            tree_index //= 2
+
+    def setter(self, index, value, renew=True):
         base = self.root * 2 if is_list_kind(self.typ) else self.root
         elem_type = get_elem_type(self.typ, index)
         if is_basic_type(elem_type):
@@ -203,14 +213,48 @@ class SSZPartial():
                 assert len(self.objects[tree_index]) == 32
         else:
             tree_index = get_generalized_index(self.typ, self.root, [index])
-            for k in list(self.objects.keys()):
-                if is_generalized_index_child(k, tree_index):
-                    del self.objects[k]
+            self.clear_subtree(tree_index)
             for k, v in fill(ssz_leaves(value, elem_type, tree_index)).items():
                 self.objects[k] = v
-        while tree_index > 1:
-            self.objects[tree_index // 2] = hash(self.objects[tree_index & -2] + self.objects[tree_index | 1])
-            tree_index //= 2
+        if renew:
+            self.renew_branch(tree_index)
+
+    def append_or_pop(self, appending, value):
+        assert is_list_kind(self.typ)
+        old_length = len(self)
+        new_length = old_length + (1 if appending else -1)
+        if new_length < 0:
+            raise Exception("Can't pop from empty list/bytes!")
+        elif new_length > self.typ.length:
+            raise Exception("Can't append to full list/bytes!")
+        elem_type = get_elem_type(self.typ, None)
+        self.objects[self.root * 2 + 1] = new_length.to_bytes(32, 'little')
+        old_chunk_count = (old_length * item_length(elem_type) + 31) // 32
+        new_chunk_count = (new_length * item_length(elem_type) + 31) // 32
+        start_pos = self.root * 2 * next_power_of_two(chunk_count(self.typ))
+        if new_chunk_count != old_chunk_count:
+            for k, v in filler(start_pos, old_chunk_count, chunk_count(self.typ)).items():
+                del self.objects[k]
+        if not appending:
+            if is_basic_type(elem_type):
+                self.setter(old_length-1, get_zero_value(elem_type), renew=False)
+            else: 
+                self.clear_subtree(get_generalized_index(self.typ, self.root, [old_length-1]))
+        else:
+            self.setter(new_length-1, value, renew=False)
+        if new_chunk_count != old_chunk_count:
+            for k, v in filler(start_pos, new_chunk_count, chunk_count(self.typ)).items():
+                self.objects[k] = v
+        self.renew_branch(get_generalized_index(self.typ, self.root, [new_length-1]))
+        for k in self.objects.keys():
+            if k > 1:
+                assert k//2 in self.objects, k
+
+    def append(self, value):
+        return self.append_or_pop(True, value)
+
+    def pop(self):
+        return self.append_or_pop(False, None)
 
     def __setitem__(self, index, value):
         return self.setter(index, value)
