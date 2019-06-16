@@ -1,0 +1,131 @@
+from .ssz_typing import (
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bit, Container, List, Vector, Bytes, BytesN,
+    uint, uint8, uint16, uint32, uint64, uint128, uint256
+)
+
+
+def test_subclasses():
+    for u in [uint, uint8, uint16, uint32, uint64, uint128, uint256]:
+        assert issubclass(u, uint)
+        assert issubclass(u, int)
+        assert issubclass(u, BasicValue)
+        assert issubclass(u, SSZValue)
+        assert isinstance(u, SSZType)
+        assert isinstance(u, BasicType)
+    assert issubclass(Bit, BasicValue)
+    assert isinstance(Bit, BasicType)
+
+    for c in [Container, List, Vector, Bytes, BytesN]:
+        assert issubclass(c, Series)
+        assert issubclass(c, SSZValue)
+        assert isinstance(c, SSZType)
+        assert not issubclass(c, BasicValue)
+        assert not isinstance(c, BasicType)
+
+    for c in [List, Vector, Bytes, BytesN]:
+        assert isinstance(c, Elements)
+
+
+def test_basic_instances():
+    for u in [uint, uint8, uint16, uint32, uint64, uint128, uint256]:
+        v = u(123)
+        assert isinstance(v, uint)
+        assert isinstance(v, int)
+        assert isinstance(v, BasicValue)
+        assert isinstance(v, SSZValue)
+
+    assert isinstance(Bit(True), BasicValue)
+    assert isinstance(Bit(False), BasicValue)
+
+
+def test_basic_value_bounds():
+    max = {
+        Bit: 2**1,
+        uint8:   2**(8 * 1),
+        uint16:  2**(8 * 2),
+        uint32:  2**(8 * 4),
+        uint64:  2**(8 * 8),
+        uint128: 2**(8 * 16),
+        uint256: 2**(8 * 32),
+    }
+    for k, v in max.items():
+        # this should work
+        assert k(v - 1) == v - 1
+        # but we do not allow overflows
+        try:
+            k(v)
+            assert False
+        except ValueError:
+            pass
+
+    for k, _ in max.items():
+        # this should work
+        assert k(0) == 0
+        # but we do not allow underflows
+        try:
+            k(-1)
+            assert False
+        except ValueError:
+            pass
+
+
+def test_container():
+    class Foo(Container):
+        a: uint8
+        b: uint32
+
+    assert issubclass(Foo, Container)
+    assert issubclass(Foo, SSZValue)
+    assert issubclass(Foo, Series)
+
+    assert Foo.is_fixed_size()
+    x = Foo(a=uint8(123), b=uint32(45))
+    assert x.a == 123
+    assert x.b == 45
+    assert isinstance(x.a, uint8)
+    assert isinstance(x.b, uint32)
+    assert x.type().is_fixed_size()
+
+    class Bar(Container):
+        a: uint8
+        b: List[uint8, 1024]
+
+    assert not Bar.is_fixed_size()
+
+    y = Bar(a=uint8(123), b=List[uint8, 1024](uint8(1), uint8(2)))
+    assert y.a == 123
+    assert len(y.b) == 2
+    assert isinstance(y.a, uint8)
+    assert isinstance(y.b, List[uint8, 1024])
+    assert not y.type().is_fixed_size()
+    assert y.b[0] == 1
+    v: List = y.b
+    assert v.type().elem_type == uint8
+    assert v.type().length == 1024
+
+
+def test_list():
+    typ = List[uint64, 128]
+    assert issubclass(typ, List)
+    assert issubclass(typ, SSZValue)
+    assert issubclass(typ, Series)
+    assert isinstance(typ, Elements)
+
+    assert not typ.is_fixed_size()
+
+    assert len(typ()) == 0  # empty
+    assert len(typ(uint64(0))) == 1  # single arg
+    assert len(typ(uint64(i) for i in range(10))) == 10  # generator
+    assert len(typ(uint64(0), uint64(1), uint64(2))) == 3  # args
+
+    v = typ(uint64(0))
+    v[0] = uint64(123)
+    assert v[0] == 123
+    assert isinstance(v[0], uint64)
+
+    assert isinstance(v, List)
+    assert isinstance(v, List[uint64, 128])
+    assert isinstance(v, typ)
+    assert isinstance(v, SSZValue)
+    assert isinstance(v, Series)
+    assert isinstance(v.type(), Elements)

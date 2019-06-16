@@ -36,6 +36,11 @@ class BasicValue(int, SSZValue, metaclass=BasicType):
 
 class Bit(BasicValue):  # can't subclass bool.
 
+    def __new__(cls, value, *args, **kwargs):
+        if value < 0 or value > 1:
+            raise ValueError(f"value {value} out of bounds for bit")
+        return super().__new__(cls, value)
+
     @classmethod
     def default(cls):
         return cls(False)
@@ -49,7 +54,7 @@ class uint(BasicValue, metaclass=BasicType):
     def __new__(cls, value, *args, **kwargs):
         if value < 0:
             raise ValueError("unsigned types must not be negative")
-        if cls.byte_len and (value.bit_length() >> 3) > cls.byte_len:
+        if cls.byte_len and value.bit_length() > (cls.byte_len << 3):
             raise ValueError("value out of bounds for uint{}".format(cls.byte_len))
         return super().__new__(cls, value)
 
@@ -142,7 +147,7 @@ class Container(Series, metaclass=SSZType):
 
     @classmethod
     def get_fields(cls) -> Tuple[Tuple[str, SSZType], ...]:
-        return tuple((f, SSZType(t)) for f, t in dict(cls.__annotations__).items())
+        return tuple((f, t) for f, t in cls.__annotations__.items())
 
     def get_typed_values(self):
         return tuple(zip(self.get_field_values(), self.get_field_types()))
@@ -190,6 +195,12 @@ class ParamsMeta(SSZType):
         o._bare = False
         return o
 
+    def __str__(self):
+        return f"{self.__name__}~{self.__class__.__name__}"
+
+    def __repr__(self):
+        return self, self.__class__
+
     def attr_from_params(self, p):
         # single key params are valid too. Wrap them in a tuple.
         params = p if isinstance(p, tuple) else (p,)
@@ -215,7 +226,7 @@ class ParamsMeta(SSZType):
     def __instancecheck__(self, obj):
         if obj.__class__.__name__ != self.__name__:
             return False
-        for name, typ in self.__annotations__:
+        for name, typ in self.__annotations__.items():
             if hasattr(self, name) and hasattr(obj.__class__, name) \
                     and getattr(obj.__class__, name) != getattr(self, name):
                 return False
@@ -233,7 +244,7 @@ class ElementsBase(ParamsBase, metaclass=Elements):
         items = self.extract_args(*args)
 
         if not self.value_check(items):
-            raise ValueCheckError("Bad input for class {}: {}".format(self.__class__, items))
+            raise ValueCheckError(f"Bad input for class {self.__class__}: {items}")
         self.items = items
 
     @classmethod
@@ -245,7 +256,7 @@ class ElementsBase(ParamsBase, metaclass=Elements):
         x = list(args)
         if len(x) == 1 and isinstance(x[0], GeneratorType):
             x = list(x[0])
-        return x if len(x) > 0 else cls.default()
+        return x
 
     def __str__(self):
         cls = self.__class__
