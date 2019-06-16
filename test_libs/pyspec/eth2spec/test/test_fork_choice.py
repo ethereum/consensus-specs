@@ -1,4 +1,6 @@
-from eth2spec.utils.ssz.ssz_impl import signing_root
+from typing import List
+
+from eth2spec.utils.ssz.ssz_impl import signing_root, hash_tree_root
 
 from eth2spec.test.context import with_all_phases, spec_state_test
 
@@ -10,6 +12,7 @@ from eth2spec.test.helpers.state import next_slot
 @with_all_phases
 @spec_state_test
 def test_basic(spec, state):
+     state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
      yield 'pre', state
 
     # Initialization

@@ -133,7 +133,7 @@ class Container(object):
         return [getattr(self, field) for field in cls.get_field_names()]
     
     def copy(self):
-        return self.deepcopy(self)
+        return copy.deepcopy(self)
 
     def __repr__(self):
         return repr({field: getattr(self, field) for field in self.get_field_names()})
