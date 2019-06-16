@@ -54,7 +54,7 @@ assert p.people[9].is_male == city.people[9].is_male
 assert p.people[7].is_male == city.people[7].is_male
 assert p.people[7].age == city.people[7].age
 assert p.people[7].name[0] == city.people[7].name[0]
-assert str(p.people[7].name) == city.people[7].name.items.decode('utf-8')
+assert str(p.people[7].name) == str(city.people[7].name)
 assert str(p.people[1]) == str(city.people[1]), (str(p.people[1]), str(city.people[1]))
 assert p.people[1].name.hash_tree_root() == hash_tree_root(city.people[1].name)
 assert p.people[1].hash_tree_root() == hash_tree_root(city.people[1])
@@ -62,4 +62,17 @@ assert p.coords.hash_tree_root() == hash_tree_root(city.coords)
 assert p.people.hash_tree_root() == hash_tree_root(city.people), (p.people.hash_tree_root(), hash_tree_root(city.people))
 assert p.hash_tree_root() == hash_tree_root(city)
 print(hash_tree_root(city))
-print("Tests passed")
+print("Reading tests passed")
+p.coords[0] = 65
+assert p.coords[0] == 65
+assert p.coords.hash_tree_root() == hash_tree_root(Vector[uint64, 2](uint64(65), uint64(90)))
+p.people[7].name[0] = byte('F')
+assert p.people[7].name[0] == ord('F')
+assert p.people[7].name == Bytes[32](b"Feather")
+p.people[9].is_male = False
+assert p.people[9].is_male is False
+p.people[1].name = Bytes[32](b"Ashley")
+assert p.people[1].name.full_value() == Bytes[32](b"Ashley")
+p.people[1].age += 100
+assert p.people[1].hash_tree_root() == hash_tree_root(Person(is_male=True, age=uint64(147), name=Bytes[32](b"Ashley")))
+print("Writing tests passed")
