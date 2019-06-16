@@ -163,5 +163,8 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     validate_indexed_attestation(state, indexed_attestation)
     for i in indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices:
         if i not in store.latest_targets or attestation.data.target_epoch > store.latest_targets[i].epoch:
-            store.latest_targets[i] = Target(attestation.data.target_epoch, attestation.data.target_root)
+            store.latest_targets[i] = Target(
+                epoch = attestation.data.target_epoch,
+                root = attestation.data.target_root,
+            )
 ```

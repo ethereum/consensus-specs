@@ -1,4 +1,4 @@
-from typing import List, Iterable, TypeVar, Type, NewType
+from typing import List, Iterable, TypeVar, Type, NewType, Dict
 from typing import Union
 from typing_inspect import get_origin
 
@@ -280,6 +280,32 @@ class Vector(metaclass=VectorMeta):
         return self.hash_tree_root() == other.hash_tree_root()
 
 
+# # Super Secret Un-documented SSZ Dict (for forkchoice)
+# # -----------------------------
+class Dict(dict):
+    def __init__(self,*args,**kwargs) : dict.__init__(self,*args,**kwargs) 
+
+    def serialize(self):
+        raise NotImplementedError
+
+    def hash_tree_root(self):
+        raise NotImplementedError
+
+    def __getitem__(self, key):
+        return self.items[key]
+
+    def __setitem__(self, key, value):
+        self.items[key] = value
+
+    def __iter__(self):
+        return iter(self.items)
+
+    def __len__(self):
+        return len(self.items)
+
+    def __eq__(self, other):
+        raise NotImplementedError
+
 # SSZ BytesN
 # -----------------------------
 
@@ -407,6 +433,8 @@ def get_zero_value(typ):
         return b''
     elif is_container_type(typ):
         return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
+    elif is_dict_type(typ):
+        return dict()
     else:
         raise Exception("Type not supported: {}".format(typ))
 
@@ -496,6 +524,13 @@ def is_container_type(typ):
     Check if the given type is a container.
     """
     return isinstance(typ, type) and issubclass(typ, Container)
+
+
+def is_dict_type(typ):
+    """
+    Check of the given type is a Dict. (Which are a part of the super-secret undocumented SSZ spec)
+    """
+    return get_origin(typ) is Dict or get_origin(typ) is dict
 
 
 T = TypeVar('T')
