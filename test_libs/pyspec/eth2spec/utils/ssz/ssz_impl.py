@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks, ZERO_BYTES32
 from ..hash_function import hash
 from .ssz_typing import (
-    get_zero_value, Container, List, Vector, Bytes, BytesN, uint
+    get_zero_value, Container, List, Vector, Bytes, BytesN, uint, infer_input_type
 )
 
 # SSZ Serialization
@@ -11,8 +11,7 @@ BYTES_PER_LENGTH_OFFSET = 4
 
 
 def is_basic_type(typ):
-    return issubclass(typ, (bool, uint))
-
+    return typ == bool or issubclass(typ, uint)
 
 def serialize_basic(value, typ):
     if issubclass(typ, uint):
@@ -155,6 +154,16 @@ def item_length(typ):
         return 32
 
 
+def chunk_count(typ):
+    if is_basic_type(typ):
+        return 1
+    elif is_list_kind(typ) or is_vector_kind(typ):
+        return (typ.length * item_length(typ.elem_type) + 31) // 32
+    else:
+        return len(typ.get_fields())
+
+
+@infer_input_type
 def hash_tree_root(obj, typ):
     if is_bottom_layer_kind(typ):
         data = serialize_basic(obj, typ) if is_basic_type(typ) else pack(obj, typ.elem_type)
@@ -163,9 +172,9 @@ def hash_tree_root(obj, typ):
         fields = get_typed_values(obj, typ=typ)
         leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in fields]
     if is_list_kind(typ):
-        return mix_in_length(merkleize_chunks(leaves, pad_to=typ.length), len(obj))
+        return mix_in_length(merkleize_chunks(leaves, pad_to=chunk_count(typ)), len(obj))
     else:
-        return merkleize_chunks(leaves)
+        return merkleize_chunks(leaves, pad_to=chunk_count(typ))
 
 
 def signing_root(obj, typ):

@@ -44,8 +44,10 @@ class uint8(uint):
     byte_len = 1
 
 
+class byte(uint8):
+    pass
 # Alias for uint8
-byte = NewType('byte', uint8)
+#byte = NewType('byte', uint8)
 
 
 class uint16(uint):
@@ -73,7 +75,7 @@ class uint256(uint):
 
 # Note: importing ssz functionality locally, to avoid import loop
 
-class Container(object):
+class Container(object, metaclass=DefaultingTypeMeta):
 
     def __init__(self, **kwargs):
         cls = self.__class__
@@ -282,8 +284,7 @@ class BytesLike(AbstractList, metaclass=BytesMeta):
         return isinstance(value, bytes)
 
     def __str__(self):
-        cls = self.__class__
-        return f"{cls.__name__}[{cls.length}]: {self.items.hex()}"
+        return str(self.items)
 
 
 class Bytes(BytesLike):
@@ -303,3 +304,19 @@ class BytesN(BytesLike):
     def value_check(cls, value):
         return len(value) == cls.length and super().value_check(value)
 
+
+def infer_type(obj):
+    if isinstance(obj, int):
+        return uint64
+    else:
+        return obj.__class__
+
+def infer_input_type(fn):
+    """
+    Decorator to run infer_type on the obj if typ argument is None
+    """
+    def infer_helper(obj, typ=None, **kwargs):
+        if typ is None:
+            typ = infer_type(obj)
+        return fn(obj, typ=typ, **kwargs)
+    return infer_helper

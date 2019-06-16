@@ -66,7 +66,8 @@ def merkleize_chunks(chunks, pad_to: int = None):
     for i in range(count):
         merge(chunks[i], i)
 
-    merge(zerohashes[0], count)
+    if count < (1 << (count - 1).bit_length()):
+        merge(zerohashes[0], count)
 
     for j in range(depth, max_depth):
         tmp[j + 1] = hash(tmp[j] + zerohashes[j])
