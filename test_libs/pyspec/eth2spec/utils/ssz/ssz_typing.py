@@ -131,7 +131,7 @@ class Container(object):
     def get_field_values(self):
         cls = self.__class__
         return [getattr(self, field) for field in cls.get_field_names()]
-    
+
     def copy(self):
         return copy.deepcopy(self)
 
