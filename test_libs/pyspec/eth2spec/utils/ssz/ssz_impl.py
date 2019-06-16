@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bit, Container, List, Vector, Bytes, BytesN, uint
+    SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType, Elements, Bit, Container, List, Vector, Bytes, BytesN, uint
 )
 
 # SSZ Serialization
@@ -47,8 +47,8 @@ def serialize(obj: SSZValue):
 
 def encode_series(values: Series):
     # bytes and bytesN are already in the right format.
-    if isinstance(values, bytes):
-        return values
+    if isinstance(values, (Bytes, BytesN)):
+        return values.items
 
     # Recursively serialize
     parts = [(v.type().is_fixed_size(), serialize(v)) for v in values]
@@ -84,8 +84,8 @@ def encode_series(values: Series):
 
 
 def pack(values: Series):
-    if isinstance(values, bytes):
-        return values
+    if isinstance(values, (Bytes, BytesN)):
+        return values.items
     return b''.join([serialize_basic(value) for value in values])
 
 
@@ -101,8 +101,8 @@ def mix_in_length(root, length):
 
 def is_bottom_layer_kind(typ: SSZType):
     return (
-        issubclass(typ, BasicType) or
-        (issubclass(typ, Elements) and issubclass(typ.elem_type, BasicType))
+        isinstance(typ, BasicType) or
+        (issubclass(typ, Elements) and isinstance(typ.elem_type, BasicType))
     )
 
 
@@ -114,7 +114,7 @@ def item_length(typ: SSZType) -> int:
 
 
 def chunk_count(typ: SSZType) -> int:
-    if issubclass(typ, BasicType):
+    if isinstance(typ, BasicType):
         return 1
     elif issubclass(typ, Elements):
         return (typ.length * item_length(typ.elem_type) + 31) // 32
@@ -133,7 +133,7 @@ def hash_tree_root(obj: SSZValue):
     elif isinstance(obj, BasicValue):
         leaves = chunkify(serialize_basic(obj))
     else:
-        raise Exception(f"Type not supported: {obj.type()}")
+        raise Exception(f"Type not supported: {type(obj)}")
 
     if isinstance(obj, (List, Bytes)):
         return mix_in_length(merkleize_chunks(leaves, pad_to=chunk_count(obj.type())), len(obj))

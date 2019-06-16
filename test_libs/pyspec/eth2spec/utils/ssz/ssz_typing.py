@@ -92,6 +92,22 @@ class uint256(uint):
     byte_len = 32
 
 
+def coerce_type_maybe(v, typ: SSZType):
+    v_typ = type(v)
+    # shortcut if it's already the type we are looking for
+    if v_typ == typ:
+        return v
+    elif isinstance(v, int):
+        return typ(v)
+    elif isinstance(v, (list, tuple)):
+        return typ(*v)
+    elif isinstance(v, GeneratorType):
+        return typ(v)
+    else:
+        # just return as-is, Value-checkers will take care of it not being coerced.
+        return v
+
+
 class Series(SSZValue):
 
     def __iter__(self) -> Iterator[SSZValue]:
@@ -108,7 +124,11 @@ class Container(Series, metaclass=SSZType):
             if f not in kwargs:
                 setattr(self, f, t.default())
             else:
-                setattr(self, f, kwargs[f])
+                value = coerce_type_maybe(kwargs[f], t)
+                if not isinstance(value, t):
+                    raise ValueCheckError(f"Bad input for class {self.__class__}:"
+                                          f" field: {f} type: {t} value: {value} value type: {type(value)}")
+                setattr(self, f, value)
 
     def serialize(self):
         from .ssz_impl import serialize
@@ -142,22 +162,21 @@ class Container(Series, metaclass=SSZType):
         return hash(self.hash_tree_root())
 
     @classmethod
-    def get_fields_dict(cls) -> Dict[str, SSZType]:
-        return dict(cls.__annotations__)
-
-    @classmethod
     def get_fields(cls) -> Tuple[Tuple[str, SSZType], ...]:
+        if not hasattr(cls, '__annotations__'):  # no container fields
+            return ()
         return tuple((f, t) for f, t in cls.__annotations__.items())
 
-    def get_typed_values(self):
-        return tuple(zip(self.get_field_values(), self.get_field_types()))
-
     @classmethod
-    def get_field_names(cls) -> Tuple[str]:
+    def get_field_names(cls) -> Tuple[str, ...]:
+        if not hasattr(cls, '__annotations__'):  # no container fields
+            return ()
         return tuple(cls.__annotations__.keys())
 
     @classmethod
     def get_field_types(cls) -> Tuple[SSZType, ...]:
+        if not hasattr(cls, '__annotations__'):  # no container fields
+            return ()
         # values of annotations are the types corresponding to the fields, not instance values.
         return tuple(cls.__annotations__.values())
 
@@ -233,12 +252,12 @@ class ParamsMeta(SSZType):
         return True
 
 
-class Elements(ParamsMeta):
+class ElementsType(ParamsMeta):
     elem_type: SSZType
     length: int
 
 
-class ElementsBase(ParamsBase, metaclass=Elements):
+class Elements(ParamsBase, metaclass=ElementsType):
 
     def __init__(self, *args):
         items = self.extract_args(*args)
@@ -256,6 +275,7 @@ class ElementsBase(ParamsBase, metaclass=Elements):
         x = list(args)
         if len(x) == 1 and isinstance(x[0], GeneratorType):
             x = list(x[0])
+        x = [coerce_type_maybe(v, cls.elem_type) for v in x]
         return x
 
     def __str__(self):
@@ -281,7 +301,7 @@ class ElementsBase(ParamsBase, metaclass=Elements):
         return self.items == other.items
 
 
-class List(ElementsBase):
+class List(Elements):
 
     @classmethod
     def default(cls):
@@ -292,7 +312,7 @@ class List(ElementsBase):
         return False
 
 
-class Vector(ElementsBase):
+class Vector(Elements):
 
     @classmethod
     def value_check(cls, value):
@@ -307,23 +327,26 @@ class Vector(ElementsBase):
         return cls.elem_type.is_fixed_size()
 
 
-class BytesMeta(Elements):
+class BytesType(ElementsType):
     elem_type: SSZType = byte
     length: int
 
 
-class BytesLike(ElementsBase, metaclass=BytesMeta):
+class BytesLike(Elements, metaclass=BytesType):
 
     @classmethod
-    def extract_args(cls, args):
-        if isinstance(args, bytes):
-            return args
-        elif isinstance(args, BytesLike):
-            return args.items
-        elif isinstance(args, GeneratorType):
-            return bytes(args)
+    def extract_args(cls, *args):
+        x = list(args)
+        if len(x) == 1 and isinstance(x[0], (GeneratorType, bytes, BytesLike)):
+            x = x[0]
+        if isinstance(x, bytes):
+            return x
+        elif isinstance(x, BytesLike):
+            return x.items
+        elif isinstance(x, GeneratorType):
+            return bytes(x)
         else:
-            return bytes(args)
+            return bytes(x)
 
     @classmethod
     def value_check(cls, value):

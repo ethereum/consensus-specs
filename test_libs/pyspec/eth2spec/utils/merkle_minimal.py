@@ -44,7 +44,7 @@ def next_power_of_two(v: int) -> int:
     return 1 << (v - 1).bit_length()
 
 
-def merkleize_chunks(chunks, pad_to: int = None):
+def merkleize_chunks(chunks, pad_to: int = 1):
     count = len(chunks)
     depth = max(count - 1, 0).bit_length()
     max_depth = max(depth, (pad_to - 1).bit_length())
@@ -55,7 +55,7 @@ def merkleize_chunks(chunks, pad_to: int = None):
         while True:
             if i & (1 << j) == 0:
                 if i == count and j < depth:
-                    h = hash(h + zerohashes[j])
+                    h = hash(h + zerohashes[j])  # keep going if we are complementing the void to the next power of 2
                 else:
                     break
             else:
@@ -63,11 +63,15 @@ def merkleize_chunks(chunks, pad_to: int = None):
             j += 1
         tmp[j] = h
 
+    # merge in leaf by leaf.
     for i in range(count):
         merge(chunks[i], i)
 
-    merge(zerohashes[0], count)
+    # complement with 0 if empty, or if not the right power of 2
+    if 1 << depth != count:
+        merge(zerohashes[0], count)
 
+    # the next power of two may be smaller than the ultimate virtual size, complement with zero-hashes at each depth.
     for j in range(depth, max_depth):
         tmp[j + 1] = hash(tmp[j] + zerohashes[j])
 

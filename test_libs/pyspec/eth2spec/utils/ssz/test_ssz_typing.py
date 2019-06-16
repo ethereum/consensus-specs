@@ -1,5 +1,5 @@
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bit, Container, List, Vector, Bytes, BytesN,
+    SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType, Elements, Bit, Container, List, Vector, Bytes, BytesN,
     uint, uint8, uint16, uint32, uint64, uint128, uint256
 )
 
@@ -23,7 +23,8 @@ def test_subclasses():
         assert not isinstance(c, BasicType)
 
     for c in [List, Vector, Bytes, BytesN]:
-        assert isinstance(c, Elements)
+        assert issubclass(c, Elements)
+        assert isinstance(c, ElementsType)
 
 
 def test_basic_instances():
@@ -109,7 +110,8 @@ def test_list():
     assert issubclass(typ, List)
     assert issubclass(typ, SSZValue)
     assert issubclass(typ, Series)
-    assert isinstance(typ, Elements)
+    assert issubclass(typ, Elements)
+    assert isinstance(typ, ElementsType)
 
     assert not typ.is_fixed_size()
 
@@ -128,4 +130,5 @@ def test_list():
     assert isinstance(v, typ)
     assert isinstance(v, SSZValue)
     assert isinstance(v, Series)
-    assert isinstance(v.type(), Elements)
+    assert issubclass(v.type(), Elements)
+    assert isinstance(v.type(), ElementsType)
