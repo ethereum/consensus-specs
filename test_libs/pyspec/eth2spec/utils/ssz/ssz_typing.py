@@ -29,6 +29,8 @@ class uint(int, metaclass=DefaultingTypeMeta):
     byte_len = 0
 
     def __new__(cls, value, *args, **kwargs):
+        if isinstance(value, (str, bytes)) and len(value) == 1:
+            value = ord(value)
         if value < 0:
             raise ValueError("unsigned types must not be negative")
         if cls.byte_len and (value.bit_length() >> 3) > cls.byte_len:

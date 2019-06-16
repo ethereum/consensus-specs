@@ -13,6 +13,7 @@ BYTES_PER_LENGTH_OFFSET = 4
 def is_basic_type(typ):
     return typ == bool or issubclass(typ, uint)
 
+@infer_input_type
 def serialize_basic(value, typ):
     if issubclass(typ, uint):
         return value.to_bytes(typ.byte_len, 'little')
@@ -142,7 +143,7 @@ def get_typed_values(obj, typ):
     elif is_list_kind(typ) or is_vector_kind(typ):
         return list(zip(obj, [typ.elem_type] * len(obj)))
     else:
-        raise Exception("Invalid type")
+        raise Exception("Invalid type", obj, typ)
 
 
 def item_length(typ):

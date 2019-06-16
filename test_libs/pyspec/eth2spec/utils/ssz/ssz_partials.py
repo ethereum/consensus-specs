@@ -75,7 +75,6 @@ def merkle_tree_of_chunks(chunks, max_chunk_count, root):
     return o
 
 
-@infer_input_type
 def ssz_leaves(obj, typ=None, root=1):
     if is_list_kind(typ):
         o = {root * 2 + 1: len(obj).to_bytes(32, 'little')}
@@ -173,7 +172,7 @@ class SSZPartial():
 
     def getter(self, index):
         base = self.root * 2 if is_list_kind(self.typ) else self.root
-        if is_basic_type(self.typ) or is_basic_type(get_elem_type(self.typ, index)):
+        if is_basic_type(get_elem_type(self.typ, index)):
             pos, start, end = get_item_position(self.typ, index)
             tree_index = base * next_power_of_two(chunk_count(self.typ)) + pos
             if tree_index not in self.objects:
@@ -189,6 +188,32 @@ class SSZPartial():
                 self.objects,
                 get_generalized_index(self.typ, self.root, [index])
             )
+
+    def setter(self, index, value):
+        base = self.root * 2 if is_list_kind(self.typ) else self.root
+        elem_type = get_elem_type(self.typ, index)
+        if is_basic_type(elem_type):
+            pos, start, end = get_item_position(self.typ, index)
+            tree_index = base * next_power_of_two(chunk_count(self.typ)) + pos
+            if tree_index not in self.objects:
+                raise OutOfRangeException("Do not have required data")
+            else:
+                chunk = self.objects[tree_index]
+                self.objects[tree_index] = chunk[:start] + serialize_basic(value, elem_type) + chunk[end:]
+                assert len(self.objects[tree_index]) == 32
+        else:
+            tree_index = get_generalized_index(self.typ, self.root, [index])
+            for k in list(self.objects.keys()):
+                if is_generalized_index_child(k, tree_index):
+                    del self.objects[k]
+            for k, v in fill(ssz_leaves(value, elem_type, tree_index)).items():
+                self.objects[k] = v
+        while tree_index > 1:
+            self.objects[tree_index // 2] = hash(self.objects[tree_index & -2] + self.objects[tree_index | 1])
+            tree_index //= 2
+
+    def __setitem__(self, index, value):
+        return self.setter(index, value)
 
     def access_partial(self, path):
         gindex = get_generalized_index(self.typ, self.root, path)
@@ -216,10 +241,8 @@ class SSZPartial():
 
     def full_value(self):
         if issubclass(self.typ, Bytes) or issubclass(self.typ, BytesN):
-            return bytes([self.getter(i) for i in range(len(self))])
-        elif is_list_kind(self.typ):
-            return [self[i] for i in range(len(self))]
-        elif is_vector_kind(self.typ):
+            return self.typ(bytes([self.getter(i) for i in range(len(self))]))
+        elif is_list_kind(self.typ) or is_vector_kind(self.typ):
             return self.typ(*(self[i] for i in range(len(self))))
         elif is_container_type(self.typ):
             def full_value(x):
@@ -244,11 +267,13 @@ class SSZPartial():
         return o[self.root]
 
     def __str__(self):
-        o = self.full_value()
-        if isinstance(o, bytes):
-            return o.decode('utf-8')
+        return str(self.full_value())
+
+    def __eq__(self, other):
+        if isinstance(other, SSZPartial):
+            return self.full_value() == other.full_value()
         else:
-            return str(o)
+            return self.full_value() == other
 
 
 def ssz_partial(typ, objects, root=1):
@@ -260,6 +285,9 @@ def ssz_partial(typ, objects, root=1):
     if is_container_type(typ):
         Partial.__annotations__ = typ.__annotations__
         for field in typ.get_field_names():
-            setattr(Partial, field, property((lambda f: (lambda self: self.getter(f)))(field)))
+            setattr(Partial, field, property(
+                (lambda f: (lambda self: self.getter(f)))(field),
+                (lambda f: (lambda self, v: self.setter(f, v)))(field)
+            ))
     o = Partial(typ, objects, root)
     return o
