@@ -1609,7 +1609,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
 
-    for operations, max_operations, function in (
+    for operations, processor in (
         (body.proposer_slashings, process_proposer_slashing),
         (body.attester_slashings, process_attester_slashing),
         (body.attestations, process_attestation),
@@ -1618,7 +1618,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         (body.transfers, process_transfer),
     ):
         for operation in operations:
-            function(state, operation)
+            processor(state, operation)
 ```
 
 ##### Proposer slashings
