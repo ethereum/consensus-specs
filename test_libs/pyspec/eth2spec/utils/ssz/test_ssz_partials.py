@@ -43,7 +43,6 @@ for path in paths:
     print(path, list(full.access_partial(path).objects.keys()))
     # print(path, get_nodes_along_path(full, path, typ=City).keys())
 p = merge(*[full.access_partial(path) for path in paths])
-object_keys = sorted(list(p.objects.keys()))[::-1]
 # p = SSZPartial(infer_type(city), branch2)
 assert p.coords[0] == city.coords[0]
 assert p.coords[1] == city.coords[1]
@@ -78,6 +77,9 @@ p.people[1].age += 100
 assert p.people[1].hash_tree_root() == hash_tree_root(Person(is_male=True, age=uint64(147), name=Bytes[32](b"Ashley")))
 print("Writing tests passed")
 p = merge(*[full.access_partial(path) for path in paths])
+object_keys = sorted(list(p.objects.keys()))[::-1]
+print(object_keys)
+pre_hash_root = p.hash_tree_root()
 for i in range(10):
     p.people.append(Person(is_male=False, age=uint64(i), name=Bytes[32](b"z" * i)))
     city.people.append(Person(is_male=False, age=uint64(i), name=Bytes[32](b"z" * i)))
@@ -92,9 +94,11 @@ for i in range(10):
     city.people[7].name.pop()
     assert p.hash_tree_root() == city.hash_tree_root()
     print(i)
+assert p.hash_tree_root() == pre_hash_root
 print("Append and pop tests passed")
 encoded = p.encode()
 print(encoded)
 print(serialize(encoded))
 assert encoded.to_ssz(City).hash_tree_root() == p.hash_tree_root()
+# print('extras', list([k for k in p.objects if k not in encoded.to_ssz(City).objects]))
 print("Encoded partial tests passed")
