@@ -4,8 +4,10 @@ This directory contains all the generators for YAML tests, consumed by Eth 2.0 c
 
 Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs, here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
 
-Whenever a release is made, the new tests are automatically built, and
-[eth2TestGenBot](https://github.com/eth2TestGenBot) commits the changes to the test repository.
+Test-vectors are generated and published by the release-publishers for every release.
+
+Spec-tests are unified with the executable spec: these tests are PyTest compatible, run in CI, but also enable special settings.
+ Settings include BLS on/off, and the option to output the relevant data into a test-vector in "generator mode".
 
 ## How to run generators
 
