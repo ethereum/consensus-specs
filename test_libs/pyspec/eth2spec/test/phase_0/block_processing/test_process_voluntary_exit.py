@@ -21,14 +21,14 @@ def run_voluntary_exit_processing(spec, state, voluntary_exit, valid=True):
         yield 'post', None
         return
 
-    pre_exit_epoch = state.validator_registry[validator_index].exit_epoch
+    pre_exit_epoch = state.validators[validator_index].exit_epoch
 
     spec.process_voluntary_exit(state, voluntary_exit)
 
     yield 'post', state
 
     assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert state.validator_registry[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases
@@ -39,7 +39,7 @@ def test_success(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     voluntary_exit = build_voluntary_exit(spec, state, current_epoch, validator_index, privkey, signed=True)
 
@@ -55,7 +55,7 @@ def test_invalid_signature(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     voluntary_exit = build_voluntary_exit(spec, state, current_epoch, validator_index, privkey)
 
@@ -76,7 +76,7 @@ def test_success_exit_queue(spec, state):
     # Prepare a bunch of exits, based on the current state
     exit_queue = []
     for index in initial_indices:
-        privkey = pubkey_to_privkey[state.validator_registry[index].pubkey]
+        privkey = pubkey_to_privkey[state.validators[index].pubkey]
         exit_queue.append(build_voluntary_exit(
             spec,
             state,
@@ -94,7 +94,7 @@ def test_success_exit_queue(spec, state):
 
     # exit an additional validator
     validator_index = spec.get_active_validator_indices(state, current_epoch)[-1]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     voluntary_exit = build_voluntary_exit(
         spec,
         state,
@@ -109,8 +109,8 @@ def test_success_exit_queue(spec, state):
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit)
 
     assert (
-        state.validator_registry[validator_index].exit_epoch ==
-        state.validator_registry[initial_indices[0]].exit_epoch + 1
+        state.validators[validator_index].exit_epoch ==
+        state.validators[initial_indices[0]].exit_epoch + 1
     )
 
 
@@ -122,7 +122,7 @@ def test_validator_exit_in_future(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     voluntary_exit = build_voluntary_exit(
         spec,
@@ -146,7 +146,7 @@ def test_validator_invalid_validator_index(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     voluntary_exit = build_voluntary_exit(
         spec,
@@ -156,7 +156,7 @@ def test_validator_invalid_validator_index(spec, state):
         privkey,
         signed=False,
     )
-    voluntary_exit.validator_index = len(state.validator_registry)
+    voluntary_exit.validator_index = len(state.validators)
     sign_voluntary_exit(spec, state, voluntary_exit, privkey)
 
     yield from run_voluntary_exit_processing(spec, state, voluntary_exit, False)
@@ -167,9 +167,9 @@ def test_validator_invalid_validator_index(spec, state):
 def test_validator_not_active(spec, state):
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
-    state.validator_registry[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
 
     # build and test voluntary exit
     voluntary_exit = build_voluntary_exit(
@@ -192,10 +192,10 @@ def test_validator_already_exited(spec, state):
 
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     # but validator already has exited
-    state.validator_registry[validator_index].exit_epoch = current_epoch + 2
+    state.validators[validator_index].exit_epoch = current_epoch + 2
 
     voluntary_exit = build_voluntary_exit(
         spec,
@@ -214,7 +214,7 @@ def test_validator_already_exited(spec, state):
 def test_validator_not_active_long_enough(spec, state):
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     voluntary_exit = build_voluntary_exit(
         spec,
@@ -226,7 +226,7 @@ def test_validator_not_active_long_enough(spec, state):
     )
 
     assert (
-        current_epoch - state.validator_registry[validator_index].activation_epoch <
+        current_epoch - state.validators[validator_index].activation_epoch <
         spec.PERSISTENT_COMMITTEE_PERIOD
     )
 

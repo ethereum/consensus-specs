@@ -34,7 +34,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
     # Process slashing
     spec.process_attester_slashing(state, attester_slashing)
 
-    slashed_validator = state.validator_registry[slashed_index]
+    slashed_validator = state.validators[slashed_index]
 
     # Check slashing
     assert slashed_validator.slashed
@@ -135,7 +135,7 @@ def test_participants_already_slashed(spec, state):
     attestation_1 = attester_slashing.attestation_1
     validator_indices = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
     for index in validator_indices:
-        state.validator_registry[index].slashed = True
+        state.validators[index].slashed = True
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
