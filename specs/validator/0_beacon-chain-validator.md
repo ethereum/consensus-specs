@@ -157,7 +157,7 @@ def get_committee_assignment(
                 return committee, shard, slot
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
+A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only guaranteed to be stable within the current slot.
 
 ```python
 def is_proposer(state: BeaconState,
