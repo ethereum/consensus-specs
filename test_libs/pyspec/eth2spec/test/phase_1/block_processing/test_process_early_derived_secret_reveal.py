@@ -24,7 +24,7 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
 
     spec.process_early_derived_secret_reveal(state, randao_key_reveal)
 
-    slashed_validator = state.validator_registry[randao_key_reveal.revealed_index]
+    slashed_validator = state.validators[randao_key_reveal.revealed_index]
 
     if randao_key_reveal.epoch >= spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING:
         assert slashed_validator.slashed
@@ -111,7 +111,7 @@ def test_double_reveal(spec, state):
 @spec_state_test
 def test_revealer_is_slashed(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state))
-    state.validator_registry[randao_key_reveal.revealed_index].slashed = True
+    state.validators[randao_key_reveal.revealed_index].slashed = True
 
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 

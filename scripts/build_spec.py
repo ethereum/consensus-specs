@@ -130,9 +130,10 @@ def objects_to_spec(functions: Dict[str, str],
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
-    new_type_definitions = \
-        '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in new_types.items()])
-    new_type_definitions += '\n' + '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in byte_types])
+    new_type_definitions = '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in byte_types])
+    new_type_definitions += '\n' + '\n'.join(['Hash = Bytes32', 'BLSPubkey = Bytes48', 'BLSSignature = Bytes96'])
+    new_type_definitions += \
+        '\n' + '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in new_types.items()])
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
@@ -177,7 +178,7 @@ def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
     items = list(objects.items())
     for key, value in items:
         dependencies = re.findall(r'(: [A-Z][\w[]*)', value)
-        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|uint\d+|Bytes\d+|bytes', '', x), dependencies)
+        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|Hash|BLSPubkey|BLSSignature|uint\d+|Bytes\d+|bytes', '', x), dependencies)
         for dep in dependencies:
             if dep in NEW_TYPES or len(dep) == 0:
                 continue

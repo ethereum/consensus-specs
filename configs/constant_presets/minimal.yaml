@@ -81,11 +81,11 @@ EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 4096
 # State list lengths
 # ---------------------------------------------------------------
 # [customized] smaller state
-LATEST_RANDAO_MIXES_LENGTH: 64
+RANDAO_MIXES_LENGTH: 64
 # [customized] smaller state
-LATEST_ACTIVE_INDEX_ROOTS_LENGTH: 64
+ACTIVE_INDEX_ROOTS_LENGTH: 64
 # [customized] smaller state
-LATEST_SLASHED_EXIT_LENGTH: 64
+SLASHED_EXIT_LENGTH: 64
 
 
 # Reward and penalty quotients
