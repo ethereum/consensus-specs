@@ -93,8 +93,9 @@ def test_container():
 
     assert not Bar.is_fixed_size()
 
-    y = Bar(a=uint8(123), b=List[uint8, 1024](uint8(1), uint8(2)))
+    y = Bar(a=123, b=List[uint8, 1024](uint8(1), uint8(2)))
     assert y.a == 123
+    assert isinstance(y.a, uint8)
     assert len(y.b) == 2
     assert isinstance(y.a, uint8)
     assert isinstance(y.b, List[uint8, 1024])
@@ -119,6 +120,8 @@ def test_list():
     assert len(typ(uint64(0))) == 1  # single arg
     assert len(typ(uint64(i) for i in range(10))) == 10  # generator
     assert len(typ(uint64(0), uint64(1), uint64(2))) == 3  # args
+    assert isinstance(typ(1, 2, 3, 4, 5)[4], uint64)  # coercion
+    assert isinstance(typ(i for i in range(10))[9], uint64)  # coercion in generator
 
     v = typ(uint64(0))
     v[0] = uint64(123)
