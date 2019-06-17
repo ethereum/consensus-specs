@@ -29,7 +29,7 @@ One should test the shuffling for indices `0, 1, 2, 3, ..., count (exclusive)`.
 
 `shuffled` is a mapping from `i` to `get_shuffled_index(i)`.
 - `i` here is the index within committee-partitioned space. `i...i+N (excl.)` is used to get the validators for a committee of size `N`.
-- `get_shuffled_index(i)` here is the index within the active-validators space. Pointing to the validator assigned to the committee corresponding to `i`.
+- `get_shuffled_index(i) -> int` returns the index within the active-validators space. Pointing to the validator assigned to the committee corresponding to `i`.
 
 Seed is the raw shuffling seed, passed to shuffling function. 
 
