@@ -22,40 +22,21 @@ from .ssz_impl import (
 ZERO_CHUNK = b'\x00' * 32
 
 
-def last_power_of_two(x):
-    return next_power_of_two(x + 1) // 2
-
-
-def concat_generalized_indices(x, y):
-    return x * last_power_of_two(y) + y - last_power_of_two(y)
-
-
 def is_generalized_index_child(c, a):
     return False if c < a else True if c == a else is_generalized_index_child(c//2, a)
 
 
-def rebase(objs, new_root):
-    return {concat_generalized_indices(new_root, k): v for k, v in objs.items()}
-
-
-def constrict_generalized_index(x, q):
-    depth = last_power_of_two(x // q)
-    o = depth + x - q * depth
-    if concat_generalized_indices(q, o) != x:
-        return None
-    return o
-
-
-def unrebase(objs, q):
-    o = {}
-    for k, v in objs.items():
-        new_k = constrict_generalized_index(k, q)
-        if new_k is not None:
-            o[new_k] = v
-    return o
-
-
-def filler(starting_position, list_size, max_list_size):
+def empty_sisters(starting_position, list_size, max_list_size):
+    """
+    Returns the sister nodes representing empty data needed to complete a Merkle
+    partial of a list from [starting_position: starting_position + list_size]
+    with theoretical max length max_list_size. For example empty_sisters(13, 1, 4)
+    would return the correct hashes at the g-indices in square brackets in the
+    sub-tree of 13:
+           13
+      26      [27]
+    52 [53]  54  55
+    """
     at, skip, end = list_size, 1, next_power_of_two(max_list_size)
     value = ZERO_CHUNK
     o = {}
@@ -68,14 +49,11 @@ def filler(starting_position, list_size, max_list_size):
     return o
 
 
-def merkle_tree_of_chunks(chunks, max_chunk_count, root):
-    starting_index = root * next_power_of_two(max_chunk_count)
-    o = {starting_index + i: chunk for i, chunk in enumerate(chunks)}
-    o = {**o, **filler(starting_index, len(chunks), max_chunk_count)}
-    return o
-
-
 def ssz_leaves(obj, typ=None, root=1):
+    """
+    Converts an object into a {generalized_index: chunk} map. Leaves only; does not fill
+    intermediate chunks or compute the root.
+    """
     if is_list_kind(typ):
         o = {root * 2 + 1: len(obj).to_bytes(32, 'little')}
         base = root * 2
@@ -83,17 +61,26 @@ def ssz_leaves(obj, typ=None, root=1):
         o = {}
         base = root
     if is_bottom_layer_kind(typ):
-        data = serialize_basic(obj, typ) if is_basic_type(typ) else pack(obj, typ.elem_type)
-        return {**o, **merkle_tree_of_chunks(chunkify(data), get_chunk_count(typ), base)}
+        starting_index = base * next_power_of_two(get_chunk_count(typ))
+        data = chunkify(serialize_basic(obj, typ) if is_basic_type(typ) else pack(obj, typ.elem_type))
+        return {
+            **o,
+            **{starting_index + i: data[i] for i in range(len(data))},
+            **empty_sisters(starting_index, len(data), get_chunk_count(typ))
+        }
     else:
         fields = get_typed_values(obj, typ=typ)
-        sub_base = base * next_power_of_two(get_chunk_count(typ))
+        starting_index = base * next_power_of_two(get_chunk_count(typ))
         for i, (elem, elem_type) in enumerate(fields):
-            o = {**o, **ssz_leaves(elem, typ=elem_type, root=sub_base + i)}
-        return {**o, **filler(sub_base, len(fields), get_chunk_count(typ))}
+            o = {**o, **ssz_leaves(elem, typ=elem_type, root=starting_index + i)}
+        return {**o, **empty_sisters(starting_index, len(fields), get_chunk_count(typ))}
 
 
 def fill(objects):
+    """
+    Given a {generalized_index: chunk} map containing only leaves, fills intermediate
+    chunks as far as possible.
+    """
     objects = {k: v for k, v in objects.items()}
     keys = sorted(objects.keys())[::-1]
     pos = 0
@@ -112,6 +99,11 @@ def ssz_full(obj, typ=None):
 
 
 def get_item_position(typ, index):
+    """
+    Returns three variables: (i) the index of the chunk in which the given element of the item is
+    represented, (ii) the starting byte position, (iii) the ending byte position. For example for
+    a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
+    """
     if is_list_kind(typ) or is_vector_kind(typ):
         start = index * item_length(typ.elem_type)
         return start // 32, start % 32, start % 32 + item_length(typ.elem_type)
@@ -122,6 +114,10 @@ def get_item_position(typ, index):
 
 
 def get_elem_type(typ, index):
+    """
+    Returns the type of the element of an object of the given type with the given index
+    or member variable name (eg. `7` for `x[7]`, `"foo"` for `x.foo`)
+    """
     return typ.get_fields_dict()[index] if is_container_type(typ) else typ.elem_type
 
 
@@ -159,6 +155,9 @@ def extract_value_at_path(chunks, typ, path):
 
 
 def get_generalized_index_correspondence(typ, root=1, path=None):
+    """
+    Prints the path corresponding to every leaf-level generalized index in an SSZ object
+    """
     path = path or []
     if is_basic_type(typ):
         return {root: path}
@@ -183,20 +182,24 @@ def get_generalized_index_correspondence(typ, root=1, path=None):
 
 
 def get_branch_indices(tree_index):
+    """
+    Get the generalized indices of the sister chunks along the path from the chunk with the
+    given tree index to the root.
+    """
     o = [tree_index ^ 1]
     while o[-1] > 1:
         o.append((o[-1] // 2) ^ 1)
     return o[:-1]
 
 def expand_indices(indices):
+    """
+    Get the generalized indices of all chunks in the tree needed to prove the chunks with the given
+    generalized indices.
+    """
     branches = set()
     for index in indices:
         branches = branches.union(set(get_branch_indices(index) + [index]))
     return sorted(list([x for x in branches if x*2 not in branches or x*2+1 not in branches]))[::-1]
-
-
-def remove_redundant_indices(obj):
-    return {k: v for k, v in obj.items() if not (k * 2 in obj and k * 2 + 1 in obj)}
 
 
 def merge(*args):
@@ -280,7 +283,7 @@ class SSZPartial():
         new_chunk_count = (new_length * item_length(elem_type) + 31) // 32
         start_pos = self.root * 2 * next_power_of_two(get_chunk_count(self.typ))
         if new_chunk_count != old_chunk_count:
-            for k, v in filler(start_pos, old_chunk_count, get_chunk_count(self.typ)).items():
+            for k, v in empty_sisters(start_pos, old_chunk_count, get_chunk_count(self.typ)).items():
                 del self.objects[k]
         if not appending:
             if is_basic_type(elem_type):
@@ -290,7 +293,7 @@ class SSZPartial():
         else:
             self.setter(new_length-1, value, renew=False)
         if new_chunk_count != old_chunk_count:
-            for k, v in filler(start_pos, new_chunk_count, get_chunk_count(self.typ)).items():
+            for k, v in empty_sisters(start_pos, new_chunk_count, get_chunk_count(self.typ)).items():
                 self.clear_subtree(k)
                 self.objects[k] = v
         self.renew_branch(get_generalized_index(self.typ, self.root, [new_length-1]))
@@ -387,12 +390,19 @@ class SSZPartial():
             return sum([self.getter(i).minimal_indices() for i in range(len(self))], [])
 
     def encode(self):
+        """
+        Convert to an EncodedPartial.
+        """
         indices = self.minimal_indices()
         chunks = [self.objects[o] for o in expand_indices(indices)]
         return EncodedPartial(indices=indices, chunks=chunks)
         
 
 def ssz_partial(typ, objects, root=1):
+    """
+    A wrapper that creates an SSZ partial class that is also a subclass of the class
+    representing the underlying type.
+    """
     ssz_type = object if typ == bool else typ
 
     class Partial(SSZPartial, ssz_type):
@@ -413,5 +423,12 @@ class EncodedPartial(Container):
     chunks: List[BytesN[32], 2**32]
 
     def to_ssz(self, typ):
+        """
+        Convert to an SSZ partial representing the given type.
+        """
         expanded_indices = expand_indices(self.indices)
-        return ssz_partial(typ, fill({e:c for e,c in zip(expanded_indices, self.chunks)}))
+        o = ssz_partial(typ, fill({e:c for e,c in zip(expanded_indices, self.chunks)}))
+        for k, v in o.objects.items():
+            if k > 1:
+                assert hash(o.objects[k & -2] + o.objects[k | 1]) == o.objects[k // 2]
+        return o
