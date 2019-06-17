@@ -243,8 +243,6 @@ These configurations are updated for releases, but may be out of sync during `de
 | `SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `VALIDATOR_REGISTRY_SIZE` | `2**40 (= 1,099,511,627,776)` | | |
 
-* Assuming the maximum 16 deposits per slot, the validator registry will last for at least 13,065 years (but likely much much longer)
-
 ### Rewards and penalties
 
 | Name | Value |
@@ -991,6 +989,8 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 
     # Verify no index has custody bit equal to 1 [to be removed in phase 1]
     assert len(bit_1_indices) == 0
+    # Verify max number of indices
+    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_INDICES_PER_ATTESTATION
     # Verify index sets are disjoint
     assert len(set(bit_0_indices).intersection(bit_1_indices)) == 0
     # Verify indices are sorted
