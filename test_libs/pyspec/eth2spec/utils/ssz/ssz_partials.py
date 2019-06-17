@@ -133,6 +133,30 @@ def get_generalized_index(typ, root, path):
     return root
 
 
+def get_generalized_index_correspondence(typ, root=1, path=None):
+    path = path or []
+    if is_basic_type(typ):
+        return {root: path}
+    if is_list_kind(typ) or is_vector_kind(typ):
+        fields = list(range(typ.length))
+    else:
+        fields = typ.get_field_names()
+    o = {}
+    for f in fields:
+        o = {
+            **o,
+            **get_generalized_index_correspondence(
+                get_elem_type(typ, f),
+                get_generalized_index(typ, root, [f]),
+                path + [f]
+            )
+        }
+    o[root] = path
+    if is_list_kind(typ):
+        o[root * 2 + 1] = path + ['__len__']
+    return o
+
+
 def get_branch_indices(tree_index):
     o = [tree_index ^ 1]
     while o[-1] > 1:
@@ -242,6 +266,7 @@ class SSZPartial():
             self.setter(new_length-1, value, renew=False)
         if new_chunk_count != old_chunk_count:
             for k, v in filler(start_pos, new_chunk_count, chunk_count(self.typ)).items():
+                self.clear_subtree(k)
                 self.objects[k] = v
         self.renew_branch(get_generalized_index(self.typ, self.root, [new_length-1]))
 
@@ -338,7 +363,6 @@ class SSZPartial():
 
     def encode(self):
         indices = self.minimal_indices()
-        print(indices, expand_indices(indices), sorted(list(self.objects.keys()))[::-1])
         chunks = [self.objects[o] for o in expand_indices(indices)]
         return EncodedPartial(indices=indices, chunks=chunks)
         
