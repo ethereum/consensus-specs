@@ -1,6 +1,5 @@
-from eth2spec.phase0.spec import state_transition
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
 from eth2spec.test.context import spec_state_test, with_all_phases
 
 
@@ -16,7 +15,7 @@ def run_process_registry_updates(spec, state, valid=True):
     block = build_empty_block_for_next_slot(spec, state)
     block.slot = slot
     sign_block(spec, state, block)
-    state_transition(state, block)
+    state_transition_and_sign_block(spec, state, block)
 
     # cache state before epoch transition
     spec.process_slot(state)
