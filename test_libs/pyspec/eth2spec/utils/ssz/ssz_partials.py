@@ -13,7 +13,7 @@ from .ssz_impl import (
     is_vector_kind,
     is_container_type,
     item_length,
-    chunk_count,
+    get_chunk_count,
     pack,
     serialize_basic,
 )
@@ -84,13 +84,13 @@ def ssz_leaves(obj, typ=None, root=1):
         base = root
     if is_bottom_layer_kind(typ):
         data = serialize_basic(obj, typ) if is_basic_type(typ) else pack(obj, typ.elem_type)
-        return {**o, **merkle_tree_of_chunks(chunkify(data), chunk_count(typ), base)}
+        return {**o, **merkle_tree_of_chunks(chunkify(data), get_chunk_count(typ), base)}
     else:
         fields = get_typed_values(obj, typ=typ)
-        sub_base = base * next_power_of_two(chunk_count(typ))
+        sub_base = base * next_power_of_two(get_chunk_count(typ))
         for i, (elem, elem_type) in enumerate(fields):
             o = {**o, **ssz_leaves(elem, typ=elem_type, root=sub_base + i)}
-        return {**o, **filler(sub_base, len(fields), chunk_count(typ))}
+        return {**o, **filler(sub_base, len(fields), get_chunk_count(typ))}
 
 
 def fill(objects):
@@ -112,13 +112,13 @@ def ssz_full(obj, typ=None):
 
 
 def get_item_position(typ, index):
-    if is_basic_type(typ):
-        return 0, 0, item_length(typ)
-    elif is_list_kind(typ) or is_vector_kind(typ):
+    if is_list_kind(typ) or is_vector_kind(typ):
         start = index * item_length(typ.elem_type)
         return start // 32, start % 32, start % 32 + item_length(typ.elem_type)
-    else:
+    elif is_container_type(typ):
         return typ.get_field_names().index(index), 0, item_length(get_elem_type(typ, index))
+    else:
+        raise Exception("Only lists/vectors/containers supported")
 
 
 def get_elem_type(typ, index):
@@ -126,11 +126,36 @@ def get_elem_type(typ, index):
 
 
 def get_generalized_index(typ, root, path):
+    """
+    Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
+    `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
+    """
     for p in path:
-        pos, _, _ = get_item_position(typ, p)
-        root = root * (2 if is_list_kind(typ) else 1) * next_power_of_two(chunk_count(typ)) + pos
-        typ = get_elem_type(typ, p)
+        assert not is_basic_type(typ)  # If we descend to a basic type, the path cannot continue further
+        if p == '__len__':
+            typ, root = uint64, root * 2 + 1 if is_list_kind(typ) else None
+        else:
+            pos, _, _ = get_item_position(typ, p)
+            root = root * (2 if is_list_kind(typ) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
+            typ = get_elem_type(typ, p)
     return root
+
+
+def extract_value_at_path(chunks, typ, path):
+    """
+    Provides the value of the element in the object represented by the given encoded SSZ partial at
+    the given path. Returns a KeyError if that path is not covered by this SSZ partial.
+    """
+    root = 1
+    for p in path:
+        if p == '__len__':
+            return deserialize_basic(chunks[root * 2 + 1][:8], uint64)
+        if is_list_kind(typ):
+            assert 0 <= p < deserialize_basic(chunks[root * 2 + 1][:8], uint64)
+        pos, start, end = get_item_position(typ, p)
+        root = root * (2 if is_list_kind(typ) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
+        typ = get_elem_type(typ, p)
+    return deserialize_basic(chunks[root][start: end], typ)
 
 
 def get_generalized_index_correspondence(typ, root=1, path=None):
@@ -196,7 +221,7 @@ class SSZPartial():
         base = self.root * 2 if is_list_kind(self.typ) else self.root
         if is_basic_type(get_elem_type(self.typ, index)):
             pos, start, end = get_item_position(self.typ, index)
-            tree_index = base * next_power_of_two(chunk_count(self.typ)) + pos
+            tree_index = base * next_power_of_two(get_chunk_count(self.typ)) + pos
             if tree_index not in self.objects:
                 raise OutOfRangeException("Do not have required data")
             else:
@@ -226,7 +251,7 @@ class SSZPartial():
         elem_type = get_elem_type(self.typ, index)
         if is_basic_type(elem_type):
             pos, start, end = get_item_position(self.typ, index)
-            tree_index = base * next_power_of_two(chunk_count(self.typ)) + pos
+            tree_index = base * next_power_of_two(get_chunk_count(self.typ)) + pos
             if tree_index not in self.objects:
                 raise OutOfRangeException("Do not have required data")
             else:
@@ -253,9 +278,9 @@ class SSZPartial():
         self.objects[self.root * 2 + 1] = new_length.to_bytes(32, 'little')
         old_chunk_count = (old_length * item_length(elem_type) + 31) // 32
         new_chunk_count = (new_length * item_length(elem_type) + 31) // 32
-        start_pos = self.root * 2 * next_power_of_two(chunk_count(self.typ))
+        start_pos = self.root * 2 * next_power_of_two(get_chunk_count(self.typ))
         if new_chunk_count != old_chunk_count:
-            for k, v in filler(start_pos, old_chunk_count, chunk_count(self.typ)).items():
+            for k, v in filler(start_pos, old_chunk_count, get_chunk_count(self.typ)).items():
                 del self.objects[k]
         if not appending:
             if is_basic_type(elem_type):
@@ -265,7 +290,7 @@ class SSZPartial():
         else:
             self.setter(new_length-1, value, renew=False)
         if new_chunk_count != old_chunk_count:
-            for k, v in filler(start_pos, new_chunk_count, chunk_count(self.typ)).items():
+            for k, v in filler(start_pos, new_chunk_count, get_chunk_count(self.typ)).items():
                 self.clear_subtree(k)
                 self.objects[k] = v
         self.renew_branch(get_generalized_index(self.typ, self.root, [new_length-1]))
