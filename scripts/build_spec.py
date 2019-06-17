@@ -75,21 +75,19 @@ def get_ssz_type_by_name(name: str) -> Container:
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache: Dict[Tuple[Bytes32, Bytes32, int, int], List[ValidatorIndex]] = {}
+committee_cache: Dict[Tuple[Hash, Hash, int, int], List[ValidatorIndex]] = {}
 
 
 def compute_committee(indices: List[ValidatorIndex],  # type: ignore
-                      seed: Bytes32,
+                      seed: Hash,
                       index: int,
                       count: int) -> List[ValidatorIndex]:
     param_hash = (hash_tree_root(indices), seed, index, count)
 
-    if param_hash in committee_cache:
-        return committee_cache[param_hash]
-    else:
+    if param_hash not in committee_cache:
         ret = _compute_committee(indices, seed, index, count)
         committee_cache[param_hash] = ret
-        return ret
+    return committee_cache[param_hash]
 
 
 # Monkey patch hash cache
@@ -97,13 +95,11 @@ _hash = hash
 hash_cache: Dict[bytes, Bytes32] = {}
 
 
-def hash(x: bytes) -> Bytes32:
-    if x in hash_cache:
-        return hash_cache[x]
-    else:
+def hash(x: bytes) -> Hash:
+    if x not in hash_cache:
         ret = _hash(x)
-        hash_cache[x] = ret
-        return ret
+        hash_cache[x] = Hash(ret)
+    return hash_cache[x]
 
 
 # Access to overwrite spec constants based on configuration

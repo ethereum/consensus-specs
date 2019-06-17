@@ -162,6 +162,7 @@ We define the following Python custom types for type hinting and readability:
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Version` | `Bytes4` | a fork version number |
+| `Hash` | `Bytes32` | a hashed result |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -297,7 +298,7 @@ class Validator(Container):
     # BLS public key
     pubkey: BLSPubkey
     # Withdrawal credentials
-    withdrawal_credentials: Bytes32
+    withdrawal_credentials: Hash
     # Epoch when became eligible for activation
     activation_eligibility_epoch: Epoch
     # Epoch when validator activated
@@ -322,9 +323,9 @@ class Crosslink(Container):
     start_epoch: Epoch
     end_epoch: Epoch
     # Root of the previous crosslink
-    parent_root: Bytes32
+    parent_root: Hash
     # Root of the crosslinked shard data since the previous crosslink
-    data_root: Bytes32
+    data_root: Hash
 ```
 
 #### `AttestationData`
@@ -332,13 +333,13 @@ class Crosslink(Container):
 ```python
 class AttestationData(Container):
     # LMD GHOST vote
-    beacon_block_root: Bytes32
+    beacon_block_root: Hash
 
     # FFG vote
     source_epoch: Epoch
-    source_root: Bytes32
+    source_root: Hash
     target_epoch: Epoch
-    target_root: Bytes32
+    target_root: Hash
 
     # Crosslink vote
     crosslink: Crosslink
@@ -386,11 +387,11 @@ class PendingAttestation(Container):
 ```python
 class Eth1Data(Container):
     # Root of the deposit tree
-    deposit_root: Bytes32
+    deposit_root: Hash
     # Total number of deposits
     deposit_count: uint64
     # Block hash
-    block_hash: Bytes32
+    block_hash: Hash
 ```
 
 #### `HistoricalBatch`
@@ -398,9 +399,9 @@ class Eth1Data(Container):
 ```python
 class HistoricalBatch(Container):
     # Block roots
-    block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
     # State roots
-    state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 #### `DepositData`
@@ -410,7 +411,7 @@ class DepositData(Container):
     # BLS pubkey
     pubkey: BLSPubkey
     # Withdrawal credentials
-    withdrawal_credentials: Bytes32
+    withdrawal_credentials: Hash
     # Amount in Gwei
     amount: Gwei
     # Container self-signature
@@ -422,9 +423,9 @@ class DepositData(Container):
 ```python
 class BeaconBlockHeader(Container):
     slot: Slot
-    parent_root: Bytes32
-    state_root: Bytes32
-    body_root: Bytes32
+    parent_root: Hash
+    state_root: Hash
+    body_root: Hash
     signature: BLSSignature
 ```
 
@@ -471,7 +472,7 @@ class Attestation(Container):
 ```python
 class Deposit(Container):
     # Branch in the deposit tree
-    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH]
+    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH]
     # Data
     data: DepositData
 ```
@@ -531,8 +532,8 @@ class BeaconBlockBody(Container):
 class BeaconBlock(Container):
     # Header
     slot: Slot
-    parent_root: Bytes32
-    state_root: Bytes32
+    parent_root: Hash
+    state_root: Hash
     body: BeaconBlockBody
     signature: BLSSignature
 ```
@@ -551,27 +552,27 @@ class BeaconState(Container):
     validator_registry: List[Validator]
     balances: List[Gwei]
     # Randomness and committees
-    latest_randao_mixes: Vector[Bytes32, LATEST_RANDAO_MIXES_LENGTH]
+    latest_randao_mixes: Vector[Hash, LATEST_RANDAO_MIXES_LENGTH]
     latest_start_shard: Shard
     # Finality
     previous_epoch_attestations: List[PendingAttestation]
     current_epoch_attestations: List[PendingAttestation]
     previous_justified_epoch: Epoch
     current_justified_epoch: Epoch
-    previous_justified_root: Bytes32
-    current_justified_root: Bytes32
+    previous_justified_root: Hash
+    current_justified_root: Hash
     justification_bitfield: uint64
     finalized_epoch: Epoch
-    finalized_root: Bytes32
+    finalized_root: Hash
     # Recent state
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]
-    latest_block_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
-    latest_state_roots: Vector[Bytes32, SLOTS_PER_HISTORICAL_ROOT]
-    latest_active_index_roots: Vector[Bytes32, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    latest_block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
+    latest_state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
+    latest_active_index_roots: Vector[Hash, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
     latest_slashed_balances: Vector[Gwei, LATEST_SLASHED_EXIT_LENGTH]
     latest_block_header: BeaconBlockHeader
-    historical_roots: List[Bytes32]
+    historical_roots: List[Hash]
     # Ethereum 1.0 chain data
     latest_eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data]
@@ -597,11 +598,11 @@ The `hash` function is SHA256.
 
 ### `hash_tree_root`
 
-`def hash_tree_root(object: SSZSerializable) -> Bytes32` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](../simple-serialize.md#merkleization).
+`def hash_tree_root(object: SSZSerializable) -> Hash` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](../simple-serialize.md#merkleization).
 
 ### `signing_root`
 
-`def signing_root(object: Container) -> Bytes32` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
+`def signing_root(object: Container) -> Hash` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
 
 ### `bls_domain`
 
@@ -758,7 +759,7 @@ def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot
 
 ```python
 def get_block_root_at_slot(state: BeaconState,
-                           slot: Slot) -> Bytes32:
+                           slot: Slot) -> Hash:
     """
     Return the block root at a recent ``slot``.
     """
@@ -770,7 +771,7 @@ def get_block_root_at_slot(state: BeaconState,
 
 ```python
 def get_block_root(state: BeaconState,
-                   epoch: Epoch) -> Bytes32:
+                   epoch: Epoch) -> Hash:
     """
     Return the block root at a recent ``epoch``.
     """
@@ -781,7 +782,7 @@ def get_block_root(state: BeaconState,
 
 ```python
 def get_randao_mix(state: BeaconState,
-                   epoch: Epoch) -> Bytes32:
+                   epoch: Epoch) -> Hash:
     """
     Return the randao mix at a recent ``epoch``.
     ``epoch`` expected to be between (current_epoch - LATEST_RANDAO_MIXES_LENGTH, current_epoch].
@@ -793,7 +794,7 @@ def get_randao_mix(state: BeaconState,
 
 ```python
 def get_active_index_root(state: BeaconState,
-                          epoch: Epoch) -> Bytes32:
+                          epoch: Epoch) -> Hash:
     """
     Return the index root at a recent ``epoch``.
     ``epoch`` expected to be between
@@ -806,7 +807,7 @@ def get_active_index_root(state: BeaconState,
 
 ```python
 def generate_seed(state: BeaconState,
-                  epoch: Epoch) -> Bytes32:
+                  epoch: Epoch) -> Hash:
     """
     Generate a seed for the given ``epoch``.
     """
@@ -844,7 +845,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 ### `verify_merkle_branch`
 
 ```python
-def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index: int, root: Bytes32) -> bool:
+def verify_merkle_branch(leaf: Hash, proof: List[Hash], depth: int, index: int, root: Hash) -> bool:
     """
     Verify that the given ``leaf`` is on the merkle branch ``proof``
     starting with the given ``root``.
@@ -861,7 +862,7 @@ def verify_merkle_branch(leaf: Bytes32, proof: List[Bytes32], depth: int, index:
 ### `get_shuffled_index`
 
 ```python
-def get_shuffled_index(index: int, index_count: int, seed: Bytes32) -> ValidatorIndex:
+def get_shuffled_index(index: int, index_count: int, seed: Hash) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -885,7 +886,7 @@ def get_shuffled_index(index: int, index_count: int, seed: Bytes32) -> Validator
 ### `compute_committee`
 
 ```python
-def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
+def compute_committee(indices: List[ValidatorIndex], seed: Hash, index: int, count: int) -> List[ValidatorIndex]:
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
     return [indices[get_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
