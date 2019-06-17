@@ -1,7 +1,7 @@
 from ..merkle_minimal import hash, next_power_of_two
 
 from .ssz_typing import (
-    get_zero_value, Container, List, Vector, Bytes, BytesN, uint, infer_input_type
+    get_zero_value, Container, List, Vector, Bytes, BytesN, uint, uint64, infer_input_type
 )
 from .ssz_impl import (
     chunkify,
@@ -139,6 +139,12 @@ def get_branch_indices(tree_index):
         o.append((o[-1] // 2) ^ 1)
     return o[:-1]
 
+def expand_indices(indices):
+    branches = set()
+    for index in indices:
+        branches = branches.union(set(get_branch_indices(index) + [index]))
+    return sorted(list([x for x in branches if x*2 not in branches or x*2+1 not in branches]))[::-1]
+
 
 def remove_redundant_indices(obj):
     return {k: v for k, v in obj.items() if not (k * 2 in obj and k * 2 + 1 in obj)}
@@ -149,14 +155,6 @@ def merge(*args):
     for arg in args:
         o = {**o, **arg.objects}
     return ssz_partial(args[0].typ, fill(o))
-
-
-@infer_input_type
-def get_nodes_along_path(obj, path, typ=None):
-    indices = get_generalized_indices(obj, path, typ=typ)
-    return remove_redundant_indices(merge(
-        *({i: obj.objects[i] for i in get_branch_indices(index)} for index in indices)
-    ))
 
 
 class OutOfRangeException(Exception):
@@ -246,9 +244,6 @@ class SSZPartial():
             for k, v in filler(start_pos, new_chunk_count, chunk_count(self.typ)).items():
                 self.objects[k] = v
         self.renew_branch(get_generalized_index(self.typ, self.root, [new_length-1]))
-        for k in self.objects.keys():
-            if k > 1:
-                assert k//2 in self.objects, k
 
     def append(self, value):
         return self.append_or_pop(True, value)
@@ -319,6 +314,34 @@ class SSZPartial():
         else:
             return self.full_value() == other
 
+    def minimal_indices(self):
+        if is_bottom_layer_kind(self.typ) and is_basic_type(get_elem_type(self.typ, None)):
+            if is_list_kind(self.typ) and self.root*2+1 not in self.objects:
+                return []
+            o = list(range(
+                get_generalized_index(self.typ, self.root, [0]),
+                get_generalized_index(self.typ, self.root, [len(self)-1]) + 1
+            ))
+            return [x for x in o if x in self.objects]
+        elif is_container_type(self.typ):
+            o = []
+            for field, elem_type in self.typ.get_fields():
+                if is_basic_type(elem_type):
+                    gindex = get_generalized_index(self.typ, self.root, [field])
+                    if gindex in self.objects:
+                        o.append(gindex)
+                else:
+                    o.extend(self.getter(field).minimal_indices())
+            return o
+        else:
+            return sum([self.getter(i).minimal_indices() for i in range(len(self))], [])
+
+    def encode(self):
+        indices = self.minimal_indices()
+        print(indices, expand_indices(indices), sorted(list(self.objects.keys()))[::-1])
+        chunks = [self.objects[o] for o in expand_indices(indices)]
+        return EncodedPartial(indices=indices, chunks=chunks)
+        
 
 def ssz_partial(typ, objects, root=1):
     ssz_type = object if typ == bool else typ
@@ -335,3 +358,11 @@ def ssz_partial(typ, objects, root=1):
             ))
     o = Partial(typ, objects, root)
     return o
+
+class EncodedPartial(Container):
+    indices: List[uint64, 2**32]
+    chunks: List[BytesN[32], 2**32]
+
+    def to_ssz(self, typ):
+        expanded_indices = expand_indices(self.indices)
+        return ssz_partial(typ, fill({e:c for e,c in zip(expanded_indices, self.chunks)}))

@@ -93,3 +93,8 @@ for i in range(10):
     assert p.hash_tree_root() == city.hash_tree_root()
     print(i)
 print("Append and pop tests passed")
+encoded = p.encode()
+print(encoded)
+print(serialize(encoded))
+assert encoded.to_ssz(City).hash_tree_root() == p.hash_tree_root()
+print("Encoded partial tests passed")
