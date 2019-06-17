@@ -16,5 +16,11 @@ Test format documentation can be found here: [uint test format](./uint.md).
 *Note*: The current Phase 0 spec does not use larger uints, and uses byte vectors (fixed length) instead to represent roots etc.
 The exact uint lengths to support may be redefined in the future.
 
-Extension of the SSZ tests collection is planned, with an update to the new spec-maintained `minimal_ssz.py`;
- see CI/testing issues for progress tracking.
+## Recommendation
+
+For SSZ testing directly applicable to test-networks, refer to the [`ssz_static`](../ssz_static/README.md) tests,
+ which cover SSZ behavior for phase-0, for all container types.
+With serialization, hash-tree-root and signing-root all covered.
+Note that deserialization can be tested using this same data,
+ but be cautious about the serialized data only covering the valid-input side.
+SSZ implementations should be hardened against invalid offsets, invalid boolean values, etc. in a non-testing setting.
