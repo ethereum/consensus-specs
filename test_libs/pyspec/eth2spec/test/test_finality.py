@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import List
 
 from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, apply_empty_block
 from eth2spec.test.helpers.attestations import get_valid_attestation
 
@@ -54,7 +54,7 @@ def next_epoch_with_attestations(spec,
             prev_attestation = get_valid_attestation(spec, post_state, slot_to_attest)
             block.body.attestations.append(prev_attestation)
 
-        spec.state_transition(post_state, block)
+        state_transition_and_sign_block(spec, post_state, block)
         blocks.append(block)
 
     return state, blocks, post_state
