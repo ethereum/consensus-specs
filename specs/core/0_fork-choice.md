@@ -9,7 +9,7 @@
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Prerequisites](#prerequisites)
-    - [Constants](#constants)
+    - [Configuration](#configuration)
         - [Time parameters](#time-parameters)
     - [Beacon chain processing](#beacon-chain-processing)
         - [Beacon chain fork choice rule](#beacon-chain-fork-choice-rule)
@@ -26,7 +26,7 @@ This document represents the specification for the beacon chain fork choice rule
 
 All terminology, constants, functions, and protocol mechanics defined in the [Phase 0 -- The Beacon Chain](./0_beacon-chain.md) doc are requisite for this document and used throughout. Please see the Phase 0 doc before continuing and use as a reference throughout.
 
-## Constants
+## Configuration
 
 ### Time parameters
 
