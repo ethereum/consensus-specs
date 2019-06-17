@@ -65,6 +65,7 @@ def is_empty(obj):
     return get_zero_value(type(obj)) == obj
 
 
+@infer_input_type
 def serialize(obj, typ):
     if is_basic_type(typ):
         return serialize_basic(obj, typ)
