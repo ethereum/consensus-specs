@@ -9,8 +9,8 @@ Clients may take different approaches to shuffling, for optimizing,
 For implementers, possible test runners implementing testing can include:
 1) Just test `get_shuffled_index`.
 2) Test the reverse lookup; implemented by running the shuffling rounds in reverse, from `round_count-1` to `0`.
-3) Test the optimized complete shuffle, where all indices are shuffled at once
-4) Test complete shuffle in reverse (reverse rounds, similar to #2).
+3) Test the optimized complete shuffle, where all indices are shuffled at once.
+4) Test complete shuffling in reverse (reverse rounds, similar to #2).
 
 ## Test case format
 
