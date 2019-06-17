@@ -58,7 +58,8 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 #### `Target`
 
 ```python
-class Target(Container):
+@dataclass
+class Target(object):
     epoch: Epoch
     root: Bytes32
 ```
@@ -66,13 +67,14 @@ class Target(Container):
 #### `Store`
 
 ```python
-class Store(Container):
-    blocks: Dict[Bytes32, BeaconBlock]
-    states: Dict[Bytes32, BeaconState]
-    time: uint64
-    latest_targets: Dict[ValidatorIndex, Target]
-    justified_root: Bytes32
-    finalized_root: Bytes32
+@dataclass
+class Store(object):
+    blocks: Dict[Bytes32, BeaconBlock] = field(default_factory=dict)
+    states: Dict[Bytes32, BeaconState] = field(default_factory=dict)
+    time: int = 0
+    latest_targets: Dict[ValidatorIndex, Target] = field(default_factory=dict)
+    justified_root: Bytes32 = ZERO_HASH
+    finalized_root: Bytes32 = ZERO_HASH
 ```
 
 ### Helpers
@@ -139,7 +141,7 @@ def on_block(store: Store, block: BeaconBlock) -> None:
     # Check block is a descendant of the finalized block
     assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
     # Check block slot against Unix time
-    pre_state = store.states[block.parent_root].copy()
+    pre_state = deepcopy(store.states[block.parent_root])
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)

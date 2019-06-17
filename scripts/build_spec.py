@@ -19,6 +19,13 @@ PHASE0_IMPORTS = '''from typing import (
     Tuple,
 )
 
+from dataclasses import (
+    dataclass,
+    field,
+)
+
+from copy import deepcopy
+
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
@@ -43,6 +50,13 @@ PHASE1_IMPORTS = '''from typing import (
     NewType,
     Tuple,
 )
+
+from dataclasses import (
+    dataclass,
+    field,
+)
+
+from copy import deepcopy
 
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,

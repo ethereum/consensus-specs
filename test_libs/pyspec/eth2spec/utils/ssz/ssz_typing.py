@@ -1,11 +1,9 @@
-import copy
 from typing import (
     List,
     Iterable,
     TypeVar,
     Type,
     NewType,
-    Dict,
     Union,
 )
 from typing_inspect import get_origin
@@ -131,9 +129,6 @@ class Container(object):
     def get_field_values(self):
         cls = self.__class__
         return [getattr(self, field) for field in cls.get_field_names()]
-
-    def copy(self):
-        return copy.deepcopy(self)
 
     def __repr__(self):
         return repr({field: getattr(self, field) for field in self.get_field_names()})
@@ -418,8 +413,6 @@ def get_zero_value(typ):
         return b''
     elif is_container_type(typ):
         return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
-    elif is_dict_type(typ):
-        return dict()
     else:
         raise Exception("Type not supported: {}".format(typ))
 
@@ -509,13 +502,6 @@ def is_container_type(typ):
     Check if the given type is a container.
     """
     return isinstance(typ, type) and issubclass(typ, Container)
-
-
-def is_dict_type(typ):
-    """
-    Check of the given type is a Dict. (Which are a part of the super-secret undocumented SSZ spec)
-    """
-    return get_origin(typ) is Dict or get_origin(typ) is dict
 
 
 T = TypeVar('T')
