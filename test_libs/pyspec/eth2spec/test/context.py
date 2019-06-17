@@ -116,12 +116,22 @@ def with_phases(phases):
     def decorator(fn):
         def run_with_spec_version(spec, *args, **kw):
             kw['spec'] = spec
-            fn(*args, **kw)
+            return fn(*args, **kw)
 
         def wrapper(*args, **kw):
-            if 'phase0' in phases:
-                run_with_spec_version(spec_phase0, *args, **kw)
-            if 'phase1' in phases:
-                run_with_spec_version(spec_phase1, *args, **kw)
+            run_phases = phases
+
+            # limit phases if one explicitly specified
+            if 'phase' in kw:
+                phase = kw.pop('phase')
+                if phase not in phases:
+                    return
+                run_phases = [phase]
+
+            if 'phase0' in run_phases:
+                ret = run_with_spec_version(spec_phase0, *args, **kw)
+            if 'phase1' in run_phases:
+                ret = run_with_spec_version(spec_phase1, *args, **kw)
+            return ret
         return wrapper
     return decorator

@@ -7,7 +7,7 @@ from eth2spec.test.helpers.keys import pubkey_to_privkey
 def get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=False):
     current_epoch = spec.get_current_epoch(state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[-1]
-    privkey = pubkey_to_privkey[state.validator_registry[validator_index].pubkey]
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     slot = state.slot
 
     header_1 = spec.BeaconBlockHeader(

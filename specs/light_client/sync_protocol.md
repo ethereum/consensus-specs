@@ -31,7 +31,7 @@ We define an "expansion" of an object as an object where a field in an object th
 
 We define two expansions:
 
-* `ExtendedBeaconState`, which is identical to a `BeaconState` except `latest_active_index_roots: List[Bytes32]` is replaced by `latest_active_indices: List[List[ValidatorIndex]]`, where `BeaconState.latest_active_index_roots[i] = hash_tree_root(ExtendedBeaconState.latest_active_indices[i])`.
+* `ExtendedBeaconState`, which is identical to a `BeaconState` except `active_index_roots: List[Bytes32]` is replaced by `active_indices: List[List[ValidatorIndex]]`, where `BeaconState.active_index_roots[i] = hash_tree_root(ExtendedBeaconState.active_indices[i])`.
 * `ExtendedBeaconBlock`, which is identical to a `BeaconBlock` except `state_root` is replaced with the corresponding `state: ExtendedBeaconState`.
 
 ### `get_active_validator_indices`
@@ -40,10 +40,10 @@ Note that there is now a new way to compute `get_active_validator_indices`:
 
 ```python
 def get_active_validator_indices(state: ExtendedBeaconState, epoch: Epoch) -> List[ValidatorIndex]:
-    return state.latest_active_indices[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    return state.active_indices[epoch % ACTIVE_INDEX_ROOTS_LENGTH]
 ```
 
-Note that it takes `state` instead of `state.validator_registry` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
+Note that it takes `state` instead of `state.validators` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
 
 
 ### `MerklePartial`
@@ -85,7 +85,7 @@ def get_period_data(block: ExtendedBeaconBlock, shard_id: Shard, later: bool) ->
     return PeriodData(
         validator_count,
         generate_seed(block.state, period_start),
-        [block.state.validator_registry[i] for i in indices],
+        [block.state.validators[i] for i in indices],
     )
 ```
 

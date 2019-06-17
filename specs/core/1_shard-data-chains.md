@@ -190,7 +190,7 @@ def get_shard_proposer_index(state: BeaconState,
 
     # Search for an active proposer
     for index in persistent_committee:
-        if is_active_validator(state.validator_registry[index], get_current_epoch(state)):
+        if is_active_validator(state.validators[index], get_current_epoch(state)):
             return index
 
     # No block can be proposed if no validator is active
@@ -224,7 +224,7 @@ def verify_shard_attestation_signature(state: BeaconState,
     pubkeys = []
     for i, index in enumerate(persistent_committee):
         if get_bitfield_bit(attestation.aggregation_bitfield, i) == 0b1:
-            validator = state.validator_registry[index]
+            validator = state.validators[index]
             assert is_active_validator(validator, get_current_epoch(state))
             pubkeys.append(validator.pubkey)
     assert bls_verify(
@@ -325,7 +325,7 @@ def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
     proposer_index = get_shard_proposer_index(beacon_state, candidate.shard, candidate.slot)
     assert proposer_index is not None
     assert bls_verify(
-        pubkey=beacon_state.validator_registry[proposer_index].pubkey,
+        pubkey=beacon_state.validators[proposer_index].pubkey,
         message_hash=signing_root(block),
         signature=candidate.signature,
         domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, slot_to_epoch(candidate.slot)),
@@ -395,7 +395,7 @@ def is_valid_beacon_attestation(shard: Shard,
         assert candidate.data.previous_attestation.epoch < slot_to_epoch(candidate.data.slot)
 
     # Check crosslink data root
-    start_epoch = beacon_state.latest_crosslinks[shard].epoch
+    start_epoch = beacon_state.crosslinks[shard].epoch
     end_epoch = min(slot_to_epoch(candidate.data.slot) - CROSSLINK_LOOKBACK, start_epoch + MAX_EPOCHS_PER_CROSSLINK)
     blocks = []
     for slot in range(start_epoch * SLOTS_PER_EPOCH, end_epoch * SLOTS_PER_EPOCH):

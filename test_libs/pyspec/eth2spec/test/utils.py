@@ -1,5 +1,6 @@
 from typing import Dict, Any, Callable, Iterable
 from eth2spec.debug.encode import encode
+from eth2spec.utils.ssz.ssz_typing import Container
 
 
 def spectest(description: str = None):
@@ -30,9 +31,13 @@ def spectest(description: str = None):
                     else:
                         # Otherwise, try to infer the type, but keep it as-is if it's not a SSZ container.
                         (key, value) = data
-                        if hasattr(value.__class__, 'fields'):
+                        if isinstance(value, Container):
                             out[key] = encode(value, value.__class__)
                         else:
+                            # not a ssz value.
+                            # It could be vector or bytes still, but it is a rare case,
+                            # and lists can't be inferred fully (generics lose element type).
+                            # In such cases, explicitly state the type of the yielded value as a third yielded object.
                             out[key] = value
                 if has_contents:
                     return out

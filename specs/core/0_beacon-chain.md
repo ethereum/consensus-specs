@@ -21,7 +21,8 @@
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
-    - [Data structures](#data-structures)
+    - [Custom types](#custom-types-1)
+    - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
             - [`Validator`](#validator)
@@ -95,7 +96,7 @@
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
     - [Genesis](#genesis)
-        - [`Eth2Genesis`](#eth2genesis)
+        - [Genesis trigger](#genesis-trigger)
         - [Genesis state](#genesis-state)
         - [Genesis block](#genesis-block)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -232,9 +233,9 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `LATEST_RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `LATEST_SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### Rewards and penalties
 
@@ -271,11 +272,25 @@ These configurations are updated for releases, but may be out of sync during `de
 | `DOMAIN_VOLUNTARY_EXIT` | `4` |
 | `DOMAIN_TRANSFER` | `5` |
 
-## Data structures
+## Custom types
 
-The following data structures are defined as [SimpleSerialize (SSZ)](../simple-serialize.md) objects.
+We define the following Python custom types for type hinting and readability:
 
-The types are defined topologically to aid in facilitating an executable version of the spec.
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `Slot` | `uint64` | a slot number |
+| `Epoch` | `uint64` | an epoch number |
+| `Shard` | `uint64` | a shard number |
+| `ValidatorIndex` | `uint64` | a validator registry index |
+| `Gwei` | `uint64` | an amount in Gwei |
+| `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
+| `BLSSignature` | `Bytes96` | a BLS12-381 signature |
+
+## Containers
+
+The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containers.
+
+*Note*: The definitions are ordered topologically to facilitate execution of the spec.
 
 ### Misc dependencies
 
@@ -283,48 +298,35 @@ The types are defined topologically to aid in facilitating an executable version
 
 ```python
 class Fork(Container):
-    # Previous fork version
     previous_version: Version
-    # Current fork version
     current_version: Version
-    # Fork epoch number
-    epoch: Epoch
+    epoch: Epoch  # Epoch of latest fork
 ```
 
 #### `Validator`
 
 ```python
 class Validator(Container):
-    # BLS public key
     pubkey: BLSPubkey
-    # Withdrawal credentials
-    withdrawal_credentials: Hash
-    # Epoch when became eligible for activation
-    activation_eligibility_epoch: Epoch
-    # Epoch when validator activated
-    activation_epoch: Epoch
-    # Epoch when validator exited
-    exit_epoch: Epoch
-    # Epoch when validator is eligible to withdraw
-    withdrawable_epoch: Epoch
-    # Was the validator slashed
+    withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals and transfers
+    effective_balance: Gwei  # Balance at stake
     slashed: bool
-    # Effective balance
-    effective_balance: Gwei
+    # Status epochs
+    activation_eligibility_epoch: Epoch  # When criteria for activation were met
+    activation_epoch: Epoch
+    exit_epoch: Epoch
+    withdrawable_epoch: Epoch  # When validator can withdraw or transfer funds
 ```
 
 #### `Crosslink`
 
 ```python
 class Crosslink(Container):
-    # Shard number
     shard: Shard
-    # Crosslinking data from epochs [start....end-1]
+    parent_root: Hash
+    # Crosslinking data
     start_epoch: Epoch
     end_epoch: Epoch
-    # Root of the previous crosslink
-    parent_root: Hash
-    # Root of the crosslinked shard data since the previous crosslink
     data_root: Hash
 ```
 
@@ -334,13 +336,11 @@ class Crosslink(Container):
 class AttestationData(Container):
     # LMD GHOST vote
     beacon_block_root: Hash
-
     # FFG vote
     source_epoch: Epoch
     source_root: Hash
     target_epoch: Epoch
     target_root: Hash
-
     # Crosslink vote
     crosslink: Crosslink
 ```
@@ -349,22 +349,17 @@ class AttestationData(Container):
 
 ```python
 class AttestationDataAndCustodyBit(Container):
-    # Attestation data
     data: AttestationData
-    # Custody bit
-    custody_bit: bool
+    custody_bit: bool  # Challengeable bit for the custody of crosslink data
 ```
 
 #### `IndexedAttestation`
 
 ```python
 class IndexedAttestation(Container):
-    # Validator indices
-    custody_bit_0_indices: List[ValidatorIndex]
-    custody_bit_1_indices: List[ValidatorIndex]
-    # Attestation data
+    custody_bit_0_indices: List[ValidatorIndex]  # Indices with custody bit equal to 0
+    custody_bit_1_indices: List[ValidatorIndex]  # Indices with custody bit equal to 1
     data: AttestationData
-    # Aggregate signature
     signature: BLSSignature
 ```
 
@@ -372,13 +367,9 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    # Attester aggregation bitfield
-    aggregation_bitfield: bytes
-    # Attestation data
+    aggregation_bitfield: bytes  # Bit set for every attesting participant within a committee
     data: AttestationData
-    # Inclusion delay
-    inclusion_delay: uint64
-    # Proposer index
+    inclusion_delay: Slot
     proposer_index: ValidatorIndex
 ```
 
@@ -386,11 +377,8 @@ class PendingAttestation(Container):
 
 ```python
 class Eth1Data(Container):
-    # Root of the deposit tree
     deposit_root: Hash
-    # Total number of deposits
     deposit_count: uint64
-    # Block hash
     block_hash: Hash
 ```
 
@@ -398,9 +386,7 @@ class Eth1Data(Container):
 
 ```python
 class HistoricalBatch(Container):
-    # Block roots
     block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    # State roots
     state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
 ```
 
@@ -408,13 +394,9 @@ class HistoricalBatch(Container):
 
 ```python
 class DepositData(Container):
-    # BLS pubkey
     pubkey: BLSPubkey
-    # Withdrawal credentials
     withdrawal_credentials: Hash
-    # Amount in Gwei
     amount: Gwei
-    # Container self-signature
     signature: BLSSignature
 ```
 
@@ -435,11 +417,8 @@ class BeaconBlockHeader(Container):
 
 ```python
 class ProposerSlashing(Container):
-    # Proposer index
     proposer_index: ValidatorIndex
-    # First block header
     header_1: BeaconBlockHeader
-    # Second block header
     header_2: BeaconBlockHeader
 ```
 
@@ -447,9 +426,7 @@ class ProposerSlashing(Container):
 
 ```python
 class AttesterSlashing(Container):
-    # First attestation
     attestation_1: IndexedAttestation
-    # Second attestation
     attestation_2: IndexedAttestation
 ```
 
@@ -457,13 +434,9 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    # Attester aggregation bitfield
     aggregation_bitfield: bytes
-    # Attestation data
     data: AttestationData
-    # Custody bitfield
     custody_bitfield: bytes
-    # BLS aggregate signature
     signature: BLSSignature
 ```
 
@@ -471,9 +444,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    # Branch in the deposit tree
-    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH]
-    # Data
+    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH]  # Merkle path to deposit root
     data: DepositData
 ```
 
@@ -481,11 +452,8 @@ class Deposit(Container):
 
 ```python
 class VoluntaryExit(Container):
-    # Minimum epoch for processing exit
-    epoch: Epoch
-    # Index of the exiting validator
+    epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
-    # Validator signature
     signature: BLSSignature
 ```
 
@@ -493,20 +461,13 @@ class VoluntaryExit(Container):
 
 ```python
 class Transfer(Container):
-    # Sender index
     sender: ValidatorIndex
-    # Recipient index
     recipient: ValidatorIndex
-    # Amount in Gwei
     amount: Gwei
-    # Fee in Gwei for block proposer
     fee: Gwei
-    # Inclusion slot
-    slot: Slot
-    # Sender withdrawal pubkey
-    pubkey: BLSPubkey
-    # Sender signature
-    signature: BLSSignature
+    slot: Slot  # Slot at which transfer must be processed
+    pubkey: BLSPubkey  # Withdrawal pubkey
+    signature: BLSSignature  # Signature checked against withdrawal pubkey
 ```
 
 ### Beacon blocks
@@ -516,8 +477,9 @@ class Transfer(Container):
 ```python
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
-    eth1_data: Eth1Data
-    graffiti: Bytes32
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Operations
     proposer_slashings: List[ProposerSlashing]
     attester_slashings: List[AttesterSlashing]
     attestations: List[Attestation]
@@ -530,7 +492,6 @@ class BeaconBlockBody(Container):
 
 ```python
 class BeaconBlock(Container):
-    # Header
     slot: Slot
     parent_root: Hash
     state_root: Hash
@@ -544,39 +505,43 @@ class BeaconBlock(Container):
 
 ```python
 class BeaconState(Container):
-    # Misc
-    slot: Slot
+    # Versioning
     genesis_time: uint64
-    fork: Fork  # For versioning hard forks
-    # Validator registry
-    validator_registry: List[Validator]
+    slot: Slot
+    fork: Fork
+    # History
+    latest_block_header: BeaconBlockHeader
+    block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Hash]
+    # Eth1
+    eth1_data: Eth1Data
+    eth1_data_votes: List[Eth1Data]
+    eth1_deposit_index: uint64
+    # Registry
+    validators: List[Validator]
     balances: List[Gwei]
-    # Randomness and committees
-    latest_randao_mixes: Vector[Hash, LATEST_RANDAO_MIXES_LENGTH]
-    latest_start_shard: Shard
-    # Finality
+    # Shuffling
+    start_shard: Shard
+    randao_mixes: Vector[Hash, RANDAO_MIXES_LENGTH]
+    active_index_roots: Vector[Hash, ACTIVE_INDEX_ROOTS_LENGTH]  # Digests of the active registry, for light clients
+    # Slashings
+    slashed_balances: Vector[Gwei, SLASHED_EXIT_LENGTH]  # Sums of the effective balances of slashed validators
+    # Attestations
     previous_epoch_attestations: List[PendingAttestation]
     current_epoch_attestations: List[PendingAttestation]
-    previous_justified_epoch: Epoch
+    # Crosslinks
+    previous_crosslinks: Vector[Crosslink, SHARD_COUNT]  # Previous epoch snapshot
+    current_crosslinks: Vector[Crosslink, SHARD_COUNT]
+    # Justification
+    previous_justified_epoch: Epoch  # Previous epoch snapshot
+    previous_justified_root: Hash  # Previous epoch snapshot
     current_justified_epoch: Epoch
-    previous_justified_root: Hash
     current_justified_root: Hash
-    justification_bitfield: uint64
+    justification_bitfield: uint64  # Bit set for every recent justified epoch
+    # Finality
     finalized_epoch: Epoch
     finalized_root: Hash
-    # Recent state
-    current_crosslinks: Vector[Crosslink, SHARD_COUNT]
-    previous_crosslinks: Vector[Crosslink, SHARD_COUNT]
-    latest_block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    latest_state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    latest_active_index_roots: Vector[Hash, LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
-    latest_slashed_balances: Vector[Gwei, LATEST_SLASHED_EXIT_LENGTH]
-    latest_block_header: BeaconBlockHeader
-    historical_roots: List[Hash]
-    # Ethereum 1.0 chain data
-    latest_eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data]
-    deposit_index: uint64
 ```
 
 ## Helper functions
@@ -683,7 +648,7 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[Valid
     """
     Get active validator indices at ``epoch``.
     """
-    return [ValidatorIndex(i) for i, v in enumerate(state.validator_registry) if is_active_validator(v, epoch)]
+    return [ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch)]
 ```
 
 ### `increase_balance`
@@ -728,7 +693,7 @@ def get_epoch_committee_count(state: BeaconState, epoch: Epoch) -> int:
 ```python
 def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
     """
-    Return the number of shards to increment ``state.latest_start_shard`` during ``epoch``.
+    Return the number of shards to increment ``state.start_shard`` during ``epoch``.
     """
     return min(get_epoch_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
@@ -739,7 +704,7 @@ def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
 def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
     assert epoch <= get_current_epoch(state) + 1
     check_epoch = get_current_epoch(state) + 1
-    shard = Shard((state.latest_start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT)
+    shard = Shard((state.start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT)
     while check_epoch > epoch:
         check_epoch -= 1
         shard = Shard((shard + SHARD_COUNT - get_shard_delta(state, Epoch(check_epoch))) % SHARD_COUNT)
@@ -764,7 +729,7 @@ def get_block_root_at_slot(state: BeaconState,
     Return the block root at a recent ``slot``.
     """
     assert slot < state.slot <= slot + SLOTS_PER_HISTORICAL_ROOT
-    return state.latest_block_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
+    return state.block_roots[slot % SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 ### `get_block_root`
@@ -785,9 +750,9 @@ def get_randao_mix(state: BeaconState,
                    epoch: Epoch) -> Hash:
     """
     Return the randao mix at a recent ``epoch``.
-    ``epoch`` expected to be between (current_epoch - LATEST_RANDAO_MIXES_LENGTH, current_epoch].
+    ``epoch`` expected to be between (current_epoch - RANDAO_MIXES_LENGTH, current_epoch].
     """
-    return state.latest_randao_mixes[epoch % LATEST_RANDAO_MIXES_LENGTH]
+    return state.randao_mixes[epoch % RANDAO_MIXES_LENGTH]
 ```
 
 ### `get_active_index_root`
@@ -798,9 +763,9 @@ def get_active_index_root(state: BeaconState,
     """
     Return the index root at a recent ``epoch``.
     ``epoch`` expected to be between
-    (current_epoch - LATEST_ACTIVE_INDEX_ROOTS_LENGTH + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
+    (current_epoch - ACTIVE_INDEX_ROOTS_LENGTH + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
     """
-    return state.latest_active_index_roots[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    return state.active_index_roots[epoch % ACTIVE_INDEX_ROOTS_LENGTH]
 ```
 
 ### `generate_seed`
@@ -812,7 +777,7 @@ def generate_seed(state: BeaconState,
     Generate a seed for the given ``epoch``.
     """
     return hash(
-        get_randao_mix(state, Epoch(epoch + LATEST_RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD)) +
+        get_randao_mix(state, Epoch(epoch + RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD)) +
         get_active_index_root(state, epoch) +
         int_to_bytes(epoch, length=32)
     )
@@ -836,7 +801,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     while True:
         candidate_index = first_committee[(epoch + i) % len(first_committee)]
         random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
-        effective_balance = state.validator_registry[candidate_index].effective_balance
+        effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return ValidatorIndex(candidate_index)
         i += 1
@@ -862,7 +827,7 @@ def verify_merkle_branch(leaf: Hash, proof: List[Hash], depth: int, index: int, 
 ### `get_shuffled_index`
 
 ```python
-def get_shuffled_index(index: int, index_count: int, seed: Hash) -> ValidatorIndex:
+def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Hash) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -873,9 +838,12 @@ def get_shuffled_index(index: int, index_count: int, seed: Hash) -> ValidatorInd
     # See the 'generalized domain' algorithm on page 3
     for current_round in range(SHUFFLE_ROUND_COUNT):
         pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=1))[0:8]) % index_count
-        flip = (pivot + index_count - index) % index_count
+        flip = ValidatorIndex((pivot + index_count - index) % index_count)
         position = max(index, flip)
-        source = hash(seed + int_to_bytes(current_round, length=1) + int_to_bytes(position // 256, length=4))
+        source = hash(
+            seed + int_to_bytes(current_round, length=1) +
+            int_to_bytes(ValidatorIndex(position // 256), length=4)
+        )
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
@@ -939,7 +907,7 @@ def get_total_balance(state: BeaconState, indices: List[ValidatorIndex]) -> Gwei
     """
     Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
-    return Gwei(max(sum([state.validator_registry[index].effective_balance for index in indices]), 1))
+    return Gwei(max(sum([state.validators[index].effective_balance for index in indices]), 1))
 ```
 
 ### `get_domain`
@@ -993,6 +961,7 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bitfield)
+    assert set(custody_bit_1_indices).issubset(attesting_indices)
     custody_bit_0_indices = [index for index in attesting_indices if index not in custody_bit_1_indices]
 
     return IndexedAttestation(
@@ -1024,8 +993,8 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     # Verify aggregate signature
     assert bls_verify_multiple(
         pubkeys=[
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_0_indices]),
-            bls_aggregate_pubkeys([state.validator_registry[i].pubkey for i in bit_1_indices]),
+            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
+            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
         ],
         message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
@@ -1114,14 +1083,14 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     Initiate the exit of the validator of the given ``index``.
     """
     # Return if validator already initiated exit
-    validator = state.validator_registry[index]
+    validator = state.validators[index]
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
     # Compute exit queue epoch
-    exit_epochs = [v.exit_epoch for v in state.validator_registry if v.exit_epoch != FAR_FUTURE_EPOCH]
+    exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
     exit_queue_epoch = max(exit_epochs + [get_delayed_activation_exit_epoch(get_current_epoch(state))])
-    exit_queue_churn = len([v for v in state.validator_registry if v.exit_epoch == exit_queue_epoch])
+    exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_churn_limit(state):
         exit_queue_epoch += Epoch(1)
 
@@ -1141,10 +1110,10 @@ def slash_validator(state: BeaconState,
     """
     current_epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
-    state.validator_registry[slashed_index].slashed = True
-    state.validator_registry[slashed_index].withdrawable_epoch = Epoch(current_epoch + LATEST_SLASHED_EXIT_LENGTH)
-    slashed_balance = state.validator_registry[slashed_index].effective_balance
-    state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH] += slashed_balance
+    state.validators[slashed_index].slashed = True
+    state.validators[slashed_index].withdrawable_epoch = Epoch(current_epoch + SLASHED_EXIT_LENGTH)
+    slashed_balance = state.validators[slashed_index].effective_balance
+    state.slashed_balances[current_epoch % SLASHED_EXIT_LENGTH] += slashed_balance
 
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
@@ -1158,26 +1127,51 @@ def slash_validator(state: BeaconState,
 
 ## Genesis
 
-### `Eth2Genesis`
+### Genesis trigger
 
-When enough deposits of size `MAX_EFFECTIVE_BALANCE` have been made to the deposit contract an `Eth2Genesis` log is emitted triggering the genesis of the beacon chain. Let:
+Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool` where:
 
-* `eth2genesis` be the object corresponding to `Eth2Genesis`
-* `genesis_eth1_data` be object of type `Eth1Data` where
-    * `genesis_eth1_data.deposit_root = eth2genesis.deposit_root`
-    * `genesis_eth1_data.deposit_count = eth2genesis.deposit_count`
-    * `genesis_eth1_data.block_hash` is the hash of the Ethereum 1.0 block that emitted the `Eth2Genesis` log
-* `genesis_deposits` be the object of type `List[Deposit]` with deposits ordered chronologically up to and including the deposit that triggered the `Eth2Genesis` log
+* `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
+* `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
+
+When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
+
+* `genesis_deposits = deposits`
+* `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
+* `genesis_eth1_data` be the object of type `Eth1Data` where:
+    * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
+    * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
+    * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
+
+*Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
+
+```python
+def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
+    # Process deposits
+    state = BeaconState()
+    for deposit in deposits:
+        process_deposit(state, deposit)
+
+    # Count active validators at genesis
+    active_validator_count = 0
+    for validator in state.validator_registry:
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+            active_validator_count += 1
+
+    # Check effective balance to trigger genesis
+    GENESIS_ACTIVE_VALIDATOR_COUNT = 2**16
+    return active_validator_count == GENESIS_ACTIVE_VALIDATOR_COUNT
+```
 
 ### Genesis state
 
-Let `genesis_state = get_genesis_beacon_state(genesis_deposits, eth2genesis.genesis_time, genesis_eth1_data)`.
+Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_data)`.
 
 ```python
 def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
     state = BeaconState(
         genesis_time=genesis_time,
-        latest_eth1_data=genesis_eth1_data,
+        eth1_data=genesis_eth1_data,
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
 
@@ -1186,15 +1180,15 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
         process_deposit(state, deposit)
 
     # Process genesis activations
-    for validator in state.validator_registry:
+    for validator in state.validators:
         if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate latest_active_index_roots
+    # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
-    for index in range(LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
-        state.latest_active_index_roots[index] = genesis_active_index_root
+    for index in range(ACTIVE_INDEX_ROOTS_LENGTH):
+        state.active_index_roots[index] = genesis_active_index_root
 
     return state
 ```
@@ -1235,7 +1229,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
 def process_slot(state: BeaconState) -> None:
     # Cache state root
     previous_state_root = hash_tree_root(state)
-    state.latest_state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
+    state.state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
 
     # Cache latest block header state root
     if state.latest_block_header.state_root == ZERO_HASH:
@@ -1243,12 +1237,12 @@ def process_slot(state: BeaconState) -> None:
 
     # Cache block root
     previous_block_root = signing_root(state.latest_block_header)
-    state.latest_block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
+    state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
 ```
 
 ### Epoch processing
 
-Note: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
+*Note*: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -1298,7 +1292,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
         output = output.union(get_attesting_indices(state, a.data, a.aggregation_bitfield))
-    return sorted(filter(lambda index: not state.validator_registry[index].slashed, list(output)))
+    return sorted(filter(lambda index: not state.validators[index].slashed, list(output)))
 ```
 
 ```python
@@ -1393,7 +1387,7 @@ def process_crosslinks(state: BeaconState) -> None:
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     total_balance = get_total_active_balance(state)
-    effective_balance = state.validator_registry[index].effective_balance
+    effective_balance = state.validators[index].effective_balance
     return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
 ```
 
@@ -1401,10 +1395,10 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
     previous_epoch = get_previous_epoch(state)
     total_balance = get_total_active_balance(state)
-    rewards = [Gwei(0) for index in range(len(state.validator_registry))]
-    penalties = [Gwei(0) for index in range(len(state.validator_registry))]
+    rewards = [Gwei(0) for _ in range(len(state.validators))]
+    penalties = [Gwei(0) for _ in range(len(state.validators))]
     eligible_validator_indices = [
-        ValidatorIndex(index) for index, v in enumerate(state.validator_registry)
+        ValidatorIndex(index) for index, v in enumerate(state.validators)
         if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
     ]
 
@@ -1442,7 +1436,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
             if index not in matching_target_attesting_indices:
                 penalties[index] += Gwei(
-                    state.validator_registry[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
+                    state.validators[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
                 )
 
     return rewards, penalties
@@ -1450,8 +1444,8 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
 
 ```python
 def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    rewards = [Gwei(0) for index in range(len(state.validator_registry))]
-    penalties = [Gwei(0) for index in range(len(state.validator_registry))]
+    rewards = [Gwei(0) for index in range(len(state.validators))]
+    penalties = [Gwei(0) for index in range(len(state.validators))]
     epoch = get_previous_epoch(state)
     for offset in range(get_epoch_committee_count(state, epoch)):
         shard = Shard((get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT)
@@ -1475,7 +1469,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 
     rewards1, penalties1 = get_attestation_deltas(state)
     rewards2, penalties2 = get_crosslink_deltas(state)
-    for index in range(len(state.validator_registry)):
+    for index in range(len(state.validators)):
         increase_balance(state, ValidatorIndex(index), rewards1[index] + rewards2[index])
         decrease_balance(state, ValidatorIndex(index), penalties1[index] + penalties2[index])
 ```
@@ -1485,7 +1479,7 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 ```python
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
-    for index, validator in enumerate(state.validator_registry):
+    for index, validator in enumerate(state.validators):
         if (
             validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and
             validator.effective_balance >= MAX_EFFECTIVE_BALANCE
@@ -1497,13 +1491,13 @@ def process_registry_updates(state: BeaconState) -> None:
 
     # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
     activation_queue = sorted([
-        index for index, validator in enumerate(state.validator_registry) if
+        index for index, validator in enumerate(state.validators) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_epoch)
-    ], key=lambda index: state.validator_registry[index].activation_eligibility_epoch)
+    ], key=lambda index: state.validators[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_churn_limit(state)]:
-        validator = state.validator_registry[index]
+        validator = state.validators[index]
         if validator.activation_epoch == FAR_FUTURE_EPOCH:
             validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
@@ -1516,12 +1510,12 @@ def process_slashings(state: BeaconState) -> None:
     total_balance = get_total_active_balance(state)
 
     # Compute slashed balances in the current epoch
-    total_at_start = state.latest_slashed_balances[(current_epoch + 1) % LATEST_SLASHED_EXIT_LENGTH]
-    total_at_end = state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+    total_at_start = state.slashed_balances[(current_epoch + 1) % SLASHED_EXIT_LENGTH]
+    total_at_end = state.slashed_balances[current_epoch % SLASHED_EXIT_LENGTH]
     total_penalties = total_at_end - total_at_start
 
-    for index, validator in enumerate(state.validator_registry):
-        if validator.slashed and current_epoch == validator.withdrawable_epoch - LATEST_SLASHED_EXIT_LENGTH // 2:
+    for index, validator in enumerate(state.validators):
+        if validator.slashed and current_epoch == validator.withdrawable_epoch - SLASHED_EXIT_LENGTH // 2:
             penalty = max(
                 validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
                 validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
@@ -1539,29 +1533,29 @@ def process_final_updates(state: BeaconState) -> None:
     if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
     # Update effective balances with hysteresis
-    for index, validator in enumerate(state.validator_registry):
+    for index, validator in enumerate(state.validators):
         balance = state.balances[index]
         HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
         if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
     # Update start shard
-    state.latest_start_shard = Shard((state.latest_start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
+    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
-    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % LATEST_ACTIVE_INDEX_ROOTS_LENGTH
-    state.latest_active_index_roots[index_root_position] = hash_tree_root(
+    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % ACTIVE_INDEX_ROOTS_LENGTH
+    state.active_index_roots[index_root_position] = hash_tree_root(
         get_active_validator_indices(state, Epoch(next_epoch + ACTIVATION_EXIT_DELAY))
     )
     # Set total slashed balances
-    state.latest_slashed_balances[next_epoch % LATEST_SLASHED_EXIT_LENGTH] = (
-        state.latest_slashed_balances[current_epoch % LATEST_SLASHED_EXIT_LENGTH]
+    state.slashed_balances[next_epoch % SLASHED_EXIT_LENGTH] = (
+        state.slashed_balances[current_epoch % SLASHED_EXIT_LENGTH]
     )
     # Set randao mix
-    state.latest_randao_mixes[next_epoch % LATEST_RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
+    state.randao_mixes[next_epoch % RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(
-            block_roots=state.latest_block_roots,
-            state_roots=state.latest_state_roots,
+            block_roots=state.block_roots,
+            state_roots=state.state_roots,
         )
         state.historical_roots.append(hash_tree_root(historical_batch))
     # Rotate current/previous epoch attestations
@@ -1594,7 +1588,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
-    proposer = state.validator_registry[get_beacon_proposer_index(state)]
+    proposer = state.validators[get_beacon_proposer_index(state)]
     assert not proposer.slashed
     # Verify proposer signature
     assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
@@ -1604,7 +1598,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
-    proposer = state.validator_registry[get_beacon_proposer_index(state)]
+    proposer = state.validators[get_beacon_proposer_index(state)]
     # Verify that the provided randao value is valid
     assert bls_verify(
         proposer.pubkey,
@@ -1613,7 +1607,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
         get_domain(state, DOMAIN_RANDAO),
     )
     # Mix it in
-    state.latest_randao_mixes[get_current_epoch(state) % LATEST_RANDAO_MIXES_LENGTH] = (
+    state.randao_mixes[get_current_epoch(state) % RANDAO_MIXES_LENGTH] = (
         xor(get_randao_mix(state, get_current_epoch(state)),
             hash(body.randao_reveal))
     )
@@ -1625,7 +1619,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
 def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
     state.eth1_data_votes.append(body.eth1_data)
     if state.eth1_data_votes.count(body.eth1_data) * 2 > SLOTS_PER_ETH1_VOTING_PERIOD:
-        state.latest_eth1_data = body.eth1_data
+        state.eth1_data = body.eth1_data
 ```
 
 #### Operations
@@ -1633,7 +1627,7 @@ def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
-    assert len(body.deposits) == min(MAX_DEPOSITS, state.latest_eth1_data.deposit_count - state.deposit_index)
+    assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
     # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
     all_operations = [
@@ -1657,7 +1651,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     """
     Process ``ProposerSlashing`` operation.
     """
-    proposer = state.validator_registry[proposer_slashing.proposer_index]
+    proposer = state.validators[proposer_slashing.proposer_index]
     # Verify that the epoch is the same
     assert slot_to_epoch(proposer_slashing.header_1.slot) == slot_to_epoch(proposer_slashing.header_2.slot)
     # But the headers are different
@@ -1689,7 +1683,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
     attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
     for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
-        if is_slashable_validator(state.validator_registry[index], get_current_epoch(state)):
+        if is_slashable_validator(state.validators[index], get_current_epoch(state)):
             slash_validator(state, index)
             slashed_any = True
     assert slashed_any
@@ -1703,6 +1697,10 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` operation.
     """
     data = attestation.data
+
+    assert data.crosslink.shard < SHARD_COUNT
+    assert data.target_epoch in (get_previous_epoch(state), get_current_epoch(state))
+
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
@@ -1713,7 +1711,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         proposer_index=get_beacon_proposer_index(state),
     )
 
-    assert data.target_epoch in (get_previous_epoch(state), get_current_epoch(state))
     if data.target_epoch == get_current_epoch(state):
         ffg_data = (state.current_justified_epoch, state.current_justified_root, get_current_epoch(state))
         parent_crosslink = state.current_crosslinks[data.crosslink.shard]
@@ -1744,16 +1741,16 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
-        index=state.deposit_index,
-        root=state.latest_eth1_data.deposit_root,
+        index=state.eth1_deposit_index,
+        root=state.eth1_data.deposit_root,
     )
 
     # Deposits must be processed in order
-    state.deposit_index += 1
+    state.eth1_deposit_index += 1
 
     pubkey = deposit.data.pubkey
     amount = deposit.data.amount
-    validator_pubkeys = [v.pubkey for v in state.validator_registry]
+    validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession).
         # Invalid signatures are allowed by the deposit contract,
@@ -1765,7 +1762,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             return
 
         # Add validator and balance entries
-        state.validator_registry.append(Validator(
+        state.validators.append(Validator(
             pubkey=pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
             activation_eligibility_epoch=FAR_FUTURE_EPOCH,
@@ -1788,7 +1785,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
     Process ``VoluntaryExit`` operation.
     """
-    validator = state.validator_registry[exit.validator_index]
+    validator = state.validators[exit.validator_index]
     # Verify the validator is active
     assert is_active_validator(validator, get_current_epoch(state))
     # Verify the validator has not yet exited
@@ -1817,13 +1814,13 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert state.slot == transfer.slot
     # Sender must be not yet eligible for activation, withdrawn, or transfer balance over MAX_EFFECTIVE_BALANCE
     assert (
-        state.validator_registry[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
-        get_current_epoch(state) >= state.validator_registry[transfer.sender].withdrawable_epoch or
+        state.validators[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
+        get_current_epoch(state) >= state.validators[transfer.sender].withdrawable_epoch or
         transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= state.balances[transfer.sender]
     )
     # Verify that the pubkey is valid
     assert (
-        state.validator_registry[transfer.sender].withdrawal_credentials ==
+        state.validators[transfer.sender].withdrawal_credentials ==
         int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid

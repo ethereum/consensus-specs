@@ -101,15 +101,15 @@ To submit a deposit:
 * Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=bls_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `bls_domain` will default to zeroes there).
 * Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])` along with a deposit of `amount` Gwei.
 
-*Note*: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validator_registry` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_EFFECTIVE_BALANCE`.
+*Note*: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validators` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_EFFECTIVE_BALANCE`.
 
 ### Process deposit
 
-Deposits cannot be processed into the beacon chain until the Eth 1.0 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth 1.0 blocks (~4 hours) plus `ETH1_DATA_VOTING_PERIOD` epochs (~1.7 hours). Once the requisite Eth 1.0 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validator_registry` within an epoch or two. The validator is then in a queue to be activated.
+Deposits cannot be processed into the beacon chain until the Eth 1.0 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth 1.0 blocks (~4 hours) plus `ETH1_DATA_VOTING_PERIOD` epochs (~1.7 hours). Once the requisite Eth 1.0 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
 
 ### Validator index
 
-Once a validator has been processed and added to the beacon state's `validator_registry`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](../core/0_beacon-chain.md#validator) contains the `pubkey` specified in the validator's deposit. A validator's `validator_index` is guaranteed to not change from the time of initial deposit until the validator exits and fully withdraws. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
+Once a validator has been processed and added to the beacon state's `validators`, the validator's `validator_index` is defined by the index into the registry at which the [`ValidatorRecord`](../core/0_beacon-chain.md#validator) contains the `pubkey` specified in the validator's deposit. A validator's `validator_index` is guaranteed to not change from the time of initial deposit until the validator exits and fully withdraws. This `validator_index` is used throughout the specification to dictate validator roles and responsibilities at any point and should be stored locally.
 
 ### Activation
 
@@ -118,7 +118,7 @@ In normal operation, the validator is quickly activated at which point the valid
 The function [`is_active_validator`](../core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
 ```python
-validator = state.validator_registry[validator_index]
+validator = state.validators[validator_index]
 is_active = is_active_validator(validator, get_current_epoch(state))
 ```
 
@@ -147,7 +147,7 @@ def get_committee_assignment(
 
     committees_per_slot = get_epoch_committee_count(state, epoch) // SLOTS_PER_EPOCH
     epoch_start_slot = get_epoch_start_slot(epoch)
-    for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH)
+    for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH):
         offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
         slot_start_shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
         for i in range(committees_per_slot):
@@ -221,10 +221,10 @@ epoch_signature = bls_sign(
 
 ##### Eth1 Data
 
-`block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.latest_eth1_data` is updated, and validator deposits up to this root can be processed. The deposit root can be calculated by calling the `get_deposit_root()` function of the deposit contract using the post-state of the block hash.
+`block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.eth1_data` is updated, and validator deposits up to this root can be processed. The deposit root can be calculated by calling the `get_deposit_root()` function of the deposit contract using the post-state of the block hash.
 
 * Let `D` be the list of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
-    * `vote.eth1_data.block_hash` is the hash of an Eth 1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.latest_eth1_data.block_hash`.
+    * `vote.eth1_data.block_hash` is the hash of an Eth 1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.eth1_data.block_hash`.
     * `vote.eth1_data.deposit_count` is the deposit count of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
     * `vote.eth1_data.deposit_root` is the deposit root of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
 * If `D` is empty:
@@ -267,9 +267,9 @@ Up to `MAX_ATTESTATIONS` aggregate attestations can be included in the `block`. 
 
 ##### Deposits
 
-If there are any unprocessed deposits for the existing `state.latest_eth1_data` (i.e. `state.latest_eth1_data.deposit_count > state.deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, latest_eth1_data.deposit_count - state.deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth 1.0 deposit contract](../core/0_deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
+If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth 1.0 deposit contract](../core/0_deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
 
-The `proof` for each deposit must be constructed against the deposit root contained in `state.latest_eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `latest_eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
+The `proof` for each deposit must be constructed against the deposit root contained in `state.eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
 ##### Voluntary exits
 
@@ -297,11 +297,11 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 * Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
 * Set `attestation_data.source_root = head_state.current_justified_root`.
 * Set `attestation_data.target_epoch = get_current_epoch(head_state)`
-* Set `attestation_data.target_root = signing_root(epoch_boundary_block)` where `epoch_boundary_block` is the block at the most recent epoch boundary.
+* Set `attestation_data.target_root = epoch_boundary_block_root` where `epoch_boundary_block_root` is the root of block at the most recent epoch boundary.
 
-*Note*: `epoch_boundary_block` can be looked up in the state using:
+*Note*: `epoch_boundary_block_root` can be looked up in the state using:
 * Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
-* Let `epoch_boundary_block = head if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
+* Let `epoch_boundary_block_root = signing_root(head_block) if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
 
 ##### Crosslink vote
 
