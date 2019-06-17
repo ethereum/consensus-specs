@@ -8,7 +8,7 @@ Sanity tests to cover a series of one or more empty-slot transitions being proce
 description: string    -- description of test case, purely for debugging purposes
 bls_setting: int       -- see general test-format spec.
 pre: BeaconState       -- state before running through the transitions.
-slots: N               -- amount of slots to process, N being a positive numer.
+slots: N               -- amount of slots to process, N being a positive number.
 post: BeaconState      -- state after applying all the transitions.
 ```
 
