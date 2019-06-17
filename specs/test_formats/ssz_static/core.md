@@ -22,7 +22,8 @@ A test-runner can implement the following assertions:
 - Serialization: After parsing the `value`, SSZ-serialize it: the output should match `serialized`
 - Hash-tree-root: After parsing the `value`, Hash-tree-root it: the output should match `root`
     - Optionally also check signing-root, if present.
-- Deserialization: SSZ-deserialize the `serialized` value, and see if it matches the parsed `value`
+- Deserialization: SSZ-deserialize the `serialized` value, and see if it matches the parsed `value`.
+  Note that this only covers valid inputs, SSZ implementations should be hardened for production in a later stage.
 
 ## References
 

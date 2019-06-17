@@ -7,7 +7,9 @@ Any issues with the generators and/or generated tests should be filed in the rep
 Test-vectors are generated and published by the release-publishers for every release.
 
 Spec-tests are unified with the executable spec: these tests are PyTest compatible, run in CI, but also enable special settings.
- Settings include BLS on/off, and the option to output the relevant data into a test-vector in "generator mode".
+Settings include:
+ - BLS on/off: see `ethspec.utils.bls.py > .bls_active`, and BLS-switch test decorators in `eth2spec.test.context.py`
+ - "generator mode": output the relevant test data into an encoded copy (`test_my_fn(generator_mode=True)`, enabled by decorating `test_my_fn` with `ethspec.test.utils.spectest()`)
 
 ## How to run generators
 
