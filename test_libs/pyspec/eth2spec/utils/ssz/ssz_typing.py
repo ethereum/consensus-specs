@@ -1,3 +1,4 @@
+from types import GeneratorType
 from typing import List, Iterable, TypeVar, Type, NewType
 from typing import Union
 from typing_inspect import get_origin
@@ -356,6 +357,8 @@ def parse_bytes(val):
         return val
     elif isinstance(val, int):
         return bytes([val])
+    elif isinstance(val, (list, GeneratorType)):
+        return bytes(val)
     else:
         return None
 
@@ -513,13 +516,11 @@ def read_vector_elem_type(vector_typ: Type[Vector[T, L]]) -> T:
 
 
 def read_elem_type(typ):
-    if typ == bytes:
+    if typ == bytes or (isinstance(typ, type) and issubclass(typ, bytes)):  # bytes or bytesN
         return byte
     elif is_list_type(typ):
         return read_list_elem_type(typ)
     elif is_vector_type(typ):
         return read_vector_elem_type(typ)
-    elif issubclass(typ, bytes):  # bytes or bytesN
-        return byte
     else:
         raise TypeError("Unexpected type: {}".format(typ))

@@ -1,6 +1,5 @@
-from eth2spec.phase0.spec import state_transition
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
-from eth2spec.test.helpers.state import next_epoch
+from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
 from eth2spec.test.context import spec_state_test, with_all_phases
 
 
@@ -16,7 +15,7 @@ def run_process_registry_updates(spec, state, valid=True):
     block = build_empty_block_for_next_slot(spec, state)
     block.slot = slot
     sign_block(spec, state, block)
-    state_transition(state, block)
+    state_transition_and_sign_block(spec, state, block)
 
     # cache state before epoch transition
     spec.process_slot(state)
@@ -35,23 +34,23 @@ def run_process_registry_updates(spec, state, valid=True):
 @spec_state_test
 def test_activation(spec, state):
     index = 0
-    assert spec.is_active_validator(state.validator_registry[index], spec.get_current_epoch(state))
+    assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
     # Mock a new deposit
-    state.validator_registry[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
-    state.validator_registry[index].activation_epoch = spec.FAR_FUTURE_EPOCH
-    state.validator_registry[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
-    assert not spec.is_active_validator(state.validator_registry[index], spec.get_current_epoch(state))
+    state.validators[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
     for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
         next_epoch(spec, state)
 
     yield from run_process_registry_updates(spec, state)
 
-    assert state.validator_registry[index].activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
-    assert state.validator_registry[index].activation_epoch != spec.FAR_FUTURE_EPOCH
+    assert state.validators[index].activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
+    assert state.validators[index].activation_epoch != spec.FAR_FUTURE_EPOCH
     assert spec.is_active_validator(
-        state.validator_registry[index],
+        state.validators[index],
         spec.get_current_epoch(state),
     )
 
@@ -60,19 +59,19 @@ def test_activation(spec, state):
 @spec_state_test
 def test_ejection(spec, state):
     index = 0
-    assert spec.is_active_validator(state.validator_registry[index], spec.get_current_epoch(state))
-    assert state.validator_registry[index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert state.validators[index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     # Mock an ejection
-    state.validator_registry[index].effective_balance = spec.EJECTION_BALANCE
+    state.validators[index].effective_balance = spec.EJECTION_BALANCE
 
     for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
         next_epoch(spec, state)
 
     yield from run_process_registry_updates(spec, state)
 
-    assert state.validator_registry[index].exit_epoch != spec.FAR_FUTURE_EPOCH
+    assert state.validators[index].exit_epoch != spec.FAR_FUTURE_EPOCH
     assert not spec.is_active_validator(
-        state.validator_registry[index],
+        state.validators[index],
         spec.get_current_epoch(state),
     )

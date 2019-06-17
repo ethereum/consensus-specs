@@ -12,8 +12,15 @@ from gen_base import gen_runner, gen_suite, gen_typing
 from py_ecc import bls
 
 
-def int_to_hex(n: int) -> str:
-    return '0x' + int_to_big_endian(n).hex()
+F2Q_COEFF_LEN = 48
+G2_COMPRESSED_Z_LEN = 48
+
+
+def int_to_hex(n: int, byte_length: int=None) -> str:
+    byte_value = int_to_big_endian(n)
+    if byte_length:
+        byte_value = byte_value.rjust(byte_length, b'\x00')
+    return '0x' + byte_value.hex()
 
 
 def hex_to_int(x: str) -> int:
@@ -58,8 +65,8 @@ def hash_message(msg: bytes,
     """
     return [
         [
-            int_to_hex(fq2.coeffs[0]),
-            int_to_hex(fq2.coeffs[1]),
+            int_to_hex(fq2.coeffs[0], F2Q_COEFF_LEN),
+            int_to_hex(fq2.coeffs[1], F2Q_COEFF_LEN),
         ]
         for fq2 in bls.utils.hash_to_G2(msg, domain)
     ]
@@ -75,8 +82,7 @@ def hash_message_compressed(msg: bytes, domain: int) -> Tuple[str, str]:
         - Message hash as a compressed G2 point
     """
     z1, z2 = bls.utils.compress_G2(bls.utils.hash_to_G2(msg, domain))
-    return [int_to_hex(z1), int_to_hex(z2)]
-
+    return [int_to_hex(z1, G2_COMPRESSED_Z_LEN), int_to_hex(z2, G2_COMPRESSED_Z_LEN)]
 
 
 @to_tuple

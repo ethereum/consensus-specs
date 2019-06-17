@@ -339,7 +339,7 @@ def process_custody_key_reveal(state: BeaconState,
     Note that this function mutates ``state``.
     """
 
-    revealer = state.validator_registry[reveal.revealer_index]
+    revealer = state.validators[reveal.revealer_index]
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_reveal_period, reveal.revealed_index)
 
     assert revealer.next_custody_reveal_period < get_validators_custody_reveal_period(state, reveal.revealed_index)
@@ -389,8 +389,8 @@ def process_early_derived_secret_reveal(state: BeaconState,
     Note that this function mutates ``state``.
     """
 
-    revealed_validator = state.validator_registry[reveal.revealed_index]
-    masker = state.validator_registry[reveal.masker_index]
+    revealed_validator = state.validators[reveal.revealed_index]
+    masker = state.validators[reveal.masker_index]
     derived_secret_location = reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
 
     assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
@@ -399,7 +399,7 @@ def process_early_derived_secret_reveal(state: BeaconState,
     assert reveal.revealed_index not in state.exposed_derived_secrets[derived_secret_location]
 
     # Verify signature correctness
-    masker = state.validator_registry[reveal.masker_index]
+    masker = state.validators[reveal.masker_index]
     pubkeys = [revealed_validator.pubkey, masker.pubkey]
     message_hashes = [
         hash_tree_root(reveal.epoch),
@@ -465,7 +465,7 @@ def process_chunk_challenge(state: BeaconState,
     validate_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
     # Verify it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
-    responder = state.validator_registry[challenge.responder_index]
+    responder = state.validators[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bitfield)
@@ -507,7 +507,7 @@ def process_bit_challenge(state: BeaconState,
                           challenge: CustodyBitChallenge) -> None:
 
     # Verify challenge signature
-    challenger = state.validator_registry[challenge.challenger_index]
+    challenger = state.validators[challenge.challenger_index]
     assert bls_verify(
         pubkey=challenger.pubkey,
         message_hash=signing_root(challenge),
@@ -520,7 +520,7 @@ def process_bit_challenge(state: BeaconState,
     attestation = challenge.attestation
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))
     # Verify the attestation is eligible for challenging
-    responder = state.validator_registry[challenge.responder_index]
+    responder = state.validators[challenge.responder_index]
     assert (slot_to_epoch(attestation.data.slot) + responder.max_reveal_lateness <=
             get_validators_custody_reveal_period(state, challenge.responder_index))
 
@@ -630,7 +630,7 @@ def process_bit_challenge_response(state: BeaconState,
     # Verify chunk index
     assert response.chunk_index < challenge.chunk_count
     # Verify responder has not been slashed
-    responder = state.validator_registry[challenge.responder_index]
+    responder = state.validators[challenge.responder_index]
     assert not responder.slashed
     # Verify the chunk matches the crosslink data root
     assert verify_merkle_branch(
@@ -669,7 +669,7 @@ Run `process_reveal_deadlines(state)` immediately after `process_registry_update
     process_reveal_deadlines(state)
 # end insert @process_reveal_deadlines
 def process_reveal_deadlines(state: BeaconState) -> None:
-    for index, validator in enumerate(state.validator_registry):
+    for index, validator in enumerate(state.validators):
         deadline = validator.next_custody_reveal_period + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
         if get_validators_custody_reveal_period(state, index) > deadline:
             slash_validator(state, index)
@@ -710,7 +710,7 @@ def after_process_final_updates(state: BeaconState) -> None:
     validator_indices_in_records = set(
         [record.challenger_index for record in records] + [record.responder_index for record in records]
     )
-    for index, validator in enumerate(state.validator_registry):
+    for index, validator in enumerate(state.validators):
         if index not in validator_indices_in_records:
             if validator.exit_epoch != FAR_FUTURE_EPOCH and validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
                 validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
