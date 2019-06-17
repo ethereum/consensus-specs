@@ -11,6 +11,7 @@
     - [Notation](#notation)
     - [Terminology](#terminology)
     - [Constants](#constants)
+    - [Configuration](#configuration)
         - [Misc](#misc)
         - [Deposit contract](#deposit-contract)
         - [Gwei values](#gwei-values)
@@ -152,7 +153,18 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Constants
 
-*Note*: The default mainnet values for the constants are included here for spec-design purposes.
+The following values are (non-configurable) constants used throughout the specification.
+
+| Name | Value |
+| - | - |
+| `FAR_FUTURE_EPOCH` | `2**64 - 1` |
+| `ZERO_HASH` | `b'\x00' * 32` |
+| `BASE_REWARDS_PER_EPOCH` | `5` |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+
+## Configuration
+
+*Note*: The default mainnet configuration values are included here for spec-design purposes.
 The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory.
 These configurations are updated for releases, but may be out of sync during `dev` changes.
 
@@ -165,16 +177,9 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MAX_INDICES_PER_ATTESTATION` | `2**12` (= 4,096) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
-| `BASE_REWARDS_PER_EPOCH` | `5` |
 | `SHUFFLE_ROUND_COUNT` | `90` |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
-
-### Deposit contract
-
-| Name | Value |
-| - | - |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 
 ### Gwei values
 
@@ -191,8 +196,6 @@ These configurations are updated for releases, but may be out of sync during `de
 | - | - |
 | `GENESIS_SLOT` | `0` |
 | `GENESIS_EPOCH` | `0` |
-| `FAR_FUTURE_EPOCH` | `2**64 - 1` |
-| `ZERO_HASH` | `b'\x00' * 32` |
 | `BLS_WITHDRAWAL_PREFIX` | `0` |
 
 ### Time parameters
