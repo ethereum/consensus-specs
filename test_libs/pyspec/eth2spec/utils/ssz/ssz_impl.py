@@ -156,7 +156,7 @@ def item_length(typ):
         return 32
 
 
-def chunk_count(typ):
+def get_chunk_count(typ):
     if is_basic_type(typ):
         return 1
     elif is_list_kind(typ) or is_vector_kind(typ):
@@ -174,9 +174,9 @@ def hash_tree_root(obj, typ):
         fields = get_typed_values(obj, typ=typ)
         leaves = [hash_tree_root(field_value, typ=field_typ) for field_value, field_typ in fields]
     if is_list_kind(typ):
-        return mix_in_length(merkleize_chunks(leaves, pad_to=chunk_count(typ)), len(obj))
+        return mix_in_length(merkleize_chunks(leaves, pad_to=get_chunk_count(typ)), len(obj))
     else:
-        return merkleize_chunks(leaves, pad_to=chunk_count(typ))
+        return merkleize_chunks(leaves, pad_to=get_chunk_count(typ))
 
 
 def signing_root(obj, typ):

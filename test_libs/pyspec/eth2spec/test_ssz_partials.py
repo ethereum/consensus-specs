@@ -44,11 +44,11 @@ for path in paths:
     # print(path, get_nodes_along_path(full, path, typ=City).keys())
 p = merge(*[full.access_partial(path) for path in paths])
 # p = SSZPartial(infer_type(city), branch2)
-assert p.coords[0] == city.coords[0]
+assert p.coords[0] == city.coords[0] == extract_value_at_path(p.objects, City, ['coords', 0])
 assert p.coords[1] == city.coords[1]
 assert len(p.coords) == len(city.coords)
 assert p.coords.hash_tree_root() == hash_tree_root(city.coords)
-assert p.people[4].name[1] == city.people[4].name[1]
+assert p.people[4].name[1] == city.people[4].name[1] == extract_value_at_path(p.objects, City, ['people', 4, 'name', 1])
 assert len(p.people[4].name) == len(city.people[4].name) == 4
 assert p.people[8].is_male == city.people[8].is_male
 assert p.people[7].is_male == city.people[7].is_male
