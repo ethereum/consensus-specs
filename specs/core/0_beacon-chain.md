@@ -223,7 +223,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `VALIDATOR_REGISTRY_SIZE` | `2**40 (= 1,099,511,627,776)` | | |
+| `VALIDATOR_REGISTRY_SIZE` | `2**40` (= 1,099,511,627,776) | | |
 
 ### Rewards and penalties
 
