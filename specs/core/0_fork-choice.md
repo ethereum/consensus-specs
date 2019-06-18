@@ -73,8 +73,8 @@ class Store(object):
     states: Dict[Bytes32, BeaconState] = field(default_factory=dict)
     time: int = 0
     latest_targets: Dict[ValidatorIndex, Target] = field(default_factory=dict)
-    justified_root: Bytes32
-    finalized_root: Bytes32
+    justified_root: Bytes32 = 0x0
+    finalized_root: Bytes32 = 0x0
 ```
 
 ### Helpers
