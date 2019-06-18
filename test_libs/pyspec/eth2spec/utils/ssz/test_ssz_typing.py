@@ -105,6 +105,20 @@ def test_container():
     assert v.type().elem_type == uint8
     assert v.type().length == 1024
 
+    y.a = 42
+    y.a = uint16(255)
+    try:
+        y.a = uint16(256)
+        assert False
+    except ValueError:
+        pass
+
+    try:
+        y.not_here = 5
+        assert False
+    except AttributeError:
+        pass
+
 
 def test_list():
     typ = List[uint64, 128]

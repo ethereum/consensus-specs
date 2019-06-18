@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, Iterator
+from typing import Tuple, Iterator
 from types import GeneratorType
 
 
@@ -141,6 +141,16 @@ class Container(Series, metaclass=SSZType):
     def signing_root(self):
         from .ssz_impl import signing_root
         return signing_root(self)
+
+    def __setattr__(self, name, value):
+        if name not in self.__class__.__annotations__:
+            raise AttributeError("Cannot change non-existing SSZ-container attribute")
+        field_typ = self.__class__.__annotations__[name]
+        value = coerce_type_maybe(value, field_typ)
+        if not isinstance(value, field_typ):
+            raise ValueCheckError(f"Cannot set field of {self.__class__}:"
+                                  f" field: {name} type: {field_typ} value: {value} value type: {type(value)}")
+        super().__setattr__(name, value)
 
     def get_field_values(self) -> Tuple[SSZValue, ...]:
         cls = self.__class__
