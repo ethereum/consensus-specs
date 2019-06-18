@@ -91,13 +91,12 @@ def compute_committee(indices: List[ValidatorIndex],  # type: ignore
 
 # Monkey patch hash cache
 _hash = hash
-hash_cache: Dict[bytes, Bytes32] = {}
+hash_cache: Dict[bytes, Hash] = {}
 
 
 def hash(x: bytes) -> Hash:
     if x not in hash_cache:
-        ret = _hash(x)
-        hash_cache[x] = Hash(ret)
+        hash_cache[x] = Hash(_hash(x))
     return hash_cache[x]
 
 
