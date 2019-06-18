@@ -123,7 +123,7 @@ class Container(Series, metaclass=SSZType):
                 value = coerce_type_maybe(kwargs[f], t)
                 if not isinstance(value, t):
                     raise ValueError(f"Bad input for class {self.__class__}:"
-                                          f" field: {f} type: {t} value: {value} value type: {type(value)}")
+                                     f" field: {f} type: {t} value: {value} value type: {type(value)}")
                 setattr(self, f, value)
 
     def serialize(self):
@@ -145,7 +145,7 @@ class Container(Series, metaclass=SSZType):
         value = coerce_type_maybe(value, field_typ)
         if not isinstance(value, field_typ):
             raise ValueError(f"Cannot set field of {self.__class__}:"
-                                  f" field: {name} type: {field_typ} value: {value} value type: {type(value)}")
+                             f" field: {name} type: {field_typ} value: {value} value type: {type(value)}")
         super().__setattr__(name, value)
 
     def get_field_values(self) -> Tuple[SSZValue, ...]:
@@ -301,7 +301,7 @@ class Elements(ParamsBase, metaclass=ElementsType):
         v = coerce_type_maybe(v, typ)
         if not isinstance(v, typ):
             raise ValueError(f"Cannot set item in type {self.__class__},"
-                                  f" mismatched element type: {v} of {type(v)}, expected {typ}")
+                             f" mismatched element type: {v} of {type(v)}, expected {typ}")
         self.items[k] = v
 
     def __len__(self):
@@ -400,3 +400,10 @@ class BytesN(BytesLike):
     @classmethod
     def is_fixed_size(cls):
         return True
+
+
+# Helpers for common BytesN types.
+Bytes4 = BytesN[4]
+Bytes32 = BytesN[32]
+Bytes48 = BytesN[48]
+Bytes96 = BytesN[96]

@@ -1,5 +1,6 @@
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType, Elements, Bit, Container, List, Vector, Bytes, BytesN,
+    SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType,
+    Elements, Bit, Container, List, Vector, Bytes, BytesN,
     uint, uint8, uint16, uint32, uint64, uint128, uint256
 )
 
@@ -41,13 +42,13 @@ def test_basic_instances():
 
 def test_basic_value_bounds():
     max = {
-        Bit: 2**1,
-        uint8:   2**(8 * 1),
-        uint16:  2**(8 * 2),
-        uint32:  2**(8 * 4),
-        uint64:  2**(8 * 8),
-        uint128: 2**(8 * 16),
-        uint256: 2**(8 * 32),
+        Bit: 2 ** 1,
+        uint8: 2 ** (8 * 1),
+        uint16: 2 ** (8 * 2),
+        uint32: 2 ** (8 * 4),
+        uint64: 2 ** (8 * 8),
+        uint128: 2 ** (8 * 16),
+        uint256: 2 ** (8 * 32),
     }
     for k, v in max.items():
         # this should work
@@ -161,12 +162,12 @@ def test_list():
     foo[127] = 222
     assert sum(foo) == 999
     try:
-        foo[3] = 2**32  # out of bounds
+        foo[3] = 2 ** 32  # out of bounds
     except ValueError:
         pass
 
     try:
-        foo[3] = uint64(2**32 - 1)  # within bounds, wrong type
+        foo[3] = uint64(2 ** 32 - 1)  # within bounds, wrong type
         assert False
     except ValueError:
         pass
