@@ -60,15 +60,9 @@ commands:
 jobs:
   checkout_specs:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
-      # Restore git repo at point close to target branch/revision, to speed up checkout
-      - restore_cache:
-          keys:
-            - v1-specs-repo-{{ .Branch }}-{{ .Revision }}
-            - v1-specs-repo-{{ .Branch }}-
-            - v1-specs-repo-
       - checkout
       - run:
           name: Clean up git repo to reduce cache size
@@ -80,7 +74,7 @@ jobs:
             - ~/specs-repo
   install_pyspec_test:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -92,7 +86,7 @@ jobs:
       - save_pyspec_cached_venv
   test:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -105,7 +99,7 @@ jobs:
           path: test_libs/pyspec/test-reports
   lint:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -116,7 +110,7 @@ jobs:
           command: make lint
   install_deposit_contract_test:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
@@ -128,7 +122,7 @@ jobs:
       - save_deposit_contract_cached_venv
   deposit_contract:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.6
     working_directory: ~/specs-repo
     steps:
       - restore_cache:
