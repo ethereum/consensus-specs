@@ -120,7 +120,6 @@ def objects_to_spec(functions: Dict[str, str],
                     ssz_objects: Dict[str, str],
                     inserts: Dict[str, str],
                     imports: Dict[str, str],
-                    byte_types: List[int],
                     ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
@@ -226,7 +225,7 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
 
 def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
     functions, custom_types, constants, ssz_objects, inserts = get_spec(sourcefile)
-    spec = objects_to_spec(functions, custom_types, constants, ssz_objects, inserts, PHASE0_IMPORTS, BYTE_TYPES)
+    spec = objects_to_spec(functions, custom_types, constants, ssz_objects, inserts, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -243,7 +242,7 @@ def build_phase1_spec(phase0_sourcefile: str,
     spec_objects = phase0_spec
     for value in [phase1_custody, phase1_shard_data]:
         spec_objects = combine_spec_objects(spec_objects, value)
-    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, BYTE_TYPES)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
