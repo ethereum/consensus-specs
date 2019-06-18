@@ -85,8 +85,7 @@ def compute_committee(indices: List[ValidatorIndex],  # type: ignore
     param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash not in committee_cache:
-        ret = _compute_committee(indices, seed, index, count)
-        committee_cache[param_hash] = ret
+        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
     return committee_cache[param_hash]
 
 
