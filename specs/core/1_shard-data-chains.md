@@ -154,7 +154,7 @@ def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex
 ```python
 def get_persistent_committee(state: BeaconState,
                              shard: Shard,
-                             slot: Slot) -> List[ValidatorIndex]:
+                             slot: Slot) -> Tuple[ValidatorIndex, ...]:
     """
     Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
@@ -175,10 +175,10 @@ def get_persistent_committee(state: BeaconState,
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
-    return sorted(list(set(
+    return tuple(sorted(list(set(
         [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)] +
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
-    )))
+    ))))
 ```
 
 ### `get_shard_proposer_index`
@@ -284,7 +284,7 @@ Let:
 ```python
 def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
                          beacon_state: BeaconState,
-                         valid_shard_blocks: List[ShardBlock],
+                         valid_shard_blocks: Iterable[ShardBlock],
                          candidate: ShardBlock) -> bool:
     # Check if block is already determined valid
     for _, block in enumerate(valid_shard_blocks):
@@ -348,7 +348,7 @@ Let:
 * `candidate` be a candidate `ShardAttestation` for which validity is to be determined by running `is_valid_shard_attestation`
 
 ```python
-def is_valid_shard_attestation(valid_shard_blocks: List[ShardBlock],
+def is_valid_shard_attestation(valid_shard_blocks: Iterable[ShardBlock],
                                beacon_state: BeaconState,
                                candidate: ShardAttestation) -> bool:
     # Check shard block
@@ -380,7 +380,7 @@ Let:
 def is_valid_beacon_attestation(shard: Shard,
                                 shard_blocks: List[ShardBlock],
                                 beacon_state: BeaconState,
-                                valid_attestations: List[Attestation],
+                                valid_attestations: Set[Attestation],
                                 candidate: Attestation) -> bool:
     # Check if attestation is already determined valid
     for _, attestation in enumerate(valid_attestations):
