@@ -843,7 +843,7 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Hash) -> V
         position = max(index, flip)
         source = hash(
             seed + int_to_bytes(current_round, length=1) +
-            int_to_bytes(ValidatorIndex(position // 256), length=4)
+            int_to_bytes(position // 256, length=4)
         )
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
