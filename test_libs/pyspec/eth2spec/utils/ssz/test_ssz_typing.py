@@ -106,9 +106,14 @@ def test_container():
     assert v.type().length == 1024
 
     y.a = 42
-    y.a = uint16(255)
     try:
-        y.a = uint16(256)
+        y.a = 256  # out of bounds
+        assert False
+    except ValueError:
+        pass
+
+    try:
+        y.a = uint16(255)  # within bounds, wrong type
         assert False
     except ValueError:
         pass
@@ -149,3 +154,37 @@ def test_list():
     assert isinstance(v, Series)
     assert issubclass(v.type(), Elements)
     assert isinstance(v.type(), ElementsType)
+
+    foo = List[uint32, 128](0 for i in range(128))
+    foo[0] = 123
+    foo[1] = 654
+    foo[127] = 222
+    assert sum(foo) == 999
+    try:
+        foo[3] = 2**32  # out of bounds
+    except ValueError:
+        pass
+
+    try:
+        foo[3] = uint64(2**32 - 1)  # within bounds, wrong type
+        assert False
+    except ValueError:
+        pass
+
+    try:
+        foo[128] = 100
+        assert False
+    except IndexError:
+        pass
+
+    try:
+        foo[-1] = 100  # valid in normal python lists
+        assert False
+    except IndexError:
+        pass
+
+    try:
+        foo[128] = 100  # out of bounds
+        assert False
+    except IndexError:
+        pass

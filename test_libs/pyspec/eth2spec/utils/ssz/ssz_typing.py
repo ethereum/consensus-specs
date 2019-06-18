@@ -2,10 +2,6 @@ from typing import Tuple, Iterator
 from types import GeneratorType
 
 
-class ValueCheckError(Exception):
-    pass
-
-
 class DefaultingTypeMeta(type):
     def default(cls):
         raise Exception("Not implemented")
@@ -97,7 +93,7 @@ def coerce_type_maybe(v, typ: SSZType):
     # shortcut if it's already the type we are looking for
     if v_typ == typ:
         return v
-    elif isinstance(v, int):
+    elif isinstance(v, int) and not isinstance(v, uint):  # do not coerce from one uintX to another uintY
         return typ(v)
     elif isinstance(v, (list, tuple)):
         return typ(*v)
@@ -126,7 +122,7 @@ class Container(Series, metaclass=SSZType):
             else:
                 value = coerce_type_maybe(kwargs[f], t)
                 if not isinstance(value, t):
-                    raise ValueCheckError(f"Bad input for class {self.__class__}:"
+                    raise ValueError(f"Bad input for class {self.__class__}:"
                                           f" field: {f} type: {t} value: {value} value type: {type(value)}")
                 setattr(self, f, value)
 
@@ -148,7 +144,7 @@ class Container(Series, metaclass=SSZType):
         field_typ = self.__class__.__annotations__[name]
         value = coerce_type_maybe(value, field_typ)
         if not isinstance(value, field_typ):
-            raise ValueCheckError(f"Cannot set field of {self.__class__}:"
+            raise ValueError(f"Cannot set field of {self.__class__}:"
                                   f" field: {name} type: {field_typ} value: {value} value type: {type(value)}")
         super().__setattr__(name, value)
 
@@ -273,7 +269,7 @@ class Elements(ParamsBase, metaclass=ElementsType):
         items = self.extract_args(*args)
 
         if not self.value_check(items):
-            raise ValueCheckError(f"Bad input for class {self.__class__}: {items}")
+            raise ValueError(f"Bad input for class {self.__class__}: {items}")
         self.items = items
 
     @classmethod
@@ -296,6 +292,16 @@ class Elements(ParamsBase, metaclass=ElementsType):
         return self.items[i]
 
     def __setitem__(self, k, v):
+        if k < 0:
+            raise IndexError(f"cannot set item in type {self.__class__} at negative index {k} (to {v})")
+        if k > len(self.items):
+            raise IndexError(f"cannot set item in type {self.__class__}"
+                             f" at out of bounds index {k} (to {v}, bound: {len(self.items)})")
+        typ = self.__class__.elem_type
+        v = coerce_type_maybe(v, typ)
+        if not isinstance(v, typ):
+            raise ValueError(f"Cannot set item in type {self.__class__},"
+                                  f" mismatched element type: {v} of {type(v)}, expected {typ}")
         self.items[k] = v
 
     def __len__(self):

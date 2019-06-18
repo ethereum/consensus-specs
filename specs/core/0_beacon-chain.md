@@ -241,7 +241,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 | `SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `VALIDATOR_REGISTRY_SIZE` | `2**40 (= 1,099,511,627,776)` | | |
+| `VALIDATOR_REGISTRY_SIZE` | `2**40` (= 1,099,511,627,776) | | |
 
 ### Rewards and penalties
 
@@ -372,7 +372,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bitfield: Bytes[MAX_COMMITTEE_SIZE]  # Bit set for every attesting participant within a committee
+    aggregation_bitfield: Bytes[MAX_INDICES_PER_ATTESTATION // 8]
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -439,9 +439,9 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    aggregation_bitfield: Bytes[MAX_COMMITTEE_SIZE]
+    aggregation_bitfield: Bytes[MAX_INDICES_PER_ATTESTATION // 8]
     data: AttestationData
-    custody_bitfield: Bytes[MAX_COMMITTEE_SIZE]
+    custody_bitfield: Bytes[MAX_INDICES_PER_ATTESTATION // 8]
     signature: BLSSignature
 ```
 
@@ -1629,20 +1629,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
     # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
-<<<<<<< HEAD
-    all_operations = [
-        (body.proposer_slashings, MAX_PROPOSER_SLASHINGS, process_proposer_slashing),
-        (body.attester_slashings, MAX_ATTESTER_SLASHINGS, process_attester_slashing),
-        (body.attestations, MAX_ATTESTATIONS, process_attestation),
-        (body.deposits, MAX_DEPOSITS, process_deposit),
-        (body.voluntary_exits, MAX_VOLUNTARY_EXITS, process_voluntary_exit),
-        (body.transfers, MAX_TRANSFERS, process_transfer),
-    ]  # type: List[Tuple[List[Container], int, Callable]]
-    for operations, max_operations, function in all_operations:
-        assert len(operations) <= max_operations
-=======
 
-    for operations, max_operations, function in (
+    for operations, function in (
         (body.proposer_slashings, process_proposer_slashing),
         (body.attester_slashings, process_attester_slashing),
         (body.attestations, process_attestation),
@@ -1650,7 +1638,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         (body.voluntary_exits, process_voluntary_exit),
         (body.transfers, process_transfer),
     ):
->>>>>>> f6a2345f... Update spec for new SSZ with list max length
         for operation in operations:
             function(state, operation)
 ```
