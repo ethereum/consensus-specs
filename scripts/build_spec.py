@@ -66,13 +66,13 @@ def get_ssz_type_by_name(name: str) -> Container:
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache: Dict[Tuple[Hash, Hash, int, int], List[ValidatorIndex]] = {}
+committee_cache: Dict[Tuple[Hash, Hash, int, int], Tuple[ValidatorIndex, ...]] = {}
 
 
-def compute_committee(indices: List[ValidatorIndex],  # type: ignore
+def compute_committee(indices: Tuple[ValidatorIndex, ...],  # type: ignore
                       seed: Hash,
                       index: int,
-                      count: int) -> List[ValidatorIndex]:
+                      count: int) -> Tuple[ValidatorIndex, ...]:
     param_hash = (hash_tree_root(indices), seed, index, count)
 
     if param_hash not in committee_cache:
