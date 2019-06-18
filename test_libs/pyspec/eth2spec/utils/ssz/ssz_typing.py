@@ -268,7 +268,7 @@ class Elements(ParamsBase, metaclass=ElementsType):
 
     @classmethod
     def value_check(cls, value):
-        return all(isinstance(v, cls.elem_type) for v in value)
+        return all(isinstance(v, cls.elem_type) for v in value) and len(value) <= cls.length
 
     @classmethod
     def extract_args(cls, *args):
@@ -316,6 +316,7 @@ class Vector(Elements):
 
     @classmethod
     def value_check(cls, value):
+        # check length limit strictly
         return len(value) == cls.length and super().value_check(value)
 
     @classmethod
@@ -350,7 +351,8 @@ class BytesLike(Elements, metaclass=BytesType):
 
     @classmethod
     def value_check(cls, value):
-        return isinstance(value, bytes)
+        # check type and virtual length limit
+        return isinstance(value, bytes) and len(value) <= cls.length
 
     def __str__(self):
         cls = self.__class__
@@ -376,6 +378,7 @@ class BytesN(BytesLike):
 
     @classmethod
     def value_check(cls, value):
+        # check length limit strictly
         return len(value) == cls.length and super().value_check(value)
 
     @classmethod
