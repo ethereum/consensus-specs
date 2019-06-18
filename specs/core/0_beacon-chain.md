@@ -12,8 +12,8 @@
     - [Terminology](#terminology)
     - [Custom types](#custom-types)
     - [Constants](#constants)
+    - [Configuration](#configuration)
         - [Misc](#misc)
-        - [Deposit contract](#deposit-contract)
         - [Gwei values](#gwei-values)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
@@ -169,7 +169,18 @@ We define the following Python custom types for type hinting and readability:
 
 ## Constants
 
-*Note*: The default mainnet values for the constants are included here for spec-design purposes.
+The following values are (non-configurable) constants used throughout the specification.
+
+| Name | Value |
+| - | - |
+| `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
+| `ZERO_HASH` | `Hash(b'\x00' * 32)` |
+| `BASE_REWARDS_PER_EPOCH` | `5` |
+| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+
+## Configuration
+
+*Note*: The default mainnet configuration values are included here for spec-design purposes.
 The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory.
 These configurations are updated for releases, but may be out of sync during `dev` changes.
 
@@ -182,16 +193,9 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MAX_INDICES_PER_ATTESTATION` | `2**12` (= 4,096) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
-| `BASE_REWARDS_PER_EPOCH` | `5` |
 | `SHUFFLE_ROUND_COUNT` | `90` |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
-
-### Deposit contract
-
-| Name | Value |
-| - | - |
-| `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 
 ### Gwei values
 
@@ -208,15 +212,13 @@ These configurations are updated for releases, but may be out of sync during `de
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
-| `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
-| `ZERO_HASH` | `b'\x00' * 32` |
 | `BLS_WITHDRAWAL_PREFIX` | `0` |
 
 ### Time parameters
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**2` (= 4) | slots | 24 seconds |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 6 seconds |
 | `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
@@ -241,14 +243,13 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value |
 | - | - |
-| `BASE_REWARD_FACTOR` | `2**5` (= 32) |
+| `BASE_REWARD_FACTOR` | `2**6` (= 64) |
 | `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* **The `BASE_REWARD_FACTOR` is NOT final. Once all other protocol details are finalized, it will be adjusted to target a theoretical maximum total issuance of `2**21` ETH per year if `2**27` ETH is validating (and therefore `2**20` per year if `2**25` ETH is validating, etc.)**
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (~18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
 
@@ -1422,10 +1423,10 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
             a for a in matching_source_attestations
             if index in get_attesting_indices(state, a.data, a.aggregation_bitfield)
         ], key=lambda a: a.inclusion_delay)
-        rewards[attestation.proposer_index] += Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
-        rewards[index] += Gwei(
-            get_base_reward(state, index) * MIN_ATTESTATION_INCLUSION_DELAY // attestation.inclusion_delay
-        )
+        proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
+        rewards[attestation.proposer_index] += proposer_reward
+        max_attester_reward = get_base_reward(state, index) - proposer_reward
+        rewards[index] += Gwei(max_attester_reward * MIN_ATTESTATION_INCLUSION_DELAY // attestation.inclusion_delay)
 
     # Inactivity penalty
     finality_delay = previous_epoch - state.finalized_epoch
