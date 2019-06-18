@@ -47,8 +47,13 @@ class uint32(uint):
         return super().__new__(cls, value)
 
 
-# We simply default to uint64. But do give it a name, for readability
-uint64 = NewType('uint64', int)
+class uint64(uint):
+    byte_len = 8
+
+    def __new__(cls, value, *args, **kwargs):
+        if value.bit_length() > 64:
+            raise ValueError("value out of bounds for uint64")
+        return super().__new__(cls, value)
 
 
 class uint128(uint):
@@ -250,7 +255,7 @@ class Vector(metaclass=VectorMeta):
         # cannot check non-type objects, or parametrized types
         if isinstance(cls.elem_type, type) and not hasattr(cls.elem_type, '__args__'):
             for i, item in enumerate(self.items):
-                if not issubclass(type(item), cls.elem_type):
+                if not issubclass(cls.elem_type, type(item)):
                     raise TypeError("Typed vector cannot hold differently typed value"
                                     " at index %d. Got type: %s, expected type: %s" % (i, type(item), cls.elem_type))
 
@@ -393,11 +398,27 @@ class BytesN(bytes, metaclass=BytesNMeta):
         return hash_tree_root(self, self.__class__)
 
 
+class Bytes4(BytesN):
+    length = 4
+
+
+class Bytes32(BytesN):
+    length = 32
+
+
+class Bytes48(BytesN):
+    length = 48
+
+
+class Bytes96(BytesN):
+    length = 96
+
+
 # SSZ Defaults
 # -----------------------------
 def get_zero_value(typ):
     if is_uint_type(typ):
-        return 0
+        return uint64(0)
     elif is_list_type(typ):
         return []
     elif is_bool_type(typ):

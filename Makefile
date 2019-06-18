@@ -59,7 +59,10 @@ open_cov:
 
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
-	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec;
+	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec; \
+	cd ./eth2spec; \
+	mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase0; \
+	mypy --follow-imports=silent --warn-unused-ignores --ignore-missing-imports --check-untyped-defs --disallow-incomplete-defs --disallow-untyped-defs -p phase1
 
 install_deposit_contract_test: $(PY_SPEC_ALL_TARGETS)
 	cd $(DEPOSIT_CONTRACT_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt
