@@ -61,7 +61,6 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 @dataclass
 class Target(object):
     epoch: Epoch
-    root: Bytes32
 ```
 
 #### `Store`
@@ -69,12 +68,8 @@ class Target(object):
 ```python
 @dataclass
 class Store(object):
-    blocks: Dict[Bytes32, BeaconBlock] = field(default_factory=dict)
-    states: Dict[Bytes32, BeaconState] = field(default_factory=dict)
     time: int = 0
     latest_targets: Dict[ValidatorIndex, Target] = field(default_factory=dict)
-    justified_root: Bytes32 = 0x0
-    finalized_root: Bytes32 = 0x0
 ```
 
 ### Helpers
