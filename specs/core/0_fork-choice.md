@@ -8,12 +8,7 @@
 - [Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice](#ethereum-20-phase-0----beacon-chain-fork-choice)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
-<<<<<<< HEAD
     - [Constants](#constants)
-=======
-    - [Prerequisites](#prerequisites)
-    - [Configuration](#configuration)
->>>>>>> dev
         - [Time parameters](#time-parameters)
     - [Fork choice](#fork-choice)
         - [Containers](#containers)
@@ -82,13 +77,7 @@ class Store(object):
     finalized_root: Bytes32 = ZERO_HASH
 ```
 
-<<<<<<< HEAD
 ### Helpers
-=======
-* The parent block with root `block.parent_root` has been processed and accepted.
-* An Ethereum 1.0 block pointed to by the `state.eth1_data.block_hash` has been processed and accepted.
-* The node's Unix time is greater than or equal to `state.genesis_time + block.slot * SECONDS_PER_SLOT`.
->>>>>>> dev
 
 #### `get_genesis_store`
 
