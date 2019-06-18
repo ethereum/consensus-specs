@@ -27,12 +27,12 @@ The `count` specifies the count of validators being shuffled (i.e. active valida
 
 One should test the shuffling for indices `0, 1, 2, 3, ..., count (exclusive)`.
 
-`shuffled` is a mapping from `i` to `get_shuffled_index(i)`.
+`shuffled` is a mapping from `i` to `get_shuffled_index(i, count, seed)`.
 - `i` here is the index within committee-partitioned space. `i...i+N (excl.)` is used to get the validators for a committee of size `N`.
-- `get_shuffled_index(i) -> int` returns the index within the active-validators space. Pointing to the validator assigned to the committee corresponding to `i`.
+- `get_shuffled_index(i, count, seed) -> int` returns the index within the active-validators space. Pointing to the validator assigned to the committee corresponding to `i`.
 
-Seed is the raw shuffling seed, passed to shuffling function. 
+`seed` is the raw shuffling seed, passed to shuffling function. 
 
 ## Condition
 
-For the `get_shuffled_index` implementation (or list-wise equivalent): `get_shuffled_index(i) == shuffled[i]`
+For the `get_shuffled_index` implementation (or list-wise equivalent): `get_shuffled_index(i, count, seed) == shuffled[i]`
