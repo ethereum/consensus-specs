@@ -21,8 +21,11 @@ PY_SPEC_PHASE_1_DEPS = $(SPEC_DIR)/core/1_*.md
 
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 
+COV_HTML_OUT=.htmlcov
+COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
-.PHONY: clean all test citest lint gen_yaml_tests pyspec phase0 phase1 install_test install_deposit_contract_test test_deposit_contract compile_deposit_contract 
+.PHONY: clean all test citest lint gen_yaml_tests pyspec phase0 phase1 install_test open_cov \
+        install_deposit_contract_test test_deposit_contract compile_deposit_contract
 
 all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
@@ -32,6 +35,9 @@ clean:
 	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
 	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv $(DEPOSIT_CONTRACT_DIR)/.pytest_cache
+	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
+	rm -rf $(PY_SPEC_DIR)/.coverage
+	rm -rf $(PY_SPEC_DIR)/test-reports
 
 # "make gen_yaml_tests" to run generators
 gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
@@ -41,11 +47,15 @@ install_test:
 	cd $(PY_SPEC_DIR); python3 -m venv venv; . venv/bin/activate; pip3 install -r requirements-testing.txt;
 
 test: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); . venv/bin/activate; python -m pytest eth2spec
+	cd $(PY_SPEC_DIR); . venv/bin/activate;	export PYTHONPATH="./"; \
+	python -m pytest --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: $(PY_SPEC_ALL_TARGETS)
-	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate;	\
-	python -m pytest --junitxml=test-reports/eth2spec/test_results_phase0.xml eth2spec
+	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; \
+	python -m pytest --junitxml=test-reports/eth2spec/test_results.xml eth2spec
+
+open_cov:
+	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
 
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \

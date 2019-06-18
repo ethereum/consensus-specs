@@ -16,7 +16,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    pre_validator_count = len(state.validator_registry)
+    pre_validator_count = len(state.validators)
     pre_balance = 0
     if validator_index < pre_validator_count:
         pre_balance = get_balance(state, validator_index)
@@ -34,29 +34,29 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
     yield 'post', state
 
     if not effective:
-        assert len(state.validator_registry) == pre_validator_count
+        assert len(state.validators) == pre_validator_count
         assert len(state.balances) == pre_validator_count
         if validator_index < pre_validator_count:
             assert get_balance(state, validator_index) == pre_balance
     else:
         if validator_index < pre_validator_count:
             # top-up
-            assert len(state.validator_registry) == pre_validator_count
+            assert len(state.validators) == pre_validator_count
             assert len(state.balances) == pre_validator_count
         else:
             # new validator
-            assert len(state.validator_registry) == pre_validator_count + 1
+            assert len(state.validators) == pre_validator_count + 1
             assert len(state.balances) == pre_validator_count + 1
         assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
 
-    assert state.deposit_index == state.latest_eth1_data.deposit_count
+    assert state.eth1_deposit_index == state.eth1_data.deposit_count
 
 
 @with_all_phases
 @spec_state_test
 def test_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
-    validator_index = len(state.validator_registry)
+    validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
@@ -68,7 +68,7 @@ def test_new_deposit(spec, state):
 @spec_state_test
 def test_invalid_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
-    validator_index = len(state.validator_registry)
+    validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=False)
@@ -117,12 +117,12 @@ def test_invalid_withdrawal_credentials_top_up(spec, state):
 @with_all_phases
 @spec_state_test
 def test_wrong_index(spec, state):
-    validator_index = len(state.validator_registry)
+    validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
-    # mess up deposit_index
-    deposit.index = state.deposit_index + 1
+    # mess up eth1_deposit_index
+    deposit.index = state.eth1_deposit_index + 1
 
     sign_deposit_data(spec, state, deposit.data, privkeys[validator_index])
 
@@ -132,7 +132,7 @@ def test_wrong_index(spec, state):
 @with_all_phases
 @spec_state_test
 def test_wrong_deposit_for_deposit_count(spec, state):
-    deposit_data_leaves = [spec.ZERO_HASH] * len(state.validator_registry)
+    deposit_data_leaves = [spec.ZERO_HASH] * len(state.validators)
 
     # build root for deposit_1
     index_1 = len(deposit_data_leaves)
@@ -166,8 +166,8 @@ def test_wrong_deposit_for_deposit_count(spec, state):
     )
 
     # state has root for deposit_2 but is at deposit_count for deposit_1
-    state.latest_eth1_data.deposit_root = root_2
-    state.latest_eth1_data.deposit_count = deposit_count_1
+    state.eth1_data.deposit_root = root_2
+    state.eth1_data.deposit_count = deposit_count_1
 
     yield from run_deposit_processing(spec, state, deposit_2, index_2, valid=False)
 
@@ -178,7 +178,7 @@ def test_wrong_deposit_for_deposit_count(spec, state):
 @with_all_phases
 @spec_state_test
 def test_bad_merkle_proof(spec, state):
-    validator_index = len(state.validator_registry)
+    validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 

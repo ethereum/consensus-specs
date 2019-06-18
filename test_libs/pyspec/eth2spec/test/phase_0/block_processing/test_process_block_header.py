@@ -78,7 +78,7 @@ def test_proposer_slashed(spec, state):
     proposer_index = spec.get_beacon_proposer_index(stub_state)
 
     # set proposer to slashed
-    state.validator_registry[proposer_index].slashed = True
+    state.validators[proposer_index].slashed = True
 
     block = build_empty_block_for_next_slot(spec, state, signed=True)
 

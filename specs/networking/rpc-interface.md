@@ -95,8 +95,8 @@ Since some clients are waiting for `libp2p` implementations in their respective 
 (
     network_id: uint8
     chain_id: uint64
-    latest_finalized_root: bytes32
-    latest_finalized_epoch: uint64
+    finalized_root: bytes32
+    finalized_epoch: uint64
     best_root: bytes32
     best_slot: uint64
 )
@@ -107,7 +107,7 @@ Clients exchange `hello` messages upon connection, forming a two-phase handshake
 Clients SHOULD immediately disconnect from one another following the handshake above under the following conditions:
 
 1. If `network_id` belongs to a different chain, since the client definitionally cannot sync with this client.
-2. If the `latest_finalized_root` shared by the peer is not in the client's chain at the expected epoch. For example, if Peer 1 in the diagram below has `(root, epoch)` of `(A, 5)` and Peer 2 has `(B, 3)`, Peer 1 would disconnect because it knows that `B` is not the root in their chain at epoch 3:
+2. If the `finalized_root` shared by the peer is not in the client's chain at the expected epoch. For example, if Peer 1 in the diagram below has `(root, epoch)` of `(A, 5)` and Peer 2 has `(B, 3)`, Peer 1 would disconnect because it knows that `B` is not the root in their chain at epoch 3:
 
 ```
               Root A
@@ -136,7 +136,7 @@ Root B          ^
        +---+
 ```
 
-Once the handshake completes, the client with the higher `latest_finalized_epoch` or `best_slot` (if the clients have equal `latest_finalized_epoch`s) SHOULD request beacon block roots from its counterparty via `beacon_block_roots` (i.e. RPC method `10`).
+Once the handshake completes, the client with the higher `finalized_epoch` or `best_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon block roots from its counterparty via `beacon_block_roots` (i.e. RPC method `10`).
 
 ### Goodbye
 

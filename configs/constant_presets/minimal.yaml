@@ -14,8 +14,6 @@ MAX_INDICES_PER_ATTESTATION: 4096
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
 CHURN_LIMIT_QUOTIENT: 65536
-# Normalizes base rewards
-BASE_REWARDS_PER_EPOCH: 5
 # [customized] Faster, but unsecure.
 SHUFFLE_ROUND_COUNT: 10
 
@@ -24,8 +22,6 @@ SHUFFLE_ROUND_COUNT: 10
 # ---------------------------------------------------------------
 # **TBD**
 DEPOSIT_CONTRACT_ADDRESS: 0x1234567890123456789012345678901234567890
-# 2**5 (= 32)
-DEPOSIT_CONTRACT_TREE_DEPTH: 32
 
 
 # Gwei values
@@ -45,8 +41,6 @@ EFFECTIVE_BALANCE_INCREMENT: 1000000000
 GENESIS_FORK_VERSION: 0x00000000
 # 0, GENESIS_EPOCH is derived from this constant
 GENESIS_SLOT: 0
-# 2**64 - 1
-FAR_FUTURE_EPOCH: 18446744073709551615
 BLS_WITHDRAWAL_PREFIX: 0
 
 
@@ -81,11 +75,11 @@ EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 4096
 # State list lengths
 # ---------------------------------------------------------------
 # [customized] smaller state
-LATEST_RANDAO_MIXES_LENGTH: 64
+RANDAO_MIXES_LENGTH: 64
 # [customized] smaller state
-LATEST_ACTIVE_INDEX_ROOTS_LENGTH: 64
+ACTIVE_INDEX_ROOTS_LENGTH: 64
 # [customized] smaller state
-LATEST_SLASHED_EXIT_LENGTH: 64
+SLASHED_EXIT_LENGTH: 64
 
 
 # Reward and penalty quotients

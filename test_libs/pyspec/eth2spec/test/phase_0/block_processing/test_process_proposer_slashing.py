@@ -28,7 +28,7 @@ def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True)
     yield 'post', state
 
     # check if slashed
-    slashed_validator = state.validator_registry[proposer_slashing.proposer_index]
+    slashed_validator = state.validators[proposer_slashing.proposer_index]
     assert slashed_validator.slashed
     assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
     assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
@@ -77,7 +77,7 @@ def test_invalid_sig_1_and_2(spec, state):
 def test_invalid_proposer_index(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
     # Index just too high (by 1)
-    proposer_slashing.proposer_index = len(state.validator_registry)
+    proposer_slashing.proposer_index = len(state.validators)
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -111,7 +111,7 @@ def test_proposer_is_not_activated(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     # set proposer to be not active yet
-    state.validator_registry[proposer_slashing.proposer_index].activation_epoch = spec.get_current_epoch(state) + 1
+    state.validators[proposer_slashing.proposer_index].activation_epoch = spec.get_current_epoch(state) + 1
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -122,7 +122,7 @@ def test_proposer_is_slashed(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     # set proposer to slashed
-    state.validator_registry[proposer_slashing.proposer_index].slashed = True
+    state.validators[proposer_slashing.proposer_index].slashed = True
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -137,6 +137,6 @@ def test_proposer_is_withdrawn(spec, state):
     # set proposer withdrawable_epoch in past
     current_epoch = spec.get_current_epoch(state)
     proposer_index = proposer_slashing.proposer_index
-    state.validator_registry[proposer_index].withdrawable_epoch = current_epoch - 1
+    state.validators[proposer_index].withdrawable_epoch = current_epoch - 1
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
