@@ -704,11 +704,11 @@ def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
 ```python
 def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
     assert epoch <= get_current_epoch(state) + 1
-    check_epoch = get_current_epoch(state) + 1
+    check_epoch = Epoch(get_current_epoch(state) + 1)
     shard = Shard((state.start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT)
     while check_epoch > epoch:
-        check_epoch -= 1
-        shard = Shard((shard + SHARD_COUNT - get_shard_delta(state, Epoch(check_epoch))) % SHARD_COUNT)
+        check_epoch -= Epoch(1)
+        shard = Shard((shard + SHARD_COUNT - get_shard_delta(state, check_epoch)) % SHARD_COUNT)
     return shard
 ```
 
