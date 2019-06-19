@@ -235,8 +235,7 @@ These configurations are updated for releases, but may be out of sync during `de
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `HISTORICAL_VECTOR_LENGTH` | `2**16` (= 65,536) | epochs | ~0.8 years |
 | `SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
 
 ### Rewards and penalties
@@ -524,8 +523,8 @@ class BeaconState(Container):
     balances: List[Gwei]
     # Shuffling
     start_shard: Shard
-    randao_mixes: Vector[Hash, RANDAO_MIXES_LENGTH]
-    active_index_roots: Vector[Hash, ACTIVE_INDEX_ROOTS_LENGTH]  # Digests of the active registry, for light clients
+    randao_mixes: Vector[Hash, HISTORICAL_VECTOR_LENGTH]
+    active_index_roots: Vector[Hash, HISTORICAL_VECTOR_LENGTH]  # Digests of the active registry, for light clients
     # Slashings
     slashed_balances: Vector[Gwei, SLASHED_EXIT_LENGTH]  # Sums of the effective balances of slashed validators
     # Attestations
@@ -751,9 +750,9 @@ def get_randao_mix(state: BeaconState,
                    epoch: Epoch) -> Hash:
     """
     Return the randao mix at a recent ``epoch``.
-    ``epoch`` expected to be between (current_epoch - RANDAO_MIXES_LENGTH, current_epoch].
+    ``epoch`` expected to be between (current_epoch - HISTORICAL_VECTOR_LENGTH, current_epoch].
     """
-    return state.randao_mixes[epoch % RANDAO_MIXES_LENGTH]
+    return state.randao_mixes[epoch % HISTORICAL_VECTOR_LENGTH]
 ```
 
 ### `get_active_index_root`
@@ -764,9 +763,9 @@ def get_active_index_root(state: BeaconState,
     """
     Return the index root at a recent ``epoch``.
     ``epoch`` expected to be between
-    (current_epoch - ACTIVE_INDEX_ROOTS_LENGTH + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
+    (current_epoch - HISTORICAL_VECTOR_LENGTH + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
     """
-    return state.active_index_roots[epoch % ACTIVE_INDEX_ROOTS_LENGTH]
+    return state.active_index_roots[epoch % HISTORICAL_VECTOR_LENGTH]
 ```
 
 ### `generate_seed`
@@ -778,7 +777,7 @@ def generate_seed(state: BeaconState,
     Generate a seed for the given ``epoch``.
     """
     return hash(
-        get_randao_mix(state, Epoch(epoch + RANDAO_MIXES_LENGTH - MIN_SEED_LOOKAHEAD)) +
+        get_randao_mix(state, Epoch(epoch + HISTORICAL_VECTOR_LENGTH - MIN_SEED_LOOKAHEAD)) +
         get_active_index_root(state, epoch) +
         int_to_bytes(epoch, length=32)
     )
@@ -1188,7 +1187,7 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
 
     # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(get_active_validator_indices(state, GENESIS_EPOCH))
-    for index in range(ACTIVE_INDEX_ROOTS_LENGTH):
+    for index in range(HISTORICAL_VECTOR_LENGTH):
         state.active_index_roots[index] = genesis_active_index_root
 
     return state
@@ -1542,7 +1541,7 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
-    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % ACTIVE_INDEX_ROOTS_LENGTH
+    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % HISTORICAL_VECTOR_LENGTH
     state.active_index_roots[index_root_position] = hash_tree_root(
         get_active_validator_indices(state, Epoch(next_epoch + ACTIVATION_EXIT_DELAY))
     )
@@ -1551,7 +1550,7 @@ def process_final_updates(state: BeaconState) -> None:
         state.slashed_balances[current_epoch % SLASHED_EXIT_LENGTH]
     )
     # Set randao mix
-    state.randao_mixes[next_epoch % RANDAO_MIXES_LENGTH] = get_randao_mix(state, current_epoch)
+    state.randao_mixes[next_epoch % HISTORICAL_VECTOR_LENGTH] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(
@@ -1599,19 +1598,13 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 
 ```python
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
+    epoch = get_current_epoch(state)
+    # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
-    # Verify that the provided randao value is valid
-    assert bls_verify(
-        proposer.pubkey,
-        hash_tree_root(get_current_epoch(state)),
-        body.randao_reveal,
-        get_domain(state, DOMAIN_RANDAO),
-    )
-    # Mix it in
-    state.randao_mixes[get_current_epoch(state) % RANDAO_MIXES_LENGTH] = (
-        xor(get_randao_mix(state, get_current_epoch(state)),
-            hash(body.randao_reveal))
-    )
+    assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    # Mix in RANDAO reveal
+    mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
+    state.latest_randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
 ```
 
 #### Eth1 data
