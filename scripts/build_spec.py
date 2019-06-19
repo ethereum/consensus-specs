@@ -35,7 +35,8 @@ from eth2spec.utils.hash_function import hash
 Deltas = list
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Callable, Dict, Optional, Set, Tuple, Iterable
+    Any, Callable, Dict, Optional, Set, Tuple, Iterable,
+    List as TypingList
 )
 
 from eth2spec.utils.ssz.ssz_impl import (

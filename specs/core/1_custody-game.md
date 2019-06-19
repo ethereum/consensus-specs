@@ -113,6 +113,13 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - |
 | `DOMAIN_CUSTODY_BIT_CHALLENGE` | `6` |
 
+
+### TODO PLACEHOLDER
+
+| Name | Value |
+| - | - |
+| `PLACEHOLDER` | `2**32` |
+
 ## Data structures
 
 ### Custody objects
@@ -134,7 +141,7 @@ class CustodyBitChallenge(Container):
     attestation: Attestation
     challenger_index: ValidatorIndex
     responder_key: BLSSignature
-    chunk_bits: bytes
+    chunk_bits: Bytes[PLACEHOLDER]
     signature: BLSSignature
 ```
 
@@ -171,9 +178,9 @@ class CustodyBitChallengeRecord(Container):
 class CustodyResponse(Container):
     challenge_index: uint64
     chunk_index: uint64
-    chunk: Vector[bytes, BYTES_PER_CUSTODY_CHUNK]
-    data_branch: List[Bytes32]
-    chunk_bits_branch: List[Bytes32]
+    chunk: Vector[Bytes[PLACEHOLDER], BYTES_PER_CUSTODY_CHUNK]
+    data_branch: List[Bytes32, PLACEHOLDER]
+    chunk_bits_branch: List[Bytes32, PLACEHOLDER]
     chunk_bits_leaf: Bytes32
 ```
 
@@ -226,24 +233,25 @@ class Validator(Container):
 
 ```python
 class BeaconState(Container):
-    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord]
-    custody_bit_challenge_records: List[CustodyBitChallengeRecord]
+    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, PLACEHOLDER]
+    custody_bit_challenge_records: List[CustodyBitChallengeRecord, PLACEHOLDER]
     custody_challenge_index: uint64
 
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    exposed_derived_secrets: Vector[List[ValidatorIndex], EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+    exposed_derived_secrets: Vector[List[ValidatorIndex, PLACEHOLDER],
+                                    EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
 ```
 
 #### `BeaconBlockBody`
 
 ```python
 class BeaconBlockBody(Container):
-    custody_chunk_challenges: List[CustodyChunkChallenge]
-    custody_bit_challenges: List[CustodyBitChallenge]
-    custody_responses: List[CustodyResponse]
-    custody_key_reveals: List[CustodyKeyReveal]
-    early_derived_secret_reveals: List[EarlyDerivedSecretReveal]
+    custody_chunk_challenges: List[CustodyChunkChallenge, PLACEHOLDER]
+    custody_bit_challenges: List[CustodyBitChallenge, PLACEHOLDER]
+    custody_responses: List[CustodyResponse, PLACEHOLDER]
+    custody_key_reveals: List[CustodyKeyReveal, PLACEHOLDER]
+    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, PLACEHOLDER]
 ```
 
 ## Helpers
@@ -310,7 +318,7 @@ def get_validators_custody_reveal_period(state: BeaconState,
 ### `replace_empty_or_append`
 
 ```python
-def replace_empty_or_append(list: List[Any], new_element: Any) -> int:
+def replace_empty_or_append(list: TypingList[Any], new_element: Any) -> int:
     for i in range(len(list)):
         if is_empty(list[i]):
             list[i] = new_element

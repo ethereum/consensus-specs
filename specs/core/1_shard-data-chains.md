@@ -70,13 +70,19 @@ This document describes the shard data layer and the shard fork choice rule in P
 | `DOMAIN_SHARD_PROPOSER` | `128` |
 | `DOMAIN_SHARD_ATTESTER` | `129` |
 
+### TODO PLACEHOLDER
+
+| Name | Value |
+| - | - |
+| `PLACEHOLDER` | `2**32` |
+
 ## Data structures
 
 ### `ShardBlockBody`
 
 ```python
 class ShardBlockBody(Container):
-    data: Vector[bytes, BYTES_PER_SHARD_BLOCK_BODY]
+    data: Vector[Bytes[PLACEHOLDER], BYTES_PER_SHARD_BLOCK_BODY]
 ```
 
 ### `ShardAttestation`
@@ -87,7 +93,7 @@ class ShardAttestation(Container):
         slot: Slot
         shard: Shard
         shard_block_root: Bytes32
-    aggregation_bitfield: bytes
+    aggregation_bitfield: Bytes[PLACEHOLDER]
     aggregate_signature: BLSSignature
 ```
 
@@ -101,7 +107,7 @@ class ShardBlock(Container):
     parent_root: Bytes32
     data: ShardBlockBody
     state_root: Bytes32
-    attestations: List[ShardAttestation]
+    attestations: List[ShardAttestation, PLACEHOLDER]
     signature: BLSSignature
 ```
 
@@ -115,7 +121,7 @@ class ShardBlockHeader(Container):
     parent_root: Bytes32
     body_root: Bytes32
     state_root: Bytes32
-    attestations: List[ShardAttestation]
+    attestations: List[ShardAttestation, PLACEHOLDER]
     signature: BLSSignature
 ```
 
@@ -128,7 +134,7 @@ def get_period_committee(state: BeaconState,
                          epoch: Epoch,
                          shard: Shard,
                          index: int,
-                         count: int) -> List[ValidatorIndex]:
+                         count: int) -> Tuple[ValidatorIndex, ...]:
     """
     Return committee for a period. Used to construct persistent committees.
     """
@@ -243,11 +249,11 @@ def verify_shard_attestation_signature(state: BeaconState,
 ### `compute_crosslink_data_root`
 
 ```python
-def compute_crosslink_data_root(blocks: List[ShardBlock]) -> Bytes32:
+def compute_crosslink_data_root(blocks: Iterable[ShardBlock]) -> Bytes32:
     def is_power_of_two(value: int) -> bool:
         return (value > 0) and (value & (value - 1) == 0)
 
-    def pad_to_power_of_2(values: List[bytes]) -> List[bytes]:
+    def pad_to_power_of_2(values: TypingList[bytes]) -> TypingList[bytes]:
         while not is_power_of_two(len(values)):
             values += [b'\x00' * BYTES_PER_SHARD_BLOCK_BODY]
         return values
@@ -282,7 +288,7 @@ Let:
 * `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
 
 ```python
-def is_valid_shard_block(beacon_blocks: List[BeaconBlock],
+def is_valid_shard_block(beacon_blocks: TypingList[BeaconBlock],
                          beacon_state: BeaconState,
                          valid_shard_blocks: Iterable[ShardBlock],
                          candidate: ShardBlock) -> bool:
@@ -378,7 +384,7 @@ Let:
 
 ```python
 def is_valid_beacon_attestation(shard: Shard,
-                                shard_blocks: List[ShardBlock],
+                                shard_blocks: TypingList[ShardBlock],
                                 beacon_state: BeaconState,
                                 valid_attestations: Set[Attestation],
                                 candidate: Attestation) -> bool:
