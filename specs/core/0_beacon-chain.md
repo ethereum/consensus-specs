@@ -1818,7 +1818,8 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
     )
     # Verify that the signature is valid
-    assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
+    domain = get_domain(state, DOMAIN_TRANSFER, get_current_epoch(state))
+    assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, domain)
     # Process the transfer
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
