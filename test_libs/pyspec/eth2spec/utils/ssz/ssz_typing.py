@@ -349,6 +349,8 @@ class BytesNMeta(type):
         return _is_bytes_n_instance_of(self, other.__class__)
 
     def __eq__(self, other):
+        if other == ():
+            return False
         return _is_equal_bytes_n_type(self, other)
 
     def __ne__(self, other):
