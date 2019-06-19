@@ -71,14 +71,12 @@ MAX_EPOCHS_PER_CROSSLINK: 64
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 
 
-# State list lengths
+# State vector lengths
 # ---------------------------------------------------------------
+# 2**16 (= 65,536) epochs ~0.8 years
+EPOCHS_PER_HISTORICAL_VECTOR: 65536
 # 2**13 (= 8,192) epochs ~36 days
-RANDAO_MIXES_LENGTH: 8192
-# 2**13 (= 8,192) epochs ~36 days
-ACTIVE_INDEX_ROOTS_LENGTH: 8192
-# 2**13 (= 8,192) epochs ~36 days
-SLASHED_EXIT_LENGTH: 8192
+EPOCHS_PER_SLASHED_BALANCES_VECTOR: 8192
 
 
 # Reward and penalty quotients
