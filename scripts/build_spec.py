@@ -13,9 +13,10 @@ from typing import (
 
 PHASE0_IMPORTS = '''from typing import (
     Any,
+    Callable,
     Dict,
     List,
-    NewType,
+    Set,
     Tuple,
 )
 
@@ -32,7 +33,8 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector, BytesN
+    uint64, Container, Vector,
+    Bytes4, Bytes32, Bytes48, Bytes96,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -45,9 +47,11 @@ from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
     Any,
+    Callable,
     Dict,
     List,
-    NewType,
+    Optional,
+    Set,
     Tuple,
 )
 
@@ -66,7 +70,8 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector, BytesN
+    uint64, Container, Vector,
+    Bytes4, Bytes32, Bytes48, Bytes96,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -76,13 +81,6 @@ from eth2spec.utils.bls import (
 
 from eth2spec.utils.hash_function import hash
 '''
-NEW_TYPES = {
-    'Slot': 'int',
-    'Epoch': 'int',
-    'Shard': 'int',
-    'ValidatorIndex': 'int',
-    'Gwei': 'int',
-}
 BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
 def get_ssz_type_by_name(name: str) -> Container:
@@ -91,36 +89,33 @@ def get_ssz_type_by_name(name: str) -> Container:
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache = {}
+committee_cache: Dict[Tuple[Hash, Hash, int, int], List[ValidatorIndex]] = {}
 
 
-def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
+def compute_committee(indices: List[ValidatorIndex],  # type: ignore
+                      seed: Hash,
+                      index: int,
+                      count: int) -> List[ValidatorIndex]:
     param_hash = (hash_tree_root(indices), seed, index, count)
 
-    if param_hash in committee_cache:
-        return committee_cache[param_hash]
-    else:
-        ret = _compute_committee(indices, seed, index, count)
-        committee_cache[param_hash] = ret
-        return ret
+    if param_hash not in committee_cache:
+        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
+    return committee_cache[param_hash]
 
 
 # Monkey patch hash cache
 _hash = hash
-hash_cache = {}
+hash_cache: Dict[bytes, Hash] = {}
 
 
-def hash(x):
-    if x in hash_cache:
-        return hash_cache[x]
-    else:
-        ret = _hash(x)
-        hash_cache[x] = ret
-        return ret
+def hash(x: bytes) -> Hash:
+    if x not in hash_cache:
+        hash_cache[x] = Hash(_hash(x))
+    return hash_cache[x]
 
 
 # Access to overwrite spec constants based on configuration
-def apply_constants_preset(preset: Dict[str, Any]):
+def apply_constants_preset(preset: Dict[str, Any]) -> None:
     global_vars = globals()
     for k, v in preset.items():
         global_vars[k] = v
@@ -134,32 +129,39 @@ def apply_constants_preset(preset: Dict[str, Any]):
 
 
 def objects_to_spec(functions: Dict[str, str],
+                    custom_types: Dict[str, str],
                     constants: Dict[str, str],
                     ssz_objects: Dict[str, str],
                     inserts: Dict[str, str],
                     imports: Dict[str, str],
-                    new_types: Dict[str, str],
-                    byte_types: List[int],
                     ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
-    new_type_definitions = '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in byte_types])
-    new_type_definitions += '\n' + '\n'.join(['Hash = Bytes32', 'BLSPubkey = Bytes48', 'BLSSignature = Bytes96'])
-    new_type_definitions += \
-        '\n' + '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in new_types.items()])
+    new_type_definitions = (
+        '\n\n'.join(
+            [
+                f"class {key}({value}):\n"
+                f"    def __init__(self, _x: {value}) -> None:\n"
+                f"        ...\n"
+                if value.startswith("uint")
+                else f"class {key}({value}):\n    pass\n"
+                for key, value in custom_types.items()
+            ]
+        )
+    )
     functions_spec = '\n\n'.join(functions.values())
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
-        'def init_SSZ_types():\n    global_vars = globals()\n\n    '
+        'def init_SSZ_types() -> None:\n    global_vars = globals()\n\n    '
         + '\n\n    '.join([re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]) for value in ssz_objects.values()])
         + '\n\n'
         + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
     )
     spec = (
         imports
-        + '\n' + new_type_definitions
+        + '\n\n' + new_type_definitions
         + '\n\n' + constants_spec
         + '\n\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec
@@ -185,7 +187,7 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
     return old_constants
 
 
-def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
+def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str, str]) -> None:
     """
     Determines which SSZ Object is depenedent on which other and orders them appropriately
     """
@@ -194,14 +196,14 @@ def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
         dependencies = re.findall(r'(: [A-Z][\w[]*)', value)
         dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|Hash|BLSPubkey|BLSSignature|uint\d+|Bytes\d+|bytes', '', x), dependencies)
         for dep in dependencies:
-            if dep in NEW_TYPES or len(dep) == 0:
+            if dep in custom_types or len(dep) == 0:
                 continue
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
 
 
-def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
+def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
     and returns the newer versions of the objects in dependency order.
@@ -213,7 +215,7 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
             # remove leading variable name
             value = re.sub(r'^class [\w]*\(Container\):\n', '', value)
         old_objects[key] = old_objects.get(key, '') + value
-    dependency_order_ssz_objects(old_objects)
+    dependency_order_ssz_objects(old_objects, custom_types)
     return old_objects
 
 
@@ -225,20 +227,21 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     """
     Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
     """
-    functions0, constants0, ssz_objects0, inserts0 = spec0
-    functions1, constants1, ssz_objects1, inserts1 = spec1
+    functions0, custom_types0, constants0, ssz_objects0, inserts0 = spec0
+    functions1, custom_types1, constants1, ssz_objects1, inserts1 = spec1
     functions = combine_functions(functions0, functions1)
+    custom_types = combine_constants(custom_types0, custom_types1)
     constants = combine_constants(constants0, constants1)
-    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1)
+    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1, custom_types)
     inserts = combine_inserts(inserts0, inserts1)
-    return functions, constants, ssz_objects, inserts
+    return functions, custom_types, constants, ssz_objects, inserts
 
 
 def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str, outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
     fork_choice_spec = get_spec(fork_choice_sourcefile)
     spec_objects = combine_spec_objects(phase0_spec, fork_choice_spec)
-    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS, NEW_TYPES, BYTE_TYPES)
+    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -257,7 +260,7 @@ def build_phase1_spec(phase0_sourcefile: str,
     spec_objects = phase0_spec
     for value in [phase1_custody, phase1_shard_data, fork_choice_spec]:
         spec_objects = combine_spec_objects(spec_objects, value)
-    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, NEW_TYPES, BYTE_TYPES)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)

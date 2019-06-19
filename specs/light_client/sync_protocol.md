@@ -167,7 +167,7 @@ If a client wants to update its `finalized_header` it asks the network for a `Bl
 ```python
 {
     'header': BeaconBlockHeader,
-    'shard_aggregate_signature': 'bytes96',
+    'shard_aggregate_signature': BLSSignature,
     'shard_bitfield': 'bytes',
     'shard_parent_block': ShardBlock,
 }
