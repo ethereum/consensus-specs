@@ -75,9 +75,7 @@ EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 4096
 # State list lengths
 # ---------------------------------------------------------------
 # [customized] smaller state
-RANDAO_MIXES_LENGTH: 64
-# [customized] smaller state
-ACTIVE_INDEX_ROOTS_LENGTH: 64
+HISTORICAL_VECTOR_LENGTH: 64
 # [customized] smaller state
 SLASHED_EXIT_LENGTH: 64
 

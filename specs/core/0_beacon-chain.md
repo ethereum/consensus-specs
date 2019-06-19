@@ -1604,7 +1604,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
-    state.latest_randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
+    state.randao_mixes[epoch % HISTORICAL_VECTOR_LENGTH] = mix
 ```
 
 #### Eth1 data
