@@ -364,7 +364,10 @@ class BytesLike(Elements, metaclass=BytesType):
 
     def __str__(self):
         cls = self.__class__
-        return f"{cls.__name__}[{cls.length}]: {self.items.hex()}"
+        return f"{cls.__name__}[{cls.length}]: {self.hex()}"
+
+    def hex(self) -> str:
+        return self.items.hex()
 
 
 class Bytes(BytesLike):
