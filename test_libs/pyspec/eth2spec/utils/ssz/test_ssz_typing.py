@@ -76,6 +76,10 @@ def test_container():
         a: uint8
         b: uint32
 
+    empty = Foo()
+    assert empty.a == uint8(0)
+    assert empty.b == uint32(0)
+
     assert issubclass(Foo, Container)
     assert issubclass(Foo, SSZValue)
     assert issubclass(Foo, Series)

@@ -154,11 +154,11 @@ class Container(Series, metaclass=SSZType):
         super().__setattr__(name, value)
 
     def __repr__(self):
-        return repr({field: getattr(self, field) for field in self.get_fields()})
+        return repr({field: getattr(self, field) for field in self.get_fields().keys()})
 
     def __str__(self):
         output = [f'{self.__class__.__name__}']
-        for field in self.get_fields():
+        for field in self.get_fields().keys():
             output.append(f'  {field}: {getattr(self, field)}')
         return "\n".join(output)
 
@@ -176,7 +176,7 @@ class Container(Series, metaclass=SSZType):
 
     @classmethod
     def default(cls):
-        return cls(**{f: t.default() for f, t in cls.get_fields()})
+        return cls(**{f: t.default() for f, t in cls.get_fields().items()})
 
     @classmethod
     def is_fixed_size(cls):
