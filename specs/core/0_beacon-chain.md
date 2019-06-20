@@ -291,6 +291,8 @@ We define the following Python custom types for type hinting and readability:
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
+`Deltas` is a non-SSZ type, a series of changes applied to balances, optimized by clients.
+
 ## Containers
 
 The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containers.
@@ -315,7 +317,7 @@ class Validator(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals and transfers
     effective_balance: Gwei  # Balance at stake
-    slashed: bool
+    slashed: Bit
     # Status epochs
     activation_eligibility_epoch: Epoch  # When criteria for activation were met
     activation_epoch: Epoch
@@ -355,7 +357,7 @@ class AttestationData(Container):
 ```python
 class AttestationDataAndCustodyBit(Container):
     data: AttestationData
-    custody_bit: bool  # Challengeable bit for the custody of crosslink data
+    custody_bit: Bit  # Challengeable bit for the custody of crosslink data
 ```
 
 #### `IndexedAttestation`
@@ -649,11 +651,11 @@ def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
 ### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex]:
+def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Tuple[ValidatorIndex, ...]:
     """
     Get active validator indices at ``epoch``.
     """
-    return [ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch)]
+    return tuple(ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch))
 ```
 
 ### `increase_balance`
@@ -815,7 +817,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
 ### `verify_merkle_branch`
 
 ```python
-def verify_merkle_branch(leaf: Hash, proof: List[Hash], depth: int, index: int, root: Hash) -> bool:
+def verify_merkle_branch(leaf: Hash, proof: Tuple[Hash, ...], depth: int, index: int, root: Hash) -> bool:
     """
     Verify that the given ``leaf`` is on the merkle branch ``proof``
     starting with the given ``root``.
@@ -859,16 +861,17 @@ def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Hash) -> V
 ### `compute_committee`
 
 ```python
-def compute_committee(indices: List[ValidatorIndex], seed: Hash, index: int, count: int) -> List[ValidatorIndex]:
+def compute_committee(indices: Tuple[ValidatorIndex, ...],
+                      seed: Hash, index: int, count: int) -> Tuple[ValidatorIndex, ...]:
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
-    return [indices[get_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
+    return tuple(indices[get_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end))
 ```
 
 ### `get_crosslink_committee`
 
 ```python
-def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> List[ValidatorIndex]:
+def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[ValidatorIndex, ...]:
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=generate_seed(state, epoch),
@@ -882,13 +885,13 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> L
 ```python
 def get_attesting_indices(state: BeaconState,
                           attestation_data: AttestationData,
-                          bitfield: bytes) -> List[ValidatorIndex]:
+                          bitfield: bytes) -> Tuple[ValidatorIndex, ...]:
     """
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
     assert verify_bitfield(bitfield, len(committee))
-    return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
+    return tuple(sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1]))
 ```
 
 ### `int_to_bytes`
@@ -908,7 +911,7 @@ def bytes_to_int(data: bytes) -> int:
 ### `get_total_balance`
 
 ```python
-def get_total_balance(state: BeaconState, indices: List[ValidatorIndex]) -> Gwei:
+def get_total_balance(state: BeaconState, indices: Iterable[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
@@ -1134,7 +1137,7 @@ def slash_validator(state: BeaconState,
 
 ### Genesis trigger
 
-Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool` where:
+Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: Iterable[Deposit], timestamp: uint64) -> bool` where:
 
 * `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
@@ -1151,7 +1154,7 @@ When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
 *Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
 
 ```python
-def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
+def is_genesis_trigger(deposits: Iterable[Deposit], timestamp: uint64) -> bool:
     # Process deposits
     state = BeaconState()
     for deposit in deposits:
@@ -1173,10 +1176,10 @@ def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
 Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_data)`.
 
 ```python
-def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis_eth1_data: Eth1Data) -> BeaconState:
+def get_genesis_beacon_state(deposits: Iterable[Deposit], genesis_time: int, eth1_data: Eth1Data) -> BeaconState:
     state = BeaconState(
         genesis_time=genesis_time,
-        eth1_data=genesis_eth1_data,
+        eth1_data=eth1_data,
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
 
@@ -1270,21 +1273,21 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 ```
 
 ```python
-def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
+def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> Iterable[PendingAttestation]:
     assert epoch in (get_current_epoch(state), get_previous_epoch(state))
     return state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
 ```
 
 ```python
-def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
-    return [
+def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> Iterable[PendingAttestation]:
+    return [ 
         a for a in get_matching_source_attestations(state, epoch)
         if a.data.target_root == get_block_root(state, epoch)
     ]
 ```
 
 ```python
-def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
+def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Iterable[PendingAttestation]:
     return [
         a for a in get_matching_source_attestations(state, epoch)
         if a.data.beacon_block_root == get_block_root_at_slot(state, get_attestation_data_slot(state, a.data))
@@ -1293,7 +1296,7 @@ def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> List[Pen
 
 ```python
 def get_unslashed_attesting_indices(state: BeaconState,
-                                    attestations: List[PendingAttestation]) -> List[ValidatorIndex]:
+                                    attestations: Iterable[PendingAttestation]) -> Iterable[ValidatorIndex]:
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
         output = output.union(get_attesting_indices(state, a.data, a.aggregation_bitfield))
@@ -1301,14 +1304,14 @@ def get_unslashed_attesting_indices(state: BeaconState,
 ```
 
 ```python
-def get_attesting_balance(state: BeaconState, attestations: List[PendingAttestation]) -> Gwei:
+def get_attesting_balance(state: BeaconState, attestations: Iterable[PendingAttestation]) -> Gwei:
     return get_total_balance(state, get_unslashed_attesting_indices(state, attestations))
 ```
 
 ```python
 def get_winning_crosslink_and_attesting_indices(state: BeaconState,
                                                 epoch: Epoch,
-                                                shard: Shard) -> Tuple[Crosslink, List[ValidatorIndex]]:
+                                                shard: Shard) -> Tuple[Crosslink, Iterable[ValidatorIndex]]:
     attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
     crosslinks = list(filter(
         lambda c: hash_tree_root(state.current_crosslinks[shard]) in (c.parent_root, hash_tree_root(c)),
@@ -1397,11 +1400,11 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 ```
 
 ```python
-def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
+def get_attestation_deltas(state: BeaconState) -> Tuple[Deltas, Deltas]:
     previous_epoch = get_previous_epoch(state)
     total_balance = get_total_active_balance(state)
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
+    rewards = Deltas(0 for _ in range(len(state.validators)))
+    penalties = Deltas(0 for _ in range(len(state.validators)))
     eligible_validator_indices = [
         ValidatorIndex(index) for index, v in enumerate(state.validators)
         if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
@@ -1448,9 +1451,9 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
 ```
 
 ```python
-def get_crosslink_deltas(state: BeaconState) -> Tuple[List[Gwei], List[Gwei]]:
-    rewards = [Gwei(0) for index in range(len(state.validators))]
-    penalties = [Gwei(0) for index in range(len(state.validators))]
+def get_crosslink_deltas(state: BeaconState) -> Tuple[Deltas, Deltas]:
+    rewards = Deltas(0 for _ in range(len(state.validators)))
+    penalties = Deltas(0 for _ in range(len(state.validators)))
     epoch = get_previous_epoch(state)
     for offset in range(get_epoch_committee_count(state, epoch)):
         shard = Shard((get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT)
@@ -1630,14 +1633,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
 
-    for operations, function in (
+    all_operations = (
         (body.proposer_slashings, process_proposer_slashing),
         (body.attester_slashings, process_attester_slashing),
         (body.attestations, process_attestation),
         (body.deposits, process_deposit),
         (body.voluntary_exits, process_voluntary_exit),
         (body.transfers, process_transfer),
-    ):
+    )  # type: Tuple[Tuple[List, Callable], ...]
+    for operations, function in all_operations:
         for operation in operations:
             function(state, operation)
 ```
