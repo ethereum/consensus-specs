@@ -26,8 +26,7 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector,
-    Bytes4, Bytes32, Bytes48, Bytes96,
+    Bit, Container, List, Vector, Bytes, BytesN, uint64
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -179,8 +178,9 @@ def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str
     """
     items = list(objects.items())
     for key, value in items:
-        dependencies = re.findall(r'(: [A-Z][\w[]*)', value)
-        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|Hash|BLSPubkey|BLSSignature|uint\d+|Bytes\d+|bytes', '', x), dependencies)
+        dependencies = re.findall(r'(: [A-Z][\w\[]*)', value)
+        dependencies = filter(lambda x: '_' not in x and x.upper() != x, dependencies)  # filter out constants
+        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|Hash|BLSPubkey|BLSSignature|uint\d+|BytesN\[.+\\]|Bytes\[.+\\]|Bytes\d*|bytes\d*', '', x), dependencies)
         for dep in dependencies:
             if dep in custom_types or len(dep) == 0:
                 continue
