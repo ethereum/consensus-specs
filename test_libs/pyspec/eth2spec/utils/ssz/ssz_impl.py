@@ -107,7 +107,7 @@ def is_bottom_layer_kind(typ: SSZType):
 
 
 def item_length(typ: SSZType) -> int:
-    if issubclass(typ, BasicType):
+    if issubclass(typ, BasicValue):
         return typ.byte_len
     else:
         return 32
