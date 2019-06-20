@@ -94,19 +94,24 @@ def coerce_type_maybe(v, typ: SSZType, strict: bool = False):
     # shortcut if it's already the type we are looking for
     if v_typ == typ:
         return v
-    elif isinstance(v, int) and not isinstance(v, uint):  # do not coerce from one uintX to another uintY
-        return typ(v)
+    elif isinstance(v, int):
+        if isinstance(v, uint):  # do not coerce from one uintX to another uintY
+            if issubclass(typ, uint) and v.type().byte_len == typ.byte_len:
+                return typ(v)
+            # revert to default behavior below if-else. (ValueError/bare)
+        else:
+            return typ(v)
     elif isinstance(v, (list, tuple)):
         return typ(*v)
     elif isinstance(v, (bytes, BytesN, Bytes)):
         return typ(v)
     elif isinstance(v, GeneratorType):
         return typ(v)
-    else:
-        # just return as-is, Value-checkers will take care of it not being coerced, if we are not strict.
-        if strict and not isinstance(v, typ):
-            raise ValueError("Type coercion of {} to {} failed".format(v, typ))
-        return v
+
+    # just return as-is, Value-checkers will take care of it not being coerced, if we are not strict.
+    if strict and not isinstance(v, typ):
+        raise ValueError("Type coercion of {} to {} failed".format(v, typ))
+    return v
 
 
 class Series(SSZValue):
