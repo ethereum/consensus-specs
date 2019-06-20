@@ -367,7 +367,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bitfield: bytes  # Bit set for every attesting participant within a committee
+    aggregation_bitfield: Bytes[MAX_COMMITTEE_SIZE]  # Bit set for every attesting participant within a committee
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -434,9 +434,9 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    aggregation_bitfield: bytes
+    aggregation_bitfield: Bytes[MAX_COMMITTEE_SIZE]
     data: AttestationData
-    custody_bitfield: bytes
+    custody_bitfield: Bytes[MAX_COMMITTEE_SIZE]
     signature: BLSSignature
 ```
 
@@ -480,12 +480,12 @@ class BeaconBlockBody(Container):
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
     # Operations
-    proposer_slashings: List[ProposerSlashing]
-    attester_slashings: List[AttesterSlashing]
-    attestations: List[Attestation]
-    deposits: List[Deposit]
-    voluntary_exits: List[VoluntaryExit]
-    transfers: List[Transfer]
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+    attestations: List[Attestation, MAX_ATTESTATIONS]
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
+    transfers: List[Transfer, MAX_TRANSFERS]
 ```
 
 #### `BeaconBlock`
