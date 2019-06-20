@@ -27,7 +27,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
             domain_type=spec.DOMAIN_RANDAO,
             message_epoch=epoch,
         ),
-    )
+    )[:32]  # TODO(Carl): mask is 32 bytes, and signature is 96? Correct to slice the first 32 out?
 
     return spec.EarlyDerivedSecretReveal(
         revealed_index=revealed_index,
