@@ -4,7 +4,7 @@ from eth2spec.utils.bls import bls_sign
 
 def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     current_epoch = spec.get_current_epoch(state)
-    revealed_index = spec.get_active_validator_indices(state, current_epoch)[-1]
+    revealed_index = spec.get_active_validator_indices(state, current_epoch).last()
     masker_index = spec.get_active_validator_indices(state, current_epoch)[0]
 
     if epoch is None:

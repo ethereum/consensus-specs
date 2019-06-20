@@ -312,6 +312,10 @@ class BaseList(list, Elements):
     def __iter__(self) -> Iterator[SSZValue]:
         return super().__iter__()
 
+    def last(self):
+        # be explict about getting the last item, for the non-python readers, and negative-index safety
+        return self[len(self)-1]
+
 
 class List(BaseList):
 
