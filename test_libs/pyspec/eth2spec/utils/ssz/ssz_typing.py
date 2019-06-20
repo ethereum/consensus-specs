@@ -295,13 +295,14 @@ class BaseList(list, Elements):
         cls = self.__class__
         return f"{cls.__name__}[{cls.elem_type.__name__}, {cls.length}]({', '.join(str(v) for v in self)})"
 
-    def __getitem__(self, i) -> SSZValue:
-        if i < 0:
-            raise IndexError(f"cannot get item in type {self.__class__} at negative index {i}")
-        if i > len(self):
-            raise IndexError(f"cannot get item in type {self.__class__}"
-                             f" at out of bounds index {i}")
-        return super().__getitem__(i)
+    def __getitem__(self, k) -> SSZValue:
+        if isinstance(k, int):  # check if we are just doing a lookup, and not slicing
+            if k < 0:
+                raise IndexError(f"cannot get item in type {self.__class__} at negative index {k}")
+            if k > len(self):
+                raise IndexError(f"cannot get item in type {self.__class__}"
+                                 f" at out of bounds index {k}")
+        return super().__getitem__(k)
 
     def __setitem__(self, k, v):
         if k < 0:
