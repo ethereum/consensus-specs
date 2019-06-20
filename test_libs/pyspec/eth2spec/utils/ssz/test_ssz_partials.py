@@ -1,16 +1,23 @@
-from utils.ssz.ssz_typing import *
-from utils.ssz.ssz_impl import *
-from utils.ssz.ssz_partials import *
-import os, random
+from eth2spec.utils.ssz.ssz_impl import serialize, hash_tree_root
+from eth2spec.utils.ssz.ssz_typing import (
+    Bit, Bytes, uint64, Container, Vector, List
+)
+
+from eth2spec.utils.ssz.ssz_partials import (
+    ssz_full, ssz_partial, extract_value_at_path, merge
+)
+
 
 class Person(Container):
-    is_male: bool
+    is_male: Bit
     age: uint64
     name: Bytes[32]
+
 
 class City(Container):
     coords: Vector[uint64, 2]
     people: List[Person, 20]
+
 
 people = List[Person, 20](
     Person(is_male=True, age=uint64(45), name=Bytes[32](b"Alex")),
@@ -59,7 +66,8 @@ assert str(p.people[1]) == str(city.people[1]), (str(p.people[1]), str(city.peop
 assert p.people[1].name.hash_tree_root() == hash_tree_root(city.people[1].name)
 assert p.people[1].hash_tree_root() == hash_tree_root(city.people[1])
 assert p.coords.hash_tree_root() == hash_tree_root(city.coords)
-assert p.people.hash_tree_root() == hash_tree_root(city.people), (p.people.hash_tree_root(), hash_tree_root(city.people))
+assert p.people.hash_tree_root() == hash_tree_root(city.people), (
+    p.people.hash_tree_root(), hash_tree_root(city.people))
 assert p.hash_tree_root() == hash_tree_root(city)
 print(hash_tree_root(city))
 print("Reading tests passed")
