@@ -61,10 +61,6 @@ from eth2spec.utils.hash_function import hash
 Deltas = list
 '''
 SUNDRY_FUNCTIONS = '''
-def get_ssz_type_by_name(name: str) -> Container:
-    return globals()[name]
-
-
 # Monkey patch hash cache
 _hash = hash
 hash_cache: Dict[bytes, Hash] = {}
