@@ -86,7 +86,8 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
         blocks={root: genesis_block},
         states={root: genesis_state},
         time=genesis_state.genesis_time,
-        justified_root=root, finalized_root=root,
+        justified_root=root,
+        finalized_root=root,
     )
 ```
 
@@ -143,7 +144,7 @@ def on_block(store: Store, block: BeaconBlock) -> None:
     # Check block is a descendant of the finalized block
     assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
     # Check block slot against Unix time
-    pre_state = deepcopy(store.states[block.parent_root])
+    pre_state = store.states[block.parent_root].copy()
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
