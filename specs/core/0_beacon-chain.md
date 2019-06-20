@@ -651,11 +651,13 @@ def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
 ### `get_active_validator_indices`
 
 ```python
-def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Tuple[ValidatorIndex, ...]:
+def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> List[ValidatorIndex, VALIDATOR_REGISTRY_SIZE]:
     """
     Get active validator indices at ``epoch``.
     """
-    return tuple(ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch))
+    return List[ValidatorIndex, VALIDATOR_REGISTRY_SIZE](
+        i for i, v in enumerate(state.validators) if is_active_validator(v, epoch)
+    )
 ```
 
 ### `increase_balance`
@@ -873,7 +875,7 @@ def compute_committee(indices: Tuple[ValidatorIndex, ...],
 ```python
 def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> Tuple[ValidatorIndex, ...]:
     return compute_committee(
-        indices=get_active_validator_indices(state, epoch),
+        indices=tuple(get_active_validator_indices(state, epoch)),
         seed=generate_seed(state, epoch),
         index=(shard + SHARD_COUNT - get_epoch_start_shard(state, epoch)) % SHARD_COUNT,
         count=get_epoch_committee_count(state, epoch),

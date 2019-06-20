@@ -11,7 +11,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
         epoch = current_epoch + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING
 
     reveal = bls_sign(
-        message_hash=spec.hash_tree_root(epoch),
+        message_hash=spec.hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[revealed_index],
         domain=spec.get_domain(
             state=state,
@@ -20,7 +20,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
         ),
     )
     mask = bls_sign(
-        message_hash=spec.hash_tree_root(epoch),
+        message_hash=spec.hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[masker_index],
         domain=spec.get_domain(
             state=state,

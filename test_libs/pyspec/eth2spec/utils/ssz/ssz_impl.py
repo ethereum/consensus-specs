@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bit, Container, List, Bytes, BytesN, uint
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bit, Container, List, Bytes, BytesN, uint,
 )
 
 # SSZ Serialization
@@ -143,5 +143,6 @@ def hash_tree_root(obj: SSZValue):
 
 def signing_root(obj: Container):
     # ignore last field
-    leaves = [hash_tree_root(field) for field in obj[:-1]]
+    fields = [field for field in obj][:-1]
+    leaves = [hash_tree_root(f) for f in fields]
     return merkleize_chunks(chunkify(b''.join(leaves)))

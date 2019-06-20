@@ -98,7 +98,7 @@ def coerce_type_maybe(v, typ: SSZType, strict: bool = False):
         return typ(v)
     elif isinstance(v, (list, tuple)):
         return typ(*v)
-    elif isinstance(v, bytes):
+    elif isinstance(v, (bytes, BytesN, Bytes)):
         return typ(v)
     elif isinstance(v, GeneratorType):
         return typ(v)
@@ -154,7 +154,8 @@ class Container(Series, metaclass=SSZType):
         super().__setattr__(name, value)
 
     def __repr__(self):
-        return repr({field: getattr(self, field) for field in self.get_fields().keys()})
+        return repr({field: (getattr(self, field) if hasattr(self, field) else 'unset')
+                     for field in self.get_fields().keys()})
 
     def __str__(self):
         output = [f'{self.__class__.__name__}']
@@ -236,14 +237,23 @@ class ParamsMeta(SSZType):
             raise TypeError("provided parameters {} mismatch required parameter count {}".format(params, i))
         return res
 
-    def __instancecheck__(self, obj):
-        if obj.__class__.__name__ != self.__name__:
+    def __subclasscheck__(self, subclass):
+        # check regular class system if we can, solves a lot of the normal cases.
+        if super().__subclasscheck__(subclass):
+            return True
+        # if they are not normal subclasses, they are of the same class.
+        # then they should have the same name
+        if subclass.__name__ != self.__name__:
             return False
+        # If they do have the same name, they should also have the same params.
         for name, typ in self.__annotations__.items():
-            if hasattr(self, name) and hasattr(obj.__class__, name) \
-                    and getattr(obj.__class__, name) != getattr(self, name):
+            if hasattr(self, name) and hasattr(subclass, name) \
+                    and getattr(subclass, name) != getattr(self, name):
                 return False
         return True
+
+    def __instancecheck__(self, obj):
+        return self.__subclasscheck__(obj.__class__)
 
 
 class ElementsType(ParamsMeta):
@@ -305,9 +315,6 @@ class Elements(ParamsBase, metaclass=ElementsType):
     def __iter__(self) -> Iterator[SSZValue]:
         return iter(self.items)
 
-    def __eq__(self, other):
-        return self.items == other.items
-
 
 class List(Elements):
 
@@ -366,9 +373,6 @@ class BytesLike(Elements, metaclass=BytesType):
         cls = self.__class__
         return f"{cls.__name__}[{cls.length}]: {self.hex()}"
 
-    def hex(self) -> str:
-        return self.items.hex()
-
 
 class Bytes(BytesLike):
 
@@ -398,7 +402,7 @@ class BytesN(BytesLike):
 
 
 # Helpers for common BytesN types.
-Bytes4 = BytesN[4]
-Bytes32 = BytesN[32]
-Bytes48 = BytesN[48]
-Bytes96 = BytesN[96]
+Bytes4: BytesType = BytesN[4]
+Bytes32: BytesType = BytesN[32]
+Bytes48: BytesType = BytesN[48]
+Bytes96: BytesType = BytesN[96]

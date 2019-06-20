@@ -1,7 +1,8 @@
 from .ssz_typing import (
     SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType,
     Elements, Bit, Container, List, Vector, Bytes, BytesN,
-    uint, uint8, uint16, uint32, uint64, uint128, uint256
+    uint, uint8, uint16, uint32, uint64, uint128, uint256,
+    Bytes32, Bytes48
 )
 
 
@@ -193,3 +194,20 @@ def test_list():
         assert False
     except IndexError:
         pass
+
+
+def test_bytesn_subclass():
+    assert isinstance(BytesN[32](b'\xab' * 32), Bytes32)
+    assert not isinstance(BytesN[32](b'\xab' * 32), Bytes48)
+    assert issubclass(BytesN[32](b'\xab' * 32).type(), Bytes32)
+    assert issubclass(BytesN[32], Bytes32)
+
+    class Hash(Bytes32):
+        pass
+
+    assert isinstance(Hash(b'\xab' * 32), Bytes32)
+    assert not isinstance(Hash(b'\xab' * 32), Bytes48)
+    assert issubclass(Hash(b'\xab' * 32).type(), Bytes32)
+    assert issubclass(Hash, Bytes32)
+
+    assert not issubclass(Bytes48, Bytes32)

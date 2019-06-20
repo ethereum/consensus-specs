@@ -65,22 +65,6 @@ def get_ssz_type_by_name(name: str) -> Container:
     return globals()[name]
 
 
-# Monkey patch validator compute committee code
-_compute_committee = compute_committee
-committee_cache: Dict[Tuple[Hash, Hash, int, int], Tuple[ValidatorIndex, ...]] = {}
-
-
-def compute_committee(indices: Tuple[ValidatorIndex, ...],  # type: ignore
-                      seed: Hash,
-                      index: int,
-                      count: int) -> Tuple[ValidatorIndex, ...]:
-    param_hash = (hash_tree_root(indices), seed, index, count)
-
-    if param_hash not in committee_cache:
-        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
-    return committee_cache[param_hash]
-
-
 # Monkey patch hash cache
 _hash = hash
 hash_cache: Dict[bytes, Hash] = {}
@@ -90,6 +74,22 @@ def hash(x: bytes) -> Hash:
     if x not in hash_cache:
         hash_cache[x] = Hash(_hash(x))
     return hash_cache[x]
+
+
+# Monkey patch validator compute committee code
+_compute_committee = compute_committee
+committee_cache: Dict[Tuple[Hash, Hash, int, int], Tuple[ValidatorIndex, ...]] = {}
+
+
+def compute_committee(indices: Tuple[ValidatorIndex, ...],  # type: ignore
+                      seed: Hash,
+                      index: int,
+                      count: int) -> Tuple[ValidatorIndex, ...]:
+    param_hash = (hash(b''.join(index.to_bytes(length=4, byteorder='little') for index in indices)), seed, index, count)
+
+    if param_hash not in committee_cache:
+        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
+    return committee_cache[param_hash]
 
 
 # Access to overwrite spec constants based on configuration
