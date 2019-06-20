@@ -402,12 +402,11 @@ def process_early_derived_secret_reveal(state: BeaconState,
     """
 
     revealed_validator = state.validators[reveal.revealed_index]
-    masker = state.validators[reveal.masker_index]
     derived_secret_location = reveal.epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
 
     assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
     assert reveal.epoch < get_current_epoch(state) + EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    assert revealed_validator.slashed is False
+    assert not revealed_validator.slashed
     assert reveal.revealed_index not in state.exposed_derived_secrets[derived_secret_location]
 
     # Verify signature correctness
