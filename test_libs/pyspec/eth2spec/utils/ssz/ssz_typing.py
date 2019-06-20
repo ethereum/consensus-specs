@@ -171,7 +171,10 @@ class ParamsMeta(DefaultingTypeMeta):
             if hasattr(self.__class__, name):
                 res[name] = getattr(self.__class__, name)
             else:
-                if not isinstance(param, typ):
+                if typ == TypeWithDefault:
+                    if not (isinstance(param, bool) or isinstance(param, DefaultingTypeMeta)):
+                        raise TypeError("expected param {} as {} to have a type default".format(param, name, typ))
+                elif not isinstance(param, typ):
                     raise TypeError(
                         "cannot create parametrized class with param {} as {} of type {}".format(param, name, typ))
                 res[name] = param
@@ -246,8 +249,10 @@ class List(AbstractList):
 
 
 class Vector(AbstractList, metaclass=AbstractListMeta):
-    def value_check(self, value):
-        return len(value) == self.__class__.length and super().value_check(value)
+
+    @classmethod
+    def value_check(cls, value):
+        return len(value) == cls.length and super().value_check(value)
 
     @classmethod
     def default(cls):
@@ -274,7 +279,7 @@ class BytesLike(AbstractList, metaclass=BytesMeta):
 
     @classmethod
     def value_check(cls, value):
-        return len(value) == cls.length and isinstance(value, bytes)
+        return isinstance(value, bytes)
 
     def __str__(self):
         cls = self.__class__
@@ -282,9 +287,6 @@ class BytesLike(AbstractList, metaclass=BytesMeta):
 
 
 class Bytes(BytesLike):
-
-    def value_check(self, value):
-        return len(value) <= self.__class__.length and isinstance(value, bytes)
 
     @classmethod
     def default(cls):
@@ -296,4 +298,8 @@ class BytesN(BytesLike):
     @classmethod
     def default(cls):
         return b'\x00' * cls.length
+
+    @classmethod
+    def value_check(cls, value):
+        return len(value) == cls.length and super().value_check(value)
 
