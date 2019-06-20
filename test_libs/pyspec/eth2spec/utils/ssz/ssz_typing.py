@@ -1,9 +1,25 @@
+from typing import NewType, Union
 from types import GeneratorType
+
+
+class ValueCheckError(Exception):
+    pass
 
 
 class DefaultingTypeMeta(type):
     def default(cls):
         raise Exception("Not implemented")
+
+# Every type is subclassed and has a default() method, except bool.
+TypeWithDefault = Union[DefaultingTypeMeta, bool]
+
+
+def get_zero_value(typ: TypeWithDefault):
+    if issubclass(typ, bool):
+        return False
+    else:
+        return typ.default()
+
 
 # SSZ integers
 # -----------------------------
@@ -63,7 +79,7 @@ class Container(object):
         cls = self.__class__
         for f, t in cls.get_fields():
             if f not in kwargs:
-                setattr(self, f, t.default())
+                setattr(self, f, get_zero_value(t))
             else:
                 setattr(self, f, kwargs[f])
 
@@ -120,7 +136,7 @@ class Container(object):
 
     @classmethod
     def default(cls):
-        return cls(**{f: t.default() for f, t in cls.get_fields()})
+        return cls(**{f: get_zero_value(t) for f, t in cls.get_fields()})
 
 
 class ParamsBase:
@@ -174,12 +190,8 @@ class ParamsMeta(DefaultingTypeMeta):
         return True
 
 
-class ValueCheckError(Exception):
-    pass
-
-
 class AbstractListMeta(ParamsMeta):
-    elem_type: DefaultingTypeMeta
+    elem_type: TypeWithDefault
     length: int
 
 
@@ -227,8 +239,6 @@ class AbstractList(ParamsBase, metaclass=AbstractListMeta):
 
 
 class List(AbstractList):
-    def value_check(self, value):
-        return len(value) <= self.__class__.length and super().value_check(value)
 
     @classmethod
     def default(cls):
@@ -241,11 +251,11 @@ class Vector(AbstractList, metaclass=AbstractListMeta):
 
     @classmethod
     def default(cls):
-        return [cls.elem_type.default() for _ in range(cls.length)]
+        return [get_zero_value(cls.elem_type) for _ in range(cls.length)]
 
 
 class BytesMeta(AbstractListMeta):
-    elem_type: DefaultingTypeMeta = byte
+    elem_type: TypeWithDefault = byte
     length: int
 
 
