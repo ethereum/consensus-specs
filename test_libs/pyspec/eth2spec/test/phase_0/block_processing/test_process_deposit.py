@@ -113,22 +113,6 @@ def test_invalid_withdrawal_credentials_top_up(spec, state):
     # inconsistent withdrawal credentials, in top-ups, are allowed!
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=True, effective=True)
 
-# Deposit data temporarily has no index field.
-# SSZ typing catches that, and raises an exception. Test may be introduced back later
-# @with_all_phases
-# @spec_state_test
-# def test_wrong_index(spec, state):
-#     validator_index = len(state.validators)
-#     amount = spec.MAX_EFFECTIVE_BALANCE
-#     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
-#
-#     # mess up eth1_deposit_index
-#     deposit.index = state.eth1_deposit_index + 1
-#
-#     sign_deposit_data(spec, state, deposit.data, privkeys[validator_index])
-#
-#     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
-
 
 @with_all_phases
 @spec_state_test
@@ -171,9 +155,6 @@ def test_wrong_deposit_for_deposit_count(spec, state):
     state.eth1_data.deposit_count = deposit_count_1
 
     yield from run_deposit_processing(spec, state, deposit_2, index_2, valid=False)
-
-
-# TODO: test invalid signature
 
 
 @with_all_phases
