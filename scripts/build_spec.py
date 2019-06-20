@@ -12,7 +12,8 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any, Callable, Iterable, Dict, Set, Tuple
+    Any, Callable, Iterable, Dict, Set, Tuple, NewType,
+    List as TypingList,
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
@@ -30,12 +31,9 @@ from eth2spec.utils.bls import (
 )
 
 from eth2spec.utils.hash_function import hash
-
-
-Deltas = list
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Callable, Dict, Optional, Set, Tuple, Iterable,
+    Any, Callable, Dict, Optional, Set, Tuple, Iterable, NewType,
     List as TypingList
 )
 
@@ -56,9 +54,6 @@ from eth2spec.utils.bls import (
 )
 
 from eth2spec.utils.hash_function import hash
-
-
-Deltas = list
 '''
 SUNDRY_FUNCTIONS = '''
 # Monkey patch hash cache
@@ -149,6 +144,7 @@ def objects_to_spec(functions: Dict[str, str],
     spec = (
         imports
         + '\n\n' + new_type_definitions
+        + '\n\n' + "Deltas = NewType('Deltas', TypingList[Gwei])"
         + '\n\n' + constants_spec
         + '\n\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec

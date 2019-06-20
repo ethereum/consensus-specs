@@ -1405,8 +1405,8 @@ def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
 def get_attestation_deltas(state: BeaconState) -> Tuple[Deltas, Deltas]:
     previous_epoch = get_previous_epoch(state)
     total_balance = get_total_active_balance(state)
-    rewards = Deltas(0 for _ in range(len(state.validators)))
-    penalties = Deltas(0 for _ in range(len(state.validators)))
+    rewards = Deltas([Gwei(0) for _ in range(len(state.validators))])
+    penalties = Deltas([Gwei(0) for _ in range(len(state.validators))])
     eligible_validator_indices = [
         ValidatorIndex(index) for index, v in enumerate(state.validators)
         if is_active_validator(v, previous_epoch) or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
@@ -1454,8 +1454,8 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Deltas, Deltas]:
 
 ```python
 def get_crosslink_deltas(state: BeaconState) -> Tuple[Deltas, Deltas]:
-    rewards = Deltas(0 for _ in range(len(state.validators)))
-    penalties = Deltas(0 for _ in range(len(state.validators)))
+    rewards = Deltas([Gwei(0) for _ in range(len(state.validators))])
+    penalties = Deltas([Gwei(0) for _ in range(len(state.validators))])
     epoch = get_previous_epoch(state)
     for offset in range(get_epoch_committee_count(state, epoch)):
         shard = Shard((get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT)
