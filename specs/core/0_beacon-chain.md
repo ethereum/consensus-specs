@@ -533,7 +533,7 @@ class BeaconState(Container):
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
     active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Digests of the active registry, for light clients
     # Slashings
-    slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of the effective balances of slashed validators
+    slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of the slashed effective balances
     # Attestations
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
@@ -1525,7 +1525,8 @@ def process_slashings(state: BeaconState) -> None:
     total_penalties = total_at_end - total_at_start
 
     for index, validator in enumerate(state.validators):
-        if validator.slashed and current_epoch == validator.withdrawable_epoch - EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2:
+        if validator.slashed and current_epoch == (
+                validator.withdrawable_epoch - EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2):
             penalty = max(
                 validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
                 validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT

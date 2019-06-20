@@ -106,6 +106,18 @@ def apply_constants_preset(preset: Dict[str, Any]) -> None:
 '''
 
 
+def strip_comments(raw: str) -> str:
+    comment_line_regex = re.compile('^\s+# ')
+    lines = raw.split('\n')
+    out = []
+    for line in lines:
+        if not comment_line_regex.match(line):
+            if '  #' in line:
+                line = line[:line.index('  #')]
+            out.append(line)
+    return '\n'.join(out)
+
+
 def objects_to_spec(functions: Dict[str, str],
                     custom_types: Dict[str, str],
                     constants: Dict[str, str],
@@ -133,7 +145,8 @@ def objects_to_spec(functions: Dict[str, str],
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
         'def init_SSZ_types() -> None:\n    global_vars = globals()\n\n    '
-        + '\n\n    '.join([re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]) for value in ssz_objects.values()])
+        + '\n\n    '.join([strip_comments(re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]))
+                           for value in ssz_objects.values()])
         + '\n\n'
         + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
     )
