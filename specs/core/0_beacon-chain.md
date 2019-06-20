@@ -224,6 +224,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
+| `HISTORICAL_ROOTS_LENGTH` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
@@ -237,6 +238,12 @@ These configurations are updated for releases, but may be out of sync during `de
 | - | - | :-: | :-: |
 | `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
 | `EPOCHS_PER_SLASHED_BALANCES_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
+| `RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
+| `VALIDATOR_REGISTRY_SIZE` | `2**40 (= 1,099,511,627,776)` | | |
+
+* Assuming the maximum 16 deposits per slot, the validator registry will last for at least 13,065 years (but likely much much longer)
 
 ### Rewards and penalties
 
@@ -357,8 +364,8 @@ class AttestationDataAndCustodyBit(Container):
 
 ```python
 class IndexedAttestation(Container):
-    custody_bit_0_indices: List[ValidatorIndex]  # Indices with custody bit equal to 0
-    custody_bit_1_indices: List[ValidatorIndex]  # Indices with custody bit equal to 1
+    custody_bit_0_indices: List[ValidatorIndex, MAX_INDICES_PER_ATTESTATION]  # Indices with custody bit equal to 0
+    custody_bit_1_indices: List[ValidatorIndex, MAX_INDICES_PER_ATTESTATION]  # Indices with custody bit equal to 1
     data: AttestationData
     signature: BLSSignature
 ```
@@ -513,14 +520,14 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Hash]
+    historical_roots: List[Hash, HISTORICAL_ROOTS_LENGTH]
     # Eth1
     eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data]
+    eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
     eth1_deposit_index: uint64
     # Registry
-    validators: List[Validator]
-    balances: List[Gwei]
+    validators: List[Validator, VALIDATOR_REGISTRY_SIZE]
+    balances: List[Gwei, VALIDATOR_REGISTRY_SIZE]
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -528,8 +535,8 @@ class BeaconState(Container):
     # Slashings
     slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of the effective balances of slashed validators
     # Attestations
-    previous_epoch_attestations: List[PendingAttestation]
-    current_epoch_attestations: List[PendingAttestation]
+    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * EPOCH_LENGTH]
+    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * EPOCH_LENGTH]
     # Crosslinks
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]  # Previous epoch snapshot
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
@@ -984,8 +991,6 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 
     # Verify no index has custody bit equal to 1 [to be removed in phase 1]
     assert len(bit_1_indices) == 0
-    # Verify max number of indices
-    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_INDICES_PER_ATTESTATION
     # Verify index sets are disjoint
     assert len(set(bit_0_indices).intersection(bit_1_indices)) == 0
     # Verify indices are sorted
@@ -1624,6 +1629,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
     # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
+<<<<<<< HEAD
     all_operations = [
         (body.proposer_slashings, MAX_PROPOSER_SLASHINGS, process_proposer_slashing),
         (body.attester_slashings, MAX_ATTESTER_SLASHINGS, process_attester_slashing),
@@ -1634,6 +1640,17 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     ]  # type: List[Tuple[List[Container], int, Callable]]
     for operations, max_operations, function in all_operations:
         assert len(operations) <= max_operations
+=======
+
+    for operations, max_operations, function in (
+        (body.proposer_slashings, process_proposer_slashing),
+        (body.attester_slashings, process_attester_slashing),
+        (body.attestations, process_attestation),
+        (body.deposits, process_deposit),
+        (body.voluntary_exits, process_voluntary_exit),
+        (body.transfers, process_transfer),
+    ):
+>>>>>>> f6a2345f... Update spec for new SSZ with list max length
         for operation in operations:
             function(state, operation)
 ```
