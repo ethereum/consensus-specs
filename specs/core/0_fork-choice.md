@@ -157,7 +157,8 @@ def on_block(store: Store, block: BeaconBlock) -> None:
     # Check that block is later than the finalized epoch slot
     assert blocks.slot > get_epoch_start_slot(store.finalized_epoch)
     # Check block slot against Unix time
-    pre_state = deepcopy(store.states[block.parent_root])
+    parent_block = store.blocks[block.parent_root]
+    pre_state = deepcopy(store.states[RootSlot(signing_root(parent_block), parent_block.slot)])
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
