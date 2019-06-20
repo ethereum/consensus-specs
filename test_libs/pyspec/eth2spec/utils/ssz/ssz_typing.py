@@ -349,7 +349,12 @@ class Vector(BaseList):
         return cls.elem_type.is_fixed_size()
 
     def append(self, v):
-        raise Exception("cannot modify vector length")
+        # Deep-copy and other utils like to change the internals during work.
+        # Only complain if we had the right size.
+        if len(self) == self.__class__.length:
+            raise Exception("cannot modify vector length")
+        else:
+            super().append(v)
 
     def pop(self, *args):
         raise Exception("cannot modify vector length")
