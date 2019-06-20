@@ -333,7 +333,7 @@ class Vector(BaseList):
 
     @classmethod
     def default(cls):
-        return [cls.elem_type.default() for _ in range(cls.length)]
+        return cls(cls.elem_type.default() for _ in range(cls.length))
 
     @classmethod
     def is_fixed_size(cls):
