@@ -82,7 +82,12 @@ class Store(object):
 def get_genesis_store(genesis_state: BeaconState) -> Store:
     genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
     root = signing_root(genesis_block)
-    return Store(blocks={root: genesis_block}, states={root: genesis_state}, justified_root=root, finalized_root=root)
+    return Store(
+        blocks={root: genesis_block},
+        states={root: genesis_state},
+        time=genesis_state.genesis_time,
+        justified_root=root, finalized_root=root,
+    )
 ```
 
 #### `get_ancestor`
