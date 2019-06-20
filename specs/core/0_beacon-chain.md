@@ -535,8 +535,8 @@ class BeaconState(Container):
     # Slashings
     slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of the effective balances of slashed validators
     # Attestations
-    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * EPOCH_LENGTH]
-    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * EPOCH_LENGTH]
+    previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
+    current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     # Crosslinks
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]  # Previous epoch snapshot
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
@@ -1282,7 +1282,7 @@ def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> Iterab
 
 ```python
 def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> Iterable[PendingAttestation]:
-    return [ 
+    return [
         a for a in get_matching_source_attestations(state, epoch)
         if a.data.target_root == get_block_root(state, epoch)
     ]

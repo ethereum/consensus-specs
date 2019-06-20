@@ -1,4 +1,4 @@
-from typing import Tuple, Iterator
+from typing import Dict, Iterator
 from types import GeneratorType
 
 
@@ -40,7 +40,7 @@ class Bit(BasicValue):  # can't subclass bool.
 
     @classmethod
     def default(cls):
-        return cls(False)
+        return cls(0)
 
     def __bool__(self):
         return self > 0
@@ -103,7 +103,7 @@ def coerce_type_maybe(v, typ: SSZType, strict: bool = False):
     elif isinstance(v, GeneratorType):
         return typ(v)
     else:
-        # just return as-is, Value-checkers will take care of it not being coerced.
+        # just return as-is, Value-checkers will take care of it not being coerced, if we are not strict.
         if strict and not isinstance(v, typ):
             raise ValueError("Type coercion of {} to {} failed".format(v, typ))
         return v
@@ -181,10 +181,10 @@ class Container(Series, metaclass=SSZType):
 
     @classmethod
     def is_fixed_size(cls):
-        return all(t.is_fixed_size() for t in cls.get_field_types())
+        return all(t.is_fixed_size() for t in cls.get_fields().values())
 
     def __iter__(self) -> Iterator[SSZValue]:
-        return iter([getattr(self, field) for field in self.get_fields()])
+        return iter([getattr(self, field) for field in self.get_fields().keys()])
 
 
 class ParamsBase(Series):
