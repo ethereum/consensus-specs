@@ -12,12 +12,7 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Set,
-    Tuple,
+    Any, Callable, Iterable, Dict, Set, Tuple
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
@@ -33,18 +28,14 @@ from eth2spec.utils.bls import (
     bls_verify,
     bls_verify_multiple,
 )
-# Note: 'int' type defaults to being interpreted as a uint64 by SSZ implementation.
 
 from eth2spec.utils.hash_function import hash
+
+
+Deltas = list
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
+    Any, Callable, Dict, Optional, Set, Tuple, Iterable
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
@@ -54,8 +45,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector,
+    Bit, Container, List, Vector, Bytes, BytesN, uint64,
     Bytes4, Bytes32, Bytes48, Bytes96,
 )
 from eth2spec.utils.bls import (
@@ -65,8 +55,10 @@ from eth2spec.utils.bls import (
 )
 
 from eth2spec.utils.hash_function import hash
+
+
+Deltas = list
 '''
-BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
 def get_ssz_type_by_name(name: str) -> Container:
     return globals()[name]
@@ -172,18 +164,32 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
     return old_constants
 
 
+ignored_dependencies = [
+    'Bit', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
+    'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96',
+    'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
+    'bytes'  # to be removed after updating spec doc
+]
+
+
 def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str, str]) -> None:
     """
     Determines which SSZ Object is depenedent on which other and orders them appropriately
     """
     items = list(objects.items())
     for key, value in items:
-        dependencies = re.findall(r'(: [A-Z][\w\[]*)', value)
+        dependencies = []
+        for line in value.split('\n'):
+            if not re.match(r'\s+\w+: .+', line):
+                continue  # skip whitespace etc.
+            line = line[line.index(':') + 1:]  # strip of field name
+            if '#' in line:
+                line = line[:line.index('#')]  # strip of comment
+            dependencies.extend(re.findall(r'(\w+)', line))  # catch all legible words, potential dependencies
         dependencies = filter(lambda x: '_' not in x and x.upper() != x, dependencies)  # filter out constants
-        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|Hash|BLSPubkey|BLSSignature|uint\d+|BytesN\[.+\\]|Bytes\[.+\\]|Bytes\d*|bytes\d*', '', x), dependencies)
+        dependencies = filter(lambda x: x not in ignored_dependencies, dependencies)
+        dependencies = filter(lambda x: x not in custom_types, dependencies)
         for dep in dependencies:
-            if dep in custom_types or len(dep) == 0:
-                continue
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
