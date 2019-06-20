@@ -211,3 +211,5 @@ def test_bytesn_subclass():
     assert issubclass(Hash, Bytes32)
 
     assert not issubclass(Bytes48, Bytes32)
+
+    assert len(Bytes32() + Bytes48()) == 80

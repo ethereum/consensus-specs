@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bit, Container, List, Bytes, BytesN, uint,
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bit, Container, List, Bytes, uint,
 )
 
 # SSZ Serialization
@@ -46,9 +46,8 @@ def serialize(obj: SSZValue):
 
 
 def encode_series(values: Series):
-    # bytes and bytesN are already in the right format.
-    if isinstance(values, (Bytes, BytesN)):
-        return values.items
+    if isinstance(values, bytes):  # Bytes and BytesN are already like serialized output
+        return values
 
     # Recursively serialize
     parts = [(v.type().is_fixed_size(), serialize(v)) for v in values]
@@ -84,8 +83,8 @@ def encode_series(values: Series):
 
 
 def pack(values: Series):
-    if isinstance(values, (Bytes, BytesN)):
-        return values.items
+    if isinstance(values, bytes):  # Bytes and BytesN are already packed
+        return values
     return b''.join([serialize_basic(value) for value in values])
 
 
