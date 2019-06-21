@@ -29,6 +29,7 @@ def get_spec(file_name: str) -> SpecObject:
     inserts = {}
     function_matcher = re.compile(FUNCTION_REGEX)
     inserts_matcher = re.compile(BEGIN_INSERT_REGEX)
+    is_ssz = False
     custom_types = {}
     for linenum, line in enumerate(open(file_name).readlines()):
         line = line.rstrip()

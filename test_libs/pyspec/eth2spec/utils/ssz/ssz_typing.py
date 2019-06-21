@@ -1,4 +1,5 @@
 from typing import Dict, Iterator
+import copy
 from types import GeneratorType
 
 
@@ -179,6 +180,9 @@ class Container(Series, metaclass=SSZType):
 
     def __hash__(self):
         return hash(self.hash_tree_root())
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     @classmethod
     def get_fields(cls) -> Dict[str, SSZType]:
