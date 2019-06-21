@@ -25,7 +25,7 @@ def get_state_root(spec, state, slot) -> bytes:
     Return the state root at a recent ``slot``.
     """
     assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
-    return state.latest_state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+    return state.state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
 
 
 def state_transition_and_sign_block(spec, state, block):

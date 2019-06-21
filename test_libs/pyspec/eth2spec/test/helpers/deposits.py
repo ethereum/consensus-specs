@@ -58,7 +58,7 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
     """
     Prepare the state for the deposit, and create a deposit for the given validator, depositing the given amount.
     """
-    pre_validator_count = len(state.validator_registry)
+    pre_validator_count = len(state.validators)
     # fill previous deposits with zero-hash
     deposit_data_leaves = [spec.ZERO_HASH] * pre_validator_count
 
@@ -80,6 +80,6 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
         signed,
     )
 
-    state.latest_eth1_data.deposit_root = root
-    state.latest_eth1_data.deposit_count = len(deposit_data_leaves)
+    state.eth1_data.deposit_root = root
+    state.eth1_data.deposit_count = len(deposit_data_leaves)
     return deposit
