@@ -20,6 +20,11 @@ PHASE0_IMPORTS = '''from typing import (
     Tuple,
 )
 
+from dataclasses import (
+    dataclass,
+    field,
+)
+
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
@@ -46,6 +51,11 @@ PHASE1_IMPORTS = '''from typing import (
     Optional,
     Set,
     Tuple,
+)
+
+from dataclasses import (
+    dataclass,
+    field,
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
@@ -223,9 +233,11 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     return functions, custom_types, constants, ssz_objects, inserts
 
 
-def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
-    functions, custom_types, constants, ssz_objects, inserts = get_spec(sourcefile)
-    spec = objects_to_spec(functions, custom_types, constants, ssz_objects, inserts, PHASE0_IMPORTS)
+def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str, outfile: str=None) -> Optional[str]:
+    phase0_spec = get_spec(phase0_sourcefile)
+    fork_choice_spec = get_spec(fork_choice_sourcefile)
+    spec_objects = combine_spec_objects(phase0_spec, fork_choice_spec)
+    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -235,12 +247,14 @@ def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
 def build_phase1_spec(phase0_sourcefile: str,
                       phase1_custody_sourcefile: str,
                       phase1_shard_sourcefile: str,
+                      fork_choice_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
     phase1_custody = get_spec(phase1_custody_sourcefile)
     phase1_shard_data = get_spec(phase1_shard_sourcefile)
+    fork_choice_spec = get_spec(fork_choice_sourcefile)
     spec_objects = phase0_spec
-    for value in [phase1_custody, phase1_shard_data]:
+    for value in [phase1_custody, phase1_shard_data, fork_choice_spec]:
         spec_objects = combine_spec_objects(spec_objects, value)
     spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
@@ -254,13 +268,15 @@ if __name__ == '__main__':
 Build the specs from the md docs.
 If building phase 0:
     1st argument is input spec.md
-    2nd argument is output spec.py
+    2nd argument is input fork_choice.md
+    3rd argument is output spec.py
 
 If building phase 1:
     1st argument is input spec_phase0.md
     2nd argument is input spec_phase1_custody.md
     3rd argument is input spec_phase1_shard_data.md
-    4th argument is output spec.py
+    4th argument is input fork_choice.md
+    5th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -268,14 +284,14 @@ If building phase 1:
 
     args = parser.parse_args()
     if args.phase == 0:
-        if len(args.files) == 2:
+        if len(args.files) == 3:
             build_phase0_spec(*args.files)
         else:
-            print(" Phase 0 requires an output as well as an input file.")
+            print(" Phase 0 requires an output as well as spec and forkchoice files.")
     elif args.phase == 1:
-        if len(args.files) == 4:
+        if len(args.files) == 5:
             build_phase1_spec(*args.files)
         else:
-            print(" Phase 1 requires an output as well as 3 input files (phase0.md and phase1.md, phase1.md)")
+            print(" Phase 1 requires an output as well as 4 input files (phase0.md and phase1.md, phase1.md, fork_choice.md)")
     else:
         print("Invalid phase: {0}".format(args.phase))

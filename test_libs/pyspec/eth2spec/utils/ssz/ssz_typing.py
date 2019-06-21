@@ -1,6 +1,13 @@
+import copy
 from types import GeneratorType
-from typing import List, Iterable, TypeVar, Type, NewType
-from typing import Union
+from typing import (
+    List,
+    Iterable,
+    TypeVar,
+    Type,
+    NewType,
+    Union,
+)
 from typing_inspect import get_origin
 
 # SSZ integers
@@ -144,6 +151,9 @@ class Container(object):
 
     def __hash__(self):
         return hash(self.hash_tree_root())
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     @classmethod
     def get_fields_dict(cls):
@@ -343,6 +353,8 @@ class BytesNMeta(type):
         return _is_bytes_n_instance_of(self, other.__class__)
 
     def __eq__(self, other):
+        if other == ():
+            return False
         return _is_equal_bytes_n_type(self, other)
 
     def __ne__(self, other):
