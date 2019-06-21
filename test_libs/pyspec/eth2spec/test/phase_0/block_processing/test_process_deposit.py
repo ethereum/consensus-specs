@@ -124,7 +124,7 @@ def test_wrong_index(spec, state):
     # mess up eth1_deposit_index
     deposit.index = state.eth1_deposit_index + 1
 
-    sign_deposit_data(spec, state, deposit.data, privkeys[validator_index])
+    sign_deposit_data(spec, deposit.data, privkeys[validator_index], state=state)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
 
@@ -185,6 +185,6 @@ def test_bad_merkle_proof(spec, state):
     # mess up merkle branch
     deposit.proof[-1] = spec.ZERO_HASH
 
-    sign_deposit_data(spec, state, deposit.data, privkeys[validator_index])
+    sign_deposit_data(spec, deposit.data, privkeys[validator_index], state)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
