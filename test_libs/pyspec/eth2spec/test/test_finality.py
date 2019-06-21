@@ -103,12 +103,6 @@ def test_finality_rule_4(spec, state):
         prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
         blocks += new_blocks
 
-        # justification/finalization skipped at GENESIS_EPOCH
-        # if epoch == 0:
-            # check_finality(spec, state, prev_state, False, False, False)
-        # justification/finalization skipped at GENESIS_EPOCH + 1
-        # elif epoch == 1:
-            # check_finality(spec, state, prev_state, False, False, False)
         if epoch == 0:
             check_finality(spec, state, prev_state, True, False, False)
         elif epoch == 1:
