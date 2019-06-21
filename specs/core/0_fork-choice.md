@@ -140,14 +140,14 @@ def on_tick(store: Store, time: int) -> None:
 
 ```python
 def on_block(store: Store, block: BeaconBlock) -> None:
+    # Make a copy of the state to avoid mutability issues
+    pre_state = store.states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Add new block to the store
     store.blocks[signing_root(block)] = block
     # Check block is a descendant of the finalized block
     assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
-    # Check block slot against Unix time
-    pre_state = store.states[block.parent_root].copy()
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
     # Add new state to the store
