@@ -1730,7 +1730,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
-def process_deposit(state: BeaconState, deposit: Deposit, deposit_index: Optional[uint64]) -> None:
+def process_deposit(state: BeaconState, deposit: Deposit, deposit_index: Optional[uint64]=None) -> None:
     """
     Process an Eth1 deposit, registering a validator or increasing its balance.
     """
