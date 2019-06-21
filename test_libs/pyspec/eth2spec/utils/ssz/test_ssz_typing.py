@@ -6,6 +6,14 @@ from .ssz_typing import (
 )
 
 
+def expect_value_error(fn, msg):
+    try:
+        fn()
+        raise AssertionError(msg)
+    except ValueError:
+        pass
+
+
 def test_subclasses():
     for u in [uint, uint8, uint16, uint32, uint64, uint128, uint256]:
         assert issubclass(u, uint)
@@ -55,21 +63,13 @@ def test_basic_value_bounds():
         # this should work
         assert k(v - 1) == v - 1
         # but we do not allow overflows
-        try:
-            k(v)
-            assert False
-        except ValueError:
-            pass
+        expect_value_error(lambda: k(v), "no overflows allowed")
 
     for k, _ in max.items():
         # this should work
         assert k(0) == 0
         # but we do not allow underflows
-        try:
-            k(-1)
-            assert False
-        except ValueError:
-            pass
+        expect_value_error(lambda: k(-1), "no underflows allowed")
 
 
 def test_container():
@@ -213,3 +213,15 @@ def test_bytesn_subclass():
     assert not issubclass(Bytes48, Bytes32)
 
     assert len(Bytes32() + Bytes48()) == 80
+
+
+def test_uint_math():
+    assert uint8(0) + uint8(uint32(16)) == uint8(16)  # allow explict casting to make invalid addition valid
+
+    expect_value_error(lambda: uint8(0) - uint8(1), "no underflows allowed")
+    expect_value_error(lambda: uint8(1) + uint8(255), "no overflows allowed")
+    expect_value_error(lambda: uint8(0) + 256, "no overflows allowed")
+    expect_value_error(lambda: uint8(42) + uint32(123), "no mixed types")
+    expect_value_error(lambda: uint32(42) + uint8(123), "no mixed types")
+
+    assert type(uint32(1234) + 56) == uint32

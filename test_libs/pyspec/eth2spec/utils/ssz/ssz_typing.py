@@ -52,8 +52,14 @@ class uint(BasicValue, metaclass=BasicType):
         if value < 0:
             raise ValueError("unsigned types must not be negative")
         if cls.byte_len and value.bit_length() > (cls.byte_len << 3):
-            raise ValueError("value out of bounds for uint{}".format(cls.byte_len))
+            raise ValueError("value out of bounds for uint{}".format(cls.byte_len * 8))
         return super().__new__(cls, value)
+
+    def __add__(self, other):
+        return self.__class__(super().__add__(coerce_type_maybe(other, self.__class__, strict=True)))
+
+    def __sub__(self, other):
+        return self.__class__(super().__sub__(coerce_type_maybe(other, self.__class__, strict=True)))
 
     @classmethod
     def default(cls):
