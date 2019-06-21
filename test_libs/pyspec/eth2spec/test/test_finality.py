@@ -39,11 +39,13 @@ def next_epoch_with_attestations(spec,
                                  state,
                                  fill_cur_epoch,
                                  fill_prev_epoch):
+    assert state.slot % spec.SLOTS_PER_EPOCH == 0
+
     post_state = deepcopy(state)
     blocks = []
     for _ in range(spec.SLOTS_PER_EPOCH):
         block = build_empty_block_for_next_slot(spec, post_state)
-        if fill_cur_epoch:
+        if fill_cur_epoch and post_state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
             if slot_to_attest >= spec.get_epoch_start_slot(spec.get_current_epoch(post_state)):
                 cur_attestation = get_valid_attestation(spec, post_state, slot_to_attest)
@@ -63,11 +65,13 @@ def next_epoch_with_attestations(spec,
 @with_all_phases
 @never_bls
 @spec_state_test
-def test_finality_rule_4(spec, state):
+def test_finality_no_updates_at_genesis(spec, state):
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+
     yield 'pre', state
 
     blocks = []
-    for epoch in range(4):
+    for epoch in range(2):
         prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
         blocks += new_blocks
 
@@ -77,9 +81,37 @@ def test_finality_rule_4(spec, state):
         # justification/finalization skipped at GENESIS_EPOCH + 1
         elif epoch == 1:
             check_finality(spec, state, prev_state, False, False, False)
-        elif epoch == 2:
+
+    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'post', state
+
+
+@with_all_phases
+@never_bls
+@spec_state_test
+def test_finality_rule_4(spec, state):
+    # get past first two epochs that finality does not run on
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
+
+    yield 'pre', state
+
+    blocks = []
+    for epoch in range(2):
+        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+        blocks += new_blocks
+
+        # justification/finalization skipped at GENESIS_EPOCH
+        # if epoch == 0:
+            # check_finality(spec, state, prev_state, False, False, False)
+        # justification/finalization skipped at GENESIS_EPOCH + 1
+        # elif epoch == 1:
+            # check_finality(spec, state, prev_state, False, False, False)
+        if epoch == 0:
             check_finality(spec, state, prev_state, True, False, False)
-        elif epoch >= 3:
+        elif epoch == 1:
             # rule 4 of finality
             check_finality(spec, state, prev_state, True, True, True)
             assert state.finalized_epoch == prev_state.current_justified_epoch
