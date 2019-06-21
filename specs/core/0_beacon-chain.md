@@ -194,6 +194,7 @@ These configurations are updated for releases, but may be out of sync during `de
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
+| `GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 
 * For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -1134,10 +1135,11 @@ Before genesis has been triggered and whenever the deposit contract emits a `Dep
 * `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
 
-When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
+When `is_genesis_trigger(deposits, timestamp, deposit_root) is True` for the first time let:
 
 * `genesis_deposits = deposits`
 * `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
+* `deposit_root` is the tree root of the given `deposits`
 * `genesis_eth1_data` be the object of type `Eth1Data` where:
     * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
@@ -1146,20 +1148,19 @@ When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
 *Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
 
 ```python
-def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
+def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64, deposit_root: Hash) -> bool:
     # Process deposits
     state = BeaconState()
-    for deposit in deposits:
-        process_deposit(state, deposit)
+    for index, deposit in enumerate(deposits):
+        process_deposit(state, deposit, deposit_index=index, deposit_root=deposit_root)
 
     # Count active validators at genesis
     active_validator_count = 0
-    for validator in state.validator_registry:
+    for validator in state.validators:
         if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             active_validator_count += 1
 
     # Check effective balance to trigger genesis
-    GENESIS_ACTIVE_VALIDATOR_COUNT = 2**16
     return active_validator_count == GENESIS_ACTIVE_VALIDATOR_COUNT
 ```
 
@@ -1730,19 +1731,21 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
-def process_deposit(state: BeaconState, deposit: Deposit, deposit_index: Optional[uint64]=None) -> None:
+def process_deposit(state: BeaconState, deposit: Deposit, deposit_index: Optional[uint64]=None, deposit_root: Optional[Hash]=None) -> None:
     """
     Process an Eth1 deposit, registering a validator or increasing its balance.
     """
     if deposit_index is None:
         deposit_index = state.eth1_deposit_index
+    if deposit_root is None:
+        deposit_root = state.eth1_data.deposit_root
     # Verify the Merkle branch
     assert verify_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
         index=deposit_index,
-        root=state.eth1_data.deposit_root,
+        root=deposit_root,
     )
 
     # Deposits must be processed in order

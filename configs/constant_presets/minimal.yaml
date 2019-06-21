@@ -16,6 +16,8 @@ MIN_PER_EPOCH_CHURN_LIMIT: 4
 CHURN_LIMIT_QUOTIENT: 65536
 # [customized] Faster, but unsecure.
 SHUFFLE_ROUND_COUNT: 10
+# [customized]
+GENESIS_ACTIVE_VALIDATOR_COUNT: 100
 
 
 # Deposit contract
