@@ -33,7 +33,7 @@ def test_is_genesis_trigger_true(spec, state):
 @with_phases(['phase0'])
 @spec_state_test
 def test_genesis(spec, state):
-    deposit_count = 2
+    deposit_count = spec.GENESIS_ACTIVE_VALIDATOR_COUNT
     genesis_deposits, deposit_root = prepare_genesis_deposits(spec, deposit_count)
     genesis_time = 1234
 
