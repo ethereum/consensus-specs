@@ -4,7 +4,6 @@ from eth2spec.utils.ssz.ssz_impl import signing_root
 from eth2spec.utils.bls import bls_sign
 
 from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block
-# from eth2spec.test.helpers.transfers import get_valid_transfer
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
@@ -386,7 +385,7 @@ def test_historical_batch(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_eth1_data_votes_success(spec, state):
+def test_eth1_data_votes_consensus(spec, state):
     # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
     if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
         return
@@ -424,3 +423,33 @@ def test_eth1_data_votes_success(spec, state):
     assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
     assert len(state.eth1_data_votes) == 1
     assert state.eth1_data_votes[0].block_hash == c
+
+
+@with_all_phases
+@spec_state_test
+def test_eth1_data_votes_no_consensus(spec, state):
+    # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
+    if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
+        return
+
+    offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    state_transition_and_sign_block(spec, state, offset_block)
+    yield 'pre', state
+
+    a = b'\xaa' * 32
+    b = b'\xbb' * 32
+
+    blocks = []
+
+    for i in range(0, spec.SLOTS_PER_ETH1_VOTING_PERIOD):
+        block = build_empty_block_for_next_slot(spec, state)
+        # wait for precisely 50% for A, then start voting B for other 50%
+        block.body.eth1_data.block_hash = b if i * 2 >= spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        state_transition_and_sign_block(spec, state, block)
+        blocks.append(block)
+
+    assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
+    assert state.eth1_data.block_hash == b'\x00' * 32
+
+    yield 'blocks', blocks
+    yield 'post', state
