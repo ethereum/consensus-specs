@@ -47,10 +47,11 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 
 *Notes*:
 
-1) **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds.
+1) **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
 2) **Honest clocks**: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
 3) **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/validator/0_beacon-chain-validator.md) should ensure that `state.latest_eth1_data` of the canonical Ethereum 2.0 chain remains consistent with the canonical Ethereum 1.0 chain. If not, emergency manual intervention will be required.
 4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
+5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
 
 ### Helpers
 
@@ -95,7 +96,13 @@ class Store(object):
 def get_genesis_store(genesis_state: BeaconState) -> Store:
     genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
     root = signing_root(genesis_block)
-    return Store(blocks={root: genesis_block}, states={root: genesis_state}, justified_root=root, finalized_root=root)
+    return Store(
+        blocks={root: genesis_block},
+        states={root: genesis_state},
+        time=genesis_state.genesis_time,
+        justified_root=root,
+        finalized_root=root,
+    )
 ```
 
 #### `get_ancestor`
@@ -150,16 +157,17 @@ def on_tick(store: Store, time: int) -> None:
 
 ```python
 def on_block(store: Store, block: BeaconBlock) -> None:
+    # Make a copy of the state to avoid mutability issues
+    parent_block = store.blocks[block.parent_root]
+    pre_state = store.states[RootSlot(signing_root(parent_block), parent_block.slot)].copy()
+    # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
+    assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Add new block to the store
     store.blocks[signing_root(block)] = block
     # Check block is a descendant of the finalized block
     assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_root].slot) == store.finalized_root
     # Check that block is later than the finalized epoch slot
     assert blocks.slot > get_epoch_start_slot(store.finalized_epoch)
-    # Check block slot against Unix time
-    parent_block = store.blocks[block.parent_root]
-    pre_state = deepcopy(store.states[RootSlot(signing_root(parent_block), parent_block.slot)])
-    assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
     # Add new state for this block to the store

@@ -1,3 +1,4 @@
+import copy
 from types import GeneratorType
 from typing import (
     List,
@@ -150,6 +151,9 @@ class Container(object):
 
     def __hash__(self):
         return hash(self.hash_tree_root())
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     @classmethod
     def get_fields_dict(cls):
