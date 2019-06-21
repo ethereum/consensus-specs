@@ -48,11 +48,11 @@ install_test:
 
 test: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate;	export PYTHONPATH="./"; \
-	python -m pytest --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
+	python -m pytest -n 4 --cov=eth2spec.phase0.spec --cov=eth2spec.phase1.spec --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
 
 citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; \
-	python -m pytest --junitxml=test-reports/eth2spec/test_results.xml eth2spec
+	python -m pytest -n 4 --junitxml=test-reports/eth2spec/test_results.xml eth2spec
 
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
