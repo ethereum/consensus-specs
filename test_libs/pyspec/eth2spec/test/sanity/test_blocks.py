@@ -373,6 +373,7 @@ def test_historical_batch(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state, signed=True)
+    sign_block(spec, state, block)
     state_transition_and_sign_block(spec, state, block)
 
     yield 'blocks', [block]
@@ -391,6 +392,7 @@ def test_eth1_data_votes_consensus(spec, state):
         return
 
     offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    sign_block(spec, state, offset_block)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -404,6 +406,7 @@ def test_eth1_data_votes_consensus(spec, state):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for over 50% for A, then start voting B
         block.body.eth1_data.block_hash = b if i * 2 > spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        sign_block(spec, state, block)
         state_transition_and_sign_block(spec, state, block)
         blocks.append(block)
 
@@ -413,6 +416,7 @@ def test_eth1_data_votes_consensus(spec, state):
     # transition to next eth1 voting period
     block = build_empty_block_for_next_slot(spec, state)
     block.body.eth1_data.block_hash = c
+    sign_block(spec, state, block)
     state_transition_and_sign_block(spec, state, block)
     blocks.append(block)
 
@@ -433,6 +437,7 @@ def test_eth1_data_votes_no_consensus(spec, state):
         return
 
     offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    sign_block(spec, state, offset_block)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -445,6 +450,7 @@ def test_eth1_data_votes_no_consensus(spec, state):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for precisely 50% for A, then start voting B for other 50%
         block.body.eth1_data.block_hash = b if i * 2 >= spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        sign_block(spec, state, block)
         state_transition_and_sign_block(spec, state, block)
         blocks.append(block)
 
