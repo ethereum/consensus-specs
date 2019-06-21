@@ -52,7 +52,7 @@ test: $(PY_SPEC_ALL_TARGETS)
 
 citest: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); mkdir -p test-reports/eth2spec; . venv/bin/activate; \
-	python -m pytest -n auto --junitxml=test-reports/eth2spec/test_results.xml eth2spec
+	python -m pytest -n 8 --junitxml=test-reports/eth2spec/test_results.xml eth2spec
 
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
