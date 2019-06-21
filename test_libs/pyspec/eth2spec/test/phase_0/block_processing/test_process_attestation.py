@@ -150,6 +150,20 @@ def test_wrong_shard(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_invalid_shard(spec, state):
+    attestation = get_valid_attestation(spec, state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    # off by one (with respect to valid range) on purpose
+    attestation.data.crosslink.shard = spec.SHARD_COUNT
+
+    sign_attestation(spec, state, attestation)
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
 def test_new_source_epoch(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
