@@ -1176,8 +1176,12 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
     )
 
     # Process genesis deposits
-    for deposit in deposits:
-        process_deposit(state, deposit)
+    for deposit_index, deposit in enumerate(deposits):
+        process_deposit(
+            state,
+            deposit,
+            deposit_index=deposit_index,
+        )
 
     # Process genesis activations
     for validator in state.validators:
@@ -1726,16 +1730,18 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
-def process_deposit(state: BeaconState, deposit: Deposit) -> None:
+def process_deposit(state: BeaconState, deposit: Deposit, deposit_index: Optional[uint64]) -> None:
     """
     Process an Eth1 deposit, registering a validator or increasing its balance.
     """
+    if deposit_index is None:
+        deposit_index = state.eth1_deposit_index
     # Verify the Merkle branch
     assert verify_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
-        index=state.eth1_deposit_index,
+        index=deposit_index,
         root=state.eth1_data.deposit_root,
     )
 
