@@ -49,6 +49,11 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
             assert len(state.balances) == pre_validator_count + 1
         assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
 
+        effective = min(spec.MAX_EFFECTIVE_BALANCE,
+                        pre_balance + deposit.data.amount)
+        effective -= effective % spec.EFFECTIVE_BALANCE_INCREMENT
+        assert state.validators[validator_index].effective_balance == effective
+
     assert state.eth1_deposit_index == state.eth1_data.deposit_count
 
 
@@ -57,7 +62,20 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
 def test_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    #  effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
+    amount = spec.MAX_EFFECTIVE_BALANCE - 1
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
+def test_new_deposit_maxed_out(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    # just 1 over the limit, effective balance should be set MAX_EFFECTIVE_BALANCE during processing
+    amount = spec.MAX_EFFECTIVE_BALANCE + 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
