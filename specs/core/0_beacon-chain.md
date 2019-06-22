@@ -524,11 +524,9 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Digests of the active registry, for light clients
-    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
+    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active registry digests for light clients
     # Slashings
-    # Sums of the effective balances of slashed validators
-    slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]
+    slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of slashed effective balances
     # Attestations
     previous_epoch_attestations: List[PendingAttestation]
     current_epoch_attestations: List[PendingAttestation]
