@@ -290,7 +290,7 @@ The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containe
 
 *Note*: The definitions are ordered topologically to facilitate execution of the spec.
 
-*Note*: Fields misisng in container instantiations default to their zero value.
+*Note*: Fields missing in container instantiations default to their zero value.
 
 ### Misc dependencies
 
