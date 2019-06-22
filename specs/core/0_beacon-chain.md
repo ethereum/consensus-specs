@@ -1506,19 +1506,16 @@ def process_registry_updates(state: BeaconState) -> None:
 
 ```python
 def process_slashings(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
+    epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
 
     # Compute slashed balances in the current epoch
-    total_at_start = state.slashed_balances[(current_epoch + 1) % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
-    total_at_end = state.slashed_balances[current_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
+    total_at_start = state.slashed_balances[(epoch + 1) % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
+    total_at_end = state.slashed_balances[epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
     total_penalties = total_at_end - total_at_start
 
     for index, validator in enumerate(state.validators):
-        if (
-            validator.slashed and
-            current_epoch == validator.withdrawable_epoch - EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2
-        ):
+        if validator.slashed and epoch + EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2 == validator.withdrawable_epoch:
             penalty = max(
                 validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
                 validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
