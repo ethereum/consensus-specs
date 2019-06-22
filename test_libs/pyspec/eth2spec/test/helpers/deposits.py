@@ -60,7 +60,7 @@ def build_deposit(spec,
     return deposit, root, deposit_data_leaves
 
 
-def prepare_genesis_deposits(spec, genesis_validator_count, signed=False):
+def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False):
     genesis_deposit_data_list = []
     deposit_data_leaves = []
     for validator_index in range(genesis_validator_count):
@@ -71,7 +71,7 @@ def prepare_genesis_deposits(spec, genesis_validator_count, signed=False):
         deposit_data = spec.DepositData(
             pubkey=pubkey,
             withdrawal_credentials=withdrawal_credentials,
-            amount=spec.MAX_EFFECTIVE_BALANCE,
+            amount=amount,
         )
         if signed:
             sign_deposit_data(spec, deposit_data, privkey)  # state=None
@@ -84,7 +84,7 @@ def prepare_genesis_deposits(spec, genesis_validator_count, signed=False):
 
     genesis_deposits = (
         spec.Deposit(proof=list(get_merkle_proof(tree, item_index=index)), data=deposit_data)
-        for index, deposit_data in enumerate(genesis_deposit_data_list) 
+        for index, deposit_data in enumerate(genesis_deposit_data_list)
     )
 
     return genesis_deposits, root
