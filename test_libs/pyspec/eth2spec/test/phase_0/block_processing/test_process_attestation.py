@@ -164,6 +164,33 @@ def test_invalid_shard(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_old_target_epoch(spec, state):
+    assert spec.MIN_ATTESTATION_INCLUSION_DELAY < spec.SLOTS_PER_EPOCH * 2
+
+    attestation = get_valid_attestation(spec, state, signed=True)
+
+    state.slot = spec.SLOTS_PER_EPOCH * 2  # target epoch will be too old to handle
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_future_target_epoch(spec, state):
+    assert spec.MIN_ATTESTATION_INCLUSION_DELAY < spec.SLOTS_PER_EPOCH * 2
+
+    attestation = get_valid_attestation(spec, state)
+
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.data.target_epoch = spec.get_current_epoch(state) + 1  # target epoch will be too new to handle
+    sign_attestation(spec, state, attestation)
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
 def test_new_source_epoch(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
