@@ -1178,11 +1178,7 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
 
     # Process genesis deposits
     for deposit_index, deposit in enumerate(deposits):
-        process_deposit(
-            state,
-            deposit,
-            deposit_index=deposit_index,
-        )
+        process_deposit(state, deposit, deposit_index=deposit_index)
 
     # Process genesis activations
     for validator in state.validators:
