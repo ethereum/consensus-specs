@@ -201,7 +201,7 @@ These configurations are updated for releases, but may be out of sync during `de
 ### Gwei values
 
 | Name | Value |
-| - | - | :-: |
+| - | - |
 | `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
 | `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
 | `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
