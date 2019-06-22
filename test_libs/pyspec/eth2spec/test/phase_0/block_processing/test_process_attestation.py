@@ -38,7 +38,7 @@ def run_attestation_processing(spec, state, attestation, valid=True):
     spec.process_attestation(state, attestation)
 
     # Make sure the attestation has been processed
-    if attestation.data.target_checkpoint.epoch == spec.get_current_epoch(state):
+    if attestation.data.target.epoch == spec.get_current_epoch(state):
         assert len(state.current_epoch_attestations) == current_epoch_count + 1
     else:
         assert len(state.previous_epoch_attestations) == previous_epoch_count + 1
@@ -125,10 +125,10 @@ def test_old_source_epoch(spec, state):
     attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
 
     # test logic sanity check: make sure the attestation is pointing to oldest known source epoch
-    assert attestation.data.source_checkpoint.epoch == state.previous_justified_checkpoint.epoch
+    assert attestation.data.source.epoch == state.previous_justified_checkpoint.epoch
 
     # Now go beyond that, it will be invalid
-    attestation.data.source_checkpoint.epoch -= 1
+    attestation.data.source.epoch -= 1
 
     sign_attestation(spec, state, attestation)
 
@@ -154,7 +154,7 @@ def test_new_source_epoch(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.source_checkpoint.epoch += 1
+    attestation.data.source.epoch += 1
 
     sign_attestation(spec, state, attestation)
 
@@ -167,7 +167,7 @@ def test_source_root_is_target_root(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.source_checkpoint.root = attestation.data.target_checkpoint.root
+    attestation.data.source.root = attestation.data.target.root
 
     sign_attestation(spec, state, attestation)
 
@@ -188,10 +188,10 @@ def test_invalid_current_source_root(spec, state):
 
     # Test logic sanity checks:
     assert state.current_justified_checkpoint.root != state.previous_justified_checkpoint.root
-    assert attestation.data.source_checkpoint.root == state.previous_justified_checkpoint.root
+    assert attestation.data.source.root == state.previous_justified_checkpoint.root
 
     # Make attestation source root invalid: should be previous justified, not current one
-    attestation.data.source_checkpoint.root = state.current_justified_checkpoint.root
+    attestation.data.source.root = state.current_justified_checkpoint.root
 
     sign_attestation(spec, state, attestation)
 
@@ -204,7 +204,7 @@ def test_bad_source_root(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.source_checkpoint.root = b'\x42' * 32
+    attestation.data.source.root = b'\x42' * 32
 
     sign_attestation(spec, state, attestation)
 

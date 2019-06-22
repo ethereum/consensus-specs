@@ -96,7 +96,7 @@ def test_single_crosslink_update_from_previous_epoch(spec, state):
     # ensure rewarded
     for index in spec.get_crosslink_committee(
             state,
-            attestation.data.target_checkpoint.epoch,
+            attestation.data.target.epoch,
             attestation.data.crosslink.shard):
         assert crosslink_deltas[0][index] > 0
         assert crosslink_deltas[1][index] == 0
@@ -148,7 +148,7 @@ def test_double_late_crosslink(spec, state):
     # ensure no reward, only penalties for the failed crosslink
     for index in spec.get_crosslink_committee(
             state,
-            attestation_2.data.target_checkpoint.epoch,
+            attestation_2.data.target.epoch,
             attestation_2.data.crosslink.shard):
         assert crosslink_deltas[0][index] == 0
         assert crosslink_deltas[1][index] > 0

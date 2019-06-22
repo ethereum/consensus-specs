@@ -346,8 +346,8 @@ class AttestationData(Container):
     # LMD GHOST vote
     beacon_block_root: Hash
     # FFG vote
-    source_checkpoint: Checkpoint
-    target_checkpoint: Checkpoint
+    source: Checkpoint
+    target: Checkpoint
     # Crosslink vote
     crosslink: Crosslink
 ```
@@ -719,10 +719,9 @@ def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 
 ```python
 def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot:
-    target_epoch = data.target_checkpoint.epoch
-    committee_count = get_epoch_committee_count(state, target_epoch)
-    offset = (data.crosslink.shard + SHARD_COUNT - get_epoch_start_shard(state, target_epoch)) % SHARD_COUNT
-    return Slot(get_epoch_start_slot(target_epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
+    committee_count = get_epoch_committee_count(state, data.target.epoch)
+    offset = (data.crosslink.shard + SHARD_COUNT - get_epoch_start_shard(state, data.target.epoch)) % SHARD_COUNT
+    return Slot(get_epoch_start_slot(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
 ```
 
 ### `get_block_root_at_slot`
@@ -886,7 +885,7 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the sorted attesting indices corresponding to ``data`` and ``bitfield``.
     """
-    committee = get_crosslink_committee(state, data.target_checkpoint.epoch, data.crosslink.shard)
+    committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
     assert verify_bitfield(bitfield, len(committee))
     return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
 ```
@@ -1006,7 +1005,7 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
         signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target_checkpoint.epoch),
+        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
     )
 ```
 
@@ -1019,12 +1018,9 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
     """
     return (
         # Double vote
-        (data_1 != data_2 and data_1.target_checkpoint.epoch == data_2.target_checkpoint.epoch) or
+        (data_1 != data_2 and data_1.target.epoch == data_2.target.epoch) or
         # Surround vote
-        (
-            data_1.source_checkpoint.epoch < data_2.source_checkpoint.epoch and
-            data_2.target_checkpoint.epoch < data_1.target_checkpoint.epoch
-        )
+        (data_1.source.epoch < data_2.source.epoch and data_2.target.epoch < data_1.target.epoch)
     )
 ```
 
@@ -1282,7 +1278,7 @@ def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> List[P
 def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
     return [
         a for a in get_matching_source_attestations(state, epoch)
-        if a.data.target_checkpoint.root == get_block_root(state, epoch)
+        if a.data.target.root == get_block_root(state, epoch)
     ]
 ```
 
@@ -1344,13 +1340,13 @@ def process_justification_and_finalization(state: BeaconState) -> None:
         state, get_matching_target_attestations(state, previous_epoch)
     )
     if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch, root=get_block_root(state, previous_epoch))
+        state.current_justified_checkpoint = Checkpoint(previous_epoch, get_block_root(state, previous_epoch))
         state.justification_bitfield |= (1 << 1)
     current_epoch_matching_target_balance = get_attesting_balance(
         state, get_matching_target_attestations(state, current_epoch)
     )
     if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch, root=get_block_root(state, current_epoch))
+        state.current_justified_checkpoint = Checkpoint(current_epoch, get_block_root(state, current_epoch))
         state.justification_bitfield |= (1 << 0)
 
     # Process finalizations
@@ -1692,10 +1688,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     Process ``Attestation`` operation.
     """
     data = attestation.data
-    target_epoch = data.target_checkpoint.epoch
-
     assert data.crosslink.shard < SHARD_COUNT
-    assert target_epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
 
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
@@ -1707,7 +1701,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         proposer_index=get_beacon_proposer_index(state),
     )
 
-    if target_epoch == get_current_epoch(state):
+    if data.target.epoch == get_current_epoch(state):
         ffg_source = state.current_justified_checkpoint
         parent_crosslink = state.current_crosslinks[data.crosslink.shard]
         state.current_epoch_attestations.append(pending_attestation)
@@ -1717,9 +1711,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.previous_epoch_attestations.append(pending_attestation)
 
     # Check FFG source, crosslink data, and signature
-    assert ffg_source == data.source_checkpoint
+    assert ffg_source == data.source
     assert data.crosslink.start_epoch == parent_crosslink.end_epoch
-    assert data.crosslink.end_epoch == min(target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
+    assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))

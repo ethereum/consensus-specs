@@ -74,8 +74,8 @@ def test_success_surround(spec, state):
     attestation_2 = attester_slashing.attestation_2
 
     # set attestion1 to surround attestation 2
-    attestation_1.data.source_checkpoint.epoch = attestation_2.data.source_checkpoint.epoch - 1
-    attestation_1.data.target_checkpoint.epoch = attestation_2.data.target_checkpoint.epoch + 1
+    attestation_1.data.source.epoch = attestation_2.data.source.epoch - 1
+    attestation_1.data.target.epoch = attestation_2.data.target.epoch + 1
 
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
@@ -122,7 +122,7 @@ def test_same_data(spec, state):
 def test_no_double_or_surround(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
-    attester_slashing.attestation_1.data.target_checkpoint.epoch += 1
+    attester_slashing.attestation_1.data.target.epoch += 1
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)

@@ -37,8 +37,8 @@ def build_attestation_data(spec, state, slot, shard):
 
     return spec.AttestationData(
         beacon_block_root=block_root,
-        source_checkpoint=spec.Checkpoint(epoch=source_epoch, root=source_root),
-        target_checkpoint=spec.Checkpoint(epoch=spec.slot_to_epoch(slot), root=epoch_boundary_root),
+        source=spec.Checkpoint(epoch=source_epoch, root=source_root),
+        target=spec.Checkpoint(epoch=spec.slot_to_epoch(slot), root=epoch_boundary_root),
         crosslink=spec.Crosslink(
             shard=shard,
             start_epoch=parent_crosslink.end_epoch,
@@ -62,7 +62,7 @@ def get_valid_attestation(spec, state, slot=None, signed=False):
 
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation_data.target_checkpoint.epoch,
+        attestation_data.target.epoch,
         attestation_data.crosslink.shard,
     )
 
@@ -124,7 +124,7 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
         domain=spec.get_domain(
             state=state,
             domain_type=spec.DOMAIN_ATTESTATION,
-            message_epoch=attestation_data.target_checkpoint.epoch,
+            message_epoch=attestation_data.target.epoch,
         )
     )
 
@@ -132,7 +132,7 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
 def fill_aggregate_attestation(spec, state, attestation):
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation.data.target_checkpoint.epoch,
+        attestation.data.target.epoch,
         attestation.data.crosslink.shard,
     )
     for i in range(len(crosslink_committee)):
