@@ -1,5 +1,3 @@
-from typing import List
-
 from eth2spec.utils.ssz.ssz_impl import signing_root, hash_tree_root
 
 from eth2spec.test.context import with_all_phases, with_state, bls_switch
