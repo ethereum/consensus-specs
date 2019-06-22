@@ -180,9 +180,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Configuration
 
-*Note*: The default mainnet configuration values are included here for spec-design purposes.
-The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory.
-These configurations are updated for releases, but may be out of sync during `dev` changes.
+*Note*: The default mainnet configuration values are included here for spec-design purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory. These configurations are updated for releases and may be out of sync during `dev` changes.
 
 ### Misc
 
@@ -290,9 +288,9 @@ We define the following Python custom types for type hinting and readability:
 
 The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containers.
 
-*Notes*:
-- The definitions are ordered topologically to facilitate execution of the spec.
-- When constructed in the spec with missing fields, these fields default to their zero-value.
+*Note*: The definitions are ordered topologically to facilitate execution of the spec.
+
+*Note*: Fields misisng in container instantiations default to their zero value.
 
 ### Misc dependencies
 
@@ -1587,7 +1585,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        state_root=ZERO_HASH,  # overwritten in next process_slot
+        state_root=ZERO_HASH,  # Overwritten in next `process_slot` call
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
