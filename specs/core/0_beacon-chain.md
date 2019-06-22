@@ -1553,7 +1553,9 @@ def process_final_updates(state: BeaconState) -> None:
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
     state.active_index_roots[index_root_position] = hash_tree_root(
-        get_active_validator_indices(state, Epoch(next_epoch + ACTIVATION_EXIT_DELAY))
+        List[ValidatorIndex, VALIDATOR_REGISTRY_SIZE](
+            get_active_validator_indices(state, Epoch(next_epoch + ACTIVATION_EXIT_DELAY))
+        )
     )
     # Set total slashed balances
     state.slashed_balances[next_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR] = (

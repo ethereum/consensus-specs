@@ -269,7 +269,7 @@ def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(
         state,
         spec.get_current_epoch(state)
-    ).last()
+    )[-1]
 
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -315,7 +315,7 @@ def test_voluntary_exit(spec, state):
     # overwrite default 0 to test
     # spec.MAX_TRANSFERS = 1
 
-    # sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    # sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     # amount = get_balance(state, sender_index)
 
     # transfer = get_valid_transfer(spec, state, state.slot + 1, sender_index, amount, signed=True)
@@ -347,7 +347,7 @@ def test_voluntary_exit(spec, state):
 @spec_state_test
 def test_balance_driven_status_transitions(spec, state):
     current_epoch = spec.get_current_epoch(state)
-    validator_index = spec.get_active_validator_indices(state, current_epoch).last()
+    validator_index = spec.get_active_validator_indices(state, current_epoch)[-1]
 
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 

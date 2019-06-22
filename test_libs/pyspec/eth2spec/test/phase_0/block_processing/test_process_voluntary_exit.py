@@ -93,7 +93,7 @@ def test_success_exit_queue(spec, state):
             continue
 
     # exit an additional validator
-    validator_index = spec.get_active_validator_indices(state, current_epoch).last()
+    validator_index = spec.get_active_validator_indices(state, current_epoch)[-1]
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
     voluntary_exit = build_voluntary_exit(
         spec,

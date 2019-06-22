@@ -9,7 +9,7 @@ def get_valid_transfer(spec, state, slot=None, sender_index=None, amount=None, f
         slot = state.slot
     current_epoch = spec.get_current_epoch(state)
     if sender_index is None:
-        sender_index = spec.get_active_validator_indices(state, current_epoch).last()
+        sender_index = spec.get_active_validator_indices(state, current_epoch)[-1]
     recipient_index = spec.get_active_validator_indices(state, current_epoch)[0]
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]

@@ -63,7 +63,7 @@ def test_success_withdrawable(spec, state):
 @with_all_phases
 @spec_state_test
 def test_success_active_above_max_effective(spec, state):
-    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + 1
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1, fee=0, signed=True)
 
@@ -73,7 +73,7 @@ def test_success_active_above_max_effective(spec, state):
 @with_all_phases
 @spec_state_test
 def test_success_active_above_max_effective_fee(spec, state):
-    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + 1
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=0, fee=1, signed=True)
 
@@ -94,7 +94,7 @@ def test_invalid_signature(spec, state):
 @with_all_phases
 @spec_state_test
 def test_active_but_transfer_past_effective_balance(spec, state):
-    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     amount = spec.MAX_EFFECTIVE_BALANCE // 32
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=amount, fee=0, signed=True)
@@ -115,7 +115,7 @@ def test_incorrect_slot(spec, state):
 @with_all_phases
 @spec_state_test
 def test_insufficient_balance_for_fee(spec, state):
-    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=0, fee=1, signed=True)
 
@@ -128,7 +128,7 @@ def test_insufficient_balance_for_fee(spec, state):
 @with_all_phases
 @spec_state_test
 def test_insufficient_balance(spec, state):
-    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1, fee=0, signed=True)
 
@@ -141,7 +141,7 @@ def test_insufficient_balance(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_dust_sender(spec, state):
-    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     balance = state.balances[sender_index]
     transfer = get_valid_transfer(
         spec,
@@ -161,7 +161,7 @@ def test_no_dust_sender(spec, state):
 @with_all_phases
 @spec_state_test
 def test_no_dust_recipient(spec, state):
-    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).last()
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + 1
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1, fee=0, signed=True)
     state.balances[transfer.recipient] = 0
