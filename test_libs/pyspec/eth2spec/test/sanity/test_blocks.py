@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing import List
 
 from eth2spec.utils.ssz.ssz_impl import signing_root
 from eth2spec.utils.bls import bls_sign
