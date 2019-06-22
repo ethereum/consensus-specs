@@ -180,10 +180,10 @@ def get_persistent_committee(state: BeaconState,
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
-    return tuple(sorted(list(set(
+    return sorted(list(set(
         [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)] +
         [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
-    ))))
+    )))
 ```
 
 ### `get_shard_proposer_index`
