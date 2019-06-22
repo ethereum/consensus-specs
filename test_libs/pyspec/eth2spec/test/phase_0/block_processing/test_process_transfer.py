@@ -1,7 +1,7 @@
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.helpers.block import apply_empty_block
-from eth2spec.test.helpers.transfers import get_valid_transfer
+from eth2spec.test.helpers.transfers import get_valid_transfer, sign_transfer
 
 
 def run_transfer_processing(spec, state, transfer, valid=True):
@@ -13,11 +13,6 @@ def run_transfer_processing(spec, state, transfer, valid=True):
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    proposer_index = spec.get_beacon_proposer_index(state)
-    pre_transfer_sender_balance = state.balances[transfer.sender]
-    pre_transfer_recipient_balance = state.balances[transfer.recipient]
-    pre_transfer_proposer_balance = state.balances[proposer_index]
-
     yield 'pre', state
     yield 'transfer', transfer
 
@@ -25,6 +20,11 @@ def run_transfer_processing(spec, state, transfer, valid=True):
         expect_assertion_error(lambda: spec.process_transfer(state, transfer))
         yield 'post', None
         return
+
+    proposer_index = spec.get_beacon_proposer_index(state)
+    pre_transfer_sender_balance = state.balances[transfer.sender]
+    pre_transfer_recipient_balance = state.balances[transfer.recipient]
+    pre_transfer_proposer_balance = state.balances[proposer_index]
 
     spec.process_transfer(state, transfer)
     yield 'post', state
@@ -302,6 +302,28 @@ def test_no_dust_recipient(spec, state):
 
     # un-activate so validator can transfer
     state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_non_existent_sender(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1, fee=0)
+    transfer.sender = len(state.validators)
+    sign_transfer(spec, state, transfer, 42)  # mostly valid signature, but sender won't exist, use bogus key.
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_non_existent_recipient(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE + 1
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  recipient_index=len(state.validators), amount=1, fee=0, signed=True)
 
     yield from run_transfer_processing(spec, state, transfer, False)
 
