@@ -12,8 +12,7 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any, Callable, Iterable, Dict, Set, Tuple, NewType,
-    List as TypingList,
+    Any, Callable, Iterable, Dict, Set, Sequence, Tuple,
 )
 
 from dataclasses import (
@@ -38,7 +37,7 @@ from eth2spec.utils.bls import (
 from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Callable, Dict, Optional, Set, Tuple, Iterable, NewType,
+    Any, Callable, Dict, Iterable, Optional, Set, Sequence, Tuple,
     List as TypingList
 )
 
@@ -79,13 +78,13 @@ def hash(x: bytes) -> Hash:
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache: Dict[Tuple[Hash, Hash, int, int], Tuple[ValidatorIndex, ...]] = {}
+committee_cache: Dict[Tuple[Hash, Hash, int, int], Sequence[ValidatorIndex]] = {}
 
 
-def compute_committee(indices: Tuple[ValidatorIndex, ...],  # type: ignore
+def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
                       seed: Hash,
                       index: int,
-                      count: int) -> Tuple[ValidatorIndex, ...]:
+                      count: int) -> Sequence[ValidatorIndex]:
     param_hash = (hash(b''.join(index.to_bytes(length=4, byteorder='little') for index in indices)), seed, index, count)
 
     if param_hash not in committee_cache:
@@ -154,7 +153,6 @@ def objects_to_spec(functions: Dict[str, str],
     spec = (
         imports
         + '\n\n' + new_type_definitions
-        + '\n\n' + "Deltas = NewType('Deltas', TypingList[Gwei])"
         + '\n\n' + constants_spec
         + '\n\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec
