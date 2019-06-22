@@ -161,6 +161,8 @@ def test_list():
     assert issubclass(v.type(), Elements)
     assert isinstance(v.type(), ElementsType)
 
+    assert len(typ([i for i in range(10)])) == 10  # cast py list to SSZ list
+
     foo = List[uint32, 128](0 for i in range(128))
     foo[0] = 123
     foo[1] = 654

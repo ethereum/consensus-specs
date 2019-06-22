@@ -296,7 +296,7 @@ class BaseList(list, Elements):
     @classmethod
     def extract_args(cls, *args):
         x = list(args)
-        if len(x) == 1 and isinstance(x[0], GeneratorType):
+        if len(x) == 1 and isinstance(x[0], (GeneratorType, list, tuple)):
             x = list(x[0])
         x = [coerce_type_maybe(v, cls.elem_type) for v in x]
         return x
