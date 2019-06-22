@@ -8,8 +8,8 @@ def encode(value: SSZValue, include_hash_tree_roots=False):
     if isinstance(value, uint):
         # Larger uints are boxed and the class declares their byte length
         if value.type().byte_len > 8:
-            return str(value)
-        return value
+            return str(int(value))
+        return int(value)
     elif isinstance(value, Bit):
         return value == 1
     elif isinstance(value, list):  # normal python lists, ssz-List, Vector

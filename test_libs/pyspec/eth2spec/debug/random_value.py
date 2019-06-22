@@ -95,6 +95,9 @@ def get_random_ssz_object(rng: Random,
         elif mode == RandomizationMode.mode_max_count:
             length = max_list_length
 
+        if typ.length < length:  # SSZ imposes a hard limit on lists, we can't put in more than that
+            length = typ.length
+
         return typ(
             get_random_ssz_object(rng, typ.elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(length)
