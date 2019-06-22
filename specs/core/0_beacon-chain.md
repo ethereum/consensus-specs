@@ -878,9 +878,7 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> L
 ### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState,
-                          data: AttestationData,
-                          bitfield: bytes) -> List[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, data: AttestationData, bitfield: bytes) -> List[ValidatorIndex]:
     """
     Return the sorted attesting indices corresponding to ``data`` and ``bitfield``.
     """
