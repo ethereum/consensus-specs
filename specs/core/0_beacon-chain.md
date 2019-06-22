@@ -1157,7 +1157,7 @@ def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64, deposit_root:
     # Count active validators at genesis
     active_validator_count = 0
     for validator in state.validators:
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
             active_validator_count += 1
 
     # Check effective balance to trigger genesis
