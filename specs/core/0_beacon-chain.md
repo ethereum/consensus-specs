@@ -540,11 +540,10 @@ class BeaconState(Container):
     # Crosslinks
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]  # Previous epoch snapshot
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
-    # Justification
+    # Finality
+    justification_bitfield: uint64  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
     current_justified_checkpoint: Checkpoint
-    justification_bitfield: uint64  # Bit set for every recent justified epoch
-    # Finality
     finalized_checkpoint: Checkpoint
 ```
 
