@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.bls import bls_sign
+from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
 
 
 def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
@@ -10,6 +10,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     if epoch is None:
         epoch = current_epoch + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING
 
+    # Generate the secret that is being revealed
     reveal = bls_sign(
         message_hash=spec.hash_tree_root(epoch),
         privkey=privkeys[revealed_index],
@@ -19,8 +20,11 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
             message_epoch=epoch,
         ),
     )
-    mask = bls_sign(
-        message_hash=spec.hash_tree_root(epoch),
+    # Generate the mask (any random 32 bytes will do)
+    mask = reveal[:32]
+    # Generate masker's signature on the mask
+    masker_signature = bls_sign(
+        message_hash=mask,
         privkey=privkeys[masker_index],
         domain=spec.get_domain(
             state=state,
@@ -28,11 +32,12 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
             message_epoch=epoch,
         ),
     )
+    masked_reveal = bls_aggregate_signatures([reveal, masker_signature])
 
     return spec.EarlyDerivedSecretReveal(
         revealed_index=revealed_index,
         epoch=epoch,
-        reveal=reveal,
+        reveal=masked_reveal,
         masker_index=masker_index,
         mask=mask,
     )

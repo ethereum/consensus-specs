@@ -204,7 +204,7 @@ class EarlyDerivedSecretReveal(Container):
     # Index of the validator who revealed (whistleblower)
     masker_index: ValidatorIndex
     # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
-    mask: Bytes32
+    mask: Hash
 ```
 
 ### Phase 0 container updates
