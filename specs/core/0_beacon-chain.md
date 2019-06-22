@@ -1135,11 +1135,10 @@ Before genesis has been triggered and whenever the deposit contract emits a `Dep
 * `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
 
-When `is_genesis_trigger(deposits, timestamp, deposit_root) is True` for the first time let:
+When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
 
 * `genesis_deposits = deposits`
 * `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
-* `deposit_root` is the Merkle tree root of the data of the given `deposits`
 * `genesis_eth1_data` be the object of type `Eth1Data` where:
     * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
@@ -1148,16 +1147,20 @@ When `is_genesis_trigger(deposits, timestamp, deposit_root) is True` for the fir
 *Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
 
 ```python
-def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64, deposit_root: Hash) -> bool:
-    # Process deposits
+def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
+    # Initialize deposit root
     state = BeaconState()
-    for index, deposit in enumerate(deposits):
-        process_deposit(state, deposit, deposit_index=index, deposit_root=deposit_root)
+    for i in range(DEPOSIT_CONTRACT_TREE_DEPTH - 1):
+        state.eth1_data.deposit_root = hash(state.eth1_data.deposit_root + state.eth1_data.deposit_root)
+
+    # Process deposits
+    for deposit in deposits:
+        process_deposit(state, deposit)
 
     # Count active validators at genesis
     active_validator_count = 0
     for validator in state.validators:
-        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             active_validator_count += 1
 
     # Check effective balance to trigger genesis
@@ -1177,12 +1180,12 @@ def get_genesis_beacon_state(deposits: List[Deposit], genesis_time: int, genesis
     )
 
     # Process genesis deposits
-    for deposit_index, deposit in enumerate(deposits):
-        process_deposit(state, deposit, deposit_index=deposit_index)
+    for deposit in deposits:
+        process_deposit(state, deposit)
 
     # Process genesis activations
     for validator in state.validators:
-        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
@@ -1483,7 +1486,7 @@ def process_registry_updates(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         if (
             validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and
-            validator.effective_balance >= MAX_EFFECTIVE_BALANCE
+            validator.effective_balance == MAX_EFFECTIVE_BALANCE
         ):
             validator.activation_eligibility_epoch = get_current_epoch(state)
 
@@ -1727,24 +1730,17 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 ##### Deposits
 
 ```python
-def process_deposit(state: BeaconState,
-                    deposit: Deposit,
-                    deposit_index: Optional[uint64]=None,
-                    deposit_root: Optional[Hash]=None) -> None:
+def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     """
     Process an Eth1 deposit, registering a validator or increasing its balance.
     """
-    if deposit_index is None:
-        deposit_index = state.eth1_deposit_index
-    if deposit_root is None:
-        deposit_root = state.eth1_data.deposit_root
     # Verify the Merkle branch
     assert verify_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH,
-        index=deposit_index,
-        root=deposit_root,
+        index=state.eth1_deposit_index,
+        root=state.eth1_data.deposit_root,
     )
 
     # Deposits must be processed in order
