@@ -1139,11 +1139,11 @@ When `is_genesis_trigger(deposits, timestamp, deposit_root) is True` for the fir
 
 * `genesis_deposits = deposits`
 * `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
-* `deposit_root` is the tree root of the given `deposits`
+* `deposit_root` is the Merkle tree root of the data of the given `deposits`
 * `genesis_eth1_data` be the object of type `Eth1Data` where:
-    * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
+    * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
 
 *Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
 
