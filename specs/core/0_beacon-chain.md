@@ -1344,28 +1344,28 @@ def process_justification_and_finalization(state: BeaconState) -> None:
         state, get_matching_target_attestations(state, previous_epoch)
     )
     if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(previous_epoch, get_block_root(state, previous_epoch))
+        state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch, root=get_block_root(state, previous_epoch))
         state.justification_bitfield |= (1 << 1)
     current_epoch_matching_target_balance = get_attesting_balance(
         state, get_matching_target_attestations(state, current_epoch)
     )
     if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(current_epoch, get_block_root(state, current_epoch))
+        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch, root=get_block_root(state, current_epoch))
         state.justification_bitfield |= (1 << 0)
 
     # Process finalizations
     bitfield = state.justification_bitfield
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_epoch + 3 == current_epoch:
+    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_checkpoint.epoch + 3 == current_epoch:
         state.finalized_checkpoint = old_previous_justified_checkpoint
     # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_epoch + 2 == current_epoch:
+    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_checkpoint.epoch+ 2 == current_epoch:
         state.finalized_checkpoint = old_previous_justified_checkpoint
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_epoch + 2 == current_epoch:
+    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_checkpoint.epoch + 2 == current_epoch:
         state.finalized_checkpoint = old_current_justified_checkpoint
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_epoch + 1 == current_epoch:
+    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_checkpoint.epoch + 1 == current_epoch:
         state.finalized_checkpoint = old_current_justified_checkpoint
 ```
 
