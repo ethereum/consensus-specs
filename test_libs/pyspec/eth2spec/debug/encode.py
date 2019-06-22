@@ -13,9 +13,9 @@ def encode(value: SSZValue, include_hash_tree_roots=False):
     elif isinstance(value, Bit):
         assert value in (True, False)
         return value
-    elif isinstance(value, (List, Vector)):
+    elif isinstance(value, list):  # normal python lists, ssz-List, Vector
         return [encode(element, include_hash_tree_roots) for element in value]
-    elif isinstance(value, (Bytes, BytesN)):  # both bytes and BytesN
+    elif isinstance(value, bytes):  # both bytes and BytesN
         return '0x' + value.hex()
     elif isinstance(value, Container):
         ret = {}

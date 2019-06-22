@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing import List
 
 from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
 from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
@@ -82,7 +81,7 @@ def test_finality_no_updates_at_genesis(spec, state):
         elif epoch == 1:
             check_finality(spec, state, prev_state, False, False, False)
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
 
 
@@ -111,7 +110,7 @@ def test_finality_rule_4(spec, state):
             assert state.finalized_epoch == prev_state.current_justified_epoch
             assert state.finalized_root == prev_state.current_justified_root
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
 
 
@@ -142,7 +141,7 @@ def test_finality_rule_1(spec, state):
             assert state.finalized_epoch == prev_state.previous_justified_epoch
             assert state.finalized_root == prev_state.previous_justified_root
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
 
 
@@ -175,7 +174,7 @@ def test_finality_rule_2(spec, state):
 
         blocks += new_blocks
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
 
 
@@ -225,5 +224,5 @@ def test_finality_rule_3(spec, state):
     assert state.finalized_epoch == prev_state.current_justified_epoch
     assert state.finalized_root == prev_state.current_justified_root
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
