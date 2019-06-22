@@ -290,7 +290,9 @@ We define the following Python custom types for type hinting and readability:
 
 The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containers.
 
-*Note*: The definitions are ordered topologically to facilitate execution of the spec.
+*Notes*:
+- The definitions are ordered topologically to facilitate execution of the spec.
+- When constructed in the spec with missing fields, these fields default to their zero-value.
 
 ### Misc dependencies
 
@@ -1585,6 +1587,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
+        state_root=ZERO_HASH,  # overwritten in next process_slot
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
