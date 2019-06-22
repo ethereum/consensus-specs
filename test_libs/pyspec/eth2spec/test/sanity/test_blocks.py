@@ -173,6 +173,28 @@ def test_attester_slashing(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_expected_deposit_in_block(spec, state):
+    # Make the state expect a deposit, then don't provide it.
+    state.eth1_data.deposit_count += 1
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    sign_block(spec, state, block)
+    bad = False
+    try:
+        state_transition_and_sign_block(spec, state, block)
+        bad = True
+    except AssertionError:
+        pass
+    if bad:
+        raise AssertionError("expected deposit was not enforced")
+
+    yield 'blocks', [block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
 def test_deposit_in_block(spec, state):
     initial_registry_len = len(state.validators)
     initial_balances_len = len(state.balances)
