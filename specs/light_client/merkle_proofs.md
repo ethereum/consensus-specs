@@ -94,7 +94,7 @@ def get_chunk_count(typ: Type) -> int:
     """
     if is_basic_type(typ):
         return 1
-    elif is_list_kind(typ) or is_vector_kind(typ):
+    elif issubclass(typ, (List, Vector, Bytes, BytesN)):
         return (typ.length * item_length(typ.elem_type) + 31) // 32
     else:
         return len(typ.get_fields())
@@ -106,7 +106,7 @@ def get_item_position(typ: Type, index: Union[int, str]) -> Tuple[int, int, int]
     represented, (ii) the starting byte position, (iii) the ending byte position. For example for
     a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
     """
-    if is_list_kind(typ) or is_vector_kind(typ):
+    if issubclass(typ, (List, Vector, Bytes, BytesN)):
         start = index * item_length(typ.elem_type)
         return start // 32, start % 32, start % 32 + item_length(typ.elem_type)
     elif is_container_type(typ):
@@ -123,10 +123,10 @@ def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> int:
     for p in path:
         assert not is_basic_type(typ)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
-            typ, root = uint256, root * 2 + 1 if is_list_kind(typ) else None
+            typ, root = uint256, root * 2 + 1 if issubclass(typ, (List, Bytes)) else None
         else:
             pos, _, _ = get_item_position(typ, p)
-            root = root * (2 if is_list_kind(typ) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
+            root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
             typ = get_elem_type(typ, p)
     return root
 ```
@@ -230,10 +230,10 @@ def extract_value_at_path(chunks: Dict[int, Bytes32], typ: Type, path: List[Unio
     for p in path:
         if p == '__len__':
             return deserialize_basic(chunks[root * 2 + 1][:8], uint64)
-        if is_list_kind(typ):
+        if iissubclass(typ, (List, Bytes)):
             assert 0 <= p < deserialize_basic(chunks[root * 2 + 1][:8], uint64)
         pos, start, end = get_item_position(typ, p)
-        root = root * (2 if is_list_kind(typ) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
+        root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
         typ = get_elem_type(typ, p)
     return deserialize_basic(chunks[root][start: end], typ)
 ```
