@@ -1699,20 +1699,21 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     )
 
     if data.target.epoch == get_current_epoch(state):
-        ffg_source = state.current_justified_checkpoint
+        assert data.source == state.current_justified_checkpoint
         parent_crosslink = state.current_crosslinks[data.crosslink.shard]
         state.current_epoch_attestations.append(pending_attestation)
     else:
-        ffg_source = state.previous_justified_checkpoint
+        assert data.source == state.previous_justified_checkpoint
         parent_crosslink = state.previous_crosslinks[data.crosslink.shard]
         state.previous_epoch_attestations.append(pending_attestation)
 
-    # Check FFG source, crosslink data, and signature
-    assert ffg_source == data.source
+    # Check crosslink against expected parent crosslink
+    assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.start_epoch == parent_crosslink.end_epoch
     assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
-    assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
+    
+    # Check signature
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))
 ```
 
