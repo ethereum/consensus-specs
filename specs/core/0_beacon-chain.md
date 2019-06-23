@@ -1267,7 +1267,7 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 
 ```python
 def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> List[PendingAttestation]:
-    assert epoch in (get_current_epoch(state), get_previous_epoch(state))
+    assert epoch in (get_previous_epoch(state), get_current_epoch(state))
     return state.current_epoch_attestations if epoch == get_current_epoch(state) else state.previous_epoch_attestations
 ```
 
