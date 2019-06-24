@@ -179,23 +179,31 @@ def on_block(store: Store, block: BeaconBlock) -> None:
 
 ```python
 def on_attestation(store: Store, attestation: Attestation) -> None:
-    target_checkpoint = Checkpoint(attestation.data.target_epoch, attestation.data, target_root)
+    target = Checkpoint(attestation.data.target_epoch, attestation.data.target_root)
 
     # Cannot calculate the current shuffling if have not seen the target
-    assert target_checkpoint.root in store.blocks
+    assert target.root in store.blocks
+
+    # Attestations cannot be from future epochs. If they are, their consideration must be delayed until the are in the past.
+    assert store.time >= pre_state.genesis_time + get_epoch_start_slot(target.epoch) * SECONDS_PER_SLOT
 
     # Store target checkpoint state if not yet seen
-    if target_checkpoint not in store.checkpoint_states:
-        base_state = store.block_states[target_checkpoint.root].copy()
-        store.checkpoint_states[target_checkpoint] = process_slots(base_state, get_epoch_start_slot(target_checkpoint.epoch))
+    if target not in store.checkpoint_states:
+        base_state = store.block_states[target.root].copy()
+        store.checkpoint_states[target] = process_slots(base_state, get_epoch_start_slot(target.epoch))
+    target_state = store.checkpoint_states[target]
 
-    # Get state at the `target_checkpoint` to validate attestation and calculate the committees
-    state = store.checkpoint_states[target_checkpoint]
-    indexed_attestation = convert_to_indexed(state, attestation)
-    validate_indexed_attestation(state, indexed_attestation)
+    # Attestations can only affect the fork choice of subsequent slots.
+    # Delay consideration in the fork choice until their slot is in the past.
+    attestation_slot = get_attestation_data_slot(target_state, attestation.data)
+    assert store.time >= (attestation_slot + 1) * SECONDS_PER_SLOT
+
+    # Get state at the `target` to validate attestation and calculate the committees
+    indexed_attestation = convert_to_indexed(target_state, attestation)
+    validate_indexed_attestation(target_state, indexed_attestation)
 
     # Update latest targets
     for i in indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices:
-        if i not in store.latest_targets or target_checkpoint.epoch > store.latest_targets[i].epoch:
-            store.latest_targets[i] = target_checkpoint
+        if i not in store.latest_targets or target.epoch > store.latest_targets[i].epoch:
+            store.latest_targets[i] = target
 ```
