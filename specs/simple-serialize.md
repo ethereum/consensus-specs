@@ -70,17 +70,17 @@ The default value of a type upon initialization is recursively defined using `0`
 
 #### `is_empty`
 
-An SSZ object is called empty (and thus `is_empty(object)` returns true) if it is equal to the default value for that type.
+An SSZ object is called empty (and thus, `is_empty(object)` returns true) if it is equal to the default value for that type.
 
 ### Illegal types
 
-Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as the first type in a union subtype (i.e., with type index zero).
+Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as the first type in a union subtype (i.e. with type index zero).
 
 ## Serialization
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
 
-> *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
+*Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
 
 ### `"uintN"`
 
@@ -164,7 +164,7 @@ Let `value` be a self-signed container object. The convention is that the signat
 | Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
 | Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz](https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz) |
 | Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
-| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/util/ssz](https://github.com/paritytech/shasper/tree/master/util/ssz) |
+| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/util/ssz) |
 | TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz-js) |
 | Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
 | Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/go-ssz](https://github.com/prysmaticlabs/go-ssz) |
