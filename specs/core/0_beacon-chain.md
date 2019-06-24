@@ -1807,10 +1807,13 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert state.balances[transfer.sender] >= max(transfer.amount, transfer.fee)
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
-    # Sender must be not yet eligible for activation, withdrawn, or transfer balance over MAX_EFFECTIVE_BALANCE
+    # Sender must satisfy at least one of the following conditions in the parenthesis:
     assert (
+        # * Has not been activated
         state.validators[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
+        # * Is withdrawable
         get_current_epoch(state) >= state.validators[transfer.sender].withdrawable_epoch or
+        # * Balance after transfer is more than the effective balance threshold
         transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= state.balances[transfer.sender]
     )
     # Verify that the pubkey is valid
