@@ -224,7 +224,6 @@ These configurations are updated for releases, but may be out of sync during `de
 | `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
-| `HISTORICAL_ROOTS_LENGTH` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
 | `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
@@ -238,10 +237,8 @@ These configurations are updated for releases, but may be out of sync during `de
 | - | - | :-: | :-: |
 | `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
 | `EPOCHS_PER_SLASHED_BALANCES_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
-| `RANDAO_MIXES_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `ACTIVE_INDEX_ROOTS_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `SLASHED_EXIT_LENGTH` | `2**13` (= 8,192) | epochs | ~36 days |
-| `VALIDATOR_REGISTRY_SIZE` | `2**40` (= 1,099,511,627,776) | | |
+| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
+| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots | |
 
 ### Rewards and penalties
 
@@ -520,14 +517,14 @@ class BeaconState(Container):
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Hash, HISTORICAL_ROOTS_LENGTH]
+    historical_roots: List[Hash, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
     eth1_deposit_index: uint64
     # Registry
-    validators: List[Validator, VALIDATOR_REGISTRY_SIZE]
-    balances: List[Gwei, VALIDATOR_REGISTRY_SIZE]
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
+    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
@@ -1195,7 +1192,7 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
 
     # Populate active_index_roots    
     genesis_active_index_root = hash_tree_root(
-        List[ValidatorIndex, VALIDATOR_REGISTRY_SIZE](get_active_validator_indices(state, GENESIS_EPOCH))
+        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
     )
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
         state.active_index_roots[index] = genesis_active_index_root
@@ -1553,7 +1550,7 @@ def process_final_updates(state: BeaconState) -> None:
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
     state.active_index_roots[index_root_position] = hash_tree_root(
-        List[ValidatorIndex, VALIDATOR_REGISTRY_SIZE](
+        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](
             get_active_validator_indices(state, Epoch(next_epoch + ACTIVATION_EXIT_DELAY))
         )
     )
