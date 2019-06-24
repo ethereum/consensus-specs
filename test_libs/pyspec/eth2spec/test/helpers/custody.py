@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
+from eth2spec.utils.hash_function import hash
 
 
 def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
@@ -20,7 +21,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
             message_epoch=epoch,
         ),
     )
-    # Generate the mask (any random 32 bytes will do)
+    # Generate the mask (any random 32 bytes that don't reveal the masker's secret will do)
     mask = hash(reveal)
     # Generate masker's signature on the mask
     masker_signature = bls_sign(
