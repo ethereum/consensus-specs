@@ -29,4 +29,4 @@ def foo(x):
 #end insert @YourLabelHere
 ```
 
-**Note**: The code to be inserted has the **same level of indentation** as the surrounding code of its destination insert point.
+*Note*: The code to be inserted has the **same level of indentation** as the surrounding code of its destination insert point.
