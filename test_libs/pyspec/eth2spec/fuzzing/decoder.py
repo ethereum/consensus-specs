@@ -19,7 +19,7 @@ def translate_typ(typ) -> ssz.BaseSedes:
         return ssz.Vector(translate_typ(typ.elem_type), typ.length)
     elif issubclass(typ, spec_ssz.List):
         return ssz.List(translate_typ(typ.elem_type))
-    elif issubclass(typ, spec_ssz.Bit):
+    elif issubclass(typ, spec_ssz.Bool):
         return ssz.boolean
     elif issubclass(typ, spec_ssz.uint):
         if typ.byte_len == 1:
@@ -64,7 +64,7 @@ def translate_value(value, typ):
             raise TypeError("invalid uint size")
     elif issubclass(typ, spec_ssz.List):
         return [translate_value(elem, typ.elem_type) for elem in value]
-    elif issubclass(typ, spec_ssz.Bit):
+    elif issubclass(typ, spec_ssz.Bool):
         return value
     elif issubclass(typ, spec_ssz.Vector):
         return typ(*(translate_value(elem, typ.elem_type) for elem in value))

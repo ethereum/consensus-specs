@@ -1,6 +1,6 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    SSZValue, uint, Container, Bit
+    SSZValue, uint, Container, Bool
 )
 
 
@@ -10,7 +10,7 @@ def encode(value: SSZValue, include_hash_tree_roots=False):
         if value.type().byte_len > 8:
             return str(int(value))
         return int(value)
-    elif isinstance(value, Bit):
+    elif isinstance(value, Bool):
         return value == 1
     elif isinstance(value, list):  # normal python lists, ssz-List, Vector
         return [encode(element, include_hash_tree_roots) for element in value]

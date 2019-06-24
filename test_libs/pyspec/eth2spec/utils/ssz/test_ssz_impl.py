@@ -1,6 +1,6 @@
 from .ssz_impl import serialize, hash_tree_root
 from .ssz_typing import (
-    Bit, Container, List, Vector, Bytes, BytesN,
+    Bit, Bool, Container, List, Vector, Bytes, BytesN,
     uint8, uint16, uint32, uint64, byte
 )
 
@@ -47,11 +47,16 @@ for k, v in {0: 1, 32: 2, 64: 3, 95: 0xff}.items():
     sig_test_data[k] = v
 
 test_data = [
-    ("bool F", Bit(False), "00"),
-    ("bool T", Bit(True), "01"),
+    ("bit F", Bit(False), "00"),
+    ("bit T", Bit(True), "01"),
+    ("bool F", Bool(False), "00"),
+    ("bool T", Bool(True), "01"),
     ("uint8 00", uint8(0x00), "00"),
     ("uint8 01", uint8(0x01), "01"),
     ("uint8 ab", uint8(0xab), "ab"),
+    ("byte 00", byte(0x00), "00"),
+    ("byte 01", byte(0x01), "01"),
+    ("byte ab", byte(0xab), "ab"),
     ("uint16 0000", uint16(0x0000), "0000"),
     ("uint16 abcd", uint16(0xabcd), "cdab"),
     ("uint32 00000000", uint32(0x00000000), "00000000"),

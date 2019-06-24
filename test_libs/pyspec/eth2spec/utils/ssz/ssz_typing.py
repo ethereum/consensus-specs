@@ -31,7 +31,7 @@ class BasicValue(int, SSZValue, metaclass=BasicType):
     pass
 
 
-class Bit(BasicValue):  # can't subclass bool.
+class Bool(BasicValue):  # can't subclass bool.
     byte_len = 1
 
     def __new__(cls, value, *args, **kwargs):
@@ -45,6 +45,11 @@ class Bit(BasicValue):  # can't subclass bool.
 
     def __bool__(self):
         return self > 0
+
+
+# Alias for Bool
+class Bit(Bool):
+    pass
 
 
 class uint(BasicValue, metaclass=BasicType):

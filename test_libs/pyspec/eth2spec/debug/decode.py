@@ -1,13 +1,13 @@
 from typing import Any
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    SSZType, SSZValue, uint, Container, Bytes, List, Bit,
+    SSZType, SSZValue, uint, Container, Bytes, List, Bool,
     Vector, BytesN
 )
 
 
 def decode(data: Any, typ: SSZType) -> SSZValue:
-    if issubclass(typ, (uint, Bit)):
+    if issubclass(typ, (uint, Bool)):
         return typ(data)
     elif issubclass(typ, (List, Vector)):
         return typ(decode(element, typ.elem_type) for element in data)

@@ -314,7 +314,7 @@ class Validator(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals and transfers
     effective_balance: Gwei  # Balance at stake
-    slashed: Bit
+    slashed: Bool
     # Status epochs
     activation_eligibility_epoch: Epoch  # When criteria for activation were met
     activation_epoch: Epoch
@@ -354,7 +354,7 @@ class AttestationData(Container):
 ```python
 class AttestationDataAndCustodyBit(Container):
     data: AttestationData
-    custody_bit: Bit  # Challengeable bit for the custody of crosslink data
+    custody_bit: Bit  # Challengeable bit (SSZ-bool, 1 byte) for the custody of crosslink data
 ```
 
 #### `IndexedAttestation`
