@@ -908,7 +908,7 @@ def bytes_to_int(data: bytes) -> int:
 ### `get_total_balance`
 
 ```python
-def get_total_balance(state: BeaconState, indices: Iterable[ValidatorIndex]) -> Gwei:
+def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
@@ -1383,7 +1383,7 @@ def process_crosslinks(state: BeaconState) -> None:
     for epoch in (get_previous_epoch(state), get_current_epoch(state)):
         for offset in range(get_epoch_committee_count(state, epoch)):
             shard = Shard((get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT)
-            crosslink_committee = get_crosslink_committee(state, epoch, shard)
+            crosslink_committee = set(get_crosslink_committee(state, epoch, shard))
             winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
             if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
                 state.current_crosslinks[shard] = winning_crosslink
@@ -1456,7 +1456,7 @@ def get_crosslink_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[G
     epoch = get_previous_epoch(state)
     for offset in range(get_epoch_committee_count(state, epoch)):
         shard = Shard((get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT)
-        crosslink_committee = get_crosslink_committee(state, epoch, shard)
+        crosslink_committee = set(get_crosslink_committee(state, epoch, shard))
         winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
         attesting_balance = get_total_balance(state, attesting_indices)
         committee_balance = get_total_balance(state, crosslink_committee)

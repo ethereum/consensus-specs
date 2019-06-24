@@ -378,7 +378,7 @@ Let:
 * `shard` be a valid `Shard`
 * `shard_blocks` be the `ShardBlock` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `shard` at slot `slot`
 * `beacon_state` be the canonical `BeaconState`
-* `valid_attestations` be the list of valid `Attestation`, recursively defined
+* `valid_attestations` be the set of valid `Attestation` objects, recursively defined
 * `candidate` be a candidate `Attestation` which is valid under Phase 0 rules, and for which validity is to be determined under Phase 1 rules by running `is_valid_beacon_attestation`
 
 ```python
@@ -388,7 +388,7 @@ def is_valid_beacon_attestation(shard: Shard,
                                 valid_attestations: Set[Attestation],
                                 candidate: Attestation) -> bool:
     # Check if attestation is already determined valid
-    for _, attestation in enumerate(valid_attestations):
+    for attestation in valid_attestations:
         if candidate == attestation:
             return True
 
