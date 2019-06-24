@@ -27,7 +27,7 @@ def deserialize_basic(value, typ: BasicType):
         return typ(int.from_bytes(value, 'little'))
     elif issubclass(typ, Bit):
         assert value in (b'\x00', b'\x01')
-        return Bit(value == b'\x01')
+        return typ(value == b'\x01')
     else:
         raise Exception(f"Type not supported: {typ}")
 
