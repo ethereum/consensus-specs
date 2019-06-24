@@ -180,9 +180,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Configuration
 
-*Note*: The default mainnet configuration values are included here for spec-design purposes.
-The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory.
-These configurations are updated for releases, but may be out of sync during `dev` changes.
+*Note*: The default mainnet configuration values are included here for spec-design purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory. These configurations are updated for releases and may be out of sync during `dev` changes.
 
 ### Misc
 
@@ -200,7 +198,7 @@ These configurations are updated for releases, but may be out of sync during `de
 ### Gwei values
 
 | Name | Value |
-| - | - | :-: |
+| - | - |
 | `MIN_DEPOSIT_AMOUNT` | `Gwei(2**0 * 10**9)` (= 1,000,000,000) |
 | `MAX_EFFECTIVE_BALANCE` | `Gwei(2**5 * 10**9)` (= 32,000,000,000) |
 | `EJECTION_BALANCE` | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
@@ -291,6 +289,8 @@ We define the following Python custom types for type hinting and readability:
 The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the spec.
+
+*Note*: Fields missing in container instantiations default to their zero value.
 
 ### Misc dependencies
 
@@ -524,9 +524,9 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
-    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Digests of the active registry, for light clients
+    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active registry digests for light clients
     # Slashings
-    slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of the effective balances of slashed validators
+    slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of slashed effective balances
     # Attestations
     previous_epoch_attestations: List[PendingAttestation]
     current_epoch_attestations: List[PendingAttestation]
@@ -1506,16 +1506,16 @@ def process_registry_updates(state: BeaconState) -> None:
 
 ```python
 def process_slashings(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
+    epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
 
     # Compute slashed balances in the current epoch
-    total_at_start = state.slashed_balances[(current_epoch + 1) % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
-    total_at_end = state.slashed_balances[current_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
+    total_at_start = state.slashed_balances[(epoch + 1) % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
+    total_at_end = state.slashed_balances[epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
     total_penalties = total_at_end - total_at_start
 
     for index, validator in enumerate(state.validators):
-        if validator.slashed and current_epoch == validator.withdrawable_epoch - EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2:
+        if validator.slashed and epoch + EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2 == validator.withdrawable_epoch:
             penalty = max(
                 validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
                 validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
@@ -1585,6 +1585,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
+        state_root=ZERO_HASH,  # Overwritten in next `process_slot` call
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
@@ -1806,10 +1807,13 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert state.balances[transfer.sender] >= max(transfer.amount, transfer.fee)
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
-    # Sender must be not yet eligible for activation, withdrawn, or transfer balance over MAX_EFFECTIVE_BALANCE
+    # Sender must satisfy at least one of the following conditions in the parenthesis:
     assert (
+        # * Has not been activated
         state.validators[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
+        # * Is withdrawable
         get_current_epoch(state) >= state.validators[transfer.sender].withdrawable_epoch or
+        # * Balance after transfer is more than the effective balance threshold
         transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= state.balances[transfer.sender]
     )
     # Verify that the pubkey is valid
