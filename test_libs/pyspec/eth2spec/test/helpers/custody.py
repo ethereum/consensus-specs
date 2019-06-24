@@ -21,7 +21,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
         ),
     )
     # Generate the mask (any random 32 bytes will do)
-    mask = reveal[:32]
+    mask = hash(reveal)
     # Generate masker's signature on the mask
     masker_signature = bls_sign(
         message_hash=mask,
