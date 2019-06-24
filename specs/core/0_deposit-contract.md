@@ -61,4 +61,4 @@ Every Ethereum 1.0 deposit emits a `Deposit` log for consumption by the beacon c
 
 The deposit contract source code, written in Vyper, is available [here](https://github.com/ethereum/eth2.0-specs/blob/dev/deposit_contract/contracts/validator_registration.v.py).
 
-*Note*: To save on gas the deposit contract uses a progressive Merkle root calculation algorithm that requires only O(log(n)) storage. See [here](https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py) for a Python implementation, and [here](https://github.com/runtimeverification/verified-smart-contracts/blob/master/deposit/formal-incremental-merkle-tree-algorithm.pdf) for a formal correctness proof.
+*Note*: To save on gas, the deposit contract uses a progressive Merkle root calculation algorithm that requires only O(log(n)) storage. See [here](https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py) for a Python implementation, and [here](https://github.com/runtimeverification/verified-smart-contracts/blob/master/deposit/formal-incremental-merkle-tree-algorithm.pdf) for a formal correctness proof.
