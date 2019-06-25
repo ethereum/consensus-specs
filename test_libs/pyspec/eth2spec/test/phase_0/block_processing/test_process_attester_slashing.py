@@ -156,7 +156,7 @@ def test_custody_bit_0_and_1_intersect(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_attester_slashing_invalid_att_1(spec, state):
+def test_unsorted_att_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
     indices = attester_slashing.attestation_1.custody_bit_0_indices
@@ -169,7 +169,7 @@ def test_attester_slashing_invalid_att_1(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_attester_slashing_invalid_att_2(spec, state):
+def test_unsorted_att_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
     indices = attester_slashing.attestation_2.custody_bit_0_indices
