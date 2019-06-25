@@ -21,7 +21,6 @@
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
         - [Signature domains](#signature-domains)
-    - [Custom types](#custom-types-1)
     - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
@@ -269,20 +268,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `DOMAIN_DEPOSIT` | `3` |
 | `DOMAIN_VOLUNTARY_EXIT` | `4` |
 | `DOMAIN_TRANSFER` | `5` |
-
-## Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `Slot` | `uint64` | a slot number |
-| `Epoch` | `uint64` | an epoch number |
-| `Shard` | `uint64` | a shard number |
-| `ValidatorIndex` | `uint64` | a validator registry index |
-| `Gwei` | `uint64` | an amount in Gwei |
-| `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
-| `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
 ## Containers
 
