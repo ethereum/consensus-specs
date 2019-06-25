@@ -107,7 +107,7 @@ def test_active_but_transfer_past_effective_balance(spec, state):
 def test_incorrect_slot(spec, state):
     transfer = get_valid_transfer(spec, state, slot=state.slot + 1, signed=True)
     # un-activate so validator can transfer
-    state.validators[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     yield from run_transfer_processing(spec, state, transfer, False)
 
@@ -120,7 +120,7 @@ def test_insufficient_balance_for_fee_result_dust(spec, state):
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=0, fee=1, signed=True)
 
     # un-activate so validator can transfer
-    state.validators[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     yield from run_transfer_processing(spec, state, transfer, False)
 
@@ -146,7 +146,7 @@ def test_insufficient_balance_for_amount_result_dust(spec, state):
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1, fee=0, signed=True)
 
     # un-activate so validator can transfer
-    state.validators[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     yield from run_transfer_processing(spec, state, transfer, False)
 
@@ -287,7 +287,7 @@ def test_no_dust_sender(spec, state):
     )
 
     # un-activate so validator can transfer
-    state.validators[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     yield from run_transfer_processing(spec, state, transfer, False)
 
@@ -301,7 +301,7 @@ def test_no_dust_recipient(spec, state):
     state.balances[transfer.recipient] = 0
 
     # un-activate so validator can transfer
-    state.validators[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     yield from run_transfer_processing(spec, state, transfer, False)
 
@@ -313,6 +313,6 @@ def test_invalid_pubkey(spec, state):
     state.validators[transfer.sender].withdrawal_credentials = spec.ZERO_HASH
 
     # un-activate so validator can transfer
-    state.validators[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     yield from run_transfer_processing(spec, state, transfer, False)
