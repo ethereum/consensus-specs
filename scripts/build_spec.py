@@ -130,11 +130,7 @@ def objects_to_spec(functions: Dict[str, str],
     new_type_definitions = (
         '\n\n'.join(
             [
-                f"class {key}({value}):\n"
-                f"    def __init__(self, _x: {value}) -> None:\n"
-                f"        ...\n"
-                if value.startswith("uint")
-                else f"class {key}({value}):\n    pass\n"
+                f"class {key}({value}):\n    pass\n"
                 for key, value in custom_types.items()
             ]
         )
