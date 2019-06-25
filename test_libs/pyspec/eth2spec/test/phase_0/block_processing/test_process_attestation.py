@@ -180,8 +180,8 @@ def test_invalid_current_source_root(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 5
     state.finalized_epoch = 2
 
-    state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01'*32)
-    state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b'\x32'*32)
+    state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01' * 32)
+    state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b'\x32' * 32)
 
     attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY

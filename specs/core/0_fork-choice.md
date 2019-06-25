@@ -55,15 +55,6 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 
 ### Helpers
 
-#### `Checkpoint`
-
-```python
-@dataclass(eq=True, frozen=True)
-class Checkpoint(object):
-    epoch: Epoch
-    root: Hash
-```
-
 #### `Store`
 
 ```python
@@ -84,8 +75,8 @@ class Store(object):
 def get_genesis_store(genesis_state: BeaconState) -> Store:
     genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
     root = signing_root(genesis_block)
-    justified_checkpoint = Checkpoint(GENESIS_EPOCH, root)
-    finalized_checkpoint = Checkpoint(GENESIS_EPOCH, root)
+    justified_checkpoint = Checkpoint(epoch=GENESIS_EPOCH, root=root)
+    finalized_checkpoint = Checkpoint(epoch=GENESIS_EPOCH, root=root)
     return Store(
         time=genesis_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
@@ -168,21 +159,21 @@ def on_block(store: Store, block: BeaconBlock) -> None:
     store.block_states[signing_root(block)] = state
 
     # Update justified checkpoint
-    if state.current_justified_epoch > store.justified_checkpoint.epoch:
-        store.justified_checkpoint = Checkpoint(state.current_justified_epoch, state.current_justified_root)
-    elif state.previous_justified_epoch > store.justified_checkpoint.epoch:
-        store.justified_checkpoint = Checkpoint(state.previous_justified_epoch, state.previous_justified_root)
+    if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
+        store.justified_checkpoint = state.current_justified_checkpoint
+    elif state.previous_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
+        store.justified_checkpoint = state.previous_justified_checkpoint
 
     # Update finalized checkpoint
-    if state.finalized_epoch > state.finalized_epoch:
-        store.finalized_checkpoint = Checkpoint(state.finalized_epoch, state.finalized_root)
+    if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
+        store.finalized_checkpoint = state.finalized_checkpoint
 ```
 
 #### `on_attestation`
 
 ```python
 def on_attestation(store: Store, attestation: Attestation) -> None:
-    target = Checkpoint(attestation.data.target_epoch, attestation.data.target_root)
+    target = attestation.data.target
 
     # Cannot calculate the current shuffling if have not seen the target
     assert target.root in store.blocks

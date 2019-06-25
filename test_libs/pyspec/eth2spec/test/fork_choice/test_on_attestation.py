@@ -21,8 +21,8 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     assert (
         store.latest_targets[indexed_attestation.custody_bit_0_indices[0]] ==
         spec.Checkpoint(
-            epoch=attestation.data.target_epoch,
-            root=attestation.data.target_root,
+            epoch=attestation.data.target.epoch,
+            root=attestation.data.target.root,
         )
     )
 
