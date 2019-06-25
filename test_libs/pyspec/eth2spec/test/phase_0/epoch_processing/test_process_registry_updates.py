@@ -1,33 +1,10 @@
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
-from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
+from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_to
 
 
-def run_process_registry_updates(spec, state, valid=True):
-    """
-    Run ``process_crosslinks``, yielding:
-      - pre-state ('pre')
-      - post-state ('post').
-    If ``valid == False``, run expecting ``AssertionError``
-    """
-    # transition state to slot before state transition
-    slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH) - 1
-    block = build_empty_block_for_next_slot(spec, state)
-    block.slot = slot
-    sign_block(spec, state, block)
-    state_transition_and_sign_block(spec, state, block)
-
-    # cache state before epoch transition
-    spec.process_slot(state)
-
-    # process components of epoch transition before registry update
-    spec.process_justification_and_finalization(state)
-    spec.process_crosslinks(state)
-    spec.process_rewards_and_penalties(state)
-
-    yield 'pre', state
-    spec.process_registry_updates(state)
-    yield 'post', state
+def run_process_registry_updates(spec, state):
+    yield from run_epoch_processing_to(spec, state, 'process_registry_updates')
 
 
 def mock_deposit(spec, state, index):
