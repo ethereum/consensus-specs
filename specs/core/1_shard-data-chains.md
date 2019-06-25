@@ -252,9 +252,9 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
     def is_power_of_two(value: int) -> bool:
         return (value > 0) and (value & (value - 1) == 0)
 
-    def pad_to_power_of_2(values: TypingList[bytes]) -> TypingList[bytes]:
+    def pad_to_power_of_2(values: MutableSequence[bytes]) -> Sequence[bytes]:
         while not is_power_of_two(len(values)):
-            values += [b'\x00' * BYTES_PER_SHARD_BLOCK_BODY]
+            values.append(b'\x00' * BYTES_PER_SHARD_BLOCK_BODY)
         return values
 
     def hash_tree_root_of_bytes(data: bytes) -> bytes:
@@ -264,6 +264,8 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
         return data + b'\x00' * (length - len(data))
 
     return hash(
+        # TODO untested code.
+        #  Need to either pass a typed list to hash-tree-root, or merkleize_chunks(values, pad_to=2**x)
         hash_tree_root(pad_to_power_of_2([
             hash_tree_root_of_bytes(
                 zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)

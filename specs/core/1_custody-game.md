@@ -318,7 +318,7 @@ def get_validators_custody_reveal_period(state: BeaconState,
 ### `replace_empty_or_append`
 
 ```python
-def replace_empty_or_append(list: TypingList[Any], new_element: Any) -> int:
+def replace_empty_or_append(list: MutableSequence[Any], new_element: Any) -> int:
     for i in range(len(list)):
         if is_empty(list[i]):
             list[i] = new_element

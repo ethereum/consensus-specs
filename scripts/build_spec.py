@@ -37,8 +37,7 @@ from eth2spec.utils.bls import (
 from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Callable, Dict, Optional, Set, Sequence, Tuple,
-    List as TypingList
+    Any, Callable, Dict, Optional, Set, Sequence, MutableSequence, Tuple,
 )
 
 from dataclasses import (
