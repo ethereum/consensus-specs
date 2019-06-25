@@ -140,7 +140,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 * **Committee**—a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
 * **Proposer**—the [validator](#dfn-validator) that creates a beacon chain block.
 * **Attester**—a [validator](#dfn-validator) that is part of a committee that needs to sign off on a beacon chain block while simultaneously creating a link (crosslink) to a recent shard block on a particular shard chain.
-* **Beacon chain**—the central PoS chain that is the base of the sharding system.
+* **Beacon chain**—the central proof-of-stake chain that is the base of the sharding system.
 * **Shard chain**—one of the chains on which user transactions take place and account data is stored.
 * **Block root**—a 32-byte Merkle root of a beacon chain block or shard chain block. Previously called "block hash".
 * **Crosslink**—a set of signatures from a committee attesting to a block in a shard chain that can be included into the beacon chain. Crosslinks are the main means by which the beacon chain "learns about" the updated state of shard chains.
@@ -179,7 +179,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Configuration
 
-*Note*: The default mainnet configuration values are included here for spec-design purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the `configs/constant_presets/` directory. These configurations are updated for releases and may be out of sync during `dev` changes.
+*Note*: The default mainnet configuration values are included here for spec-design purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs/constant_presets) directory. These configurations are updated for releases and may be out of sync during `dev` changes.
 
 ### Misc
 
@@ -192,7 +192,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
 
-* For the safety of crosslinks `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+* For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
 
@@ -226,7 +226,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
 
-* `MAX_EPOCHS_PER_CROSSLINK` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`
+* `MAX_EPOCHS_PER_CROSSLINK` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`.
 
 ### State list lengths
 
@@ -245,7 +245,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)` so after `INVERSE_SQRT_E_DROP_TIME` epochs it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating [validators](#dfn-validator) to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline [validators](#dfn-validator) after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
 
@@ -548,11 +548,11 @@ The `hash` function is SHA256.
 
 ### `hash_tree_root`
 
-`def hash_tree_root(object: SSZSerializable) -> Hash` is a function for hashing objects into a single root utilizing a hash tree structure. `hash_tree_root` is defined in the [SimpleSerialize spec](../simple-serialize.md#merkleization).
+`def hash_tree_root(object: SSZSerializable) -> Hash` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SimpleSerialize spec](../simple-serialize.md#merkleization).
 
 ### `signing_root`
 
-`def signing_root(object: Container) -> Hash` is a function defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers) to compute signing messages.
+`def signing_root(object: Container) -> Hash` is a function for computing signing messages, as defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers).
 
 ### `bls_domain`
 
@@ -1046,15 +1046,15 @@ def get_churn_limit(state: BeaconState) -> int:
 
 ### `bls_verify`
 
-`bls_verify` is a function for verifying a BLS signature, defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
+`bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
 
 ### `bls_verify_multiple`
 
-`bls_verify_multiple` is a function for verifying a BLS signature constructed from multiple messages, defined in the [BLS Signature spec](../bls_signature.md#bls_verify_multiple).
+`bls_verify_multiple` is a function for verifying a BLS signature constructed from multiple messages, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify_multiple).
 
 ### `bls_aggregate_pubkeys`
 
-`bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, defined in the [BLS Signature spec](../bls_signature.md#bls_aggregate_pubkeys).
+`bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, as defined in the [BLS Signature spec](../bls_signature.md#bls_aggregate_pubkeys).
 
 ### Routines for updating validator status
 
@@ -1119,7 +1119,7 @@ Before genesis has been triggered and whenever the deposit contract emits a `Dep
 * `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
 
-When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
+When `is_genesis_trigger(deposits, timestamp) is True` for the first time, let:
 
 * `genesis_deposits = deposits`
 * `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
@@ -1128,7 +1128,7 @@ When `is_genesis_trigger(deposits, timestamp) is True` for the first time let:
     * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
     * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
 
-*Note*: The function `is_genesis_trigger` has yet to be agreed by the community, and can be updated as necessary. We define the following testing placeholder:
+*Note*: The function `is_genesis_trigger` has yet to be agreed upon by the community, and can be updated as necessary. We define the following testing placeholder:
 
 ```python
 def is_genesis_trigger(deposits: List[Deposit], timestamp: uint64) -> bool:
@@ -1227,7 +1227,7 @@ def process_slot(state: BeaconState) -> None:
 
 ### Epoch processing
 
-*Note*: the `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
+*Note*: The `# @LabelHere` lines below are placeholders to show that code will be inserted here in a future phase.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -1735,7 +1735,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Verify the deposit signature (proof of possession).
         # Invalid signatures are allowed by the deposit contract,
         # and hence included on-chain, but must not be processed.
-        # Note: deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
+        # Note: Deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
         if not bls_verify(
             pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)
         ):
