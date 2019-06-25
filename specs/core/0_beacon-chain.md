@@ -286,8 +286,6 @@ We define the following Python custom types for type hinting and readability:
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
-`Deltas` is a non-SSZ type, a series of changes applied to balances, optimized by clients.
-
 ## Containers
 
 The following types are [SimpleSerialize (SSZ)](../simple-serialize.md) containers.
