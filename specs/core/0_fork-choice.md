@@ -91,7 +91,7 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         blocks={root: genesis_block},
-        block_states={root: genesis_state},
+        block_states={root: genesis_state.copy()},
         checkpoint_states={justified_checkpoint: genesis_state.copy()},
     )
 ```
@@ -110,10 +110,11 @@ def get_ancestor(store: Store, root: Hash, slot: Slot) -> Hash:
 ```python
 def get_latest_attesting_balance(store: Store, root: Hash) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
-    active_indices = get_active_validator_indices(state.validator_registry, get_current_epoch(state))
+    active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
-        state.validator_registry[i].effective_balance for i in active_indices
-        if get_ancestor(store, store.latest_targets[i].root, store.blocks[root].slot) == root
+        state.validators[i].effective_balance for i in active_indices
+        if (i in store.latest_targets and
+            get_ancestor(store, store.latest_targets[i].root, store.blocks[root].slot) == root)
     ))
 ```
 
