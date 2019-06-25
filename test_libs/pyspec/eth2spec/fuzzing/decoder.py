@@ -8,32 +8,31 @@ def translate_typ(typ) -> ssz.BaseSedes:
     :param typ: The spec type, a class.
     :return: The Py-SSZ equivalent.
     """
-    if spec_ssz.is_container_type(typ):
+    if issubclass(typ, spec_ssz.Container):
         return ssz.Container(
-            [translate_typ(field_typ) for (field_name, field_typ) in typ.get_fields()])
-    elif spec_ssz.is_bytesn_type(typ):
+            [translate_typ(field_typ) for field_name, field_typ in typ.get_fields().items()])
+    elif issubclass(typ, spec_ssz.BytesN):
         return ssz.ByteVector(typ.length)
-    elif spec_ssz.is_bytes_type(typ):
+    elif issubclass(typ, spec_ssz.Bytes):
         return ssz.ByteList()
-    elif spec_ssz.is_vector_type(typ):
-        return ssz.Vector(translate_typ(spec_ssz.read_vector_elem_type(typ)), typ.length)
-    elif spec_ssz.is_list_type(typ):
-        return ssz.List(translate_typ(spec_ssz.read_list_elem_type(typ)))
-    elif spec_ssz.is_bool_type(typ):
+    elif issubclass(typ, spec_ssz.Vector):
+        return ssz.Vector(translate_typ(typ.elem_type), typ.length)
+    elif issubclass(typ, spec_ssz.List):
+        return ssz.List(translate_typ(typ.elem_type))
+    elif issubclass(typ, spec_ssz.Bool):
         return ssz.boolean
-    elif spec_ssz.is_uint_type(typ):
-        size = spec_ssz.uint_byte_size(typ)
-        if size == 1:
+    elif issubclass(typ, spec_ssz.uint):
+        if typ.byte_len == 1:
             return ssz.uint8
-        elif size == 2:
+        elif typ.byte_len == 2:
             return ssz.uint16
-        elif size == 4:
+        elif typ.byte_len == 4:
             return ssz.uint32
-        elif size == 8:
+        elif typ.byte_len == 8:
             return ssz.uint64
-        elif size == 16:
+        elif typ.byte_len == 16:
             return ssz.uint128
-        elif size == 32:
+        elif typ.byte_len == 32:
             return ssz.uint256
         else:
             raise TypeError("invalid uint size")
@@ -48,37 +47,33 @@ def translate_value(value, typ):
     :param typ: The type from the spec to translate into
     :return: the translated value
     """
-    if spec_ssz.is_uint_type(typ):
-        size = spec_ssz.uint_byte_size(typ)
-        if size == 1:
+    if issubclass(typ, spec_ssz.uint):
+        if typ.byte_len == 1:
             return spec_ssz.uint8(value)
-        elif size == 2:
+        elif typ.byte_len == 2:
             return spec_ssz.uint16(value)
-        elif size == 4:
+        elif typ.byte_len == 4:
             return spec_ssz.uint32(value)
-        elif size == 8:
-            # uint64 is default (TODO this is changing soon)
-            return value
-        elif size == 16:
+        elif typ.byte_len == 8:
+            return spec_ssz.uint64(value)
+        elif typ.byte_len == 16:
             return spec_ssz.uint128(value)
-        elif size == 32:
+        elif typ.byte_len == 32:
             return spec_ssz.uint256(value)
         else:
             raise TypeError("invalid uint size")
-    elif spec_ssz.is_list_type(typ):
-        elem_typ = spec_ssz.read_elem_type(typ)
-        return [translate_value(elem, elem_typ) for elem in value]
-    elif spec_ssz.is_bool_type(typ):
+    elif issubclass(typ, spec_ssz.List):
+        return [translate_value(elem, typ.elem_type) for elem in value]
+    elif issubclass(typ, spec_ssz.Bool):
         return value
-    elif spec_ssz.is_vector_type(typ):
-        elem_typ = spec_ssz.read_elem_type(typ)
-        return typ(*(translate_value(elem, elem_typ) for elem in value))
-    elif spec_ssz.is_bytesn_type(typ):
+    elif issubclass(typ, spec_ssz.Vector):
+        return typ(*(translate_value(elem, typ.elem_type) for elem in value))
+    elif issubclass(typ, spec_ssz.BytesN):
         return typ(value)
-    elif spec_ssz.is_bytes_type(typ):
+    elif issubclass(typ, spec_ssz.Bytes):
         return value
-    elif spec_ssz.is_container_type(typ):
-        return typ(**{f_name: translate_value(f_val, f_typ) for (f_name, f_val, f_typ)
-                      in zip(typ.get_field_names(), value, typ.get_field_types())})
+    if issubclass(typ, spec_ssz.Container):
+        return typ(**{f_name: translate_value(f_val, f_typ) for (f_val, (f_name, f_typ))
+                      in zip(value, typ.get_fields().items())})
     else:
         raise TypeError("Type not supported: {}".format(typ))
