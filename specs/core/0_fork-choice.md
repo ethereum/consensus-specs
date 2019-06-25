@@ -55,6 +55,15 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 
 ### Helpers
 
+#### `LatestMessage`
+
+```python
+@dataclass(eq=True, frozen=True)
+class LatestMessage(object):
+    epoch: Epoch
+    root: Hash
+```
+
 #### `Store`
 
 ```python
@@ -66,7 +75,7 @@ class Store(object):
     blocks: Dict[Hash, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Hash, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
-    latest_targets: Dict[ValidatorIndex, Checkpoint] = field(default_factory=dict)
+    latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
 ```
 
 #### `get_genesis_store`
@@ -82,7 +91,7 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         blocks={root: genesis_block},
-        block_states={root: genesis_state},
+        block_states={root: genesis_state.copy()},
         checkpoint_states={justified_checkpoint: genesis_state.copy()},
     )
 ```
@@ -101,10 +110,11 @@ def get_ancestor(store: Store, root: Hash, slot: Slot) -> Hash:
 ```python
 def get_latest_attesting_balance(store: Store, root: Hash) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
-    active_indices = get_active_validator_indices(state.validator_registry, get_current_epoch(state))
+    active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
-        state.validator_registry[i].effective_balance for i in active_indices
-        if get_ancestor(store, store.latest_targets[i].root, store.blocks[root].slot) == root
+        state.validators[i].effective_balance for i in active_indices
+        if (i in store.latest_messages and
+            get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
 ```
 
@@ -197,8 +207,8 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     indexed_attestation = convert_to_indexed(target_state, attestation)
     validate_indexed_attestation(target_state, indexed_attestation)
 
-    # Update latest targets
+    # Update latest messages
     for i in indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices:
-        if i not in store.latest_targets or target.epoch > store.latest_targets[i].epoch:
-            store.latest_targets[i] = target
+        if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
+            store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=attestation.data.beacon_block_root)
 ```
