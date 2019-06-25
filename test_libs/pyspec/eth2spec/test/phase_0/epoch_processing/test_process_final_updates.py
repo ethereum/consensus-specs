@@ -8,6 +8,23 @@ def run_process_final_updates(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_eth1_vote_no_reset(spec, state):
+    assert spec.SLOTS_PER_ETH1_VOTING_PERIOD > spec.SLOTS_PER_EPOCH
+    # skip ahead to near the end of the epoch
+    state.slot = spec.SLOTS_PER_EPOCH - 2
+    for i in range(state.slot + 1):  # add a vote for each skipped slot.
+        state.eth1_data_votes.append(
+            spec.Eth1Data(deposit_root=b'\xaa' * 32,
+                          deposit_count=state.eth1_deposit_index,
+                          block_hash=b'\xbb' * 32))
+
+    yield from run_process_final_updates(spec, state)
+
+    assert len(state.eth1_data_votes) == spec.SLOTS_PER_EPOCH
+
+
+@with_all_phases
+@spec_state_test
 def test_eth1_vote_reset(spec, state):
     # skip ahead to near the end of the voting period
     state.slot = spec.SLOTS_PER_ETH1_VOTING_PERIOD - 2
