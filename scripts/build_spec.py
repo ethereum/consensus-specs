@@ -12,12 +12,7 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Set,
-    Tuple,
+    Any, Callable, Dict, Set, Sequence, Tuple,
 )
 
 from dataclasses import (
@@ -30,8 +25,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector,
+    Bit, Bool, Container, List, Vector, Bytes, uint64,
     Bytes4, Bytes32, Bytes48, Bytes96,
 )
 from eth2spec.utils.bls import (
@@ -39,18 +33,11 @@ from eth2spec.utils.bls import (
     bls_verify,
     bls_verify_multiple,
 )
-# Note: 'int' type defaults to being interpreted as a uint64 by SSZ implementation.
 
 from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
+    Any, Callable, Dict, Optional, Set, Sequence, MutableSequence, Tuple,
 )
 
 from dataclasses import (
@@ -65,8 +52,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector,
+    Bit, Bool, Container, List, Vector, Bytes, uint64,
     Bytes4, Bytes32, Bytes48, Bytes96,
 )
 from eth2spec.utils.bls import (
@@ -77,28 +63,7 @@ from eth2spec.utils.bls import (
 
 from eth2spec.utils.hash_function import hash
 '''
-BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
-def get_ssz_type_by_name(name: str) -> Container:
-    return globals()[name]
-
-
-# Monkey patch validator compute committee code
-_compute_committee = compute_committee
-committee_cache: Dict[Tuple[Hash, Hash, int, int], List[ValidatorIndex]] = {}
-
-
-def compute_committee(indices: List[ValidatorIndex],  # type: ignore
-                      seed: Hash,
-                      index: int,
-                      count: int) -> List[ValidatorIndex]:
-    param_hash = (hash_tree_root(indices), seed, index, count)
-
-    if param_hash not in committee_cache:
-        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
-    return committee_cache[param_hash]
-
-
 # Monkey patch hash cache
 _hash = hash
 hash_cache: Dict[bytes, Hash] = {}
@@ -108,6 +73,22 @@ def hash(x: bytes) -> Hash:
     if x not in hash_cache:
         hash_cache[x] = Hash(_hash(x))
     return hash_cache[x]
+
+
+# Monkey patch validator compute committee code
+_compute_committee = compute_committee
+committee_cache: Dict[Tuple[Hash, Hash, int, int], Sequence[ValidatorIndex]] = {}
+
+
+def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
+                      seed: Hash,
+                      index: int,
+                      count: int) -> Sequence[ValidatorIndex]:
+    param_hash = (hash(b''.join(index.to_bytes(length=4, byteorder='little') for index in indices)), seed, index, count)
+
+    if param_hash not in committee_cache:
+        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
+    return committee_cache[param_hash]
 
 
 # Access to overwrite spec constants based on configuration
@@ -122,6 +103,18 @@ def apply_constants_preset(preset: Dict[str, Any]) -> None:
     # Initialize SSZ types again, to account for changed lengths
     init_SSZ_types()
 '''
+
+
+def strip_comments(raw: str) -> str:
+    comment_line_regex = re.compile('^\s+# ')
+    lines = raw.split('\n')
+    out = []
+    for line in lines:
+        if not comment_line_regex.match(line):
+            if '  #' in line:
+                line = line[:line.index('  #')]
+            out.append(line)
+    return '\n'.join(out)
 
 
 def objects_to_spec(functions: Dict[str, str],
@@ -151,7 +144,8 @@ def objects_to_spec(functions: Dict[str, str],
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
         'def init_SSZ_types() -> None:\n    global_vars = globals()\n\n    '
-        + '\n\n    '.join([re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]) for value in ssz_objects.values()])
+        + '\n\n    '.join([strip_comments(re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]))
+                           for value in ssz_objects.values()])
         + '\n\n'
         + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
     )
@@ -183,17 +177,32 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
     return old_constants
 
 
+ignored_dependencies = [
+    'Bit', 'Bool', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
+    'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96',
+    'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
+    'bytes'  # to be removed after updating spec doc
+]
+
+
 def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str, str]) -> None:
     """
     Determines which SSZ Object is depenedent on which other and orders them appropriately
     """
     items = list(objects.items())
     for key, value in items:
-        dependencies = re.findall(r'(: [A-Z][\w[]*)', value)
-        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|Hash|BLSPubkey|BLSSignature|uint\d+|Bytes\d+|bytes', '', x), dependencies)
+        dependencies = []
+        for line in value.split('\n'):
+            if not re.match(r'\s+\w+: .+', line):
+                continue  # skip whitespace etc.
+            line = line[line.index(':') + 1:]  # strip of field name
+            if '#' in line:
+                line = line[:line.index('#')]  # strip of comment
+            dependencies.extend(re.findall(r'(\w+)', line))  # catch all legible words, potential dependencies
+        dependencies = filter(lambda x: '_' not in x and x.upper() != x, dependencies)  # filter out constants
+        dependencies = filter(lambda x: x not in ignored_dependencies, dependencies)
+        dependencies = filter(lambda x: x not in custom_types, dependencies)
         for dep in dependencies:
-            if dep in custom_types or len(dep) == 0:
-                continue
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)

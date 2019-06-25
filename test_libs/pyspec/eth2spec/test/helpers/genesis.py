@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_typing import List
 
 
 def build_mock_validator(spec, i: int, balance: int):
@@ -40,7 +41,8 @@ def create_genesis_state(spec, num_validators):
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 
-    genesis_active_index_root = hash_tree_root(spec.get_active_validator_indices(state, spec.GENESIS_EPOCH))
+    genesis_active_index_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
+        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
     for index in range(spec.EPOCHS_PER_HISTORICAL_VECTOR):
         state.active_index_roots[index] = genesis_active_index_root
 

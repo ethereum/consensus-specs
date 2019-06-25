@@ -13,7 +13,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
 
     # Generate the secret that is being revealed
     reveal = bls_sign(
-        message_hash=spec.hash_tree_root(epoch),
+        message_hash=spec.hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[revealed_index],
         domain=spec.get_domain(
             state=state,
