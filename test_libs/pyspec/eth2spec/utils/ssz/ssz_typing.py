@@ -34,7 +34,7 @@ class BasicValue(int, SSZValue, metaclass=BasicType):
 class Bool(BasicValue):  # can't subclass bool.
     byte_len = 1
 
-    def __new__(cls, value, *args, **kwargs):
+    def __new__(cls, value: int):  # int value, but can be any subclass of int (bool, Bit, Bool, etc...)
         if value < 0 or value > 1:
             raise ValueError(f"value {value} out of bounds for bit")
         return super().__new__(cls, value)
@@ -54,7 +54,7 @@ class Bit(Bool):
 
 class uint(BasicValue, metaclass=BasicType):
 
-    def __new__(cls, value, *args, **kwargs):
+    def __new__(cls, value: int):
         if value < 0:
             raise ValueError("unsigned types must not be negative")
         if cls.byte_len and value.bit_length() > (cls.byte_len << 3):
