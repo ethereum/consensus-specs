@@ -1,5 +1,3 @@
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-
 from eth2spec.test.context import with_all_phases, with_state, bls_switch
 
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
@@ -31,8 +29,6 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
 @with_state
 @bls_switch
 def test_on_attestation(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     store = spec.get_genesis_store(state)
     time = 100
     spec.on_tick(store, time)
@@ -52,8 +48,6 @@ def test_on_attestation(spec, state):
 @with_state
 @bls_switch
 def test_on_attestation_target_not_in_store(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     store = spec.get_genesis_store(state)
     time = 100
     spec.on_tick(store, time)
@@ -74,8 +68,6 @@ def test_on_attestation_target_not_in_store(spec, state):
 @with_state
 @bls_switch
 def test_on_attestation_future_epoch(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     store = spec.get_genesis_store(state)
     time = 3 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
@@ -98,8 +90,6 @@ def test_on_attestation_future_epoch(spec, state):
 @with_state
 @bls_switch
 def test_on_attestation_same_slot(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     store = spec.get_genesis_store(state)
     time = 1 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
@@ -117,8 +107,6 @@ def test_on_attestation_same_slot(spec, state):
 @with_state
 @bls_switch
 def test_on_attestation_invalid_attestation(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     store = spec.get_genesis_store(state)
     time = 3 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)

@@ -1,7 +1,6 @@
-from eth2spec.utils.ssz.ssz_impl import signing_root, hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import signing_root
 
 from eth2spec.test.context import with_all_phases, with_state, bls_switch
-
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 
 
@@ -22,8 +21,6 @@ def run_on_block(spec, state, store, block, valid=True):
 @with_state
 @bls_switch
 def test_basic(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     # Initialization
     store = spec.get_genesis_store(state)
     time = 100
@@ -48,8 +45,6 @@ def test_basic(spec, state):
 @with_state
 @bls_switch
 def test_on_block_future_block(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     # Initialization
     store = spec.get_genesis_store(state)
 
@@ -64,8 +59,6 @@ def test_on_block_future_block(spec, state):
 @with_state
 @bls_switch
 def test_on_block_bad_parent_root(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     # Initialization
     store = spec.get_genesis_store(state)
     time = 100
@@ -81,8 +74,6 @@ def test_on_block_bad_parent_root(spec, state):
 @with_state
 @bls_switch
 def test_on_block_before_finalized(spec, state):
-    state.latest_block_header = spec.BeaconBlockHeader(body_root=hash_tree_root(spec.BeaconBlockBody()))
-
     # Initialization
     store = spec.get_genesis_store(state)
     time = 100
