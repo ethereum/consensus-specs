@@ -11,7 +11,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     if not valid:
         try:
             spec.on_attestation(store, attestation)
-        except:
+        except AssertionError:
             return
         else:
             assert False

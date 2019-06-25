@@ -9,7 +9,7 @@ def run_on_block(spec, state, store, block, valid=True):
     if not valid:
         try:
             spec.on_block(store, block)
-        except:
+        except AssertionError:
             return
         else:
             assert False
@@ -88,7 +88,10 @@ def test_on_block_before_finalized(spec, state):
     time = 100
     spec.on_tick(store, time)
 
-    store.finalized_checkpoint = spec.Checkpoint(epoch=store.finalized_checkpoint.epoch + 2, root=store.finalized_checkpoint.root)
+    store.finalized_checkpoint = spec.Checkpoint(
+        epoch=store.finalized_checkpoint.epoch + 2,
+        root=store.finalized_checkpoint.root
+    )
 
     # Fail receiving block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)

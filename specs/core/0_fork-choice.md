@@ -149,14 +149,17 @@ def on_tick(store: Store, time: int) -> None:
 ```python
 def on_block(store: Store, block: BeaconBlock) -> None:
     # Make a copy of the state to avoid mutability issues
-    parent_block = store.blocks[block.parent_root]
+    assert block.parent_root in store.block_states
     pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Add new block to the store
     store.blocks[signing_root(block)] = block
     # Check block is a descendant of the finalized block
-    assert get_ancestor(store, signing_root(block), store.blocks[store.finalized_checkpoint.root].slot) == store.finalized_checkpoint.root
+    assert (
+        get_ancestor(store, signing_root(block), store.blocks[store.finalized_checkpoint.root].slot) ==
+        store.finalized_checkpoint.root
+    )
     # Check that block is later than the finalized epoch slot
     assert block.slot > get_epoch_start_slot(store.finalized_checkpoint.epoch)
     # Check the block is valid and compute the post-state
@@ -184,13 +187,14 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     # Cannot calculate the current shuffling if have not seen the target
     assert target.root in store.blocks
 
-    # Attestations cannot be from future epochs. If they are, their consideration must be delayed until the are in the past.
+    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrivesr
     base_state = store.block_states[target.root].copy()
     assert store.time >= base_state.genesis_time + get_epoch_start_slot(target.epoch) * SECONDS_PER_SLOT
 
     # Store target checkpoint state if not yet seen
     if target not in store.checkpoint_states:
-        store.checkpoint_states[target] = process_slots(base_state, get_epoch_start_slot(target.epoch))
+        process_slots(base_state, get_epoch_start_slot(target.epoch))
+        store.checkpoint_states[target] = base_state
     target_state = store.checkpoint_states[target]
 
     # Attestations can only affect the fork choice of subsequent slots.
