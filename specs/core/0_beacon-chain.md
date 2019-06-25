@@ -1142,7 +1142,7 @@ def is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool:
 
     # Count active validators at genesis
     active_validator_count = 0
-    for validator in state.validator_registry:
+    for validator in state.validators:
         if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             active_validator_count += 1
 
