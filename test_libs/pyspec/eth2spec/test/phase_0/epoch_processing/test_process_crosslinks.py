@@ -4,8 +4,8 @@ from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
-)
-from eth2spec.test.helpers.block import apply_empty_block
+    state_transition_and_sign_block)
+from eth2spec.test.helpers.block import apply_empty_block, build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.attestations import (
     add_attestation_to_state,
     fill_aggregate_attestation,
@@ -28,6 +28,14 @@ def test_no_attestations(spec, state):
         assert state.previous_crosslinks[shard] == state.current_crosslinks[shard]
 
 
+def add_block_to_end_of_epoch(spec, state):
+    slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH) - 1
+    block = build_empty_block_for_next_slot(spec, state)
+    block.slot = slot
+    sign_block(spec, state, block)
+    state_transition_and_sign_block(spec, state, block)
+
+
 @with_all_phases
 @spec_state_test
 def test_single_crosslink_update_from_current_epoch(spec, state):
@@ -43,6 +51,7 @@ def test_single_crosslink_update_from_current_epoch(spec, state):
     shard = attestation.data.crosslink.shard
     pre_crosslink = deepcopy(state.current_crosslinks[shard])
 
+    add_block_to_end_of_epoch(spec, state)
     yield from run_process_crosslinks(spec, state)
 
     assert state.previous_crosslinks[shard] != state.current_crosslinks[shard]
@@ -66,6 +75,7 @@ def test_single_crosslink_update_from_previous_epoch(spec, state):
 
     crosslink_deltas = spec.get_crosslink_deltas(state)
 
+    add_block_to_end_of_epoch(spec, state)
     yield from run_process_crosslinks(spec, state)
 
     assert state.previous_crosslinks[shard] != state.current_crosslinks[shard]
