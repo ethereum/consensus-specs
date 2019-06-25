@@ -17,10 +17,10 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     indexed_attestation = spec.convert_to_indexed(state, attestation)
     spec.on_attestation(store, attestation)
     assert (
-        store.latest_targets[indexed_attestation.custody_bit_0_indices[0]] ==
-        spec.Checkpoint(
+        store.latest_messages[indexed_attestation.custody_bit_0_indices[0]] ==
+        spec.LatestMessage(
             epoch=attestation.data.target_epoch,
-            root=attestation.data.target_root,
+            root=attestation.data.beacon_block_root,
         )
     )
 
