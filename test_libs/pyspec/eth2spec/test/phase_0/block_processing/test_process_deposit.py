@@ -59,10 +59,10 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
 
 @with_all_phases
 @spec_state_test
-def test_new_deposit(spec, state):
+def test_new_deposit_under_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
-    #  effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
+    # effective balance will be 1 EFFECTIVE_BALANCE_INCREMENT smaller because of this small decrement.
     amount = spec.MAX_EFFECTIVE_BALANCE - 1
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
 
@@ -71,7 +71,19 @@ def test_new_deposit(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_new_deposit_maxed_out(spec, state):
+def test_new_deposit_max(spec, state):
+    # fresh deposit = next validator index = validator appended to registry
+    validator_index = len(state.validators)
+    # effective balance will be exactly the same as balance.
+    amount = spec.MAX_EFFECTIVE_BALANCE
+    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
+
+    yield from run_deposit_processing(spec, state, deposit, validator_index)
+
+
+@with_all_phases
+@spec_state_test
+def test_new_deposit_over_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     # just 1 over the limit, effective balance should be set MAX_EFFECTIVE_BALANCE during processing
