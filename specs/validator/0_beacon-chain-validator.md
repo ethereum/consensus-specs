@@ -234,7 +234,7 @@ def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Dat
     # Filter valid votes from the current voting period
     valid_votes = []
     for slot, vote in enumerate(state.eth1_data_votes):
-        if slot % SLOTS_PER_ETH1_VOTING_PERIOD <= integer_square_root(SLOTS_PER_ETH1_VOTING_PERIOD):
+        if slot % SLOTS_PER_ETH1_VOTING_PERIOD < integer_square_root(SLOTS_PER_ETH1_VOTING_PERIOD):
             if vote in set(fresh_eth1_data):
                 valid_votes.append(vote)
         else:
