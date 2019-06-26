@@ -12,11 +12,11 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     sign_attestation,
 )
-from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_to
+from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
 
 def run_process_crosslinks(spec, state):
-    yield from run_epoch_processing_to(spec, state, 'process_crosslinks')
+    yield from run_epoch_processing_with(spec, state, 'process_crosslinks')
 
 
 @with_all_phases

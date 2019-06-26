@@ -1,10 +1,10 @@
 from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.context import spec_state_test, with_all_phases
-from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_to
+from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
 
 def run_process_registry_updates(spec, state):
-    yield from run_epoch_processing_to(spec, state, 'process_registry_updates')
+    yield from run_epoch_processing_with(spec, state, 'process_registry_updates')
 
 
 def mock_deposit(spec, state, index):

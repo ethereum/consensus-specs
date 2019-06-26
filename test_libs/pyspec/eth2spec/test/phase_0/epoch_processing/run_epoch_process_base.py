@@ -12,13 +12,9 @@ process_calls = [
 ]
 
 
-def run_epoch_processing_to(spec, state, process_name: str, exclusive=False):
+def run_epoch_processing_to(spec, state, process_name: str):
     """
-    Run the epoch processing functions up to ``process_name``.
-    If ``exclusive`` is True, the process itself will not be ran.
-    If ``exclusive`` is False (default), this function yields:
-      - pre-state ('pre'), state before calling ``process_name``
-      - post-state ('post'), state after calling ``process_name``
+    Processes to the next epoch transition, up to, but not including, the sub-transition named ``process_name``
     """
     slot = state.slot + (spec.SLOTS_PER_EPOCH - state.slot % spec.SLOTS_PER_EPOCH)
 
@@ -36,7 +32,14 @@ def run_epoch_processing_to(spec, state, process_name: str, exclusive=False):
         if hasattr(spec, name):
             getattr(spec, name)(state)
 
-    if not exclusive:
-        yield 'pre', state
-        getattr(spec, process_name)(state)
-        yield 'post', state
+
+def run_epoch_processing_with(spec, state, process_name: str):
+    """
+    Processes to the next epoch transition, up to and including the sub-transition named ``process_name``
+      - pre-state ('pre'), state before calling ``process_name``
+      - post-state ('post'), state after calling ``process_name``
+    """
+    run_epoch_processing_to(spec, state, process_name)
+    yield 'pre', state
+    getattr(spec, process_name)(state)
+    yield 'post', state
