@@ -238,7 +238,7 @@ def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Dat
             if vote in set(fresh_eth1_data):
                 valid_votes.append(vote)
         else:
-            if vote in set(fresh_eth1_data).union(stale_eth1_data)
+            if vote in set(fresh_eth1_data).union(stale_eth1_data):
                 valid_votes.append(vote)
 
     return max(valid_votes, valid_votes.count, default=get_eth1_data(ETH1_FOLLOW_DISTANCE))
