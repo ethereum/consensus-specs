@@ -154,9 +154,73 @@ def test_custody_bit_0_and_1_intersect(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
+@always_bls
 @with_all_phases
 @spec_state_test
-def test_unsorted_att_1(spec, state):
+def test_att1_bad_extra_index(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    indices = attester_slashing.attestation_1.custody_bit_0_indices
+    options = list(set(range(len(state.validators))) - set(indices))
+    indices.append(options[len(options) // 2])  # add random index, not previously in attestation.
+    attester_slashing.attestation_1.custody_bit_0_indices = sorted(indices)
+    # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
+    # see if the bad extra index is spotted, and slashing is aborted.
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@always_bls
+@with_all_phases
+@spec_state_test
+def test_att1_bad_replaced_index(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    indices = attester_slashing.attestation_1.custody_bit_0_indices
+    options = list(set(range(len(state.validators))) - set(indices))
+    indices[3] = options[len(options) // 2]  # replace with random index, not previously in attestation.
+    attester_slashing.attestation_1.custody_bit_0_indices = sorted(indices)
+    # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
+    # see if the bad replaced index is spotted, and slashing is aborted.
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@always_bls
+@with_all_phases
+@spec_state_test
+def test_att2_bad_extra_index(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    indices = attester_slashing.attestation_2.custody_bit_0_indices
+    options = list(set(range(len(state.validators))) - set(indices))
+    indices.append(options[len(options) // 2])  # add random index, not previously in attestation.
+    attester_slashing.attestation_2.custody_bit_0_indices = sorted(indices)
+    # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
+    # see if the bad extra index is spotted, and slashing is aborted.
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@always_bls
+@with_all_phases
+@spec_state_test
+def test_att2_bad_replaced_index(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
+
+    indices = attester_slashing.attestation_2.custody_bit_0_indices
+    options = list(set(range(len(state.validators))) - set(indices))
+    indices[3] = options[len(options) // 2]  # replace with random index, not previously in attestation.
+    attester_slashing.attestation_2.custody_bit_0_indices = sorted(indices)
+    # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
+    # see if the bad replaced index is spotted, and slashing is aborted.
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_unsorted_att_1_bit0(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
     indices = attester_slashing.attestation_1.custody_bit_0_indices
@@ -169,7 +233,7 @@ def test_unsorted_att_1(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_unsorted_att_2(spec, state):
+def test_unsorted_att_2_bit0(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
     indices = attester_slashing.attestation_2.custody_bit_0_indices
@@ -178,3 +242,7 @@ def test_unsorted_att_2(spec, state):
     sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+# note: unsorted indices for custody bit 0 are to be introduced in phase 1 testing.
+
