@@ -737,7 +737,8 @@ def get_randao_mix(state: BeaconState,
                    epoch: Epoch) -> Hash:
     """
     Return the randao mix at a recent ``epoch``.
-    ``epoch`` expected to be between (current_epoch - EPOCHS_PER_HISTORICAL_VECTOR, current_epoch], unless otherwise noted at a call site.
+    ``epoch`` expected to be between (current_epoch - EPOCHS_PER_HISTORICAL_VECTOR, current_epoch], unless 
+    otherwise noted at a call site.
     """
     return state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
@@ -763,7 +764,8 @@ def generate_seed(state: BeaconState,
     """
     Generate a seed for the given ``epoch``.
     
-    Note that avoiding the underflow on ``get_randao_mix`` here violates the epoch validity condition given in that function's comment.
+    Note that avoiding the underflow on ``get_randao_mix`` here violates
+    the epoch validity condition given in that function's comment.
     """
     return hash(
         get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD)) +
