@@ -114,7 +114,7 @@ def test_incorrect_slot(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_insufficient_balance_for_fee(spec, state):
+def test_insufficient_balance_for_fee_result_dust(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=0, fee=1, signed=True)
@@ -127,13 +127,147 @@ def test_insufficient_balance_for_fee(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_insufficient_balance(spec, state):
+def test_insufficient_balance_for_fee_result_full(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  amount=0, fee=state.balances[sender_index] + 1, signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_for_amount_result_dust(spec, state):
     sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     state.balances[sender_index] = spec.MAX_EFFECTIVE_BALANCE
     transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1, fee=0, signed=True)
 
     # un-activate so validator can transfer
     state.validators[transfer.sender].activation_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_for_amount_result_full(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  amount=state.balances[sender_index] + 1, fee=0, signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_for_combined_result_dust(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    # Enough to pay fee without dust, and amount without dust, but not both.
+    state.balances[sender_index] = spec.MIN_DEPOSIT_AMOUNT + 1
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1, fee=1, signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_for_combined_result_full(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    # Enough to pay fee fully without dust left, and amount fully without dust left, but not both.
+    state.balances[sender_index] = spec.MIN_DEPOSIT_AMOUNT * 2 + 1
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  amount=spec.MIN_DEPOSIT_AMOUNT + 1,
+                                  fee=spec.MIN_DEPOSIT_AMOUNT + 1, signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_for_combined_big_amount(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    # Enough to pay fee fully without dust left, and amount fully without dust left, but not both.
+    # Try to create a dust balance (off by 1) with combination of fee and amount.
+    state.balances[sender_index] = spec.MIN_DEPOSIT_AMOUNT * 2 + 1
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  amount=spec.MIN_DEPOSIT_AMOUNT + 1, fee=1, signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_for_combined_big_fee(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    # Enough to pay fee fully without dust left, and amount fully without dust left, but not both.
+    # Try to create a dust balance (off by 1) with combination of fee and amount.
+    state.balances[sender_index] = spec.MIN_DEPOSIT_AMOUNT * 2 + 1
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  amount=1, fee=spec.MIN_DEPOSIT_AMOUNT + 1, signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_off_by_1_fee(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    # Enough to pay fee fully without dust left, and amount fully without dust left, but not both.
+    # Try to print money by using the full balance as amount, plus 1 for fee.
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  amount=state.balances[sender_index], fee=1, signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_off_by_1_amount(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    # Enough to pay fee fully without dust left, and amount fully without dust left, but not both.
+    # Try to print money by using the full balance as fee, plus 1 for amount.
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index, amount=1,
+                                  fee=state.balances[sender_index], signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield from run_transfer_processing(spec, state, transfer, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_insufficient_balance_duplicate_as_fee_and_amount(spec, state):
+    sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+    # Enough to pay fee fully without dust left, and amount fully without dust left, but not both.
+    # Try to print money by using the full balance, twice.
+    transfer = get_valid_transfer(spec, state, sender_index=sender_index,
+                                  amount=state.balances[sender_index],
+                                  fee=state.balances[sender_index], signed=True)
+
+    # un-activate so validator can transfer
+    state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
 
     yield from run_transfer_processing(spec, state, transfer, False)
 
