@@ -1099,7 +1099,10 @@ def slash_validator(state: BeaconState,
     current_epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
     state.validators[slashed_index].slashed = True
-    state.validators[slashed_index].withdrawable_epoch = Epoch(current_epoch + EPOCHS_PER_SLASHED_BALANCES_VECTOR)
+    state.validators[slashed_index].withdrawable_epoch = max(
+        state.validators[slashed_index].withdrawable_epoch,
+        Epoch(current_epoch + EPOCHS_PER_SLASHED_BALANCES_VECTOR)
+    )
     slashed_balance = state.validators[slashed_index].effective_balance
     state.slashed_balances[current_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR] += slashed_balance
 
@@ -1108,9 +1111,9 @@ def slash_validator(state: BeaconState,
         whistleblower_index = proposer_index
     whistleblowing_reward = Gwei(slashed_balance // WHISTLEBLOWING_REWARD_QUOTIENT)
     proposer_reward = Gwei(whistleblowing_reward // PROPOSER_REWARD_QUOTIENT)
+    decrease_balance(state, slashed_index, slashed_balance // MIN_SLASHING_PENALTY_QUOTIENT)
     increase_balance(state, proposer_index, proposer_reward)
     increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
-    decrease_balance(state, slashed_index, whistleblowing_reward)
 ```
 
 ## Genesis
@@ -1505,11 +1508,14 @@ def process_slashings(state: BeaconState) -> None:
     total_penalties = total_at_end - total_at_start
 
     for index, validator in enumerate(state.validators):
-        if validator.slashed and epoch + EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2 == validator.withdrawable_epoch:
-            penalty = max(
-                validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
-                validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
-            )
+        penalize_now = (
+            validator.slashed and
+            epoch < validator.withdrawable_epoch and
+            (validator.withdrawable_epoch - epoch) % EPOCHS_PER_SLASHED_BALANCES_VECTOR == 
+            EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2
+        )
+        if penalize_now:
+            penalty = validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
