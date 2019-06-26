@@ -1797,6 +1797,8 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     """
     # Verify the amount and fee are not individually too big (for anti-overflow purposes)
     assert state.balances[transfer.sender] >= max(transfer.amount, transfer.fee)
+    # Verify that there is sufficient balance for the total transfer value
+    assert state.balances[transfer.sender] >= transfer.amount + transfer.fee
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
     # Sender must satisfy at least one of the following conditions in the parenthesis:
