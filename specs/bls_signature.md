@@ -71,7 +71,7 @@ We require:
 G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
 q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
 
-def hash_to_G2(message_hash: Bytes32, domain: uint64) -> [uint384]:
+def hash_to_G2(message_hash: Bytes32, domain: uint64) -> Tuple[uint384, uint384]:
     # Initial candidate x coordinate
     x_re = int.from_bytes(hash(message_hash + bytes8(domain) + b'\x01'), 'big')
     x_im = int.from_bytes(hash(message_hash + bytes8(domain) + b'\x02'), 'big')
