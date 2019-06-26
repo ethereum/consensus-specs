@@ -11,7 +11,39 @@ from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import spec_state_test, with_all_phases, expect_assertion_error
+
+
+@with_all_phases
+@spec_state_test
+def test_prev_slot_block_transition(spec, state):
+    # Go to clean slot
+    spec.process_slots(state, state.slot + 1)
+    # Make a block for it
+    block = build_empty_block(spec, state, slot=state.slot, signed=True)
+    # Transition to next slot, above block will not be invalid on top of new state.
+    spec.process_slots(state, state.slot + 1)
+
+    yield 'pre', state
+    expect_assertion_error(lambda: state_transition_and_sign_block(spec, state, block))
+    yield 'blocks', [block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+def test_same_slot_block_transition(spec, state):
+    # Same slot on top of pre-state, but move out of slot 0 first.
+    spec.process_slots(state, state.slot + 1)
+
+    block = build_empty_block(spec, state, slot=state.slot, signed=True)
+
+    yield 'pre', state
+
+    state_transition_and_sign_block(spec, state, block)
+
+    yield 'blocks', [block]
+    yield 'post', state
 
 
 @with_all_phases
