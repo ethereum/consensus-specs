@@ -26,7 +26,8 @@ def test_is_genesis_trigger_false(spec):
 def test_is_genesis_trigger_true(spec):
     deposit_count = spec.GENESIS_ACTIVE_VALIDATOR_COUNT
     genesis_deposits, deposit_root = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
-    genesis_time = 1546300800
+    SECONDS_PER_DAY = 86400
+    genesis_time = 1578009600 - 2 * SECONDS_PER_DAY
 
     yield "deposits", genesis_deposits
     yield "time", genesis_time

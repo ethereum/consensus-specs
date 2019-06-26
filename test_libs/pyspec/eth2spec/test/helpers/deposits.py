@@ -82,7 +82,7 @@ def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False
     tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
     root = get_merkle_root((tuple(deposit_data_leaves)))
 
-    genesis_deposits = (
+    genesis_deposits = list(
         spec.Deposit(proof=list(get_merkle_proof(tree, item_index=index)), data=deposit_data)
         for index, deposit_data in enumerate(genesis_deposit_data_list)
     )

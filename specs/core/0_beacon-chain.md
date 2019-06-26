@@ -1137,14 +1137,16 @@ When `is_genesis_trigger(deposits, time) is True` for the first time let:
 
 ```python
 def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], time: uint64) -> bool:
+    SECONDS_PER_DAY = 86400
     # Do not deploy too early
     if time - time % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY < MIN_GENESIS_TIME:
         return False
 
     # Initialize deposit root
     state = BeaconState()
-    state.eth1_data.deposit_root = hash_tree_root(map(deposits, lambda deposit: deposit.data))
-
+    state.eth1_data.deposit_root = hash_tree_root(
+        Vector[DepositData, len(deposits)](list(map(lambda deposit: deposit.data, deposits)))
+    )
     # Process deposits
     for deposit in deposits:
         process_deposit(state, deposit)
