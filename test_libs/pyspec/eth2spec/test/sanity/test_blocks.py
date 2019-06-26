@@ -123,26 +123,29 @@ def test_empty_epoch_transition(spec, state):
         assert spec.get_block_root_at_slot(state, slot) == block.parent_root
 
 
-# @with_all_phases
-# @spec_state_test
-# def test_empty_epoch_transition_not_finalizing(spec, state):
-#     # copy for later balance lookups.
-#     pre_state = deepcopy(state)
-#     yield 'pre', state
+@with_all_phases
+@spec_state_test
+def test_empty_epoch_transition_not_finalizing(spec, state):
+    # Don't run for non-minimal configs, it takes very long, and the effect
+    # of calling finalization/justifcation is just the same as with the minimal configuration.
+    if spec.SLOTS_PER_EPOCH > 8:
+        return
 
-#     block = build_empty_block_for_next_slot(spec, state)
-#     block.slot += spec.SLOTS_PER_EPOCH * 5
-#     sign_block(spec, state, block, proposer_index=0)
+    # copy for later balance lookups.
+    pre_balances = list(state.balances)
+    yield 'pre', state
 
-#     state_transition_and_sign_block(spec, state, block)
+    spec.process_slots(state, state.slot + (spec.SLOTS_PER_EPOCH * 5))
+    block = build_empty_block_for_next_slot(spec, state, signed=True)
+    state_transition_and_sign_block(spec, state, block)
 
-#     yield 'blocks', [block]
-#     yield 'post', state
+    yield 'blocks', [block]
+    yield 'post', state
 
-#     assert state.slot == block.slot
-#     assert state.finalized_epoch < spec.get_current_epoch(state) - 4
-#     for index in range(len(state.validators)):
-#         assert get_balance(state, index) < get_balance(pre_state, index)
+    assert state.slot == block.slot
+    assert state.finalized_epoch < spec.get_current_epoch(state) - 4
+    for index in range(len(state.validators)):
+        assert state.balances[index] < pre_balances[index]
 
 
 @with_all_phases
