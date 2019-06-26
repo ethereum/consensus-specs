@@ -25,31 +25,44 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         yield 'post', None
         return
 
-    slashed_index = attester_slashing.attestation_1.custody_bit_0_indices[0]
-    pre_slashed_balance = get_balance(state, slashed_index)
+    slashed_indices = (
+        attester_slashing.attestation_1.custody_bit_0_indices
+        + attester_slashing.attestation_1.custody_bit_1_indices
+    )
 
     proposer_index = spec.get_beacon_proposer_index(state)
     pre_proposer_balance = get_balance(state, proposer_index)
+    pre_slashed_balances = {slashed_index: get_balance(state, slashed_index) for slashed_index in slashed_indices}
+    total_proposer_rewards = sum(
+        balance // spec.WHISTLEBLOWING_REWARD_QUOTIENT
+        for balance in pre_slashed_balances.values()
+    )
+
 
     # Process slashing
     spec.process_attester_slashing(state, attester_slashing)
 
-    slashed_validator = state.validators[slashed_index]
+    for slashed_index in slashed_indices:
+        slashed_validator = state.validators[slashed_index]
 
-    # Check slashing
-    assert slashed_validator.slashed
-    assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
-    assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
+        # Check slashing
+        assert slashed_validator.slashed
+        assert slashed_validator.exit_epoch < spec.FAR_FUTURE_EPOCH
+        assert slashed_validator.withdrawable_epoch < spec.FAR_FUTURE_EPOCH
+        assert get_balance(state, slashed_index) < pre_slashed_balances[slashed_index]
 
-    if slashed_index != proposer_index:
-        # lost whistleblower reward
-        assert get_balance(state, slashed_index) < pre_slashed_balance
+    if proposer_index not in slashed_indices:
         # gained whistleblower reward
-        assert get_balance(state, proposer_index) > pre_proposer_balance
+        assert get_balance(state, proposer_index) == pre_proposer_balance + total_proposer_rewards
     else:
         # gained rewards for all slashings, which may include others. And only lost that of themselves.
-        # Netto at least 0, if more people where slashed, a balance increase.
-        assert get_balance(state, slashed_index) >= pre_slashed_balance
+        expected_balance = (
+            pre_proposer_balance
+            + total_proposer_rewards
+            - pre_slashed_balances[proposer_index] // spec.MIN_SLASHING_PENALTY_QUOTIENT
+        )
+
+        assert get_balance(state, proposer_index) == expected_balance
 
     yield 'post', state
 

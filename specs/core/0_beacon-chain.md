@@ -1515,7 +1515,7 @@ def process_slashings(state: BeaconState) -> None:
             EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2
         )
         if penalize_now:
-            penalty = validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
+            penalty = validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
