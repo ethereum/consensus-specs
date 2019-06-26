@@ -68,6 +68,22 @@ def test_empty_block_transition(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_invalid_state_root(spec, state):
+    yield 'pre', state
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.state_root = b"\xaa" * 32
+    sign_block(spec, state, block)
+
+    expect_assertion_error(
+        lambda: spec.state_transition(state, block, validate_state_root=True))
+
+    yield 'blocks', [block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
 def test_skipped_slots(spec, state):
     pre_slot = state.slot
     yield 'pre', state
