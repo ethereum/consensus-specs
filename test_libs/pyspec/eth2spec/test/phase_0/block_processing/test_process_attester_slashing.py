@@ -245,4 +245,3 @@ def test_unsorted_att_2_bit0(spec, state):
 
 
 # note: unsorted indices for custody bit 0 are to be introduced in phase 1 testing.
-
