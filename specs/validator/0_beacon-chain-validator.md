@@ -228,8 +228,8 @@ Let `get_eth1_data(distance: int) -> Eth1Data` be the (subjective) function that
 ```python
 def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
     # Get fresh and stale Eth 1.0 data
-    fresh_eth1_data = list(map(get_eth1_data, range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)))
-    stale_eth1_data = list(map(get_eth1_data, range(2 * ETH1_FOLLOW_DISTANCE, previous_eth1_distance)))
+    fresh_eth1_data =[get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)]
+    stale_eth1_data = [get_eth1_data(distance) for distance in range(2 * ETH1_FOLLOW_DISTANCE, previous_eth1_distance)]
 
     # Filter valid votes from the current voting period
     valid_votes = []
@@ -241,7 +241,7 @@ def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Dat
             if vote in set(fresh_eth1_data).union(stale_eth1_data):
                 valid_votes.append(vote)
 
-    return max(valid_votes, valid_votes.count, default=get_eth1_data(ETH1_FOLLOW_DISTANCE))
+    return max(valid_votes, key=valid_votes.count, default=get_eth1_data(ETH1_FOLLOW_DISTANCE))
 ```
 
 ##### Signature
