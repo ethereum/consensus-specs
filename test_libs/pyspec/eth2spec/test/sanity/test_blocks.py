@@ -5,7 +5,7 @@ from eth2spec.utils.bls import bls_sign
 
 from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block
 # from eth2spec.test.helpers.transfers import get_valid_transfer
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
@@ -171,8 +171,6 @@ def test_attester_slashing(spec, state):
         get_balance(pre_state, proposer_index)
     )
 
-
-# TODO update functions below to be like above, i.e. with @spec_state_test and yielding data to put into the test vector
 
 @with_all_phases
 @spec_state_test
@@ -386,29 +384,43 @@ def test_historical_batch(spec, state):
     assert len(state.historical_roots) == pre_historical_roots_len + 1
 
 
-# @with_all_phases
-# @spec_state_test
-# def test_eth1_data_votes(spec, state):
-#     yield 'pre', state
+@with_all_phases
+@spec_state_test
+def test_eth1_data_votes_success(spec, state):
+    # Don't run when it will take very, very long to simulate. Minimal configuration suffices.
+    if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
+        return
 
-#     expected_votes = 0
-#     assert len(state.eth1_data_votes) == expected_votes
+    offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
+    state_transition_and_sign_block(spec, state, offset_block)
+    yield 'pre', state
 
-#     blocks = []
-#     for _ in range(spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1):
-#         block = build_empty_block_for_next_slot(spec, state)
-#         state_transition_and_sign_block(spec, state, block)
-#         expected_votes += 1
-#         assert len(state.eth1_data_votes) == expected_votes
-#         blocks.append(block)
+    a = b'\xaa' * 32
+    b = b'\xbb' * 32
+    c = b'\xcc' * 32
 
-#     block = build_empty_block_for_next_slot(spec, state)
-#     blocks.append(block)
+    blocks = []
 
-#     state_transition_and_sign_block(spec, state, block)
+    for i in range(0, spec.SLOTS_PER_ETH1_VOTING_PERIOD):
+        block = build_empty_block_for_next_slot(spec, state)
+        # wait for over 50% for A, then start voting B
+        block.body.eth1_data.block_hash = b if i * 2 > spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
+        state_transition_and_sign_block(spec, state, block)
+        blocks.append(block)
 
-#     yield 'blocks', [block]
-#     yield 'post', state
+    assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
+    assert state.eth1_data.block_hash == a
 
-#     assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
-#     assert len(state.eth1_data_votes) == 1
+    # transition to next eth1 voting period
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.eth1_data.block_hash = c
+    state_transition_and_sign_block(spec, state, block)
+    blocks.append(block)
+
+    yield 'blocks', blocks
+    yield 'post', state
+
+    assert state.eth1_data.block_hash == a
+    assert state.slot % spec.SLOTS_PER_ETH1_VOTING_PERIOD == 0
+    assert len(state.eth1_data_votes) == 1
+    assert state.eth1_data_votes[0].block_hash == c
