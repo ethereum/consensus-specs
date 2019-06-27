@@ -129,7 +129,7 @@ def chunk_count(typ: SSZType) -> int:
     if isinstance(typ, BasicType):
         return 1
     elif issubclass(typ, Bitfield):
-        return (typ.length + 7) // 8 // 32
+        return (typ.length + 255) // 256
     elif issubclass(typ, Elements):
         return (typ.length * item_length(typ.elem_type) + 31) // 32
     elif issubclass(typ, Container):
