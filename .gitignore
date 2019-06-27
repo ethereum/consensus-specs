@@ -23,3 +23,6 @@ test_libs/pyspec/eth2spec/phase1/spec.py
 
 # local CI testing output
 test_libs/pyspec/test-reports
+
+# Mac OS
+.DS_Store
