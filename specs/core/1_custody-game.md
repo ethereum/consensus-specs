@@ -453,7 +453,7 @@ def process_early_derived_secret_reveal(state: BeaconState,
         # Apply penalty
         proposer_index = get_beacon_proposer_index(state)
         whistleblower_index = reveal.masker_index
-        whistleblowing_reward = Gwei(penalty // WHISTLEBLOWING_REWARD_QUOTIENT)
+        whistleblowing_reward = Gwei(penalty // WHISTLEBLOWER_REWARD_QUOTIENT)
         proposer_reward = Gwei(whistleblowing_reward // PROPOSER_REWARD_QUOTIENT)
         increase_balance(state, proposer_index, proposer_reward)
         increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
