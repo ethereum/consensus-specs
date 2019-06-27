@@ -227,20 +227,14 @@ Let `get_eth1_data(distance: int) -> Eth1Data` be the (subjective) function that
 
 ```python
 def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
-    # Get fresh and stale Eth 1.0 data
-    fresh_eth1_data = list(map(get_eth1_data, range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)))
-    stale_eth1_data = list(map(get_eth1_data, range(2 * ETH1_FOLLOW_DISTANCE, previous_eth1_distance)))
+    new_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)]
+    all_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, previous_eth1_distance)]
 
-    # Filter valid votes from the current voting period
     valid_votes = []
     for slot, vote in enumerate(state.eth1_data_votes):
-        if slot % SLOTS_PER_ETH1_VOTING_PERIOD < integer_square_root(SLOTS_PER_ETH1_VOTING_PERIOD):
-            if vote in set(fresh_eth1_data):
-                valid_votes.append(vote)
-        else:
-            if vote in set(fresh_eth1_data).union(stale_eth1_data):
-                valid_votes.append(vote)
-
+        period_tail = slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_square_root(SLOTS_PER_ETH1_VOTING_PERIOD)
+        if vote in new_eth1_data or (period_tail and vote in all_eth1_data):
+            valid_votes.append(vote)
     return max(valid_votes, valid_votes.count, default=get_eth1_data(ETH1_FOLLOW_DISTANCE))
 ```
 
