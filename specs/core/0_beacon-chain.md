@@ -1498,10 +1498,11 @@ def process_registry_updates(state: BeaconState) -> None:
 ```python
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
-    penalty_factor = min(sum(state.slashings) * 3, get_total_active_balance(state)) // get_total_active_balance(state)
+    total_balance = get_total_active_balance(state)
     for index, validator in enumerate(state.validators):
         if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
-            decrease_balance(state, ValidatorIndex(index), validator.effective_balance * penalty_factor)
+            penalty = validator.effective_balance * min(sum(state.slashings) * 3, total_balance) // total_balance
+            decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
 #### Final updates
