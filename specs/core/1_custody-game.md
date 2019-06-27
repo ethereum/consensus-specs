@@ -272,6 +272,16 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
     return crosslink_length * chunks_per_epoch
 ```
 
+### `get_bitfield_bit`
+
+```python
+def get_bitfield_bit(bitfield: bytes, i: int) -> int:
+    """
+    Extract the bit in ``bitfield`` at position ``i``.
+    """
+    return (bitfield[i // 8] >> (i % 8)) % 2
+```
+
 ### `get_custody_chunk_bit`
 
 ```python
@@ -566,7 +576,7 @@ def process_bit_challenge(state: BeaconState,
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
-    custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(challenge.responder_index))
+    custody_bit = attestation.custody_bitfield[attesters.index(challenge.responder_index)]
     assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(

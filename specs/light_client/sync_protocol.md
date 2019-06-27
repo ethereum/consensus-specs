@@ -168,7 +168,7 @@ If a client wants to update its `finalized_header` it asks the network for a `Bl
 {
     'header': BeaconBlockHeader,
     'shard_aggregate_signature': BLSSignature,
-    'shard_bitfield': 'bytes',
+    'shard_bitfield': Bitlist[PLACEHOLDER],
     'shard_parent_block': ShardBlock,
 }
 ```
@@ -180,13 +180,13 @@ def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: Val
     assert proof.shard_parent_block.beacon_chain_root == hash_tree_root(proof.header)
     committee = compute_committee(proof.header, validator_memory)
     # Verify that we have >=50% support
-    support_balance = sum([v.effective_balance for i, v in enumerate(committee) if get_bitfield_bit(proof.shard_bitfield, i) is True])
+    support_balance = sum([v.effective_balance for i, v in enumerate(committee) if proof.shard_bitfield[i]])
     total_balance = sum([v.effective_balance for i, v in enumerate(committee)])
     assert support_balance * 2 > total_balance
     # Verify shard attestations
     group_public_key = bls_aggregate_pubkeys([
         v.pubkey for v, index in enumerate(committee)
-        if get_bitfield_bit(proof.shard_bitfield, index) is True
+        if proof.shard_bitfield[index]
     ])
     assert bls_verify(
         pubkey=group_public_key,
