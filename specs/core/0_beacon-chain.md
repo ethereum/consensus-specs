@@ -30,7 +30,7 @@
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
             - [`PendingAttestation`](#pendingattestation)
-            - [`CompactCommitteees`](#CompactCommitteees)
+            - [`CompactCommittees`](#CompactCommittees)
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
@@ -69,7 +69,7 @@
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_randao_mix`](#get_randao_mix)
-        - [`get_compact_committee_root`](#get_compact_committee_root)
+        - [`get_compact_committees_root`](#get_compact_committees_root)
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
@@ -361,14 +361,19 @@ class PendingAttestation(Container):
     proposer_index: ValidatorIndex
 ```
 
-#### `CompactCommitteees`
+#### `CompactCommittee`
 
 ```python
-class CompactCommitteees(Container):
-    data: Vector[Container(
-        pubkeys: List[Bytes48, MAX_VALIDATORS_PER_COMMITTEE]
-        compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
-    ), SHARD_COUNT]
+class CompactCommittee(Container):
+    pubkeys: List[Bytes48, MAX_VALIDATORS_PER_COMMITTEE]
+    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
+```
+
+#### `CompactCommittees`
+
+```python
+class CompactCommittees(Container):
+    data: Vector[CompactCommittee, SHARD_COUNT]
 ```
 
 #### `Eth1Data`
@@ -522,7 +527,7 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
-    compact_committee_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Committee digests for light clients
+    compact_committees_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Committee digests for light clients
     # Slashings
     slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of slashed effective balances
     # Attestations
@@ -753,14 +758,14 @@ def get_randao_mix(state: BeaconState,
     return state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
-### `get_compact_committee_root`
+### `get_compact_committees_root`
 
 ```python
-def get_compact_committee_root(state: BeaconState, epoch: Epoch) -> Hash:
+def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the compact committee root for the current epoch.
     """
-    committee_data = CompactCommitteees().data
+    committee_data = CompactCommittees().data
     for committee_number in range(get_epoch_committee_count(state, epoch)):
         shard = (get_epoch_start_shard(state, epoch) + committee_number) % SHARD_COUNT
         for index in get_crosslink_committee(state, epoch, shard):
@@ -782,7 +787,7 @@ def generate_seed(state: BeaconState,
     """
     return hash(
         get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD)) +
-        get_compact_committee_root(state, epoch) +
+        get_compact_committees_root(state, epoch) +
         int_to_bytes(epoch, length=32)
     )
 ```
@@ -1190,9 +1195,9 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate compact_committee_roots
+    # Populate compact_committees_roots
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
-        state.compact_committee_roots[index] = get_compact_committee_root(state, GENESIS_EPOCH)
+        state.compact_committees_roots[index] = get_compact_committees_root(state, GENESIS_EPOCH)
 
     return state
 ```
@@ -1546,7 +1551,7 @@ def process_final_updates(state: BeaconState) -> None:
     state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
-    state.compact_committee_roots[index_root_position] = get_compact_committee_root(state, next_epoch + ACTIVATION_EXIT_DELAY)
+    state.compact_committees_roots[index_root_position] = get_compact_committees_root(state, next_epoch + ACTIVATION_EXIT_DELAY)
     # Set total slashed balances
     state.slashed_balances[next_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR] = (
         state.slashed_balances[current_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
