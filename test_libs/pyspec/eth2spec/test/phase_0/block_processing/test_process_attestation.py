@@ -311,7 +311,8 @@ def test_empty_aggregation_bitfield(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.aggregation_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * len(attestation.aggregation_bitfield)))
+    attestation.aggregation_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](
+        *([0b0] * len(attestation.aggregation_bitfield)))
 
     sign_attestation(spec, state, attestation)
 

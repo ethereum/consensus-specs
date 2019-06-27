@@ -9,7 +9,7 @@ def test_decoder():
     rng = Random(123)
 
     # check these types only, Block covers a lot of operation types already.
-    # TODO: Once has Bitfields and Bitvectors, add back 
+    # TODO: Once has Bitfields and Bitvectors, add back
     #       spec.BeaconState and spec.BeaconBlock
     for typ in [spec.IndexedAttestation, spec.AttestationDataAndCustodyBit]:
         # create a random pyspec value
