@@ -25,7 +25,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    bit, boolean, Container, List, Vector, Bytes, uint64,
+    bit, boolean, Container, List, Vector, uint64,
     Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (

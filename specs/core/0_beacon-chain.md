@@ -1292,7 +1292,8 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Process justifications
     state.previous_justified_epoch = state.current_justified_epoch
     state.previous_justified_root = state.current_justified_root
-    state.justification_bitfield = Bitvector[4](*([0b0] + state.justification_bitfield[0:JUSTIFICATION_BITVECTOR_LENGTH - 1]))
+    state.justification_bitfield = Bitvector[JUSTIFICATION_BITVECTOR_LENGTH](
+        *([0b0] + state.justification_bitfield[0:JUSTIFICATION_BITVECTOR_LENGTH - 1]))
     previous_epoch_matching_target_balance = get_attesting_balance(
         state, get_matching_target_attestations(state, previous_epoch)
     )

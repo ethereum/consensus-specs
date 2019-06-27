@@ -574,7 +574,6 @@ def process_bit_challenge(state: BeaconState,
 
     # Verify the chunk count
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
-    assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
     custody_bit = attestation.custody_bitfield[attesters.index(challenge.responder_index)]
     assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
