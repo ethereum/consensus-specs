@@ -189,6 +189,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
+| `JUSTIFICATION_BITVECTOR_LENGTH` | `4` |
 
 * For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -523,7 +524,7 @@ class BeaconState(Container):
     previous_justified_root: Hash  # Previous epoch snapshot
     current_justified_epoch: Epoch
     current_justified_root: Hash
-    justification_bitfield: Bitvector[4]  # Bit set for every recent justified epoch
+    justification_bitfield: Bitvector[JUSTIFICATION_BITVECTOR_LENGTH]  # Bit set for every recent justified epoch
     # Finality
     finalized_epoch: Epoch
     finalized_root: Hash
@@ -1291,21 +1292,21 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # Process justifications
     state.previous_justified_epoch = state.current_justified_epoch
     state.previous_justified_root = state.current_justified_root
-    state.justification_bitfield = Bitvector[4](*([0] + state.justification_bitfield[0:3]))
+    state.justification_bitfield = Bitvector[4](*([0b0] + state.justification_bitfield[0:JUSTIFICATION_BITVECTOR_LENGTH - 1]))
     previous_epoch_matching_target_balance = get_attesting_balance(
         state, get_matching_target_attestations(state, previous_epoch)
     )
     if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_epoch = previous_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
-        state.justification_bitfield[1] = True
+        state.justification_bitfield[1] = 0b1
     current_epoch_matching_target_balance = get_attesting_balance(
         state, get_matching_target_attestations(state, current_epoch)
     )
     if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_epoch = current_epoch
         state.current_justified_root = get_block_root(state, state.current_justified_epoch)
-        state.justification_bitfield[0] = True
+        state.justification_bitfield[0] = 0b1
 
     # Process finalizations
     bitfield = state.justification_bitfield
