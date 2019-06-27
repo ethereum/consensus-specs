@@ -30,10 +30,10 @@
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
             - [`PendingAttestation`](#pendingattestation)
-            - [`CompactCommittees`](#CompactCommittees)
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
+            - [`CompactCommittee`](#compactcommittee)
             - [`BeaconBlockHeader`](#beaconblockheader)
         - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
@@ -361,21 +361,6 @@ class PendingAttestation(Container):
     proposer_index: ValidatorIndex
 ```
 
-#### `CompactCommittee`
-
-```python
-class CompactCommittee(Container):
-    pubkeys: List[Bytes48, MAX_VALIDATORS_PER_COMMITTEE]
-    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
-```
-
-#### `CompactCommittees`
-
-```python
-class CompactCommittees(Container):
-    data: Vector[CompactCommittee, SHARD_COUNT]
-```
-
 #### `Eth1Data`
 
 ```python
@@ -401,6 +386,14 @@ class DepositData(Container):
     withdrawal_credentials: Hash
     amount: Gwei
     signature: BLSSignature
+```
+
+#### `CompactCommittee`
+
+```python
+class CompactCommittee(Container):
+    pubkeys: List[Bytes48, MAX_VALIDATORS_PER_COMMITTEE]
+    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
 ```
 
 #### `BeaconBlockHeader`
@@ -765,16 +758,18 @@ def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the compact committee root for the current epoch.
     """
-    committee_data = CompactCommittees().data
+    committees = Vector[CompactCommittee, SHARD_COUNT]()
+    start_shard = get_epoch_start_shard(state, epoch)
     for committee_number in range(get_epoch_committee_count(state, epoch)):
-        shard = (get_epoch_start_shard(state, epoch) + committee_number) % SHARD_COUNT
+        shard = (start_shard + committee_number) % SHARD_COUNT
         for index in get_crosslink_committee(state, epoch, shard):
-            validator = validators[index]
-            committee_data[shard].pubkeys.append(validator.pubkey)
-            # `index` (top 7 bytes) + `slashed` (8th bit) + `effective_balance` (bottom 7 bits)
-            compact_validator = index << 8 + validator.slashed << 7 + validator.effective_balance // GWEI_PER_ETH
-            committee_data[shard].compact_validators.append(compact_validator)
-    return hash_tree_root(committee_data)
+            validator = state.validators[index]
+            committees[shard].pubkeys.append(validator.pubkey)
+            compact_balance = validator.effective_balance // EFFECTIVE_BALANCE_INCREMENT
+            # `index` (top 6 bytes) + `slashed` (16th bit) + `compact_balance` (bottom 15 bits)
+            compact_validator = uint64(index << 16 + validator.slashed << 15 + compact_balance)
+            committees[shard].compact_validators.append(compact_validator)
+    return hash_tree_root(committees)
 ```
 
 ### `generate_seed`
@@ -787,7 +782,7 @@ def generate_seed(state: BeaconState,
     """
     return hash(
         get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD)) +
-        get_compact_committees_root(state, epoch) +
+        state.compact_committees_roots[epoch] +
         int_to_bytes(epoch, length=32)
     )
 ```
