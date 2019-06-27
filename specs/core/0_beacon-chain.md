@@ -80,8 +80,6 @@
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_total_balance`](#get_total_balance)
         - [`get_domain`](#get_domain)
-        - [`get_bitfield_bit`](#get_bitfield_bit)
-        - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`validate_indexed_attestation`](#validate_indexed_attestation)
         - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
@@ -354,7 +352,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bitfield: Bytes[MAX_INDICES_PER_ATTESTATION // 8]
+    aggregation_bitfield: Bitlist[MAX_INDICES_PER_ATTESTATION]
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -421,9 +419,9 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    aggregation_bitfield: Bytes[MAX_INDICES_PER_ATTESTATION // 8]
+    aggregation_bitfield: Bitlist[MAX_INDICES_PER_ATTESTATION]
     data: AttestationData
-    custody_bitfield: Bytes[MAX_INDICES_PER_ATTESTATION // 8]
+    custody_bitfield: Bitlist[MAX_INDICES_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -865,13 +863,12 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
 ```python
 def get_attesting_indices(state: BeaconState,
                           attestation_data: AttestationData,
-                          bitfield: bytes) -> Sequence[ValidatorIndex]:
+                          bitfield: Bitlist[MAX_INDICES_PER_ATTESTATION]) -> Sequence[ValidatorIndex]:
     """
     Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
-    assert verify_bitfield(bitfield, len(committee))
-    return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
+    return sorted([index for i, index in enumerate(committee) if bitfield[i]])
 ```
 
 ### `int_to_bytes`
@@ -910,34 +907,6 @@ def get_domain(state: BeaconState,
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
     return bls_domain(domain_type, fork_version)
-```
-
-### `get_bitfield_bit`
-
-```python
-def get_bitfield_bit(bitfield: bytes, i: int) -> int:
-    """
-    Extract the bit in ``bitfield`` at position ``i``.
-    """
-    return (bitfield[i // 8] >> (i % 8)) % 2
-```
-
-### `verify_bitfield`
-
-```python
-def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
-    """
-    Verify ``bitfield`` against the ``committee_size``.
-    """
-    if len(bitfield) != (committee_size + 7) // 8:
-        return False
-
-    # Check `bitfield` is padded with zero bits only
-    for i in range(committee_size, len(bitfield) * 8):
-        if get_bitfield_bit(bitfield, i) == 0b1:
-            return False
-
-    return True
 ```
 
 ### `convert_to_indexed`

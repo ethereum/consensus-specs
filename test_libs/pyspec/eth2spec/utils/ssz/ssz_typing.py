@@ -351,11 +351,15 @@ class BaseBitfield(BaseList, metaclass=BitElementsType):
 
 
 class Bitlist(BaseBitfield):
-    pass
+    @classmethod
+    def is_fixed_size(cls):
+        return False
 
 
 class Bitvector(BaseBitfield):
-    pass
+    @classmethod
+    def is_fixed_size(cls):
+        return True
 
 
 class List(BaseList):

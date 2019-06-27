@@ -1,10 +1,10 @@
 from typing import List
 
-from eth2spec.test.helpers.bitfields import set_bitfield_bit
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
 def build_attestation_data(spec, state, slot, shard):
@@ -69,9 +69,8 @@ def get_valid_attestation(spec, state, slot=None, signed=False):
     )
 
     committee_size = len(crosslink_committee)
-    bitfield_length = (committee_size + 7) // 8
-    aggregation_bitfield = b'\x00' * bitfield_length
-    custody_bitfield = b'\x00' * bitfield_length
+    aggregation_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
+    custody_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
     attestation = spec.Attestation(
         aggregation_bitfield=aggregation_bitfield,
         data=attestation_data,
@@ -138,7 +137,7 @@ def fill_aggregate_attestation(spec, state, attestation):
         attestation.data.crosslink.shard,
     )
     for i in range(len(crosslink_committee)):
-        attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
+        attestation.aggregation_bitfield[i] = True
 
 
 def add_attestation_to_state(spec, state, attestation, slot):

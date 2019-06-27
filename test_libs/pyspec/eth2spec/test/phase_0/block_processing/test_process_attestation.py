@@ -10,6 +10,7 @@ from eth2spec.test.helpers.state import (
     next_slot,
 )
 from eth2spec.test.helpers.block import apply_empty_block
+from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):
@@ -281,7 +282,10 @@ def test_inconsistent_bitfields(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield) + b'\x00'
+    custody_bitfield = deepcopy(attestation.aggregation_bitfield)
+    custody_bitfield.append(False)
+
+    attestation.custody_bitfield = custody_bitfield
 
     sign_attestation(spec, state, attestation)
 
@@ -307,7 +311,7 @@ def test_empty_aggregation_bitfield(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.aggregation_bitfield = b'\x00' * len(attestation.aggregation_bitfield)
+    attestation.aggregation_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * len(attestation.aggregation_bitfield)))
 
     sign_attestation(spec, state, attestation)
 

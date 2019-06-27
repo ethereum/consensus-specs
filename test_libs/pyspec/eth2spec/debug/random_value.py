@@ -3,7 +3,7 @@ from enum import Enum
 
 from eth2spec.utils.ssz.ssz_typing import (
     SSZType, SSZValue, BasicValue, BasicType, uint, Container, Bytes, List, boolean,
-    Vector, BytesN
+    Vector, BytesN, Bitlist, Bitvector
 )
 
 # in bytes
@@ -83,12 +83,12 @@ def get_random_ssz_object(rng: Random,
             return get_max_basic_value(typ)
         else:
             return get_random_basic_value(rng, typ)
-    elif issubclass(typ, Vector):
+    elif issubclass(typ, Vector) or issubclass(typ, Bitvector):
         return typ(
             get_random_ssz_object(rng, typ.elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(typ.length)
         )
-    elif issubclass(typ, List):
+    elif issubclass(typ, List) or issubclass(typ, Bitlist):
         length = rng.randint(0, min(typ.length, max_list_length))
         if mode == RandomizationMode.mode_one_count:
             length = 1
