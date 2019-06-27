@@ -517,6 +517,10 @@ For each `challenge` in `block.body.custody_bit_challenges`, run the following f
 def process_bit_challenge(state: BeaconState,
                           challenge: CustodyBitChallenge) -> None:
 
+    attestation = challenge.attestation
+    epoch = slot_to_epoch(attestation.data.slot)
+    shard = attestation.data.crosslink.shard
+
     # Verify challenge signature
     challenger = state.validators[challenge.challenger_index]
     assert bls_verify(
@@ -528,11 +532,10 @@ def process_bit_challenge(state: BeaconState,
     assert is_slashable_validator(challenger, get_current_epoch(state))
 
     # Verify the attestation
-    attestation = challenge.attestation
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))
     # Verify the attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
-    assert (slot_to_epoch(attestation.data.slot) + responder.max_reveal_lateness <=
+    assert (epoch + responder.max_reveal_lateness <=
             get_validators_custody_reveal_period(state, challenge.responder_index))
 
     # Verify the responder participated in the attestation
@@ -548,8 +551,8 @@ def process_bit_challenge(state: BeaconState,
         get_validators_custody_reveal_period(
             state,
             challenge.responder_index,
-            epoch=slot_to_epoch(attestation.data.slot)),
-        challenge.responder_index
+            epoch=epoch),
+        challenge.responder_index,
     )
     assert bls_verify(
         pubkey=responder.pubkey,
@@ -566,7 +569,8 @@ def process_bit_challenge(state: BeaconState,
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
     assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
-    custody_bit = get_bitfield_bit(attestation.custody_bitfield, attesters.index(challenge.responder_index))
+    committee = get_crosslink_committee(state, epoch, shard)
+    custody_bit = get_bitfield_bit(attestation.custody_bitfield, committee.index(challenge.responder_index))
     assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(
