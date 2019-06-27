@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, boolean, Container, List, Bytes, 
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, boolean, Container, List, Bytes,
     Bitlist, Bitvector, uint,
 )
 
@@ -26,7 +26,7 @@ def serialize_basic(value: SSZValue):
 def deserialize_basic(value, typ: BasicType):
     if issubclass(typ, uint):
         return typ(int.from_bytes(value, 'little'))
-    elif issubclass(typ, Bool):
+    elif issubclass(typ, boolean):
         assert value in (b'\x00', b'\x01')
         return typ(value == b'\x01')
     else:

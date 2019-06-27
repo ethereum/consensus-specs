@@ -280,11 +280,14 @@ class ElementsType(ParamsMeta):
     elem_type: SSZType
     length: int
 
+
 class BitElementsType(ElementsType):
     elem_type = boolean
 
+
 class Elements(ParamsBase, metaclass=ElementsType):
     pass
+
 
 class BaseList(list, Elements):
 
@@ -342,11 +345,14 @@ class BaseList(list, Elements):
         # be explict about getting the last item, for the non-python readers, and negative-index safety
         return self[len(self) - 1]
 
+
 class BaseBitfield(BaseList, metaclass=BitElementsType):
     elem_type = bool
 
+
 class Bitlist(BaseBitfield):
     pass
+
 
 class Bitvector(BaseBitfield):
     pass
