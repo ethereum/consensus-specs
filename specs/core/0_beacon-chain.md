@@ -758,7 +758,7 @@ def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the compact committee root for the current epoch.
     """
-    committees = Vector[CompactCommittee, SHARD_COUNT]()
+    committees = [CompactCommittee() for _ in range(SHARD_COUNT)]
     start_shard = get_epoch_start_shard(state, epoch)
     for committee_number in range(get_epoch_committee_count(state, epoch)):
         shard = (start_shard + committee_number) % SHARD_COUNT
@@ -769,7 +769,7 @@ def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
             # `index` (top 6 bytes) + `slashed` (16th bit) + `compact_balance` (bottom 15 bits)
             compact_validator = uint64(index << 16 + validator.slashed << 15 + compact_balance)
             committees[shard].compact_validators.append(compact_validator)
-    return hash_tree_root(committees)
+    return hash_tree_root(Vector[CompactCommittee, SHARD_COUNT](committees))
 ```
 
 ### `generate_seed`
