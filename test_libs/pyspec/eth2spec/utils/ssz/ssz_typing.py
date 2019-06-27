@@ -281,10 +281,6 @@ class ElementsType(ParamsMeta):
     length: int
 
 
-class BitElementsType(ElementsType):
-    elem_type = boolean
-
-
 class Elements(ParamsBase, metaclass=ElementsType):
     pass
 
@@ -346,11 +342,16 @@ class BaseList(list, Elements):
         return self[len(self) - 1]
 
 
-class BaseBitfield(BaseList, metaclass=BitElementsType):
-    elem_type = bool
+class BitElementsType(ElementsType):
+    elem_type: SSZType = boolean
+    length: int
 
 
-class Bitlist(BaseBitfield):
+class Bitfield(BaseList, metaclass=BitElementsType):
+    pass
+
+
+class Bitlist(Bitfield):
     @classmethod
     def is_fixed_size(cls):
         return False
@@ -360,7 +361,20 @@ class Bitlist(BaseBitfield):
         return cls()
 
 
-class Bitvector(BaseBitfield):
+class Bitvector(Bitfield):
+
+    @classmethod
+    def extract_args(cls, *args):
+        if len(args) == 0:
+            return cls.default()
+        else:
+            return super().extract_args(*args)
+
+    @classmethod
+    def value_check(cls, value):
+        # check length limit strictly
+        return len(value) == cls.length and super().value_check(value)
+
     @classmethod
     def is_fixed_size(cls):
         return True

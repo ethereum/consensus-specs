@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, boolean, Container, List, Bytes,
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bitfield, boolean, Container, List, Bytes,
     Bitlist, Bitvector, uint,
 )
 
@@ -128,6 +128,8 @@ def item_length(typ: SSZType) -> int:
 def chunk_count(typ: SSZType) -> int:
     if isinstance(typ, BasicType):
         return 1
+    elif issubclass(typ, Bitfield):
+        return (typ.length + 7) // 8 // 32
     elif issubclass(typ, Elements):
         return (typ.length * item_length(typ.elem_type) + 31) // 32
     elif issubclass(typ, Container):
