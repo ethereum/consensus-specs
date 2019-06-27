@@ -43,7 +43,7 @@
 ### Composite types
 
 * **container**: ordered heterogeneous collection of values
-    * python dataclass notation with key-type pairs, e.g. 
+    * python dataclass notation with key-type pairs, e.g.
 ```python
 class ContainerExample(Container):
     foo: uint64
@@ -53,12 +53,12 @@ class ContainerExample(Container):
     * notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
 * **list**: ordered variable-length homogeneous collection of values, with maximum length `N`
     * notation `List[type, N]`, e.g. `List[uint64, N]`
+* **bitvector**: ordered fixed-length collection of `boolean` values
+    * notation `Bitvector[N]`
+* **bitlist**: ordered variable-length collection of `boolean` values, with maximum length `N`
+    * notation `Bitlist[N]`
 * **union**: union type containing one of the given subtypes
     * notation `Union[type_1, type_2, ...]`, e.g. `union[null, uint64]`
-* **Bitvector**: a fixed-length list of `boolean` values
-    * notation `Bitvector[N]`
-* **Bitlist**: a variable-length list of `boolean` values with maximum length `N`
-    * notation `Bitlist[N]`
 
 ### Variable-size and fixed-size
 
@@ -192,7 +192,6 @@ return merkleize(as_integer.to_bytes((N + 7) // 8, "little"))
 as_integer = sum([value[i] << i for i in range(len(value))])
 return mix_in_length(merkleize(as_integer.to_bytes((N + 7) // 8, "little")), len(value))
 ```
-
 
 ## Self-signed containers
 
