@@ -1142,13 +1142,12 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
     if time - time % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY < MIN_GENESIS_TIME:
         return False
 
-    # Initialize deposit root
-    state = BeaconState()
-    state.eth1_data.deposit_root = hash_tree_root(
-        Vector[DepositData, len(deposits)](list(map(lambda deposit: deposit.data, deposits)))
-    )
     # Process deposits
-    for deposit in deposits:
+    state = BeaconState()
+    for i, deposit in enumerate(deposits):
+        state.eth1_data.deposit_root = hash_tree_root(
+            Vector[DepositData, len(deposits)](list(map(lambda deposit: deposit.data, deposits[:i])))
+        )
         process_deposit(state, deposit)
 
     # Count active validators at genesis
@@ -1183,7 +1182,7 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate active_index_roots    
+    # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(
         List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
     )
