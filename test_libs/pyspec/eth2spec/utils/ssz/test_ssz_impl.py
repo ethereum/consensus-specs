@@ -2,6 +2,7 @@ from typing import Iterable
 from .ssz_impl import serialize, hash_tree_root
 from .ssz_typing import (
     bit, boolean, Container, List, Vector, Bytes, BytesN,
+    Bitlist, Bitvector,
     uint8, uint16, uint32, uint64, uint256, byte
 )
 from ..hash_function import hash as bytes_hash
@@ -78,6 +79,10 @@ test_data = [
     ("bit T", bit(True), "01", chunk("01")),
     ("boolean F", boolean(False), "00", chunk("00")),
     ("boolean T", boolean(True), "01", chunk("01")),
+    ("bitvector TFTFFFTTFT", Bitvector[10](1,0,1,0,0,0,1,1,0,1), "c502", chunk("c502")),
+    ("bitlist TFTFFFTTFT", Bitlist[16](1,0,1,0,0,0,1,1,0,1), "c506", h(chunk("c502"), chunk("0A"))),
+    ("bitvector TFTFFFTTFTFFFFTT", Bitvector[16](1,0,1,0,0,0,1,1,0,1,0,0,0,0,1,1), "c5c2", chunk("c5c2")),
+    ("bitlist TFTFFFTTFTFFFFTT", Bitlist[16](1,0,1,0,0,0,1,1,0,1,0,0,0,0,1,1), "c5c201", h(chunk("c5c2"), chunk("10"))),
     ("uint8 00", uint8(0x00), "00", chunk("00")),
     ("uint8 01", uint8(0x01), "01", chunk("01")),
     ("uint8 ab", uint8(0xab), "ab", chunk("ab")),

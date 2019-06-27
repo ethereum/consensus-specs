@@ -96,7 +96,7 @@ def pack(values: Series):
         as_integer = sum([values[i] << i for i in range(len(values))])
         return as_integer.to_bytes((values.length + 7) // 8, "little")
     elif isinstance(values, Bitlist):
-        as_integer = (1 << len(values)) + sum([values[i] << i for i in range(len(values))])
+        as_integer = sum([values[i] << i for i in range(len(values))])
         return as_integer.to_bytes((values.length + 7) // 8, "little")
     return b''.join([serialize_basic(value) for value in values])
 
