@@ -355,12 +355,19 @@ class Bitlist(BaseBitfield):
     def is_fixed_size(cls):
         return False
 
+    @classmethod
+    def default(cls):
+        return cls()
+
 
 class Bitvector(BaseBitfield):
     @classmethod
     def is_fixed_size(cls):
         return True
-
+    
+    @classmethod
+    def default(cls):
+        return cls(0 for _ in range(cls.length))
 
 class List(BaseList):
 
