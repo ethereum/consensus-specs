@@ -2,7 +2,7 @@ from random import Random
 from enum import Enum
 
 from eth2spec.utils.ssz.ssz_typing import (
-    SSZType, SSZValue, BasicValue, BasicType, uint, Container, Bytes, List, Bool,
+    SSZType, SSZValue, BasicValue, BasicType, uint, Container, Bytes, List, boolean,
     Vector, BytesN
 )
 
@@ -118,7 +118,7 @@ def get_random_bytes_list(rng: Random, length: int) -> bytes:
 
 
 def get_random_basic_value(rng: Random, typ: BasicType) -> BasicValue:
-    if issubclass(typ, Bool):
+    if issubclass(typ, boolean):
         return typ(rng.choice((True, False)))
     elif issubclass(typ, uint):
         assert typ.byte_len in UINT_BYTE_SIZES
@@ -128,7 +128,7 @@ def get_random_basic_value(rng: Random, typ: BasicType) -> BasicValue:
 
 
 def get_min_basic_value(typ: BasicType) -> BasicValue:
-    if issubclass(typ, Bool):
+    if issubclass(typ, boolean):
         return typ(False)
     elif issubclass(typ, uint):
         assert typ.byte_len in UINT_BYTE_SIZES
@@ -138,7 +138,7 @@ def get_min_basic_value(typ: BasicType) -> BasicValue:
 
 
 def get_max_basic_value(typ: BasicType) -> BasicValue:
-    if issubclass(typ, Bool):
+    if issubclass(typ, boolean):
         return typ(True)
     elif issubclass(typ, uint):
         assert typ.byte_len in UINT_BYTE_SIZES

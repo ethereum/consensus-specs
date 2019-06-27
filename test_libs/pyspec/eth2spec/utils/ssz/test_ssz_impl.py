@@ -1,7 +1,7 @@
 from typing import Iterable
 from .ssz_impl import serialize, hash_tree_root
 from .ssz_typing import (
-    Bit, Bool, Container, List, Vector, Bytes, BytesN,
+    bit, boolean, Container, List, Vector, Bytes, BytesN,
     uint8, uint16, uint32, uint64, uint256, byte
 )
 from ..hash_function import hash as bytes_hash
@@ -74,10 +74,10 @@ def merge(a: str, branch: Iterable[str]) -> str:
 
 
 test_data = [
-    ("bit F", Bit(False), "00", chunk("00")),
-    ("bit T", Bit(True), "01", chunk("01")),
-    ("bool F", Bool(False), "00", chunk("00")),
-    ("bool T", Bool(True), "01", chunk("01")),
+    ("bit F", bit(False), "00", chunk("00")),
+    ("bit T", bit(True), "01", chunk("01")),
+    ("boolean F", boolean(False), "00", chunk("00")),
+    ("boolean T", boolean(True), "01", chunk("01")),
     ("uint8 00", uint8(0x00), "00", chunk("00")),
     ("uint8 01", uint8(0x01), "01", chunk("01")),
     ("uint8 ab", uint8(0xab), "ab", chunk("ab")),

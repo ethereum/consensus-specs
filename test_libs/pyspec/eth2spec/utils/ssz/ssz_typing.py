@@ -31,7 +31,7 @@ class BasicValue(int, SSZValue, metaclass=BasicType):
     pass
 
 
-class Bool(BasicValue):  # can't subclass bool.
+class boolean(BasicValue):  # can't subclass bool.
     byte_len = 1
 
     def __new__(cls, value: int):  # int value, but can be any subclass of int (bool, Bit, Bool, etc...)
@@ -48,7 +48,7 @@ class Bool(BasicValue):  # can't subclass bool.
 
 
 # Alias for Bool
-class Bit(Bool):
+class bit(boolean):
     pass
 
 
@@ -233,7 +233,7 @@ class ParamsMeta(SSZType):
         return f"{self.__name__}~{self.__class__.__name__}"
 
     def __repr__(self):
-        return self, self.__class__
+        return f"{self.__name__}~{self.__class__.__name__}"
 
     def attr_from_params(self, p):
         # single key params are valid too. Wrap them in a tuple.
@@ -280,10 +280,11 @@ class ElementsType(ParamsMeta):
     elem_type: SSZType
     length: int
 
+class BitElementsType(ElementsType):
+    elem_type = boolean
 
 class Elements(ParamsBase, metaclass=ElementsType):
     pass
-
 
 class BaseList(list, Elements):
 
@@ -307,6 +308,10 @@ class BaseList(list, Elements):
         return x
 
     def __str__(self):
+        cls = self.__class__
+        return f"{cls.__name__}[{cls.elem_type.__name__}, {cls.length}]({', '.join(str(v) for v in self)})"
+
+    def __repr__(self):
         cls = self.__class__
         return f"{cls.__name__}[{cls.elem_type.__name__}, {cls.length}]({', '.join(str(v) for v in self)})"
 
@@ -336,6 +341,15 @@ class BaseList(list, Elements):
     def last(self):
         # be explict about getting the last item, for the non-python readers, and negative-index safety
         return self[len(self) - 1]
+
+class BaseBitfield(BaseList, metaclass=BitElementsType):
+    elem_type = bool
+
+class Bitlist(BaseBitfield):
+    pass
+
+class Bitvector(BaseBitfield):
+    pass
 
 
 class List(BaseList):

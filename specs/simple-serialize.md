@@ -15,9 +15,9 @@
         - [Default values](#default-values)
         - [Illegal types](#illegal-types)
     - [Serialization](#serialization)
-        - [`"uintN"`](#uintn)
-        - [`"bool"`](#bool)
-        - [`"null`](#null)
+        - [`uintN`](#uintn)
+        - [`boolean`](#boolean)
+        - [`null`](#null)
         - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
     - [Deserialization](#deserialization)
     - [Merkleization](#merkleization)
@@ -37,36 +37,45 @@
 ## Typing
 ### Basic types
 
-* `"uintN"`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
-* `"bool"`: `True` or `False`
+* `uintN`: `N`-bit unsigned integer (where `N in [8, 16, 32, 64, 128, 256]`)
+* `boolean`: `True` or `False`
 
 ### Composite types
 
 * **container**: ordered heterogeneous collection of values
-    * key-pair curly bracket notation `{}`, e.g. `{"foo": "uint64", "bar": "bool"}`
+    * python dataclass notation with key-type pairs, e.g. 
+```python
+class ContainerExample(Container):
+    foo: uint64
+    bar: boolean
+```
 * **vector**: ordered fixed-length homogeneous collection of values
-    * angle bracket notation `[type, N]`, e.g. `["uint64", N]`
-* **list**: ordered variable-length homogeneous collection of values
-    * angle bracket notation `[type]`, e.g. `["uint64"]`
+    * notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
+* **list**: ordered variable-length homogeneous collection of values, with maximum length `N`
+    * notation `List[type, N]`, e.g. `List[uint64, N]`
 * **union**: union type containing one of the given subtypes
-    * round bracket notation `(type_1, type_2, ...)`, e.g. `("null", "uint64")`
+    * notation `Union[type_1, type_2, ...]`, e.g. `union[null, uint64]`
+* **Bitvector**: a fixed-length list of `boolean` values
+    * notation `Bitvector[N]`
+* **Bitlist**: a variable-length list of `boolean` values with maximum length `N`
+    * notation `Bitlist[N]`
 
 ### Variable-size and fixed-size
 
-We recursively define "variable-size" types to be lists and unions and all types that contain a variable-size type. All other types are said to be "fixed-size".
+We recursively define "variable-size" types to be lists, unions, `Bitlist` and all types that contain a variable-size type. All other types are said to be "fixed-size".
 
 ### Aliases
 
 For convenience we alias:
 
-* `"byte"` to `"uint8"` (this is a basic type)
-* `"bytes"` to `["byte"]` (this is *not* a basic type)
-* `"bytesN"` to `["byte", N]` (this is *not* a basic type)
-* `"null"`: `{}`, i.e. the empty container
+* `bit` to `boolean`
+* `byte` to `uint8` (this is a basic type)
+* `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
+* `null`: `{}`, i.e. the empty container
 
 ### Default values
 
-The default value of a type upon initialization is recursively defined using `0` for `"uintN"`, `False` for `"bool"`, and `[]` for lists. Unions default to the first type in the union (with type index zero), which is `"null"` if present in the union.
+The default value of a type upon initialization is recursively defined using `0` for `uintN`, `False` for `boolean` and the elements of `Bitvector`, and `[]` for lists and `Bitlist`. Unions default to the first type in the union (with type index zero), which is `null` if present in the union.
 
 #### `is_empty`
 
@@ -74,32 +83,48 @@ An SSZ object is called empty (and thus, `is_empty(object)` returns true) if it 
 
 ### Illegal types
 
-Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `"null"` type is only legal as the first type in a union subtype (i.e. with type index zero).
+Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
 
 ## Serialization
 
-We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `"bytes"`.
+We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `bytes`.
 
 *Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
 
-### `"uintN"`
+### `uintN`
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
 return value.to_bytes(N // 8, "little")
 ```
 
-### `"bool"`
+### `boolean`
 
 ```python
 assert value in (True, False)
 return b"\x01" if value is True else b"\x00"
 ```
 
-### `"null"`
+### `null`
 
 ```python
 return b""
+```
+
+### `Bitvector[N]`
+
+```python
+as_integer = sum([value[i] << i for i in range(len(value))])
+return as_integer.to_bytes((N + 7) // 8, "little")
+```
+
+### `Bitlist[N]`
+
+Note that from the offset coding, the length (in bytes) of the bitlist is known. An additional leading `1` bit is added so that the length in bits will also be known.
+
+```python
+as_integer = (1 << len(value)) + sum([value[i] << i for i in range(len(value))])
+return as_integer.to_bytes((as_integer.bit_length() + 7) // 8, "little")
 ```
 
 ### Vectors, containers, lists, unions
@@ -142,16 +167,32 @@ We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root. Note that `merkleize` on a single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
+* `pad`: given a list `l` and a length `N`, adds `N-len(l)` empty objects to the end of the list (the type of the empty object is implicit in the list type)
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 * `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
 * `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects
-* `mix_in_length(merkleize(pack(value)), len(value))` if `value` is a list of basic objects
+* `mix_in_length(merkleize(pack(pad(value, N))), len(value))` if `value` is a list of basic objects
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
-* `mix_in_length(merkleize([hash_tree_root(element) for element in value]), len(value))` if `value` is a list of composite objects
+* `mix_in_length(merkleize([hash_tree_root(element) for element in pad(value, N)]), len(value))` if `value` is a list of composite objects
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
+
+### Merkleization of `Bitvector[N]`
+
+```python
+as_integer = sum([value[i] << i for i in range(len(value))])
+return merkleize(as_integer.to_bytes((N + 7) // 8, "little"))
+```
+
+### `Bitlist[N]`
+
+```python
+as_integer = sum([value[i] << i for i in range(len(value))])
+return mix_in_length(merkleize(as_integer.to_bytes((N + 7) // 8, "little")), len(value))
+```
+
 
 ## Self-signed containers
 

@@ -1,7 +1,8 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bool, Container, List, Bytes, uint,
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, boolean, Container, List, Bytes, 
+    Bitlist, Bitvector, uint,
 )
 
 # SSZ Serialization
@@ -13,7 +14,7 @@ BYTES_PER_LENGTH_OFFSET = 4
 def serialize_basic(value: SSZValue):
     if isinstance(value, uint):
         return value.to_bytes(value.type().byte_len, 'little')
-    elif isinstance(value, Bool):
+    elif isinstance(value, boolean):
         if value:
             return b'\x01'
         else:
@@ -39,6 +40,12 @@ def is_empty(obj: SSZValue):
 def serialize(obj: SSZValue):
     if isinstance(obj, BasicValue):
         return serialize_basic(obj)
+    elif isinstance(obj, Bitvector):
+        as_integer = sum([obj[i] << i for i in range(len(obj))])
+        return as_integer.to_bytes((len(obj) + 7) // 8, "little")
+    elif isinstance(obj, Bitlist):
+        as_integer = (1 << len(obj)) + sum([obj[i] << i for i in range(len(obj))])
+        return as_integer.to_bytes((as_integer.bit_length() + 7) // 8, "little")
     elif isinstance(obj, Series):
         return encode_series(obj)
     else:
@@ -85,6 +92,12 @@ def encode_series(values: Series):
 def pack(values: Series):
     if isinstance(values, bytes):  # Bytes and BytesN are already packed
         return values
+    elif isinstance(values, Bitvector):
+        as_integer = sum([values[i] << i for i in range(len(values))])
+        return as_integer.to_bytes((values.length + 7) // 8, "little")
+    elif isinstance(values, Bitlist):
+        as_integer = (1 << len(values)) + sum([values[i] << i for i in range(len(values))])
+        return as_integer.to_bytes((values.length + 7) // 8, "little")
     return b''.join([serialize_basic(value) for value in values])
 
 
@@ -134,7 +147,7 @@ def hash_tree_root(obj: SSZValue):
     else:
         raise Exception(f"Type not supported: {type(obj)}")
 
-    if isinstance(obj, (List, Bytes)):
+    if isinstance(obj, (List, Bytes, Bitlist)):
         return mix_in_length(merkleize_chunks(leaves, pad_to=chunk_count(obj.type())), len(obj))
     else:
         return merkleize_chunks(leaves)
