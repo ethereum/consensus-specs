@@ -324,12 +324,18 @@ class BaseList(list, Elements):
         return super().__getitem__(k)
 
     def __setitem__(self, k, v):
-        if k < 0:
-            raise IndexError(f"cannot set item in type {self.__class__} at negative index {k} (to {v})")
-        if k > len(self):
-            raise IndexError(f"cannot set item in type {self.__class__}"
-                             f" at out of bounds index {k} (to {v}, bound: {len(self)})")
-        super().__setitem__(k, coerce_type_maybe(v, self.__class__.elem_type, strict=True))
+        if type(k) == slice:
+            if k.start < 0 or k.stop > len(self):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds slice {k} (to {v}, bound: {len(self)})")
+            super().__setitem__(k, [coerce_type_maybe(x, self.__class__.elem_type) for x in v])
+        else:
+            if k < 0:
+                raise IndexError(f"cannot set item in type {self.__class__} at negative index {k} (to {v})")
+            if k > len(self):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds index {k} (to {v}, bound: {len(self)})")
+            super().__setitem__(k, coerce_type_maybe(v, self.__class__.elem_type, strict=True))
 
     def append(self, v):
         super().append(coerce_type_maybe(v, self.__class__.elem_type, strict=True))
