@@ -49,13 +49,13 @@ class ContainerExample(Container):
     foo: uint64
     bar: boolean
 ```
-* **vector**: ordered fixed-length homogeneous collection of values
+* **vector**: ordered fixed-length homogeneous collection, with `N` values
     * notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
-* **list**: ordered variable-length homogeneous collection of values, with maximum length `N`
+* **list**: ordered variable-length homogeneous collection, limited to `N` values
     * notation `List[type, N]`, e.g. `List[uint64, N]`
-* **bitvector**: ordered fixed-length collection of `boolean` values
+* **bitvector**: ordered fixed-length collection of `boolean` values, with `N` bits
     * notation `Bitvector[N]`
-* **bitlist**: ordered variable-length collection of `boolean` values, with maximum length `N`
+* **bitlist**: ordered variable-length collection of `boolean` values, limited to `N` bits
     * notation `Bitlist[N]`
 * **union**: union type containing one of the given subtypes
     * notation `Union[type_1, type_2, ...]`, e.g. `union[null, uint64]`
@@ -161,22 +161,31 @@ return serialized_type_index + serialized_bytes
 
 Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
+Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
+- Offsets: out of order, out of range, mismatching minimum element size
+- Scope: Extra unused bytes, not aligned with element size.
+- More elements than a list limit allows. Part of enforcing consensus.
+
 ## Merkleization
 
 We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleize`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root. Note that `merkleize` on a single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
-* `pad`: given a list `l` and a length `N`, adds `N-len(l)` empty objects to the end of the list (the type of the empty object is implicit in the list type)
+* `merkleize(data, pad_to)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
+  There merkleization depends on the input length:
+    - `0` chunks: A chunk filled with zeroes.
+    - `1` chunk: A single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
+    - `1+` chunks: pad to the next power of 2, merkleize as binary tree.
+    - with `pad_to` set: pad the `data` with zeroed chunks to this power of two (virtually for memory efficiency).
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 * `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
 * `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects
-* `mix_in_length(merkleize(pack(pad(value, N))), len(value))` if `value` is a list of basic objects
+* `mix_in_length(merkleize(pack(value), pad_to=N), len(value))` if `value` is a list of basic objects. `N` is the amount of chunks needed for the list limit (*this depends on element-type size*).
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
-* `mix_in_length(merkleize([hash_tree_root(element) for element in pad(value, N)]), len(value))` if `value` is a list of composite objects
+* `mix_in_length(merkleize([hash_tree_root(element) for element in value], pad_to=N), len(value))` if `value` is a list of composite objects. `N` is the list limit (*1 chunk per element*).
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
 
 ### Merkleization of `Bitvector[N]`
