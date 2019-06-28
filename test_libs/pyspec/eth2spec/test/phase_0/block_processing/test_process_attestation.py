@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phases
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
@@ -295,7 +293,7 @@ def test_non_empty_custody_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.custody_bits = deepcopy(attestation.aggregation_bits)
+    attestation.custody_bits = attestation.aggregation_bits[:]
 
     sign_attestation(spec, state, attestation)
 
