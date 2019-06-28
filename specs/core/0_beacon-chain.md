@@ -867,7 +867,7 @@ def get_attesting_indices(state: BeaconState,
                           attestation_data: AttestationData,
                           bitfield: bytes) -> Set[ValidatorIndex]:
     """
-    Return the sorted attesting indices corresponding to ``attestation_data`` and ``bitfield``.
+    Return the set of attesting indices corresponding to ``attestation_data`` and ``bitfield``.
     """
     committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
     assert verify_bitfield(bitfield, len(committee))
