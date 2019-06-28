@@ -279,7 +279,7 @@ def test_inconsistent_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    custody_bits = deepcopy(attestation.aggregation_bits)
+    custody_bits = attestation.aggregation_bits[:]
     custody_bits.append(False)
 
     attestation.custody_bits = custody_bits
