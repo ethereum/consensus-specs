@@ -353,11 +353,11 @@ class BitElementsType(ElementsType):
     length: int
 
 
-class Bitfield(BaseList, metaclass=BitElementsType):
+class Bits(BaseList, metaclass=BitElementsType):
     pass
 
 
-class Bitlist(Bitfield):
+class Bitlist(Bits):
     @classmethod
     def is_fixed_size(cls):
         return False
@@ -367,7 +367,7 @@ class Bitlist(Bitfield):
         return cls()
 
 
-class Bitvector(Bitfield):
+class Bitvector(Bits):
 
     @classmethod
     def extract_args(cls, *args):

@@ -67,12 +67,12 @@ def get_valid_attestation(spec, state, slot=None, signed=False):
     )
 
     committee_size = len(crosslink_committee)
-    aggregation_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
-    custody_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
+    aggregation_bits = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
+    custody_bits = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
     attestation = spec.Attestation(
-        aggregation_bitfield=aggregation_bitfield,
+        aggregation_bits=aggregation_bits,
         data=attestation_data,
-        custody_bitfield=custody_bitfield,
+        custody_bits=custody_bits,
     )
     fill_aggregate_attestation(spec, state, attestation)
     if signed:
@@ -105,7 +105,7 @@ def sign_attestation(spec, state, attestation):
     participants = spec.get_attesting_indices(
         state,
         attestation.data,
-        attestation.aggregation_bitfield,
+        attestation.aggregation_bits,
     )
 
     attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
@@ -135,7 +135,7 @@ def fill_aggregate_attestation(spec, state, attestation):
         attestation.data.crosslink.shard,
     )
     for i in range(len(crosslink_committee)):
-        attestation.aggregation_bitfield[i] = True
+        attestation.aggregation_bits[i] = True
 
 
 def add_attestation_to_state(spec, state, attestation, slot):

@@ -92,7 +92,7 @@ class ShardAttestation(Container):
         slot: Slot
         shard: Shard
         shard_block_root: Bytes32
-    aggregation_bitfield: Bitlist[PLACEHOLDER]
+    aggregation_bits: Bitlist[PLACEHOLDER]
     aggregate_signature: BLSSignature
 ```
 
@@ -232,7 +232,7 @@ def verify_shard_attestation_signature(state: BeaconState,
     persistent_committee = get_persistent_committee(state, data.shard, data.slot)
     pubkeys = []
     for i, index in enumerate(persistent_committee):
-        if attestation.aggregation_bitfield[i]:
+        if attestation.aggregation_bits[i]:
             validator = state.validators[index]
             assert is_active_validator(validator, get_current_epoch(state))
             pubkeys.append(validator.pubkey)

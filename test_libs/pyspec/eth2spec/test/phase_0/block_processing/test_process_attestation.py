@@ -275,14 +275,14 @@ def test_bad_crosslink_end_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_inconsistent_bitfields(spec, state):
+def test_inconsistent_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    custody_bitfield = deepcopy(attestation.aggregation_bitfield)
-    custody_bitfield.append(False)
+    custody_bits = deepcopy(attestation.aggregation_bits)
+    custody_bits.append(False)
 
-    attestation.custody_bitfield = custody_bitfield
+    attestation.custody_bits = custody_bits
 
     sign_attestation(spec, state, attestation)
 
@@ -291,11 +291,11 @@ def test_inconsistent_bitfields(spec, state):
 
 @with_phases(['phase0'])
 @spec_state_test
-def test_non_empty_custody_bitfield(spec, state):
+def test_non_empty_custody_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield)
+    attestation.custody_bits = deepcopy(attestation.aggregation_bits)
 
     sign_attestation(spec, state, attestation)
 
@@ -304,12 +304,12 @@ def test_non_empty_custody_bitfield(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_empty_aggregation_bitfield(spec, state):
+def test_empty_aggregation_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.aggregation_bitfield = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](
-        *([0b0] * len(attestation.aggregation_bitfield)))
+    attestation.aggregation_bits = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](
+        *([0b0] * len(attestation.aggregation_bits)))
 
     sign_attestation(spec, state, attestation)
 

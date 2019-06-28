@@ -44,8 +44,8 @@
                 - [Crosslink vote](#crosslink-vote)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
-                - [Aggregation bitfield](#aggregation-bitfield)
-                - [Custody bitfield](#custody-bitfield)
+                - [Aggregation bits](#aggregation-bits)
+                - [Custody bits](#custody-bits)
                 - [Aggregate signature](#aggregate-signature)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
@@ -322,19 +322,19 @@ Next, the validator creates `attestation`, an [`Attestation`](../core/0_beacon-c
 
 Set `attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object defined in the previous section, [attestation data](#attestation-data).
 
-##### Aggregation bitfield
+##### Aggregation bits
 
-* Let `aggregation_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
+* Let `aggregation_bits` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
 * Let `index_into_committee` be the index into the validator's `committee` at which `validator_index` is located.
-* Set `aggregation_bitfield[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
-* Set `attestation.aggregation_bitfield = aggregation_bitfield`.
+* Set `aggregation_bits[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
+* Set `attestation.aggregation_bits = aggregation_bits`.
 
-*Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)` should return a list of length equal to 1, containing `validator_index`.
+*Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
-##### Custody bitfield
+##### Custody bits
 
-* Let `custody_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
-* Set `attestation.custody_bitfield = custody_bitfield`.
+* Let `custody_bits` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
+* Set `attestation.custody_bits = custody_bits`.
 
 *Note*: This is a stub for Phase 0.
 
