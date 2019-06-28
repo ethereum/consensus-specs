@@ -211,7 +211,7 @@ class EarlyDerivedSecretReveal(Container):
     # Index of the validator who revealed (whistleblower)
     masker_index: ValidatorIndex
     # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
-    mask: Bytes32
+    mask: Hash
 ```
 
 ### Phase 0 container updates
@@ -444,7 +444,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
         # Apply penalty
         proposer_index = get_beacon_proposer_index(state)
         whistleblower_index = reveal.masker_index
-        whistleblowing_reward = Gwei(penalty // WHISTLEBLOWING_REWARD_QUOTIENT)
+        whistleblowing_reward = Gwei(penalty // WHISTLEBLOWER_REWARD_QUOTIENT)
         proposer_reward = Gwei(whistleblowing_reward // PROPOSER_REWARD_QUOTIENT)
         increase_balance(state, proposer_index, proposer_reward)
         increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
