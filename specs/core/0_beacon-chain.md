@@ -513,7 +513,7 @@ class BeaconState(Container):
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
     active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active registry digests for light clients
     # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sum of slashed effective balances
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
