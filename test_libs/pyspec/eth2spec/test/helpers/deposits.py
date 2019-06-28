@@ -51,8 +51,6 @@ def build_deposit(spec,
     tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
     root = get_merkle_root((tuple(deposit_data_leaves)))
     proof = list(get_merkle_proof(tree, item_index=index))
-    assert spec.verify_merkle_branch(item, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH, index, root)
-
     deposit = spec.Deposit(
         proof=list(proof),
         index=index,

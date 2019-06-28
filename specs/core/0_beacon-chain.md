@@ -1173,9 +1173,9 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
 
     # Process deposits
     state = BeaconState()
+    leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
     for deposit_index, deposit in enumerate(deposits):
-        leaves = [hash_tree_root(d.data) for d in deposits[:deposit_index + 1]]
-        state.eth1_data.deposit_root = get_merkle_root(leaves, 2**DEPOSIT_CONTRACT_TREE_DEPTH)
+        state.eth1_data.deposit_root = get_merkle_root(leaves[:deposit_index + 1], 2**DEPOSIT_CONTRACT_TREE_DEPTH)
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
 
@@ -1202,9 +1202,9 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
     )
 
     # Process genesis deposits
+    leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
     for deposit_index, deposit in enumerate(deposits):
-        leaves = [hash_tree_root(d.data) for d in deposits[:deposit_index + 1]]
-        state.eth1_data.deposit_root = get_merkle_root(leaves, 2**DEPOSIT_CONTRACT_TREE_DEPTH)
+        state.eth1_data.deposit_root = get_merkle_root(leaves[:deposit_index + 1], 2**DEPOSIT_CONTRACT_TREE_DEPTH)
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
 
