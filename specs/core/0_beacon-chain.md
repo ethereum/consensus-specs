@@ -1091,24 +1091,24 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
 ```python
 def slash_validator(state: BeaconState,
-                    slashee_index: ValidatorIndex,
+                    slashed_index: ValidatorIndex,
                     whistleblower_index: ValidatorIndex=None) -> None:
     """
-    Slash the validator with index ``slashee_index``.
+    Slash the validator with index ``slashed_index``.
     """
     epoch = get_current_epoch(state)
-    initiate_validator_exit(state, slashee_index)
-    slashee = state.validators[slashee_index]
-    slashee.slashed = True
-    slashee.withdrawable_epoch = max(slashee.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
-    decrease_balance(state, slashee_index, slashee.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT)
-    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += slashee.effective_balance
+    initiate_validator_exit(state, slashed_index)
+    validator = state.validators[slashed_index]
+    validator.slashed = True
+    validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
+    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
+    decrease_balance(state, slashed_index, validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT)
 
     # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
-    whistleblower_reward = Gwei(slashee.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
+    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
     proposer_reward = Gwei(whistleblower_reward // PROPOSER_REWARD_QUOTIENT)
     increase_balance(state, proposer_index, proposer_reward)
     increase_balance(state, whistleblower_index, whistleblower_reward - proposer_reward)
