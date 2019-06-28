@@ -178,7 +178,7 @@ def test_source_root_is_target_root(spec, state):
 @spec_state_test
 def test_invalid_current_source_root(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 5
-    state.finalized_epoch = 2
+    state.finalized_checkpoint.epoch = 2
 
     state.previous_justified_checkpoint = spec.Checkpoint(epoch=3, root=b'\x01' * 32)
     state.current_justified_checkpoint = spec.Checkpoint(epoch=4, root=b'\x32' * 32)

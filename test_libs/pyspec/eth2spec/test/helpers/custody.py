@@ -11,7 +11,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
         epoch = current_epoch + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING
 
     reveal = bls_sign(
-        message_hash=spec.hash_tree_root(epoch),
+        message_hash=spec.hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[revealed_index],
         domain=spec.get_domain(
             state=state,
@@ -20,14 +20,14 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
         ),
     )
     mask = bls_sign(
-        message_hash=spec.hash_tree_root(epoch),
+        message_hash=spec.hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[masker_index],
         domain=spec.get_domain(
             state=state,
             domain_type=spec.DOMAIN_RANDAO,
             message_epoch=epoch,
         ),
-    )
+    )[:32]  # TODO(Carl): mask is 32 bytes, and signature is 96? Correct to slice the first 32 out?
 
     return spec.EarlyDerivedSecretReveal(
         revealed_index=revealed_index,
