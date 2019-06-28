@@ -28,7 +28,9 @@ def create_genesis_state(spec, num_validators):
             deposit_root=deposit_root,
             deposit_count=num_validators,
             block_hash=spec.ZERO_HASH,
-        ))
+        ),
+        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+    )
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.

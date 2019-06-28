@@ -13,25 +13,22 @@ def check_finality(spec,
                    previous_justified_changed,
                    finalized_changed):
     if current_justified_changed:
-        assert state.current_justified_epoch > prev_state.current_justified_epoch
-        assert state.current_justified_root != prev_state.current_justified_root
+        assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
+        assert state.current_justified_checkpoint.root != prev_state.current_justified_checkpoint.root
     else:
-        assert state.current_justified_epoch == prev_state.current_justified_epoch
-        assert state.current_justified_root == prev_state.current_justified_root
+        assert state.current_justified_checkpoint == prev_state.current_justified_checkpoint
 
     if previous_justified_changed:
-        assert state.previous_justified_epoch > prev_state.previous_justified_epoch
-        assert state.previous_justified_root != prev_state.previous_justified_root
+        assert state.previous_justified_checkpoint.epoch > prev_state.previous_justified_checkpoint.epoch
+        assert state.previous_justified_checkpoint.root != prev_state.previous_justified_checkpoint.root
     else:
-        assert state.previous_justified_epoch == prev_state.previous_justified_epoch
-        assert state.previous_justified_root == prev_state.previous_justified_root
+        assert state.previous_justified_checkpoint == prev_state.previous_justified_checkpoint
 
     if finalized_changed:
-        assert state.finalized_epoch > prev_state.finalized_epoch
-        assert state.finalized_root != prev_state.finalized_root
+        assert state.finalized_checkpoint.epoch > prev_state.finalized_checkpoint.epoch
+        assert state.finalized_checkpoint.root != prev_state.finalized_checkpoint.root
     else:
-        assert state.finalized_epoch == prev_state.finalized_epoch
-        assert state.finalized_root == prev_state.finalized_root
+        assert state.finalized_checkpoint == prev_state.finalized_checkpoint
 
 
 def next_epoch_with_attestations(spec,
@@ -107,8 +104,7 @@ def test_finality_rule_4(spec, state):
         elif epoch == 1:
             # rule 4 of finality
             check_finality(spec, state, prev_state, True, True, True)
-            assert state.finalized_epoch == prev_state.current_justified_epoch
-            assert state.finalized_root == prev_state.current_justified_root
+            assert state.finalized_checkpoint == prev_state.current_justified_checkpoint
 
     yield 'blocks', blocks
     yield 'post', state
@@ -138,8 +134,7 @@ def test_finality_rule_1(spec, state):
         elif epoch == 2:
             # finalized by rule 1
             check_finality(spec, state, prev_state, True, True, True)
-            assert state.finalized_epoch == prev_state.previous_justified_epoch
-            assert state.finalized_root == prev_state.previous_justified_root
+            assert state.finalized_checkpoint == prev_state.previous_justified_checkpoint
 
     yield 'blocks', blocks
     yield 'post', state
@@ -169,8 +164,7 @@ def test_finality_rule_2(spec, state):
             prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, False, True)
             # finalized by rule 2
             check_finality(spec, state, prev_state, True, False, True)
-            assert state.finalized_epoch == prev_state.previous_justified_epoch
-            assert state.finalized_root == prev_state.previous_justified_root
+            assert state.finalized_checkpoint == prev_state.previous_justified_checkpoint
 
         blocks += new_blocks
 
@@ -221,8 +215,7 @@ def test_finality_rule_3(spec, state):
     blocks += new_blocks
     # rule 3
     check_finality(spec, state, prev_state, True, True, True)
-    assert state.finalized_epoch == prev_state.current_justified_epoch
-    assert state.finalized_root == prev_state.current_justified_root
+    assert state.finalized_checkpoint == prev_state.current_justified_checkpoint
 
     yield 'blocks', blocks
     yield 'post', state
