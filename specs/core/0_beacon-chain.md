@@ -863,13 +863,11 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
 ### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState,
-                          attestation_data: AttestationData,
-                          bitfield: bytes) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, data: AttestationData, bitfield: bytes) -> Set[ValidatorIndex]:
     """
-    Return the set of attesting indices corresponding to ``attestation_data`` and ``bitfield``.
+    Return the set of attesting indices corresponding to ``data`` and ``bitfield``.
     """
-    committee = get_crosslink_committee(state, attestation_data.target_epoch, attestation_data.crosslink.shard)
+    committee = get_crosslink_committee(state, data.target_epoch, data.crosslink.shard)
     assert verify_bitfield(bitfield, len(committee))
     return set(index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1)
 ```
@@ -949,7 +947,7 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bitfield)
-    assert set(custody_bit_1_indices).issubset(attesting_indices)
+    assert custody_bit_1_indices.issubset(attesting_indices)
     custody_bit_0_indices = attesting_indices.difference(custody_bit_1_indices)
 
     return IndexedAttestation(
@@ -1173,7 +1171,7 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate active_index_roots    
+    # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(
         List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
     )
