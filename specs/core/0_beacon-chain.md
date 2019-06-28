@@ -866,13 +866,13 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
 ### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState, data: AttestationData, bitfield: bytes) -> Sequence[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState, data: AttestationData, bitfield: bytes) -> Set[ValidatorIndex]:
     """
-    Return the sorted attesting indices corresponding to ``data`` and ``bitfield``.
+    Return the set of attesting indices corresponding to ``data`` and ``bitfield``.
     """
     committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
     assert verify_bitfield(bitfield, len(committee))
-    return sorted([index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1])
+    return set(index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1)
 ```
 
 ### `int_to_bytes`
@@ -950,12 +950,12 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
     custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bitfield)
-    assert set(custody_bit_1_indices).issubset(attesting_indices)
-    custody_bit_0_indices = [index for index in attesting_indices if index not in custody_bit_1_indices]
+    assert custody_bit_1_indices.issubset(attesting_indices)
+    custody_bit_0_indices = attesting_indices.difference(custody_bit_1_indices)
 
     return IndexedAttestation(
-        custody_bit_0_indices=custody_bit_0_indices,
-        custody_bit_1_indices=custody_bit_1_indices,
+        custody_bit_0_indices=sorted(custody_bit_0_indices),
+        custody_bit_1_indices=sorted(custody_bit_1_indices),
         data=attestation.data,
         signature=attestation.signature,
     )
