@@ -221,19 +221,26 @@ epoch_signature = bls_sign(
 
 ##### Eth1 Data
 
-`block.eth1_data` is a mechanism used by block proposers vote on a recent Ethereum 1.0 block hash and an associated deposit root found in the Ethereum 1.0 deposit contract. When consensus is formed, `state.eth1_data` is updated, and validator deposits up to this root can be processed. The deposit root can be calculated by calling the `get_deposit_root()` function of the deposit contract using the post-state of the block hash.
+The `block.eth1_data` field is for block proposers to vote on recent Eth 1.0 data. This recent data contains an Eth 1.0 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth 1.0 block. If over half of the block proposers in the current Eth 1.0 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-* Let `D` be the list of `Eth1DataVote` objects `vote` in `state.eth1_data_votes` where:
-    * `vote.eth1_data.block_hash` is the hash of an Eth 1.0 block that is (i) part of the canonical chain, (ii) >= `ETH1_FOLLOW_DISTANCE` blocks behind the head, and (iii) newer than `state.eth1_data.block_hash`.
-    * `vote.eth1_data.deposit_count` is the deposit count of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
-    * `vote.eth1_data.deposit_root` is the deposit root of the Eth 1.0 deposit contract at the block defined by `vote.eth1_data.block_hash`.
-* If `D` is empty:
-    * Let `block_hash` be the block hash of the `ETH1_FOLLOW_DISTANCE`'th ancestor of the head of the canonical Eth 1.0 chain.
-    * Let `deposit_root` and `deposit_count` be the deposit root and deposit count of the Eth 1.0 deposit contract in the post-state of the block referenced by `block_hash`
-    * Let `best_vote_data = Eth1Data(block_hash=block_hash, deposit_root=deposit_root, deposit_count=deposit_count)`.
-* If `D` is nonempty:
-    * Let `best_vote_data` be the `eth1_data` member of `D` that has the highest vote count (`D.count(eth1_data)`), breaking ties by favoring block hashes with higher associated block height.
-* Set `block.eth1_data = best_vote_data`.
+Let `get_eth1_data(distance: int) -> Eth1Data` be the (subjective) function that returns the Eth 1.0 data at distance `distance` relative to the Eth 1.0 head at the start of the current Eth 1.0 voting period. Let `previous_eth1_distance` be the distance relative to the Eth 1.0 block corresponding to `state.eth1_data.block_hash` at the start of the current Eth 1.0 voting period. An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
+
+```python
+def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
+    new_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)]
+    all_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, previous_eth1_distance)]
+
+    valid_votes = []
+    for slot, vote in enumerate(state.eth1_data_votes):
+        period_tail = slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_square_root(SLOTS_PER_ETH1_VOTING_PERIOD)
+        if vote in new_eth1_data or (period_tail and vote in all_eth1_data):
+            valid_votes.append(vote)
+
+    return max(valid_votes,
+        key=lambda v: (valid_votes.count(v), -all_eth1_data.index(v)),  # Tiebreak by smallest distance
+        default=get_eth1_data(ETH1_FOLLOW_DISTANCE),
+    )
+```
 
 ##### Signature
 

@@ -233,7 +233,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
-| `EPOCHS_PER_SLASHED_BALANCES_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
+| `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
 | `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
 | `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots | |
 
@@ -242,7 +242,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `BASE_REWARD_FACTOR` | `2**6` (= 64) |
-| `WHISTLEBLOWING_REWARD_QUOTIENT` | `2**9` (= 512) |
+| `WHISTLEBLOWER_REWARD_QUOTIENT` | `2**9` (= 512) |
 | `PROPOSER_REWARD_QUOTIENT` | `2**3` (= 8) |
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
@@ -519,7 +519,7 @@ class BeaconState(Container):
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
     active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active registry digests for light clients
     # Slashings
-    slashed_balances: Vector[Gwei, EPOCHS_PER_SLASHED_BALANCES_VECTOR]  # Sums of slashed effective balances
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
@@ -867,12 +867,12 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
 ```python
 def get_attesting_indices(state: BeaconState,
                           data: AttestationData,
-                          bits: Bitlist[MAX_INDICES_PER_ATTESTATION]) -> Sequence[ValidatorIndex]:
+                          bits: Bitlist[MAX_INDICES_PER_ATTESTATION]) -> Set[ValidatorIndex]:
     """
-    Return the sorted attesting indices corresponding to ``data`` and ``bits``.
+    Return the set of attesting indices corresponding to ``data`` and ``bitfield``.
     """
     committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
-    return sorted([index for i, index in enumerate(committee) if bits[i]])
+    return set(index for i, index in enumerate(committee) if bits[i])
 ```
 
 ### `int_to_bytes`
@@ -922,12 +922,12 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
     custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bits)
-    assert set(custody_bit_1_indices).issubset(attesting_indices)
-    custody_bit_0_indices = [index for index in attesting_indices if index not in custody_bit_1_indices]
+    assert custody_bit_1_indices.issubset(attesting_indices)
+    custody_bit_0_indices = attesting_indices.difference(custody_bit_1_indices)
 
     return IndexedAttestation(
-        custody_bit_0_indices=custody_bit_0_indices,
-        custody_bit_1_indices=custody_bit_1_indices,
+        custody_bit_0_indices=sorted(custody_bit_0_indices),
+        custody_bit_1_indices=sorted(custody_bit_1_indices),
         data=attestation.data,
         signature=attestation.signature,
     )
@@ -1069,21 +1069,22 @@ def slash_validator(state: BeaconState,
     """
     Slash the validator with index ``slashed_index``.
     """
-    current_epoch = get_current_epoch(state)
+    epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
-    state.validators[slashed_index].slashed = True
-    state.validators[slashed_index].withdrawable_epoch = Epoch(current_epoch + EPOCHS_PER_SLASHED_BALANCES_VECTOR)
-    slashed_balance = state.validators[slashed_index].effective_balance
-    state.slashed_balances[current_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR] += slashed_balance
+    validator = state.validators[slashed_index]
+    validator.slashed = True
+    validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
+    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
+    decrease_balance(state, slashed_index, validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT)
 
+    # Apply proposer and whistleblower rewards
     proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
-    whistleblowing_reward = Gwei(slashed_balance // WHISTLEBLOWING_REWARD_QUOTIENT)
-    proposer_reward = Gwei(whistleblowing_reward // PROPOSER_REWARD_QUOTIENT)
+    whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
+    proposer_reward = Gwei(whistleblower_reward // PROPOSER_REWARD_QUOTIENT)
     increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whistleblower_index, whistleblowing_reward - proposer_reward)
-    decrease_balance(state, slashed_index, whistleblowing_reward)
+    increase_balance(state, whistleblower_index, whistleblower_reward - proposer_reward)
 ```
 
 ## Genesis
@@ -1463,18 +1464,9 @@ def process_registry_updates(state: BeaconState) -> None:
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
     total_balance = get_total_active_balance(state)
-
-    # Compute slashed balances in the current epoch
-    total_at_start = state.slashed_balances[(epoch + 1) % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
-    total_at_end = state.slashed_balances[epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
-    total_penalties = total_at_end - total_at_start
-
     for index, validator in enumerate(state.validators):
-        if validator.slashed and epoch + EPOCHS_PER_SLASHED_BALANCES_VECTOR // 2 == validator.withdrawable_epoch:
-            penalty = max(
-                validator.effective_balance * min(total_penalties * 3, total_balance) // total_balance,
-                validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT
-            )
+        if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
+            penalty = validator.effective_balance * min(sum(state.slashings) * 3, total_balance) // total_balance
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
@@ -1502,10 +1494,8 @@ def process_final_updates(state: BeaconState) -> None:
             get_active_validator_indices(state, Epoch(next_epoch + ACTIVATION_EXIT_DELAY))
         )
     )
-    # Set total slashed balances
-    state.slashed_balances[next_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR] = (
-        state.slashed_balances[current_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
-    )
+    # Reset slashings
+    state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
     # Set randao mix
     state.randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
