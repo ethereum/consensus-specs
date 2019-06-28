@@ -785,7 +785,7 @@ def generate_seed(state: BeaconState,
     """
     return hash(
         get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD)) +
-        state.compact_committees_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR] +
+        hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, epoch))) +
         int_to_bytes(epoch, length=32)
     )
 ```
