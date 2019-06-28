@@ -19,7 +19,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     assert (
         store.latest_messages[indexed_attestation.custody_bit_0_indices[0]] ==
         spec.LatestMessage(
-            epoch=attestation.data.target_epoch,
+            epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
         )
     )
