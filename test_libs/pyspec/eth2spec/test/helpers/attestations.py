@@ -24,11 +24,11 @@ def build_attestation_data(spec, state, slot, shard):
         epoch_boundary_root = spec.get_block_root(state, spec.get_current_epoch(state))
 
     if slot < current_epoch_start_slot:
-        justified_epoch = state.previous_justified_epoch
-        justified_block_root = state.previous_justified_root
+        source_epoch = state.previous_justified_checkpoint.epoch
+        source_root = state.previous_justified_checkpoint.root
     else:
-        justified_epoch = state.current_justified_epoch
-        justified_block_root = state.current_justified_root
+        source_epoch = state.current_justified_checkpoint.epoch
+        source_root = state.current_justified_checkpoint.root
 
     if spec.slot_to_epoch(slot) == spec.get_current_epoch(state):
         parent_crosslink = state.current_crosslinks[shard]
@@ -37,10 +37,8 @@ def build_attestation_data(spec, state, slot, shard):
 
     return spec.AttestationData(
         beacon_block_root=block_root,
-        source_epoch=justified_epoch,
-        source_root=justified_block_root,
-        target_epoch=spec.slot_to_epoch(slot),
-        target_root=epoch_boundary_root,
+        source=spec.Checkpoint(epoch=source_epoch, root=source_root),
+        target=spec.Checkpoint(epoch=spec.slot_to_epoch(slot), root=epoch_boundary_root),
         crosslink=spec.Crosslink(
             shard=shard,
             start_epoch=parent_crosslink.end_epoch,
@@ -64,8 +62,8 @@ def get_valid_attestation(spec, state, slot=None, signed=False):
 
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation_data.target_epoch,
-        attestation_data.crosslink.shard
+        attestation_data.target.epoch,
+        attestation_data.crosslink.shard,
     )
 
     committee_size = len(crosslink_committee)
@@ -125,7 +123,7 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
         domain=spec.get_domain(
             state=state,
             domain_type=spec.DOMAIN_ATTESTATION,
-            message_epoch=attestation_data.target_epoch,
+            message_epoch=attestation_data.target.epoch,
         )
     )
 
@@ -133,7 +131,7 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
 def fill_aggregate_attestation(spec, state, attestation):
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation.data.target_epoch,
+        attestation.data.target.epoch,
         attestation.data.crosslink.shard,
     )
     for i in range(len(crosslink_committee)):
