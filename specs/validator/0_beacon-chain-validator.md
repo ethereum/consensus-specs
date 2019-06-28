@@ -50,6 +50,7 @@
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
+        - [Unavailability of message history](#unavailability-of-message-history)
 
 <!-- /TOC -->
 
@@ -387,3 +388,18 @@ Specifically, when signing an `Attestation`, a validator should perform the foll
 2. Generate and broadcast attestation.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast attestation and can effectively avoid slashing.
+
+### Unavailability of message history
+
+In the event that a validator does not have access to the history of the attestations and block proposals they made in the past, this section describes the minimum amount of time a validator instance must wait before making messages again. This procedure must be followed in the event of a validator loosing their records of attestations or block proposals due to a system failure or when a new validator client instance is setup for a validator that already exists (eg. when changing client software).
+
+The following assumptions are made about the client:
+* The client's local clock (which reads `t`) is assumed to be synchronous with the rest of the network with some upper bound `delta`.
+* The client comes online at time `t = t0` with no knowledge of previous messages made with this validator's keys.
+* Let `slot_to_time(s)` return the timestamp of slot `s`.
+* This validator instance and all previous ones for this validator follow this validator document for block proposals and attestations.
+* No previous instantiations of this validator ever made any messages in the future (no messages were made for slots with `slot_to_time(slot) > t0 + delta`).
+
+A validator must wait until an epoch `e` is justified with `slot_to_time(get_epoch_start_slot(e)) > t0 + 2 * delta`.
+
+Furthermore, during the waiting period, a client should observe the chain and the wire to confirm that there are no other instances of the same validator running, as a user may try to start a new validator with the same private key as an already existing one.
