@@ -1294,7 +1294,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
     # Process justifications
     state.previous_justified_checkpoint = state.current_justified_checkpoint
-    state.justification_bits = [0b0] + state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
+    state.justification_bits = [0b0] + state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]  # Bitshift
     matching_target_attestations = get_matching_target_attestations(state, previous_epoch)  # Previous epoch
     if get_attesting_balance(state, matching_target_attestations) * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_checkpoint = Checkpoint(previous_epoch, get_block_root(state, previous_epoch))
