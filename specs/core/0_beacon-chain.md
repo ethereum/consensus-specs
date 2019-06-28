@@ -1294,20 +1294,14 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
     # Process justifications
     state.previous_justified_checkpoint = state.current_justified_checkpoint
-    state.justification_bits[1:JUSTIFICATION_BITS_LENGTH] = state.justification_bits[0:JUSTIFICATION_BITS_LENGTH - 1]
-    state.justification_bits[0] = 0b0
-    previous_epoch_matching_target_balance = get_attesting_balance(
-        state, get_matching_target_attestations(state, previous_epoch)
-    )
-    if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
-                                                        root=get_block_root(state, previous_epoch))
+    state.justification_bits = [0b0] + state.justification_bits[:JUSTIFICATION_BITS_LENGTH - 1]
+    matching_target_attestations = get_matching_target_attestations(state, previous_epoch)  # Previous epoch
+    if get_attesting_balance(state, matching_target_attestations) * 3 >= get_total_active_balance(state) * 2:
+        state.current_justified_checkpoint = Checkpoint(previous_epoch, get_block_root(state, previous_epoch))
         state.justification_bits[1] = 0b1
-    current_epoch_matching_target_balance = get_attesting_balance(
-        state, get_matching_target_attestations(state, current_epoch)
-    )
-    if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch, root=get_block_root(state, current_epoch))
+    matching_target_attestations = get_matching_target_attestations(state, current_epoch)  # Current epoch
+    if get_attesting_balance(state, matching_target_attestations) * 3 >= get_total_active_balance(state) * 2:
+        state.current_justified_checkpoint = Checkpoint(current_epoch, get_block_root(state, current_epoch))
         state.justification_bits[0] = 0b1
 
     # Process finalizations
