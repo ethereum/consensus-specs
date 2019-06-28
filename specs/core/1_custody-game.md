@@ -272,22 +272,32 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
     return crosslink_length * chunks_per_epoch
 ```
 
+### `get_bit`
+
+```python
+def get_bit(serialization: bytes, i: int) -> int:
+    """
+    Extract the bit in ``serialization`` at position ``i``.
+    """
+    return (serialization[i // 8] >> (i % 8)) % 2
+```
+
 ### `get_custody_chunk_bit`
 
 ```python
 def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
     # TODO: Replace with something MPC-friendly, e.g. the Legendre symbol
-    return bool(get_bitfield_bit(hash(key + chunk), 0))
+    return bool(get_bit(hash(key + chunk), 0))
 ```
 
 ### `get_chunk_bits_root`
 
 ```python
-def get_chunk_bits_root(chunk_bitfield: bytes) -> Bytes32:
+def get_chunk_bits_root(chunk_bits: bytes) -> Bytes32:
     aggregated_bits = bytearray([0] * 32)
-    for i in range(0, len(chunk_bitfield), 32):
+    for i in range(0, len(chunk_bits), 32):
         for j in range(32):
-            aggregated_bits[j] ^= chunk_bitfield[i + j]
+            aggregated_bits[j] ^= chunk_bits[i + j]
     return hash(aggregated_bits)
 ```
 
@@ -469,7 +479,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     responder = state.validators[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
-    attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bitfield)
+    attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bits)
     assert challenge.responder_index in attesters
     # Verify the challenge is not a duplicate
     for record in state.custody_chunk_challenge_records:
@@ -520,8 +530,9 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert epoch + responder.max_reveal_lateness <= get_reveal_period(state, challenge.responder_index)
-    # Verify responder participated in the attestation
-    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
+
+    # Verify the responder participated in the attestation
+    attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
     assert challenge.responder_index in attesters
     # Verifier challenger is not already challenging
     for record in state.custody_bit_challenge_records:
@@ -535,11 +546,10 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     assert bls_verify(responder.pubkey, hash_tree_root(epoch_to_sign), challenge.responder_key, domain)
     # Verify the chunk count
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
-    assert verify_bitfield(challenge.chunk_bits, chunk_count)
     # Verify the first bit of the hash of the chunk bits does not equal the custody bit
     committee = get_crosslink_committee(state, epoch, shard)
-    custody_bit = get_bitfield_bit(attestation.custody_bitfield, committee.index(challenge.responder_index))
-    assert custody_bit != get_bitfield_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
+    custody_bit = attestation.custody_bits[committee.index(challenge.responder_index)]
+    assert custody_bit != get_bit(get_chunk_bits_root(challenge.chunk_bits), 0)
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(
         challenge_index=state.custody_challenge_index,
@@ -631,7 +641,7 @@ def process_bit_challenge_response(state: BeaconState,
     )
     # Verify the chunk bit does not match the challenge chunk bit
     assert (get_custody_chunk_bit(challenge.responder_key, response.chunk)
-            != get_bitfield_bit(challenge.chunk_bits_leaf, response.chunk_index % 256))
+            != get_bit(challenge.chunk_bits_leaf, response.chunk_index % 256))
     # Clear the challenge
     records = state.custody_bit_challenge_records
     records[records.index(challenge)] = CustodyBitChallengeRecord()
