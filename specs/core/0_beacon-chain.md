@@ -764,7 +764,7 @@ def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
     committees = [CompactCommittee() for _ in range(SHARD_COUNT)]
     start_shard = get_epoch_start_shard(state, epoch)
     for committee_number in range(get_epoch_committee_count(state, epoch)):
-        shard = (start_shard + committee_number) % SHARD_COUNT
+        shard = Shard((start_shard + committee_number) % SHARD_COUNT)
         for index in get_crosslink_committee(state, epoch, shard):
             validator = state.validators[index]
             committees[shard].pubkeys.append(validator.pubkey)
@@ -1535,7 +1535,7 @@ def process_slashings(state: BeaconState) -> None:
 ```python
 def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    next_epoch = current_epoch + 1
+    next_epoch = Shard(current_epoch + 1)
     # Reset eth1 data votes
     if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
