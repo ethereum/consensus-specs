@@ -331,17 +331,13 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregation bits
 
-* Let `aggregation_bits` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
-* Let `index_into_committee` be the index into the validator's `committee` at which `validator_index` is located.
-* Set `aggregation_bits[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
-* Set `attestation.aggregation_bits = aggregation_bits`.
+* Let `attestation.aggregation_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
 ##### Custody bits
 
-* Let `custody_bits` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
-* Set `attestation.custody_bits = custody_bits`.
+* Let `attestation.custody_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` filled with zeros of length `len(committee)`.
 
 *Note*: This is a stub for Phase 0.
 
