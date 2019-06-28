@@ -171,21 +171,21 @@ Note that deserialization requires hardening against invalid inputs. A non-exhau
 We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
-* `merkleize(data, pad_to)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
-  There merkleization depends on the input length:
-    - `0` chunks: A chunk filled with zeroes.
-    - `1` chunk: A single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
-    - `1+` chunks: pad to the next power of 2, merkleize as binary tree.
-    - with `pad_to` set: pad the `data` with zeroed chunks to this power of two (virtually for memory efficiency).
+* `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
+* `merkleize(data, pad_for)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
+  The merkleization depends on the effective input, which can be padded: if `pad_for=L`, then pad the `data` with zeroed chunks to `next_pow_of_two(L)` (virtually for memory efficiency).
+  Then, merkleize the chunks (empty input is padded to 1 zero chunk):
+    - If `1` chunk: A single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
+    - If `> 1` chunks: pad to `next_pow_of_two(len(chunks))`, merkleize as binary tree.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 * `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
 * `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects
-* `mix_in_length(merkleize(pack(value), pad_to=N), len(value))` if `value` is a list of basic objects. `N` is the amount of chunks needed for the list limit (*this depends on element-type size*).
+* `mix_in_length(merkleize(pack(value), pad_for=(N * elem_size / BYTES_PER_CHUNK)), len(value))` if `value` is a list of basic objects.
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
-* `mix_in_length(merkleize([hash_tree_root(element) for element in value], pad_to=N), len(value))` if `value` is a list of composite objects. `N` is the list limit (*1 chunk per element*).
+* `mix_in_length(merkleize([hash_tree_root(element) for element in value], pad_for=N), len(value))` if `value` is a list of composite objects.
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
 
 ### Merkleization of `Bitvector[N]`
