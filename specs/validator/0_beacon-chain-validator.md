@@ -235,7 +235,11 @@ def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Dat
         period_tail = slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_square_root(SLOTS_PER_ETH1_VOTING_PERIOD)
         if vote in new_eth1_data or (period_tail and vote in all_eth1_data):
             valid_votes.append(vote)
-    return max(valid_votes, key=valid_votes.count, default=get_eth1_data(ETH1_FOLLOW_DISTANCE))
+
+    return max(valid_votes,
+        key=lambda v: (valid_votes.count(v), -all_eth1_data.index(v)),  # Tiebreak by smallest distance
+        default=get_eth1_data(ETH1_FOLLOW_DISTANCE),
+    )
 ```
 
 ##### Signature
