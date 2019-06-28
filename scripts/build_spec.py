@@ -11,7 +11,8 @@ from typing import (
 )
 
 
-PHASE0_IMPORTS = '''from typing import (
+PHASE0_IMPORTS = '''from math import log2
+from typing import (
     Any, Callable, Dict, Set, Sequence, Tuple,
 )
 
@@ -36,7 +37,8 @@ from eth2spec.utils.bls import (
 
 from eth2spec.utils.hash_function import hash
 '''
-PHASE1_IMPORTS = '''from typing import (
+PHASE1_IMPORTS = '''from math import log2
+from typing import (
     Any, Callable, Dict, Optional, Set, Sequence, MutableSequence, Tuple,
 )
 

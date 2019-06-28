@@ -41,7 +41,9 @@ def build_deposit(spec,
                   amount,
                   withdrawal_credentials,
                   signed):
-    deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, state=state, signed=signed)
+    deposit_data = build_deposit_data(
+        spec, pubkey, privkey, amount, withdrawal_credentials, state=state, signed=signed,
+    )
 
     item = deposit_data.hash_tree_root()
     index = len(deposit_data_leaves)
@@ -63,6 +65,7 @@ def build_deposit(spec,
 def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False):
     genesis_deposit_data_list = []
     deposit_data_leaves = []
+    genesis_deposits = []
     for validator_index in range(genesis_validator_count):
         pubkey = pubkeys[validator_index]
         privkey = privkeys[validator_index]
@@ -79,13 +82,11 @@ def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False
         deposit_data_leaves.append(item)
         genesis_deposit_data_list.append(deposit_data)
 
-    tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
-    root = get_merkle_root((tuple(deposit_data_leaves)))
-
-    genesis_deposits = list(
-        spec.Deposit(proof=list(get_merkle_proof(tree, item_index=index)), data=deposit_data)
-        for index, deposit_data in enumerate(genesis_deposit_data_list)
-    )
+        tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves))
+        root = get_merkle_root((tuple(deposit_data_leaves)), 2**32)
+        genesis_deposits.append(
+            spec.Deposit(proof=list(get_merkle_proof(tree, item_index=validator_index)), data=deposit_data)
+        )
 
     return genesis_deposits, root
 

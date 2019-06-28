@@ -1,5 +1,5 @@
 import pytest
-from .merkle_minimal import zerohashes, merkleize_chunks
+from .merkle_minimal import zerohashes, merkleize_chunks, get_merkle_root
 from .hash_function import hash
 
 
@@ -53,6 +53,7 @@ cases = [
     'depth,count,pow2,value',
     cases,
 )
-def test_merkleize_chunks(depth, count, pow2, value):
+def test_merkleize_chunks_and_get_merkle_root(depth, count, pow2, value):
     chunks = [e(i) for i in range(count)]
     assert merkleize_chunks(chunks, pad_to=pow2) == value
+    assert get_merkle_root(chunks, pad_to=pow2) == value

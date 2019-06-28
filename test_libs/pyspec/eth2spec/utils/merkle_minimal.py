@@ -1,5 +1,5 @@
 from .hash_function import hash
-from math import log2 
+from math import log2
 
 
 ZERO_BYTES32 = b'\x00' * 32
