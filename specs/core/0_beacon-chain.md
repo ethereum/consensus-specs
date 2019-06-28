@@ -698,6 +698,9 @@ def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
 
 ```python
 def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
+    """
+    Return the start shard of the 0th committee in an epoch.
+    """
     assert epoch <= get_current_epoch(state) + 1
     check_epoch = Epoch(get_current_epoch(state) + 1)
     shard = Shard((state.start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT)
@@ -767,7 +770,7 @@ def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
             committees[shard].pubkeys.append(validator.pubkey)
             compact_balance = validator.effective_balance // EFFECTIVE_BALANCE_INCREMENT
             # `index` (top 6 bytes) + `slashed` (16th bit) + `compact_balance` (bottom 15 bits)
-            compact_validator = uint64(index << 16 + validator.slashed << 15 + compact_balance)
+            compact_validator = uint64((index << 16) + (validator.slashed << 15) + compact_balance)
             committees[shard].compact_validators.append(compact_validator)
     return hash_tree_root(Vector[CompactCommittee, SHARD_COUNT](committees))
 ```
@@ -782,7 +785,7 @@ def generate_seed(state: BeaconState,
     """
     return hash(
         get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD)) +
-        state.compact_committees_roots[epoch] +
+        state.compact_committees_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR] +
         int_to_bytes(epoch, length=32)
     )
 ```
@@ -1546,7 +1549,7 @@ def process_final_updates(state: BeaconState) -> None:
     state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
     index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
-    state.compact_committees_roots[index_root_position] = get_compact_committees_root(state, next_epoch + ACTIVATION_EXIT_DELAY)
+    state.compact_committees_roots[index_root_position] = get_compact_committees_root(state, next_epoch)
     # Set total slashed balances
     state.slashed_balances[next_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR] = (
         state.slashed_balances[current_epoch % EPOCHS_PER_SLASHED_BALANCES_VECTOR]
