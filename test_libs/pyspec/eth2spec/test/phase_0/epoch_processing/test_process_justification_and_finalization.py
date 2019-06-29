@@ -57,7 +57,7 @@ def add_mock_attestations(spec, state, epoch, att_ratio, source, target):
                     beacon_block_root=b'\xaa' * 32,
                     source=source,
                     target=target,
-                    crosslink=spec.Crosslink()
+                    crosslink=spec.Crosslink(shard=shard)
                 ),
                 inclusion_delay=1,
             ))
