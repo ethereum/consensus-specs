@@ -52,7 +52,7 @@ def get_deposit_root() -> bytes32:
         else:
             node = sha256(concat(node, self.zero_hashes[height]))
         size /= 2
-    return sha256(concat(node, slice(zero_bytes32, start=0, len=24), self.to_little_endian_64(deposit_amount))
+    return sha256(concat(node, slice(zero_bytes32, start=0, len=24), self.to_little_endian_64(self.deposit_count)))
 
 
 @public
