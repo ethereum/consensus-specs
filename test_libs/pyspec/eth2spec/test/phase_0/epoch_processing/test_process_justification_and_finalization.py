@@ -25,7 +25,7 @@ def get_committee_size(spec, epoch_start_shard, shard, committee_count, indices)
     return size
 
 
-def add_mock_attestations(spec, state, epoch, att_ratio, source, target):
+def add_mock_attestations(spec, state, epoch, source, target, sufficient_support=False):
     # we must be at the end of the epoch
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
 
@@ -48,7 +48,8 @@ def add_mock_attestations(spec, state, epoch, att_ratio, source, target):
             size = get_committee_size(spec, epoch_start_shard, shard, committee_count, indices)
             # Create a bitfield filled with the given count per attestation,
             #  exactly on the right-most part of the committee field.
-            attesting_count = math.ceil(size * att_ratio)
+            attesting_count = math.ceil(size * 2 /3)
+            attesting_count = attesting_count if sufficient_support else attesting_count - 1
             aggregation_bits = [i < attesting_count for i in range(size)]
 
             attestations.append(spec.PendingAttestation(
@@ -63,7 +64,7 @@ def add_mock_attestations(spec, state, epoch, att_ratio, source, target):
             ))
 
 
-def finalize_on_234(spec, state, epoch, support):
+def finalize_on_234(spec, state, epoch, sufficient_support):
     assert epoch > 4
     state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
 
@@ -86,14 +87,14 @@ def finalize_on_234(spec, state, epoch, support):
     # mock the 2nd latest epoch as justifiable, with 4th as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 2,
-                          att_ratio=support,
                           source=c4,
-                          target=c2)
+                          target=c2,
+                          sufficient_support=sufficient_support)
 
     # process!
     yield from run_process_just_and_fin(spec, state)
 
-    if support >= (2 / 3):
+    if sufficient_support:
         assert state.previous_justified_checkpoint == c3  # changed to old current
         assert state.current_justified_checkpoint == c2  # changed to 2nd latest
         assert state.finalized_checkpoint == c4  # finalized old previous justified epoch
@@ -103,7 +104,7 @@ def finalize_on_234(spec, state, epoch, support):
         assert state.finalized_checkpoint == old_finalized  # no new finalized
 
 
-def finalize_on_23(spec, state, epoch, support):
+def finalize_on_23(spec, state, epoch, sufficient_support):
     assert epoch > 3
     state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
 
@@ -124,14 +125,14 @@ def finalize_on_23(spec, state, epoch, support):
     # mock the 2nd latest epoch as justifiable, with 3rd as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 2,
-                          att_ratio=support,
                           source=c3,
-                          target=c2)
+                          target=c2,
+                          sufficient_support=sufficient_support)
 
     # process!
     yield from run_process_just_and_fin(spec, state)
 
-    if support >= (2 / 3):
+    if sufficient_support:
         assert state.previous_justified_checkpoint == c3  # changed to old current
         assert state.current_justified_checkpoint == c2  # changed to 2nd latest
         assert state.finalized_checkpoint == c3  # finalized old previous justified epoch
@@ -141,7 +142,7 @@ def finalize_on_23(spec, state, epoch, support):
         assert state.finalized_checkpoint == old_finalized  # no new finalized
 
 
-def finalize_on_123(spec, state, epoch, support):
+def finalize_on_123(spec, state, epoch, sufficient_support):
     assert epoch > 3
     state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
 
@@ -165,14 +166,14 @@ def finalize_on_123(spec, state, epoch, support):
     # mock the 1st latest epoch as justifiable, with 3rd as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 1,
-                          att_ratio=support,
                           source=c3,
-                          target=c1)
+                          target=c1,
+                          sufficient_support=sufficient_support)
 
     # process!
     yield from run_process_just_and_fin(spec, state)
 
-    if support >= (2 / 3):
+    if sufficient_support:
         assert state.previous_justified_checkpoint == c2  # changed to old current
         assert state.current_justified_checkpoint == c1  # changed to 1st latest
         assert state.finalized_checkpoint == c2  # finalized old current
@@ -182,7 +183,7 @@ def finalize_on_123(spec, state, epoch, support):
         assert state.finalized_checkpoint == old_finalized  # no new finalized
 
 
-def finalize_on_12(spec, state, epoch, support):
+def finalize_on_12(spec, state, epoch, sufficient_support):
     assert epoch > 2
     state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
 
@@ -203,14 +204,14 @@ def finalize_on_12(spec, state, epoch, support):
     # mock the 1st latest epoch as justifiable, with 2nd as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 1,
-                          att_ratio=support,
                           source=c2,
-                          target=c1)
+                          target=c1,
+                          sufficient_support=sufficient_support)
 
     # process!
     yield from run_process_just_and_fin(spec, state)
 
-    if support >= (2 / 3):
+    if sufficient_support:
         assert state.previous_justified_checkpoint == c2  # changed to old current
         assert state.current_justified_checkpoint == c1  # changed to 1st latest
         assert state.finalized_checkpoint == c2  # finalized previous justified epoch
@@ -223,49 +224,46 @@ def finalize_on_12(spec, state, epoch, support):
 @with_all_phases
 @spec_state_test
 def test_234_ok_support(spec, state):
-    yield from finalize_on_234(spec, state, 5, 1.0)
+    yield from finalize_on_234(spec, state, 5, True)
 
 
 @with_all_phases
 @spec_state_test
 def test_234_poor_support(spec, state):
-    yield from finalize_on_234(spec, state, 5, 0.6)
+    yield from finalize_on_234(spec, state, 5, False)
 
 
 @with_all_phases
 @spec_state_test
 def test_23_ok_support(spec, state):
-    yield from finalize_on_23(spec, state, 4, 1.0)
+    yield from finalize_on_23(spec, state, 4, True)
 
 
 @with_all_phases
 @spec_state_test
 def test_23_poor_support(spec, state):
-    yield from finalize_on_23(spec, state, 4, 0.6)
+    yield from finalize_on_23(spec, state, 4, False)
 
 
 @with_all_phases
 @spec_state_test
 def test_123_ok_support(spec, state):
-    yield from finalize_on_123(spec, state, 4, 1.0)
+    yield from finalize_on_123(spec, state, 4, True)
 
 
 @with_all_phases
 @spec_state_test
 def test_123_poor_support(spec, state):
-    yield from finalize_on_123(spec, state, 4, 0.6)
+    yield from finalize_on_123(spec, state, 4, False)
 
 
 @with_all_phases
 @spec_state_test
 def test_12_ok_support(spec, state):
-    yield from finalize_on_12(spec, state, 3, 1.0)
+    yield from finalize_on_12(spec, state, 3, True)
 
 
 @with_all_phases
 @spec_state_test
 def test_12_poor_support(spec, state):
-    yield from finalize_on_12(spec, state, 3, 0.6)
-
-
-# TODO: bring ratios closer to 2/3 for edge case testing.
+    yield from finalize_on_12(spec, state, 3, False)
