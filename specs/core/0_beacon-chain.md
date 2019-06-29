@@ -63,6 +63,7 @@
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`increase_balance`](#increase_balance)
         - [`decrease_balance`](#decrease_balance)
+        - [`get_validator`](#get_validator)
         - [`get_epoch_committee_count`](#get_epoch_committee_count)
         - [`get_shard_delta`](#get_shard_delta)
         - [`get_epoch_start_shard`](#get_epoch_start_shard)
@@ -669,6 +670,17 @@ def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
     state.balances[index] = 0 if delta > state.balances[index] else state.balances[index] - delta
 ```
 
+### `get_validator`
+
+```python
+def get_validator(state: BeaconState, index: ValidatorIndex) -> Validator:
+    """
+    Return the validator with index ``index``.
+    """
+    assert index <= len(state.validators)
+    return state.validators[index]
+```
+
 ### `get_epoch_committee_count`
 
 ```python
@@ -768,7 +780,7 @@ def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
     for committee_number in range(get_epoch_committee_count(state, epoch)):
         shard = Shard((start_shard + committee_number) % SHARD_COUNT)
         for index in get_crosslink_committee(state, epoch, shard):
-            validator = state.validators[index]
+            validator = get_validator(state, index)
             committees[shard].pubkeys.append(validator.pubkey)
             compact_balance = validator.effective_balance // EFFECTIVE_BALANCE_INCREMENT
             # `index` (top 6 bytes) + `slashed` (16th bit) + `compact_balance` (bottom 15 bits)
@@ -810,7 +822,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     while True:
         candidate_index = first_committee[(epoch + i) % len(first_committee)]
         random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
-        effective_balance = state.validators[candidate_index].effective_balance
+        effective_balance = get_validator(state, candidate_index).effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
             return ValidatorIndex(candidate_index)
         i += 1
@@ -916,7 +928,7 @@ def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
-    return Gwei(max(sum([state.validators[index].effective_balance for index in indices]), 1))
+    return Gwei(max(sum([get_validator(state, index).effective_balance for index in indices]), 1))
 ```
 
 ### `get_domain`
@@ -974,8 +986,8 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     # Verify aggregate signature
     assert bls_verify_multiple(
         pubkeys=[
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
+            bls_aggregate_pubkeys([get_validator(state, i).pubkey for i in bit_0_indices]),
+            bls_aggregate_pubkeys([get_validator(state, i).pubkey for i in bit_1_indices]),
         ],
         message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
@@ -1064,7 +1076,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     Initiate the exit of the validator of the given ``index``.
     """
     # Return if validator already initiated exit
-    validator = state.validators[index]
+    validator = get_validator(state, index)
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
@@ -1091,7 +1103,7 @@ def slash_validator(state: BeaconState,
     """
     epoch = get_current_epoch(state)
     initiate_validator_exit(state, slashed_index)
-    validator = state.validators[slashed_index]
+    validator = get_validator(state, slashed_index)
     validator.slashed = True
     validator.withdrawable_epoch = max(validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR))
     state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
@@ -1273,7 +1285,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
         output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
-    return set(filter(lambda index: not state.validators[index].slashed, list(output)))
+    return set(filter(lambda index: not get_validator(state, index).slashed, list(output)))
 ```
 
 ```python
@@ -1360,7 +1372,7 @@ def process_crosslinks(state: BeaconState) -> None:
 ```python
 def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
     total_balance = get_total_active_balance(state)
-    effective_balance = state.validators[index].effective_balance
+    effective_balance = get_validator(state, index).effective_balance
     return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
 ```
 
@@ -1409,7 +1421,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
             penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
             if index not in matching_target_attesting_indices:
                 penalties[index] += Gwei(
-                    state.validators[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
+                    get_validator(state, index).effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
                 )
 
     return rewards, penalties
@@ -1467,12 +1479,11 @@ def process_registry_updates(state: BeaconState) -> None:
         index for index, validator in enumerate(state.validators) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
         validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_checkpoint.epoch)
-    ], key=lambda index: state.validators[index].activation_eligibility_epoch)
+    ], key=lambda index: get_validator(state, index).activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_churn_limit(state)]:
-        validator = state.validators[index]
-        if validator.activation_epoch == FAR_FUTURE_EPOCH:
-            validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+        if get_validator(state, index).activation_epoch == FAR_FUTURE_EPOCH:
+            get_validator(state, index).activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
@@ -1549,7 +1560,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
-    proposer = state.validators[get_beacon_proposer_index(state)]
+    proposer = get_validator(state, get_beacon_proposer_index(state))
     assert not proposer.slashed
     # Verify proposer signature
     assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
@@ -1561,7 +1572,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
-    proposer = state.validators[get_beacon_proposer_index(state)]
+    proposer = get_validator(state, get_beacon_proposer_index(state))
     assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
@@ -1606,7 +1617,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     """
     Process ``ProposerSlashing`` operation.
     """
-    proposer = state.validators[proposer_slashing.proposer_index]
+    proposer = get_validator(state, proposer_slashing.proposer_index)
     # Verify that the epoch is the same
     assert slot_to_epoch(proposer_slashing.header_1.slot) == slot_to_epoch(proposer_slashing.header_2.slot)
     # But the headers are different
@@ -1638,7 +1649,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
     attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
     for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
-        if is_slashable_validator(state.validators[index], get_current_epoch(state)):
+        if is_slashable_validator(get_validator(state, index), get_current_epoch(state)):
             slash_validator(state, index)
             slashed_any = True
     assert slashed_any
@@ -1740,7 +1751,7 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     """
     Process ``VoluntaryExit`` operation.
     """
-    validator = state.validators[exit.validator_index]
+    validator = get_validator(state, exit.validator_index)
     # Verify the validator is active
     assert is_active_validator(validator, get_current_epoch(state))
     # Verify the validator has not yet exited
@@ -1767,20 +1778,19 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert state.balances[transfer.sender] >= max(transfer.amount + transfer.fee, transfer.amount, transfer.fee)
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
-    # Sender must satisfy at least one of the following conditions in the parenthesis:
+    # Sender must either:
     assert (
-        # * Has not been activated
-        state.validators[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
-        # * Is withdrawable
-        get_current_epoch(state) >= state.validators[transfer.sender].withdrawable_epoch or
-        # * Balance after transfer is more than the effective balance threshold
-        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= state.balances[transfer.sender]
+        # 1) Never have been eligible for activation
+        get_validator(state, transfer.sender).activation_eligibility_epoch == FAR_FUTURE_EPOCH or
+        # 2) Be withdrawable
+        get_current_epoch(state) >= get_validator(state, transfer.sender).withdrawable_epoch or
+        # 3) Have a balance of at least MAX_EFFECTIVE_BALANCE after the transfer
+        state.balances[transfer.sender] >= transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE
     )
     # Verify that the pubkey is valid
-    assert (
-        state.validators[transfer.sender].withdrawal_credentials ==
-        int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
-    )
+    expected_withdrawal_credentials = int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
+    assert get_validator(state, transfer.sender).withdrawal_credentials == expected_withdrawal_credentials
+
     # Verify that the signature is valid
     assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
     # Process the transfer
