@@ -43,7 +43,8 @@ def to_little_endian_64(value: uint256) -> bytes[8]:
 @public
 @constant
 def get_deposit_root() -> bytes32:
-    node: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
+    zero_bytes32: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
+    node: bytes32 = zero_bytes32
     size: uint256 = self.deposit_count
     for height in range(DEPOSIT_CONTRACT_TREE_DEPTH):
         if bitwise_and(size, 1) == 1:  # More gas efficient than `size % 2 == 1`
@@ -51,7 +52,7 @@ def get_deposit_root() -> bytes32:
         else:
             node = sha256(concat(node, self.zero_hashes[height]))
         size /= 2
-    return node
+    return sha256(concat(node, slice(zero_bytes32, start=0, len=24), self.to_little_endian_64(deposit_amount))
 
 
 @public
