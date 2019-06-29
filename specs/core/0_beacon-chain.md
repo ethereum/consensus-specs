@@ -174,6 +174,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `ZERO_HASH` | `Hash(b'\x00' * 32)` |
 | `BASE_REWARDS_PER_EPOCH` | `5` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+| `SECONDS_PER_DAY` | `86400` |
 
 ## Configuration
 
@@ -438,7 +439,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to SSZ deposit data list hash tree root
+    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit data list root
     data: DepositData
 ```
 
@@ -1093,43 +1094,45 @@ def slash_validator(state: BeaconState,
 ### Genesis trigger
 
 Before genesis has been triggered and for every Ethereum 1.0 block call `is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool` where:
-* `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
+
+* `deposits` is the sequence of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
 
 When `is_genesis_trigger(deposits, timestamp) is True` for the first time, let:
 
 * `genesis_deposits = deposits`
-* `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
+* `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY`
 * `genesis_eth1_block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
 
 *Note*: The function `is_genesis_trigger` has yet to be agreed upon by the community, and can be updated as necessary. We define the following testing placeholder:
 
 ```python
 def is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool:
-    SECONDS_PER_DAY = 86400
     # Do not deploy too early
     if timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY < MIN_GENESIS_TIME:
         return False
-
-    # Process deposits
+    # Process genesis deposits
     state = BeaconState()
+    process_genesis_deposits(state, deposits)
+    # Check active validator count
+    return len(get_active_validator_indices(state, GENESIS_EPOCH)) >= GENESIS_ACTIVE_VALIDATOR_COUNT
+```
+
+```python
+def process_genesis_deposits(state: BeaconState, deposits: Sequence[Deposit]) -> None:
     leaves = list(map(lambda deposit: deposit.data, deposits))
     for deposit_index, deposit in enumerate(deposits):
         state.eth1_data.deposit_root = hash_tree_root(
             List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:deposit_index + 1])
         )
         state.eth1_data.deposit_count = deposit_index + 1
-        state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
 
-    # Count active validators at genesis
-    active_validator_count = 0
+    # Process genesis activations
     for validator in state.validators:
         if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
-            active_validator_count += 1
-
-    # Check effective balance to trigger genesis
-    return active_validator_count >= GENESIS_ACTIVE_VALIDATOR_COUNT
+            validator.activation_eligibility_epoch = GENESIS_EPOCH
+            validator.activation_epoch = GENESIS_EPOCH
 ```
 
 ### Genesis state
@@ -1140,27 +1143,13 @@ Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, ge
 def get_genesis_beacon_state(deposits: Sequence[Deposit],
                              genesis_time: int,
                              genesis_eth1_block_hash: Hash) -> BeaconState:
+    # Process genesis deposits
     state = BeaconState(
         genesis_time=genesis_time,
         eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
-
-    # Process genesis deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
-    for deposit_index, deposit in enumerate(deposits):
-        state.eth1_data.deposit_root = hash_tree_root(
-            List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:deposit_index + 1])
-        )
-        state.eth1_data.deposit_count = deposit_index + 1
-        state.eth1_deposit_index = deposit_index
-        process_deposit(state, deposit)
-
-    # Process genesis activations
-    for validator in state.validators:
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
-            validator.activation_eligibility_epoch = GENESIS_EPOCH
-            validator.activation_epoch = GENESIS_EPOCH
+    process_genesis_deposits(state, deposits)
 
     # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(
