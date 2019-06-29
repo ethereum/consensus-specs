@@ -28,7 +28,9 @@ def create_genesis_state(spec, num_validators):
             deposit_root=deposit_root,
             deposit_count=num_validators,
             block_hash=spec.ZERO_HASH,
-        ))
+        ),
+        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+    )
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
@@ -41,9 +43,9 @@ def create_genesis_state(spec, num_validators):
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 
-    genesis_active_index_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
+    genesis_compact_committees_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
         spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
     for index in range(spec.EPOCHS_PER_HISTORICAL_VECTOR):
-        state.active_index_roots[index] = genesis_active_index_root
+        state.compact_committees_roots[index] = genesis_compact_committees_root
 
     return state

@@ -31,7 +31,7 @@ class BasicValue(int, SSZValue, metaclass=BasicType):
     pass
 
 
-class Bool(BasicValue):  # can't subclass bool.
+class boolean(BasicValue):  # can't subclass bool.
     byte_len = 1
 
     def __new__(cls, value: int):  # int value, but can be any subclass of int (bool, Bit, Bool, etc...)
@@ -48,7 +48,7 @@ class Bool(BasicValue):  # can't subclass bool.
 
 
 # Alias for Bool
-class Bit(Bool):
+class bit(boolean):
     pass
 
 
@@ -233,7 +233,7 @@ class ParamsMeta(SSZType):
         return f"{self.__name__}~{self.__class__.__name__}"
 
     def __repr__(self):
-        return self, self.__class__
+        return f"{self.__name__}~{self.__class__.__name__}"
 
     def attr_from_params(self, p):
         # single key params are valid too. Wrap them in a tuple.
@@ -310,6 +310,10 @@ class BaseList(list, Elements):
         cls = self.__class__
         return f"{cls.__name__}[{cls.elem_type.__name__}, {cls.length}]({', '.join(str(v) for v in self)})"
 
+    def __repr__(self):
+        cls = self.__class__
+        return f"{cls.__name__}[{cls.elem_type.__name__}, {cls.length}]({', '.join(str(v) for v in self)})"
+
     def __getitem__(self, k) -> SSZValue:
         if isinstance(k, int):  # check if we are just doing a lookup, and not slicing
             if k < 0:
@@ -320,12 +324,18 @@ class BaseList(list, Elements):
         return super().__getitem__(k)
 
     def __setitem__(self, k, v):
-        if k < 0:
-            raise IndexError(f"cannot set item in type {self.__class__} at negative index {k} (to {v})")
-        if k > len(self):
-            raise IndexError(f"cannot set item in type {self.__class__}"
-                             f" at out of bounds index {k} (to {v}, bound: {len(self)})")
-        super().__setitem__(k, coerce_type_maybe(v, self.__class__.elem_type, strict=True))
+        if type(k) == slice:
+            if (k.start is not None and k.start < 0) or (k.stop is not None and k.stop > len(self)):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds slice {k} (to {v}, bound: {len(self)})")
+            super().__setitem__(k, [coerce_type_maybe(x, self.__class__.elem_type) for x in v])
+        else:
+            if k < 0:
+                raise IndexError(f"cannot set item in type {self.__class__} at negative index {k} (to {v})")
+            if k > len(self):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds index {k} (to {v}, bound: {len(self)})")
+            super().__setitem__(k, coerce_type_maybe(v, self.__class__.elem_type, strict=True))
 
     def append(self, v):
         super().append(coerce_type_maybe(v, self.__class__.elem_type, strict=True))
@@ -336,6 +346,48 @@ class BaseList(list, Elements):
     def last(self):
         # be explict about getting the last item, for the non-python readers, and negative-index safety
         return self[len(self) - 1]
+
+
+class BitElementsType(ElementsType):
+    elem_type: SSZType = boolean
+    length: int
+
+
+class Bits(BaseList, metaclass=BitElementsType):
+    pass
+
+
+class Bitlist(Bits):
+    @classmethod
+    def is_fixed_size(cls):
+        return False
+
+    @classmethod
+    def default(cls):
+        return cls()
+
+
+class Bitvector(Bits):
+
+    @classmethod
+    def extract_args(cls, *args):
+        if len(args) == 0:
+            return cls.default()
+        else:
+            return super().extract_args(*args)
+
+    @classmethod
+    def value_check(cls, value):
+        # check length limit strictly
+        return len(value) == cls.length and super().value_check(value)
+
+    @classmethod
+    def is_fixed_size(cls):
+        return True
+
+    @classmethod
+    def default(cls):
+        return cls(0 for _ in range(cls.length))
 
 
 class List(BaseList):

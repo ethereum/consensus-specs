@@ -415,16 +415,16 @@ components:
             type: object
             description: "The [`Attestation`](https://github.com/ethereum/eth2.0-specs/blob/master/specs/core/0_beacon-chain.md#attestation) object from the Eth2.0 spec."
             properties:
-              aggregation_bitfield:
+              aggregation_bits:
                 type: string
                 format: byte
                 pattern: "^0x[a-fA-F0-9]+$"
-                description: "Attester aggregation bitfield."
-              custody_bitfield:
+                description: "Attester aggregation bits."
+              custody_bits:
                 type: string
                 format: byte
                 pattern: "^0x[a-fA-F0-9]+$"
-                description: "Custody bitfield."
+                description: "Custody bits."
               signature:
                 type: string
                 format: byte
