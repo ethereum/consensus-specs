@@ -14,7 +14,7 @@
         - [`deposit` function](#deposit-function)
             - [Deposit amount](#deposit-amount)
             - [Withdrawal credentials](#withdrawal-credentials)
-            - [`Deposit` log](#deposit-log)
+            - [`DepositEvent` log](#depositevent-log)
     - [Vyper code](#vyper-code)
 
 <!-- /TOC -->
@@ -53,9 +53,9 @@ One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment 
 
 The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
 
-#### `Deposit` log
+#### `DepositEvent` log
 
-Every Ethereum 1.0 deposit emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit emits a `DepositEvent` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ## Vyper code
 

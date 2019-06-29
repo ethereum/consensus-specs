@@ -96,8 +96,8 @@ def test_deposit_inputs(registration_contract,
         )
 
 
-def test_deposit_log(registration_contract, a0, w3, deposit_input):
-    log_filter = registration_contract.events.Deposit.createFilter(
+def test_deposit_event_log(registration_contract, a0, w3, deposit_input):
+    log_filter = registration_contract.events.DepositEvent.createFilter(
         fromBlock='latest',
     )
 
@@ -119,7 +119,7 @@ def test_deposit_log(registration_contract, a0, w3, deposit_input):
 
 
 def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input):
-    log_filter = registration_contract.events.Deposit.createFilter(
+    log_filter = registration_contract.events.DepositEvent.createFilter(
         fromBlock='latest',
     )
 
@@ -146,4 +146,4 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input
         ))
 
         root = hash_tree_root(List[DepositData, 2**32](*deposit_data_list))
-        assert root == registration_contract.functions.get_deposit_root().call()
+        assert root == registration_contract.functions.get_hash_tree_root().call()

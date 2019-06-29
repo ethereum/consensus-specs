@@ -438,7 +438,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit root
+    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to SSZ deposit data list hash tree root
     data: DepositData
 ```
 
