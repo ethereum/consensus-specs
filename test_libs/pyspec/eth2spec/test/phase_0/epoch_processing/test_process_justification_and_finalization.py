@@ -82,7 +82,7 @@ def finalize_on_234(spec, state, epoch, support):
     state.previous_justified_checkpoint = c4
     state.current_justified_checkpoint = c3
     state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    state.justification_bits[1:3] = [1, 1]  # mock 3rd and 4th latest epochs as justified
+    state.justification_bits[1:3] = [1, 1]  # mock 2nd and 3rd latest epochs as justified
     # mock the 2nd latest epoch as justifiable, with 4th as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 2,
