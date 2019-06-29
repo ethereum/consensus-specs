@@ -16,14 +16,6 @@ def get_shards_for_slot(spec, state, slot):
     return [shard + i for i in range(committees_per_slot)]
 
 
-def get_committee_size(spec, epoch_start_shard, shard, committee_count, indices):
-    committee_index = (shard + spec.SHARD_COUNT - epoch_start_shard) % spec.SHARD_COUNT
-    start = (len(indices) * committee_index) // committee_count
-    end = (len(indices) * (committee_index + 1)) // committee_count
-    size = end - start
-    return size
-
-
 def add_mock_attestations(spec, state, epoch, source, target, sufficient_support=False):
     # we must be at the end of the epoch
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
