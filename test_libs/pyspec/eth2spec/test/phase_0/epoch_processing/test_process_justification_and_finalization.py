@@ -149,6 +149,7 @@ def finalize_on_123(spec, state, epoch, support):
     # 3210x -- justification bitfield indices
     # 011*. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
+    c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
     c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
     c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
@@ -157,7 +158,7 @@ def finalize_on_123(spec, state, epoch, support):
     state.block_roots[spec.get_epoch_start_slot(c1.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c1.root
 
     old_finalized = state.finalized_checkpoint
-    state.previous_justified_checkpoint = c3
+    state.previous_justified_checkpoint = c4
     state.current_justified_checkpoint = c2
     state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
     state.justification_bits[0:2] = [1, 1]  # mock 1st and 2nd latest epochs as justified
