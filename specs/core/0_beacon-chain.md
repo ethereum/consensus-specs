@@ -1120,8 +1120,8 @@ def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: int, deposit
         process_deposit(state, deposit)
 
     # Process activations
-    for validator in state.validators:
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
+    for index, validator in enumerate(state.validators):
+        if balances[index] >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
     assert len(get_active_validator_indices(state, GENESIS_EPOCH)) >= MIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
