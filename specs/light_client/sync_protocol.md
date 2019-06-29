@@ -40,7 +40,7 @@ Note that there is now a new way to compute `get_active_validator_indices`:
 
 ```python
 def get_active_validator_indices(state: ExtendedBeaconState, epoch: Epoch) -> List[ValidatorIndex]:
-    return state.active_indices[epoch % compact_committees_rootS_LENGTH]
+    return state.active_indices[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
 Note that it takes `state` instead of `state.validators` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
