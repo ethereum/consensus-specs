@@ -117,7 +117,7 @@ def test_invalid_withdrawal_credentials_top_up(spec, state):
 @with_all_phases
 @spec_state_test
 def test_wrong_deposit_for_deposit_count(spec, state):
-    deposit_data_leaves = [spec.ZERO_HASH] * len(state.validators)
+    deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 
     # build root for deposit_1
     index_1 = len(deposit_data_leaves)

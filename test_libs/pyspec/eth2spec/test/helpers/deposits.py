@@ -3,11 +3,10 @@ from eth2spec.utils.bls import bls_sign
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import signing_root, hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import List
-from eth2spec.phase0.spec import DepositData
 
 
 def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, state=None, signed=False):
-    deposit_data = DepositData(
+    deposit_data = spec.DepositData(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         amount=amount,
@@ -43,14 +42,10 @@ def build_deposit(spec,
                   amount,
                   withdrawal_credentials,
                   signed):
-    deposit_data = build_deposit_data(
-        spec, pubkey, privkey, amount, withdrawal_credentials, state=state, signed=signed,
-    )
-
     deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, state=state, signed=signed)
     deposit_data_list.append(deposit_data)
     index = len(deposit_data_list)
-    root = hash_tree_root(List[DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list))
+    root = hash_tree_root(List[spec.DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
     proof = list(get_merkle_proof(tree, item_index=index)) + [index.to_bytes(32, 'little')]
     leaf = deposit_data.hash_tree_root()
