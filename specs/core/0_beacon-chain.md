@@ -124,8 +124,7 @@
 
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
-At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0, the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Eth 1.0. Activation as a [validator](#dfn-validator) happens when Eth 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
-
+At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0, the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
 The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block and proof-of-stake votes for a beacon block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
 ## Notation
@@ -134,7 +133,7 @@ Code snippets appearing in `this style` are to be interpreted as Python code.
 
 ## Terminology
 
-* **Validator**<a id="dfn-validator"></a>—a registered participant in the beacon chain. You can become one by sending ether into the Eth 1.0 deposit contract.
+* **Validator**<a id="dfn-validator"></a>—a registered participant in the beacon chain. You can become one by sending ether into the Ethereum 1.0 deposit contract.
 * **Active validator**<a id="dfn-active-validator"></a>—an active participant in the Ethereum 2.0 consensus invited to, among other things, propose and attest to blocks and vote for crosslinks.
 * **Committee**—a (pseudo-) randomly sampled subset of [active validators](#dfn-active-validator). When a committee is referred to collectively, as in "this committee attests to X", this is assumed to mean "some subset of that committee that contains enough [validators](#dfn-validator) that the protocol recognizes it as representing the committee".
 * **Proposer**—the [validator](#dfn-validator) that creates a beacon chain block.
@@ -194,7 +193,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 | `JUSTIFICATION_BITS_LENGTH` | `4` |
 
-* For the safety of cr>>osslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+* For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
 
@@ -1095,14 +1094,14 @@ def slash_validator(state: BeaconState,
 
 Before genesis has been triggered and for every Eth 1.0 block call `is_genesis_trigger(deposits, time)` where:
 
-* `deposits` is the list of all deposits up to the Eth 1.0 block, ordered chronologically
-* `time` is the Unix time of the Eth 1.0 block
+* `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
+* `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
 
-When `is_genesis_trigger(deposits, time) is True` for the first time let:
+When `is_genesis_trigger(deposits, timestamp) is True` for the first time, let:
 
 * `genesis_deposits = deposits`
-* `genesis_time = time - time % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
-* `genesis_eth1_block_hash` is the Eth 1.0 block hash that emitted the log for the last deposit in `deposits`
+* `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
+* `genesis_eth1_block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
 
 *Note*: The function `is_genesis_trigger` has yet to be agreed upon by the community, and can be updated as necessary. We define the following testing placeholder:
 
