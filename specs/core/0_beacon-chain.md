@@ -1157,10 +1157,7 @@ When `is_genesis_trigger(deposits, time) is True` for the first time let:
 
 * `genesis_deposits = deposits`
 * `genesis_time = time - time % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
-* `genesis_eth1_data` be the object of type `Eth1Data` where:
-    * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
-    * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
-    * `genesis_eth1_data.block_hash` is the Eth 1.0 block hash that emitted the log for the last deposit in `deposits`
+* `genesis_eth1_block_hash` is the Eth 1.0 block hash that emitted the log for the last deposit in `deposits`
 
 *Note*: The function `is_genesis_trigger` has yet to be agreed upon by the community, and can be updated as necessary. We define the following testing placeholder:
 
@@ -1176,6 +1173,7 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
     leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
     for deposit_index, deposit in enumerate(deposits):
         state.eth1_data.deposit_root = get_merkle_root(leaves[:deposit_index + 1], 2**DEPOSIT_CONTRACT_TREE_DEPTH)
+        state.eth1_data.deposit_count = deposit_index + 1
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
 
@@ -1191,13 +1189,13 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
 
 ### Genesis state
 
-Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_data)`.
+Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_block_hash)`.
 
 ```python
-def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth1_data: Eth1Data) -> BeaconState:
+def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, genesis_eth1_block_hash: Hash) -> BeaconState:
     state = BeaconState(
         genesis_time=genesis_time,
-        eth1_data=eth1_data,
+        eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
 
@@ -1205,10 +1203,9 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
     leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
     for deposit_index, deposit in enumerate(deposits):
         state.eth1_data.deposit_root = get_merkle_root(leaves[:deposit_index + 1], 2**DEPOSIT_CONTRACT_TREE_DEPTH)
+        state.eth1_data.deposit_count = deposit_index + 1
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
-
-    assert state.eth1_data.deposit_root == eth1_data.deposit_root
 
     # Process genesis activations
     for validator in state.validators:
