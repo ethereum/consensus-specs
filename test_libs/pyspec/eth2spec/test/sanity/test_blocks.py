@@ -143,7 +143,7 @@ def test_empty_epoch_transition_not_finalizing(spec, state):
     yield 'post', state
 
     assert state.slot == block.slot
-    assert state.finalized_epoch < spec.get_current_epoch(state) - 4
+    assert state.finalized_checkpoint.epoch < spec.get_current_epoch(state) - 4
     for index in range(len(state.validators)):
         assert state.balances[index] < pre_balances[index]
 
