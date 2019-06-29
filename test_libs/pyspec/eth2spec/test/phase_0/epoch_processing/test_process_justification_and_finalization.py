@@ -22,10 +22,10 @@ def get_committee_size(spec, epoch_start_shard, shard, committee_count, indices)
     start = (len(indices) * committee_index) // committee_count
     end = (len(indices) * (committee_index + 1)) // committee_count
     size = end - start
-    return size,
+    return size
 
 
-def add_mock_attestations(spec, state, epoch, att_count, att_ratio):
+def add_mock_attestations(spec, state, epoch, att_ratio, source, target):
     # we must be at the end of the epoch
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
 
@@ -42,9 +42,9 @@ def add_mock_attestations(spec, state, epoch, att_count, att_ratio):
     committee_count = spec.get_epoch_committee_count(state, epoch)
     indices = spec.get_active_validator_indices(state, epoch)
     epoch_start_shard = spec.get_epoch_start_shard(state, epoch)
-    total = 0
-    for i in range(spec.SLOTS_PER_EPOCH):
-        for shard in get_shards_for_slot(spec, state, state.slot + i):
+    epoch_start_slot = spec.get_epoch_start_slot(epoch)
+    for slot in range(epoch_start_slot, epoch_start_slot + spec.SLOTS_PER_EPOCH):
+        for shard in get_shards_for_slot(spec, state, slot):
             size = get_committee_size(spec, epoch_start_shard, shard, committee_count, indices)
             # Create a bitfield filled with the given count per attestation,
             #  exactly on the right-most part of the committee field.
@@ -55,30 +55,212 @@ def add_mock_attestations(spec, state, epoch, att_count, att_ratio):
                 aggregation_bitfield=aggregation_bitfield,
                 data=spec.AttestationData(
                     beacon_block_root=b'\xaa' * 32,
-                    source_epoch=0,
-                    source_root=b'\xbb' * 32,
-                    target_root=b'\xbb' * 32,
+                    source=source,
+                    target=source,
                     crosslink=spec.Crosslink()
                 ),
                 inclusion_delay=1,
             ))
-            total += 1
-            if total >= att_count:
-                return
 
-    raise Exception(f"could not fill state with {att_count} attestations for epoch {epoch}")
+
+def finalize_on_234(spec, state, epoch, support):
+    assert epoch > 4
+    state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
+
+    # 43210 -- epochs ago
+    # 3210x -- justification bitfield indices
+    # 11*0. -- justification bitfield contents, . = this epoch, * is being justified now
+    # checkpoints for the epochs ago:
+    c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
+    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
+    c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
+    # c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+
+    old_finalized = state.finalized_checkpoint
+    state.previous_justified_checkpoint = c4
+    state.current_justified_checkpoint = c3
+    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    bits[3:4] = [1, 1]  # mock 3rd and 4th latest epochs as justified
+    # mock the 2nd latest epoch as justifiable, with 4th as source
+    add_mock_attestations(spec, state,
+                          epoch=epoch - 2,
+                          att_ratio=support,
+                          source=c4,
+                          target=c2)
+
+    # process!
+    yield from run_process_just_and_fin(spec, state)
+
+    if support >= (2 / 3):
+        assert state.previous_justified_checkpoint == c3  # changed to old current
+        assert state.current_justified_checkpoint == c2  # changed to 2nd latest
+        assert state.finalized_checkpoint == c4  # finalized old previous justified epoch
+    else:
+        assert state.previous_justified_checkpoint == c3  # changed to old current
+        assert state.current_justified_checkpoint == c3  # still old current
+        assert state.finalized_checkpoint == old_finalized  # no new finalized
+
+
+def finalize_on_23(spec, state, epoch, support):
+    assert epoch > 3
+    state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
+
+    # 43210 -- epochs ago
+    # 3210x -- justification bitfield indices
+    # 01*0. -- justification bitfield contents, . = this epoch, * is being justified now
+    # checkpoints for the epochs ago:
+    # c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
+    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
+    c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
+    # c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+
+    old_finalized = state.finalized_checkpoint
+    state.previous_justified_checkpoint = c3
+    state.current_justified_checkpoint = c3
+    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    bits[2] = 1  # mock 3rd latest epoch as justified
+    # mock the 2nd latest epoch as justifiable, with 3rd as source
+    add_mock_attestations(spec, state,
+                          epoch=epoch - 2,
+                          att_ratio=support,
+                          source=c3,
+                          target=c2)
+
+    # process!
+    yield from run_process_just_and_fin(spec, state)
+
+    if support >= (2 / 3):
+        assert state.previous_justified_checkpoint == c3  # changed to old current
+        assert state.current_justified_checkpoint == c2  # changed to 2nd latest
+        assert state.finalized_checkpoint == c3  # finalized old previous justified epoch
+    else:
+        assert state.previous_justified_checkpoint == c3  # changed to old current
+        assert state.current_justified_checkpoint == c3  # still old current
+        assert state.finalized_checkpoint == old_finalized  # no new finalized
+
+
+def finalize_on_123(spec, state, epoch, support):
+    assert epoch > 3
+    state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
+
+    # 43210 -- epochs ago
+    # 3210x -- justification bitfield indices
+    # 011*. -- justification bitfield contents, . = this epoch, * is being justified now
+    # checkpoints for the epochs ago:
+    # c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
+    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
+    c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
+    c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+
+    old_finalized = state.finalized_checkpoint
+    state.previous_justified_checkpoint = c3
+    state.current_justified_checkpoint = c2
+    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    bits[1:2] = [1, 1]  # mock 2rd and 3th latest epochs as justified
+    # mock the 1st latest epoch as justifiable, with 3rd as source
+    add_mock_attestations(spec, state,
+                          epoch=epoch - 1,
+                          att_ratio=support,
+                          source=c3,
+                          target=c1)
+
+    # process!
+    yield from run_process_just_and_fin(spec, state)
+
+    if support >= (2 / 3):
+        assert state.previous_justified_checkpoint == c2  # changed to old current
+        assert state.current_justified_checkpoint == c1  # changed to 1st latest
+        assert state.finalized_checkpoint == c2  # finalized old current
+    else:
+        assert state.previous_justified_checkpoint == c2  # changed to old current
+        assert state.current_justified_checkpoint == c2  # still old current
+        assert state.finalized_checkpoint == old_finalized  # no new finalized
+
+
+def finalize_on_12(spec, state, epoch, support):
+    assert epoch > 2
+    state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
+
+    # 43210 -- epochs ago
+    # 3210  -- justification bitfield indices
+    # 001*. -- justification bitfield contents, . = this epoch, * is being justified now
+    # checkpoints for the epochs ago:
+    # c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
+    # c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
+    c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
+    c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+
+    old_finalized = state.finalized_checkpoint
+    state.previous_justified_checkpoint = c2
+    state.current_justified_checkpoint = c2
+    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    bits[3] = 1  # mock 3rd latest epoch as justified
+    # mock the 1st latest epoch as justifiable, with 2nd as source
+    add_mock_attestations(spec, state,
+                          epoch=epoch - 1,
+                          att_ratio=support,
+                          source=c2,
+                          target=c1)
+
+    # process!
+    yield from run_process_just_and_fin(spec, state)
+
+    if support >= (2 / 3):
+        assert state.previous_justified_checkpoint == c2  # changed to old current
+        assert state.current_justified_checkpoint == c1  # changed to 1st latest
+        assert state.finalized_checkpoint == c2  # finalized previous justified epoch
+    else:
+        assert state.previous_justified_checkpoint == c2  # changed to old current
+        assert state.current_justified_checkpoint == c2  # still old current
+        assert state.finalized_checkpoint == old_finalized  # no new finalized
 
 
 @with_all_phases
 @spec_state_test
-def test_rule_1(spec, state):
-    # previous_epoch = spec.get_previous_epoch(state)
-    # current_epoch = spec.get_current_epoch(state)
+def test_234_ok_support(spec, state):
+    yield from finalize_on_234(spec, state, 5, 1.0)
 
-    # TODO
-    # add_mock_attestations(spec, state, ...)
-    # get indices attesting e.g. current_epoch_attestations
-    # set their balances
-    # yield from run_process_just_and_fin(spec, state)
-    # check finalization
-    pass
+
+@with_all_phases
+@spec_state_test
+def test_234_poor_support(spec, state):
+    yield from finalize_on_234(spec, state, 5, 0.6)
+
+
+@with_all_phases
+@spec_state_test
+def test_23_ok_support(spec, state):
+    yield from finalize_on_23(spec, state, 4, 1.0)
+
+
+@with_all_phases
+@spec_state_test
+def test_23_poor_support(spec, state):
+    yield from finalize_on_23(spec, state, 4, 0.6)
+
+
+@with_all_phases
+@spec_state_test
+def test_123_ok_support(spec, state):
+    yield from finalize_on_123(spec, state, 4, 1.0)
+
+
+@with_all_phases
+@spec_state_test
+def test_123_poor_support(spec, state):
+    yield from finalize_on_123(spec, state, 4, 0.6)
+
+
+@with_all_phases
+@spec_state_test
+def test_12_ok_support(spec, state):
+    yield from finalize_on_12(spec, state, 3, 1.0)
+
+
+@with_all_phases
+@spec_state_test
+def test_12_poor_support(spec, state):
+    yield from finalize_on_12(spec, state, 3, 0.6)
+
+
+# TODO: bring ratios closer to 2/3 for edge case testing.
