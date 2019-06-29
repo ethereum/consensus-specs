@@ -17,9 +17,9 @@ def test_genesis(spec):
 
     yield "genesis_eth1_block_hash", genesis_eth1_block_hash
     genesis_state = spec.get_genesis_beacon_state(
-        genesis_deposits,
-        genesis_time,
         genesis_eth1_block_hash,
+        genesis_time,
+        genesis_deposits,
     )
 
     assert genesis_state.genesis_time == genesis_time

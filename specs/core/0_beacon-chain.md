@@ -189,7 +189,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
-| `MIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 | `JUSTIFICATION_BITS_LENGTH` | `4` |
 
@@ -1100,12 +1100,12 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 
 The genesis state `genesis_state` is the return value of the first call to `get_genesis_beacon_state` that does not trigger an `assert`.
 
-*Note*: The two constants `MIN_GENESIS_TIME` and `MIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` have yet to be agreed upon by the community, and can be updated as necessary.
+*Note*: The two constants `MIN_GENESIS_TIME` and `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` have yet to be agreed upon by the community, and can be updated as necessary.
 
 ```python
 def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: int, deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
-        genesis_time=timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
+        genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
         eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
@@ -1124,7 +1124,7 @@ def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: int, deposit
         if state.balances[index] >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
-    assert len(get_active_validator_indices(state, GENESIS_EPOCH)) >= MIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    assert len(get_active_validator_indices(state, GENESIS_EPOCH)) >= MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
 
     # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(
