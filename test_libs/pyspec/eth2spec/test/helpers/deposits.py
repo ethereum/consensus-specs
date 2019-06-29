@@ -102,6 +102,7 @@ def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_c
         signed,
     )
 
+    state.eth1_deposit_index = 0
     state.eth1_data.deposit_root = root
     state.eth1_data.deposit_count = len(deposit_data_list)
     return deposit
