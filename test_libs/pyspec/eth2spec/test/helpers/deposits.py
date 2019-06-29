@@ -47,10 +47,10 @@ def build_deposit(spec,
         spec, pubkey, privkey, amount, withdrawal_credentials, state=state, signed=signed,
     )
 
-    deposit_data = build_deposit_data(spec, state, pubkey, privkey, amount, withdrawal_credentials, signed)
+    deposit_data = build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, state=state, signed=signed)
     deposit_data_list.append(deposit_data)
     index = len(deposit_data_list)
-    root = hash_tree_root(List[DepositData, 2**32](*deposit_data_list))
+    root = hash_tree_root(List[DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
     proof = list(get_merkle_proof(tree, item_index=index)) + [index.to_bytes(32, 'little')]
     leaf = deposit_data.hash_tree_root()
@@ -61,7 +61,7 @@ def build_deposit(spec,
 
 
 def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False):
-    deposit_data_leaves = []
+    deposit_data_list = []
     genesis_deposits = []
     for validator_index in range(genesis_validator_count):
         pubkey = pubkeys[validator_index]
@@ -73,16 +73,17 @@ def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False
             withdrawal_credentials=withdrawal_credentials,
             amount=amount,
         )
-        if signed:
-            sign_deposit_data(spec, deposit_data, privkey)  # state=None
-        item = deposit_data.hash_tree_root()
-        deposit_data_leaves.append(item)
-
-        tree = calc_merkle_tree_from_leaves(tuple(deposit_data_leaves), spec.DEPOSIT_CONTRACT_TREE_DEPTH)
-        root = get_merkle_root((tuple(deposit_data_leaves)), 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH)
-        genesis_deposits.append(
-            spec.Deposit(proof=list(get_merkle_proof(tree, item_index=validator_index)), data=deposit_data)
+        deposit, root, deposit_data_list = build_deposit(
+            spec,
+            None,
+            deposit_data_list,
+            pubkey,
+            privkey,
+            amount,
+            withdrawal_credentials,
+            signed,
         )
+        genesis_deposits.append(deposit)
 
     return genesis_deposits, root
 

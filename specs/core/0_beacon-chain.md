@@ -52,8 +52,6 @@
         - [`hash`](#hash)
         - [`hash_tree_root`](#hash_tree_root)
         - [`signing_root`](#signing_root)
-        - [`calc_merkle_tree_from_leaves`](#calc_merkle_tree_from_leaves)
-        - [`get_merkle_root`](#get_merkle_root)
         - [`bls_domain`](#bls_domain)
         - [`slot_to_epoch`](#slot_to_epoch)
         - [`get_previous_epoch`](#get_previous_epoch)
@@ -561,33 +559,6 @@ The `hash` function is SHA256.
 ### `signing_root`
 
 `def signing_root(object: Container) -> Hash` is a function for computing signing messages, as defined in the [SimpleSerialize spec](../simple-serialize.md#self-signed-containers).
-
-### `calc_merkle_tree_from_leaves`
-
-```python
-zerohashes = [ZERO_HASH]
-for layer in range(1, 100):
-    zerohashes.append(hash(zerohashes[layer - 1] + zerohashes[layer - 1]))
-def calc_merkle_tree_from_leaves(values: Sequence[Hash], layer_count: int=32) -> Sequence[Sequence[Hash]]:
-    values = list(values)
-    tree = [values[::]]
-    for h in range(layer_count):
-        if len(values) % 2 == 1:
-            values.append(zerohashes[h])
-        values = [hash(values[i] + values[i + 1]) for i in range(0, len(values), 2)]
-        tree.append(values[::])
-    return tree
-```
-
-### `get_merkle_root`
-
-```python
-def get_merkle_root(values: Sequence[Hash], pad_to: int=1) -> Hash:
-    layer_count = int(log2(pad_to))
-    if len(values) == 0:
-        return zerohashes[layer_count]
-    return calc_merkle_tree_from_leaves(values, layer_count)[-1][0]
-```
 
 ### `bls_domain`
 
@@ -1146,7 +1117,7 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
     state = BeaconState()
     leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
     for deposit_index, deposit in enumerate(deposits):
-        state.eth1_data.deposit_root = get_merkle_root(leaves[:deposit_index + 1], 2**DEPOSIT_CONTRACT_TREE_DEPTH)
+        state.eth1_data.deposit_root = hash_tree_root(leaves)
         state.eth1_data.deposit_count = deposit_index + 1
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
@@ -1176,7 +1147,7 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, gen
     # Process genesis deposits
     leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
     for deposit_index, deposit in enumerate(deposits):
-        state.eth1_data.deposit_root = get_merkle_root(leaves[:deposit_index + 1], 2**DEPOSIT_CONTRACT_TREE_DEPTH)
+        state.eth1_data.deposit_root = hash_tree_root(leaves)
         state.eth1_data.deposit_count = deposit_index + 1
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
