@@ -1092,24 +1092,25 @@ def slash_validator(state: BeaconState,
 
 ### Genesis state
 
-Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 block, call `get_genesis_beacon_state(eth1_block_hash, eth1_timestamp, deposits)` where:
+Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 block, call `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` where:
 
 * `eth1_block_hash` is the hash of the Ethereum 1.0 block
 * `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
 * `deposits` is the sequence of all deposits, ordered chronologically, up to the block with hash `eth1_block_hash`
 
-The genesis state `genesis_state` is the return value of the first call to `get_genesis_beacon_state` that does not trigger an `assert`.
+The genesis state `genesis_state` is the return value of calling `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` only if `is_valid_genesis_state(genesis_state) is True`.
 
 *Note*: The two constants `MIN_GENESIS_TIME` and `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` have yet to be agreed upon by the community, and can be updated as necessary.
 
 ```python
-def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: uint64, deposits: Sequence[Deposit]) -> BeaconState:
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
+                                      eth1_timestamp: uint64,
+                                      deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
         genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
-    assert state.genesis_time >= MIN_GENESIS_TIME
 
     # Process deposits
     leaves = list(map(lambda deposit: deposit.data, deposits))
@@ -1124,7 +1125,6 @@ def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: uint64, depo
         if state.balances[index] >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
-    assert len(get_active_validator_indices(state, GENESIS_EPOCH)) >= MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
 
     # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(
@@ -1134,6 +1134,16 @@ def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: uint64, depo
         state.active_index_roots[index] = genesis_active_index_root
 
     return state
+```
+
+```python
+def is_valid_genesis_state(state: BeaconState) -> bool:
+    if state.genesis_time < MIN_GENESIS_TIME:
+        return False
+    elif len(get_active_validator_indices(state, GENESIS_EPOCH)) < MIN_GENESIS_ACTIVE_VALIDATOR_COUNT:
+        return False
+    else:
+        return True
 ```
 
 ### Genesis block
