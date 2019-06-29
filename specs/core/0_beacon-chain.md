@@ -1186,7 +1186,7 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
             active_validator_count += 1
 
     # Check effective balance to trigger genesis
-    return active_validator_count == GENESIS_ACTIVE_VALIDATOR_COUNT
+    return active_validator_count >= GENESIS_ACTIVE_VALIDATOR_COUNT
 ```
 
 ### Genesis state
