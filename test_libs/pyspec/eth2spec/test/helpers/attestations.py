@@ -1,10 +1,10 @@
 from typing import List
 
-from eth2spec.test.helpers.bitfields import set_bitfield_bit
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
 def build_attestation_data(spec, state, slot, shard):
@@ -24,11 +24,11 @@ def build_attestation_data(spec, state, slot, shard):
         epoch_boundary_root = spec.get_block_root(state, spec.get_current_epoch(state))
 
     if slot < current_epoch_start_slot:
-        justified_epoch = state.previous_justified_epoch
-        justified_block_root = state.previous_justified_root
+        source_epoch = state.previous_justified_checkpoint.epoch
+        source_root = state.previous_justified_checkpoint.root
     else:
-        justified_epoch = state.current_justified_epoch
-        justified_block_root = state.current_justified_root
+        source_epoch = state.current_justified_checkpoint.epoch
+        source_root = state.current_justified_checkpoint.root
 
     if spec.slot_to_epoch(slot) == spec.get_current_epoch(state):
         parent_crosslink = state.current_crosslinks[shard]
@@ -37,10 +37,8 @@ def build_attestation_data(spec, state, slot, shard):
 
     return spec.AttestationData(
         beacon_block_root=block_root,
-        source_epoch=justified_epoch,
-        source_root=justified_block_root,
-        target_epoch=spec.slot_to_epoch(slot),
-        target_root=epoch_boundary_root,
+        source=spec.Checkpoint(epoch=source_epoch, root=source_root),
+        target=spec.Checkpoint(epoch=spec.slot_to_epoch(slot), root=epoch_boundary_root),
         crosslink=spec.Crosslink(
             shard=shard,
             start_epoch=parent_crosslink.end_epoch,
@@ -64,18 +62,17 @@ def get_valid_attestation(spec, state, slot=None, signed=False):
 
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation_data.target_epoch,
-        attestation_data.crosslink.shard
+        attestation_data.target.epoch,
+        attestation_data.crosslink.shard,
     )
 
     committee_size = len(crosslink_committee)
-    bitfield_length = (committee_size + 7) // 8
-    aggregation_bitfield = b'\x00' * bitfield_length
-    custody_bitfield = b'\x00' * bitfield_length
+    aggregation_bits = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
+    custody_bits = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
     attestation = spec.Attestation(
-        aggregation_bitfield=aggregation_bitfield,
+        aggregation_bits=aggregation_bits,
         data=attestation_data,
-        custody_bitfield=custody_bitfield,
+        custody_bits=custody_bits,
     )
     fill_aggregate_attestation(spec, state, attestation)
     if signed:
@@ -108,7 +105,7 @@ def sign_attestation(spec, state, attestation):
     participants = spec.get_attesting_indices(
         state,
         attestation.data,
-        attestation.aggregation_bitfield,
+        attestation.aggregation_bits,
     )
 
     attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
@@ -126,7 +123,7 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
         domain=spec.get_domain(
             state=state,
             domain_type=spec.DOMAIN_ATTESTATION,
-            message_epoch=attestation_data.target_epoch,
+            message_epoch=attestation_data.target.epoch,
         )
     )
 
@@ -134,11 +131,11 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
 def fill_aggregate_attestation(spec, state, attestation):
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation.data.target_epoch,
+        attestation.data.target.epoch,
         attestation.data.crosslink.shard,
     )
     for i in range(len(crosslink_committee)):
-        attestation.aggregation_bitfield = set_bitfield_bit(attestation.aggregation_bitfield, i)
+        attestation.aggregation_bits[i] = True
 
 
 def add_attestation_to_state(spec, state, attestation, slot):

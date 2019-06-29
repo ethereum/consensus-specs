@@ -26,8 +26,8 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    Bit, Bool, Container, List, Vector, Bytes, uint64,
-    Bytes4, Bytes32, Bytes48, Bytes96,
+    bit, boolean, Container, List, Vector, uint64,
+    Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -54,8 +54,8 @@ from eth2spec.utils.ssz.ssz_impl import (
     is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    Bit, Bool, Container, List, Vector, Bytes, uint64,
-    Bytes4, Bytes32, Bytes48, Bytes96,
+    bit, boolean, Container, List, Vector, Bytes, uint64,
+    Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -176,8 +176,8 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
 
 
 ignored_dependencies = [
-    'Bit', 'Bool', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
-    'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96',
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
+    'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes'  # to be removed after updating spec doc
 ]

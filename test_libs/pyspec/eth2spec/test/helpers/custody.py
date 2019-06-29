@@ -1,5 +1,6 @@
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.bls import bls_sign
+from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
+from eth2spec.utils.hash_function import hash
 
 
 def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
@@ -10,6 +11,7 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     if epoch is None:
         epoch = current_epoch + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING
 
+    # Generate the secret that is being revealed
     reveal = bls_sign(
         message_hash=spec.hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[revealed_index],
@@ -19,20 +21,24 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
             message_epoch=epoch,
         ),
     )
-    mask = bls_sign(
-        message_hash=spec.hash_tree_root(spec.Epoch(epoch)),
+    # Generate the mask (any random 32 bytes that don't reveal the masker's secret will do)
+    mask = hash(reveal)
+    # Generate masker's signature on the mask
+    masker_signature = bls_sign(
+        message_hash=mask,
         privkey=privkeys[masker_index],
         domain=spec.get_domain(
             state=state,
             domain_type=spec.DOMAIN_RANDAO,
             message_epoch=epoch,
         ),
-    )[:32]  # TODO(Carl): mask is 32 bytes, and signature is 96? Correct to slice the first 32 out?
+    )
+    masked_reveal = bls_aggregate_signatures([reveal, masker_signature])
 
     return spec.EarlyDerivedSecretReveal(
         revealed_index=revealed_index,
         epoch=epoch,
-        reveal=reveal,
+        reveal=masked_reveal,
         masker_index=masker_index,
         mask=mask,
     )

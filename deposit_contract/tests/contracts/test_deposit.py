@@ -15,24 +15,10 @@ from eth2spec.phase0.spec import (
     DepositData,
 )
 from eth2spec.utils.hash_function import hash
+from eth2spec.utils.ssz.ssz_typing import List
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
 )
-
-
-def compute_merkle_root(leaf_nodes):
-    assert len(leaf_nodes) >= 1
-    empty_node = b'\x00' * 32
-    child_nodes = leaf_nodes[:]
-    for _ in range(DEPOSIT_CONTRACT_TREE_DEPTH):
-        parent_nodes = []
-        if len(child_nodes) % 2 == 1:
-            child_nodes.append(empty_node)
-        for j in range(0, len(child_nodes), 2):
-            parent_nodes.append(hash(child_nodes[j] + child_nodes[j + 1]))
-        child_nodes = parent_nodes
-        empty_node = hash(empty_node + empty_node)
-    return child_nodes[0]
 
 
 @pytest.fixture
@@ -131,13 +117,14 @@ def test_deposit_log(registration_contract, a0, w3, deposit_input):
         assert log['signature'] == deposit_input[2]
         assert log['index'] == i.to_bytes(8, 'little')
 
+
 def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input):
     log_filter = registration_contract.events.Deposit.createFilter(
         fromBlock='latest',
     )
 
     deposit_amount_list = [randint(MIN_DEPOSIT_AMOUNT, FULL_DEPOSIT_AMOUNT * 2) for _ in range(10)]
-    leaf_nodes = []
+    deposit_data_list = []
     for i in range(0, 10):
         tx_hash = registration_contract.functions.deposit(
             *deposit_input,
@@ -151,13 +138,12 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input
 
         assert log["index"] == i.to_bytes(8, 'little')
 
-        deposit_data = DepositData(
+        deposit_data_list.append(DepositData(
             pubkey=deposit_input[0],
             withdrawal_credentials=deposit_input[1],
             amount=deposit_amount_list[i],
             signature=deposit_input[2],
-        )
-        hash_tree_root_result = hash_tree_root(deposit_data)
-        leaf_nodes.append(hash_tree_root_result)
-        root = compute_merkle_root(leaf_nodes)
+        ))
+
+        root = hash_tree_root(List[DepositData, 2**32](*deposit_data_list))
         assert root == registration_contract.functions.get_deposit_root().call()

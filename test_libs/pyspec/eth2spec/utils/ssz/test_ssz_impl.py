@@ -1,7 +1,8 @@
 from typing import Iterable
 from .ssz_impl import serialize, hash_tree_root
 from .ssz_typing import (
-    Bit, Bool, Container, List, Vector, Bytes, BytesN,
+    bit, boolean, Container, List, Vector, Bytes, BytesN,
+    Bitlist, Bitvector,
     uint8, uint16, uint32, uint64, uint256, byte
 )
 from ..hash_function import hash as bytes_hash
@@ -74,10 +75,32 @@ def merge(a: str, branch: Iterable[str]) -> str:
 
 
 test_data = [
-    ("bit F", Bit(False), "00", chunk("00")),
-    ("bit T", Bit(True), "01", chunk("01")),
-    ("bool F", Bool(False), "00", chunk("00")),
-    ("bool T", Bool(True), "01", chunk("01")),
+    ("bit F", bit(False), "00", chunk("00")),
+    ("bit T", bit(True), "01", chunk("01")),
+    ("boolean F", boolean(False), "00", chunk("00")),
+    ("boolean T", boolean(True), "01", chunk("01")),
+    ("bitvector TTFTFTFF", Bitvector[8](1, 1, 0, 1, 0, 1, 0, 0), "2b", chunk("2b")),
+    ("bitlist TTFTFTFF", Bitlist[8](1, 1, 0, 1, 0, 1, 0, 0), "2b01", h(chunk("2b"), chunk("08"))),
+    ("bitvector FTFT", Bitvector[4](0, 1, 0, 1), "0a", chunk("0a")),
+    ("bitlist FTFT", Bitlist[4](0, 1, 0, 1), "1a", h(chunk("0a"), chunk("04"))),
+    ("bitvector FTF", Bitvector[3](0, 1, 0), "02", chunk("02")),
+    ("bitlist FTF", Bitlist[3](0, 1, 0), "0a", h(chunk("02"), chunk("03"))),
+    ("bitvector TFTFFFTTFT", Bitvector[10](1, 0, 1, 0, 0, 0, 1, 1, 0, 1), "c502", chunk("c502")),
+    ("bitlist TFTFFFTTFT", Bitlist[16](1, 0, 1, 0, 0, 0, 1, 1, 0, 1), "c506", h(chunk("c502"), chunk("0A"))),
+    ("bitvector TFTFFFTTFTFFFFTT", Bitvector[16](1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1),
+     "c5c2", chunk("c5c2")),
+    ("bitlist TFTFFFTTFTFFFFTT", Bitlist[16](1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1),
+     "c5c201", h(chunk("c5c2"), chunk("10"))),
+    ("long bitvector", Bitvector[512](1 for i in range(512)),
+     "ff" * 64, h("ff" * 32, "ff" * 32)),
+    ("long bitlist", Bitlist[512](1),
+     "03", h(h(chunk("01"), chunk("")), chunk("01"))),
+    ("long bitlist", Bitlist[512](1 for i in range(512)),
+     "ff" * 64 + "01", h(h("ff" * 32, "ff" * 32), chunk("0002"))),
+    ("odd bitvector", Bitvector[513](1 for i in range(513)),
+     "ff" * 64 + "01", h(h("ff" * 32, "ff" * 32), h(chunk("01"), chunk("")))),
+    ("odd bitlist", Bitlist[513](1 for i in range(513)),
+     "ff" * 64 + "03", h(h(h("ff" * 32, "ff" * 32), h(chunk("01"), chunk(""))), chunk("0102"))),
     ("uint8 00", uint8(0x00), "00", chunk("00")),
     ("uint8 01", uint8(0x01), "01", chunk("01")),
     ("uint8 ab", uint8(0xab), "ab", chunk("ab")),
