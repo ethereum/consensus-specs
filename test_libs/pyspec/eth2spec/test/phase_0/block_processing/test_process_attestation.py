@@ -205,7 +205,7 @@ def test_future_target_epoch(spec, state):
 
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.target_epoch = spec.get_current_epoch(state) + 1  # target epoch will be too new to handle
+    attestation.data.target.epoch = spec.get_current_epoch(state) + 1  # target epoch will be too new to handle
     sign_attestation(spec, state, attestation)
 
     yield from run_attestation_processing(spec, state, attestation, False)
