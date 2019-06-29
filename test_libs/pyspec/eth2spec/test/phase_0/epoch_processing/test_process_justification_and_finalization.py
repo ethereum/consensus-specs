@@ -77,8 +77,8 @@ def finalize_on_234(spec, state, epoch, sufficient_support):
     # 3210x -- justification bitfield indices
     # 11*0. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
-    c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
-    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
+    c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xdd' * 32)
+    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xcc' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
     state.block_roots[spec.get_epoch_start_slot(c4.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c4.root
     state.block_roots[spec.get_epoch_start_slot(c3.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c3.root
@@ -117,7 +117,7 @@ def finalize_on_23(spec, state, epoch, sufficient_support):
     # 3210x -- justification bitfield indices (post shift)
     # 01*0. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
-    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
+    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xcc' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
     state.block_roots[spec.get_epoch_start_slot(c3.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c3.root
     state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
@@ -155,10 +155,10 @@ def finalize_on_123(spec, state, epoch, sufficient_support):
     # 3210x -- justification bitfield indices (post shift)
     # 011*. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
-    c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
-    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
+    c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xdd' * 32)
+    c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xcc' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
-    c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+    c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xaa' * 32)
     state.block_roots[spec.get_epoch_start_slot(c3.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c3.root
     state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
     state.block_roots[spec.get_epoch_start_slot(c1.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c1.root
@@ -197,7 +197,7 @@ def finalize_on_12(spec, state, epoch, sufficient_support):
     # 001*. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
-    c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+    c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xaa' * 32)
     state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
     state.block_roots[spec.get_epoch_start_slot(c1.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c1.root
 
