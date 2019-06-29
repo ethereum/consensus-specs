@@ -6,26 +6,26 @@ from eth2spec.test.helpers.deposits import (
 
 @with_phases(['phase0'])
 @spectest_with_bls_switch
-def test_genesis(spec):
+def test_get_genesis_beacon_state_success(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
-    genesis_deposits, deposit_root = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
-    genesis_time = 1546300800
-    genesis_eth1_block_hash = b'\x12' * 32
+    deposits, deposit_root = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
 
-    yield "deposits", genesis_deposits
-    yield "genesis_time", genesis_time
+    eth1_block_hash = b'\x12' * 32
+    eth1_timestamp = spec.MIN_GENESIS_TIME
 
-    yield "genesis_eth1_block_hash", genesis_eth1_block_hash
+    yield "eth1_block_hash", eth1_block_hash
+    yield "eth1_timestamp", eth1_timestamp
+    yield "deposits", deposits
     genesis_state = spec.get_genesis_beacon_state(
-        genesis_eth1_block_hash,
-        genesis_time,
-        genesis_deposits,
+        eth1_block_hash,
+        eth1_timestamp,
+        deposits,
     )
 
-    assert genesis_state.genesis_time == genesis_time
+    assert genesis_state.genesis_time == eth1_timestamp - eth1_timestamp % spec.SECONDS_PER_DAY + 2 * spec.SECONDS_PER_DAY
     assert len(genesis_state.validators) == deposit_count
     assert genesis_state.eth1_data.deposit_root == deposit_root
     assert genesis_state.eth1_data.deposit_count == deposit_count
-    assert genesis_state.eth1_data.block_hash == genesis_eth1_block_hash
+    assert genesis_state.eth1_data.block_hash == eth1_block_hash
 
     yield "state", genesis_state

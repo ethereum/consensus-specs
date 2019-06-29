@@ -1106,7 +1106,7 @@ The genesis state `genesis_state` is the return value of the first call to `get_
 def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: uint64, deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
         genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
-        eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash, deposit_count=len(deposits)),
+        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
     assert state.genesis_time >= MIN_GENESIS_TIME
