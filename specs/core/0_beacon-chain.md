@@ -34,6 +34,7 @@
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
+            - [`CompactCommittee`](#compactcommittee)
             - [`BeaconBlockHeader`](#beaconblockheader)
         - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
@@ -69,7 +70,7 @@
         - [`get_block_root_at_slot`](#get_block_root_at_slot)
         - [`get_block_root`](#get_block_root)
         - [`get_randao_mix`](#get_randao_mix)
-        - [`get_active_index_root`](#get_active_index_root)
+        - [`get_compact_committees_root`](#get_compact_committees_root)
         - [`generate_seed`](#generate_seed)
         - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
         - [`verify_merkle_branch`](#verify_merkle_branch)
@@ -186,7 +187,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_INDICES_PER_ATTESTATION` | `2**12` (= 4,096) |
+| `MAX_VALIDATORS_PER_COMMITTEE` | `2**12` (= 4,096) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
@@ -350,8 +351,8 @@ class AttestationDataAndCustodyBit(Container):
 
 ```python
 class IndexedAttestation(Container):
-    custody_bit_0_indices: List[ValidatorIndex, MAX_INDICES_PER_ATTESTATION]  # Indices with custody bit equal to 0
-    custody_bit_1_indices: List[ValidatorIndex, MAX_INDICES_PER_ATTESTATION]  # Indices with custody bit equal to 1
+    custody_bit_0_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]  # Indices with custody bit equal to 0
+    custody_bit_1_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]  # Indices with custody bit equal to 1
     data: AttestationData
     signature: BLSSignature
 ```
@@ -360,7 +361,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bits: Bitlist[MAX_INDICES_PER_ATTESTATION]
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -391,6 +392,14 @@ class DepositData(Container):
     withdrawal_credentials: Hash
     amount: Gwei
     signature: BLSSignature
+```
+
+#### `CompactCommittee`
+
+```python
+class CompactCommittee(Container):
+    pubkeys: List[Bytes48, MAX_VALIDATORS_PER_COMMITTEE]
+    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
 ```
 
 #### `BeaconBlockHeader`
@@ -427,9 +436,9 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    aggregation_bits: Bitlist[MAX_INDICES_PER_ATTESTATION]
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits: Bitlist[MAX_INDICES_PER_ATTESTATION]
+    custody_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     signature: BLSSignature
 ```
 
@@ -517,7 +526,7 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
-    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active registry digests for light clients
+    compact_committees_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Committee digests for light clients
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
@@ -691,6 +700,9 @@ def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
 
 ```python
 def get_epoch_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
+    """
+    Return the start shard of the 0th committee in an epoch.
+    """
     assert epoch <= get_current_epoch(state) + 1
     check_epoch = Epoch(get_current_epoch(state) + 1)
     shard = Shard((state.start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT)
@@ -744,17 +756,25 @@ def get_randao_mix(state: BeaconState,
     return state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
-### `get_active_index_root`
+### `get_compact_committees_root`
 
 ```python
-def get_active_index_root(state: BeaconState,
-                          epoch: Epoch) -> Hash:
+def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
-    Return the index root at a recent ``epoch``.
-    ``epoch`` expected to be between
-    (current_epoch - EPOCHS_PER_HISTORICAL_VECTOR + ACTIVATION_EXIT_DELAY, current_epoch + ACTIVATION_EXIT_DELAY].
+    Return the compact committee root for the current epoch.
     """
-    return state.active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
+    committees = [CompactCommittee() for _ in range(SHARD_COUNT)]
+    start_shard = get_epoch_start_shard(state, epoch)
+    for committee_number in range(get_epoch_committee_count(state, epoch)):
+        shard = Shard((start_shard + committee_number) % SHARD_COUNT)
+        for index in get_crosslink_committee(state, epoch, shard):
+            validator = state.validators[index]
+            committees[shard].pubkeys.append(validator.pubkey)
+            compact_balance = validator.effective_balance // EFFECTIVE_BALANCE_INCREMENT
+            # `index` (top 6 bytes) + `slashed` (16th bit) + `compact_balance` (bottom 15 bits)
+            compact_validator = uint64((index << 16) + (validator.slashed << 15) + compact_balance)
+            committees[shard].compact_validators.append(compact_validator)
+    return hash_tree_root(Vector[CompactCommittee, SHARD_COUNT](committees))
 ```
 
 ### `generate_seed`
@@ -767,7 +787,7 @@ def generate_seed(state: BeaconState,
     """
     return hash(
         get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD)) +
-        get_active_index_root(state, epoch) +
+        hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, epoch))) +
         int_to_bytes(epoch, length=32)
     )
 ```
@@ -867,7 +887,7 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
 ```python
 def get_attesting_indices(state: BeaconState,
                           data: AttestationData,
-                          bits: Bitlist[MAX_INDICES_PER_ATTESTATION]) -> Set[ValidatorIndex]:
+                          bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``data`` and ``bitfield``.
     """
@@ -946,7 +966,7 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     # Verify no index has custody bit equal to 1 [to be removed in phase 1]
     assert len(bit_1_indices) == 0
     # Verify max number of indices
-    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_INDICES_PER_ATTESTATION
+    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE
     # Verify index sets are disjoint
     assert len(set(bit_0_indices).intersection(bit_1_indices)) == 0
     # Verify indices are sorted
@@ -1148,12 +1168,9 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
             validator.activation_epoch = GENESIS_EPOCH
 
     # Populate active_index_roots
-    genesis_active_index_root = hash_tree_root(
-        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
-    )
+    genesis_committee_root = get_compact_committees_root(state, GENESIS_EPOCH)
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
-        state.active_index_roots[index] = genesis_active_index_root
-
+        state.compact_committees_roots[index] = genesis_committee_root
     return state
 ```
 
@@ -1475,7 +1492,7 @@ def process_slashings(state: BeaconState) -> None:
 ```python
 def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    next_epoch = current_epoch + 1
+    next_epoch = Shard(current_epoch + 1)
     # Reset eth1 data votes
     if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
@@ -1488,12 +1505,8 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
-    index_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
-    state.active_index_roots[index_root_position] = hash_tree_root(
-        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](
-            get_active_validator_indices(state, Epoch(next_epoch + ACTIVATION_EXIT_DELAY))
-        )
-    )
+    committee_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
+    state.compact_committees_roots[committee_root_position] = get_compact_committees_root(state, next_epoch)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
     # Set randao mix

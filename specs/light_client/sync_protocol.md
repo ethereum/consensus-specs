@@ -31,7 +31,7 @@ We define an "expansion" of an object as an object where a field in an object th
 
 We define two expansions:
 
-* `ExtendedBeaconState`, which is identical to a `BeaconState` except `active_index_roots: List[Bytes32]` is replaced by `active_indices: List[List[ValidatorIndex]]`, where `BeaconState.active_index_roots[i] = hash_tree_root(ExtendedBeaconState.active_indices[i])`.
+* `ExtendedBeaconState`, which is identical to a `BeaconState` except `compact_committees_roots: List[Bytes32]` is replaced by `active_indices: List[List[ValidatorIndex]]`, where `BeaconState.compact_committees_roots[i] = hash_tree_root(ExtendedBeaconState.active_indices[i])`.
 * `ExtendedBeaconBlock`, which is identical to a `BeaconBlock` except `state_root` is replaced with the corresponding `state: ExtendedBeaconState`.
 
 ### `get_active_validator_indices`
@@ -40,7 +40,7 @@ Note that there is now a new way to compute `get_active_validator_indices`:
 
 ```python
 def get_active_validator_indices(state: ExtendedBeaconState, epoch: Epoch) -> List[ValidatorIndex]:
-    return state.active_indices[epoch % ACTIVE_INDEX_ROOTS_LENGTH]
+    return state.active_indices[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
 Note that it takes `state` instead of `state.validators` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
