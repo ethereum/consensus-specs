@@ -1,4 +1,3 @@
-import math
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import (
     run_epoch_processing_with
@@ -39,29 +38,37 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     else:
         raise Exception(f"cannot include attestations in epoch ${epoch} from epoch ${current_epoch}")
 
-    committee_count = spec.get_epoch_committee_count(state, epoch)
-    indices = spec.get_active_validator_indices(state, epoch)
-    epoch_start_shard = spec.get_epoch_start_shard(state, epoch)
+    total_balance = spec.get_total_active_balance(state)
+    remaining_balance = total_balance * 2 // 3
+
     epoch_start_slot = spec.get_epoch_start_slot(epoch)
     for slot in range(epoch_start_slot, epoch_start_slot + spec.SLOTS_PER_EPOCH):
         for shard in get_shards_for_slot(spec, state, slot):
-            size = get_committee_size(spec, epoch_start_shard, shard, committee_count, indices)
+            committee = spec.get_crosslink_committee(state, spec.slot_to_epoch(slot), shard)
             # Create a bitfield filled with the given count per attestation,
             #  exactly on the right-most part of the committee field.
-            attesting_count = math.ceil(size * 2 /3)
-            attesting_count = attesting_count if sufficient_support else attesting_count - 1
-            aggregation_bits = [i < attesting_count for i in range(size)]
 
-            attestations.append(spec.PendingAttestation(
-                aggregation_bits=aggregation_bits,
-                data=spec.AttestationData(
-                    beacon_block_root=b'\xaa' * 32,
-                    source=source,
-                    target=target,
-                    crosslink=spec.Crosslink(shard=shard)
-                ),
-                inclusion_delay=1,
-            ))
+            aggregation_bits = [0] * len(committee)
+            for v in range(len(committee) * 2 // 3 + 1):
+                if remaining_balance > 0:
+                    remaining_balance -= state.validators[v].effective_balance
+                    aggregation_bits[v] = 1
+                elif not sufficient_support:
+                    aggregation_bits[v - 1] = 0
+                    break
+                else:
+                    break
+
+        attestations.append(spec.PendingAttestation(
+            aggregation_bits=aggregation_bits,
+            data=spec.AttestationData(
+                beacon_block_root=b'\xaa' * 32,
+                source=source,
+                target=target,
+                crosslink=spec.Crosslink(shard=shard)
+            ),
+            inclusion_delay=1,
+        ))
 
 
 def finalize_on_234(spec, state, epoch, sufficient_support):
