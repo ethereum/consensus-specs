@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phases
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
@@ -10,6 +8,7 @@ from eth2spec.test.helpers.state import (
     next_slot,
 )
 from eth2spec.test.helpers.block import apply_empty_block
+from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
 def run_attestation_processing(spec, state, attestation, valid=True):
@@ -274,11 +273,14 @@ def test_bad_crosslink_end_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_inconsistent_bitfields(spec, state):
+def test_inconsistent_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield) + b'\x00'
+    custody_bits = attestation.aggregation_bits[:]
+    custody_bits.append(False)
+
+    attestation.custody_bits = custody_bits
 
     sign_attestation(spec, state, attestation)
 
@@ -287,11 +289,11 @@ def test_inconsistent_bitfields(spec, state):
 
 @with_phases(['phase0'])
 @spec_state_test
-def test_non_empty_custody_bitfield(spec, state):
+def test_non_empty_custody_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.custody_bitfield = deepcopy(attestation.aggregation_bitfield)
+    attestation.custody_bits = attestation.aggregation_bits[:]
 
     sign_attestation(spec, state, attestation)
 
@@ -300,11 +302,12 @@ def test_non_empty_custody_bitfield(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_empty_aggregation_bitfield(spec, state):
+def test_empty_aggregation_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.aggregation_bitfield = b'\x00' * len(attestation.aggregation_bitfield)
+    attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+        *([0b0] * len(attestation.aggregation_bits)))
 
     sign_attestation(spec, state, attestation)
 

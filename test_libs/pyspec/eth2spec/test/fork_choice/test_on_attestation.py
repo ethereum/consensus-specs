@@ -118,5 +118,5 @@ def test_on_attestation_invalid_attestation(spec, state):
 
     attestation = get_valid_attestation(spec, state, slot=block.slot)
     # make attestation invalid
-    attestation.custody_bitfield = b'\xf0' + attestation.custody_bitfield[1:]
+    attestation.custody_bits[0:8] = [0, 0, 0, 0, 1, 1, 1, 1]
     run_on_attestation(spec, state, store, attestation, False)

@@ -44,8 +44,8 @@
                 - [Crosslink vote](#crosslink-vote)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
-                - [Aggregation bitfield](#aggregation-bitfield)
-                - [Custody bitfield](#custody-bitfield)
+                - [Aggregation bits](#aggregation-bits)
+                - [Custody bits](#custody-bits)
                 - [Aggregate signature](#aggregate-signature)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
@@ -329,19 +329,15 @@ Next, the validator creates `attestation`, an [`Attestation`](../core/0_beacon-c
 
 Set `attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object defined in the previous section, [attestation data](#attestation-data).
 
-##### Aggregation bitfield
+##### Aggregation bits
 
-* Let `aggregation_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
-* Let `index_into_committee` be the index into the validator's `committee` at which `validator_index` is located.
-* Set `aggregation_bitfield[index_into_committee // 8] |= 2 ** (index_into_committee % 8)`.
-* Set `attestation.aggregation_bitfield = aggregation_bitfield`.
+* Let `attestation.aggregation_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
 
-*Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)` should return a list of length equal to 1, containing `validator_index`.
+*Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
-##### Custody bitfield
+##### Custody bits
 
-* Let `custody_bitfield` be a byte array filled with zeros of length `(len(committee) + 7) // 8`.
-* Set `attestation.custody_bitfield = custody_bitfield`.
+* Let `attestation.custody_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` filled with zeros of length `len(committee)`.
 
 *Note*: This is a stub for Phase 0.
 

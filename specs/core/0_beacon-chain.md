@@ -82,8 +82,6 @@
         - [`bytes_to_int`](#bytes_to_int)
         - [`get_total_balance`](#get_total_balance)
         - [`get_domain`](#get_domain)
-        - [`get_bitfield_bit`](#get_bitfield_bit)
-        - [`verify_bitfield`](#verify_bitfield)
         - [`convert_to_indexed`](#convert_to_indexed)
         - [`validate_indexed_attestation`](#validate_indexed_attestation)
         - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
@@ -193,6 +191,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
+| `JUSTIFICATION_BITS_LENGTH` | `4` |
 
 * For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -307,7 +306,7 @@ class Validator(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals and transfers
     effective_balance: Gwei  # Balance at stake
-    slashed: Bool
+    slashed: boolean
     # Status epochs
     activation_eligibility_epoch: Epoch  # When criteria for activation were met
     activation_epoch: Epoch
@@ -345,7 +344,7 @@ class AttestationData(Container):
 ```python
 class AttestationDataAndCustodyBit(Container):
     data: AttestationData
-    custody_bit: Bit  # Challengeable bit (SSZ-bool, 1 byte) for the custody of crosslink data
+    custody_bit: bit  # Challengeable bit (SSZ-bool, 1 byte) for the custody of crosslink data
 ```
 
 #### `IndexedAttestation`
@@ -362,7 +361,7 @@ class IndexedAttestation(Container):
 
 ```python
 class PendingAttestation(Container):
-    aggregation_bitfield: Bytes[MAX_VALIDATORS_PER_COMMITTEE // 8]
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
@@ -437,9 +436,9 @@ class AttesterSlashing(Container):
 
 ```python
 class Attestation(Container):
-    aggregation_bitfield: Bytes[MAX_VALIDATORS_PER_COMMITTEE // 8]
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bitfield: Bytes[MAX_VALIDATORS_PER_COMMITTEE // 8]
+    custody_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     signature: BLSSignature
 ```
 
@@ -537,7 +536,7 @@ class BeaconState(Container):
     previous_crosslinks: Vector[Crosslink, SHARD_COUNT]  # Previous epoch snapshot
     current_crosslinks: Vector[Crosslink, SHARD_COUNT]
     # Finality
-    justification_bitfield: uint64  # Bit set for every recent justified epoch
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
@@ -886,13 +885,14 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
 ### `get_attesting_indices`
 
 ```python
-def get_attesting_indices(state: BeaconState, data: AttestationData, bitfield: bytes) -> Set[ValidatorIndex]:
+def get_attesting_indices(state: BeaconState,
+                          data: AttestationData,
+                          bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> Set[ValidatorIndex]:
     """
     Return the set of attesting indices corresponding to ``data`` and ``bitfield``.
     """
     committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
-    assert verify_bitfield(bitfield, len(committee))
-    return set(index for i, index in enumerate(committee) if get_bitfield_bit(bitfield, i) == 0b1)
+    return set(index for i, index in enumerate(committee) if bits[i])
 ```
 
 ### `int_to_bytes`
@@ -933,34 +933,6 @@ def get_domain(state: BeaconState,
     return bls_domain(domain_type, fork_version)
 ```
 
-### `get_bitfield_bit`
-
-```python
-def get_bitfield_bit(bitfield: bytes, i: int) -> int:
-    """
-    Extract the bit in ``bitfield`` at position ``i``.
-    """
-    return (bitfield[i // 8] >> (i % 8)) % 2
-```
-
-### `verify_bitfield`
-
-```python
-def verify_bitfield(bitfield: bytes, committee_size: int) -> bool:
-    """
-    Verify ``bitfield`` against the ``committee_size``.
-    """
-    if len(bitfield) != (committee_size + 7) // 8:
-        return False
-
-    # Check `bitfield` is padded with zero bits only
-    for i in range(committee_size, len(bitfield) * 8):
-        if get_bitfield_bit(bitfield, i) == 0b1:
-            return False
-
-    return True
-```
-
 ### `convert_to_indexed`
 
 ```python
@@ -968,8 +940,8 @@ def convert_to_indexed(state: BeaconState, attestation: Attestation) -> IndexedA
     """
     Convert ``attestation`` to (almost) indexed-verifiable form.
     """
-    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bitfield)
-    custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bitfield)
+    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
+    custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bits)
     assert custody_bit_1_indices.issubset(attesting_indices)
     custody_bit_0_indices = attesting_indices.difference(custody_bit_1_indices)
 
@@ -1300,7 +1272,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
                                     attestations: Sequence[PendingAttestation]) -> Set[ValidatorIndex]:
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
-        output = output.union(get_attesting_indices(state, a.data, a.aggregation_bitfield))
+        output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
     return set(filter(lambda index: not state.validators[index].slashed, list(output)))
 ```
 
@@ -1340,34 +1312,32 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 
     # Process justifications
     state.previous_justified_checkpoint = state.current_justified_checkpoint
-    state.justification_bitfield = (state.justification_bitfield << 1) % 2**64
-    previous_epoch_matching_target_balance = get_attesting_balance(
-        state, get_matching_target_attestations(state, previous_epoch)
-    )
-    if previous_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
+    state.justification_bits[1:] = state.justification_bits[:-1]
+    state.justification_bits[0] = 0b0
+    matching_target_attestations = get_matching_target_attestations(state, previous_epoch)  # Previous epoch
+    if get_attesting_balance(state, matching_target_attestations) * 3 >= get_total_active_balance(state) * 2:
         state.current_justified_checkpoint = Checkpoint(epoch=previous_epoch,
                                                         root=get_block_root(state, previous_epoch))
-        state.justification_bitfield |= (1 << 1)
-    current_epoch_matching_target_balance = get_attesting_balance(
-        state, get_matching_target_attestations(state, current_epoch)
-    )
-    if current_epoch_matching_target_balance * 3 >= get_total_active_balance(state) * 2:
-        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch, root=get_block_root(state, current_epoch))
-        state.justification_bitfield |= (1 << 0)
+        state.justification_bits[1] = 0b1
+    matching_target_attestations = get_matching_target_attestations(state, current_epoch)  # Current epoch
+    if get_attesting_balance(state, matching_target_attestations) * 3 >= get_total_active_balance(state) * 2:
+        state.current_justified_checkpoint = Checkpoint(epoch=current_epoch,
+                                                        root=get_block_root(state, current_epoch))
+        state.justification_bits[0] = 0b1
 
     # Process finalizations
-    bitfield = state.justification_bitfield
+    bits = state.justification_bits
     # The 2nd/3rd/4th most recent epochs are justified, the 2nd using the 4th as source
-    if (bitfield >> 1) % 8 == 0b111 and old_previous_justified_checkpoint.epoch + 3 == current_epoch:
+    if all(bits[1:4]) and old_previous_justified_checkpoint.epoch + 3 == current_epoch:
         state.finalized_checkpoint = old_previous_justified_checkpoint
     # The 2nd/3rd most recent epochs are justified, the 2nd using the 3rd as source
-    if (bitfield >> 1) % 4 == 0b11 and old_previous_justified_checkpoint.epoch + 2 == current_epoch:
+    if all(bits[1:3]) and old_previous_justified_checkpoint.epoch + 2 == current_epoch:
         state.finalized_checkpoint = old_previous_justified_checkpoint
     # The 1st/2nd/3rd most recent epochs are justified, the 1st using the 3rd as source
-    if (bitfield >> 0) % 8 == 0b111 and old_current_justified_checkpoint.epoch + 2 == current_epoch:
+    if all(bits[0:3]) and old_current_justified_checkpoint.epoch + 2 == current_epoch:
         state.finalized_checkpoint = old_current_justified_checkpoint
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
-    if (bitfield >> 0) % 4 == 0b11 and old_current_justified_checkpoint.epoch + 1 == current_epoch:
+    if all(bits[0:2]) and old_current_justified_checkpoint.epoch + 1 == current_epoch:
         state.finalized_checkpoint = old_current_justified_checkpoint
 ```
 
@@ -1423,7 +1393,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         index = ValidatorIndex(index)
         attestation = min([
             a for a in matching_source_attestations
-            if index in get_attesting_indices(state, a.data, a.aggregation_bitfield)
+            if index in get_attesting_indices(state, a.data, a.aggregation_bits)
         ], key=lambda a: a.inclusion_delay)
         proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
         rewards[attestation.proposer_index] += proposer_reward
@@ -1690,7 +1660,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     pending_attestation = PendingAttestation(
         data=data,
-        aggregation_bitfield=attestation.aggregation_bitfield,
+        aggregation_bits=attestation.aggregation_bits,
         inclusion_delay=state.slot - attestation_slot,
         proposer_index=get_beacon_proposer_index(state),
     )
@@ -1709,7 +1679,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink.start_epoch == parent_crosslink.end_epoch
     assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
     assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
-    
+
     # Check signature
     validate_indexed_attestation(state, convert_to_indexed(state, attestation))
 ```

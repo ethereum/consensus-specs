@@ -1,6 +1,6 @@
 from .ssz_typing import (
     SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType,
-    Elements, Bit, Bool, Container, List, Vector, Bytes, BytesN,
+    Elements, bit, boolean, Container, List, Vector, Bytes, BytesN,
     byte, uint, uint8, uint16, uint32, uint64, uint128, uint256,
     Bytes32, Bytes48
 )
@@ -22,8 +22,8 @@ def test_subclasses():
         assert issubclass(u, SSZValue)
         assert isinstance(u, SSZType)
         assert isinstance(u, BasicType)
-    assert issubclass(Bool, BasicValue)
-    assert isinstance(Bool, BasicType)
+    assert issubclass(boolean, BasicValue)
+    assert isinstance(boolean, BasicType)
 
     for c in [Container, List, Vector, Bytes, BytesN]:
         assert issubclass(c, Series)
@@ -45,16 +45,16 @@ def test_basic_instances():
         assert isinstance(v, BasicValue)
         assert isinstance(v, SSZValue)
 
-    assert isinstance(Bool(True), BasicValue)
-    assert isinstance(Bool(False), BasicValue)
-    assert isinstance(Bit(True), Bool)
-    assert isinstance(Bit(False), Bool)
+    assert isinstance(boolean(True), BasicValue)
+    assert isinstance(boolean(False), BasicValue)
+    assert isinstance(bit(True), boolean)
+    assert isinstance(bit(False), boolean)
 
 
 def test_basic_value_bounds():
     max = {
-        Bool: 2 ** 1,
-        Bit: 2 ** 1,
+        boolean: 2 ** 1,
+        bit: 2 ** 1,
         uint8: 2 ** (8 * 1),
         byte: 2 ** (8 * 1),
         uint16: 2 ** (8 * 2),
