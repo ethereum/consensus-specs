@@ -15,6 +15,7 @@ from eth2spec.phase0.spec import (
     DepositData,
 )
 from eth2spec.utils.hash_function import hash
+from eth2spec.utils.ssz.ssz_typing import List
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
 )
@@ -137,7 +138,7 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input
     )
 
     deposit_amount_list = [randint(MIN_DEPOSIT_AMOUNT, FULL_DEPOSIT_AMOUNT * 2) for _ in range(10)]
-    leaf_nodes = []
+    deposit_data_list = List[DepositData, 2**32]()
     for i in range(0, 10):
         tx_hash = registration_contract.functions.deposit(
             *deposit_input,
@@ -151,13 +152,11 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input
 
         assert log["index"] == i.to_bytes(8, 'little')
 
-        deposit_data = DepositData(
+        deposit_data_list[i] = DepositData(
             pubkey=deposit_input[0],
             withdrawal_credentials=deposit_input[1],
             amount=deposit_amount_list[i],
             signature=deposit_input[2],
         )
-        hash_tree_root_result = hash_tree_root(deposit_data)
-        leaf_nodes.append(hash_tree_root_result)
-        root = compute_merkle_root(leaf_nodes)
+        root = hash_tree_root(deposit_data_list)
         assert root == registration_contract.functions.get_deposit_root().call()
