@@ -127,7 +127,7 @@ def test_empty_epoch_transition(spec, state):
 @spec_state_test
 def test_empty_epoch_transition_not_finalizing(spec, state):
     # Don't run for non-minimal configs, it takes very long, and the effect
-    # of calling finalization/justifcation is just the same as with the minimal configuration.
+    # of calling finalization/justification is just the same as with the minimal configuration.
     if spec.SLOTS_PER_EPOCH > 8:
         return
 
