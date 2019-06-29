@@ -56,7 +56,7 @@ def add_mock_attestations(spec, state, epoch, att_ratio, source, target):
                 data=spec.AttestationData(
                     beacon_block_root=b'\xaa' * 32,
                     source=source,
-                    target=source,
+                    target=target,
                     crosslink=spec.Crosslink()
                 ),
                 inclusion_delay=1,
@@ -187,8 +187,8 @@ def finalize_on_12(spec, state, epoch, support):
     # checkpoints for the epochs ago:
     # c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
     # c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
-    c2 = spec.Checkpoint(epoch=epoch - 1, root=b'\xbb' * 32)
-    c1 = spec.Checkpoint(epoch=epoch, root=b'\xcc' * 32)
+    c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
+    c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
     state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
     state.block_roots[spec.get_epoch_start_slot(c1.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c1.root
 
