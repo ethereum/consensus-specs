@@ -1092,7 +1092,7 @@ def slash_validator(state: BeaconState,
 
 ### Genesis trigger
 
-Before genesis has been triggered and for every Eth 1.0 block call `is_genesis_trigger(deposits, time)` where:
+Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool` where:
 
 * `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
@@ -1106,10 +1106,10 @@ When `is_genesis_trigger(deposits, timestamp) is True` for the first time, let:
 *Note*: The function `is_genesis_trigger` has yet to be agreed upon by the community, and can be updated as necessary. We define the following testing placeholder:
 
 ```python
-def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], time: uint64) -> bool:
+def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], timestamp: uint64) -> bool:
     SECONDS_PER_DAY = 86400
     # Do not deploy too early
-    if time - time % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY < MIN_GENESIS_TIME:
+    if timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY < MIN_GENESIS_TIME:
         return False
 
     # Process deposits
@@ -1136,7 +1136,9 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
 Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_block_hash)`.
 
 ```python
-def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, genesis_eth1_block_hash: Hash) -> BeaconState:
+def get_genesis_beacon_state(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH],
+                             genesis_time: int,
+                             genesis_eth1_block_hash: Hash) -> BeaconState:
     state = BeaconState(
         genesis_time=genesis_time,
         eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash),

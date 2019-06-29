@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.keys import pubkeys, privkeys
 from eth2spec.utils.bls import bls_sign
-from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_root, get_merkle_proof
+from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth2spec.utils.ssz.ssz_impl import signing_root, hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import List
 from eth2spec.phase0.spec import DepositData
@@ -68,11 +68,6 @@ def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False
         privkey = privkeys[validator_index]
         # insecurely use pubkey as withdrawal key if no credentials provided
         withdrawal_credentials = spec.int_to_bytes(spec.BLS_WITHDRAWAL_PREFIX, length=1) + spec.hash(pubkey)[1:]
-        deposit_data = spec.DepositData(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            amount=amount,
-        )
         deposit, root, deposit_data_list = build_deposit(
             spec,
             None,
