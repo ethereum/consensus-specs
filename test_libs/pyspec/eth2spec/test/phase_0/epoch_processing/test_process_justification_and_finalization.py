@@ -189,12 +189,14 @@ def finalize_on_12(spec, state, epoch, support):
     # c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
     c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+    state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
+    state.block_roots[spec.get_epoch_start_slot(c1.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c1.root
 
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c2
     state.current_justified_checkpoint = c2
-    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    bits[3] = 1  # mock 3rd latest epoch as justified
+    state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits[0] = 1  # mock latest epoch as justified
     # mock the 1st latest epoch as justifiable, with 2nd as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 1,
