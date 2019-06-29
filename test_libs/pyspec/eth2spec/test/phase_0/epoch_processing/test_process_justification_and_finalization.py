@@ -74,13 +74,15 @@ def finalize_on_234(spec, state, epoch, support):
     c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
     c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
-    # c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+    state.block_roots[spec.get_epoch_start_slot(c4.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c4.root
+    state.block_roots[spec.get_epoch_start_slot(c3.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c3.root
+    state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
 
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c4
     state.current_justified_checkpoint = c3
-    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    bits[3:4] = [1, 1]  # mock 3rd and 4th latest epochs as justified
+    state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits[1:3] = [1, 1]  # mock 3rd and 4th latest epochs as justified
     # mock the 2nd latest epoch as justifiable, with 4th as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 2,
@@ -109,16 +111,16 @@ def finalize_on_23(spec, state, epoch, support):
     # 3210x -- justification bitfield indices
     # 01*0. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
-    # c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
     c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
-    # c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+    state.block_roots[spec.get_epoch_start_slot(c3.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c3.root
+    state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
 
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c3
     state.current_justified_checkpoint = c3
-    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    bits[2] = 1  # mock 3rd latest epoch as justified
+    state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits[1] = 1  # mock 2nd latest epoch as justified
     # mock the 2nd latest epoch as justifiable, with 3rd as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 2,
@@ -147,16 +149,18 @@ def finalize_on_123(spec, state, epoch, support):
     # 3210x -- justification bitfield indices
     # 011*. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
-    # c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
     c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
     c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
+    state.block_roots[spec.get_epoch_start_slot(c3.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c3.root
+    state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
+    state.block_roots[spec.get_epoch_start_slot(c1.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c1.root
 
     old_finalized = state.finalized_checkpoint
     state.previous_justified_checkpoint = c3
     state.current_justified_checkpoint = c2
-    bits = state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
-    bits[1:2] = [1, 1]  # mock 2rd and 3th latest epochs as justified
+    state.justification_bits = spec.Bitvector[spec.JUSTIFICATION_BITS_LENGTH]()
+    state.justification_bits[0:2] = [1, 1]  # mock 1st and 2nd latest epochs as justified
     # mock the 1st latest epoch as justifiable, with 3rd as source
     add_mock_attestations(spec, state,
                           epoch=epoch - 1,
@@ -185,8 +189,6 @@ def finalize_on_12(spec, state, epoch, support):
     # 3210  -- justification bitfield indices
     # 001*. -- justification bitfield contents, . = this epoch, * is being justified now
     # checkpoints for the epochs ago:
-    # c4 = spec.Checkpoint(epoch=epoch - 4, root=b'\xaa' * 32)
-    # c3 = spec.Checkpoint(epoch=epoch - 3, root=b'\xaa' * 32)
     c2 = spec.Checkpoint(epoch=epoch - 2, root=b'\xbb' * 32)
     c1 = spec.Checkpoint(epoch=epoch - 1, root=b'\xcc' * 32)
     state.block_roots[spec.get_epoch_start_slot(c2.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c2.root
