@@ -49,10 +49,10 @@ def add_mock_attestations(spec, state, epoch, att_ratio, source, target):
             # Create a bitfield filled with the given count per attestation,
             #  exactly on the right-most part of the committee field.
             attesting_count = math.ceil(size * att_ratio)
-            aggregation_bitfield = ((1 << attesting_count) - 1).to_bytes(length=((size + 7) // 8), byteorder='big')
+            aggregation_bits = [i < attesting_count for i in range(size)]
 
             attestations.append(spec.PendingAttestation(
-                aggregation_bitfield=aggregation_bitfield,
+                aggregation_bits=aggregation_bits,
                 data=spec.AttestationData(
                     beacon_block_root=b'\xaa' * 32,
                     source=source,
