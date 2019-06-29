@@ -1103,7 +1103,7 @@ The genesis state `genesis_state` is the return value of the first call to `get_
 *Note*: The two constants `MIN_GENESIS_TIME` and `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` have yet to be agreed upon by the community, and can be updated as necessary.
 
 ```python
-def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: int, deposits: Sequence[Deposit]) -> BeaconState:
+def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: uint64, deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
         genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
         eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash, deposit_count=len(deposits)),
