@@ -7,7 +7,7 @@ from eth2spec.test.helpers.deposits import (
 @with_phases(['phase0'])
 @spectest_with_bls_switch
 def test_genesis(spec):
-    deposit_count = spec.GENESIS_ACTIVE_VALIDATOR_COUNT
+    deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     genesis_deposits, deposit_root = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
     genesis_time = 1546300800
     genesis_eth1_block_hash = b'\x12' * 32

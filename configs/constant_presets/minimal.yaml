@@ -17,7 +17,7 @@ CHURN_LIMIT_QUOTIENT: 65536
 # [customized] Faster, but unsecure.
 SHUFFLE_ROUND_COUNT: 10
 # [customized]
-GENESIS_ACTIVE_VALIDATOR_COUNT: 100
+MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 100
 
 
 # Deposit contract

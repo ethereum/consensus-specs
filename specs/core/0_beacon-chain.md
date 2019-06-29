@@ -189,7 +189,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
+| `MIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 | `JUSTIFICATION_BITS_LENGTH` | `4` |
 
@@ -1092,40 +1092,39 @@ def slash_validator(state: BeaconState,
 
 ### Genesis state
 
-Before the Ethereum 2.0 genesis has been triggered and for every Ethereum 1.0 block, call `get_genesis_beacon_state(eth1_block_hash, eth1_timestamp, deposits)` where:
+Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 block, call `get_genesis_beacon_state(eth1_block_hash, eth1_timestamp, deposits)` where:
 
 * `eth1_block_hash` is the hash of the Ethereum 1.0 block
 * `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
 * `deposits` is the sequence of all deposits, ordered chronologically, up to the block with hash `eth1_block_hash`
 
-The genesis state `genesis_state` is defined as the return value of the first call to `get_genesis_beacon_state` that does not trigger an `assert`.
+The genesis state `genesis_state` is the return value of the first call to `get_genesis_beacon_state` that does not trigger an `assert`.
 
-*Note*: The two constants `MIN_GENESIS_TIME` and `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` in `get_genesis_beacon_state` have yet to be agreed upon by the community, and can be updated as necessary.
+*Note*: The two constants `MIN_GENESIS_TIME` and `MIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` have yet to be agreed upon by the community, and can be updated as necessary.
 
 ```python
 def get_genesis_beacon_state(eth1_block_hash: Hash, eth1_timestamp: int, deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
         genesis_time=timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
-        eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash),
+        eth1_data=Eth1Data(block_hash=genesis_eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
     assert state.genesis_time >= MIN_GENESIS_TIME
 
     # Process deposits
     leaves = list(map(lambda deposit: deposit.data, deposits))
-    for deposit_index, deposit in enumerate(deposits):
+    for index, deposit in enumerate(deposits):
         state.eth1_data.deposit_root = hash_tree_root(
-            List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:deposit_index + 1])
+            List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
         )
-        state.eth1_data.deposit_count = deposit_index + 1
         process_deposit(state, deposit)
 
-    # Process genesis activations
+    # Process activations
     for validator in state.validators:
         if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
-    assert len(get_active_validator_indices(state, GENESIS_EPOCH)) >= MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
+    assert len(get_active_validator_indices(state, GENESIS_EPOCH)) >= MIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
 
     # Populate active_index_roots
     genesis_active_index_root = hash_tree_root(
