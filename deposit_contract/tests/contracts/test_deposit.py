@@ -145,5 +145,5 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed, deposit_input
             signature=deposit_input[2],
         ))
 
-        root = hash_tree_root(List[DepositData, 2**32](*(tuple(deposit_data_list))))
+        root = hash_tree_root(List[DepositData, 2**32](*deposit_data_list))
         assert root == registration_contract.functions.get_deposit_root().call()
