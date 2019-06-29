@@ -75,7 +75,7 @@ def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False
         )
         genesis_deposits.append(deposit)
 
-    return genesis_deposits, root
+    return List[spec.Deposit, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*genesis_deposits), root
 
 
 def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_credentials=None, signed=False):

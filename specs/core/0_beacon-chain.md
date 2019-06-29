@@ -1092,9 +1092,8 @@ def slash_validator(state: BeaconState,
 
 ### Genesis trigger
 
-Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool` where:
-
-* `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
+Before genesis has been triggered and for every Ethereum 1.0 block call `is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool` where:
+* `deposits` is the SSZ list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
 * `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
 
 When `is_genesis_trigger(deposits, timestamp) is True` for the first time, let:
@@ -1114,9 +1113,11 @@ def is_genesis_trigger(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DEPTH], 
 
     # Process deposits
     state = BeaconState()
-    leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
+    leaves = list(map(lambda deposit: deposit.data, deposits))
     for deposit_index, deposit in enumerate(deposits):
-        state.eth1_data.deposit_root = hash_tree_root(leaves)
+        state.eth1_data.deposit_root = hash_tree_root(
+            List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:deposit_index + 1])
+        )
         state.eth1_data.deposit_count = deposit_index + 1
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
@@ -1146,9 +1147,11 @@ def get_genesis_beacon_state(deposits: List[Deposit, 2**DEPOSIT_CONTRACT_TREE_DE
     )
 
     # Process genesis deposits
-    leaves = list(map(lambda deposit: hash_tree_root(deposit.data), deposits))
+    leaves = list(map(lambda deposit: deposit.data, deposits))
     for deposit_index, deposit in enumerate(deposits):
-        state.eth1_data.deposit_root = hash_tree_root(leaves)
+        state.eth1_data.deposit_root = hash_tree_root(
+            List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:deposit_index + 1])
+        )
         state.eth1_data.deposit_count = deposit_index + 1
         state.eth1_deposit_index = deposit_index
         process_deposit(state, deposit)
