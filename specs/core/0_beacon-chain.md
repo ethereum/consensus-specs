@@ -73,7 +73,7 @@
             - [`epoch_start_slot`](#epoch_start_slot)
             - [`delayed_activation_exit_epoch`](#delayed_activation_exit_epoch)
             - [`bls_domain`](#bls_domain)
-        - [Beacon state getters](#beacon-state-getters)
+        - [Beacon state accessors](#beacon-state-accessors)
             - [`get_current_epoch`](#get_current_epoch)
             - [`get_previous_epoch`](#get_previous_epoch)
             - [`get_block_root`](#get_block_root)
@@ -774,7 +774,7 @@ def bls_domain(domain_type: int, fork_version: bytes=b'\x00' * 4) -> int:
     return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
 ```
 
-### Beacon state getters
+### Beacon state accessors
 
 #### `get_current_epoch`
 
