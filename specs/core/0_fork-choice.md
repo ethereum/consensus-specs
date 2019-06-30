@@ -12,7 +12,7 @@
         - [Time parameters](#time-parameters)
     - [Fork choice](#fork-choice)
         - [Helpers](#helpers)
-            - [`Checkpoint`](#checkpoint)
+            - [`LatestMessage`](#latestmessage)
             - [`Store`](#store)
             - [`get_genesis_store`](#get_genesis_store)
             - [`get_ancestor`](#get_ancestor)
@@ -113,8 +113,8 @@ def get_latest_attesting_balance(store: Store, root: Hash) -> Gwei:
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
         state.validators[i].effective_balance for i in active_indices
-        if (i in store.latest_messages and
-            get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
+        if (i in store.latest_messages 
+            and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
     ))
 ```
 

@@ -49,9 +49,9 @@
             - [`BeaconState`](#beaconstate)
     - [Helper functions](#helper-functions)
         - [Math](#math)
+            - [`int_to_bytes`](#int_to_bytes)
             - [`integer_squareroot`](#integer_squareroot)
             - [`xor`](#xor)
-            - [`int_to_bytes`](#int_to_bytes)
             - [`bytes_to_int`](#bytes_to_int)
         - [Crypto](#crypto)
             - [`hash`](#hash)
@@ -65,7 +65,7 @@
             - [`is_slashable_validator`](#is_slashable_validator)
             - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
             - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
-        - [Misc](#misc)
+        - [Misc](#misc-1)
             - [`compute_shuffled_index`](#compute_shuffled_index)
             - [`compute_committee`](#compute_committee)
             - [`compute_epoch_of_slot`](#compute_epoch_of_slot)
@@ -90,6 +90,7 @@
             - [`get_attestation_data_slot`](#get_attestation_data_slot)
             - [`get_compact_committees_root`](#get_compact_committees_root)
             - [`get_total_balance`](#get_total_balance)
+            - [`get_total_active_balance`](#get_total_active_balance)
             - [`get_domain`](#get_domain)
             - [`get_indexed_attestation`](#get_indexed_attestation)
             - [`get_attesting_indices`](#get_attesting_indices)
@@ -1438,8 +1439,8 @@ def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
         if (
-            validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and
-            validator.effective_balance == MAX_EFFECTIVE_BALANCE
+            validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+            and validator.effective_balance == MAX_EFFECTIVE_BALANCE
         ):
             validator.activation_eligibility_epoch = get_current_epoch(state)
 
@@ -1448,9 +1449,9 @@ def process_registry_updates(state: BeaconState) -> None:
 
     # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
     activation_queue = sorted([
-        index for index, validator in enumerate(state.validators) if
-        validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
-        validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
+        index for index, validator in enumerate(state.validators)
+        if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
+        and validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
     ], key=lambda index: state.validators[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_validator_churn_limit(state)]:
