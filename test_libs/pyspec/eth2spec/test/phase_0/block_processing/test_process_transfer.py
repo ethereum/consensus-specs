@@ -360,7 +360,7 @@ def test_non_existent_recipient(spec, state):
 @spec_state_test
 def test_invalid_pubkey(spec, state):
     transfer = get_valid_transfer(spec, state, signed=True)
-    state.validators[transfer.sender].withdrawal_credentials = spec.ZERO_HASH
+    state.validators[transfer.sender].withdrawal_credentials = spec.Hash()
 
     # un-activate so validator can transfer
     state.validators[transfer.sender].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH

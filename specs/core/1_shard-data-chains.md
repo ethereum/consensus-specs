@@ -309,11 +309,11 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
     assert beacon_block.slot <= candidate.slot
 
     # Check state root
-    assert candidate.state_root == ZERO_HASH  # [to be removed in phase 2]
+    assert candidate.state_root == Hash()  # [to be removed in phase 2]
 
     # Check parent block
     if candidate.slot == PHASE_1_FORK_SLOT:
-        assert candidate.parent_root == ZERO_HASH
+        assert candidate.parent_root == Hash()
     else:
         parent_block = next(
             (block for block in valid_shard_blocks if signing_root(block) == candidate.parent_root),
@@ -395,7 +395,7 @@ def is_valid_beacon_attestation(shard: Shard,
 
     # Check previous attestation
     if candidate.data.previous_crosslink.epoch <= PHASE_1_FORK_EPOCH:
-        assert candidate.data.previous_crosslink.data_root == ZERO_HASH
+        assert candidate.data.previous_crosslink.data_root == Hash()
     else:
         previous_attestation = next(
             (attestation for attestation in valid_attestations if

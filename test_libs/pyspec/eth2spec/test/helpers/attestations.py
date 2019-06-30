@@ -43,7 +43,7 @@ def build_attestation_data(spec, state, slot, shard):
             shard=shard,
             start_epoch=parent_crosslink.end_epoch,
             end_epoch=min(spec.slot_to_epoch(slot), parent_crosslink.end_epoch + spec.MAX_EPOCHS_PER_CROSSLINK),
-            data_root=spec.ZERO_HASH,
+            data_root=spec.Hash(),
             parent_root=hash_tree_root(parent_crosslink),
         ),
     )

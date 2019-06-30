@@ -63,7 +63,7 @@ def test_empty_block_transition(spec, state):
 
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
     assert spec.get_block_root_at_slot(state, pre_slot) == block.parent_root
-    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.ZERO_HASH
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Hash()
 
 
 @with_all_phases
@@ -98,7 +98,7 @@ def test_skipped_slots(spec, state):
     yield 'post', state
 
     assert state.slot == block.slot
-    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.ZERO_HASH
+    assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Hash()
     for slot in range(pre_slot, state.slot):
         assert spec.get_block_root_at_slot(state, slot) == block.parent_root
 

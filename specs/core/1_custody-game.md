@@ -595,7 +595,7 @@ def process_chunk_challenge_response(state: BeaconState,
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
     # Verify bit challenge data is null
-    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == ZERO_HASH
+    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Hash()
     # Verify minimum delay
     assert get_current_epoch(state) >= challenge.inclusion_epoch + ACTIVATION_EXIT_DELAY
     # Verify the chunk matches the crosslink data root

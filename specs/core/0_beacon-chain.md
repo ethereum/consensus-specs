@@ -147,7 +147,7 @@ We define the following Python custom types for type hinting and readability:
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Version` | `Bytes4` | a fork version number |
-| `Hash` | `Bytes32` | a hashed result |
+| `Hash` | `Bytes32` | a hash |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -158,7 +158,6 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
-| `ZERO_HASH` | `Hash(b'\x00' * 32)` |
 | `BASE_REWARDS_PER_EPOCH` | `5` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 | `SECONDS_PER_DAY` | `86400` |
@@ -542,11 +541,10 @@ class BeaconState(Container):
 #### `integer_squareroot`
 
 ```python
-def integer_squareroot(n: int) -> int:
+def integer_squareroot(n: uint64) -> uint64:
     """
     Return the largest integer ``x`` such that ``x**2 <= n``.
     """
-    assert n >= 0
     x = n
     y = (x + 1) // 2
     while y < x:
@@ -1204,7 +1202,7 @@ def process_slot(state: BeaconState) -> None:
     previous_state_root = hash_tree_root(state)
     state.state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
     # Cache latest block header state root
-    if state.latest_block_header.state_root == ZERO_HASH:
+    if state.latest_block_header.state_root == Hash():
         state.latest_block_header.state_root = previous_state_root
     # Cache block root
     previous_block_root = signing_root(state.latest_block_header)
@@ -1527,7 +1525,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        state_root=ZERO_HASH,  # Overwritten in the next `process_slot` call
+        state_root=Hash(),  # Overwritten in the next `process_slot` call
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
@@ -1568,15 +1566,14 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that there are no duplicate transfers
     assert len(body.transfers) == len(set(body.transfers))
 
-    all_operations = (
+    for operations, function in (
         (body.proposer_slashings, process_proposer_slashing),
         (body.attester_slashings, process_attester_slashing),
         (body.attestations, process_attestation),
         (body.deposits, process_deposit),
         (body.voluntary_exits, process_voluntary_exit),
         (body.transfers, process_transfer),
-    )  # type: Sequence[Tuple[List, Callable]]
-    for operations, function in all_operations:
+    ):
         for operation in operations:
             function(state, operation)
 ```
@@ -1651,7 +1648,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.start_epoch == parent_crosslink.end_epoch
     assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
-    assert data.crosslink.data_root == ZERO_HASH  # [to be removed in phase 1]
+    assert data.crosslink.data_root == Hash()  # [to be removed in phase 1]
 
     # Check signature
     validate_indexed_attestation(state, get_indexed_attestation(state, attestation))
