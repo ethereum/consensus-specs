@@ -68,6 +68,9 @@ def test_success_previous_epoch(spec, state):
 @with_all_phases
 @spec_state_test
 def test_success_since_max_epochs_per_crosslink(spec, state):
+    # Do not run mainnet (64 epochs), that would mean the equivalent of ~7 hours chain simulation.
+    if spec.MAX_EPOCHS_PER_CROSSLINK > 4:
+        return
     for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
         next_epoch(spec, state)
     apply_empty_block(spec, state)
@@ -87,6 +90,9 @@ def test_success_since_max_epochs_per_crosslink(spec, state):
 @with_all_phases
 @spec_state_test
 def test_wrong_end_epoch_with_max_epochs_per_crosslink(spec, state):
+    # Do not run mainnet (64 epochs), that would mean the equivalent of ~7 hours chain simulation.
+    if spec.MAX_EPOCHS_PER_CROSSLINK > 4:
+        return
     for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
         next_epoch(spec, state)
     apply_empty_block(spec, state)
@@ -293,12 +299,13 @@ def test_bad_parent_crosslink(spec, state):
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
-    attestation = get_valid_attestation(spec, state, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=False)
     for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
         next_slot(spec, state)
     apply_empty_block(spec, state)
 
     attestation.data.crosslink.parent_root = b'\x27' * 32
+    sign_attestation(spec, state, attestation)
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
@@ -309,12 +316,13 @@ def test_bad_crosslink_start_epoch(spec, state):
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
-    attestation = get_valid_attestation(spec, state, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=False)
     for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
         next_slot(spec, state)
     apply_empty_block(spec, state)
 
     attestation.data.crosslink.start_epoch += 1
+    sign_attestation(spec, state, attestation)
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
@@ -325,12 +333,13 @@ def test_bad_crosslink_end_epoch(spec, state):
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
-    attestation = get_valid_attestation(spec, state, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=False)
     for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
         next_slot(spec, state)
     apply_empty_block(spec, state)
 
     attestation.data.crosslink.end_epoch += 1
+    sign_attestation(spec, state, attestation)
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
