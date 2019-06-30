@@ -29,12 +29,12 @@ def spectest(description: str = None):
                         (key, value, typ) = data
                         out[key] = encode(value, typ)
                     else:
-                        # Otherwise, try to infer the type, but keep it as-is if it's not a SSZ container.
+                        # Otherwise, try to infer the type, but keep it as-is if it's not a SSZ type or bytes.
                         (key, value) = data
-                        if isinstance(value, SSZValue):
-                            out[key] = encode(value, value.__class__)
-                        elif isinstance(value, list) and all([isinstance(el, SSZValue) for el in value]):
-                            out[key] = [encode(el, el.__class__) for el in value]
+                        if isinstance(value, (SSZValue, bytes)):
+                            out[key] = encode(value)
+                        elif isinstance(value, list) and all([isinstance(el, (SSZValue, bytes)) for el in value]):
+                            out[key] = [encode(el) for el in value]
                         else:
                             # not a ssz value.
                             # It could be vector or bytes still, but it is a rare case,
