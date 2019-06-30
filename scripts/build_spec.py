@@ -98,7 +98,7 @@ def apply_constants_preset(preset: Dict[str, Any]) -> None:
         global_vars[k] = v
 
     # Deal with derived constants
-    global_vars['GENESIS_EPOCH'] = slot_to_epoch(GENESIS_SLOT)
+    global_vars['GENESIS_EPOCH'] = compute_slot_epoch(GENESIS_SLOT)
 
     # Initialize SSZ types again, to account for changed lengths
     init_SSZ_types()
