@@ -95,7 +95,6 @@
             - [`initiate_validator_exit`](#initiate_validator_exit)
             - [`slash_validator`](#slash_validator)
     - [Genesis](#genesis)
-        - [Genesis trigger](#genesis-trigger)
         - [Genesis state](#genesis-state)
         - [Genesis block](#genesis-block)
     - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -126,7 +125,6 @@
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
 At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of [validators](#dfn-validator). In the initial deployment phases of Ethereum 2.0, the only mechanism to become a [validator](#dfn-validator) is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a [validator](#dfn-validator) happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
-
 The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block and proof-of-stake votes for a beacon block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
 
 ## Notation
@@ -176,6 +174,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `ZERO_HASH` | `Hash(b'\x00' * 32)` |
 | `BASE_REWARDS_PER_EPOCH` | `5` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
+| `SECONDS_PER_DAY` | `86400` |
 
 ## Configuration
 
@@ -191,6 +190,8 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
+| `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 | `JUSTIFICATION_BITS_LENGTH` | `4` |
 
 * For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -446,7 +447,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH]  # Merkle path to deposit root
+    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit data list root
     data: DepositData
 ```
 
@@ -1109,61 +1110,43 @@ def slash_validator(state: BeaconState,
 
 ## Genesis
 
-### Genesis trigger
-
-Before genesis has been triggered and whenever the deposit contract emits a `Deposit` log, call the function `is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool` where:
-
-* `deposits` is the list of all deposits, ordered chronologically, up to and including the deposit triggering the latest `Deposit` log
-* `timestamp` is the Unix timestamp in the Ethereum 1.0 block that emitted the latest `Deposit` log
-
-When `is_genesis_trigger(deposits, timestamp) is True` for the first time, let:
-
-* `genesis_deposits = deposits`
-* `genesis_time = timestamp - timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY` where `SECONDS_PER_DAY = 86400`
-* `genesis_eth1_data` be the object of type `Eth1Data` where:
-    * `genesis_eth1_data.block_hash` is the Ethereum 1.0 block hash that emitted the log for the last deposit in `deposits`
-    * `genesis_eth1_data.deposit_root` is the deposit root for the last deposit in `deposits`
-    * `genesis_eth1_data.deposit_count = len(genesis_deposits)`
-
-*Note*: The function `is_genesis_trigger` has yet to be agreed upon by the community, and can be updated as necessary. We define the following testing placeholder:
-
-```python
-def is_genesis_trigger(deposits: Sequence[Deposit], timestamp: uint64) -> bool:
-    # Process deposits
-    state = BeaconState()
-    for deposit in deposits:
-        process_deposit(state, deposit)
-
-    # Count active validators at genesis
-    active_validator_count = 0
-    for validator in state.validators:
-        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
-            active_validator_count += 1
-
-    # Check effective balance to trigger genesis
-    GENESIS_ACTIVE_VALIDATOR_COUNT = 2**16
-    return active_validator_count == GENESIS_ACTIVE_VALIDATOR_COUNT
-```
-
 ### Genesis state
 
-Let `genesis_state = get_genesis_beacon_state(genesis_deposits, genesis_time, genesis_eth1_data)`.
+Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 block, call `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` where:
+
+* `eth1_block_hash` is the hash of the Ethereum 1.0 block
+* `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
+* `deposits` is the sequence of all deposits, ordered chronologically, up to the block with hash `eth1_block_hash`
+
+The genesis state `genesis_state` is the return value of calling `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` only if `is_valid_genesis_state(genesis_state) is True`.
+
+Implementations can choose to support different (more optimized) variations of the below initialization approach:
+ - Build the `genesis_state` from a stream of deposits by incrementally updating the `state.eth1_data.deposit_root`.
+ - Compute deposit proofs for the final `state.eth1_data.deposit_root`, and process as a pre-determined collection.
+
+*Note*: The two constants `MIN_GENESIS_TIME` and `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` have yet to be agreed upon by the community, and can be updated as necessary.
 
 ```python
-def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth1_data: Eth1Data) -> BeaconState:
+def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
+                                      eth1_timestamp: uint64,
+                                      deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
-        genesis_time=genesis_time,
-        eth1_data=eth1_data,
+        genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
+        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
 
-    # Process genesis deposits
-    for deposit in deposits:
+    # Process deposits
+    leaves = list(map(lambda deposit: deposit.data, deposits))
+    for index, deposit in enumerate(deposits):
+        state.eth1_data.deposit_root = hash_tree_root(
+            List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
+        )
         process_deposit(state, deposit)
 
-    # Process genesis activations
-    for validator in state.validators:
-        if validator.effective_balance >= MAX_EFFECTIVE_BALANCE:
+    # Process activations
+    for index, validator in enumerate(state.validators):
+        if state.balances[index] >= MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
@@ -1172,6 +1155,16 @@ def get_genesis_beacon_state(deposits: Sequence[Deposit], genesis_time: int, eth
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
         state.compact_committees_roots[index] = genesis_committee_root
     return state
+```
+
+```python
+def is_valid_genesis_state(state: BeaconState) -> bool:
+    if state.genesis_time < MIN_GENESIS_TIME:
+        return False
+    elif len(get_active_validator_indices(state, GENESIS_EPOCH)) < MIN_GENESIS_ACTIVE_VALIDATOR_COUNT:
+        return False
+    else:
+        return True
 ```
 
 ### Genesis block
@@ -1455,7 +1448,7 @@ def process_registry_updates(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         if (
             validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and
-            validator.effective_balance >= MAX_EFFECTIVE_BALANCE
+            validator.effective_balance == MAX_EFFECTIVE_BALANCE
         ):
             validator.activation_eligibility_epoch = get_current_epoch(state)
 
@@ -1695,7 +1688,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert verify_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # add 1 for the SSZ length mix-in
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
     )

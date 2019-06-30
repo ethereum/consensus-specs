@@ -147,7 +147,7 @@ def test_invalid_withdrawal_credentials_top_up(spec, state):
 @with_all_phases
 @spec_state_test
 def test_wrong_deposit_for_deposit_count(spec, state):
-    deposit_data_leaves = [spec.ZERO_HASH] * len(state.validators)
+    deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 
     # build root for deposit_1
     index_1 = len(deposit_data_leaves)
@@ -197,6 +197,6 @@ def test_bad_merkle_proof(spec, state):
     # mess up merkle branch
     deposit.proof[5] = spec.ZERO_HASH
 
-    sign_deposit_data(spec, state, deposit.data, privkeys[validator_index])
+    sign_deposit_data(spec, deposit.data, privkeys[validator_index], state=state)
 
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
