@@ -495,7 +495,8 @@ class BytesN(BaseBytes):
         return True
 
 
-# Helpers for common BytesN types.
+# Helpers for common BytesN types
+Bytes1: BytesType = BytesN[1]
 Bytes4: BytesType = BytesN[4]
 Bytes32: BytesType = BytesN[32]
 Bytes48: BytesType = BytesN[48]

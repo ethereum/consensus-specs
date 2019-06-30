@@ -161,6 +161,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `BASE_REWARDS_PER_EPOCH` | `5` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 | `SECONDS_PER_DAY` | `86400` |
+| `JUSTIFICATION_BITS_LENGTH` | `4` |
 
 ## Configuration
 
@@ -176,10 +177,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
+| `ENDIANNESS` | `'little'` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
-| `JUSTIFICATION_BITS_LENGTH` | `4` |
-| `ENDIANNESS` | `'little'` |
 
 * For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -202,28 +202,26 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
+| Name | Value | Duration |
 | - | - | :-: | :-: |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 6 seconds |
-| `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
-| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
-| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-
-* `MAX_EPOCHS_PER_CROSSLINK` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`.
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `Slot(2**0)` (= 1) | 6 seconds |
+| `SLOTS_PER_EPOCH` | `Slot(2**6)` (= 64) | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `Epoch(2**0)` (= 1) | 6.4 minutes |
+| `ACTIVATION_EXIT_DELAY` | `Epoch(2**2)` (= 4) | 25.6 minutes |
+| `SLOTS_PER_ETH1_VOTING_PERIOD` | `Slot(2**10)` (= 1,024) | ~1.7 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `Slot(2**13)` (= 8,192) | ~13 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**8)` (= 256) | ~27 hours |
+| `PERSISTENT_COMMITTEE_PERIOD` | `Epoch(2**11)` (= 2,048) | 9 days |
+| `MAX_EPOCHS_PER_CROSSLINK` | `Epoch(2**6)` (= 64) | ~7 hours |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `Epoch(2**2)` (= 4) | 25.6 minutes |
 
 ### State list lengths
 
-| Name | Value | Unit | Duration |
+| Name | Value | Duration |
 | - | - | :-: | :-: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
-| `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `Epoch(2**16)` (= 65,536) | ~0.8 years |
+| `EPOCHS_PER_SLASHINGS_VECTOR` | `Epoch(2**13)` (= 8,192) | ~36 days |
+| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | ~26,131 years |
 | `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots | |
 
 ### Rewards and penalties
@@ -541,7 +539,7 @@ class BeaconState(Container):
 #### `integer_squareroot`
 
 ```python
-def integer_squareroot(n: uint64) -> int:
+def integer_squareroot(n: uint64) -> uint64:
     """
     Return the largest integer ``x`` such that ``x**2 <= n``.
     """
@@ -564,17 +562,17 @@ def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
 ```
 
 ```python
-def int_to_bytes(integer: uint64, length: uint64) -> bytes:
+def int_to_bytes(n: uint64, length: uint64) -> bytes:
     """
-    Return the ``length``-byte serialization of ``integer``.
+    Return the ``length``-byte serialization of ``n``.
     """
-    return integer.to_bytes(length, ENDIANNESS)
+    return n.to_bytes(length, ENDIANNESS)
 ```
 
 #### `bytes_to_int`
 
 ```python
-def bytes_to_int(data: bytes) -> int:
+def bytes_to_int(data: bytes) -> uint64:
     """
     Return the integer deserialization of ``data``.
     """
@@ -767,7 +765,7 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `bls_domain`
 
 ```python
-def bls_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> int:
+def bls_domain(domain_type: uint64, fork_version: Version=Version()) -> int:
     """
     Return the BLS domain for the ``domain_type`` and ``fork_version``.
     """
@@ -841,7 +839,7 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[V
 #### `get_validator_churn_limit`
 
 ```python
-def get_validator_churn_limit(state: BeaconState) -> int:
+def get_validator_churn_limit(state: BeaconState) -> uint64:
     """
     Return the validator churn limit for the current epoch.
     """
@@ -865,7 +863,7 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
 #### `get_committee_count`
 
 ```python
-def get_committee_count(state: BeaconState, epoch: Epoch) -> int:
+def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of committees at ``epoch``.
     """
@@ -910,7 +908,7 @@ def get_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 #### `get_shard_delta`
 
 ```python
-def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
+def get_shard_delta(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of shards to increment ``state.start_shard`` at ``epoch``.
     """
@@ -1675,8 +1673,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     amount = deposit.data.amount
     validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession) for new validators.
-        # Note: The deposit contract does not check signatures.
+        # Verify the deposit signature (proof of possession) for new validators
+        # Note: The deposit contract does not check signatures
         # Note: Deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
         if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)):
             return

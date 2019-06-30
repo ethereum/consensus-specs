@@ -86,7 +86,7 @@ Validator public keys are [G1 points](../bls_signature.md#g1-points) on the [BLS
 A secondary withdrawal private key, `withdrawal_privkey`, must also be securely generated along with the resultant `withdrawal_pubkey`. This `withdrawal_privkey` does not have to be available for signing during the normal lifetime of a validator and can live in "cold storage".
 
 The validator constructs their `withdrawal_credentials` via the following:
-* Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`.
+* Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`.
 * Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
 
 ### Submit deposit
