@@ -1144,12 +1144,11 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
             validator.activation_epoch = GENESIS_EPOCH
 
     # Populate active_index_roots and compact_committees_roots
-    genesis_active_index_root = hash_tree_root(
-        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
-    )
+    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
+    active_index_root = hash_tree_root(indices_list)
     committee_root = get_compact_committees_root(state, GENESIS_EPOCH)
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
-        state.active_index_roots[index] = genesis_active_index_root
+        state.active_index_roots[index] = active_index_root
         state.compact_committees_roots[index] = committee_root
     return state
 ```
@@ -1495,9 +1494,8 @@ def process_final_updates(state: BeaconState) -> None:
     # Set active index root
     index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
     index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
-    state.active_index_roots[index_root_position] = hash_tree_root(
-        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, index_epoch))
-    )
+    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, index_epoch))
+    state.active_index_roots[index_root_position] = hash_tree_root(indices_list)
     # Set committees root
     committee_root_position = next_epoch % EPOCHS_PER_HISTORICAL_VECTOR
     state.compact_committees_roots[committee_root_position] = get_compact_committees_root(state, next_epoch)
