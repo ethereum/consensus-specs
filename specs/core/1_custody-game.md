@@ -259,7 +259,7 @@ class BeaconBlockBody(Container):
 ### `ceillog2`
 
 ```python
-def ceillog2(x: int) -> int:
+def ceillog2(x: uint64) -> int:
     return x.bit_length()
 ```
 
@@ -275,7 +275,7 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
 ### `get_bit`
 
 ```python
-def get_bit(serialization: bytes, i: int) -> int:
+def get_bit(serialization: bytes, i: uint64) -> int:
     """
     Extract the bit in ``serialization`` at position ``i``.
     """
@@ -304,7 +304,7 @@ def get_chunk_bits_root(chunk_bits: bytes) -> Bytes32:
 ### `get_randao_epoch_for_custody_period`
 
 ```python
-def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorIndex) -> Epoch:
+def get_randao_epoch_for_custody_period(period: uint64, validator_index: ValidatorIndex) -> Epoch:
     next_period_start = (period + 1) * EPOCHS_PER_CUSTODY_PERIOD - validator_index % EPOCHS_PER_CUSTODY_PERIOD
     return Epoch(next_period_start + CUSTODY_PERIOD_TO_RANDAO_PADDING)
 ```
@@ -473,7 +473,7 @@ For each `challenge` in `block.body.custody_chunk_challenges`, run the following
 ```python
 def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge) -> None:
     # Verify the attestation
-    validate_indexed_attestation(state, convert_to_indexed(state, challenge.attestation))
+    validate_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge
     assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     responder = state.validators[challenge.responder_index]
@@ -526,7 +526,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify challenger is slashable
     assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify attestation
-    validate_indexed_attestation(state, convert_to_indexed(state, attestation))
+    validate_indexed_attestation(state, get_indexed_attestation(state, attestation))
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert epoch + responder.max_reveal_lateness <= get_reveal_period(state, challenge.responder_index)
@@ -595,13 +595,13 @@ def process_chunk_challenge_response(state: BeaconState,
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
     # Verify bit challenge data is null
-    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == ZERO_HASH
+    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Hash()
     # Verify minimum delay
     assert get_current_epoch(state) >= challenge.inclusion_epoch + ACTIVATION_EXIT_DELAY
     # Verify the chunk matches the crosslink data root
-    assert verify_merkle_branch(
+    assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
-        proof=response.data_branch,
+        branch=response.data_branch,
         depth=challenge.depth,
         index=response.chunk_index,
         root=challenge.data_root,
@@ -624,17 +624,17 @@ def process_bit_challenge_response(state: BeaconState,
     responder = state.validators[challenge.responder_index]
     assert not responder.slashed
     # Verify the chunk matches the crosslink data root
-    assert verify_merkle_branch(
+    assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
-        proof=response.data_branch,
+        branch=response.data_branch,
         depth=ceillog2(challenge.chunk_count),
         index=response.chunk_index,
         root=challenge.data_root,
     )
     # Verify the chunk bit leaf matches the challenge data
-    assert verify_merkle_branch(
+    assert is_valid_merkle_branch(
         leaf=response.chunk_bits_leaf,
-        proof=response.chunk_bits_branch,
+        branch=response.chunk_bits_branch,
         depth=ceillog2(challenge.chunk_count) >> 8,
         index=response.chunk_index // 256,
         root=challenge.chunk_bits_merkle_root

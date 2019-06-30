@@ -10,7 +10,7 @@ from preset_loader import loader
 def shuffling_case(seed, count):
     yield 'seed', '0x' + seed.hex()
     yield 'count', count
-    yield 'shuffled', [int(spec.get_shuffled_index(i, count, seed)) for i in range(count)]
+    yield 'shuffled', [int(spec.shuffled_index(i, count, seed)) for i in range(count)]
 
 
 @to_tuple

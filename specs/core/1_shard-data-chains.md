@@ -132,14 +132,14 @@ class ShardBlockHeader(Container):
 def get_period_committee(state: BeaconState,
                          epoch: Epoch,
                          shard: Shard,
-                         index: int,
-                         count: int) -> Sequence[ValidatorIndex]:
+                         index: uint64,
+                         count: uint64) -> Sequence[ValidatorIndex]:
     """
     Return committee for a period. Used to construct persistent committees.
     """
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=generate_seed(state, epoch),
+        seed=get_seed(state, epoch),
         index=shard * count + index,
         count=SHARD_COUNT * count,
     )
@@ -150,7 +150,7 @@ def get_period_committee(state: BeaconState,
 ```python
 def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex) -> int:
     earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
-    return (bytes_to_int(hash(generate_seed(state, earlier_start_epoch) + int_to_bytes(index, length=3)[0:8]))
+    return (bytes_to_int(hash(get_seed(state, earlier_start_epoch) + int_to_bytes(index, length=3)[0:8]))
             % PERSISTENT_COMMITTEE_PERIOD)
 ```
 
@@ -248,7 +248,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 
 ```python
 def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
-    def is_power_of_two(value: int) -> bool:
+    def is_power_of_two(value: uint64) -> bool:
         return (value > 0) and (value & (value - 1) == 0)
 
     def pad_to_power_of_2(values: MutableSequence[bytes]) -> Sequence[bytes]:
@@ -259,7 +259,7 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
     def hash_tree_root_of_bytes(data: bytes) -> bytes:
         return hash_tree_root([data[i:i + 32] for i in range(0, len(data), 32)])
 
-    def zpad(data: bytes, length: int) -> bytes:
+    def zpad(data: bytes, length: uint64) -> bytes:
         return data + b'\x00' * (length - len(data))
 
     return hash(
@@ -309,11 +309,11 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
     assert beacon_block.slot <= candidate.slot
 
     # Check state root
-    assert candidate.state_root == ZERO_HASH  # [to be removed in phase 2]
+    assert candidate.state_root == Hash()  # [to be removed in phase 2]
 
     # Check parent block
     if candidate.slot == PHASE_1_FORK_SLOT:
-        assert candidate.parent_root == ZERO_HASH
+        assert candidate.parent_root == Hash()
     else:
         parent_block = next(
             (block for block in valid_shard_blocks if signing_root(block) == candidate.parent_root),
@@ -395,7 +395,7 @@ def is_valid_beacon_attestation(shard: Shard,
 
     # Check previous attestation
     if candidate.data.previous_crosslink.epoch <= PHASE_1_FORK_EPOCH:
-        assert candidate.data.previous_crosslink.data_root == ZERO_HASH
+        assert candidate.data.previous_crosslink.data_root == Hash()
     else:
         previous_attestation = next(
             (attestation for attestation in valid_attestations if

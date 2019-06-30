@@ -71,7 +71,7 @@ def test_success_exit_queue(spec, state):
     current_epoch = spec.get_current_epoch(state)
 
     # exit `MAX_EXITS_PER_EPOCH`
-    initial_indices = spec.get_active_validator_indices(state, current_epoch)[:spec.get_churn_limit(state)]
+    initial_indices = spec.get_active_validator_indices(state, current_epoch)[:spec.get_validator_churn_limit(state)]
 
     # Prepare a bunch of exits, based on the current state
     exit_queue = []
