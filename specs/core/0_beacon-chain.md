@@ -68,8 +68,8 @@
         - [Misc](#misc)
             - [`compute_shuffled_index`](#compute_shuffled_index)
             - [`compute_committee`](#compute_committee)
-            - [`compute_slot_epoch`](#compute_slot_epoch)
-            - [`compute_epoch_start_slot`](#compute_epoch_start_slot)
+            - [`compute_epoch_of_slot`](#compute_epoch_of_slot)
+            - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
             - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
             - [`compute_bls_domain`](#compute_bls_domain)
             - [`validate_indexed_attestation`](#validate_indexed_attestation)
@@ -701,20 +701,20 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     return [indices[compute_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
 ```
 
-#### `compute_slot_epoch`
+#### `compute_epoch_of_slot`
 
 ```python
-def compute_slot_epoch(slot: Slot) -> Epoch:
+def compute_epoch_of_slot(slot: Slot) -> Epoch:
     """
     Return the epoch number of ``slot``.
     """
     return Epoch(slot // SLOTS_PER_EPOCH)
 ```
 
-#### `compute_epoch_start_slot`
+#### `compute_start_slot_of_epoch`
 
 ```python
-def compute_epoch_start_slot(epoch: Epoch) -> Slot:
+def compute_start_slot_of_epoch(epoch: Epoch) -> Slot:
     """
     Return the start slot of ``epoch``.
     """
@@ -783,7 +783,7 @@ def get_current_epoch(state: BeaconState) -> Epoch:
     """
     Return the current epoch.
     """
-    return compute_slot_epoch(state.slot)
+    return compute_epoch_of_slot(state.slot)
 ```
 
 #### `get_previous_epoch`
@@ -804,7 +804,7 @@ def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the block root at the start of a recent ``epoch``.
     """
-    return get_block_root_at_slot(state, compute_epoch_start_slot(epoch))
+    return get_block_root_at_slot(state, compute_start_slot_of_epoch(epoch))
 ```
 
 #### `get_block_root_at_slot`
@@ -950,7 +950,7 @@ def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot
     """
     committee_count = get_committee_count(state, data.target.epoch)
     offset = (data.crosslink.shard + SHARD_COUNT - get_start_shard(state, data.target.epoch)) % SHARD_COUNT
-    return Slot(compute_epoch_start_slot(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
+    return Slot(compute_start_slot_of_epoch(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
 ```
 
 #### `get_compact_committees_root`
@@ -1585,14 +1585,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     proposer = state.validators[proposer_slashing.proposer_index]
     # Verify that the epoch is the same
-    assert compute_slot_epoch(proposer_slashing.header_1.slot) == compute_slot_epoch(proposer_slashing.header_2.slot)
+    assert (compute_epoch_of_slot(proposer_slashing.header_1.slot)
+            == compute_epoch_of_slot(proposer_slashing.header_2.slot))
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
     # Check proposer is slashable
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_slot_epoch(header.slot))
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_of_slot(header.slot))
         assert bls_verify(proposer.pubkey, signing_root(header), header.signature, domain)
 
     slash_validator(state, proposer_slashing.proposer_index)

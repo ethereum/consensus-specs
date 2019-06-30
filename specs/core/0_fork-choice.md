@@ -124,7 +124,7 @@ def get_latest_attesting_balance(store: Store, root: Hash) -> Gwei:
 def get_head(store: Store) -> Hash:
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
-    justified_slot = compute_epoch_start_slot(store.justified_checkpoint.epoch)
+    justified_slot = compute_start_slot_of_epoch(store.justified_checkpoint.epoch)
     while True:
         children = [
             root for root in store.blocks.keys()
@@ -162,7 +162,7 @@ def on_block(store: Store, block: BeaconBlock) -> None:
         store.finalized_checkpoint.root
     )
     # Check that block is later than the finalized epoch slot
-    assert block.slot > compute_epoch_start_slot(store.finalized_checkpoint.epoch)
+    assert block.slot > compute_start_slot_of_epoch(store.finalized_checkpoint.epoch)
     # Check the block is valid and compute the post-state
     state = state_transition(pre_state, block)
     # Add new state for this block to the store
@@ -190,11 +190,11 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
 
     # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
     base_state = store.block_states[target.root].copy()
-    assert store.time >= base_state.genesis_time + compute_epoch_start_slot(target.epoch) * SECONDS_PER_SLOT
+    assert store.time >= base_state.genesis_time + compute_start_slot_of_epoch(target.epoch) * SECONDS_PER_SLOT
 
     # Store target checkpoint state if not yet seen
     if target not in store.checkpoint_states:
-        process_slots(base_state, compute_epoch_start_slot(target.epoch))
+        process_slots(base_state, compute_start_slot_of_epoch(target.epoch))
         store.checkpoint_states[target] = base_state
     target_state = store.checkpoint_states[target]
 

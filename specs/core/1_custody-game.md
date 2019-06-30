@@ -474,7 +474,8 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Verify the attestation
     validate_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge
-    assert compute_slot_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
+    assert (compute_epoch_of_slot(challenge.attestation.data.slot)
+            >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY)
     responder = state.validators[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
@@ -515,7 +516,7 @@ For each `challenge` in `block.body.custody_bit_challenges`, run the following f
 ```python
 def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) -> None:
     attestation = challenge.attestation
-    epoch = compute_slot_epoch(attestation.data.slot)
+    epoch = compute_epoch_of_slot(attestation.data.slot)
     shard = attestation.data.crosslink.shard
 
     # Verify challenge signature

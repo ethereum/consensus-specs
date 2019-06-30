@@ -15,7 +15,7 @@ def build_attestation_data(spec, state, slot, shard):
     else:
         block_root = spec.get_block_root_at_slot(state, slot)
 
-    current_epoch_start_slot = spec.compute_epoch_start_slot(spec.get_current_epoch(state))
+    current_epoch_start_slot = spec.compute_start_slot_of_epoch(spec.get_current_epoch(state))
     if slot < current_epoch_start_slot:
         epoch_boundary_root = spec.get_block_root(state, spec.get_previous_epoch(state))
     elif slot == current_epoch_start_slot:
@@ -30,7 +30,7 @@ def build_attestation_data(spec, state, slot, shard):
         source_epoch = state.current_justified_checkpoint.epoch
         source_root = state.current_justified_checkpoint.root
 
-    if spec.compute_slot_epoch(slot) == spec.get_current_epoch(state):
+    if spec.compute_epoch_of_slot(slot) == spec.get_current_epoch(state):
         parent_crosslink = state.current_crosslinks[shard]
     else:
         parent_crosslink = state.previous_crosslinks[shard]
@@ -38,11 +38,11 @@ def build_attestation_data(spec, state, slot, shard):
     return spec.AttestationData(
         beacon_block_root=block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
-        target=spec.Checkpoint(epoch=spec.compute_slot_epoch(slot), root=epoch_boundary_root),
+        target=spec.Checkpoint(epoch=spec.compute_epoch_of_slot(slot), root=epoch_boundary_root),
         crosslink=spec.Crosslink(
             shard=shard,
             start_epoch=parent_crosslink.end_epoch,
-            end_epoch=min(spec.compute_slot_epoch(slot), parent_crosslink.end_epoch + spec.MAX_EPOCHS_PER_CROSSLINK),
+            end_epoch=min(spec.compute_epoch_of_slot(slot), parent_crosslink.end_epoch + spec.MAX_EPOCHS_PER_CROSSLINK),
             data_root=spec.Hash(),
             parent_root=hash_tree_root(parent_crosslink),
         ),
@@ -53,7 +53,7 @@ def get_valid_attestation(spec, state, slot=None, signed=False):
     if slot is None:
         slot = state.slot
 
-    epoch = spec.compute_slot_epoch(slot)
+    epoch = spec.compute_epoch_of_slot(slot)
     epoch_start_shard = spec.get_start_shard(state, epoch)
     committees_per_slot = spec.get_committee_count(state, epoch) // spec.SLOTS_PER_EPOCH
     shard = (epoch_start_shard + committees_per_slot * (slot % spec.SLOTS_PER_EPOCH)) % spec.SHARD_COUNT
