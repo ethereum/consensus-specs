@@ -49,7 +49,9 @@ if __name__ == "__main__":
         create_suite('proposer_slashing', 'minimal', lambda: generate_from_tests(test_process_proposer_slashing, 'phase0')),
         create_suite('proposer_slashing', 'mainnet', lambda: generate_from_tests(test_process_proposer_slashing, 'phase0')),
         create_suite('transfer',          'minimal', lambda: generate_from_tests(test_process_transfer, 'phase0')),
-        create_suite('transfer',          'mainnet', lambda: generate_from_tests(test_process_transfer, 'phase0')),
+        # Disabled, due to the high amount of different transfer tests, this produces a shocking size of tests.
+        # Unnecessarily, as transfer are disabled currently, so not a priority.
+        # create_suite('transfer',          'mainnet', lambda: generate_from_tests(test_process_transfer, 'phase0')),
         create_suite('voluntary_exit',    'minimal', lambda: generate_from_tests(test_process_voluntary_exit, 'phase0')),
         create_suite('voluntary_exit',    'mainnet', lambda: generate_from_tests(test_process_voluntary_exit, 'phase0')),
     ])

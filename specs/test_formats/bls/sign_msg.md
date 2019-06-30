@@ -8,7 +8,7 @@ Message signing with BLS should produce a signature.
 input:
   privkey: bytes32 -- the private key used for signing
   message: bytes32 -- input message to sign (a hash)
-  domain: bytes    -- BLS domain
+  domain: uint64 -- the BLS domain
 output: bytes96    -- expected signature
 ```
 
