@@ -15,15 +15,15 @@ def build_attestation_data(spec, state, slot, shard):
     else:
         block_root = spec.get_block_root_at_slot(state, slot)
 
-    current_epoch_first_slot = spec.epoch_first_slot(spec.get_current_epoch(state))
-    if slot < current_epoch_first_slot:
+    current_epoch_start_slot = spec.epoch_start_slot(spec.get_current_epoch(state))
+    if slot < current_epoch_start_slot:
         epoch_boundary_root = spec.get_block_root(state, spec.get_previous_epoch(state))
-    elif slot == current_epoch_first_slot:
+    elif slot == current_epoch_start_slot:
         epoch_boundary_root = block_root
     else:
         epoch_boundary_root = spec.get_block_root(state, spec.get_current_epoch(state))
 
-    if slot < current_epoch_first_slot:
+    if slot < current_epoch_start_slot:
         source_epoch = state.previous_justified_checkpoint.epoch
         source_root = state.previous_justified_checkpoint.root
     else:

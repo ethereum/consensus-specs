@@ -33,7 +33,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     total_balance = spec.get_total_active_balance(state)
     remaining_balance = total_balance * 2 // 3
 
-    start_slot = spec.epoch_first_slot(epoch)
+    start_slot = spec.epoch_start_slot(epoch)
     for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
         for shard in get_shards_for_slot(spec, state, slot):
             # Check if we already have had sufficient balance. (and undone if we don't want it).
@@ -80,7 +80,7 @@ def get_checkpoints(spec, epoch):
 
 def put_checkpoints_in_block_roots(spec, state, checkpoints):
     for c in checkpoints:
-        state.block_roots[spec.epoch_first_slot(c.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c.root
+        state.block_roots[spec.epoch_start_slot(c.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c.root
 
 
 def finalize_on_234(spec, state, epoch, sufficient_support):

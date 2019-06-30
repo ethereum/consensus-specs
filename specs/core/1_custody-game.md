@@ -382,7 +382,7 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     revealer.next_custody_reveal_period += 1
 
     # Reward Block Preposer
-    proposer_index = get_proposer_index(state)
+    proposer_index = get_beacon_proposer_index(state)
     increase_balance(
         state,
         proposer_index,
@@ -452,7 +452,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
         )
 
         # Apply penalty
-        proposer_index = get_proposer_index(state)
+        proposer_index = get_beacon_proposer_index(state)
         whistleblower_index = reveal.masker_index
         whistleblowing_reward = Gwei(penalty // WHISTLEBLOWER_REWARD_QUOTIENT)
         proposer_reward = Gwei(whistleblowing_reward // PROPOSER_REWARD_QUOTIENT)
@@ -493,7 +493,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
         challenge_index=state.custody_challenge_index,
-        challenger_index=get_proposer_index(state),
+        challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index,
         inclusion_epoch=get_current_epoch(state),
         data_root=challenge.attestation.data.crosslink.data_root,
@@ -610,7 +610,7 @@ def process_chunk_challenge_response(state: BeaconState,
     records = state.custody_chunk_challenge_records
     records[records.index(challenge)] = CustodyChunkChallengeRecord()
     # Reward the proposer
-    proposer_index = get_proposer_index(state)
+    proposer_index = get_beacon_proposer_index(state)
     increase_balance(state, proposer_index, Gwei(get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT))
 ```
 

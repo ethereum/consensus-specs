@@ -21,7 +21,7 @@ def run_transfer_processing(spec, state, transfer, valid=True):
         yield 'post', None
         return
 
-    proposer_index = spec.get_proposer_index(state)
+    proposer_index = spec.get_beacon_proposer_index(state)
     pre_transfer_sender_balance = state.balances[transfer.sender]
     pre_transfer_recipient_balance = state.balances[transfer.recipient]
     pre_transfer_proposer_balance = state.balances[proposer_index]

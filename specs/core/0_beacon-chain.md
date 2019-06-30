@@ -70,7 +70,7 @@
             - [`compute_committee`](#compute_committee)
             - [`validate_indexed_attestation`](#validate_indexed_attestation)
             - [`slot_to_epoch`](#slot_to_epoch)
-            - [`epoch_first_slot`](#epoch_first_slot)
+            - [`epoch_start_slot`](#epoch_start_slot)
             - [`delayed_activation_exit_epoch`](#delayed_activation_exit_epoch)
             - [`bls_domain`](#bls_domain)
         - [Beacon state getters](#beacon-state-getters)
@@ -86,7 +86,7 @@
             - [`get_crosslink_committee`](#get_crosslink_committee)
             - [`get_start_shard`](#get_start_shard)
             - [`get_shard_delta`](#get_shard_delta)
-            - [`get_proposer_index`](#get_proposer_index)
+            - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_attestation_data_slot`](#get_attestation_data_slot)
             - [`get_compact_committees_root`](#get_compact_committees_root)
             - [`get_total_balance`](#get_total_balance)
@@ -541,7 +541,7 @@ class BeaconState(Container):
 #### `integer_squareroot`
 
 ```python
-def integer_squareroot(n: uint64) -> uint64:
+def integer_squareroot(n: int) -> int:
     """
     Return the largest integer ``x`` such that ``x**2 <= n``.
     """
@@ -558,7 +558,7 @@ def integer_squareroot(n: uint64) -> uint64:
 ```python
 def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
     """
-    Return the exclusive or of two 32-byte strings.
+    Return the exclusive-or of two 32-byte strings.
     """
     return Bytes32(a ^ b for a, b in zip(bytes1, bytes2))
 ```
@@ -744,12 +744,12 @@ def slot_to_epoch(slot: Slot) -> Epoch:
     return Epoch(slot // SLOTS_PER_EPOCH)
 ```
 
-#### `epoch_first_slot`
+#### `epoch_start_slot`
 
 ```python
-def epoch_first_slot(epoch: Epoch) -> Slot:
+def epoch_start_slot(epoch: Epoch) -> Slot:
     """
-    Return the first slot of ``epoch``.
+    Return the start slot of ``epoch``.
     """
     return Slot(epoch * SLOTS_PER_EPOCH)
 ```
@@ -759,7 +759,7 @@ def epoch_first_slot(epoch: Epoch) -> Slot:
 ```python
 def delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
     """
-    Return the epoch where validator activations and exits initiated in ``epoch`` take effect.
+    Return the epoch during which validator activations and exits initiated in ``epoch`` take effect.
     """
     return Epoch(epoch + 1 + ACTIVATION_EXIT_DELAY)
 ```
@@ -802,9 +802,9 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
 ```python
 def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
-    Return the block root at a recent ``epoch``.
+    Return the block root at the start of a recent ``epoch``.
     """
-    return get_block_root_at_slot(state, epoch_first_slot(epoch))
+    return get_block_root_at_slot(state, epoch_start_slot(epoch))
 ```
 
 #### `get_block_root_at_slot`
@@ -869,10 +869,11 @@ def get_committee_count(state: BeaconState, epoch: Epoch) -> int:
     """
     Return the number of committees at ``epoch``.
     """
-    return max(1, min(
+    committees_per_slot = max(1, min(
         SHARD_COUNT // SLOTS_PER_EPOCH,
         len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
-    )) * SLOTS_PER_EPOCH
+    ))
+    return committees_per_slot * SLOTS_PER_EPOCH
 ```
 
 #### `get_crosslink_committee`
@@ -909,19 +910,19 @@ def get_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 #### `get_shard_delta`
 
 ```python
-def get_shard_delta(state: BeaconState, epoch: Epoch) -> Shard:
+def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
     """
     Return the number of shards to increment ``state.start_shard`` at ``epoch``.
     """
-    return Shard(min(get_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH))
+    return min(get_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
 
-#### `get_proposer_index`
+#### `get_beacon_proposer_index`
 
 ```python
-def get_proposer_index(state: BeaconState) -> ValidatorIndex:
+def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
-    Return the beacon proposer index at the current epoch.
+    Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
     committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
@@ -949,7 +950,7 @@ def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot
     """
     committee_count = get_committee_count(state, data.target.epoch)
     offset = (data.crosslink.shard + SHARD_COUNT - get_start_shard(state, data.target.epoch)) % SHARD_COUNT
-    return Slot(epoch_first_slot(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
+    return Slot(epoch_start_slot(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
 ```
 
 #### `get_compact_committees_root`
@@ -1102,7 +1103,7 @@ def slash_validator(state: BeaconState,
     decrease_balance(state, slashed_index, validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT)
 
     # Apply proposer and whistleblower rewards
-    proposer_index = get_proposer_index(state)
+    proposer_index = get_beacon_proposer_index(state)
     if whistleblower_index is None:
         whistleblower_index = proposer_index
     whistleblower_reward = Gwei(validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT)
@@ -1190,7 +1191,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
     assert state.slot <= slot
     while state.slot < slot:
         process_slot(state)
-        # Process epoch on the first slot of the next epoch
+        # Process epoch on the start slot of the next epoch
         if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
             process_epoch(state)
         state.slot += Slot(1)
@@ -1529,7 +1530,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
-    proposer = state.validators[get_proposer_index(state)]
+    proposer = state.validators[get_beacon_proposer_index(state)]
     assert not proposer.slashed
     # Verify proposer signature
     assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
@@ -1541,7 +1542,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
-    proposer = state.validators[get_proposer_index(state)]
+    proposer = state.validators[get_beacon_proposer_index(state)]
     assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
@@ -1632,7 +1633,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         data=data,
         aggregation_bits=attestation.aggregation_bits,
         inclusion_delay=state.slot - attestation_slot,
-        proposer_index=get_proposer_index(state),
+        proposer_index=get_beacon_proposer_index(state),
     )
 
     if data.target.epoch == get_current_epoch(state):
@@ -1744,7 +1745,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     # Process the transfer
     decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
     increase_balance(state, transfer.recipient, transfer.amount)
-    increase_balance(state, get_proposer_index(state), transfer.fee)
+    increase_balance(state, get_beacon_proposer_index(state), transfer.fee)
     # Verify balances are not dust
     assert not (0 < state.balances[transfer.sender] < MIN_DEPOSIT_AMOUNT)
     assert not (0 < state.balances[transfer.recipient] < MIN_DEPOSIT_AMOUNT)

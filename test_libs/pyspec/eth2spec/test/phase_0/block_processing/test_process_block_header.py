@@ -75,7 +75,7 @@ def test_proposer_slashed(spec, state):
     # use stub state to get proposer index of next slot
     stub_state = deepcopy(state)
     next_slot(spec, stub_state)
-    proposer_index = spec.get_proposer_index(stub_state)
+    proposer_index = spec.get_beacon_proposer_index(stub_state)
 
     # set proposer to slashed
     state.validators[proposer_index].slashed = True

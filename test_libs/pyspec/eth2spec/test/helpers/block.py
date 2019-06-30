@@ -12,7 +12,7 @@ def sign_block(spec, state, block, proposer_index=None):
 
     if proposer_index is None:
         if block.slot == state.slot:
-            proposer_index = spec.get_proposer_index(state)
+            proposer_index = spec.get_beacon_proposer_index(state)
         else:
             if spec.slot_to_epoch(state.slot) + 1 > spec.slot_to_epoch(block.slot):
                 print("warning: block slot far away, and no proposer index manually given."
@@ -20,7 +20,7 @@ def sign_block(spec, state, block, proposer_index=None):
             # use stub state to get proposer index of future slot
             stub_state = deepcopy(state)
             spec.process_slots(stub_state, block.slot)
-            proposer_index = spec.get_proposer_index(stub_state)
+            proposer_index = spec.get_beacon_proposer_index(stub_state)
 
     privkey = privkeys[proposer_index]
 
