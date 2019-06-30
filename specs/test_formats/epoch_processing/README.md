@@ -25,7 +25,7 @@ Sub-transitions:
 
 - `justification_and_finalization`
 - `crosslinks`
-- *`justification_and_finalization` - planned testing extension*
+- *`rewards_and_penalties` - planned testing extension*
 - `registry_updates`
 - `slashings`
 - `final_updates`
