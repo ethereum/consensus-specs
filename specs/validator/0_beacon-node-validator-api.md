@@ -8,7 +8,8 @@ This document outlines a minimal application programming interface (API) which i
 
 The API is a REST interface, accessed via HTTP, designed for use as a local communications protocol between binaries. Currently, the only supported return data type is JSON.
 
-##  Background
+## Background
+
 The beacon node maintains the state of the beacon chain by communicating with other beacon nodes in the Ethereum 2.0 network. Conceptually, it does not maintain keypairs that participate with the beacon chain.
 
 The validator client is a conceptually separate entity which utilizes private keys to perform validator related tasks, called "duties", on the beacon chain. These duties include the production of beacon blocks and signing of attestations.
@@ -19,8 +20,7 @@ The goal of this specification is to promote interoperability between beacon nod
 
 This specification is derived from a proposal and discussion on Issues [#1011](https://github.com/ethereum/eth2.0-specs/issues/1011) and [#1012](https://github.com/ethereum/eth2.0-specs/issues/1012).
 
-
-## Specification 
+## Specification
 
 The API specification has been written in [OpenAPI 3.0](https://swagger.io/docs/specification/about/) and is provided in the [beacon_node_oapi.yaml](beacon_node_oapi.yaml) file alongside this document.
 
