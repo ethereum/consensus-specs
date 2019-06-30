@@ -66,7 +66,7 @@
             - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
             - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
         - [Misc](#misc)
-            - [`compute_shuffle_index`](#compute_shuffle_index)
+            - [`compute_shuffled_index`](#compute_shuffled_index)
             - [`compute_committee`](#compute_committee)
             - [`compute_slot_epoch`](#compute_slot_epoch)
             - [`compute_epoch_start_slot`](#compute_epoch_start_slot)
@@ -662,10 +662,10 @@ def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: uint64, in
 
 ### Misc
 
-#### `compute_shuffle_index`
+#### `compute_shuffled_index`
 
 ```python
-def compute_shuffle_index(index: ValidatorIndex, index_count: uint64, seed: Hash) -> ValidatorIndex:
+def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Hash) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -698,7 +698,7 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     """
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
-    return [indices[compute_shuffle_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
+    return [indices[compute_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
 ```
 
 #### `compute_slot_epoch`
@@ -1677,9 +1677,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) for new validators.
         # Note: The deposit contract does not check signatures.
-        # Note: Deposits are valid across forks. thus the deposit domain is retrieved directly from `compute_bls_domain`
-        if not bls_verify(pubkey, signing_root(deposit.data),
-                          deposit.data.signature, compute_bls_domain(DOMAIN_DEPOSIT)):
+        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_bls_domain`
+        domain = compute_bls_domain(DOMAIN_DEPOSIT)
+        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, domain):
             return
 
         # Add validator and balance entries
