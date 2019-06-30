@@ -1485,7 +1485,7 @@ def process_slashings(state: BeaconState) -> None:
 ```python
 def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    next_epoch = Shard(current_epoch + 1)
+    next_epoch = Epoch(current_epoch + 1)
     # Reset eth1 data votes
     if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
