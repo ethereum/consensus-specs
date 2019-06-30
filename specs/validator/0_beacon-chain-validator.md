@@ -118,8 +118,9 @@ In normal operation, the validator is quickly activated, at which point the vali
 The function [`is_active_validator`](../core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
 ```python
-validator = state.validators[validator_index]
-is_active = is_active_validator(validator, get_current_epoch(state))
+def check_if_validator_active(state: BeaconState, validator_index: ValidatorIndex) -> bool:
+    validator = state.validators[validator_index]
+    return is_active_validator(validator, get_current_epoch(state))
 ```
 
 Once a validator is activated, the validator is assigned [responsibilities](#beacon-chain-responsibilities) until exited.
@@ -151,10 +152,14 @@ def get_committee_assignment(
         offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
         slot_start_shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
         for i in range(committees_per_slot):
-            shard = (slot_start_shard + i) % SHARD_COUNT
+            shard = Shard((slot_start_shard + i) % SHARD_COUNT)
             committee = get_crosslink_committee(state, epoch, shard)
             if validator_index in committee:
-                return committee, shard, slot
+                break
+        else:
+            continue
+        break
+    return committee, shard, Slot(slot)
 ```
 
 A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
@@ -205,18 +210,19 @@ Set `block.state_root = hash_tree_root(state)` of the resulting `state` of the `
 
 ##### Randao reveal
 
-Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined as:
+Set `block.randao_reveal = epoch_signature` where `epoch_signature` is obtained from:
 
 ```python
-epoch_signature = bls_sign(
-    privkey=validator.privkey,  # privkey stored locally, not in state
-    message_hash=hash_tree_root(slot_to_epoch(block.slot)),
-    domain=get_domain(
-        fork=fork,  # `fork` is the fork object at the slot `block.slot`
-        epoch=slot_to_epoch(block.slot),
-        domain_type=DOMAIN_RANDAO,
+def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
+    return bls_sign(
+        privkey=privkey,  # privkey stored locally
+        message_hash=hash_tree_root(slot_to_epoch(block.slot)),
+        domain=get_domain(
+            state=state,
+            domain_type=DOMAIN_RANDAO,
+            message_epoch=slot_to_epoch(block.slot),
+        )
     )
-)
 ```
 
 ##### Eth1 Data
@@ -232,11 +238,12 @@ def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Dat
 
     valid_votes = []
     for slot, vote in enumerate(state.eth1_data_votes):
-        period_tail = slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_square_root(SLOTS_PER_ETH1_VOTING_PERIOD)
+        period_tail = slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_squareroot(SLOTS_PER_ETH1_VOTING_PERIOD)
         if vote in new_eth1_data or (period_tail and vote in all_eth1_data):
             valid_votes.append(vote)
 
-    return max(valid_votes,
+    return max(
+        valid_votes,
         key=lambda v: (valid_votes.count(v), -all_eth1_data.index(v)),  # Tiebreak by smallest distance
         default=get_eth1_data(ETH1_FOLLOW_DISTANCE),
     )
@@ -244,18 +251,19 @@ def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Dat
 
 ##### Signature
 
-Set `block.signature = block_signature` where `block_signature` is defined as:
+Set `header.signature = block_signature` where `block_signature` is obtained from:
 
 ```python
-block_signature = bls_sign(
-    privkey=validator.privkey,  # privkey store locally, not in state
-    message_hash=signing_root(block),
-    domain=get_domain(
-        fork=fork,  # `fork` is the fork object at the slot `block.slot`
-        epoch=slot_to_epoch(block.slot),
-        domain_type=DOMAIN_BEACON_BLOCK,
+def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
+    return bls_sign(
+        privkey=privkey,  # privkey stored locally
+        message_hash=signing_root(header),
+        domain=get_domain(
+            state=state,
+            domain_type=DOMAIN_BEACON_PROPOSER,
+            message_epoch=slot_to_epoch(header.slot),
+        )
     )
-)
 ```
 
 #### Block body
@@ -343,24 +351,24 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregate signature
 
-Set `attestation.aggregate_signature = signed_attestation_data` where `signed_attestation_data` is defined as:
+Set `attestation.signature = signed_attestation_data` where `signed_attestation_data` is obtained from:
 
 ```python
-attestation_data_and_custody_bit = AttestationDataAndCustodyBit(
-    data=attestation.data,
-    custody_bit=0b0,
-)
-attestation_message = hash_tree_root(attestation_data_and_custody_bit)
-
-signed_attestation_data = bls_sign(
-    privkey=validator.privkey,  # privkey stored locally, not in state
-    message_hash=attestation_message,
-    domain=get_domain(
-        fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
-        epoch=slot_to_epoch(attestation_data.slot),
-        domain_type=DOMAIN_ATTESTATION,
+def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestation, privkey: int) -> BLSSignature:
+    attestation_data_and_custody_bit = AttestationDataAndCustodyBit(
+        data=attestation.data,
+        custody_bit=0b0,
     )
-)
+
+    return bls_sign(
+        privkey=privkey,  # privkey stored locally
+        message_hash=hash_tree_root(attestation_data_and_custody_bit),
+        domain=get_domain(
+            state=state,
+            domain_type=DOMAIN_ATTESTATION,
+            message_epoch=attestation.data.target.epoch,
+        )
+    )
 ```
 
 ## How to avoid slashing
