@@ -698,10 +698,7 @@ def shuffle_index(index: ValidatorIndex, index_count: int, seed: Hash) -> Valida
         pivot = bytes_to_int(hash(seed + int_to_bytes(current_round, length=1))[0:8]) % index_count
         flip = ValidatorIndex((pivot + index_count - index) % index_count)
         position = max(index, flip)
-        source = hash(
-            seed + int_to_bytes(current_round, length=1) +
-            int_to_bytes(position // 256, length=4)
-        )
+        source = hash(seed + int_to_bytes(current_round, length=1) + int_to_bytes(position // 256, length=4))
         byte = source[(position % 256) // 8]
         bit = (byte >> (position % 8)) % 2
         index = flip if bit else index
@@ -879,9 +876,10 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the seed at ``epoch``.
     """
-    randao_mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
-    active_indices_root = hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, epoch)))
-    return hash(randao_mix + active_indices_root + int_to_bytes(epoch, length=32))
+    mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
+    active_indices = get_active_validator_indices(state, epoch)
+    active_indices_root = hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](active_indices))
+    return hash(mix + active_indices_root + int_to_bytes(epoch, length=32))
 ```
 
 #### `get_committee_count`
@@ -891,13 +889,10 @@ def get_committee_count(state: BeaconState, epoch: Epoch) -> int:
     """
     Return the number of committees at ``epoch``.
     """
-    return max(
-        1,
-        min(
-            SHARD_COUNT // SLOTS_PER_EPOCH,
-            len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
-        )
-    ) * SLOTS_PER_EPOCH
+    return max(1, min(
+        SHARD_COUNT // SLOTS_PER_EPOCH,
+        len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
+    )) * SLOTS_PER_EPOCH
 ```
 
 #### `get_crosslink_committee`
@@ -1157,9 +1152,8 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
     # Process deposits
     leaves = list(map(lambda deposit: deposit.data, deposits))
     for index, deposit in enumerate(deposits):
-        state.eth1_data.deposit_root = hash_tree_root(
-            List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
-        )
+        deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[:index + 1])
+        state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
         process_deposit(state, deposit)
 
     # Process activations
@@ -1522,10 +1516,7 @@ def process_final_updates(state: BeaconState) -> None:
     state.randao_mixes[next_epoch % EPOCHS_PER_HISTORICAL_VECTOR] = get_randao_mix(state, current_epoch)
     # Set historical root accumulator
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
-        historical_batch = HistoricalBatch(
-            block_roots=state.block_roots,
-            state_roots=state.state_roots,
-        )
+        historical_batch = HistoricalBatch(state.block_roots, state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
@@ -1554,7 +1545,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        state_root=ZERO_HASH,  # Overwritten in next `process_slot` call
+        state_root=ZERO_HASH,  # Overwritten in the next `process_slot` call
         body_root=hash_tree_root(block.body),
     )
     # Verify proposer is not slashed
