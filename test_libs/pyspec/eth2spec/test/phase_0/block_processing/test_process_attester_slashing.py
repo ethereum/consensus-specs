@@ -30,7 +30,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         + attester_slashing.attestation_1.custody_bit_1_indices
     )
 
-    proposer_index = spec.get_beacon_proposer_index(state)
+    proposer_index = spec.get_proposer_index(state)
     pre_proposer_balance = get_balance(state, proposer_index)
     pre_slashings = {slashed_index: get_balance(state, slashed_index) for slashed_index in slashed_indices}
     pre_withdrawalable_epochs = {
