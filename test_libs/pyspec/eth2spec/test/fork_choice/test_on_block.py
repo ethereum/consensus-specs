@@ -18,6 +18,17 @@ def run_on_block(spec, state, store, block, valid=True):
     assert store.blocks[signing_root(block)] == block
 
 
+def apply_next_epoch_with_attestations(spec, state, store):
+    _, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+    for block in new_blocks:
+        block_root = signing_root(block)
+        store.blocks[block_root] = block
+        store.block_states[block_root] = state
+        last_block = block
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    return state, store, last_block
+
+
 @with_all_phases
 @with_state
 @bls_switch
@@ -42,20 +53,10 @@ def test_basic(spec, state):
     # TODO: add tests for justified_root and finalized_root
 
 
-def apply_next_epoch_with_attestations(spec, state, store):
-    _, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
-    for block in new_blocks:
-        block_root = signing_root(block)
-        store.blocks[block_root] = block
-        store.block_states[block_root] = state
-    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
-    return state, store
-
-
 @with_all_phases
 @with_state
 @bls_switch
-def test_on_block_justified_checkpoint(spec, state):
+def test_on_block_checkpoints(spec, state):
     # Initialization
     store = spec.get_genesis_store(state)
     time = 100
@@ -63,13 +64,18 @@ def test_on_block_justified_checkpoint(spec, state):
 
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
-    state, store = apply_next_epoch_with_attestations(spec, state, store)
+    state, store, last_block = apply_next_epoch_with_attestations(spec, state, store)
     next_epoch(spec, state)
     spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    last_block_root = signing_root(last_block)
+
+    # Mock the finalized_checkpoint
+    store.block_states[last_block_root].finalized_checkpoint = (
+        store.block_states[last_block_root].current_justified_checkpoint
+    )
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)
-    # state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch
     run_on_block(spec, state, store, block)
 
 
