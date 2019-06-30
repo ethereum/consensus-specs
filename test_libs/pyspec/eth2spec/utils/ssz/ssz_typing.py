@@ -497,6 +497,11 @@ class BytesN(BaseBytes):
 
 # Helpers for common BytesN types.
 Bytes4: BytesType = BytesN[4]
+Bytes8: BytesType = BytesN[8]
 Bytes32: BytesType = BytesN[32]
 Bytes48: BytesType = BytesN[48]
 Bytes96: BytesType = BytesN[96]
+
+
+class DomainType(Bytes4):
+    pass

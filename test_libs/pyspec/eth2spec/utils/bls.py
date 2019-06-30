@@ -23,7 +23,8 @@ def only_with_bls(alt_return=None):
 
 @only_with_bls(alt_return=True)
 def bls_verify(pubkey, message_hash, signature, domain):
-    return bls.verify(message_hash=message_hash, pubkey=pubkey, signature=signature, domain=domain)
+    return bls.verify(message_hash=message_hash, pubkey=pubkey,
+                      signature=signature, domain=int.from_bytes(domain, byteorder='little'))
 
 
 @only_with_bls(alt_return=True)
@@ -43,4 +44,5 @@ def bls_aggregate_signatures(signatures):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def bls_sign(message_hash, privkey, domain):
-    return bls.sign(message_hash=message_hash, privkey=privkey, domain=domain)
+    return bls.sign(message_hash=message_hash, privkey=privkey,
+                    domain=int.from_bytes(domain, byteorder='little'))
