@@ -1,4 +1,5 @@
 from .hash_function import hash
+from math import log2
 
 
 ZERO_BYTES32 = b'\x00' * 32
@@ -8,11 +9,10 @@ for layer in range(1, 100):
     zerohashes.append(hash(zerohashes[layer - 1] + zerohashes[layer - 1]))
 
 
-# Compute a Merkle root of a right-zerobyte-padded 2**32 sized tree
-def calc_merkle_tree_from_leaves(values):
+def calc_merkle_tree_from_leaves(values, layer_count=32):
     values = list(values)
     tree = [values[::]]
-    for h in range(32):
+    for h in range(layer_count):
         if len(values) % 2 == 1:
             values.append(zerohashes[h])
         values = [hash(values[i] + values[i + 1]) for i in range(0, len(values), 2)]
@@ -20,8 +20,11 @@ def calc_merkle_tree_from_leaves(values):
     return tree
 
 
-def get_merkle_root(values):
-    return calc_merkle_tree_from_leaves(values)[-1][0]
+def get_merkle_root(values, pad_to=1):
+    layer_count = int(log2(pad_to))
+    if len(values) == 0:
+        return zerohashes[layer_count]
+    return calc_merkle_tree_from_leaves(values, layer_count)[-1][0]
 
 
 def get_merkle_proof(tree, item_index):
@@ -32,19 +35,7 @@ def get_merkle_proof(tree, item_index):
     return proof
 
 
-def next_power_of_two(v: int) -> int:
-    """
-    Get the next power of 2. (for 64 bit range ints).
-    0 is a special case, to have non-empty defaults.
-    Examples:
-    0 -> 1, 1 -> 1, 2 -> 2, 3 -> 4, 32 -> 32, 33 -> 64
-    """
-    if v == 0:
-        return 1
-    return 1 << (v - 1).bit_length()
-
-
-def merkleize_chunks(chunks, pad_to: int = 1):
+def merkleize_chunks(chunks, pad_to: int=1):
     count = len(chunks)
     depth = max(count - 1, 0).bit_length()
     max_depth = max(depth, (pad_to - 1).bit_length())

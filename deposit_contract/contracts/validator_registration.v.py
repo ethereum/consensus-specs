@@ -6,7 +6,7 @@ WITHDRAWAL_CREDENTIALS_LENGTH: constant(uint256) = 32  # bytes
 AMOUNT_LENGTH: constant(uint256) = 8  # bytes
 SIGNATURE_LENGTH: constant(uint256) = 96  # bytes
 
-Deposit: event({
+DepositEvent: event({
     pubkey: bytes[48],
     withdrawal_credentials: bytes[32],
     amount: bytes[8],
@@ -42,8 +42,9 @@ def to_little_endian_64(value: uint256) -> bytes[8]:
 
 @public
 @constant
-def get_deposit_root() -> bytes32:
-    node: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
+def get_hash_tree_root() -> bytes32:
+    zero_bytes32: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
+    node: bytes32 = zero_bytes32
     size: uint256 = self.deposit_count
     for height in range(DEPOSIT_CONTRACT_TREE_DEPTH):
         if bitwise_and(size, 1) == 1:  # More gas efficient than `size % 2 == 1`
@@ -51,7 +52,7 @@ def get_deposit_root() -> bytes32:
         else:
             node = sha256(concat(node, self.zero_hashes[height]))
         size /= 2
-    return node
+    return sha256(concat(node, self.to_little_endian_64(self.deposit_count), slice(zero_bytes32, start=0, len=24)))
 
 
 @public
@@ -75,11 +76,11 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
     assert len(signature) == SIGNATURE_LENGTH
 
-    # Emit `Deposit` log
+    # Emit `DepositEvent` log
     amount: bytes[8] = self.to_little_endian_64(deposit_amount)
-    log.Deposit(pubkey, withdrawal_credentials, amount, signature, self.to_little_endian_64(self.deposit_count))
+    log.DepositEvent(pubkey, withdrawal_credentials, amount, signature, self.to_little_endian_64(self.deposit_count))
 
-    # Compute `DepositData` root
+    # Compute `DepositData` hash tree root
     zero_bytes32: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
     pubkey_root: bytes32 = sha256(concat(pubkey, slice(zero_bytes32, start=0, len=64 - PUBKEY_LENGTH)))
     signature_root: bytes32 = sha256(concat(
@@ -91,7 +92,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
         sha256(concat(amount, slice(zero_bytes32, start=0, len=32 - AMOUNT_LENGTH), signature_root)),
     ))
 
-    # Add `DepositData` root to Merkle tree (update a single `branch` node)
+    # Add `DepositData` hash tree root to Merkle tree (update a single `branch` node)
     self.deposit_count += 1
     size: uint256 = self.deposit_count
     for height in range(DEPOSIT_CONTRACT_TREE_DEPTH):

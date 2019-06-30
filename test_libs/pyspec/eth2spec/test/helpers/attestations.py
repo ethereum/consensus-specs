@@ -67,8 +67,8 @@ def get_valid_attestation(spec, state, slot=None, signed=False):
     )
 
     committee_size = len(crosslink_committee)
-    aggregation_bits = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
-    custody_bits = Bitlist[spec.MAX_INDICES_PER_ATTESTATION](*([0] * committee_size))
+    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
+    custody_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     attestation = spec.Attestation(
         aggregation_bits=aggregation_bits,
         data=attestation_data,
