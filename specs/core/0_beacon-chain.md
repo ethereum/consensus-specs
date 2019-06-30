@@ -72,7 +72,7 @@
             - [`compute_epoch_of_slot`](#compute_epoch_of_slot)
             - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
             - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
-            - [`compute_bls_domain`](#compute_bls_domain)
+            - [`compute_domain`](#compute_domain)
         - [Beacon state accessors](#beacon-state-accessors)
             - [`get_current_epoch`](#get_current_epoch)
             - [`get_previous_epoch`](#get_previous_epoch)
@@ -771,10 +771,10 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     return Epoch(epoch + 1 + ACTIVATION_EXIT_DELAY)
 ```
 
-#### `compute_bls_domain`
+#### `compute_domain`
 
 ```python
-def compute_bls_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> int:
+def compute_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> int:
     """
     Return the BLS domain for the ``domain_type`` and ``fork_version``.
     """
@@ -1010,7 +1010,7 @@ def get_domain(state: BeaconState, domain_type: uint64, message_epoch: Epoch=Non
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return compute_bls_domain(domain_type, fork_version)
+    return compute_domain(domain_type, fork_version)
 ```
 
 #### `get_indexed_attestation`
@@ -1685,8 +1685,8 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) for new validators.
         # Note: The deposit contract does not check signatures.
-        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_bls_domain`
-        domain = compute_bls_domain(DOMAIN_DEPOSIT)
+        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`
+        domain = compute_domain(DOMAIN_DEPOSIT)
         if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, domain):
             return
 
