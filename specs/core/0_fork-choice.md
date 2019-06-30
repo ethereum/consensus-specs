@@ -171,8 +171,6 @@ def on_block(store: Store, block: BeaconBlock) -> None:
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
         store.justified_checkpoint = state.current_justified_checkpoint
-    elif state.previous_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-        store.justified_checkpoint = state.previous_justified_checkpoint
 
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
