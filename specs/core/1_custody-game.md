@@ -599,7 +599,7 @@ def process_chunk_challenge_response(state: BeaconState,
     # Verify minimum delay
     assert get_current_epoch(state) >= challenge.inclusion_epoch + ACTIVATION_EXIT_DELAY
     # Verify the chunk matches the crosslink data root
-    assert verify_merkle_branch(
+    assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.data_branch,
         depth=challenge.depth,
@@ -624,7 +624,7 @@ def process_bit_challenge_response(state: BeaconState,
     responder = state.validators[challenge.responder_index]
     assert not responder.slashed
     # Verify the chunk matches the crosslink data root
-    assert verify_merkle_branch(
+    assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
         branch=response.data_branch,
         depth=ceillog2(challenge.chunk_count),
@@ -632,7 +632,7 @@ def process_bit_challenge_response(state: BeaconState,
         root=challenge.data_root,
     )
     # Verify the chunk bit leaf matches the challenge data
-    assert verify_merkle_branch(
+    assert is_valid_merkle_branch(
         leaf=response.chunk_bits_leaf,
         branch=response.chunk_bits_branch,
         depth=ceillog2(challenge.chunk_count) >> 8,

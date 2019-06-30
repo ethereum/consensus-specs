@@ -49,17 +49,23 @@
         - [Beacon state](#beacon-state)
             - [`BeaconState`](#beaconstate)
     - [Helper functions](#helper-functions)
-        - [Math and crypto](#math-and-crypto)
+        - [Math](#math)
             - [`int_to_bytes`](#int_to_bytes)
             - [`bytes_to_int`](#bytes_to_int)
             - [`integer_squareroot`](#integer_squareroot)
             - [`xor`](#xor)
+        - [Crypto](#crypto)
             - [`hash`](#hash)
             - [`hash_tree_root`](#hash_tree_root)
             - [`signing_root`](#signing_root)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+        - [Predicates](#predicates)
+            - [`is_active_validator`](#is_active_validator)
+            - [`is_slashable_validator`](#is_slashable_validator)
+            - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
+            - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
         - [Beacon state getters](#beacon-state-getters)
             - [`get_current_epoch`](#get_current_epoch)
             - [`get_previous_epoch`](#get_previous_epoch)
@@ -71,8 +77,7 @@
             - [`bls_domain`](#bls_domain)
             - [`slot_to_epoch`](#slot_to_epoch)
             - [`epoch_start_slot`](#epoch_start_slot)
-            - [`is_active_validator`](#is_active_validator)
-            - [`is_slashable_validator`](#is_slashable_validator)
+
             - [`increase_balance`](#increase_balance)
             - [`decrease_balance`](#decrease_balance)
             - [`get_shard_delta`](#get_shard_delta)
@@ -83,8 +88,8 @@
             - [`get_compact_committees_root`](#get_compact_committees_root)
             - [`get_seed`](#get_seed)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            - [`verify_merkle_branch`](#verify_merkle_branch)
-            - [`get_shuffled_index`](#get_shuffled_index)
+
+            - [`shuffle_index`](#shuffle_index)
             - [`compute_committee`](#compute_committee)
             - [`get_crosslink_committee`](#get_crosslink_committee)
             - [`get_attesting_indices`](#get_attesting_indices)
@@ -92,8 +97,7 @@
             - [`get_domain`](#get_domain)
             - [`get_indexed_attestation`](#get_indexed_attestation)
             - [`validate_indexed_attestation`](#validate_indexed_attestation)
-            - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
-            - [`get_delayed_activation_exit_epoch`](#get_delayed_activation_exit_epoch)
+            - [`delayed_activation_exit_epoch`](#delayed_activation_exit_epoch)
             - [`get_churn_limit`](#get_churn_limit)
         - [Routines for updating validator status](#routines-for-updating-validator-status)
             - [`initiate_validator_exit`](#initiate_validator_exit)
@@ -619,6 +623,59 @@ The `hash` function is SHA256.
 
 `bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, as defined in the [BLS Signature spec](../bls_signature.md#bls_aggregate_pubkeys).
 
+### Predicates
+
+#### `is_valid_merkle_branch`
+
+```python
+def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: int, index: int, root: Hash) -> bool:
+    """
+    Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
+    """
+    value = leaf
+    for i in range(depth):
+        if index // (2**i) % 2:
+            value = hash(branch[i] + value)
+        else:
+            value = hash(value + branch[i])
+    return value == root
+```
+
+#### `is_active_validator`
+
+```python
+def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
+    """
+    Check if ``validator`` is active.
+    """
+    return validator.activation_epoch <= epoch < validator.exit_epoch
+```
+
+#### `is_slashable_validator`
+
+```python
+def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
+    """
+    Check if ``validator`` is slashable.
+    """
+    return (not validator.slashed) and (validator.activation_epoch <= epoch < validator.withdrawable_epoch)
+```
+
+#### `is_slashable_attestation_data`
+
+```python
+def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationData) -> bool:
+    """
+    Check if ``data_1`` and ``data_2`` are slashable according to Casper FFG rules.
+    """
+    return (
+        # Double vote
+        (data_1 != data_2 and data_1.target.epoch == data_2.target.epoch) or
+        # Surround vote
+        (data_1.source.epoch < data_2.source.epoch and data_2.target.epoch < data_1.target.epoch)
+    )
+```
+
 ### Beacon state getters
 
 #### `get_current_epoch`
@@ -889,22 +946,6 @@ def get_attesting_indices(state: BeaconState,
 
 
 
-#### `verify_merkle_branch`
-
-```python
-def verify_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: int, index: int, root: Hash) -> bool:
-    """
-    Verify that the ``leaf`` at ``index`` verifies against ``root`` on the Merkle ``branch``.
-    """
-    value = leaf
-    for i in range(depth):
-        if index // (2**i) % 2:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    return value == root
-```
-
 
 #### `bls_domain`
 
@@ -936,24 +977,14 @@ def epoch_start_slot(epoch: Epoch) -> Slot:
     return Slot(epoch * SLOTS_PER_EPOCH)
 ```
 
-#### `is_active_validator`
+#### `delayed_activation_exit_epoch`
 
 ```python
-def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
+def delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
     """
-    Check if ``validator`` is active.
+    Return the epoch at which an activation or exit triggered in ``epoch`` takes effect.
     """
-    return validator.activation_epoch <= epoch < validator.exit_epoch
-```
-
-#### `is_slashable_validator`
-
-```python
-def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
-    """
-    Check if ``validator`` is slashable.
-    """
-    return (not validator.slashed) and (validator.activation_epoch <= epoch < validator.withdrawable_epoch)
+    return Epoch(epoch + 1 + ACTIVATION_EXIT_DELAY)
 ```
 
 #### `increase_balance`
@@ -976,10 +1007,10 @@ def decrease_balance(state: BeaconState, index: ValidatorIndex, delta: Gwei) -> 
     state.balances[index] = 0 if delta > state.balances[index] else state.balances[index] - delta
 ```
 
-#### `get_shuffled_index`
+#### `shuffle_index`
 
 ```python
-def get_shuffled_index(index: ValidatorIndex, index_count: int, seed: Hash) -> ValidatorIndex:
+def shuffle_index(index: ValidatorIndex, index_count: int, seed: Hash) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -1010,7 +1041,7 @@ def compute_committee(indices: Sequence[ValidatorIndex],
                       seed: Hash, index: int, count: int) -> Sequence[ValidatorIndex]:
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
-    return [indices[get_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
+    return [indices[shuffle_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
 ```
 
 #### `validate_indexed_attestation`
@@ -1046,31 +1077,6 @@ def validate_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     )
 ```
 
-#### `is_slashable_attestation_data`
-
-```python
-def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationData) -> bool:
-    """
-    Check if ``data_1`` and ``data_2`` are slashable according to Casper FFG rules.
-    """
-    return (
-        # Double vote
-        (data_1 != data_2 and data_1.target.epoch == data_2.target.epoch) or
-        # Surround vote
-        (data_1.source.epoch < data_2.source.epoch and data_2.target.epoch < data_1.target.epoch)
-    )
-```
-
-#### `get_delayed_activation_exit_epoch`
-
-```python
-def get_delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
-    """
-    Return the epoch at which an activation or exit triggered in ``epoch`` takes effect.
-    """
-    return Epoch(epoch + 1 + ACTIVATION_EXIT_DELAY)
-```
-
 ### Routines for updating validator status
 
 *Note*: All functions in this section mutate `state`.
@@ -1089,7 +1095,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = max(exit_epochs + [get_delayed_activation_exit_epoch(get_current_epoch(state))])
+    exit_queue_epoch = max(exit_epochs + [delayed_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_churn_limit(state):
         exit_queue_epoch += Epoch(1)
@@ -1477,13 +1483,13 @@ def process_registry_updates(state: BeaconState) -> None:
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
-        validator.activation_epoch >= get_delayed_activation_exit_epoch(state.finalized_checkpoint.epoch)
+        validator.activation_epoch >= delayed_activation_exit_epoch(state.finalized_checkpoint.epoch)
     ], key=lambda index: state.validators[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_churn_limit(state)]:
         validator = state.validators[index]
         if validator.activation_epoch == FAR_FUTURE_EPOCH:
-            validator.activation_epoch = get_delayed_activation_exit_epoch(get_current_epoch(state))
+            validator.activation_epoch = delayed_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
@@ -1703,7 +1709,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     Process an Eth1 deposit, registering a validator or increasing its balance.
     """
     # Verify the Merkle branch
-    assert verify_merkle_branch(
+    assert is_valid_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         branch=deposit.proof,
         depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # add 1 for the SSZ length mix-in
