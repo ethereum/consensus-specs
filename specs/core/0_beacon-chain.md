@@ -776,7 +776,7 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 ```python
 def compute_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> int:
     """
-    Return the BLS domain for the ``domain_type`` and ``fork_version``.
+    Return the domain for the ``domain_type`` and ``fork_version``.
     """
     return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
 ```
