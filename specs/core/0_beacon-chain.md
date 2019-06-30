@@ -1688,7 +1688,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert verify_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # add 1 for the SSZ length mix-in
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the `List` length mix-in
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
     )
