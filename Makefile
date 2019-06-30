@@ -29,7 +29,7 @@ COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
 all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
-# deletes everything excpet the venvs
+# deletes everything except the venvs
 partial_clean:
 	rm -rf $(YAML_TEST_DIR)
 	rm -rf $(GENERATOR_VENVS)
