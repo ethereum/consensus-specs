@@ -131,7 +131,7 @@ def test_invalid_sig_top_up(spec, state):
 def test_invalid_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
-    withdrawal_credentials = spec.int_to_bytes(spec.BLS_WITHDRAWAL_PREFIX, length=1) + spec.hash(b"junk")[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
     deposit = prepare_state_and_deposit(
         spec,
         state,
