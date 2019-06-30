@@ -29,7 +29,8 @@ def bls_verify(pubkey, message_hash, signature, domain):
 
 @only_with_bls(alt_return=True)
 def bls_verify_multiple(pubkeys, message_hashes, signature, domain):
-    return bls.verify_multiple(pubkeys, message_hashes, signature, domain)
+    return bls.verify_multiple(pubkeys=pubkeys, message_hashes=message_hashes,
+                               signature=signature, domain=int.from_bytes(domain, byteorder='little'))
 
 
 @only_with_bls(alt_return=STUB_PUBKEY)
