@@ -1100,6 +1100,10 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 
 The genesis state `genesis_state` is the return value of calling `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` only if `is_valid_genesis_state(genesis_state) is True`.
 
+Implementations can choose to support different (more optimized) variations of the below initialization approach:
+ - Build the `genesis_state` from a stream of deposits by incrementally updating the `state.eth1_data.deposit_root`.
+ - Compute deposit proofs for the final `state.eth1_data.deposit_root`, and process as a pre-determined collection.
+
 *Note*: The two constants `MIN_GENESIS_TIME` and `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` have yet to be agreed upon by the community, and can be updated as necessary.
 
 ```python
@@ -1671,7 +1675,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert verify_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         proof=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # add 1 for the SSZ length mix-in
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
     )
