@@ -14,6 +14,7 @@
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
         - [Signature domains](#signature-domains)
+        - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
         - [`ShardAttestation`](#shardattestation)

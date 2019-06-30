@@ -12,7 +12,7 @@
         - [Time parameters](#time-parameters)
     - [Fork choice](#fork-choice)
         - [Helpers](#helpers)
-            - [`Checkpoint`](#checkpoint)
+            - [`LatestMessage`](#latestmessage)
             - [`Store`](#store)
             - [`get_genesis_store`](#get_genesis_store)
             - [`get_ancestor`](#get_ancestor)
