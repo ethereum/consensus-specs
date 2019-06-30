@@ -217,11 +217,7 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
     return bls_sign(
         privkey=privkey,  # privkey stored locally
         message_hash=hash_tree_root(slot_to_epoch(block.slot)),
-        domain=get_domain(
-            state=state,
-            domain_type=DOMAIN_RANDAO,
-            message_epoch=slot_to_epoch(block.slot),
-        )
+        domain=get_domain(state, DOMAIN_RANDAO, slot_to_epoch(block.slot))
     )
 ```
 
@@ -258,11 +254,7 @@ def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: 
     return bls_sign(
         privkey=privkey,  # privkey stored locally
         message_hash=signing_root(header),
-        domain=get_domain(
-            state=state,
-            domain_type=DOMAIN_BEACON_PROPOSER,
-            message_epoch=slot_to_epoch(header.slot),
-        )
+        domain=get_domain(state, DOMAIN_BEACON_PROPOSER, slot_to_epoch(header.slot))
     )
 ```
 
@@ -364,11 +356,7 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
     return bls_sign(
         privkey=privkey,  # privkey stored locally
         message_hash=hash_tree_root(attestation_data_and_custody_bit),
-        domain=get_domain(
-            state=state,
-            domain_type=DOMAIN_ATTESTATION,
-            message_epoch=attestation.data.target.epoch,
-        )
+        domain=get_domain(state, DOMAIN_ATTESTATION, attestation.data.target.epoch)
     )
 ```
 
