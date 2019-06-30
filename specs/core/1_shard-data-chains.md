@@ -182,8 +182,8 @@ def get_persistent_committee(state: BeaconState,
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(list(set(
-        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)] +
-        [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
+        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)]
+        + [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
     )))
 ```
 
@@ -399,8 +399,8 @@ def is_valid_beacon_attestation(shard: Shard,
         assert candidate.data.previous_crosslink.data_root == Hash()
     else:
         previous_attestation = next(
-            (attestation for attestation in valid_attestations if
-                attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root),
+            (attestation for attestation in valid_attestations
+             if attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root),
             None,
         )
         assert previous_attestation is not None
