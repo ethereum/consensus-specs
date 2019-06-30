@@ -6,8 +6,8 @@ A BLS uncompressed-hash to G2.
 
 ```yaml
 input: 
-  message: bytes32,
-  domain: bytes -- any number
+  message: bytes32
+  domain: uint64 -- the BLS domain
 output: List[List[bytes48]] -- 3 lists, each a length of two
 ```
 
