@@ -56,18 +56,18 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ## Terminology
 
-* **Custody game**—
-* **Custody period**—
-* **Custody chunk**—
-* **Custody chunk bit**—
-* **Custody chunk challenge**—
-* **Custody bit**—
-* **Custody bit challenge**—
-* **Custody key**—
-* **Custody key reveal**—
-* **Custody key mask**—
-* **Custody response**—
-* **Custody response deadline**—
+- **Custody game**—
+- **Custody period**—
+- **Custody chunk**—
+- **Custody chunk bit**—
+- **Custody chunk challenge**—
+- **Custody bit**—
+- **Custody bit challenge**—
+- **Custody key**—
+- **Custody key reveal**—
+- **Custody key mask**—
+- **Custody response**—
+- **Custody response deadline**—
 
 ## Constants
 
@@ -112,7 +112,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value |
 | - | - |
 | `DOMAIN_CUSTODY_BIT_CHALLENGE` | `6` |
-
 
 ### TODO PLACEHOLDER
 
