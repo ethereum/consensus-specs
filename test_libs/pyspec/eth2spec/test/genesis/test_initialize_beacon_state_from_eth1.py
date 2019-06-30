@@ -4,20 +4,11 @@ from eth2spec.test.helpers.deposits import (
 )
 
 
-def create_valid_beacon_state(spec):
-    deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
-    deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
-
-    eth1_block_hash = b'\x12' * 32
-    eth1_timestamp = spec.MIN_GENESIS_TIME
-    return spec.initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)
-
-
 @with_phases(['phase0'])
 @spectest_with_bls_switch
 def test_initialize_beacon_state_from_eth1(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
-    deposits, deposit_root = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
+    deposits, deposit_root = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE, signed=True)
 
     eth1_block_hash = b'\x12' * 32
     eth1_timestamp = spec.MIN_GENESIS_TIME

@@ -6,7 +6,7 @@ from eth2spec.test.helpers.deposits import (
 
 def create_valid_beacon_state(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
-    deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
+    deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE, signed=True)
 
     eth1_block_hash = b'\x12' * 32
     eth1_timestamp = spec.MIN_GENESIS_TIME
@@ -64,7 +64,7 @@ def test_is_valid_genesis_state_false_not_enough_balance(spec):
 @spectest_with_bls_switch
 def test_is_valid_genesis_state_true_one_more_validator(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 1
-    deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
+    deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE, signed=True)
 
     eth1_block_hash = b'\x12' * 32
     eth1_timestamp = spec.MIN_GENESIS_TIME
@@ -77,7 +77,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
 @spectest_with_bls_switch
 def test_is_valid_genesis_state_flase_not_enough_validator(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
-    deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE)
+    deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE, signed=True)
 
     eth1_block_hash = b'\x12' * 32
     eth1_timestamp = spec.MIN_GENESIS_TIME
