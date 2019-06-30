@@ -214,11 +214,8 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is obtained 
 
 ```python
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
-    return bls_sign(
-        privkey=privkey,  # privkey stored locally
-        message_hash=hash_tree_root(slot_to_epoch(block.slot)),
-        domain=get_domain(state, DOMAIN_RANDAO, slot_to_epoch(block.slot))
-    )
+    domain = get_domain(state, DOMAIN_RANDAO, slot_to_epoch(block.slot))
+    return bls_sign(privkey, hash_tree_root(slot_to_epoch(block.slot)), domain)
 ```
 
 ##### Eth1 Data
@@ -251,11 +248,8 @@ Set `header.signature = block_signature` where `block_signature` is obtained fro
 
 ```python
 def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
-    return bls_sign(
-        privkey=privkey,  # privkey stored locally
-        message_hash=signing_root(header),
-        domain=get_domain(state, DOMAIN_BEACON_PROPOSER, slot_to_epoch(header.slot))
-    )
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, slot_to_epoch(header.slot))
+    return bls_sign(privkey, signing_root(header), domain)
 ```
 
 #### Block body
@@ -353,11 +347,8 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
         custody_bit=0b0,
     )
 
-    return bls_sign(
-        privkey=privkey,  # privkey stored locally
-        message_hash=hash_tree_root(attestation_data_and_custody_bit),
-        domain=get_domain(state, DOMAIN_ATTESTATION, attestation.data.target.epoch)
-    )
+    domain = get_domain(state, DOMAIN_ATTESTATION, attestation.data.target.epoch)
+    return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
 ```
 
 ## How to avoid slashing
