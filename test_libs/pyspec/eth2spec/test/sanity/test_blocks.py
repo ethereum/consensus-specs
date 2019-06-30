@@ -188,8 +188,8 @@ def test_attester_slashing(spec, state):
     pre_state = deepcopy(state)
 
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    validator_index = (attester_slashing.attestation_1.custody_bit_0_indices +
-                       attester_slashing.attestation_1.custody_bit_1_indices)[0]
+    validator_index = (attester_slashing.attestation_1.custody_bit_0_indices
+                       + attester_slashing.attestation_1.custody_bit_1_indices)[0]
 
     assert not state.validators[validator_index].slashed
 

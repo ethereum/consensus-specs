@@ -16,6 +16,7 @@
         - [Max operations per block](#max-operations-per-block)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
         - [Signature domains](#signature-domains)
+        - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [Custody objects](#custody-objects)
             - [`CustodyChunkChallenge`](#custodychunkchallenge)
@@ -33,6 +34,7 @@
     - [Helpers](#helpers)
         - [`ceillog2`](#ceillog2)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
+        - [`get_bit`](#get_bit)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
@@ -56,18 +58,18 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ## Terminology
 
-* **Custody game**—
-* **Custody period**—
-* **Custody chunk**—
-* **Custody chunk bit**—
-* **Custody chunk challenge**—
-* **Custody bit**—
-* **Custody bit challenge**—
-* **Custody key**—
-* **Custody key reveal**—
-* **Custody key mask**—
-* **Custody response**—
-* **Custody response deadline**—
+- **Custody game**—
+- **Custody period**—
+- **Custody chunk**—
+- **Custody chunk bit**—
+- **Custody chunk challenge**—
+- **Custody bit**—
+- **Custody bit challenge**—
+- **Custody key**—
+- **Custody key reveal**—
+- **Custody key mask**—
+- **Custody response**—
+- **Custody response deadline**—
 
 ## Constants
 
@@ -112,7 +114,6 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | Name | Value |
 | - | - |
 | `DOMAIN_CUSTODY_BIT_CHALLENGE` | `6` |
-
 
 ### TODO PLACEHOLDER
 
