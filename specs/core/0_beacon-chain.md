@@ -81,9 +81,9 @@
             - [`get_block_root_at_slot`](#get_block_root_at_slot)
             - [`get_randao_mix`](#get_randao_mix)
             - [`get_active_validator_indices`](#get_active_validator_indices)
-            - [`get_churn_limit`](#get_churn_limit)
-            - [`get_committee_count`](#get_committee_count)
+            - [`get_validator_churn_limit`](#get_validator_churn_limit)
             - [`get_seed`](#get_seed)
+            - [`get_committee_count`](#get_committee_count)
             - [`get_crosslink_committee`](#get_crosslink_committee)
             - [`get_start_shard`](#get_start_shard)
             - [`get_shard_delta`](#get_shard_delta)
@@ -713,9 +713,11 @@ def shuffle_index(index: ValidatorIndex, index_count: int, seed: Hash) -> Valida
 
 ```python
 def compute_committee(indices: Sequence[ValidatorIndex],
-                      seed: Hash, index: int, count: int) -> Sequence[ValidatorIndex]:
+                      seed: Hash,
+                      index: int,
+                      count: int) -> Sequence[ValidatorIndex]:
     """
-    Return the committee corresponding to ``indices``, ``seed``, ``index`` and committee ``count``.
+    Return the committee corresponding to ``indices``, ``seed``, ``index``, and committee ``count``.
     """
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
@@ -780,7 +782,7 @@ def epoch_first_slot(epoch: Epoch) -> Slot:
 ```python
 def delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
     """
-    Return the epoch at which an activation or exit triggered in ``epoch`` takes effect.
+    Return the epoch where validator activations and exits initiated in ``epoch`` take effect.
     """
     return Epoch(epoch + 1 + ACTIVATION_EXIT_DELAY)
 ```
@@ -812,7 +814,7 @@ def get_current_epoch(state: BeaconState) -> Epoch:
 ```python
 def get_previous_epoch(state: BeaconState) -> Epoch:
     """`
-    Return the previous epoch (current epoch if at ``GENESIS_EPOCH``).
+    Return the previous epoch (unless the current epoch is ``GENESIS_EPOCH``).
     """
     current_epoch = get_current_epoch(state)
     return GENESIS_EPOCH if current_epoch == GENESIS_EPOCH else Epoch(current_epoch - 1)
@@ -859,33 +861,15 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[V
     return [ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch)]
 ```
 
-#### `get_churn_limit`
+#### `get_validator_churn_limit`
 
 ```python
-def get_churn_limit(state: BeaconState) -> int:
+def get_validator_churn_limit(state: BeaconState) -> int:
     """
     Return the validator churn limit for the current epoch.
     """
     active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
     return max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
-```
-
-
-#### `get_committee_count`
-
-```python
-def get_committee_count(state: BeaconState, epoch: Epoch) -> int:
-    """
-    Return the number of committees at ``epoch``.
-    """
-    active_validator_indices = get_active_validator_indices(state, epoch)
-    return max(
-        1,
-        min(
-            SHARD_COUNT // SLOTS_PER_EPOCH,
-            len(active_validator_indices) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
-        )
-    ) * SLOTS_PER_EPOCH
 ```
 
 #### `get_seed`
@@ -895,11 +879,25 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the seed at ``epoch``.
     """
-    return hash(
-        get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD)) +  # Avoid underflow
-        hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, epoch))) +
-        int_to_bytes(epoch, length=32)
-    )
+    randao_mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
+    active_indices_root = hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, epoch)))
+    return hash(randao_mix + active_indices_root + int_to_bytes(epoch, length=32))
+```
+
+#### `get_committee_count`
+
+```python
+def get_committee_count(state: BeaconState, epoch: Epoch) -> int:
+    """
+    Return the number of committees at ``epoch``.
+    """
+    return max(
+        1,
+        min(
+            SHARD_COUNT // SLOTS_PER_EPOCH,
+            len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
+        )
+    ) * SLOTS_PER_EPOCH
 ```
 
 #### `get_crosslink_committee`
@@ -1010,6 +1008,16 @@ def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     return Gwei(max(sum([state.validators[index].effective_balance for index in indices]), 1))
 ```
 
+#### `get_total_active_balance`
+
+```python
+def get_total_active_balance(state: BeaconState) -> Gwei:
+    """
+    Return the combined effective balance of the active validators.
+    """
+    return get_total_balance(state, set(get_active_validator_indices(state, get_current_epoch(state))))
+```
+
 #### `get_domain`
 
 ```python
@@ -1093,7 +1101,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
     exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
     exit_queue_epoch = max(exit_epochs + [delayed_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
-    if exit_queue_churn >= get_churn_limit(state):
+    if exit_queue_churn >= get_validator_churn_limit(state):
         exit_queue_epoch += Epoch(1)
 
     # Set validator exit epoch and withdrawable epoch
@@ -1219,11 +1227,9 @@ def process_slot(state: BeaconState) -> None:
     # Cache state root
     previous_state_root = hash_tree_root(state)
     state.state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
-
     # Cache latest block header state root
     if state.latest_block_header.state_root == ZERO_HASH:
         state.latest_block_header.state_root = previous_state_root
-
     # Cache block root
     previous_block_root = signing_root(state.latest_block_header)
     state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
@@ -1247,11 +1253,6 @@ def process_epoch(state: BeaconState) -> None:
 ```
 
 #### Helper functions
-
-```python
-def get_total_active_balance(state: BeaconState) -> Gwei:
-    return get_total_balance(state, set(get_active_validator_indices(state, get_current_epoch(state))))
-```
 
 ```python
 def get_matching_source_attestations(state: BeaconState, epoch: Epoch) -> Sequence[PendingAttestation]:
@@ -1278,7 +1279,7 @@ def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Sequence
 ```python
 def get_unslashed_attesting_indices(state: BeaconState,
                                     attestations: Sequence[PendingAttestation]) -> Set[ValidatorIndex]:
-    output = set()  # Type: Set[ValidatorIndex]
+    output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
         output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
     return set(filter(lambda index: not state.validators[index].slashed, list(output)))
@@ -1477,7 +1478,7 @@ def process_registry_updates(state: BeaconState) -> None:
         validator.activation_epoch >= delayed_activation_exit_epoch(state.finalized_checkpoint.epoch)
     ], key=lambda index: state.validators[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
-    for index in activation_queue[:get_churn_limit(state)]:
+    for index in activation_queue[:get_validator_churn_limit(state)]:
         validator = state.validators[index]
         if validator.activation_epoch == FAR_FUTURE_EPOCH:
             validator.activation_epoch = delayed_activation_exit_epoch(get_current_epoch(state))
@@ -1703,13 +1704,10 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     amount = deposit.data.amount
     validator_pubkeys = [v.pubkey for v in state.validators]
     if pubkey not in validator_pubkeys:
-        # Verify the deposit signature (proof of possession).
-        # Invalid signatures are allowed by the deposit contract,
-        # and hence included on-chain, but must not be processed.
+        # Verify the deposit signature (proof of possession) for new validators.
+        # Note: The deposit contract does not check signatures.
         # Note: Deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
-        if not bls_verify(
-            pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)
-        ):
+        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)):
             return
 
         # Add validator and balance entries
@@ -1757,14 +1755,14 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
     assert state.balances[transfer.sender] >= max(transfer.amount + transfer.fee, transfer.amount, transfer.fee)
     # A transfer is valid in only one slot
     assert state.slot == transfer.slot
-    # Sender must satisfy at least one of the following conditions in the parenthesis:
+    # Sender must satisfy at least one of the following:
     assert (
-        # * Has not been activated
+        # 1) Never have been eligible for activation
         state.validators[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
-        # * Is withdrawable
+        # 2) Be withdrawable
         get_current_epoch(state) >= state.validators[transfer.sender].withdrawable_epoch or
-        # * Balance after transfer is more than the effective balance threshold
-        transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE <= state.balances[transfer.sender]
+        # 3) Have a balance of at least MAX_EFFECTIVE_BALANCE after the transfer
+        state.balances[transfer.sender] >= transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE
     )
     # Verify that the pubkey is valid
     assert (
