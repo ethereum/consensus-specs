@@ -16,13 +16,13 @@ def create_valid_beacon_state(spec):
 def run_is_valid_genesis_state(spec, state, valid=True):
     """
     Run ``is_valid_genesis_state``, yielding:
-      - state ('state')
+      - genesis ('state')
       - is_valid ('is_valid')
-    If ``valid == False``, run expecting ``AssertionError``
     """
-    yield state
+    yield 'genesis', state
     is_valid = spec.is_valid_genesis_state(state)
     yield 'is_valid', is_valid
+    assert is_valid == valid
 
 
 @with_phases(['phase0'])
