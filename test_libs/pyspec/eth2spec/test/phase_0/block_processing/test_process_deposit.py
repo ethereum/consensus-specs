@@ -195,7 +195,7 @@ def test_bad_merkle_proof(spec, state):
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount)
 
     # mess up merkle branch
-    deposit.proof[5] = spec.ZERO_HASH
+    deposit.proof[5] = spec.Hash()
 
     sign_deposit_data(spec, deposit.data, privkeys[validator_index], state=state)
 

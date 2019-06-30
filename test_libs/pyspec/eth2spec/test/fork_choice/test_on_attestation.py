@@ -14,7 +14,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
         else:
             assert False
 
-    indexed_attestation = spec.convert_to_indexed(state, attestation)
+    indexed_attestation = spec.get_indexed_attestation(state, attestation)
     spec.on_attestation(store, attestation)
     assert (
         store.latest_messages[indexed_attestation.custody_bit_0_indices[0]] ==

@@ -13,6 +13,6 @@ def get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False):
         sign_attestation(spec, state, attestation_2)
 
     return spec.AttesterSlashing(
-        attestation_1=spec.convert_to_indexed(state, attestation_1),
-        attestation_2=spec.convert_to_indexed(state, attestation_2),
+        attestation_1=spec.get_indexed_attestation(state, attestation_1),
+        attestation_2=spec.get_indexed_attestation(state, attestation_2),
     )

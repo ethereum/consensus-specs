@@ -84,7 +84,7 @@ def get_period_data(block: ExtendedBeaconBlock, shard_id: Shard, later: bool) ->
     indices = get_period_committee(block.state, shard_id, period_start, 0, committee_count)
     return PeriodData(
         validator_count,
-        generate_seed(block.state, period_start),
+        get_seed(block.state, period_start),
         [block.state.validators[i] for i in indices],
     )
 ```
