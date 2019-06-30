@@ -1,10 +1,10 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    SSZValue, uint, Container, boolean
+    uint, Container, boolean
 )
 
 
-def encode(value: SSZValue, include_hash_tree_roots=False):
+def encode(value, include_hash_tree_roots=False):
     if isinstance(value, uint):
         # Larger uints are boxed and the class declares their byte length
         if value.type().byte_len > 8:

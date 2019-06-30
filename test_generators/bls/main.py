@@ -27,9 +27,6 @@ def hex_to_int(x: str) -> int:
     return int(x, 16)
 
 
-# Note: even though a domain is only an uint64,
-# To avoid issues with YAML parsers that are limited to 53-bit (JS language limit)
-# It is serialized as an hex string as well.
 DOMAINS = [
     0,
     1,
@@ -92,7 +89,7 @@ def case01_message_hash_G2_uncompressed():
             yield {
                 'input': {
                     'message': '0x' + msg.hex(),
-                    'domain': int_to_hex(domain)
+                    'domain': domain
                 },
                 'output': hash_message(msg, domain)
             }
@@ -104,7 +101,7 @@ def case02_message_hash_G2_compressed():
             yield {
                 'input': {
                     'message': '0x' + msg.hex(),
-                    'domain': int_to_hex(domain)
+                    'domain': domain
                 },
                 'output': hash_message_compressed(msg, domain)
             }
@@ -129,7 +126,7 @@ def case04_sign_messages():
                     'input': {
                         'privkey': int_to_hex(privkey),
                         'message': '0x' + message.hex(),
-                        'domain': int_to_hex(domain)
+                        'domain': domain
                     },
                     'output': '0x' + sig.hex()
                 }
