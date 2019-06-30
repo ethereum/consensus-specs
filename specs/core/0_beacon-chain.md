@@ -146,10 +146,10 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
+| `Hash` | `Bytes32` | a hash |
 | `Version` | `Bytes4` | a fork version number |
 | `DomainType` | `Bytes4` | a signature domain type |
 | `Domain` | `Bytes8` | a signature domain |
-| `Hash` | `Bytes32` | a hash |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -771,7 +771,7 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `bls_domain`
 
 ```python
-def bls_domain(domain_type: DomainType, fork_version: bytes=b'\x00' * 4) -> Domain:
+def bls_domain(domain_type: DomainType, fork_version: Version=Version()) -> Domain:
     """
     Return the BLS domain for the ``domain_type`` and ``fork_version``.
     """
