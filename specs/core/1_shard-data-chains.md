@@ -399,7 +399,7 @@ def is_valid_beacon_attestation(shard: Shard,
     else:
         previous_attestation = next(
             (attestation for attestation in valid_attestations
-            if attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root),
+             if attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root),
             None,
         )
         assert previous_attestation is not None
