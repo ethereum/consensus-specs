@@ -71,7 +71,7 @@
             - [`validate_indexed_attestation`](#validate_indexed_attestation)
             - [`slot_to_epoch`](#slot_to_epoch)
             - [`epoch_start_slot`](#epoch_start_slot)
-            - [`delayed_activation_exit_epoch`](#delayed_activation_exit_epoch)
+            - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
             - [`bls_domain`](#bls_domain)
         - [Beacon state accessors](#beacon-state-accessors)
             - [`get_current_epoch`](#get_current_epoch)
@@ -754,10 +754,10 @@ def epoch_start_slot(epoch: Epoch) -> Slot:
     return Slot(epoch * SLOTS_PER_EPOCH)
 ```
 
-#### `delayed_activation_exit_epoch`
+#### `compute_activation_exit_epoch`
 
 ```python
-def delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
+def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     """
     Return the epoch during which validator activations and exits initiated in ``epoch`` take effect.
     """
@@ -1075,7 +1075,7 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
     # Compute exit queue epoch
     exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
-    exit_queue_epoch = max(exit_epochs + [delayed_activation_exit_epoch(get_current_epoch(state))])
+    exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
     exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
     if exit_queue_churn >= get_validator_churn_limit(state):
         exit_queue_epoch += Epoch(1)
@@ -1450,13 +1450,13 @@ def process_registry_updates(state: BeaconState) -> None:
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators) if
         validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
-        validator.activation_epoch >= delayed_activation_exit_epoch(state.finalized_checkpoint.epoch)
+        validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
     ], key=lambda index: state.validators[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_validator_churn_limit(state)]:
         validator = state.validators[index]
         if validator.activation_epoch == FAR_FUTURE_EPOCH:
-            validator.activation_epoch = delayed_activation_exit_epoch(get_current_epoch(state))
+            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
