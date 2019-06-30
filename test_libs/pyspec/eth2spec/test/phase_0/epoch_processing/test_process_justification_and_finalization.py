@@ -10,8 +10,8 @@ def run_process_just_and_fin(spec, state):
 
 def get_shards_for_slot(spec, state, slot):
     epoch = spec.slot_to_epoch(slot)
-    epoch_start_shard = spec.get_epoch_start_shard(state, epoch)
-    committees_per_slot = spec.get_epoch_committee_count(state, epoch) // spec.SLOTS_PER_EPOCH
+    epoch_start_shard = spec.get_start_shard(state, epoch)
+    committees_per_slot = spec.get_committee_count(state, epoch) // spec.SLOTS_PER_EPOCH
     shard = (epoch_start_shard + committees_per_slot * (slot % spec.SLOTS_PER_EPOCH)) % spec.SHARD_COUNT
     return [shard + i for i in range(committees_per_slot)]
 
@@ -33,8 +33,8 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     total_balance = spec.get_total_active_balance(state)
     remaining_balance = total_balance * 2 // 3
 
-    epoch_start_slot = spec.get_epoch_start_slot(epoch)
-    for slot in range(epoch_start_slot, epoch_start_slot + spec.SLOTS_PER_EPOCH):
+    start_slot = spec.epoch_start_slot(epoch)
+    for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
         for shard in get_shards_for_slot(spec, state, slot):
             # Check if we already have had sufficient balance. (and undone if we don't want it).
             # If so, do not create more attestations. (we do not have empty pending attestations normally anyway)
@@ -80,7 +80,7 @@ def get_checkpoints(spec, epoch):
 
 def put_checkpoints_in_block_roots(spec, state, checkpoints):
     for c in checkpoints:
-        state.block_roots[spec.get_epoch_start_slot(c.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c.root
+        state.block_roots[spec.epoch_start_slot(c.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c.root
 
 
 def finalize_on_234(spec, state, epoch, sufficient_support):

@@ -139,7 +139,7 @@ def get_period_committee(state: BeaconState,
     """
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=generate_seed(state, epoch),
+        seed=get_seed(state, epoch),
         index=shard * count + index,
         count=SHARD_COUNT * count,
     )
@@ -150,7 +150,7 @@ def get_period_committee(state: BeaconState,
 ```python
 def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex) -> int:
     earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
-    return (bytes_to_int(hash(generate_seed(state, earlier_start_epoch) + int_to_bytes(index, length=3)[0:8]))
+    return (bytes_to_int(hash(get_seed(state, earlier_start_epoch) + int_to_bytes(index, length=3)[0:8]))
             % PERSISTENT_COMMITTEE_PERIOD)
 ```
 

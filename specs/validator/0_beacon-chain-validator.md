@@ -145,11 +145,11 @@ def get_committee_assignment(
     next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
-    committees_per_slot = get_epoch_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    epoch_start_slot = get_epoch_start_slot(epoch)
-    for slot in range(epoch_start_slot, epoch_start_slot + SLOTS_PER_EPOCH):
+    committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
+    start_slot = epoch_start_slot(epoch)
+    for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
         offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
-        slot_start_shard = (get_epoch_start_shard(state, epoch) + offset) % SHARD_COUNT
+        slot_start_shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
         for i in range(committees_per_slot):
             shard = (slot_start_shard + i) % SHARD_COUNT
             committee = get_crosslink_committee(state, epoch, shard)
@@ -307,8 +307,8 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 * Set `attestation_data.target_root = epoch_boundary_block_root` where `epoch_boundary_block_root` is the root of block at the most recent epoch boundary.
 
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
-* Let `epoch_start_slot = get_epoch_start_slot(get_current_epoch(head_state))`.
-* Let `epoch_boundary_block_root = signing_root(head_block) if epoch_start_slot == head_state.slot else get_block_root(state, epoch_start_slot)`.
+* Let `start_slot = epoch_start_slot(get_current_epoch(head_state))`.
+* Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
 
 ##### Crosslink vote
 
