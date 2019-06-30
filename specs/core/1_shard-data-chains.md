@@ -132,8 +132,8 @@ class ShardBlockHeader(Container):
 def get_period_committee(state: BeaconState,
                          epoch: Epoch,
                          shard: Shard,
-                         index: int,
-                         count: int) -> Sequence[ValidatorIndex]:
+                         index: uint64,
+                         count: uint64) -> Sequence[ValidatorIndex]:
     """
     Return committee for a period. Used to construct persistent committees.
     """
@@ -248,7 +248,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 
 ```python
 def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
-    def is_power_of_two(value: int) -> bool:
+    def is_power_of_two(value: uint64) -> bool:
         return (value > 0) and (value & (value - 1) == 0)
 
     def pad_to_power_of_2(values: MutableSequence[bytes]) -> Sequence[bytes]:
@@ -259,7 +259,7 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
     def hash_tree_root_of_bytes(data: bytes) -> bytes:
         return hash_tree_root([data[i:i + 32] for i in range(0, len(data), 32)])
 
-    def zpad(data: bytes, length: int) -> bytes:
+    def zpad(data: bytes, length: uint64) -> bytes:
         return data + b'\x00' * (length - len(data))
 
     return hash(

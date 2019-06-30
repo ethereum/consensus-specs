@@ -541,7 +541,7 @@ class BeaconState(Container):
 #### `integer_squareroot`
 
 ```python
-def integer_squareroot(n: int) -> int:
+def integer_squareroot(n: uint64) -> int:
     """
     Return the largest integer ``x`` such that ``x**2 <= n``.
     """
@@ -564,7 +564,7 @@ def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
 ```
 
 ```python
-def int_to_bytes(integer: int, length: int) -> bytes:
+def int_to_bytes(integer: uint64, length: uint64) -> bytes:
     """
     Return the ``length``-byte serialization of ``integer``.
     """
@@ -647,7 +647,7 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
 #### `is_valid_merkle_branch`
 
 ```python
-def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: int, index: int, root: Hash) -> bool:
+def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: uint64, index: uint64, root: Hash) -> bool:
     """
     Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
     """
@@ -665,7 +665,7 @@ def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: int, index
 #### `shuffle_index`
 
 ```python
-def shuffle_index(index: ValidatorIndex, index_count: int, seed: Hash) -> ValidatorIndex:
+def shuffle_index(index: ValidatorIndex, index_count: uint64, seed: Hash) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -691,8 +691,8 @@ def shuffle_index(index: ValidatorIndex, index_count: int, seed: Hash) -> Valida
 ```python
 def compute_committee(indices: Sequence[ValidatorIndex],
                       seed: Hash,
-                      index: int,
-                      count: int) -> Sequence[ValidatorIndex]:
+                      index: uint64,
+                      count: uint64) -> Sequence[ValidatorIndex]:
     """
     Return the committee corresponding to ``indices``, ``seed``, ``index``, and committee ``count``.
     """
@@ -767,7 +767,7 @@ def delayed_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `bls_domain`
 
 ```python
-def bls_domain(domain_type: int, fork_version: bytes=b'\x00' * 4) -> int:
+def bls_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> int:
     """
     Return the BLS domain for the ``domain_type`` and ``fork_version``.
     """
@@ -997,7 +997,7 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: int, message_epoch: Epoch=None) -> int:
+def get_domain(state: BeaconState, domain_type: uint64, message_epoch: Epoch=None) -> int:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """

@@ -259,7 +259,7 @@ class BeaconBlockBody(Container):
 ### `ceillog2`
 
 ```python
-def ceillog2(x: int) -> int:
+def ceillog2(x: uint64) -> int:
     return x.bit_length()
 ```
 
@@ -275,7 +275,7 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
 ### `get_bit`
 
 ```python
-def get_bit(serialization: bytes, i: int) -> int:
+def get_bit(serialization: bytes, i: uint64) -> int:
     """
     Extract the bit in ``serialization`` at position ``i``.
     """
@@ -304,7 +304,7 @@ def get_chunk_bits_root(chunk_bits: bytes) -> Bytes32:
 ### `get_randao_epoch_for_custody_period`
 
 ```python
-def get_randao_epoch_for_custody_period(period: int, validator_index: ValidatorIndex) -> Epoch:
+def get_randao_epoch_for_custody_period(period: uint64, validator_index: ValidatorIndex) -> Epoch:
     next_period_start = (period + 1) * EPOCHS_PER_CUSTODY_PERIOD - validator_index % EPOCHS_PER_CUSTODY_PERIOD
     return Epoch(next_period_start + CUSTODY_PERIOD_TO_RANDAO_PADDING)
 ```

@@ -69,7 +69,7 @@ class LatestMessage(object):
 ```python
 @dataclass
 class Store(object):
-    time: int
+    time: uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     blocks: Dict[Hash, BeaconBlock] = field(default_factory=dict)
@@ -141,7 +141,7 @@ def get_head(store: Store) -> Hash:
 #### `on_tick`
 
 ```python
-def on_tick(store: Store, time: int) -> None:
+def on_tick(store: Store, time: uint64) -> None:
     store.time = time
 ```
 
