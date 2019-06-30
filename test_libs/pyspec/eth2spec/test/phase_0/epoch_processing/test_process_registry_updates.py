@@ -45,7 +45,7 @@ def test_activation_queue_sorting(spec, state):
     state.validators[mock_activations - 1].activation_eligibility_epoch = epoch
 
     # make sure we are hitting the churn
-    churn_limit = spec.get_churn_limit(state)
+    churn_limit = spec.get_validator_churn_limit(state)
     assert mock_activations > churn_limit
 
     yield from run_process_registry_updates(spec, state)

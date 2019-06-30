@@ -27,7 +27,7 @@ def create_genesis_state(spec, num_validators):
         eth1_data=spec.Eth1Data(
             deposit_root=deposit_root,
             deposit_count=num_validators,
-            block_hash=spec.ZERO_HASH,
+            block_hash=spec.Hash(),
         ),
         latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
     )
