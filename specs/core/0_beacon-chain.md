@@ -514,6 +514,7 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
+    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active index digests for light clients
     compact_committees_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Committee digests for light clients
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
@@ -857,9 +858,8 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
-    active_indices = get_active_validator_indices(state, epoch)
-    active_indices_root = hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](active_indices))
-    return hash(mix + active_indices_root + int_to_bytes(epoch, length=32))
+    active_index_root = state.active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
+    return hash(mix + active_index_root + int_to_bytes(epoch, length=32))
 ```
 
 #### `get_committee_count`
@@ -1143,9 +1143,13 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate compact_committees_roots
+    # Populate active_index_roots and compact_committees_roots
+    genesis_active_index_root = hash_tree_root(
+        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
+    )
     committee_root = get_compact_committees_root(state, GENESIS_EPOCH)
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
+        state.active_index_roots[index] = genesis_active_index_root
         state.compact_committees_roots[index] = committee_root
     return state
 ```
@@ -1489,7 +1493,13 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
-    committee_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
+    index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
+    index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
+    state.active_index_roots[index_root_position] = hash_tree_root(
+        List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, index_epoch))
+    )
+    # Set committees root
+    committee_root_position = next_epoch % EPOCHS_PER_HISTORICAL_VECTOR
     state.compact_committees_roots[committee_root_position] = get_compact_committees_root(state, next_epoch)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
