@@ -59,6 +59,7 @@ def test_success(spec, state):
 @spec_state_test
 def test_success_previous_epoch(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
+    state.slot = spec.SLOTS_PER_EPOCH - 1
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
@@ -136,8 +137,9 @@ def test_before_inclusion_delay(spec, state):
 @spec_state_test
 def test_after_epoch_slots(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
+    state.slot = spec.SLOTS_PER_EPOCH - 1
     # increment past latest inclusion slot
-    spec.process_slots(state, state.slot + spec.SLOTS_PER_EPOCH + 1)
+    spec.process_slots(state, state.slot + 2)
     apply_empty_block(spec, state)
 
     yield from run_attestation_processing(spec, state, attestation, False)
@@ -296,6 +298,7 @@ def test_non_zero_crosslink_data_root(spec, state):
 @with_all_phases
 @spec_state_test
 def test_bad_parent_crosslink(spec, state):
+    state.slot = spec.SLOTS_PER_EPOCH - 1
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
@@ -313,6 +316,7 @@ def test_bad_parent_crosslink(spec, state):
 @with_all_phases
 @spec_state_test
 def test_bad_crosslink_start_epoch(spec, state):
+    state.slot = spec.SLOTS_PER_EPOCH - 1
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
@@ -330,6 +334,7 @@ def test_bad_crosslink_start_epoch(spec, state):
 @with_all_phases
 @spec_state_test
 def test_bad_crosslink_end_epoch(spec, state):
+    state.slot = spec.SLOTS_PER_EPOCH - 1
     next_epoch(spec, state)
     apply_empty_block(spec, state)
 
