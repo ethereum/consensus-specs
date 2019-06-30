@@ -205,7 +205,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
 
     # Get state at the `target` to validate attestation and calculate the committees
     indexed_attestation = get_indexed_attestation(target_state, attestation)
-    validate_indexed_attestation(target_state, indexed_attestation)
+    assert is_valid_indexed_attestation(target_state, indexed_attestation)
 
     # Update latest messages
     for i in indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices:

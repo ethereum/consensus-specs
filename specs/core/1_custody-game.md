@@ -474,7 +474,7 @@ For each `challenge` in `block.body.custody_chunk_challenges`, run the following
 ```python
 def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge) -> None:
     # Verify the attestation
-    validate_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge
     assert (compute_epoch_of_slot(challenge.attestation.data.slot)
             >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY)
@@ -528,7 +528,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify challenger is slashable
     assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify attestation
-    validate_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert epoch + responder.max_reveal_lateness <= get_reveal_period(state, challenge.responder_index)

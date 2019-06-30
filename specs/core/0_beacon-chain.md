@@ -64,6 +64,7 @@
             - [`is_active_validator`](#is_active_validator)
             - [`is_slashable_validator`](#is_slashable_validator)
             - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
+            - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
             - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
         - [Misc](#misc-1)
             - [`compute_shuffled_index`](#compute_shuffled_index)
@@ -72,7 +73,6 @@
             - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
             - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
             - [`compute_bls_domain`](#compute_bls_domain)
-            - [`validate_indexed_attestation`](#validate_indexed_attestation)
         - [Beacon state accessors](#beacon-state-accessors)
             - [`get_current_epoch`](#get_current_epoch)
             - [`get_previous_epoch`](#get_previous_epoch)
@@ -645,6 +645,45 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
     )
 ```
 
+#### `is_valid_indexed_attestation`
+
+```python
+def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
+    """
+    Verify validity of ``indexed_attestation``.
+    """
+    bit_0_indices = indexed_attestation.custody_bit_0_indices
+    bit_1_indices = indexed_attestation.custody_bit_1_indices
+
+    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
+    if not len(bit_1_indices) == 0:
+        return False
+    # Verify max number of indices
+    if not len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE:
+        return False
+    # Verify index sets are disjoint
+    if not len(set(bit_0_indices).intersection(bit_1_indices)) == 0:
+        return False
+    # Verify indices are sorted
+    if not bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices):
+        return False
+    # Verify aggregate signature
+    if not bls_verify_multiple(
+        pubkeys=[
+            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
+            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
+        ],
+        message_hashes=[
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
+        ],
+        signature=indexed_attestation.signature,
+        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
+    ):
+        return False
+    return True
+```
+
 #### `is_valid_merkle_branch`
 
 ```python
@@ -740,39 +779,6 @@ def compute_bls_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> 
     Return the BLS domain for the ``domain_type`` and ``fork_version``.
     """
     return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
-```
-
-#### `validate_indexed_attestation`
-
-```python
-def validate_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> None:
-    """
-    Verify validity of ``indexed_attestation``.
-    """
-    bit_0_indices = indexed_attestation.custody_bit_0_indices
-    bit_1_indices = indexed_attestation.custody_bit_1_indices
-
-    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
-    assert len(bit_1_indices) == 0
-    # Verify max number of indices
-    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE
-    # Verify index sets are disjoint
-    assert len(set(bit_0_indices).intersection(bit_1_indices)) == 0
-    # Verify indices are sorted
-    assert bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)
-    # Verify aggregate signature
-    assert bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
-        ],
-        message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
-        ],
-        signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
-    )
 ```
 
 ### Beacon state accessors
@@ -1607,8 +1613,8 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
     assert is_slashable_attestation_data(attestation_1.data, attestation_2.data)
-    validate_indexed_attestation(state, attestation_1)
-    validate_indexed_attestation(state, attestation_2)
+    assert is_valid_indexed_attestation(state, attestation_1)
+    assert is_valid_indexed_attestation(state, attestation_2)
 
     slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
@@ -1654,7 +1660,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink.data_root == Hash()  # [to be removed in phase 1]
 
     # Check signature
-    validate_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 ```
 
 ##### Deposits
