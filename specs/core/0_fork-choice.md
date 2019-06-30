@@ -41,9 +41,9 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 
 The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_genesis_store(genesis_state)` and update `store` by running:
 
-* `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
-* `on_block(block)` whenever a block `block` is received
-* `on_attestation(attestation)` whenever an attestation `attestation` is received
+- `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
+- `on_block(block)` whenever a block `block` is received
+- `on_attestation(attestation)` whenever an attestation `attestation` is received
 
 *Notes*:
 
@@ -188,7 +188,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     # Cannot calculate the current shuffling if have not seen the target
     assert target.root in store.blocks
 
-    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrivesr
+    # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
     base_state = store.block_states[target.root].copy()
     assert store.time >= base_state.genesis_time + epoch_start_slot(target.epoch) * SECONDS_PER_SLOT
 

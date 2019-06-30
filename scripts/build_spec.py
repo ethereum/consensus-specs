@@ -6,7 +6,6 @@ from function_puller import (
 from argparse import ArgumentParser
 from typing import (
     Dict,
-    List,
     Optional,
 )
 
@@ -106,7 +105,7 @@ def apply_constants_preset(preset: Dict[str, Any]) -> None:
 
 
 def strip_comments(raw: str) -> str:
-    comment_line_regex = re.compile('^\s+# ')
+    comment_line_regex = re.compile(r'^\s+# ')
     lines = raw.split('\n')
     out = []
     for line in lines:
