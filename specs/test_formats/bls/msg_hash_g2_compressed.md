@@ -7,7 +7,7 @@ A BLS compressed-hash to G2.
 ```yaml
 input: 
   message: bytes32,
-  domain: bytes -- any number
+  domain: uint64 -- the BLS domain
 output: List[bytes48] -- length of two
 ```
 

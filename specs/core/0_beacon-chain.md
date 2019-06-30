@@ -49,9 +49,9 @@
             - [`BeaconState`](#beaconstate)
     - [Helper functions](#helper-functions)
         - [Math](#math)
+            - [`int_to_bytes`](#int_to_bytes)
             - [`integer_squareroot`](#integer_squareroot)
             - [`xor`](#xor)
-            - [`int_to_bytes`](#int_to_bytes)
             - [`bytes_to_int`](#bytes_to_int)
         - [Crypto](#crypto)
             - [`hash`](#hash)
@@ -65,7 +65,7 @@
             - [`is_slashable_validator`](#is_slashable_validator)
             - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
             - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
-        - [Misc](#misc)
+        - [Misc](#misc-1)
             - [`shuffle_index`](#shuffle_index)
             - [`compute_committee`](#compute_committee)
             - [`validate_indexed_attestation`](#validate_indexed_attestation)
@@ -90,6 +90,7 @@
             - [`get_attestation_data_slot`](#get_attestation_data_slot)
             - [`get_compact_committees_root`](#get_compact_committees_root)
             - [`get_total_balance`](#get_total_balance)
+            - [`get_total_active_balance`](#get_total_active_balance)
             - [`get_domain`](#get_domain)
             - [`get_indexed_attestation`](#get_indexed_attestation)
             - [`get_attesting_indices`](#get_attesting_indices)
@@ -181,7 +182,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 
-* For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+- For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
 
@@ -234,7 +235,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `INACTIVITY_PENALTY_QUOTIENT` | `2**25` (= 33,554,432) |
 | `MIN_SLASHING_PENALTY_QUOTIENT` | `2**5` (= 32) |
 
-* The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
+- The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where `INVERSE_SQRT_E_DROP_TIME := 2**12 epochs` (about 18 days) is the time it takes the inactivity penalty to reduce the balance of non-participating validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
 
 ### Max operations per block
 
@@ -1113,9 +1114,9 @@ def slash_validator(state: BeaconState,
 
 Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 block, let `candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)` where:
 
-* `eth1_block_hash` is the hash of the Ethereum 1.0 block
-* `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
-* `deposits` is the sequence of all deposits, ordered chronologically, up to the block with hash `eth1_block_hash`
+- `eth1_block_hash` is the hash of the Ethereum 1.0 block
+- `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
+- `deposits` is the sequence of all deposits, ordered chronologically, up to the block with hash `eth1_block_hash`
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
@@ -1136,7 +1137,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
 
     # Process activations
     for index, validator in enumerate(state.validators):
-        if state.balances[index] >= MAX_EFFECTIVE_BALANCE:
+        balance = state.balances[index]
+        validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
@@ -1168,7 +1171,7 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 
 ## Beacon chain state transition function
 
-The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled excpetion (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
+The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
 def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root: bool=False) -> BeaconState:
@@ -1435,8 +1438,8 @@ def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
         if (
-            validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH and
-            validator.effective_balance == MAX_EFFECTIVE_BALANCE
+            validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+            and validator.effective_balance == MAX_EFFECTIVE_BALANCE
         ):
             validator.activation_eligibility_epoch = get_current_epoch(state)
 
@@ -1445,9 +1448,9 @@ def process_registry_updates(state: BeaconState) -> None:
 
     # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
     activation_queue = sorted([
-        index for index, validator in enumerate(state.validators) if
-        validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH and
-        validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
+        index for index, validator in enumerate(state.validators)
+        if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
+        and validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
     ], key=lambda index: state.validators[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit (without resetting activation epoch)
     for index in activation_queue[:get_validator_churn_limit(state)]:
@@ -1686,7 +1689,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+            effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE),
         ))
         state.balances.append(amount)
     else:

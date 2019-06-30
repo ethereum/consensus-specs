@@ -86,6 +86,7 @@ Validator public keys are [G1 points](../bls_signature.md#g1-points) on the [BLS
 A secondary withdrawal private key, `withdrawal_privkey`, must also be securely generated along with the resultant `withdrawal_pubkey`. This `withdrawal_privkey` does not have to be available for signing during the normal lifetime of a validator and can live in "cold storage".
 
 The validator constructs their `withdrawal_credentials` via the following:
+
 * Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`.
 * Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
 
@@ -95,11 +96,11 @@ In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 proo
 
 To submit a deposit:
 
-* Pack the validator's [initialization parameters](#initialization) into `deposit_data`, a [`DepositData`](../core/0_beacon-chain.md#depositdata) SSZ object.
-* Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_EFFECTIVE_BALANCE`.
-* Set `deposit_data.amount = amount`.
-* Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=bls_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `bls_domain` will default to zeroes there).
-* Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])` along with a deposit of `amount` Gwei.
+- Pack the validator's [initialization parameters](#initialization) into `deposit_data`, a [`DepositData`](../core/0_beacon-chain.md#depositdata) SSZ object.
+- Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_EFFECTIVE_BALANCE`.
+- Set `deposit_data.amount = amount`.
+- Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=bls_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `bls_domain` will default to zeroes there).
+- Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])` along with a deposit of `amount` Gwei.
 
 *Note*: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validators` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_EFFECTIVE_BALANCE`.
 
@@ -131,10 +132,9 @@ Once a validator is activated, the validator is assigned [responsibilities](#bea
 A validator can get committee assignments for a given epoch using the following helper via `get_committee_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
 
 ```python
-def get_committee_assignment(
-        state: BeaconState,
-        epoch: Epoch,
-        validator_index: ValidatorIndex) -> Tuple[List[ValidatorIndex], Shard, Slot]:
+def get_committee_assignment(state: BeaconState,
+                             epoch: Epoch,
+                             validator_index: ValidatorIndex) -> Tuple[List[ValidatorIndex], Shard, Slot]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
@@ -292,8 +292,8 @@ A validator should create and broadcast the attestation halfway through the `slo
 
 First, the validator should construct `attestation_data`, an [`AttestationData`](../core/0_beacon-chain.md#attestationdata) object based upon the state at the assigned slot.
 
-* Let `head_block` be the result of running the fork choice during the assigned slot.
-* Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
+- Let `head_block` be the result of running the fork choice during the assigned slot.
+- Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
 
 ##### LMD GHOST vote
 
@@ -301,25 +301,26 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 ##### FFG vote
 
-* Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
-* Set `attestation_data.source_root = head_state.current_justified_root`.
-* Set `attestation_data.target_epoch = get_current_epoch(head_state)`
-* Set `attestation_data.target_root = epoch_boundary_block_root` where `epoch_boundary_block_root` is the root of block at the most recent epoch boundary.
+- Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
+- Set `attestation_data.source_root = head_state.current_justified_root`.
+- Set `attestation_data.target_epoch = get_current_epoch(head_state)`
+- Set `attestation_data.target_root = epoch_boundary_block_root` where `epoch_boundary_block_root` is the root of block at the most recent epoch boundary.
 
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
-* Let `start_slot = epoch_start_slot(get_current_epoch(head_state))`.
-* Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
+
+- Let `start_slot = epoch_start_slot(get_current_epoch(head_state))`.
+- Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
 
 ##### Crosslink vote
 
 Construct `attestation_data.crosslink` via the following.
 
-* Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
-* Let `parent_crosslink = head_state.current_crosslinks[shard]`.
-* Set `attestation_data.crosslink.start_epoch = parent_crosslink.end_epoch`.
-* Set `attestation_data.crosslink.end_epoch = min(attestation_data.target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
-* Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
-* Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
+- Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
+- Let `parent_crosslink = head_state.current_crosslinks[shard]`.
+- Set `attestation_data.crosslink.start_epoch = parent_crosslink.end_epoch`.
+- Set `attestation_data.crosslink.end_epoch = min(attestation_data.target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
+- Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
+- Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
 
 #### Construct attestation
 
@@ -331,13 +332,13 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregation bits
 
-* Let `attestation.aggregation_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
+- Let `attestation.aggregation_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
 ##### Custody bits
 
-* Let `attestation.custody_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` filled with zeros of length `len(committee)`.
+- Let `attestation.custody_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` filled with zeros of length `len(committee)`.
 
 *Note*: This is a stub for Phase 0.
 
@@ -376,6 +377,7 @@ To avoid "proposer slashings", a validator must not sign two conflicting [`Beaco
 *In Phase 0, as long as the validator does not sign two different beacon blocks for the same epoch, the validator is safe against proposer slashings.*
 
 Specifically, when signing a `BeaconBlock`, a validator should perform the following steps in the following order:
+
 1. Save a record to hard disk that a beacon block has been signed for the `epoch=slot_to_epoch(block.slot)`.
 2. Generate and broadcast the block.
 
@@ -386,6 +388,7 @@ If the software crashes at some point within this routine, then when the validat
 To avoid "attester slashings", a validator must not sign two conflicting [`AttestationData`](../core/0_beacon-chain.md#attestationdata) objects, i.e. two attestations that satisfy [`is_slashable_attestation_data`](../core/0_beacon-chain.md#is_slashable_attestation_data).
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
+
 1. Save a record to hard disk that an attestation has been signed for source (i.e. `attestation_data.source_epoch`) and target (i.e. `slot_to_epoch(attestation_data.slot)`).
 2. Generate and broadcast attestation.
 

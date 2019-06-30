@@ -14,6 +14,7 @@
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
         - [Signature domains](#signature-domains)
+        - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
         - [`ShardAttestation`](#shardattestation)
@@ -181,8 +182,8 @@ def get_persistent_committee(state: BeaconState,
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(list(set(
-        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)] +
-        [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
+        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)]
+        + [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
     )))
 ```
 
@@ -282,10 +283,10 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
 
 Let:
 
-* `beacon_blocks` be the `BeaconBlock` list such that `beacon_blocks[slot]` is the canonical `BeaconBlock` at slot `slot`
-* `beacon_state` be the canonical `BeaconState` after processing `beacon_blocks[-1]`
-* `valid_shard_blocks` be the list of valid `ShardBlock`, recursively defined
-* `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
+- `beacon_blocks` be the `BeaconBlock` list such that `beacon_blocks[slot]` is the canonical `BeaconBlock` at slot `slot`
+- `beacon_state` be the canonical `BeaconState` after processing `beacon_blocks[-1]`
+- `valid_shard_blocks` be the list of valid `ShardBlock`, recursively defined
+- `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
 
 ```python
 def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
@@ -349,9 +350,9 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
 
 Let:
 
-* `valid_shard_blocks` be the list of valid `ShardBlock`
-* `beacon_state` be the canonical `BeaconState`
-* `candidate` be a candidate `ShardAttestation` for which validity is to be determined by running `is_valid_shard_attestation`
+- `valid_shard_blocks` be the list of valid `ShardBlock`
+- `beacon_state` be the canonical `BeaconState`
+- `candidate` be a candidate `ShardAttestation` for which validity is to be determined by running `is_valid_shard_attestation`
 
 ```python
 def is_valid_shard_attestation(valid_shard_blocks: Sequence[ShardBlock],
@@ -376,11 +377,11 @@ def is_valid_shard_attestation(valid_shard_blocks: Sequence[ShardBlock],
 
 Let:
 
-* `shard` be a valid `Shard`
-* `shard_blocks` be the `ShardBlock` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `shard` at slot `slot`
-* `beacon_state` be the canonical `BeaconState`
-* `valid_attestations` be the set of valid `Attestation` objects, recursively defined
-* `candidate` be a candidate `Attestation` which is valid under Phase 0 rules, and for which validity is to be determined under Phase 1 rules by running `is_valid_beacon_attestation`
+- `shard` be a valid `Shard`
+- `shard_blocks` be the `ShardBlock` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `shard` at slot `slot`
+- `beacon_state` be the canonical `BeaconState`
+- `valid_attestations` be the set of valid `Attestation` objects, recursively defined
+- `candidate` be a candidate `Attestation` which is valid under Phase 0 rules, and for which validity is to be determined under Phase 1 rules by running `is_valid_beacon_attestation`
 
 ```python
 def is_valid_beacon_attestation(shard: Shard,
@@ -398,8 +399,8 @@ def is_valid_beacon_attestation(shard: Shard,
         assert candidate.data.previous_crosslink.data_root == Hash()
     else:
         previous_attestation = next(
-            (attestation for attestation in valid_attestations if
-                attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root),
+            (attestation for attestation in valid_attestations
+             if attestation.data.crosslink.data_root == candidate.data.previous_crosslink.data_root),
             None,
         )
         assert previous_attestation is not None
