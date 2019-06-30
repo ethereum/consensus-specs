@@ -1734,10 +1734,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         state.balances[transfer.sender] >= transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE
     )
     # Verify that the pubkey is valid
-    assert (
-        state.validators[transfer.sender].withdrawal_credentials ==
-        int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
-    )
+    assert state.validators[transfer.sender].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX + hash(transfer.pubkey)[1:]
     # Verify that the signature is valid
     assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
     # Process the transfer
