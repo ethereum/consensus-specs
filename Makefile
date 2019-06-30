@@ -40,8 +40,7 @@ partial_clean:
 	rm -rf $(PY_SPEC_DIR)/.coverage
 	rm -rf $(PY_SPEC_DIR)/test-reports
 
-clean:
-	partial_clean
+clean: partial_clean
 	rm -rf $(PY_SPEC_DIR)/venv
 	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv
 
