@@ -94,7 +94,7 @@
             - [`get_domain`](#get_domain)
             - [`get_indexed_attestation`](#get_indexed_attestation)
             - [`get_attesting_indices`](#get_attesting_indices)
-        - [State mutators](#state-mutators)
+        - [Beacon state mutators](#beacon-state-mutators)
             - [`increase_balance`](#increase_balance)
             - [`decrease_balance`](#decrease_balance)
             - [`initiate_validator_exit`](#initiate_validator_exit)
@@ -1055,7 +1055,7 @@ def get_attesting_indices(state: BeaconState,
     return set(index for i, index in enumerate(committee) if bits[i])
 ```
 
-### State mutators
+### Beacon state mutators
 
 #### `increase_balance`
 
@@ -1500,7 +1500,7 @@ def process_slashings(state: BeaconState) -> None:
 ```python
 def process_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
-    next_epoch = Shard(current_epoch + 1)
+    next_epoch = Epoch(current_epoch + 1)
     # Reset eth1 data votes
     if (state.slot + 1) % SLOTS_PER_ETH1_VOTING_PERIOD == 0:
         state.eth1_data_votes = []
@@ -1691,7 +1691,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(deposit.data),
         branch=deposit.proof,
-        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # add 1 for the SSZ length mix-in
+        depth=DEPOSIT_CONTRACT_TREE_DEPTH + 1,  # Add 1 for the `List` length mix-in
         index=state.eth1_deposit_index,
         root=state.eth1_data.deposit_root,
     )
