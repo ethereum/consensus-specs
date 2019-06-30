@@ -162,6 +162,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 | `SECONDS_PER_DAY` | `86400` |
 | `JUSTIFICATION_BITS_LENGTH` | `4` |
+| `ENDIANNESS` | `'little'` |
 
 ## Configuration
 
@@ -177,7 +178,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
-| `ENDIANNESS` | `'little'` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 
