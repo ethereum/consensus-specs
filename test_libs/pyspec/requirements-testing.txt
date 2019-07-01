@@ -1,5 +1,7 @@
 -r requirements.txt
-pytest>=3.6,<3.7
+pytest>=4.4
 ../config_helpers
 flake8==3.7.7
+mypy==0.701
 pytest-cov
+pytest-xdist

@@ -1,7 +1,13 @@
 from eth2spec.test.helpers.custody import get_valid_early_derived_secret_reveal
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.state import next_epoch, get_balance
-from eth2spec.test.context import with_all_phases_except, spec_state_test, expect_assertion_error
+from eth2spec.test.context import (
+    with_all_phases_except,
+    spec_state_test,
+    expect_assertion_error,
+    always_bls,
+    never_bls,
+)
 
 
 def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, valid=True):
@@ -24,7 +30,7 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
 
     spec.process_early_derived_secret_reveal(state, randao_key_reveal)
 
-    slashed_validator = state.validator_registry[randao_key_reveal.revealed_index]
+    slashed_validator = state.validators[randao_key_reveal.revealed_index]
 
     if randao_key_reveal.epoch >= spec.get_current_epoch(state) + spec.CUSTODY_PERIOD_TO_RANDAO_PADDING:
         assert slashed_validator.slashed
@@ -36,6 +42,7 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
 
 
 @with_all_phases_except(['phase0'])
+@always_bls
 @spec_state_test
 def test_success(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state)
@@ -44,6 +51,7 @@ def test_success(spec, state):
 
 
 @with_all_phases_except(['phase0'])
+@never_bls
 @spec_state_test
 def test_reveal_from_current_epoch(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state))
@@ -52,6 +60,7 @@ def test_reveal_from_current_epoch(spec, state):
 
 
 @with_all_phases_except(['phase0'])
+@never_bls
 @spec_state_test
 def test_reveal_from_past_epoch(spec, state):
     next_epoch(spec, state)
@@ -62,6 +71,7 @@ def test_reveal_from_past_epoch(spec, state):
 
 
 @with_all_phases_except(['phase0'])
+@always_bls
 @spec_state_test
 def test_reveal_with_custody_padding(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(
@@ -73,6 +83,7 @@ def test_reveal_with_custody_padding(spec, state):
 
 
 @with_all_phases_except(['phase0'])
+@always_bls
 @spec_state_test
 def test_reveal_with_custody_padding_minus_one(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(
@@ -84,6 +95,7 @@ def test_reveal_with_custody_padding_minus_one(spec, state):
 
 
 @with_all_phases_except(['phase0'])
+@never_bls
 @spec_state_test
 def test_double_reveal(spec, state):
     randao_key_reveal1 = get_valid_early_derived_secret_reveal(
@@ -108,15 +120,17 @@ def test_double_reveal(spec, state):
 
 
 @with_all_phases_except(['phase0'])
+@never_bls
 @spec_state_test
 def test_revealer_is_slashed(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state))
-    state.validator_registry[randao_key_reveal.revealed_index].slashed = True
+    state.validators[randao_key_reveal.revealed_index].slashed = True
 
     yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, False)
 
 
 @with_all_phases_except(['phase0'])
+@never_bls
 @spec_state_test
 def test_far_future_epoch(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(

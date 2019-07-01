@@ -9,7 +9,9 @@ build/
 output/
 
 eth2.0-spec-tests/
+
 .pytest_cache
+.mypy_cache
 
 # Dynamically built from Markdown spec
 test_libs/pyspec/eth2spec/phase0/spec.py

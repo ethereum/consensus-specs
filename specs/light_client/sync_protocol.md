@@ -31,7 +31,7 @@ We define an "expansion" of an object as an object where a field in an object th
 
 We define two expansions:
 
-* `ExtendedBeaconState`, which is identical to a `BeaconState` except `latest_active_index_roots: List[Bytes32]` is replaced by `latest_active_indices: List[List[ValidatorIndex]]`, where `BeaconState.latest_active_index_roots[i] = hash_tree_root(ExtendedBeaconState.latest_active_indices[i])`.
+* `ExtendedBeaconState`, which is identical to a `BeaconState` except `compact_committees_roots: List[Bytes32]` is replaced by `active_indices: List[List[ValidatorIndex]]`, where `BeaconState.compact_committees_roots[i] = hash_tree_root(ExtendedBeaconState.active_indices[i])`.
 * `ExtendedBeaconBlock`, which is identical to a `BeaconBlock` except `state_root` is replaced with the corresponding `state: ExtendedBeaconState`.
 
 ### `get_active_validator_indices`
@@ -40,10 +40,10 @@ Note that there is now a new way to compute `get_active_validator_indices`:
 
 ```python
 def get_active_validator_indices(state: ExtendedBeaconState, epoch: Epoch) -> List[ValidatorIndex]:
-    return state.latest_active_indices[epoch % LATEST_ACTIVE_INDEX_ROOTS_LENGTH]
+    return state.active_indices[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
 ```
 
-Note that it takes `state` instead of `state.validator_registry` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
+Note that it takes `state` instead of `state.validators` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
 
 
 ### `MerklePartial`
@@ -84,8 +84,8 @@ def get_period_data(block: ExtendedBeaconBlock, shard_id: Shard, later: bool) ->
     indices = get_period_committee(block.state, shard_id, period_start, 0, committee_count)
     return PeriodData(
         validator_count,
-        generate_seed(block.state, period_start),
-        [block.state.validator_registry[i] for i in indices],
+        get_seed(block.state, period_start),
+        [block.state.validators[i] for i in indices],
     )
 ```
 
@@ -124,7 +124,7 @@ def compute_committee(header: BeaconBlockHeader,
     maximal_later_committee = validator_memory.later_period_data.committee
     earlier_start_epoch = get_earlier_start_epoch(header.slot)
     later_start_epoch = get_later_start_epoch(header.slot)
-    epoch = slot_to_epoch(header.slot)
+    epoch = compute_epoch_of_slot(header.slot)
 
     committee_count = max(
         earlier_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
@@ -153,8 +153,8 @@ def compute_committee(header: BeaconBlockHeader,
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(list(set(
-        [i for i in actual_earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)] +
-        [i for i in actual_later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
+        [i for i in actual_earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)]
+        + [i for i in actual_later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
     )))
 ```
 
@@ -167,8 +167,8 @@ If a client wants to update its `finalized_header` it asks the network for a `Bl
 ```python
 {
     'header': BeaconBlockHeader,
-    'shard_aggregate_signature': 'bytes96',
-    'shard_bitfield': 'bytes',
+    'shard_aggregate_signature': BLSSignature,
+    'shard_bits': Bitlist[PLACEHOLDER],
     'shard_parent_block': ShardBlock,
 }
 ```
@@ -180,20 +180,20 @@ def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: Val
     assert proof.shard_parent_block.beacon_chain_root == hash_tree_root(proof.header)
     committee = compute_committee(proof.header, validator_memory)
     # Verify that we have >=50% support
-    support_balance = sum([v.effective_balance for i, v in enumerate(committee) if get_bitfield_bit(proof.shard_bitfield, i) is True])
+    support_balance = sum([v.effective_balance for i, v in enumerate(committee) if proof.shard_bits[i]])
     total_balance = sum([v.effective_balance for i, v in enumerate(committee)])
     assert support_balance * 2 > total_balance
     # Verify shard attestations
     group_public_key = bls_aggregate_pubkeys([
         v.pubkey for v, index in enumerate(committee)
-        if get_bitfield_bit(proof.shard_bitfield, index) is True
+        if proof.shard_bits[index]
     ])
     assert bls_verify(
         pubkey=group_public_key,
         message_hash=hash_tree_root(shard_parent_block),
         signature=proof.shard_aggregate_signature,
-        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER),
+        domain=get_domain(state, compute_epoch_of_slot(shard_block.slot), DOMAIN_SHARD_ATTESTER),
     )
 ```
 
-The size of this proof is only 200 (header) + 96 (signature) + 16 (bitfield) + 352 (shard block) = 664 bytes. It can be reduced further by replacing `ShardBlock` with `MerklePartial(lambda x: x.beacon_chain_root, ShardBlock)`, which would cut off ~220 bytes.
+The size of this proof is only 200 (header) + 96 (signature) + 16 (bits) + 352 (shard block) = 664 bytes. It can be reduced further by replacing `ShardBlock` with `MerklePartial(lambda x: x.beacon_chain_root, ShardBlock)`, which would cut off ~220 bytes.

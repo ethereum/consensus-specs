@@ -4,7 +4,10 @@ from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.test.phase_0.epoch_processing import (
     test_process_crosslinks,
-    test_process_registry_updates
+    test_process_final_updates,
+    test_process_justification_and_finalization,
+    test_process_registry_updates,
+    test_process_slashings
 )
 from gen_base import gen_runner, gen_suite, gen_typing
 from gen_from_tests.gen import generate_from_tests
@@ -35,8 +38,16 @@ if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
         create_suite('crosslinks', 'minimal', lambda: generate_from_tests(test_process_crosslinks, 'phase0')),
         create_suite('crosslinks', 'mainnet', lambda: generate_from_tests(test_process_crosslinks, 'phase0')),
+        create_suite('final_updates', 'minimal', lambda: generate_from_tests(test_process_final_updates, 'phase0')),
+        create_suite('final_updates', 'mainnet', lambda: generate_from_tests(test_process_final_updates, 'phase0')),
+        create_suite('justification_and_finalization', 'minimal',
+                     lambda: generate_from_tests(test_process_justification_and_finalization, 'phase0')),
+        create_suite('justification_and_finalization', 'mainnet',
+                     lambda: generate_from_tests(test_process_justification_and_finalization, 'phase0')),
         create_suite('registry_updates', 'minimal',
                      lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
         create_suite('registry_updates', 'mainnet',
                      lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
+        create_suite('slashings', 'minimal', lambda: generate_from_tests(test_process_slashings, 'phase0')),
+        create_suite('slashings', 'mainnet', lambda: generate_from_tests(test_process_slashings, 'phase0')),
     ])

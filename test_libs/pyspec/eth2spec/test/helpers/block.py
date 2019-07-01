@@ -14,7 +14,7 @@ def sign_block(spec, state, block, proposer_index=None):
         if block.slot == state.slot:
             proposer_index = spec.get_beacon_proposer_index(state)
         else:
-            if spec.slot_to_epoch(state.slot) + 1 > spec.slot_to_epoch(block.slot):
+            if spec.compute_epoch_of_slot(state.slot) + 1 > spec.compute_epoch_of_slot(block.slot):
                 print("warning: block slot far away, and no proposer index manually given."
                       " Signing block is slow due to transition for proposer index calculation.")
             # use stub state to get proposer index of future slot
@@ -26,10 +26,10 @@ def sign_block(spec, state, block, proposer_index=None):
 
     block.body.randao_reveal = bls_sign(
         privkey=privkey,
-        message_hash=hash_tree_root(spec.slot_to_epoch(block.slot)),
+        message_hash=hash_tree_root(spec.compute_epoch_of_slot(block.slot)),
         domain=spec.get_domain(
             state,
-            message_epoch=spec.slot_to_epoch(block.slot),
+            message_epoch=spec.compute_epoch_of_slot(block.slot),
             domain_type=spec.DOMAIN_RANDAO,
         )
     )
@@ -39,7 +39,7 @@ def sign_block(spec, state, block, proposer_index=None):
         domain=spec.get_domain(
             state,
             spec.DOMAIN_BEACON_PROPOSER,
-            spec.slot_to_epoch(block.slot)))
+            spec.compute_epoch_of_slot(block.slot)))
 
 
 def apply_empty_block(spec, state):
@@ -57,9 +57,9 @@ def build_empty_block(spec, state, slot=None, signed=False):
         slot = state.slot
     empty_block = spec.BeaconBlock()
     empty_block.slot = slot
-    empty_block.body.eth1_data.deposit_count = state.deposit_index
+    empty_block.body.eth1_data.deposit_count = state.eth1_deposit_index
     previous_block_header = deepcopy(state.latest_block_header)
-    if previous_block_header.state_root == spec.ZERO_HASH:
+    if previous_block_header.state_root == spec.Hash():
         previous_block_header.state_root = state.hash_tree_root()
     empty_block.parent_root = signing_root(previous_block_header)
 
