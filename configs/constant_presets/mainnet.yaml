@@ -19,6 +19,9 @@ CHURN_LIMIT_QUOTIENT: 65536
 SHUFFLE_ROUND_COUNT: 90
 # `2**16` (= 65,536)
 MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 65536
+# Jan 3, 2020
+MIN_GENESIS_TIME: 1578009600
+
 
 
 # Deposit contract
@@ -41,7 +44,6 @@ EFFECTIVE_BALANCE_INCREMENT: 1000000000
 
 # Initial values
 # ---------------------------------------------------------------
-GENESIS_FORK_VERSION: 0x00000000
 # 0, GENESIS_EPOCH is derived from this constant
 GENESIS_SLOT: 0
 BLS_WITHDRAWAL_PREFIX: 0x00
@@ -51,8 +53,8 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 # ---------------------------------------------------------------
 # 6 seconds 6 seconds
 SECONDS_PER_SLOT: 6
-# 2**2 (= 4) slots 24 seconds
-MIN_ATTESTATION_INCLUSION_DELAY: 4
+# 2**0 (= 1) slots 6 seconds
+MIN_ATTESTATION_INCLUSION_DELAY: 1
 # 2**6 (= 64) slots 6.4 minutes
 SLOTS_PER_EPOCH: 64
 # 2**0 (= 1) epochs 6.4 minutes
@@ -71,6 +73,9 @@ PERSISTENT_COMMITTEE_PERIOD: 2048
 MAX_EPOCHS_PER_CROSSLINK: 64
 # 2**2 (= 4) epochs 25.6 minutes
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
+# 2**14 (= 16,384) epochs ~73 days
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 16384
+
 
 
 # State vector lengths
@@ -87,8 +92,8 @@ VALIDATOR_REGISTRY_LIMIT: 1099511627776
 
 # Reward and penalty quotients
 # ---------------------------------------------------------------
-# 2**5 (= 32)
-BASE_REWARD_FACTOR: 32
+# 2**6 (= 64)
+BASE_REWARD_FACTOR: 64
 # 2**9 (= 512)
 WHISTLEBLOWER_REWARD_QUOTIENT: 512
 # 2**3 (= 8)
