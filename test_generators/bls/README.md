@@ -9,7 +9,7 @@ The base unit is bytes48 of which only 381 bits are used
 
 ## Resources
 
-- [Eth2.0 spec](https://github.com/ethereum/eth2.0-specs/blob/master/specs/bls_signature.md)
+- [Eth2.0 spec](../../specs/bls_signature.md)
 - [Finite Field Arithmetic](http://www.springeronline.com/sgw/cda/pageitems/document/cda_downloaddocument/0,11996,0-0-45-110359-0,00.pdf)
 - Chapter 2 of [Elliptic Curve Cryptography](http://cacr.uwaterloo.ca/ecc/). Darrel Hankerson, Alfred Menezes, and Scott Vanstone 
 - [Zcash BLS parameters](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381)
