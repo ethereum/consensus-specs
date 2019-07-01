@@ -1,6 +1,6 @@
 from eth2spec.utils.ssz.ssz_impl import serialize, hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import (
-    Bit, Bytes, uint64, Container, Vector, List
+    boolean, Bytes, byte, uint64, Container, Vector, List
 )
 
 from eth2spec.utils.ssz.ssz_partials import (
@@ -9,7 +9,7 @@ from eth2spec.utils.ssz.ssz_partials import (
 
 
 class Person(Container):
-    is_male: Bit
+    is_male: boolean
     age: uint64
     name: Bytes[32]
 
@@ -45,13 +45,13 @@ paths = [
 
 x = ssz_full(city)
 full = ssz_partial(City, ssz_full(city))
-print(full.objects.keys())
+print(full._objects.keys())
 for path in paths:
-    print(path, list(full.access_partial(path).objects.keys()))
+    print(path, list(full.access_partial(path)._objects.keys()))
     # print(path, get_nodes_along_path(full, path, typ=City).keys())
 p = merge(*[full.access_partial(path) for path in paths])
 # p = SSZPartial(infer_type(city), branch2)
-assert p.coords[0] == city.coords[0] == extract_value_at_path(p.objects, City, ['coords', 0])
+assert p.coords[0] == city.coords[0] == extract_value_at_path(p._objects, City, ['coords', 0])
 assert p.coords[1] == city.coords[1]
 assert len(p.coords) == len(city.coords)
 assert p.coords.hash_tree_root() == hash_tree_root(city.coords)

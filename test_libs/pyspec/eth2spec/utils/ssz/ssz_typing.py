@@ -19,6 +19,12 @@ class SSZValue(object, metaclass=SSZType):
     def type(self):
         return self.__class__
 
+    def full_value(self):
+        """
+        Overriden by SSZ partials, to get the value (partially), then complement with default elements if necessary
+        """
+        return self
+
 
 class BasicType(SSZType):
     byte_len = 0
@@ -55,6 +61,8 @@ class bit(boolean):
 class uint(BasicValue, metaclass=BasicType):
 
     def __new__(cls, value: int):
+        if isinstance(value, (str, bytes)) and len(value) == 1:
+            value = ord(value)
         if value < 0:
             raise ValueError("unsigned types must not be negative")
         if cls.byte_len and value.bit_length() > (cls.byte_len << 3):
@@ -131,6 +139,9 @@ class Series(SSZValue):
     def __iter__(self) -> Iterator[SSZValue]:
         raise Exception("Not implemented")
 
+    def __len__(self):
+        raise Exception("Not implemented")
+
 
 # Note: importing ssz functionality locally, to avoid import loop
 
@@ -160,7 +171,7 @@ class Container(Series, metaclass=SSZType):
         from .ssz_impl import signing_root
         return signing_root(self)
 
-    def __setattr__(self, name, value):
+    def set_field(self, name, value):
         if name not in self.__class__.__annotations__:
             raise AttributeError("Cannot change non-existing SSZ-container attribute")
         field_typ = self.__class__.__annotations__[name]
@@ -168,6 +179,11 @@ class Container(Series, metaclass=SSZType):
         if not isinstance(value, field_typ):
             raise ValueError(f"Cannot set field of {self.__class__}:"
                              f" field: {name} type: {field_typ} value: {value} value type: {type(value)}")
+        super().__setattr__(name, value)
+
+    def __setattr__(self, name, value):
+        if not name.startswith('_') and not isinstance(value, property):
+            self.set_field(name, value)
         super().__setattr__(name, value)
 
     def __repr__(self):
@@ -194,6 +210,15 @@ class Container(Series, metaclass=SSZType):
         if not hasattr(cls, '__annotations__'):  # no container fields
             return {}
         return dict(cls.__annotations__)
+
+    @classmethod
+    def field_count(cls) -> int:
+        if not hasattr(cls, '__annotations__'):  # no container fields
+            return 0
+        return len(cls.__annotations__)
+
+    def __len__(self):
+        return self.__class__.field_count()
 
     @classmethod
     def default(cls):
@@ -282,7 +307,10 @@ class ElementsType(ParamsMeta):
 
 
 class Elements(ParamsBase, metaclass=ElementsType):
-    pass
+
+    @classmethod
+    def can_grow(cls) -> bool:
+        raise Exception("Implemented by subclasses as class-method")
 
 
 class BaseList(list, Elements):
@@ -371,6 +399,10 @@ class Bitlist(Bits):
     def default(cls):
         return cls()
 
+    @classmethod
+    def can_grow(cls) -> bool:
+        return True
+
 
 class Bitvector(Bits):
 
@@ -394,6 +426,10 @@ class Bitvector(Bits):
     def default(cls):
         return cls(0 for _ in range(cls.length))
 
+    @classmethod
+    def can_grow(cls) -> bool:
+        return False
+
 
 class List(BaseList):
 
@@ -404,6 +440,10 @@ class List(BaseList):
     @classmethod
     def is_fixed_size(cls):
         return False
+
+    @classmethod
+    def can_grow(cls) -> bool:
+        return True
 
 
 class Vector(BaseList):
@@ -420,6 +460,10 @@ class Vector(BaseList):
     @classmethod
     def is_fixed_size(cls):
         return cls.elem_type.is_fixed_size()
+
+    @classmethod
+    def can_grow(cls) -> bool:
+        return False
 
     def append(self, v):
         # Deep-copy and other utils like to change the internals during work.
@@ -476,6 +520,10 @@ class Bytes(BaseBytes):
     def is_fixed_size(cls):
         return False
 
+    @classmethod
+    def can_grow(cls) -> bool:
+        return True
+
 
 class BytesN(BaseBytes):
 
@@ -498,6 +546,10 @@ class BytesN(BaseBytes):
     @classmethod
     def is_fixed_size(cls):
         return True
+
+    @classmethod
+    def can_grow(cls) -> bool:
+        return False
 
 
 # Helpers for common BytesN types
