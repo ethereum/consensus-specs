@@ -293,10 +293,8 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 ##### FFG vote
 
-- Set `attestation_data.source_epoch = head_state.current_justified_epoch`.
-- Set `attestation_data.source_root = head_state.current_justified_root`.
-- Set `attestation_data.target_epoch = get_current_epoch(head_state)`
-- Set `attestation_data.target_root = epoch_boundary_block_root` where `epoch_boundary_block_root` is the root of block at the most recent epoch boundary.
+- Set `attestation_data.source = head_state.current_justified_checkpoint`.
+- Set `attestation_data.target = Checkpoint(epoch=get_current_epoch(head_state), root=epoch_boundary_block_root)` where `epoch_boundary_block_root` is the root of block at the most recent epoch boundary.
 
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
 
@@ -310,7 +308,7 @@ Construct `attestation_data.crosslink` via the following.
 - Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
 - Let `parent_crosslink = head_state.current_crosslinks[shard]`.
 - Set `attestation_data.crosslink.start_epoch = parent_crosslink.end_epoch`.
-- Set `attestation_data.crosslink.end_epoch = min(attestation_data.target_epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
+- Set `attestation_data.crosslink.end_epoch = min(attestation_data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
 - Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
 - Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
 
@@ -374,7 +372,7 @@ To avoid "attester slashings", a validator must not sign two conflicting [`Attes
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that an attestation has been signed for source (i.e. `attestation_data.source_epoch`) and target (i.e. `compute_epoch_of_slot(attestation_data.slot)`).
+1. Save a record to hard disk that an attestation has been signed for source (i.e. `attestation_data.source.epoch`) and target (i.e. `attestation_data.target.epoch`).
 2. Generate and broadcast attestation.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast attestation and can effectively avoid slashing.
