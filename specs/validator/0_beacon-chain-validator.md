@@ -135,13 +135,14 @@ A validator can get committee assignments for a given epoch using the following 
 ```python
 def get_committee_assignment(state: BeaconState,
                              epoch: Epoch,
-                             validator_index: ValidatorIndex) -> Tuple[Sequence[ValidatorIndex], Shard, Slot]:
+                             validator_index: ValidatorIndex) -> Optional[Tuple[Sequence[ValidatorIndex], Shard, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
         * ``assignment[0]`` is the list of validators in the committee
         * ``assignment[1]`` is the shard to which the committee is assigned
         * ``assignment[2]`` is the slot at which the committee is assigned
+    Return None if no assignment.
     """
     next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
@@ -155,11 +156,8 @@ def get_committee_assignment(state: BeaconState,
             shard = Shard((slot_start_shard + i) % SHARD_COUNT)
             committee = get_crosslink_committee(state, epoch, shard)
             if validator_index in committee:
-                break
-        else:
-            continue
-        break
-    return committee, shard, Slot(slot)
+                return committee, shard, Slot(slot)
+    return None
 ```
 
 A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.

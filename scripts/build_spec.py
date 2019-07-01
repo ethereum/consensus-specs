@@ -11,7 +11,7 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, Tuple,
+    Any, Dict, Set, Sequence, Tuple, Optional
 )
 
 from dataclasses import (
