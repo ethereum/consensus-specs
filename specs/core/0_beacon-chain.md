@@ -205,16 +205,16 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Duration |
 | - | - | :-: | :-: |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `Slot(2**0)` (= 1) | 6 seconds |
-| `SLOTS_PER_EPOCH` | `Slot(2**6)` (= 64) | 6.4 minutes |
-| `MIN_SEED_LOOKAHEAD` | `Epoch(2**0)` (= 1) | 6.4 minutes |
-| `ACTIVATION_EXIT_DELAY` | `Epoch(2**2)` (= 4) | 25.6 minutes |
-| `SLOTS_PER_ETH1_VOTING_PERIOD` | `Slot(2**10)` (= 1,024) | ~1.7 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `Slot(2**13)` (= 8,192) | ~13 hours |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**8)` (= 256) | ~27 hours |
-| `PERSISTENT_COMMITTEE_PERIOD` | `Epoch(2**11)` (= 2,048) | 9 days |
-| `MAX_EPOCHS_PER_CROSSLINK` | `Epoch(2**6)` (= 64) | ~7 hours |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `Epoch(2**2)` (= 4) | 25.6 minutes |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | 6 seconds |
+| `SLOTS_PER_EPOCH` | `2**6` (= 64) | 6.4 minutes |
+| `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | 6.4 minutes |
+| `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | 25.6 minutes |
+| `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | ~1.7 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | ~13 hours |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | ~27 hours |
+| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | 9 days |
+| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | ~7 hours |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | 25.6 minutes |
 
 ### State list lengths
 
