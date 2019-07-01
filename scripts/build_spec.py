@@ -25,7 +25,7 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     bit, boolean, Container, List, Vector, uint64,
-    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -52,7 +52,7 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     bit, boolean, Container, List, Vector, Bytes, uint64,
-    Bytes1, Bytes4, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -94,7 +94,10 @@ def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
 def apply_constants_preset(preset: Dict[str, Any]) -> None:
     global_vars = globals()
     for k, v in preset.items():
-        global_vars[k] = v
+        if k.startswith('DOMAIN_'):
+            global_vars[k] = DomainType(v)  # domain types are defined as bytes in the configs
+        else:
+            global_vars[k] = v
 
     # Deal with derived constants
     global_vars['GENESIS_EPOCH'] = compute_epoch_of_slot(GENESIS_SLOT)
@@ -135,6 +138,9 @@ def objects_to_spec(functions: Dict[str, str],
         )
     )
     functions_spec = '\n\n'.join(functions.values())
+    for k in list(constants.keys()):
+        if k.startswith('DOMAIN_'):
+            constants[k] = f"DomainType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (

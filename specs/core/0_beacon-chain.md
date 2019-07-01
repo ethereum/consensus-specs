@@ -19,7 +19,7 @@
         - [State list lengths](#state-list-lengths)
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
-        - [Signature domains](#signature-domains)
+        - [Signature domain types](#signature-domain-types)
     - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
@@ -147,8 +147,10 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Version` | `Bytes4` | a fork version number |
 | `Hash` | `Bytes32` | a hash |
+| `Version` | `Bytes4` | a fork version number |
+| `DomainType` | `Bytes4` | a signature domain type |
+| `Domain` | `Bytes8` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -248,7 +250,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 | `MAX_TRANSFERS` | `0` |
 
-### Signature domains
+### Signature domain types
+
+The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
@@ -513,6 +517,7 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
+    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active index digests for light clients
     compact_committees_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Committee digests for light clients
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
@@ -771,11 +776,11 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: uint64, fork_version: Version=Version()) -> int:
+def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
-    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+    return Domain(domain_type + fork_version)
 ```
 
 ### Beacon state accessors
@@ -861,9 +866,8 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
-    active_indices = get_active_validator_indices(state, epoch)
-    active_indices_root = hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](active_indices))
-    return hash(mix + active_indices_root + int_to_bytes(epoch, length=32))
+    active_index_root = state.active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
+    return hash(mix + active_index_root + int_to_bytes(epoch, length=32))
 ```
 
 #### `get_committee_count`
@@ -1001,7 +1005,7 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: uint64, message_epoch: Epoch=None) -> int:
+def get_domain(state: BeaconState, domain_type: DomainType, message_epoch: Epoch=None) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
@@ -1149,9 +1153,12 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate compact_committees_roots
+    # Populate active_index_roots and compact_committees_roots
+    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
+    active_index_root = hash_tree_root(indices_list)
     committee_root = get_compact_committees_root(state, GENESIS_EPOCH)
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
+        state.active_index_roots[index] = active_index_root
         state.compact_committees_roots[index] = committee_root
     return state
 ```
@@ -1495,7 +1502,12 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
-    committee_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
+    index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
+    index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
+    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, index_epoch))
+    state.active_index_roots[index_root_position] = hash_tree_root(indices_list)
+    # Set committees root
+    committee_root_position = next_epoch % EPOCHS_PER_HISTORICAL_VECTOR
     state.compact_committees_roots[committee_root_position] = get_compact_committees_root(state, next_epoch)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)

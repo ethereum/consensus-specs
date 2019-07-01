@@ -89,7 +89,7 @@ def case01_message_hash_G2_uncompressed():
             yield {
                 'input': {
                     'message': '0x' + msg.hex(),
-                    'domain': domain
+                    'domain': int_to_hex(domain, byte_length=8)
                 },
                 'output': hash_message(msg, domain)
             }
@@ -101,7 +101,7 @@ def case02_message_hash_G2_compressed():
             yield {
                 'input': {
                     'message': '0x' + msg.hex(),
-                    'domain': domain
+                    'domain': int_to_hex(domain, byte_length=8)
                 },
                 'output': hash_message_compressed(msg, domain)
             }
@@ -126,7 +126,7 @@ def case04_sign_messages():
                     'input': {
                         'privkey': int_to_hex(privkey),
                         'message': '0x' + message.hex(),
-                        'domain': domain
+                        'domain': int_to_hex(domain, byte_length=8)
                     },
                     'output': '0x' + sig.hex()
                 }
