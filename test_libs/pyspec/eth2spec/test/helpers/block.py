@@ -14,7 +14,7 @@ def sign_block(spec, state, block, proposer_index=None):
         if block.slot == state.slot:
             proposer_index = spec.get_beacon_proposer_index(state)
         else:
-            if spec.slot_to_epoch(state.slot) + 1 > spec.slot_to_epoch(block.slot):
+            if spec.compute_epoch_of_slot(state.slot) + 1 > spec.compute_epoch_of_slot(block.slot):
                 print("warning: block slot far away, and no proposer index manually given."
                       " Signing block is slow due to transition for proposer index calculation.")
             # use stub state to get proposer index of future slot
@@ -26,10 +26,10 @@ def sign_block(spec, state, block, proposer_index=None):
 
     block.body.randao_reveal = bls_sign(
         privkey=privkey,
-        message_hash=hash_tree_root(spec.slot_to_epoch(block.slot)),
+        message_hash=hash_tree_root(spec.compute_epoch_of_slot(block.slot)),
         domain=spec.get_domain(
             state,
-            message_epoch=spec.slot_to_epoch(block.slot),
+            message_epoch=spec.compute_epoch_of_slot(block.slot),
             domain_type=spec.DOMAIN_RANDAO,
         )
     )
@@ -39,7 +39,7 @@ def sign_block(spec, state, block, proposer_index=None):
         domain=spec.get_domain(
             state,
             spec.DOMAIN_BEACON_PROPOSER,
-            spec.slot_to_epoch(block.slot)))
+            spec.compute_epoch_of_slot(block.slot)))
 
 
 def apply_empty_block(spec, state):

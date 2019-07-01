@@ -1,6 +1,6 @@
 # Test format: BLS sign message
 
-Message signing with BLS should produce a signature. 
+Message signing with BLS should produce a signature.
 
 ## Test case format
 
@@ -8,7 +8,7 @@ Message signing with BLS should produce a signature.
 input:
   privkey: bytes32 -- the private key used for signing
   message: bytes32 -- input message to sign (a hash)
-  domain: uint64 -- the BLS domain
+  domain: bytes8   -- the BLS domain
 output: bytes96    -- expected signature
 ```
 

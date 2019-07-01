@@ -64,15 +64,15 @@
             - [`is_active_validator`](#is_active_validator)
             - [`is_slashable_validator`](#is_slashable_validator)
             - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
+            - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
             - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
         - [Misc](#misc-1)
-            - [`shuffle_index`](#shuffle_index)
+            - [`compute_shuffled_index`](#compute_shuffled_index)
             - [`compute_committee`](#compute_committee)
-            - [`validate_indexed_attestation`](#validate_indexed_attestation)
-            - [`slot_to_epoch`](#slot_to_epoch)
-            - [`epoch_start_slot`](#epoch_start_slot)
+            - [`compute_epoch_of_slot`](#compute_epoch_of_slot)
+            - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
             - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
-            - [`bls_domain`](#bls_domain)
+            - [`compute_domain`](#compute_domain)
         - [Beacon state accessors](#beacon-state-accessors)
             - [`get_current_epoch`](#get_current_epoch)
             - [`get_previous_epoch`](#get_previous_epoch)
@@ -147,8 +147,10 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Version` | `Bytes4` | a fork version number |
 | `Hash` | `Bytes32` | a hash |
+| `Version` | `Bytes4` | a fork version number |
+| `DomainType` | `Bytes4` | a signature domain type |
+| `Domain` | `Bytes8` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -250,7 +252,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 | `MAX_TRANSFERS` | `0` |
 
-### Signature domains
+### Signature domain types
+
+The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
@@ -515,6 +519,7 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
+    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active index digests for light clients
     compact_committees_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Committee digests for light clients
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
@@ -645,6 +650,45 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
     )
 ```
 
+#### `is_valid_indexed_attestation`
+
+```python
+def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
+    """
+    Verify validity of ``indexed_attestation``.
+    """
+    bit_0_indices = indexed_attestation.custody_bit_0_indices
+    bit_1_indices = indexed_attestation.custody_bit_1_indices
+
+    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
+    if not len(bit_1_indices) == 0:
+        return False
+    # Verify max number of indices
+    if not len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE:
+        return False
+    # Verify index sets are disjoint
+    if not len(set(bit_0_indices).intersection(bit_1_indices)) == 0:
+        return False
+    # Verify indices are sorted
+    if not (bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)):
+        return False
+    # Verify aggregate signature
+    if not bls_verify_multiple(
+        pubkeys=[
+            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
+            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
+        ],
+        message_hashes=[
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
+            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
+        ],
+        signature=indexed_attestation.signature,
+        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
+    ):
+        return False
+    return True
+```
+
 #### `is_valid_merkle_branch`
 
 ```python
@@ -663,10 +707,10 @@ def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: uint64, in
 
 ### Misc
 
-#### `shuffle_index`
+#### `compute_shuffled_index`
 
 ```python
-def shuffle_index(index: ValidatorIndex, index_count: uint64, seed: Hash) -> ValidatorIndex:
+def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Hash) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -699,56 +743,23 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     """
     start = (len(indices) * index) // count
     end = (len(indices) * (index + 1)) // count
-    return [indices[shuffle_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
+    return [indices[compute_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
 ```
 
-#### `validate_indexed_attestation`
+#### `compute_epoch_of_slot`
 
 ```python
-def validate_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> None:
-    """
-    Verify validity of ``indexed_attestation``.
-    """
-    bit_0_indices = indexed_attestation.custody_bit_0_indices
-    bit_1_indices = indexed_attestation.custody_bit_1_indices
-
-    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
-    assert len(bit_1_indices) == 0
-    # Verify max number of indices
-    assert len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE
-    # Verify index sets are disjoint
-    assert len(set(bit_0_indices).intersection(bit_1_indices)) == 0
-    # Verify indices are sorted
-    assert bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)
-    # Verify aggregate signature
-    assert bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
-        ],
-        message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
-        ],
-        signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
-    )
-```
-
-#### `slot_to_epoch`
-
-```python
-def slot_to_epoch(slot: Slot) -> Epoch:
+def compute_epoch_of_slot(slot: Slot) -> Epoch:
     """
     Return the epoch number of ``slot``.
     """
     return Epoch(slot // SLOTS_PER_EPOCH)
 ```
 
-#### `epoch_start_slot`
+#### `compute_start_slot_of_epoch`
 
 ```python
-def epoch_start_slot(epoch: Epoch) -> Slot:
+def compute_start_slot_of_epoch(epoch: Epoch) -> Slot:
     """
     Return the start slot of ``epoch``.
     """
@@ -765,14 +776,14 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     return Epoch(epoch + 1 + ACTIVATION_EXIT_DELAY)
 ```
 
-#### `bls_domain`
+#### `compute_domain`
 
 ```python
-def bls_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> int:
+def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> Domain:
     """
-    Return the BLS domain for the ``domain_type`` and ``fork_version``.
+    Return the domain for the ``domain_type`` and ``fork_version``.
     """
-    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+    return Domain(domain_type + fork_version)
 ```
 
 ### Beacon state accessors
@@ -784,7 +795,7 @@ def get_current_epoch(state: BeaconState) -> Epoch:
     """
     Return the current epoch.
     """
-    return slot_to_epoch(state.slot)
+    return compute_epoch_of_slot(state.slot)
 ```
 
 #### `get_previous_epoch`
@@ -805,7 +816,7 @@ def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the block root at the start of a recent ``epoch``.
     """
-    return get_block_root_at_slot(state, epoch_start_slot(epoch))
+    return get_block_root_at_slot(state, compute_start_slot_of_epoch(epoch))
 ```
 
 #### `get_block_root_at_slot`
@@ -858,9 +869,8 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
-    active_indices = get_active_validator_indices(state, epoch)
-    active_indices_root = hash_tree_root(List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](active_indices))
-    return hash(mix + active_indices_root + int_to_bytes(epoch, length=32))
+    active_index_root = state.active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
+    return hash(mix + active_index_root + int_to_bytes(epoch, length=32))
 ```
 
 #### `get_committee_count`
@@ -951,7 +961,7 @@ def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot
     """
     committee_count = get_committee_count(state, data.target.epoch)
     offset = (data.crosslink.shard + SHARD_COUNT - get_start_shard(state, data.target.epoch)) % SHARD_COUNT
-    return Slot(epoch_start_slot(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
+    return Slot(compute_start_slot_of_epoch(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
 ```
 
 #### `get_compact_committees_root`
@@ -998,13 +1008,13 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: uint64, message_epoch: Epoch=None) -> int:
+def get_domain(state: BeaconState, domain_type: DomainType, message_epoch: Epoch=None) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return bls_domain(domain_type, fork_version)
+    return compute_domain(domain_type, fork_version)
 ```
 
 #### `get_indexed_attestation`
@@ -1140,13 +1150,18 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
 
     # Process activations
     for index, validator in enumerate(state.validators):
-        if state.balances[index] >= MAX_EFFECTIVE_BALANCE:
+        balance = state.balances[index]
+        validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+        if validator.effective_balance == MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate compact_committees_roots
+    # Populate active_index_roots and compact_committees_roots
+    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
+    active_index_root = hash_tree_root(indices_list)
     committee_root = get_compact_committees_root(state, GENESIS_EPOCH)
     for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
+        state.active_index_roots[index] = active_index_root
         state.compact_committees_roots[index] = committee_root
     return state
 ```
@@ -1490,7 +1505,12 @@ def process_final_updates(state: BeaconState) -> None:
     # Update start shard
     state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
-    committee_root_position = (next_epoch + ACTIVATION_EXIT_DELAY) % EPOCHS_PER_HISTORICAL_VECTOR
+    index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
+    index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
+    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, index_epoch))
+    state.active_index_roots[index_root_position] = hash_tree_root(indices_list)
+    # Set committees root
+    committee_root_position = next_epoch % EPOCHS_PER_HISTORICAL_VECTOR
     state.compact_committees_roots[committee_root_position] = get_compact_committees_root(state, next_epoch)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
@@ -1586,14 +1606,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     proposer = state.validators[proposer_slashing.proposer_index]
     # Verify that the epoch is the same
-    assert slot_to_epoch(proposer_slashing.header_1.slot) == slot_to_epoch(proposer_slashing.header_2.slot)
+    assert (compute_epoch_of_slot(proposer_slashing.header_1.slot)
+            == compute_epoch_of_slot(proposer_slashing.header_2.slot))
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
     # Check proposer is slashable
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, slot_to_epoch(header.slot))
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_of_slot(header.slot))
         assert bls_verify(proposer.pubkey, signing_root(header), header.signature, domain)
 
     slash_validator(state, proposer_slashing.proposer_index)
@@ -1606,8 +1627,8 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
     assert is_slashable_attestation_data(attestation_1.data, attestation_2.data)
-    validate_indexed_attestation(state, attestation_1)
-    validate_indexed_attestation(state, attestation_2)
+    assert is_valid_indexed_attestation(state, attestation_1)
+    assert is_valid_indexed_attestation(state, attestation_2)
 
     slashed_any = False
     attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
@@ -1653,7 +1674,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink.data_root == Hash()  # [to be removed in phase 1]
 
     # Check signature
-    validate_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
 ```
 
 ##### Deposits
@@ -1678,8 +1699,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) for new validators.
         # Note: The deposit contract does not check signatures.
-        # Note: Deposits are valid across forks, hence the deposit domain is retrieved directly from `bls_domain`
-        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, bls_domain(DOMAIN_DEPOSIT)):
+        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`
+        domain = compute_domain(DOMAIN_DEPOSIT)
+        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, domain):
             return
 
         # Add validator and balance entries
@@ -1690,7 +1712,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             activation_epoch=FAR_FUTURE_EPOCH,
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
-            effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
+            effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE),
         ))
         state.balances.append(amount)
     else:

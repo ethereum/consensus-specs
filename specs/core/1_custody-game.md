@@ -109,7 +109,9 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
 
-### Signature domains
+### Signature domain types
+
+The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
@@ -474,9 +476,10 @@ For each `challenge` in `block.body.custody_chunk_challenges`, run the following
 ```python
 def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge) -> None:
     # Verify the attestation
-    validate_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge
-    assert slot_to_epoch(challenge.attestation.data.slot) >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
+    assert (compute_epoch_of_slot(challenge.attestation.data.slot)
+            >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY)
     responder = state.validators[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
     # Verify the responder participated in the attestation
@@ -517,7 +520,7 @@ For each `challenge` in `block.body.custody_bit_challenges`, run the following f
 ```python
 def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) -> None:
     attestation = challenge.attestation
-    epoch = slot_to_epoch(attestation.data.slot)
+    epoch = compute_epoch_of_slot(attestation.data.slot)
     shard = attestation.data.crosslink.shard
 
     # Verify challenge signature
@@ -527,7 +530,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify challenger is slashable
     assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify attestation
-    validate_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert epoch + responder.max_reveal_lateness <= get_reveal_period(state, challenge.responder_index)
