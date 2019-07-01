@@ -5,9 +5,9 @@ A BLS compressed-hash to G2.
 ## Test case format
 
 ```yaml
-input:
-  message: bytes32,
-  domain: uint64 -- the domain
+input: 
+  message: bytes32
+  domain: bytes8   -- the BLS domain
 output: List[bytes48] -- length of two
 ```
 

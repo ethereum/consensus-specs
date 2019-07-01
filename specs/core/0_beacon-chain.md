@@ -147,8 +147,10 @@ We define the following Python custom types for type hinting and readability:
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Version` | `Bytes4` | a fork version number |
 | `Hash` | `Bytes32` | a hash |
+| `Version` | `Bytes4` | a fork version number |
+| `DomainType` | `Bytes4` | a signature domain type |
+| `Domain` | `Bytes8` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -250,7 +252,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 | `MAX_TRANSFERS` | `0` |
 
-### Signature domains
+### Signature domain types
+
+The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
@@ -775,11 +779,11 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
 #### `compute_domain`
 
 ```python
-def compute_domain(domain_type: uint64, fork_version: bytes=b'\x00' * 4) -> int:
+def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
-    return bytes_to_int(int_to_bytes(domain_type, length=4) + fork_version)
+    return Domain(domain_type + fork_version)
 ```
 
 ### Beacon state accessors
@@ -1004,7 +1008,7 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: uint64, message_epoch: Epoch=None) -> int:
+def get_domain(state: BeaconState, domain_type: DomainType, message_epoch: Epoch=None) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
