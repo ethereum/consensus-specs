@@ -212,7 +212,7 @@ epoch_signature = bls_sign(
     privkey=validator.privkey,  # privkey stored locally, not in state
     message_hash=hash_tree_root(compute_epoch_of_slot(block.slot)),
     domain=get_domain(
-        fork=fork,  # `fork` is the fork object at the slot `block.slot`
+        fork=fork,  # `fork` is the fork object at the epoch `compute_epoch_of_slot(block.slot)`
         epoch=compute_epoch_of_slot(block.slot),
         domain_type=DOMAIN_RANDAO,
     )
@@ -251,7 +251,7 @@ block_signature = bls_sign(
     privkey=validator.privkey,  # privkey store locally, not in state
     message_hash=signing_root(block),
     domain=get_domain(
-        fork=fork,  # `fork` is the fork object at the slot `block.slot`
+        fork=fork,  # `fork` is the fork object at the epoch `compute_epoch_of_slot(block.slot)`
         epoch=compute_epoch_of_slot(block.slot),
         domain_type=DOMAIN_BEACON_BLOCK,
     )
@@ -355,8 +355,8 @@ signed_attestation_data = bls_sign(
     privkey=validator.privkey,  # privkey stored locally, not in state
     message_hash=attestation_message,
     domain=get_domain(
-        fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
-        epoch=compute_epoch_of_slot(attestation_data.slot),
+        fork=fork,  # `fork` is the fork object at epoch `target.epoch`
+        epoch=target.epoch,
         domain_type=DOMAIN_ATTESTATION,
     )
 )
@@ -387,7 +387,7 @@ To avoid "attester slashings", a validator must not sign two conflicting [`Attes
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that an attestation has been signed for source (i.e. `attestation_data.source.epoch`) and target (i.e. `compute_epoch_of_slot(attestation_data.slot)`).
+1. Save a record to hard disk that an attestation has been signed for source (i.e. `attestation_data.source.epoch`) and target (i.e. `attestation_data.target.epoch`).
 2. Generate and broadcast attestation.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast attestation and can effectively avoid slashing.
