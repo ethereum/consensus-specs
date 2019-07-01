@@ -164,7 +164,7 @@ def get_persistent_committee(state: BeaconState,
     """
     Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
-    epoch = slot_to_epoch(slot)
+    epoch = compute_epoch_of_slot(slot)
     earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
     later_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD)
 
@@ -241,7 +241,7 @@ def verify_shard_attestation_signature(state: BeaconState,
         pubkey=bls_aggregate_pubkeys(pubkeys),
         message_hash=data.shard_block_root,
         signature=attestation.aggregate_signature,
-        domain=get_domain(state, DOMAIN_SHARD_ATTESTER, slot_to_epoch(data.slot))
+        domain=get_domain(state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_slot(data.slot))
     )
 ```
 
@@ -340,7 +340,7 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
         pubkey=beacon_state.validators[proposer_index].pubkey,
         message_hash=signing_root(candidate),
         signature=candidate.signature,
-        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, slot_to_epoch(candidate.slot)),
+        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_slot(candidate.slot)),
     )
 
     return True
@@ -404,11 +404,12 @@ def is_valid_beacon_attestation(shard: Shard,
             None,
         )
         assert previous_attestation is not None
-        assert candidate.data.previous_attestation.epoch < slot_to_epoch(candidate.data.slot)
+        assert candidate.data.previous_attestation.epoch < compute_epoch_of_slot(candidate.data.slot)
 
     # Check crosslink data root
     start_epoch = beacon_state.crosslinks[shard].epoch
-    end_epoch = min(slot_to_epoch(candidate.data.slot) - CROSSLINK_LOOKBACK, start_epoch + MAX_EPOCHS_PER_CROSSLINK)
+    end_epoch = min(compute_epoch_of_slot(candidate.data.slot) - CROSSLINK_LOOKBACK,
+                    start_epoch + MAX_EPOCHS_PER_CROSSLINK)
     blocks = []
     for slot in range(start_epoch * SLOTS_PER_EPOCH, end_epoch * SLOTS_PER_EPOCH):
         blocks.append(shard_blocks[slot])

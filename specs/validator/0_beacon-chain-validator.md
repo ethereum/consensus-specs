@@ -99,7 +99,7 @@ To submit a deposit:
 - Pack the validator's [initialization parameters](#initialization) into `deposit_data`, a [`DepositData`](../core/0_beacon-chain.md#depositdata) SSZ object.
 - Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_EFFECTIVE_BALANCE`.
 - Set `deposit_data.amount = amount`.
-- Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=bls_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `bls_domain` will default to zeroes there).
+- Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `compute_domain` will default to zeroes there).
 - Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])` along with a deposit of `amount` Gwei.
 
 *Note*: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validators` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_EFFECTIVE_BALANCE`.
@@ -146,7 +146,7 @@ def get_committee_assignment(state: BeaconState,
     assert epoch <= next_epoch
 
     committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    start_slot = epoch_start_slot(epoch)
+    start_slot = compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
         offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
         slot_start_shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
@@ -210,10 +210,10 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is defined a
 ```python
 epoch_signature = bls_sign(
     privkey=validator.privkey,  # privkey stored locally, not in state
-    message_hash=hash_tree_root(slot_to_epoch(block.slot)),
+    message_hash=hash_tree_root(compute_epoch_of_slot(block.slot)),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
-        epoch=slot_to_epoch(block.slot),
+        epoch=compute_epoch_of_slot(block.slot),
         domain_type=DOMAIN_RANDAO,
     )
 )
@@ -252,7 +252,7 @@ block_signature = bls_sign(
     message_hash=signing_root(block),
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot `block.slot`
-        epoch=slot_to_epoch(block.slot),
+        epoch=compute_epoch_of_slot(block.slot),
         domain_type=DOMAIN_BEACON_BLOCK,
     )
 )
@@ -308,7 +308,7 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
 
-- Let `start_slot = epoch_start_slot(get_current_epoch(head_state))`.
+- Let `start_slot = compute_start_slot_of_epoch(get_current_epoch(head_state))`.
 - Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
 
 ##### Crosslink vote
@@ -358,7 +358,7 @@ signed_attestation_data = bls_sign(
     message_hash=attestation_message,
     domain=get_domain(
         fork=fork,  # `fork` is the fork object at the slot, `attestation_data.slot`
-        epoch=slot_to_epoch(attestation_data.slot),
+        epoch=compute_epoch_of_slot(attestation_data.slot),
         domain_type=DOMAIN_ATTESTATION,
     )
 )
@@ -378,7 +378,7 @@ To avoid "proposer slashings", a validator must not sign two conflicting [`Beaco
 
 Specifically, when signing a `BeaconBlock`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that a beacon block has been signed for the `epoch=slot_to_epoch(block.slot)`.
+1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_of_slot(block.slot)`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast block and can effectively avoid slashing.
@@ -389,7 +389,7 @@ To avoid "attester slashings", a validator must not sign two conflicting [`Attes
 
 Specifically, when signing an `Attestation`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that an attestation has been signed for source (i.e. `attestation_data.source_epoch`) and target (i.e. `slot_to_epoch(attestation_data.slot)`).
+1. Save a record to hard disk that an attestation has been signed for source (i.e. `attestation_data.source_epoch`) and target (i.e. `compute_epoch_of_slot(attestation_data.slot)`).
 2. Generate and broadcast attestation.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast attestation and can effectively avoid slashing.
