@@ -1,6 +1,6 @@
 # Test format: BLS sign message
 
-Message signing with BLS should produce a signature. 
+Message signing with BLS should produce a signature.
 
 ## Test case format
 
