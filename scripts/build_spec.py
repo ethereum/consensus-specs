@@ -11,7 +11,7 @@ from typing import (
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, Tuple,
+    Any, Dict, Set, Sequence, Tuple, Optional
 )
 
 from dataclasses import (
@@ -31,6 +31,7 @@ from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
+    bls_sign,
 )
 
 from eth2spec.utils.hash_function import hash
@@ -66,6 +67,10 @@ SUNDRY_FUNCTIONS = '''
 # Monkey patch hash cache
 _hash = hash
 hash_cache: Dict[bytes, Hash] = {}
+
+
+def get_eth1_data(distance: uint64) -> Hash:
+    return hash(distance)
 
 
 def hash(x: bytes) -> Hash:
@@ -243,10 +248,14 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     return functions, custom_types, constants, ssz_objects, inserts
 
 
-def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str, outfile: str=None) -> Optional[str]:
+def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
+                      v_guide_sourcefile: str, outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
     fork_choice_spec = get_spec(fork_choice_sourcefile)
-    spec_objects = combine_spec_objects(phase0_spec, fork_choice_spec)
+    v_guide = get_spec(v_guide_sourcefile)
+    spec_objects = phase0_spec
+    for value in [fork_choice_spec, v_guide]:
+        spec_objects = combine_spec_objects(spec_objects, value)
     spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
@@ -279,7 +288,8 @@ Build the specs from the md docs.
 If building phase 0:
     1st argument is input spec.md
     2nd argument is input fork_choice.md
-    3rd argument is output spec.py
+    3rd argument is input validator_guide.md
+    4th argument is output spec.py
 
 If building phase 1:
     1st argument is input spec_phase0.md
@@ -294,14 +304,15 @@ If building phase 1:
 
     args = parser.parse_args()
     if args.phase == 0:
-        if len(args.files) == 3:
+        if len(args.files) == 4:
             build_phase0_spec(*args.files)
         else:
-            print(" Phase 0 requires an output as well as spec and forkchoice files.")
+            print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
         if len(args.files) == 5:
             build_phase1_spec(*args.files)
         else:
-            print(" Phase 1 requires an output as well as 4 input files (phase0.md and phase1.md, phase1.md, fork_choice.md)")
+            print(" Phase 1 requires 4 input files as well as an output file: "
+                  + "(phase0.md and phase1.md, phase1.md, fork_choice.md, output.py)")
     else:
         print("Invalid phase: {0}".format(args.phase))
