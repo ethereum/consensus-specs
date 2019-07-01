@@ -6,7 +6,7 @@ from eth2spec.utils.ssz.ssz_typing import List
 def build_mock_validator(spec, i: int, balance: int):
     pubkey = pubkeys[i]
     # insecurely use pubkey as withdrawal key as well
-    withdrawal_credentials = spec.int_to_bytes(spec.BLS_WITHDRAWAL_PREFIX, length=1) + spec.hash(pubkey)[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
     return spec.Validator(
         pubkey=pubkeys[i],
         withdrawal_credentials=withdrawal_credentials,

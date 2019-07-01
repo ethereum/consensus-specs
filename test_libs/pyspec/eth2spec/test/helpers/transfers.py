@@ -34,7 +34,7 @@ def get_valid_transfer(spec, state, slot=None, sender_index=None,
 
     # ensure withdrawal_credentials reproducible
     state.validators[transfer.sender].withdrawal_credentials = (
-        spec.int_to_bytes(spec.BLS_WITHDRAWAL_PREFIX, length=1) + spec.hash(transfer.pubkey)[1:]
+        spec.BLS_WITHDRAWAL_PREFIX + spec.hash(transfer.pubkey)[1:]
     )
 
     return transfer

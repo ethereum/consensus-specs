@@ -87,8 +87,8 @@ A secondary withdrawal private key, `withdrawal_privkey`, must also be securely 
 
 The validator constructs their `withdrawal_credentials` via the following:
 
-- Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`.
-- Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
+* Set `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`.
+* Set `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]`.
 
 ### Submit deposit
 

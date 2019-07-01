@@ -19,7 +19,7 @@
         - [State list lengths](#state-list-lengths)
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
-        - [Signature domains](#signature-domains)
+        - [Signature domain types](#signature-domain-types)
     - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
@@ -164,6 +164,8 @@ The following values are (non-configurable) constants used throughout the specif
 | `BASE_REWARDS_PER_EPOCH` | `5` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 | `SECONDS_PER_DAY` | `86400` |
+| `JUSTIFICATION_BITS_LENGTH` | `4` |
+| `ENDIANNESS` | `'little'` |
 
 ## Configuration
 
@@ -181,8 +183,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `SHUFFLE_ROUND_COUNT` | `90` |
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
-| `JUSTIFICATION_BITS_LENGTH` | `4` |
-| `ENDIANNESS` | `'little'` |
 
 - For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
@@ -201,7 +201,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
-| `BLS_WITHDRAWAL_PREFIX` | `0` |
+| `BLS_WITHDRAWAL_PREFIX` | `Bytes1(b'\x00')` |
 
 ### Time parameters
 
@@ -214,11 +214,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
-| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048)  | epochs | 9 days  |
+| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | 9 days |
 | `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
-
-- `MAX_EPOCHS_PER_CROSSLINK` should be a small constant times `SHARD_COUNT // SLOTS_PER_EPOCH`.
 
 ### State list lengths
 
@@ -227,7 +225,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
 | `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
 | `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
-| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots | |
+| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots |
 
 ### Rewards and penalties
 
@@ -547,7 +545,7 @@ class BeaconState(Container):
 #### `integer_squareroot`
 
 ```python
-def integer_squareroot(n: uint64) -> int:
+def integer_squareroot(n: uint64) -> uint64:
     """
     Return the largest integer ``x`` such that ``x**2 <= n``.
     """
@@ -570,17 +568,17 @@ def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
 ```
 
 ```python
-def int_to_bytes(integer: uint64, length: uint64) -> bytes:
+def int_to_bytes(n: uint64, length: uint64) -> bytes:
     """
-    Return the ``length``-byte serialization of ``integer``.
+    Return the ``length``-byte serialization of ``n``.
     """
-    return integer.to_bytes(length, ENDIANNESS)
+    return n.to_bytes(length, ENDIANNESS)
 ```
 
 #### `bytes_to_int`
 
 ```python
-def bytes_to_int(data: bytes) -> int:
+def bytes_to_int(data: bytes) -> uint64:
     """
     Return the integer deserialization of ``data``.
     """
@@ -715,7 +713,6 @@ def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Has
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
     assert index < index_count
-    assert index_count <= 2**40
 
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
@@ -853,7 +850,7 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[V
 #### `get_validator_churn_limit`
 
 ```python
-def get_validator_churn_limit(state: BeaconState) -> int:
+def get_validator_churn_limit(state: BeaconState) -> uint64:
     """
     Return the validator churn limit for the current epoch.
     """
@@ -876,7 +873,7 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
 #### `get_committee_count`
 
 ```python
-def get_committee_count(state: BeaconState, epoch: Epoch) -> int:
+def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of committees at ``epoch``.
     """
@@ -921,7 +918,7 @@ def get_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
 #### `get_shard_delta`
 
 ```python
-def get_shard_delta(state: BeaconState, epoch: Epoch) -> int:
+def get_shard_delta(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of shards to increment ``state.start_shard`` at ``epoch``.
     """
@@ -1699,7 +1696,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) for new validators.
         # Note: The deposit contract does not check signatures.
-        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`
+        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
         domain = compute_domain(DOMAIN_DEPOSIT)
         if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, domain):
             return
@@ -1759,10 +1756,7 @@ def process_transfer(state: BeaconState, transfer: Transfer) -> None:
         state.balances[transfer.sender] >= transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE
     )
     # Verify that the pubkey is valid
-    assert (
-        state.validators[transfer.sender].withdrawal_credentials ==
-        int_to_bytes(BLS_WITHDRAWAL_PREFIX, length=1) + hash(transfer.pubkey)[1:]
-    )
+    assert state.validators[transfer.sender].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX + hash(transfer.pubkey)[1:]
     # Verify that the signature is valid
     assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
     # Process the transfer
