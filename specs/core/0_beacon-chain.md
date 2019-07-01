@@ -665,7 +665,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     if not len(set(bit_0_indices).intersection(bit_1_indices)) == 0:
         return False
     # Verify indices are sorted
-    if not bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices):
+    if not (bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)):
         return False
     # Verify aggregate signature
     if not bls_verify_multiple(
