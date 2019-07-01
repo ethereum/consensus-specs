@@ -124,7 +124,7 @@ def compute_committee(header: BeaconBlockHeader,
     maximal_later_committee = validator_memory.later_period_data.committee
     earlier_start_epoch = get_earlier_start_epoch(header.slot)
     later_start_epoch = get_later_start_epoch(header.slot)
-    epoch = slot_to_epoch(header.slot)
+    epoch = compute_epoch_of_slot(header.slot)
 
     committee_count = max(
         earlier_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
@@ -192,7 +192,7 @@ def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: Val
         pubkey=group_public_key,
         message_hash=hash_tree_root(shard_parent_block),
         signature=proof.shard_aggregate_signature,
-        domain=get_domain(state, slot_to_epoch(shard_block.slot), DOMAIN_SHARD_ATTESTER),
+        domain=get_domain(state, compute_epoch_of_slot(shard_block.slot), DOMAIN_SHARD_ATTESTER),
     )
 ```
 
