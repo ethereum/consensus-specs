@@ -29,15 +29,20 @@ COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
 all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
 
-clean:
+# deletes everything except the venvs
+partial_clean:
 	rm -rf $(YAML_TEST_DIR)
 	rm -rf $(GENERATOR_VENVS)
-	rm -rf $(PY_SPEC_DIR)/venv $(PY_SPEC_DIR)/.pytest_cache
+	rm -rf $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
-	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv $(DEPOSIT_CONTRACT_DIR)/.pytest_cache
+	rm -rf $(DEPOSIT_CONTRACT_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_DIR)/$(COV_HTML_OUT)
 	rm -rf $(PY_SPEC_DIR)/.coverage
 	rm -rf $(PY_SPEC_DIR)/test-reports
+
+clean: partial_clean
+	rm -rf $(PY_SPEC_DIR)/venv
+	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv
 
 # "make gen_yaml_tests" to run generators
 gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
@@ -78,7 +83,7 @@ test_deposit_contract:
 pyspec: $(PY_SPEC_ALL_TARGETS)
 
 $(PY_SPEC_PHASE_0_TARGETS): $(PY_SPEC_PHASE_0_DEPS)
-	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/0_fork-choice.md $@
+	python3 $(SCRIPT_DIR)/build_spec.py -p0 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/0_fork-choice.md $(SPEC_DIR)/validator/0_beacon-chain-validator.md $@
 
 $(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
 	python3 $(SCRIPT_DIR)/build_spec.py -p1 $(SPEC_DIR)/core/0_beacon-chain.md $(SPEC_DIR)/core/1_custody-game.md $(SPEC_DIR)/core/1_shard-data-chains.md $(SPEC_DIR)/core/0_fork-choice.md $@
