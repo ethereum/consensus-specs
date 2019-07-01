@@ -715,7 +715,6 @@ def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Has
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
     assert index < index_count
-    assert index_count <= VALIDATOR_REGISTRY_LIMIT
 
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
