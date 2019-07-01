@@ -19,7 +19,7 @@ def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, st
 def sign_deposit_data(spec, deposit_data, privkey, state=None):
     if state is None:
         # Genesis
-        domain = spec.bls_domain(spec.DOMAIN_DEPOSIT)
+        domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
     else:
         domain = spec.get_domain(
             state,
