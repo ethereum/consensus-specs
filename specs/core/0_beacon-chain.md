@@ -218,12 +218,12 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### State list lengths
 
-| Name | Value | Duration |
+| Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `Epoch(2**16)` (= 65,536) | ~0.8 years |
-| `EPOCHS_PER_SLASHINGS_VECTOR` | `Epoch(2**13)` (= 8,192) | ~36 days |
-| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | ~26,131 years |
-| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots | |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `2**16` (= 65,536) | epochs | ~0.8 years |
+| `EPOCHS_PER_SLASHINGS_VECTOR` | `2**13` (= 8,192) | epochs | ~36 days |
+| `HISTORICAL_ROOTS_LIMIT` | `2**24` (= 16,777,216) | historical roots | ~26,131 years |
+| `VALIDATOR_REGISTRY_LIMIT` | `2**40` (= 1,099,511,627,776) | validator spots |
 
 ### Rewards and penalties
 
