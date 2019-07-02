@@ -1044,6 +1044,7 @@ def get_attesting_indices(state: BeaconState,
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
     committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
+    assert len(committee) == len(bits)
     return set(index for i, index in enumerate(committee) if bits[i])
 ```
 
