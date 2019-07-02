@@ -33,7 +33,10 @@ The particular formats of specific types of tests (test suites) are defined in s
 
 Test formats:
 - [`bls`](./bls/README.md)
+- [`epoch_processing`](./epoch_processing/README.md)
+- [`genesis`](./genesis/README.md)
 - [`operations`](./operations/README.md)
+- [`sanity`](./sanity/README.md)
 - [`shuffling`](./shuffling/README.md)
 - [`ssz_generic`](./ssz_generic/README.md)
 - [`ssz_static`](./ssz_static/README.md)
