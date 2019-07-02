@@ -389,7 +389,7 @@ class DepositData(Container):
 
 ```python
 class CompactCommittee(Container):
-    pubkeys: List[Bytes48, MAX_VALIDATORS_PER_COMMITTEE]
+    pubkeys: List[BLSPubKey, MAX_VALIDATORS_PER_COMMITTEE]
     compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
 ```
 
