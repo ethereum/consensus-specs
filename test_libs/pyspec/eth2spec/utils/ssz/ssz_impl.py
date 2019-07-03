@@ -97,7 +97,7 @@ def encode_series(values: Series):
 def pack(values: Series):
     if isinstance(values, bytes):  # Bytes and BytesN are already packed
         return values
-    elif isinstance(values, Bitvector) or isinstance(values, Bitlist):
+    elif isinstance(values, (Bitvector, Bitlist)):
         as_bytearray = [0] * ((len(values) + 7) // 8)
         for i in range(len(values)):
             as_bytearray[i // 8] |= values[i] << (i % 8)
