@@ -55,7 +55,6 @@
         foo: uint64
         bar: boolean
     ```
-
 * **vector**: ordered fixed-length homogeneous collection, with `N` values
     * notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
 * **list**: ordered variable-length homogeneous collection, limited to `N` values
@@ -102,7 +101,7 @@ We recursively define the `serialize` function which consumes an object `value` 
 
 ```python
 assert N in [8, 16, 32, 64, 128, 256]
-return value.to_bytes(N // 8, "little")
+return value.to_bytes(N // BITS_PER_BYTE, "little")
 ```
 
 ### `boolean`
@@ -190,11 +189,11 @@ We first define helper functions:
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
-* `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects
+* `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects.
 * `mix_in_length(merkleize(pack(value), pad_for=(N * elem_size / BYTES_PER_CHUNK)), len(value))` if `value` is a list of basic objects.
-* `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container
+* `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], pad_for=N), len(value))` if `value` is a list of composite objects.
-* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
+* `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
 
 ### `Bitvector[N]`
 
