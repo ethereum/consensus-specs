@@ -15,7 +15,7 @@
         - [Time parameters](#time-parameters)
         - [Max operations per block](#max-operations-per-block)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Signature domains](#signature-domains)
+        - [Signature domain types](#signature-domain-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [Custody objects](#custody-objects)
@@ -156,7 +156,7 @@ class CustodyChunkChallengeRecord(Container):
     challenger_index: ValidatorIndex
     responder_index: ValidatorIndex
     inclusion_epoch: Epoch
-    data_root: Bytes32
+    data_root: Hash
     depth: uint64
     chunk_index: uint64
 ```
@@ -169,9 +169,9 @@ class CustodyBitChallengeRecord(Container):
     challenger_index: ValidatorIndex
     responder_index: ValidatorIndex
     inclusion_epoch: Epoch
-    data_root: Bytes32
+    data_root: Hash
     chunk_count: uint64
-    chunk_bits_merkle_root: Bytes32
+    chunk_bits_merkle_root: Hash
     responder_key: BLSSignature
 ```
 
@@ -182,9 +182,9 @@ class CustodyResponse(Container):
     challenge_index: uint64
     chunk_index: uint64
     chunk: Vector[Bytes[PLACEHOLDER], BYTES_PER_CUSTODY_CHUNK]
-    data_branch: List[Bytes32, PLACEHOLDER]
-    chunk_bits_branch: List[Bytes32, PLACEHOLDER]
-    chunk_bits_leaf: Bytes32
+    data_branch: List[Hash, PLACEHOLDER]
+    chunk_bits_branch: List[Hash, PLACEHOLDER]
+    chunk_bits_leaf: Hash
 ```
 
 ### New beacon operations
@@ -296,7 +296,7 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
 ### `get_chunk_bits_root`
 
 ```python
-def get_chunk_bits_root(chunk_bits: bytes) -> Bytes32:
+def get_chunk_bits_root(chunk_bits: bytes) -> Hash:
     aggregated_bits = bytearray([0] * 32)
     for i in range(0, len(chunk_bits), 32):
         for j in range(32):
