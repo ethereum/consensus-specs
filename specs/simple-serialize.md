@@ -178,7 +178,7 @@ We first define helper functions:
 
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
-* `merkleize(data, pad_for)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
+* `merkleize(data, pad_for=1)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
   The merkleization depends on the effective input, which can be padded: if `pad_for=L`, then pad the `data` with zeroed chunks to `next_pow_of_two(L)` (virtually for memory efficiency).
   Then, merkleize the chunks (empty input is padded to 1 zero chunk):
     - If `1` chunk: A single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
