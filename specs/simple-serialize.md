@@ -25,7 +25,7 @@
         - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
     - [Deserialization](#deserialization)
     - [Merkleization](#merkleization)
-        - [Merkleization of `Bitvector[N]`](#merkleization-of-bitvectorn)
+        - [`Bitvector[N]`](#bitvectorn-1)
         - [`Bitlist[N]`](#bitlistn-1)
     - [Self-signed containers](#self-signed-containers)
     - [Implementations](#implementations)
@@ -50,11 +50,12 @@
 
 * **container**: ordered heterogeneous collection of values
     * python dataclass notation with key-type pairs, e.g.
-```python
-class ContainerExample(Container):
-    foo: uint64
-    bar: boolean
-```
+    ```python
+    class ContainerExample(Container):
+        foo: uint64
+        bar: boolean
+    ```
+
 * **vector**: ordered fixed-length homogeneous collection, with `N` values
     * notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
 * **list**: ordered variable-length homogeneous collection, limited to `N` values
@@ -168,7 +169,8 @@ return serialized_type_index + serialized_bytes
 Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
-- Offsets: out of order, out of range, mismatching minimum element size
+
+- Offsets: out of order, out of range, mismatching minimum element size.
 - Scope: Extra unused bytes, not aligned with element size.
 - More elements than a list limit allows. Part of enforcing consensus.
 
@@ -179,10 +181,10 @@ We first define helper functions:
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
 * `merkleize(data, pad_for=1)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
-  The merkleization depends on the effective input, which can be padded: if `pad_for=L`, then pad the `data` with zeroed chunks to `next_pow_of_two(L)` (virtually for memory efficiency).
-  Then, merkleize the chunks (empty input is padded to 1 zero chunk):
-    - If `1` chunk: A single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
-    - If `> 1` chunks: pad to `next_pow_of_two(len(chunks))`, merkleize as binary tree.
+    * The merkleization depends on the effective input, which can be padded: if `pad_for=L`, then pad the `data` with zeroed chunks to `next_pow_of_two(L)` (virtually for memory efficiency).
+    * Then, merkleize the chunks (empty input is padded to 1 zero chunk):
+        - If `1` chunk: A single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
+        - If `> 1` chunks: pad to `next_pow_of_two(len(chunks))`, merkleize as binary tree.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 * `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
@@ -194,18 +196,18 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], pad_for=N), len(value))` if `value` is a list of composite objects.
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type
 
-### Merkleization of `Bitvector[N]`
+### `Bitvector[N]`
 
 ```python
 as_integer = sum([value[i] << i for i in range(len(value))])
-return merkleize(as_integer.to_bytes((N + 7) // 8, "little"))
+return merkleize(pack(as_integer.to_bytes((N + 7) // 8, "little")))
 ```
 
 ### `Bitlist[N]`
 
 ```python
 as_integer = sum([value[i] << i for i in range(len(value))])
-return mix_in_length(merkleize(as_integer.to_bytes((N + 7) // 8, "little")), len(value))
+return mix_in_length(merkleize(pack(as_integer.to_bytes((N + 7) // 8, "little"))), len(value))
 ```
 
 ## Self-signed containers
