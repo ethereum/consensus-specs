@@ -13,18 +13,18 @@
         - [Misc](#misc)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
-        - [Signature domains](#signature-domains)
+        - [Signature domain types](#signature-domain-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
-        - [`ShardAttestation`](#shardattestation)
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
     - [Helper functions](#helper-functions)
         - [`get_period_committee`](#get_period_committee)
         - [`get_switchover_epoch`](#get_switchover_epoch)
-        - [`get_persistent_committee`](#get_persistent_committee)
-        - [`get_shard_proposer_index`](#get_shard_proposer_index)
+        - [`get_shard_epoch_committee`](#get_shard_epoch_committee)
+        - [`get_shard_block_proposer_index`](#get_shard_block_proposer_index)
+        - [`get_shard_block_attester_committee`](#get_shard_block_attester_committee)
         - [`get_shard_header`](#get_shard_header)
         - [`verify_shard_attestation_signature`](#verify_shard_attestation_signature)
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
@@ -49,7 +49,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**0` (= 1) |
-| `SHARD_SLOT_COMMITTEE_SIZE` | `2**5 (=32) |
+| `SHARD_SLOT_COMMITTEE_SIZE` | `2**5` (=32) |
 
 ### Initial values
 
@@ -99,7 +99,7 @@ class ShardBlock(Container):
     parent_root: Bytes32
     data: ShardBlockBody
     state_root: Bytes32
-    attester_bitfield: BitVector[SHARD_SLOT_COMMITTEE_SIZE]
+    attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
     signature: BLSSignature
 ```
 
@@ -113,7 +113,7 @@ class ShardBlockHeader(Container):
     parent_root: Bytes32
     body_root: Bytes32
     state_root: Bytes32
-    attester_bitfield: BitVector[SHARD_SLOT_COMMITTEE_SIZE]
+    attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
     signature: BLSSignature
 ```
 
@@ -158,7 +158,7 @@ def get_shard_epoch_committee(state: BeaconState,
     later_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD)
 
     index = slot % committee_count
-    earlier_committee = compute_committee(get_active_validator_indices(earlier_start_epoch)
+    earlier_committee = compute_committee(get_active_validator_indices(earlier_start_epoch))
     earlier_committee = get_period_committee(state, earlier_start_epoch, shard)
     later_committee = get_period_committee(state, later_start_epoch, shard)
 
