@@ -156,18 +156,16 @@ def get_shard_epoch_committee(state: BeaconState,
     earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
     later_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD)
 
-    index = slot % committee_count
-    earlier_committee = compute_committee(get_active_validator_indices(earlier_start_epoch))
     earlier_committee = get_period_committee(state, earlier_start_epoch, shard)
     later_committee = get_period_committee(state, later_start_epoch, shard)
 
     seed = get_seed(state, epoch)
     MAX_RANDOM_BYTE = 2**8 - 1
 
-    def before_switch(i):
+    def before_switch(i: ValidatorIndex) -> bool:
         return epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)
 
-    def active_and_balance_filter(i):
+    def active_and_balance_filter(i: ValidatorIndex) -> bool:
         if not is_active_validator(state.validators[i], epoch):
             return False 
         active_threshold = MAX_EFFECTIVE_BALANCE * seed[i % 32] // MAX_RANDOM_BYTE
@@ -179,11 +177,14 @@ def get_shard_epoch_committee(state: BeaconState,
     # later committee; return a sorted list of the union of the two, deduplicated
     combined_committee = sorted(set(
         [i for i in earlier_committee if before_switch(i) and active_and_balance_filter(i)]
-         + [i for i in later_committee if (not before_switch(i)) and active_and_balance_filter(i)]
+        + [i for i in later_committee if (not before_switch(i)) and active_and_balance_filter(i)]
     ))
 
     committee_size = min(len(combined_committee), SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH)
-    return [compute_shuffled_index(i, len(combined_committee), seed) for i in range(committee_size)]
+    return [
+        compute_shuffled_index(combined_committee[i], len(combined_committee), seed)
+        for i in range(committee_size)
+    ]
 ```
 
 ### `get_shard_block_proposer_index`
@@ -192,8 +193,11 @@ def get_shard_epoch_committee(state: BeaconState,
 def get_shard_block_proposer_index(state: BeaconState,
                                    shard: Shard,
                                    slot: Slot) -> Optional[ValidatorIndex]:
-    epoch_committee = get_shard_epoch_committee(state, shard, slot_to_epoch(slot))
-    return epoch_committee[slot % len(epoch_committee)]
+    epoch_committee = get_shard_epoch_committee(state, shard, compute_epoch_of_slot(slot))
+    if len(epoch_committee) == 0:
+        return None
+    else:
+        return epoch_committee[slot % len(epoch_committee)]
 ```
 
 ### `get_shard_block_attester_committee`
@@ -201,9 +205,12 @@ def get_shard_block_proposer_index(state: BeaconState,
 ```python
 def get_shard_block_attester_committee(state: BeaconState,
                                        shard: Shard,
-                                       slot: Slot) -> Optional[ValidatorIndex]:
-    committee_size = min(len(get_shard_epoch_committee(state, shard, slot_to_epoch(slot))), SHARD_SLOT_COMMITTEE_SIZE)
-    return [get_shard_block_proposer_index(state, shard, slot-i) for i in range(committee_size)]
+                                       slot: Slot) -> Sequence[Optional[ValidatorIndex]]:
+    committee_size = min(
+        len(get_shard_epoch_committee(state, shard, compute_epoch_of_slot(slot))),
+        SHARD_SLOT_COMMITTEE_SIZE,
+    )
+    return [get_shard_block_proposer_index(state, shard, Slot(slot - i)) for i in range(committee_size)]
 ```
 
 ### `get_shard_header`
@@ -227,9 +234,8 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
 ```python
 def verify_shard_attestation_signature(state: BeaconState,
                                        block: ShardBlock) -> bool:
-    data = attestation.data
-    attester_committee = get_shard_block_attesters(state, block.shard, block.slot)
-    attesters = [v for i, v in enumerate(attester_committee) if block.attester_bitfield[i]]
+    attester_committee = get_shard_block_attester_committee(state, block.shard, block.slot)
+    attesters = [v for i, v in enumerate(attester_committee) if i is not None and block.attester_bitfield[i]]
     if get_shard_block_proposer_index(state, block.shard, block.slot) not in attesters:
         return False
     return bls_verify(
