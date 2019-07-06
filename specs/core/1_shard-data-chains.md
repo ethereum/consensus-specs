@@ -30,7 +30,6 @@
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
     - [Object validity](#object-validity)
         - [Shard blocks](#shard-blocks)
-        - [Shard attestations](#shard-attestations)
         - [Beacon attestations](#beacon-attestations)
     - [Shard fork choice rule](#shard-fork-choice-rule)
 
@@ -49,7 +48,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**0` (= 1) |
-| `SHARD_SLOT_COMMITTEE_SIZE` | `2**5` (=32) |
+| `SHARD_SLOT_COMMITTEE_SIZE` | `2**5` (= 32) |
 
 ### Initial values
 
@@ -323,33 +322,6 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
 
     # Check signatures
     assert verify_shard_attestation_signature(beacon_state, candidate)
-
-    return True
-```
-
-### Shard attestations
-
-Let:
-
-- `valid_shard_blocks` be the list of valid `ShardBlock`
-- `beacon_state` be the canonical `BeaconState`
-- `candidate` be a candidate `ShardAttestation` for which validity is to be determined by running `is_valid_shard_attestation`
-
-```python
-def is_valid_shard_attestation(valid_shard_blocks: Sequence[ShardBlock],
-                               beacon_state: BeaconState,
-                               candidate: ShardAttestation) -> bool:
-    # Check shard block
-    shard_block = next(
-        (block for block in valid_shard_blocks if signing_root(block) == candidate.data.shard_block_root),
-        None,
-    )
-    assert shard_block is not None
-    assert shard_block.slot == candidate.data.slot
-    assert shard_block.shard == candidate.data.shard
-
-    # Check signature
-    verify_shard_attestation_signature(beacon_state, candidate)
 
     return True
 ```
