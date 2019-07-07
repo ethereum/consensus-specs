@@ -47,7 +47,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 | - | - |
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
-| `SHARD_SLOTS_PER_BEACON_SLOT` | `2**0` (= 1) |
+| `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
 | `SHARD_SLOT_COMMITTEE_SIZE` | `2**5` (= 32) |
 
 ### Initial values
@@ -92,7 +92,7 @@ class ShardBlockBody(Container):
 
 ```python
 class ShardBlock(Container):
-    slot: Slot
+    slot: ShardSlot
     shard: Shard
     beacon_chain_root: Bytes32
     parent_root: Bytes32
@@ -106,7 +106,7 @@ class ShardBlock(Container):
 
 ```python
 class ShardBlockHeader(Container):
-    slot: Slot
+    slot: ShardSlot
     shard: Shard
     beacon_chain_root: Bytes32
     parent_root: Bytes32
@@ -117,6 +117,13 @@ class ShardBlockHeader(Container):
 ```
 
 ## Helper functions
+
+### `compute_epoch_of_shard_slot`
+
+```python
+def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
+    return slot // SHARD_SLOTS_PER_BEACON_SLOT // SLOTS_PER_EPOCH
+```
 
 ### `get_period_committee`
 
@@ -192,8 +199,8 @@ def get_shard_epoch_committee(state: BeaconState,
 ```python
 def get_shard_block_proposer_index(state: BeaconState,
                                    shard: Shard,
-                                   slot: Slot) -> Optional[ValidatorIndex]:
-    epoch_committee = get_shard_epoch_committee(state, shard, compute_epoch_of_slot(slot))
+                                   slot: ShardSlot) -> Optional[ValidatorIndex]:
+    epoch_committee = get_shard_epoch_committee(state, shard, compute_epoch_of_shard_slot(slot))
     if len(epoch_committee) == 0:
         return None
     else:
@@ -207,10 +214,10 @@ def get_shard_block_attester_committee(state: BeaconState,
                                        shard: Shard,
                                        slot: Slot) -> Sequence[Optional[ValidatorIndex]]:
     committee_size = min(
-        len(get_shard_epoch_committee(state, shard, compute_epoch_of_slot(slot))),
+        len(get_shard_epoch_committee(state, shard, compute_epoch_of_shard_slot(slot))),
         SHARD_SLOT_COMMITTEE_SIZE,
     )
-    return [get_shard_block_proposer_index(state, shard, Slot(slot - i)) for i in range(committee_size)]
+    return [get_shard_block_proposer_index(state, shard, ShardSlot(slot - i)) for i in range(committee_size)]
 ```
 
 ### `get_shard_header`
@@ -285,7 +292,7 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
 Let:
 
 - `beacon_blocks` be the `BeaconBlock` list such that `beacon_blocks[slot]` is the canonical `BeaconBlock` at slot `slot`
-- `beacon_state` be the canonical `BeaconState` after processing `beacon_blocks[-1]`
+- `beacon_state` be the canonical `BeaconState` after processing `beacon_blocks[index]` where `index = candidate.slot // SHARD_SLOTS_PER_BEACON_SLOT - 1`, or the genesis state if `index < GENESIS_SLOT`.
 - `valid_shard_blocks` be the list of valid `ShardBlock`, recursively defined
 - `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
 
