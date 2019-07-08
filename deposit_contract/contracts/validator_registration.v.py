@@ -42,7 +42,7 @@ def to_little_endian_64(value: uint256) -> bytes[8]:
 
 @public
 @constant
-def get_hash_tree_root() -> bytes32:
+def get_deposit_root() -> bytes32:
     zero_bytes32: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
     node: bytes32 = zero_bytes32
     size: uint256 = self.deposit_count
