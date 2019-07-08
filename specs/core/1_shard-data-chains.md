@@ -27,6 +27,8 @@
         - [`get_shard_proposer_index`](#get_shard_proposer_index)
         - [`get_shard_header`](#get_shard_header)
         - [`verify_shard_attestation_signature`](#verify_shard_attestation_signature)
+        - [`flatten_block`](#flatten_block)
+        - [`compute_crosslink_data`](#compute_crosslink_data)
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
     - [Object validity](#object-validity)
         - [Shard blocks](#shard-blocks)
@@ -46,6 +48,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 
 | Name | Value |
 | - | - |
+| `BYTES_PER_SHARD_BLOCK_HEADER` | `2**9` (= 512) |
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 
@@ -247,36 +250,35 @@ def verify_shard_attestation_signature(state: BeaconState,
     )
 ```
 
+### `flatten_block`
+
+```python
+def flatten_block(block: ShardBlock) -> Bytes:
+    return zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + block.body
+```
+
+### `compute_crosslink_data`
+
+```python
+def compute_crosslink_data(blocks: Sequence[ShardBlock]) -> Bytes32:
+    """
+    Flattens a series of blocks. Designed to be equivalent to SSZ serializing a list of
+    flattened blocks with one empty block at the end as a termination marker.
+    """
+    positions = [4 * len(blocks)]
+    bodies = []
+    for block in blocks:
+        bodies.append(flatten_block(block))
+        positions.append(positions[-1] + len(bodies[-1]))
+    return b''.join([int_to_bytes4(pos) for pos in positions]) + b''.join(bodies)    
+```
+
 ### `compute_crosslink_data_root`
 
 ```python
 def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
-    def is_power_of_two(value: uint64) -> bool:
-        return (value > 0) and (value & (value - 1) == 0)
-
-    def pad_to_power_of_2(values: MutableSequence[bytes]) -> Sequence[bytes]:
-        while not is_power_of_two(len(values)):
-            values.append(b'\x00' * BYTES_PER_SHARD_BLOCK_BODY)
-        return values
-
-    def hash_tree_root_of_bytes(data: bytes) -> bytes:
-        return hash_tree_root([data[i:i + 32] for i in range(0, len(data), 32)])
-
-    def zpad(data: bytes, length: uint64) -> bytes:
-        return data + b'\x00' * (length - len(data))
-
-    return hash(
-        # TODO untested code.
-        #  Need to either pass a typed list to hash-tree-root, or merkleize_chunks(values, pad_to=2**x)
-        hash_tree_root(pad_to_power_of_2([
-            hash_tree_root_of_bytes(
-                zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)
-            ) for block in blocks
-        ]))
-        + hash_tree_root(pad_to_power_of_2([
-            hash_tree_root_of_bytes(block.body) for block in blocks
-        ]))
-    )
+    MAXLEN = (BYTES_PER_SHARD_BLOCK_HEADER + BYTES_PER_SHARD_BLOCK_BODY) * SHARD_SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
+    return hash_tree_root(BytesN[MAXLEN](zpad(compute_crosslink_data(blocks), MAXLEN)))
 ```
 
 ## Object validity
