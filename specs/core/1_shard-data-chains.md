@@ -9,6 +9,7 @@
 - [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
+    - [Custom types](#custom-types)
     - [Configuration](#configuration)
         - [Misc](#misc)
         - [Initial values](#initial-values)
@@ -20,6 +21,7 @@
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
     - [Helper functions](#helper-functions)
+        - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
         - [`get_period_committee`](#get_period_committee)
         - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_shard_epoch_committee`](#get_shard_epoch_committee)
@@ -38,6 +40,14 @@
 ## Introduction
 
 This document describes the shard data layer and the shard fork choice rule in Phase 1 of Ethereum 2.0.
+
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `ShardSlot` | `uint64` | a slot number in shard chain |
 
 ## Configuration
 
@@ -122,7 +132,7 @@ class ShardBlockHeader(Container):
 
 ```python
 def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
-    return slot // SHARD_SLOTS_PER_BEACON_SLOT // SLOTS_PER_EPOCH
+    return Epoch(slot // SHARD_SLOTS_PER_BEACON_SLOT // SLOTS_PER_EPOCH)
 ```
 
 ### `get_period_committee`

@@ -142,7 +142,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `Slot` | `uint64` | a slot number |
+| `Slot` | `uint64` | a slot number in beacon chain |
 | `Epoch` | `uint64` | an epoch number |
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
