@@ -222,7 +222,7 @@ def get_shard_block_proposer_index(state: BeaconState,
 ```python
 def get_shard_block_attester_committee(state: BeaconState,
                                        shard: Shard,
-                                       slot: Slot) -> Sequence[Optional[ValidatorIndex]]:
+                                       slot: ShardSlot) -> Sequence[Optional[ValidatorIndex]]:
     committee_size = min(
         len(get_shard_epoch_committee(state, shard, compute_epoch_of_shard_slot(slot))),
         SHARD_SLOT_COMMITTEE_SIZE,
