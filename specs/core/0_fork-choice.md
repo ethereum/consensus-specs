@@ -8,8 +8,6 @@
 - [Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice](#ethereum-20-phase-0----beacon-chain-fork-choice)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
-    - [Configuration](#configuration)
-        - [Time parameters](#time-parameters)
     - [Fork choice](#fork-choice)
         - [Helpers](#helpers)
             - [`LatestMessage`](#latestmessage)
@@ -28,14 +26,6 @@
 ## Introduction
 
 This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0. It assumes the [beacon chain state transition function spec](./0_beacon-chain.md).
-
-## Configuration
-
-### Time parameters
-
-| Name | Value | Unit | Duration |
-| - | - | :-: | :-: |
-| `SECONDS_PER_SLOT` | `6` | seconds | 6 seconds |
 
 ## Fork choice
 

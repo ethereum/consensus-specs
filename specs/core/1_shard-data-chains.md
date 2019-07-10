@@ -13,7 +13,7 @@
         - [Misc](#misc)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
-        - [Signature domains](#signature-domains)
+        - [Signature domain types](#signature-domain-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
@@ -61,7 +61,6 @@ This document describes the shard data layer and the shard fork choice rule in P
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs  | 6.2 minutes |
-| `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 
 ### Signature domain types
 
@@ -94,7 +93,7 @@ class ShardAttestation(Container):
     class data(Container):
         slot: Slot
         shard: Shard
-        shard_block_root: Bytes32
+        shard_block_root: Hash
     aggregation_bits: Bitlist[PLACEHOLDER]
     aggregate_signature: BLSSignature
 ```
@@ -105,10 +104,10 @@ class ShardAttestation(Container):
 class ShardBlock(Container):
     slot: Slot
     shard: Shard
-    beacon_chain_root: Bytes32
-    parent_root: Bytes32
+    beacon_chain_root: Hash
+    parent_root: Hash
     data: ShardBlockBody
-    state_root: Bytes32
+    state_root: Hash
     attestations: List[ShardAttestation, PLACEHOLDER]
     signature: BLSSignature
 ```
@@ -119,10 +118,10 @@ class ShardBlock(Container):
 class ShardBlockHeader(Container):
     slot: Slot
     shard: Shard
-    beacon_chain_root: Bytes32
-    parent_root: Bytes32
-    body_root: Bytes32
-    state_root: Bytes32
+    beacon_chain_root: Hash
+    parent_root: Hash
+    body_root: Hash
+    state_root: Hash
     attestations: List[ShardAttestation, PLACEHOLDER]
     signature: BLSSignature
 ```
@@ -250,7 +249,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 ### `compute_crosslink_data_root`
 
 ```python
-def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
+def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
     def is_power_of_two(value: uint64) -> bool:
         return (value > 0) and (value & (value - 1) == 0)
 
@@ -259,7 +258,7 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
             values.append(b'\x00' * BYTES_PER_SHARD_BLOCK_BODY)
         return values
 
-    def hash_tree_root_of_bytes(data: bytes) -> bytes:
+    def hash_tree_root_of_bytes(data: bytes) -> Hash:
         return hash_tree_root([data[i:i + 32] for i in range(0, len(data), 32)])
 
     def zpad(data: bytes, length: uint64) -> bytes:
