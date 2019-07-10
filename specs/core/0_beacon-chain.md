@@ -49,9 +49,9 @@
             - [`BeaconState`](#beaconstate)
     - [Helper functions](#helper-functions)
         - [Math](#math)
-            - [`int_to_bytes`](#int_to_bytes)
             - [`integer_squareroot`](#integer_squareroot)
             - [`xor`](#xor)
+            - [`int_to_bytes`](#int_to_bytes)
             - [`bytes_to_int`](#bytes_to_int)
         - [Crypto](#crypto)
             - [`hash`](#hash)
@@ -540,8 +540,6 @@ class BeaconState(Container):
 
 ### Math
 
-#### `int_to_bytes`
-
 #### `integer_squareroot`
 
 ```python
@@ -566,6 +564,8 @@ def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
     """
     return Bytes32(a ^ b for a, b in zip(bytes1, bytes2))
 ```
+
+#### `int_to_bytes`
 
 ```python
 def int_to_bytes(n: uint64, length: uint64) -> bytes:
