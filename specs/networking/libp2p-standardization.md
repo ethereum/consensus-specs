@@ -384,7 +384,7 @@ Clients MAY define custom goodbye reasons as long as the value is larger than `1
 
 Requests a list of block roots and slots from the peer. The `count` parameter
 MUST be less than or equal to `32768`. The slots MUST be returned in ascending
-pslot order.
+slot order.
 
 ### BeaconBlockHeaders
 
