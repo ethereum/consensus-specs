@@ -161,6 +161,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
+| `GWEI_PER_ETH` | `10**9` (= 1,000,000,000)|
 | `BASE_REWARDS_PER_EPOCH` | `5` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 | `SECONDS_PER_DAY` | `86400` |
@@ -1479,11 +1480,15 @@ def process_registry_updates(state: BeaconState) -> None:
 ```python
 def process_slashings(state: BeaconState) -> None:
     epoch = get_current_epoch(state)
-    total_balance = get_total_active_balance(state)
+    total_balance_in_eth = get_total_active_balance(state) // GWEI_PER_ETH
     for index, validator in enumerate(state.validators):
         if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
-            penalty = validator.effective_balance * min(sum(state.slashings) * 3, total_balance) // total_balance
-            decrease_balance(state, ValidatorIndex(index), penalty)
+            penalty_in_eth = (
+                (validator.effective_balance // GWEI_PER_ETH)
+                * min(sum(state.slashings) * 3 // GWEI_PER_ETH, total_balance_in_eth)
+                // total_balance_in_eth
+            )  #  In eth to avoid 64-bit overflow during computation
+            decrease_balance(state, ValidatorIndex(index), penalty_in_eth * GWEI_PER_ETH)
 ```
 
 #### Final updates
