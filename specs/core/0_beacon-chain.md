@@ -1487,7 +1487,7 @@ def process_slashings(state: BeaconState) -> None:
                 (validator.effective_balance // GWEI_PER_ETH)
                 * min(sum(state.slashings) * 3 // GWEI_PER_ETH, total_balance_in_eth)
                 // total_balance_in_eth
-            )  #  In eth to avoid 64-bit overflow during computation
+            )  # In eth to avoid 64-bit overflow during computation
             decrease_balance(state, ValidatorIndex(index), penalty_in_eth * GWEI_PER_ETH)
 ```
 
