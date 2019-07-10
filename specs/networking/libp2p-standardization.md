@@ -364,7 +364,7 @@ Clients MAY define custom goodbye reasons as long as the value is larger than `1
 ```
 (
     start_slot: uint64
-	count: uint64
+    count: uint64
 )
 ```
 
