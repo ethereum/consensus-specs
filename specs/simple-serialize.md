@@ -89,7 +89,7 @@ An SSZ object is called empty (and thus, `is_empty(object)` returns true) if it 
 
 ### Illegal types
 
-The empty `List[subtype, N]`, `Vector[subtype, N]`, `Bitlist[N]`, and `Bitvector[N]` types, where `N == 0` are not legal. The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
+The empty `Vector[subtype, N]` and `Bitvector[N]` types, where `N == 0` are not legal. The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
 
 ## Serialization
 
