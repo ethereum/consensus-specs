@@ -66,8 +66,13 @@ def test_small_penalty(spec, state):
     spec.process_slashings(state)
     yield 'post', state
 
-    assert state.balances[0] == pre_slash_balances[0] - (state.validators[0].effective_balance
-                                                         * 3 * total_penalties // total_balance)
+    expected_penalty = (
+        state.validators[0].effective_balance // spec.GWEI_PER_ETH
+        * (3 * total_penalties // spec.GWEI_PER_ETH)
+        // (total_balance // spec.GWEI_PER_ETH)
+        * spec.GWEI_PER_ETH
+    )
+    assert state.balances[0] == pre_slash_balances[0] - expected_penalty
 
 
 @with_all_phases
@@ -121,5 +126,10 @@ def test_scaled_penalties(spec, state):
 
     for i in slashed_indices:
         v = state.validators[i]
-        penalty = v.effective_balance * total_penalties * 3 // total_balance
+        penalty = (
+            v.effective_balance // spec.GWEI_PER_ETH
+            * (3 * total_penalties // spec.GWEI_PER_ETH)
+            // (total_balance // spec.GWEI_PER_ETH)
+            * spec.GWEI_PER_ETH
+        )
         assert state.balances[i] == pre_slash_balances[i] - penalty
