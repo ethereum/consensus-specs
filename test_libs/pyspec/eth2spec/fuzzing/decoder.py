@@ -19,13 +19,13 @@ def translate_typ(typ) -> ssz.BaseSedes:
         return ssz.Vector(translate_typ(typ.elem_type), typ.length)
     elif issubclass(typ, spec_ssz.List):
         # TODO: Make py-ssz List support the new fixed length list
-        return ssz.List(translate_typ(typ.elem_type))
+        return ssz.List(translate_typ(typ.elem_type), typ.length)
     elif issubclass(typ, spec_ssz.Bitlist):
         # TODO: Once Bitlist implemented in py-ssz, use appropriate type
-        return ssz.List(translate_typ(typ.elem_type))
+        return ssz.Bitlist(typ.length)
     elif issubclass(typ, spec_ssz.Bitvector):
         # TODO: Once Bitvector implemented in py-ssz, use appropriate type
-        return ssz.Vector(translate_typ(typ.elem_type), typ.length)
+        return ssz.Bitvector(typ.length)
     elif issubclass(typ, spec_ssz.boolean):
         return ssz.boolean
     elif issubclass(typ, spec_ssz.uint):
