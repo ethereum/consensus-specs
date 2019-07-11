@@ -1271,7 +1271,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
         output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
-    return set(filter(lambda index: not state.validators[index].slashed, list(output)))
+    return set(filter(lambda index: not state.validators[index].slashed, output))
 ```
 
 ```python
