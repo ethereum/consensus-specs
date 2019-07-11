@@ -15,6 +15,18 @@ interpreted as described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
 approach to reach consensus on the design of the Ethereum 2.0 libp2p networking
 stack.*
 
+# Terminology
+
+* **Stream** - A two-way connection to a peer that has optionally negotiated
+	stream-multiplexing with either Mplex or Yamux.
+* **SubStream** - A two-way connection to peer that is dedicated to a specific
+	protocol. 
+* **Protocol Id** - A byte string used in the libp2p framework to negotiate
+	substreams for specific protocols. 
+* ** Close a (sub)stream** - Close the local end of a stream. I.e `stream.close()`.
+* **Reset a (sub)stream** - Close both ends of a stream. I.e `stream.reset()`.
+
+
 # Libp2p Components
 
 ## Transport
@@ -129,11 +141,13 @@ There are two main topics used to propagate attestations and beacon blocks to
 all nodes on the network.
 
 - The `beacon_block` topic - This topic is used solely for propagating new
-	beacon blocks to all nodes on the networks.
+	beacon blocks to all nodes on the networks. Blocks are sent in their
+	entirety. Clients who receive blocks on a topic SHOULD validate the block
+	before forwarding it across the network.
 - The `beacon_attestation` topic - This topic is used to propagate
-	aggregated attestations to subscribing nodes (typically block proposers) to
-	be included into future blocks. Attestations are aggregated in their
-	respective subnets before publishing on this topic.
+	aggregated attestations (in their entirety) to subscribing nodes (typically
+	block proposers) to be included into future blocks. Attestations are
+	aggregated in their respective subnets before publishing on this topic.
 
 Shards are grouped into their own subnets (defined by a shard topic). The
 number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard
@@ -147,7 +161,7 @@ number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard
 Each Gossipsub
 [Message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24)
 has a maximum size of 512KB (estimated from expected largest uncompressed block
-size).
+size). Clients SHOULD reject messages that are over this size limit.
 
 The `data` field of a Gossipsub `Message` is an SSZ-encoded object. For the `beacon_block` topic,
 this is a `beacon_block`. For the `beacon_attestation` topic, this is
@@ -162,7 +176,7 @@ its own encryption, IP-discovery and topic advertisement. Therefore, it has no
 need to establish streams through `multistream-select`, rather, act
 as a standalone implementation that feeds discovered peers/topics (ENR-records) as
 `multiaddrs` into the libp2p service. The libp2p service subsequently forms
-connections and substreams with discovered peers.
+connections and streams with discovered peers.
 
 ## Eth-2 RPC
 
@@ -183,42 +197,53 @@ Each RPC message is segregated into it's own libp2p protocol id, which is a stri
 ```
 
 With:
-* **ProtocolPrefix** -- the RPC messages are grouped into families identified by a shared LibP2P protocol name prefix. A conforming implementation is expected to support either all messages appearing within a family or none of them. In this case, we use `/eth/serenity/rpc`.
-* **MessageName** -- each RPC request is identified by a name consisting of English letters, digits and underscores (_).
-* **SchemaVersion** -- a semantic version consisting of one or more numbers separated by dots (.). Each schema is versioned to facilitate backward and forward-compatibility when possible.
-* **Encoding** -- while the schema defines the data types in more abstract terms, the encoding describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#encodings) section, for further details.
+* **ProtocolPrefix** -- the RPC messages are grouped into families identified
+  by a shared LibP2P protocol name prefix. A conforming implementation is
+  expected to support either all messages appearing within a family or none of
+  them. In this case, we use `/eth/serenity/rpc`.
+* **MessageName** -- each RPC request is identified by a name consisting of
+English letters, digits and underscores (_).
+* **SchemaVersion** -- a semantic version consisting of one or more numbers
+  separated by dots (.). Each schema is versioned to facilitate backward and
+  forward-compatibility when possible.
+* **Encoding** -- while the schema defines the data types in more abstract
+  terms, the encoding describes a specific representation of bytes that will be
+  transmitted over the wire. See the [Encodings](#encodings) section, for
+  further details.
 
-This protocol segregation allows libp2p `multistream-select` to handle the RPC-type, version and encoding negotiation before establishing the underlying substreams.
+
+This protocol segregation allows libp2p `multistream-select` to handle the
+RPC-type, version and encoding negotiation before establishing the underlying
+substreams.
 
 
 #### Requests and Responses
+
+Each request/response has a maximum byte size of `RPC_MAX_SIZE`. This exact
+value is TBD.
+
+Requests/Responses MUST be encoded such that a prefixed length (defined by the
+encoding used) is provided. Clients SHOULD ensure the request/response size is
+less than or equal to `RPC_MAX_SIZE`, if not, SHOULD reset the substream. 
+
+A receiver SHOULD decode the length-prefix and wait for the exact number of
+bytes to be sent. Once received the requester closes the substream.
 
 ##### Request
 
 A request is formed by initiating a connection with the protocol id matching
 the desired request type, encoding and version. Once a successful substream is
-negotiated, the request is sent with the matching encoding and prefixed by an
-unsigned varint (as specified by the [protobuf
-docs](https://developers.google.com/protocol-buffers/docs/encoding#varints))
-representing the length of the encoded request (in bytes). More specifically, a typical
-request, looks like:
-
-```
-+--------+--------+--------+--------+
-| unsigned_varint | encoded_request |
-+--------+--------+--------+--------+
-```
+negotiated, the request is sent with the matching encoding (see the
+[Encoding](#encoding) section for further details).
 
 Once a stream is negotiated, the requester SHOULD send the request within **3
 seconds**.
 
 The requester SHOULD then wait for a response on the negotiated stream for at
-most **10 seconds**, before dropping the stream. A requester SHOULD decode the
-length-prefix and wait for the exact number of bytes to sent. Once received the
-requester drops the stream.
+most **10 seconds**, before resetting the stream. 
 
 *Note: If a request does not require a response, such as with a `Goodbye`
-message, the stream is dropped instantly.*
+message, the stream is closed instantly.*
 
 ##### Response
 
@@ -228,12 +253,19 @@ response code which determines the contents of the response.
 
 It can have one of the following values
 
-* 0: **Success** -- a normal response with contents matching the expected message schema and encoding specified in the request.
-* 1: **EncodingError** -- the receiver was not able to decode and deserialize the data transmitted in the request. The response content is empty.
-* 2: **InvalidRequest** -- The contents of the request are semantically invalid. The response content is a message with the `ErrorMessage` schema (described below).
-* 3: **ServerError** -- The receiver encountered an error while processing the request. The response content is a message with the `ErrorMessage` schema (described below).
+* 0: **Success** -- a normal response with contents matching the expected
+  message schema and encoding specified in the request.
+* 1: **EncodingError** -- the receiver was not able to decode and deserialize
+  the data transmitted in the request. The response content is empty.
+* 2: **InvalidRequest** -- The contents of the request are semantically
+  invalid. The response content is a message with the `ErrorMessage` schema
+  (described below).
+* 3: **ServerError** -- The receiver encountered an error while processing the
+  request. The response content is a message with the `ErrorMessage` schema
+  (described below).
 
-Some requests MAY use response codes above 128 to indicate alternative request-specific responses.
+Some requests MAY use response codes above 128 to indicate alternative
+request-specific responses.
 
 The `ErrorMessage` schema is:
 ```
@@ -242,14 +274,13 @@ The `ErrorMessage` schema is:
 
 *Note that the String type is encoded as utf-8 bytes when SSZ-encoded.*
 
-Responses that have content, send the content pre-fixed with an unsigned varint
-(see [Request](#Request) for a definition) signifying the length in bytes of
-the encoded response.  A successful response therefore has the form:
+Responses that have content, send the content based on the negotiated encoding.
+A successful response therefore has the form:
 
 ```
-+--------+--------+--------+--------+--------+
-| r_code | unsigned_varint | encoded_response|
-+--------+--------+--------+--------+--------+
++--------+--------+--------+--------+
+| r_code |     encoded_response     |
++--------+--------+--------+--------+
 ```
 
 Here `r_code` represents the response code.
@@ -261,9 +292,26 @@ will be sent/received on the negotiated stream. There are currently two
 encodings that MAY be supported by clients (although clients MUST support at
 least `ssz`):
 
-* `ssz` - The contents are `SSZ` encoded.
+* `ssz` - The contents are `SSZ` encoded (see [SSZ](#ssz-encoding) for further details).
 * `ssz_snappy` - The contents are `SSZ` encoded and compressed with `snappy`.
 
+#### SSZ Encoding
+
+The [SSZ-Specification](../simple-serialize.md) outlines how objects are
+SSZ-encoded. An SSZ-encoded object does not provide a length-prefix which is
+required by the RPC to determine how many bytes to read and whether to close
+the stream if the payload is too large. Therefore, a length-prefix is added.
+
+RPC Protocols using the `ssz` encoding MUST prefix all requests/responses with
+an unsigned varint (as specified by the [protobuf
+docs](https://developers.google.com/protocol-buffers/docs/encoding#varints)).
+Therefore, an arbitrary ssz-encoded RPC request/response looks like:
+
+```
++--------+--------+--------+--------+--------+--------+
+| unsigned_varint |   ssz_encoded_request/response    |
++--------+--------+--------+--------+--------+--------+
+```
 
 ## RPC Message Specification
 
