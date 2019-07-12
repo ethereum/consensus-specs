@@ -41,11 +41,15 @@ def merkleize_chunks(chunks, limit=None):
     # If no limit is defined, we are just merkleizing chunks (e.g. SSZ container).
     if limit is None:
         limit = len(chunks)
+
+    count = len(chunks)
+    # See if the input is within expected size.
+    # If not, a list-limit is set incorrectly, or a value is unexpectedly large.
+    assert count <= limit
+
     if limit == 0:
         return zerohashes[0]
-    # Limit strictly. Makes no sense to merkleize objects above the intended padding.
-    # And illegal to exceed list limits, just as with serialization.
-    count = min(len(chunks), limit)
+
     depth = max(count - 1, 0).bit_length()
     max_depth = (limit - 1).bit_length()
     tmp = [None for _ in range(max_depth + 1)]
