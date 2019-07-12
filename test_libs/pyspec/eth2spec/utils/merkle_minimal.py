@@ -1,4 +1,4 @@
-from .hash_function import hash
+from eth2spec.utils.hash_function import hash
 from math import log2
 
 
@@ -21,6 +21,8 @@ def calc_merkle_tree_from_leaves(values, layer_count=32):
 
 
 def get_merkle_root(values, pad_to=1):
+    if pad_to == 0:
+        return zerohashes[0]
     layer_count = int(log2(pad_to))
     if len(values) == 0:
         return zerohashes[layer_count]
@@ -36,9 +38,11 @@ def get_merkle_proof(tree, item_index):
 
 
 def merkleize_chunks(chunks, pad_to: int=1):
-    count = len(chunks)
+    if pad_to == 0:
+        return zerohashes[0]
+    count = min(len(chunks), pad_to)
     depth = max(count - 1, 0).bit_length()
-    max_depth = max(depth, (pad_to - 1).bit_length())
+    max_depth = (pad_to - 1).bit_length()
     tmp = [None for _ in range(max_depth + 1)]
 
     def merge(h, i):
