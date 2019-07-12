@@ -37,12 +37,17 @@ def get_merkle_proof(tree, item_index):
     return proof
 
 
-def merkleize_chunks(chunks, pad_to: int=1):
-    if pad_to == 0:
+def merkleize_chunks(chunks, limit=None):
+    # If no limit is defined, we are just merkleizing chunks (e.g. SSZ container).
+    if limit is None:
+        limit = len(chunks)
+    if limit == 0:
         return zerohashes[0]
-    count = min(len(chunks), pad_to)
+    # Limit strictly. Makes no sense to merkleize objects above the intended padding.
+    # And illegal to exceed list limits, just as with serialization.
+    count = min(len(chunks), limit)
     depth = max(count - 1, 0).bit_length()
-    max_depth = (pad_to - 1).bit_length()
+    max_depth = (limit - 1).bit_length()
     tmp = [None for _ in range(max_depth + 1)]
 
     def merge(h, i):

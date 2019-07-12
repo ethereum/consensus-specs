@@ -126,6 +126,7 @@ def item_length(typ: SSZType) -> int:
 
 
 def chunk_count(typ: SSZType) -> int:
+    # note that for lists, .length *on the type* describes the list limit.
     if isinstance(typ, BasicType):
         return 1
     elif issubclass(typ, Bits):
@@ -150,7 +151,7 @@ def hash_tree_root(obj: SSZValue):
         raise Exception(f"Type not supported: {type(obj)}")
 
     if isinstance(obj, (List, Bytes, Bitlist)):
-        return mix_in_length(merkleize_chunks(leaves, pad_to=chunk_count(obj.type())), len(obj))
+        return mix_in_length(merkleize_chunks(leaves, limit=chunk_count(obj.type())), len(obj))
     else:
         return merkleize_chunks(leaves)
 

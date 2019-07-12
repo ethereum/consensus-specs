@@ -61,10 +61,10 @@ cases = [
 
 
 @pytest.mark.parametrize(
-    'count,pad_to,value',
+    'count,limit,value',
     cases,
 )
-def test_merkleize_chunks_and_get_merkle_root(count, pad_to, value):
+def test_merkleize_chunks_and_get_merkle_root(count, limit, value):
     chunks = [e(i) for i in range(count)]
-    assert merkleize_chunks(chunks, pad_to=pad_to) == value
-    assert get_merkle_root(chunks, pad_to=pad_to) == value
+    assert merkleize_chunks(chunks, limit=limit) == value
+    assert get_merkle_root(chunks, pad_to=limit) == value
