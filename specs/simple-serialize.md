@@ -120,8 +120,10 @@ return b""
 ### `Bitvector[N]`
 
 ```python
-as_integer = sum([value[i] << i for i in range(len(value))])
-return as_integer.to_bytes((N + 7) // 8, "little")
+array = [0] * ((N + 7) // 8)
+for i in range(N):
+    array[i // 8] |= value[i] << (i % 8)
+return bytes(array)
 ```
 
 ### `Bitlist[N]`
@@ -129,8 +131,11 @@ return as_integer.to_bytes((N + 7) // 8, "little")
 Note that from the offset coding, the length (in bytes) of the bitlist is known. An additional leading `1` bit is added so that the length in bits will also be known.
 
 ```python
-as_integer = (1 << len(value)) + sum([value[i] << i for i in range(len(value))])
-return as_integer.to_bytes((as_integer.bit_length() + 7) // 8, "little")
+array = [0] * ((len(value) // 8) + 1)
+for i in range(len(value)):
+    array[i // 8] |= value[i] << (i % 8)
+array[len(value) // 8] |= 1 << (len(value) % 8)
+return bytes(array)
 ```
 
 ### Vectors, containers, lists, unions
