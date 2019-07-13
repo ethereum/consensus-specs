@@ -9,7 +9,7 @@ def test_decoder():
     rng = Random(123)
 
     # check these types only, Block covers a lot of operation types already.
-    for typ in [spec.BeaconState, spec.BeaconBlock]:
+    for typ in [spec.AttestationDataAndCustodyBit, spec.BeaconState, spec.BeaconBlock]:
         # create a random pyspec value
         original = random_value.get_random_ssz_object(rng, typ, 100, 10,
                                                       mode=random_value.RandomizationMode.mode_random,
