@@ -13,11 +13,10 @@
         - [Misc](#misc)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
-        - [Signature domain types](#signature-domain-types)
+        - [Signature domains](#signature-domains)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
-        - [`ShardAttestation`](#shardattestation)
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
     - [Helper functions](#helper-functions)
@@ -26,7 +25,6 @@
         - [`get_persistent_committee`](#get_persistent_committee)
         - [`get_shard_proposer_index`](#get_shard_proposer_index)
         - [`get_shard_header`](#get_shard_header)
-        - [`verify_shard_attestation_signature`](#verify_shard_attestation_signature)
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
     - [Object validity](#object-validity)
         - [Shard blocks](#shard-blocks)
@@ -40,6 +38,14 @@
 
 This document describes the shard data layer and the shard fork choice rule in Phase 1 of Ethereum 2.0.
 
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `ShardSlot` | `uint64` | a slot number in shard chain |
+
 ## Configuration
 
 ### Misc
@@ -48,6 +54,8 @@ This document describes the shard data layer and the shard fork choice rule in P
 | - | - |
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
+| `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
+| `SHARD_SLOT_COMMITTEE_SIZE` | `2**5` (= 32) |
 
 ### Initial values
 
@@ -86,37 +94,26 @@ class ShardBlockBody(Container):
     data: Vector[Bytes[PLACEHOLDER], BYTES_PER_SHARD_BLOCK_BODY]
 ```
 
-### `ShardAttestation`
-
-```python
-class ShardAttestation(Container):
-    class data(Container):
-        slot: Slot
-        shard: Shard
-        shard_block_root: Hash
-    aggregation_bits: Bitlist[PLACEHOLDER]
-    aggregate_signature: BLSSignature
-```
-
 ### `ShardBlock`
 
 ```python
 class ShardBlock(Container):
-    slot: Slot
+    slot: ShardSlot
     shard: Shard
     beacon_chain_root: Hash
     parent_root: Hash
     data: ShardBlockBody
     state_root: Hash
-    attestations: List[ShardAttestation, PLACEHOLDER]
-    signature: BLSSignature
+    attester_bitfield: BitVector[SHARD_SLOT_COMMITTEE_SIZE]
+    attestation_signature: BLSSignature
+    proposer_signature: BLSSignature
 ```
 
 ### `ShardBlockHeader`
 
 ```python
 class ShardBlockHeader(Container):
-    slot: Slot
+    slot: ShardSlot
     shard: Shard
     beacon_chain_root: Hash
     parent_root: Hash
@@ -127,6 +124,13 @@ class ShardBlockHeader(Container):
 ```
 
 ## Helper functions
+
+### `compute_epoch_of_shard_slot`
+
+```python
+def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
+    return Epoch(slot // SHARD_SLOTS_PER_BEACON_SLOT // SLOTS_PER_EPOCH)
+```
 
 ### `get_period_committee`
 
@@ -161,11 +165,11 @@ def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex
 ```python
 def get_persistent_committee(state: BeaconState,
                              shard: Shard,
-                             slot: Slot) -> Sequence[ValidatorIndex]:
+                             slot: ShardSlot) -> Sequence[ValidatorIndex]:
     """
     Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
-    epoch = compute_epoch_of_slot(slot)
+    epoch = compute_epoch_of_shard_slot(slot)
     earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
     later_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD)
 
@@ -193,7 +197,7 @@ def get_persistent_committee(state: BeaconState,
 ```python
 def get_shard_proposer_index(state: BeaconState,
                              shard: Shard,
-                             slot: Slot) -> Optional[ValidatorIndex]:
+                             slot: ShardSlot) -> Optional[ValidatorIndex]:
     # Randomly shift persistent committee
     persistent_committee = list(get_persistent_committee(state, shard, slot))
     seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
@@ -222,27 +226,6 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
         state_root=block.state_root,
         attestations=block.attestations,
         signature=block.signature,
-    )
-```
-
-### `verify_shard_attestation_signature`
-
-```python
-def verify_shard_attestation_signature(state: BeaconState,
-                                       attestation: ShardAttestation) -> None:
-    data = attestation.data
-    persistent_committee = get_persistent_committee(state, data.shard, data.slot)
-    pubkeys = []
-    for i, index in enumerate(persistent_committee):
-        if attestation.aggregation_bits[i]:
-            validator = state.validators[index]
-            assert is_active_validator(validator, get_current_epoch(state))
-            pubkeys.append(validator.pubkey)
-    assert bls_verify(
-        pubkey=bls_aggregate_pubkeys(pubkeys),
-        message_hash=data.shard_block_root,
-        signature=attestation.aggregate_signature,
-        domain=get_domain(state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_slot(data.slot))
     )
 ```
 
@@ -327,12 +310,19 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
         assert signing_root(beacon_blocks[parent_block.slot]) == parent_block.beacon_chain_root
 
     # Check attestations
-    assert len(candidate.attestations) <= MAX_SHARD_ATTESTIONS
-    for _, attestation in enumerate(candidate.attestations):
-        assert max(GENESIS_SHARD_SLOT, candidate.slot - SLOTS_PER_EPOCH) <= attestation.data.slot
-        assert attestation.data.slot <= candidate.slot - MIN_ATTESTATION_INCLUSION_DELAY
-        assert attestation.data.crosslink.shard == candidate.shard
-        verify_shard_attestation_signature(beacon_state, attestation)
+    persistent_committee = get_persistent_committee(beacon_state, block.shard, block.slot)
+    pubkeys = []
+    for i, index in enumerate(persistent_committee):
+        if aggregation_bits[i]:
+            validator = state.validators[index]
+            assert is_active_validator(validator, get_current_epoch(state))
+            pubkeys.append(validator.pubkey)
+    assert bls_verify(
+        pubkey=bls_aggregate_pubkeys(pubkeys),
+        message_hash=block.parent_root,
+        signature=aggregate_signature,
+        domain=get_domain(state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_slot(data.slot))
+    )
 
     # Check signature
     proposer_index = get_shard_proposer_index(beacon_state, candidate.shard, candidate.slot)
