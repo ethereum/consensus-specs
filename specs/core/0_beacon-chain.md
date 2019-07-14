@@ -558,11 +558,11 @@ def integer_squareroot(n: uint64) -> uint64:
 #### `xor`
 
 ```python
-def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
+def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
     """
-    return Bytes32(a ^ b for a, b in zip(bytes1, bytes2))
+    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2))
 ```
 
 #### `int_to_bytes`
@@ -653,7 +653,7 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
 ```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
-    Verify validity of ``indexed_attestation``.
+    Check if ``indexed_attestation`` has valid indices and signature.
     """
     bit_0_indices = indexed_attestation.custody_bit_0_indices
     bit_1_indices = indexed_attestation.custody_bit_1_indices
@@ -989,7 +989,7 @@ def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
-    return Gwei(max(sum([state.validators[index].effective_balance for index in indices]), 1))
+    return Gwei(max(1, sum([state.validators[index].effective_balance for index in indices])))
 ```
 
 #### `get_total_active_balance`
