@@ -175,11 +175,12 @@ Note that deserialization requires hardening against invalid inputs. A non-exhau
 
 We first define helper functions:
 
+* `size_of(B)`, where `B` is a basic type: the length, in bytes, of the serialized form of the basic type.
 * `chunk_count(type)`: calculate the amount of leafs for merkleization of the type.
    * all basic types: `1`
-   * bitlists and bitvectors: `(N + 255) // 256` (dividing by chunk size, rounding up)
-   * lists and vectors of basic types: `N * item_length(elem_type) + 31) // 32` (dividing by chunk size, rounding up)
-   * lists and vectors of composite types: `N`
+   * `Bitlist[N]` and `Bitvector[N]`: `(N + 255) // 256` (dividing by chunk size, rounding up)
+   * `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
+   * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
    * containers: `len(fields)`
 * `bitfield_bytes(bits)`: return the bits of the bitlist or bitvector, packed in bytes, aligned to the start. Exclusive length-delimiting bit for bitlists.
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
