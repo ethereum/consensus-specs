@@ -865,7 +865,7 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the seed at ``epoch``.
     """
-    mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
+    mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
     active_index_root = state.active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
     return hash(mix + active_index_root + int_to_bytes(epoch, length=32))
 ```
