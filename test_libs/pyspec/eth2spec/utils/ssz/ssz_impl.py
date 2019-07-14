@@ -41,11 +41,14 @@ def serialize(obj: SSZValue):
     if isinstance(obj, BasicValue):
         return serialize_basic(obj)
     elif isinstance(obj, Bitvector):
-        as_integer = sum([obj[i] << i for i in range(len(obj))])
-        return as_integer.to_bytes((len(obj) + 7) // 8, "little")
+        return obj.as_bytes()
     elif isinstance(obj, Bitlist):
-        as_integer = (1 << len(obj)) + sum([obj[i] << i for i in range(len(obj))])
-        return as_integer.to_bytes((as_integer.bit_length() + 7) // 8, "little")
+        as_bytearray = list(obj.as_bytes())
+        if len(obj) % 8 == 0:
+            as_bytearray.append(1)
+        else:
+            as_bytearray[len(obj) // 8] |= 1 << (len(obj) % 8)
+        return bytes(as_bytearray)
     elif isinstance(obj, Series):
         return encode_series(obj)
     else:
@@ -92,12 +95,10 @@ def encode_series(values: Series):
 def pack(values: Series):
     if isinstance(values, bytes):  # Bytes and BytesN are already packed
         return values
-    elif isinstance(values, Bitvector):
-        as_integer = sum([values[i] << i for i in range(len(values))])
-        return as_integer.to_bytes((values.length + 7) // 8, "little")
-    elif isinstance(values, Bitlist):
-        as_integer = sum([values[i] << i for i in range(len(values))])
-        return as_integer.to_bytes((values.length + 7) // 8, "little")
+    elif isinstance(values, Bits):
+        # packs the bits in bytes, left-aligned.
+        # Exclusive length delimiting bits for bitlists.
+        return values.as_bytes()
     return b''.join([serialize_basic(value) for value in values])
 
 
