@@ -107,7 +107,7 @@ class ShardBlock(Container):
     state_root: Hash
     attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
     attestation_signature: BLSSignature
-    proposer_signature: BLSSignature
+    signature: BLSSignature
 ```
 
 ### `ShardBlockHeader`
@@ -202,7 +202,7 @@ def get_shard_block_proposer_index(state: BeaconState,
                                    slot: ShardSlot) -> Optional[ValidatorIndex]:
     # Randomly shift persistent committee
     persistent_committee = list(get_persistent_committee(state, shard, slot))
-    seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
+    seed = hash(get_seed(state, get_current_epoch(state)) + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
     random_index = bytes_to_int(seed[0:8]) % len(persistent_committee)
     persistent_committee = persistent_committee[random_index:] + persistent_committee[:random_index]
 
