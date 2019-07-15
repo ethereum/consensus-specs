@@ -354,7 +354,12 @@ class BitElementsType(ElementsType):
 
 
 class Bits(BaseList, metaclass=BitElementsType):
-    pass
+
+    def as_bytes(self):
+        as_bytearray = [0] * ((len(self) + 7) // 8)
+        for i in range(len(self)):
+            as_bytearray[i // 8] |= int(self[i]) << (i % 8)
+        return bytes(as_bytearray)
 
 
 class Bitlist(Bits):
