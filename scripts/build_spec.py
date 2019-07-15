@@ -46,7 +46,7 @@ from dataclasses import (
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
-    chunkify,
+    zpad,
     hash_tree_root,
     is_empty,
     signing_root,

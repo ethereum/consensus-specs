@@ -79,7 +79,7 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
-| `PLACEHOLDER` | `2**32` |
+| `PLACEHOLDER` | `2**3` |
 
 ## Data structures
 
@@ -110,7 +110,7 @@ class ShardBlock(Container):
     shard: Shard
     beacon_chain_root: Bytes32
     parent_root: Bytes32
-    data: ShardBlockBody
+    body: ShardBlockBody
     state_root: Bytes32
     attestations: List[ShardAttestation, PLACEHOLDER]
     signature: BLSSignature
@@ -254,7 +254,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 
 ```python
 def flatten_block(block: ShardBlock) -> Bytes:
-    return zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + block.body
+    return zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + serialize(block.body)
 ```
 
 ### `compute_crosslink_data`
