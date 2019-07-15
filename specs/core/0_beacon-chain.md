@@ -1216,7 +1216,7 @@ def process_slot(state: BeaconState) -> None:
     previous_state_root = hash_tree_root(state)
     state.state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
     # Cache latest block header state root
-    if state.latest_block_header.state_root == Hash():
+    if state.latest_block_header.state_root == Bytes32():
         state.latest_block_header.state_root = previous_state_root
     # Cache block root
     previous_block_root = signing_root(state.latest_block_header)
@@ -1548,8 +1548,9 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        state_root=Hash(),  # Overwritten in the next `process_slot` call
+        # state_root: zeroed, overwritten in the next `process_slot` call
         body_root=hash_tree_root(block.body),
+        # signature is always zeroed
     )
     # Verify proposer is not slashed
     proposer = state.validators[get_beacon_proposer_index(state)]
@@ -1672,7 +1673,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.start_epoch == parent_crosslink.end_epoch
     assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
-    assert data.crosslink.data_root == Hash()  # [to be removed in phase 1]
+    assert data.crosslink.data_root == Bytes32()  # [to be removed in phase 1]
 
     # Check signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
