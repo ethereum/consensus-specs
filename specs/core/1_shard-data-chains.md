@@ -9,17 +9,19 @@
 - [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
+    - [Custom types](#custom-types)
     - [Configuration](#configuration)
         - [Misc](#misc)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
-        - [Signature domains](#signature-domains)
+        - [Signature domain types](#signature-domain-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
     - [Helper functions](#helper-functions)
+        - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
         - [`get_period_committee`](#get_period_committee)
         - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_persistent_committee`](#get_persistent_committee)
@@ -104,7 +106,7 @@ class ShardBlock(Container):
     parent_root: Hash
     data: ShardBlockBody
     state_root: Hash
-    attester_bitfield: BitVector[SHARD_SLOT_COMMITTEE_SIZE]
+    attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
     attestation_signature: BLSSignature
     proposer_signature: BLSSignature
 ```
@@ -119,7 +121,7 @@ class ShardBlockHeader(Container):
     parent_root: Hash
     body_root: Hash
     state_root: Hash
-    attestations: List[ShardAttestation, PLACEHOLDER]
+    attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
     signature: BLSSignature
 ```
 
