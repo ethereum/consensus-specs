@@ -35,7 +35,7 @@ This section details the libp2p transport layer that underlies the
 [protocols](#protocols) that are listed in this document.
 
 Libp2p allows composition of multiple transports. Eth2.0 clients MUST support
-TCP/IP and MAY support websockets. Websockets are useful for implementations
+TCP/IP and MAY support websockets and/or QUIC. Websockets are useful for implementations
 running in the browser and therefore native clients would ideally support these
 implementations by supporting websockets.
 
