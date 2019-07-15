@@ -84,7 +84,7 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
-| `PLACEHOLDER` | `2**32` |
+| `PLACEHOLDER` | `2**3` |
 
 ## Data structures
 
@@ -323,7 +323,7 @@ def is_valid_shard_block(beacon_state: BeaconState,
         pubkey=bls_aggregate_pubkeys(pubkeys),
         message_hash=candidate.parent_root,
         signature=candidate.attestation_signature,
-        domain=get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_slot(candidate.slot))
+        domain=get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(candidate.slot))
     )
 
     # Check proposer
@@ -333,7 +333,7 @@ def is_valid_shard_block(beacon_state: BeaconState,
         pubkey=beacon_state.validators[proposer_index].pubkey,
         message_hash=signing_root(candidate),
         signature=candidate.signature,
-        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_slot(candidate.slot)),
+        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(candidate.slot)),
     )
 
     return True
