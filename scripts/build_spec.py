@@ -46,14 +46,15 @@ from dataclasses import (
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
+    chunkify,
     hash_tree_root,
+    is_empty,
     signing_root,
     serialize,
-    is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
     bit, boolean, Container, List, Vector, Bytes, uint64,
-    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, BytesN, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,

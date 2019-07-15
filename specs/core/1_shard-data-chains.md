@@ -13,7 +13,7 @@
         - [Misc](#misc)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
-        - [Signature domains](#signature-domains)
+        - [Signature domain types](#signature-domain-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [`ShardBlockBody`](#shardblockbody)
@@ -254,7 +254,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 
 ```python
 def flatten_block(block: ShardBlock) -> Bytes:
-    return zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + block.body
+    return chunkify(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + block.body
 ```
 
 ### `compute_crosslink_data`
@@ -270,15 +270,17 @@ def compute_crosslink_data(blocks: Sequence[ShardBlock]) -> Bytes32:
     for block in blocks:
         bodies.append(flatten_block(block))
         positions.append(positions[-1] + len(bodies[-1]))
-    return b''.join([int_to_bytes4(pos) for pos in positions]) + b''.join(bodies)    
+    return b''.join([int_to_bytes(pos, 4) for pos in positions]) + b''.join(bodies)    
 ```
 
 ### `compute_crosslink_data_root`
 
 ```python
 def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
-    MAXLEN = (BYTES_PER_SHARD_BLOCK_HEADER + BYTES_PER_SHARD_BLOCK_BODY) * SHARD_SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
-    return hash_tree_root(BytesN[MAXLEN](zpad(compute_crosslink_data(blocks), MAXLEN)))
+    MAXLEN = (
+        BYTES_PER_SHARD_BLOCK_HEADER + BYTES_PER_SHARD_BLOCK_BODY
+    ) * SHARD_SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
+    return hash_tree_root(BytesN[MAXLEN](chunkify(compute_crosslink_data(blocks), MAXLEN)))
 ```
 
 ## Object validity

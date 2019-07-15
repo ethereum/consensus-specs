@@ -1,4 +1,6 @@
-from ..merkle_minimal import merkleize_chunks
+from ..merkle_minimal import (
+    merkleize_chunks,
+)
 from ..hash_function import hash
 from .ssz_typing import (
     SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bits, boolean, Container, List, Bytes,
@@ -8,6 +10,7 @@ from .ssz_typing import (
 # SSZ Serialization
 # -----------------------------
 
+BYTES_PER_CHUNK = 32
 BYTES_PER_LENGTH_OFFSET = 4
 
 
@@ -101,14 +104,14 @@ def pack(values: Series):
     return b''.join([serialize_basic(value) for value in values])
 
 
-def chunkify(bytez):
-    # pad `bytez` to nearest 32-byte multiple
-    bytez += b'\x00' * (-len(bytez) % 32)
-    return [bytez[i:i + 32] for i in range(0, len(bytez), 32)]
+def chunkify(bytez, bytes_per_chunk):
+    # pad `bytez` to nearest `bytes_per_chunk`-byte multiple
+    bytez += b'\x00' * (-len(bytez) % bytes_per_chunk)
+    return [bytez[i:i + bytes_per_chunk] for i in range(0, len(bytez), bytes_per_chunk)]
 
 
 def mix_in_length(root, length):
-    return hash(root + length.to_bytes(32, 'little'))
+    return hash(root + length.to_bytes(BYTES_PER_CHUNK, 'little'))
 
 
 def is_bottom_layer_kind(typ: SSZType):
@@ -122,7 +125,7 @@ def item_length(typ: SSZType) -> int:
     if issubclass(typ, BasicValue):
         return typ.byte_len
     else:
-        return 32
+        return BYTES_PER_CHUNK
 
 
 def chunk_count(typ: SSZType) -> int:
@@ -131,7 +134,7 @@ def chunk_count(typ: SSZType) -> int:
     elif issubclass(typ, Bits):
         return (typ.length + 255) // 256
     elif issubclass(typ, Elements):
-        return (typ.length * item_length(typ.elem_type) + 31) // 32
+        return (typ.length * item_length(typ.elem_type) + BYTES_PER_CHUNK - 1) // BYTES_PER_CHUNK
     elif issubclass(typ, Container):
         return len(typ.get_fields())
     else:
@@ -141,11 +144,11 @@ def chunk_count(typ: SSZType) -> int:
 def hash_tree_root(obj: SSZValue):
     if isinstance(obj, Series):
         if is_bottom_layer_kind(obj.type()):
-            leaves = chunkify(pack(obj))
+            leaves = chunkify(pack(obj), BYTES_PER_CHUNK)
         else:
             leaves = [hash_tree_root(value) for value in obj]
     elif isinstance(obj, BasicValue):
-        leaves = chunkify(serialize_basic(obj))
+        leaves = chunkify(serialize_basic(obj), BYTES_PER_CHUNK)
     else:
         raise Exception(f"Type not supported: {type(obj)}")
 
@@ -159,4 +162,4 @@ def signing_root(obj: Container):
     # ignore last field
     fields = [field for field in obj][:-1]
     leaves = [hash_tree_root(f) for f in fields]
-    return merkleize_chunks(chunkify(b''.join(leaves)))
+    return merkleize_chunks(chunkify(b''.join(leaves), BYTES_PER_CHUNK))
