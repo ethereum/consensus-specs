@@ -106,7 +106,7 @@ class ShardBlock(Container):
     shard: Shard
     beacon_chain_root: Hash
     parent_root: Hash
-    data: ShardBlockBody
+    body: ShardBlockBody
     state_root: Hash
     attestations: List[ShardAttestation, PLACEHOLDER]
     signature: BLSSignature
