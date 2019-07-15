@@ -260,7 +260,7 @@ def flatten_block(block: ShardBlock) -> Bytes:
 ### `compute_crosslink_data`
 
 ```python
-def compute_crosslink_data(blocks: Sequence[ShardBlock]) -> Bytes32:
+def compute_crosslink_data(blocks: Sequence[ShardBlock]) -> bytes:
     """
     Flattens a series of blocks. Designed to be equivalent to SSZ serializing a list of
     flattened blocks with one empty block at the end as a termination marker.
