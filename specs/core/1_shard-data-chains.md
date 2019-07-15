@@ -254,7 +254,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 
 ```python
 def flatten_block(block: ShardBlock) -> Bytes:
-    return chunkify(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + block.body
+    return zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + block.body
 ```
 
 ### `compute_crosslink_data`
@@ -280,7 +280,7 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Bytes32:
     MAXLEN = (
         BYTES_PER_SHARD_BLOCK_HEADER + BYTES_PER_SHARD_BLOCK_BODY
     ) * SHARD_SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
-    return hash_tree_root(BytesN[MAXLEN](chunkify(compute_crosslink_data(blocks), MAXLEN)))
+    return hash_tree_root(BytesN[MAXLEN](zpad(compute_crosslink_data(blocks), MAXLEN)))
 ```
 
 ## Object validity

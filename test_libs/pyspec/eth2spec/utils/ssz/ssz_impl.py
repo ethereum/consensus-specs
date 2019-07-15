@@ -104,9 +104,12 @@ def pack(values: Series):
     return b''.join([serialize_basic(value) for value in values])
 
 
+def zpad(bytez, bytes_per_chunk):
+    return bytez + b'\x00' * (-len(bytez) % bytes_per_chunk)
+
 def chunkify(bytez, bytes_per_chunk):
     # pad `bytez` to nearest `bytes_per_chunk`-byte multiple
-    bytez += b'\x00' * (-len(bytez) % bytes_per_chunk)
+    bytez = zpad(bytez, bytes_per_chunk)
     return [bytez[i:i + bytes_per_chunk] for i in range(0, len(bytez), bytes_per_chunk)]
 
 
