@@ -83,7 +83,7 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 ```python
 class ShardBlockBody(Container):
-    data: Vector[Bytes[PLACEHOLDER], BYTES_PER_SHARD_BLOCK_BODY]
+    data: Vector[BytesN[PLACEHOLDER], BYTES_PER_SHARD_BLOCK_BODY]
 ```
 
 ### `ShardAttestation`
