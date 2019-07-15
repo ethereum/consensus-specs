@@ -25,12 +25,11 @@
         - [`get_period_committee`](#get_period_committee)
         - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_persistent_committee`](#get_persistent_committee)
-        - [`get_shard_proposer_index`](#get_shard_proposer_index)
+        - [`get_shard_block_proposer_index`](#get_shard_block_proposer_index)
         - [`get_shard_header`](#get_shard_header)
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
     - [Object validity](#object-validity)
         - [Shard blocks](#shard-blocks)
-        - [Shard attestations](#shard-attestations)
         - [Beacon attestations](#beacon-attestations)
     - [Shard fork choice rule](#shard-fork-choice-rule)
 
@@ -122,6 +121,7 @@ class ShardBlockHeader(Container):
     body_root: Hash
     state_root: Hash
     attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
+    attestation_signature: BLSSignature
     signature: BLSSignature
 ```
 
@@ -194,12 +194,12 @@ def get_persistent_committee(state: BeaconState,
     )))
 ```
 
-### `get_shard_proposer_index`
+### `get_shard_block_proposer_index`
 
 ```python
-def get_shard_proposer_index(state: BeaconState,
-                             shard: Shard,
-                             slot: ShardSlot) -> Optional[ValidatorIndex]:
+def get_shard_block_proposer_index(state: BeaconState,
+                                   shard: Shard,
+                                   slot: ShardSlot) -> Optional[ValidatorIndex]:
     # Randomly shift persistent committee
     persistent_committee = list(get_persistent_committee(state, shard, slot))
     seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
@@ -226,7 +226,7 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
         parent_root=block.parent_root,
         body_root=hash_tree_root(block.body),
         state_root=block.state_root,
-        attestations=block.attestations,
+        attestation_signature=block.attestation_signature,
         signature=block.signature,
     )
 ```
@@ -275,8 +275,8 @@ Let:
 - `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
 
 ```python
-def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
-                         beacon_state: BeaconState,
+def is_valid_shard_block(beacon_state: BeaconState,
+                         beacon_blocks: Sequence[BeaconBlock],
                          valid_shard_blocks: Sequence[ShardBlock],
                          candidate: ShardBlock) -> bool:
     # Check if block is already determined valid
@@ -315,19 +315,19 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
     persistent_committee = get_persistent_committee(beacon_state, block.shard, block.slot)
     pubkeys = []
     for i, index in enumerate(persistent_committee):
-        if aggregation_bits[i]:
-            validator = state.validators[index]
-            assert is_active_validator(validator, get_current_epoch(state))
+        if block.attester_bitfield[i]:
+            validator = beacon_state.validators[index]
+            assert is_active_validator(validator, get_current_epoch(beacon_state))
             pubkeys.append(validator.pubkey)
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(pubkeys),
-        message_hash=block.parent_root,
-        signature=aggregate_signature,
-        domain=get_domain(state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_slot(data.slot))
+        message_hash=candidate.parent_root,
+        signature=candidate.attestation_signature,
+        domain=get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_slot(candidate.slot))
     )
 
-    # Check signature
-    proposer_index = get_shard_proposer_index(beacon_state, candidate.shard, candidate.slot)
+    # Check proposer
+    proposer_index = get_shard_block_proposer_index(beacon_state, candidate.shard, candidate.slot)
     assert proposer_index is not None
     assert bls_verify(
         pubkey=beacon_state.validators[proposer_index].pubkey,
@@ -335,33 +335,6 @@ def is_valid_shard_block(beacon_blocks: Sequence[BeaconBlock],
         signature=candidate.signature,
         domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_slot(candidate.slot)),
     )
-
-    return True
-```
-
-### Shard attestations
-
-Let:
-
-- `valid_shard_blocks` be the list of valid `ShardBlock`
-- `beacon_state` be the canonical `BeaconState`
-- `candidate` be a candidate `ShardAttestation` for which validity is to be determined by running `is_valid_shard_attestation`
-
-```python
-def is_valid_shard_attestation(valid_shard_blocks: Sequence[ShardBlock],
-                               beacon_state: BeaconState,
-                               candidate: ShardAttestation) -> bool:
-    # Check shard block
-    shard_block = next(
-        (block for block in valid_shard_blocks if signing_root(block) == candidate.data.shard_block_root),
-        None,
-    )
-    assert shard_block is not None
-    assert shard_block.slot == candidate.data.slot
-    assert shard_block.shard == candidate.data.shard
-
-    # Check signature
-    verify_shard_attestation_signature(beacon_state, candidate)
 
     return True
 ```
