@@ -26,6 +26,7 @@
         - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_persistent_committee`](#get_persistent_committee)
         - [`get_shard_block_proposer_index`](#get_shard_block_proposer_index)
+        - [`get_shard_block_attester_committee`](#get_shard_block_attester_committee)
         - [`get_shard_header`](#get_shard_header)
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
     - [Object validity](#object-validity)
@@ -217,6 +218,20 @@ def get_shard_block_proposer_index(state: BeaconState,
     return None
 ```
 
+### `get_shard_block_attester_committee`
+
+```python
+def get_shard_block_attester_committee(state: BeaconState,
+                                       shard: Shard,
+                                       slot: ShardSlot) -> Sequence[Optional[ValidatorIndex]]:
+    persistent_committee = get_persistent_committee(state, shard, slot)
+    committee_size = min(
+        len(persistent_committee),
+        SHARD_SLOT_COMMITTEE_SIZE,
+    )
+    return [get_shard_block_proposer_index(state, shard, ShardSlot(slot - i)) for i in range(committee_size)]
+```
+
 ### `get_shard_header`
 
 ```python
@@ -314,9 +329,9 @@ def is_valid_shard_block(beacon_state: BeaconState,
         assert signing_root(beacon_blocks[parent_block.slot]) == parent_block.beacon_chain_root
 
     # Check attestations
-    persistent_committee = get_persistent_committee(beacon_state, block.shard, block.slot)
+    attester_committee = get_shard_block_attester_committee(beacon_state, block.shard, block.slot)
     pubkeys = []
-    for i, index in enumerate(persistent_committee):
+    for i, index in enumerate(attester_committee):
         if block.attester_bitfield[i]:
             validator = beacon_state.validators[index]
             assert is_active_validator(validator, get_current_epoch(beacon_state))
