@@ -20,9 +20,9 @@ stack.*
 * **Stream** - A two-way connection to a peer that has optionally negotiated
 	stream-multiplexing with either Mplex or Yamux.
 * **SubStream** - A two-way connection to peer that is dedicated to a specific
-	protocol. 
+	protocol.
 * **Protocol Id** - A byte string used in the libp2p framework to negotiate
-	substreams for specific protocols. 
+	substreams for specific protocols.
 * ** Close a (sub)stream** - Close the local end of a stream. I.e `stream.close()`.
 * **Reset a (sub)stream** - Close both ends of a stream. I.e `stream.reset()`.
 
@@ -58,11 +58,14 @@ Current defaults are:
 - Cipher: `AES-128` (also supports `AES-256`, `TwofishCTR`)
 - Digests: `SHA256` (also supports `SHA512`)
 
+Secio is being deprecated. [Noise](https://noiseprotocol.org/noise.html) is
+currently the most likely candidate to be adopted for Ethereum 2.0 clients in
+the short term.
+
 *Note: Secio is being deprecated in favour of [TLS
 1.3](https://github.com/libp2p/specs/blob/master/tls/tls.md) or
-[Noise](https://perlin-network.github.io/noise/). It is our intention to
-transition to use TLS 1.3 or Noise for encryption between nodes, rather than
-Secio.*
+[Noise](https://noiseprotocol.org/noise.html). It is our intention to
+transition to use TLS 1.3 + QUIC in the long term.*
 
 
 ## Protocols
@@ -95,7 +98,7 @@ MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md)
 
 ## Gossipsub
 
-#### Protocol id: `/eth/serenity/gossipsub/1.0.0`
+#### Protocol id: `/eth2/beacon_chain/gossipsub/1.0.0/`
 
 *Note: Parameters listed here are subject to a large-scale network feasibility
 study*
@@ -136,15 +139,19 @@ propagation times and message duplication. Current network-related defaults are:
 updated to topic hashes in later versions - https://github.com/libp2p/rust-libp2p/issues/473*
 
 For Eth2.0 clients, topics are sent as `SHA2-256` hashes of the topic string.
+Topic strings have form: `<TopicName>/<TopicEncoding>`. The `<TopicName>`
+defines the type of data being sent on the topic and the `<TopicEncoding>`
+defines how the data field of the message is encoded. (Further details can be
+found in [Messages](#Messages)).
 
 There are two main topics used to propagate attestations and beacon blocks to
-all nodes on the network.
+all nodes on the network. Their `<TopicName>`'s are:
 
-- The `beacon_block` topic - This topic is used solely for propagating new
+- `beacon_block` - This topic is used solely for propagating new
 	beacon blocks to all nodes on the networks. Blocks are sent in their
 	entirety. Clients who receive blocks on a topic SHOULD validate the block
-	before forwarding it across the network.
-- The `beacon_attestation` topic - This topic is used to propagate
+	proposer signature before forwarding it across the network.
+- `beacon_attestation`  - This topic is used to propagate
 	aggregated attestations (in their entirety) to subscribing nodes (typically
 	block proposers) to be included into future blocks. Attestations are
 	aggregated in their respective subnets before publishing on this topic.
@@ -152,7 +159,7 @@ all nodes on the network.
 Shards are grouped into their own subnets (defined by a shard topic). The
 number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard
 `shard_number % SHARD_SUBNET_COUNT` is assigned to the topic:
-`shard{shard_number % SHARD_SUBNET_COUNT}_attestation`.
+`shard{shard_number % SHARD_SUBNET_COUNT}_beacon_attestation`.
 
 ### Messages
 
@@ -161,11 +168,29 @@ number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard
 Each Gossipsub
 [Message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24)
 has a maximum size of 512KB (estimated from expected largest uncompressed block
-size). Clients SHOULD reject messages that are over this size limit.
+size). Clients SHOULD reject and MUST NOT send messages that are over this size limit.
 
-The `data` field of a Gossipsub `Message` is an SSZ-encoded object. For the `beacon_block` topic,
+The `data` field of a Gossipsub `Message` is the encoded object being sent
+between peers. For the `beacon_block` topic,
 this is a `beacon_block`. For the `beacon_attestation` topic, this is
 an `attestation`.
+
+#### Encodings
+
+Topics are post-fixed with an encoding. Encodings define how the `data` field
+of a Gossipsub `Message` is encoded. Implementations SHOULD support the
+following encodings:
+
+- `ssz` -  This is a temporary encoding used only for initial interop and
+	testing. All objects are SSZ-encoded. Example: The beacon block topic
+	string is:
+	`beacon_block/ssz` and the `data` field of a Gossipsub `Message` is an
+	ssz-encoded `BeaconBlock`.
+- `ssz_snappy` - All objects are ssz-encoded and then compressed with `snappy`.
+	Example: The beacon attestation topic string is: `beacon_attestation/ssz_snappy` 
+	and  the `data` field of a Gossipsub `Message` is an `Attestation` that has
+	been ssz-encoded then compressed with `snappy`.
+
 
 ## Discovery
 
@@ -177,6 +202,17 @@ need to establish streams through `multistream-select`, rather, act
 as a standalone implementation that feeds discovered peers/topics (ENR-records) as
 `multiaddrs` into the libp2p service. The libp2p service subsequently forms
 connections and streams with discovered peers.
+
+The ENR for an Ethereum 2.0 client SHOULD contain the following
+entries (exclusive of the sequence number and signature, which MUST be present
+in an ENR):
+- `secp256k1`: compressed secp256k1 publickey, 33 bytes.
+- An IP address (IPv4 (`ip`) and/or IPv6 (`ip6`)).
+- A TCP port (`tcp`) representing the local libp2p listening port.
+- A UDP port (`udp`) representing the local discv5 listening port.
+
+Specifications of these parameters can be found in the [ENR
+Specification](http://eips.ethereum.org/EIPS/eip-778).
 
 ## Eth-2 RPC
 
@@ -200,7 +236,7 @@ With:
 * **ProtocolPrefix** -- the RPC messages are grouped into families identified
   by a shared LibP2P protocol name prefix. A conforming implementation is
   expected to support either all messages appearing within a family or none of
-  them. In this case, we use `/eth/serenity/rpc`.
+  them. In this case, we use `/eth2/beacon_chain/rpc`.
 * **MessageName** -- each RPC request is identified by a name consisting of
 English letters, digits and underscores (_).
 * **SchemaVersion** -- a semantic version consisting of one or more numbers
@@ -224,7 +260,7 @@ value is TBD.
 
 Requests/Responses MUST be encoded such that a prefixed length (defined by the
 encoding used) is provided. Clients SHOULD ensure the request/response size is
-less than or equal to `RPC_MAX_SIZE`, if not, SHOULD reset the substream. 
+less than or equal to `RPC_MAX_SIZE`, if not, SHOULD reset the substream.
 
 A receiver SHOULD decode the length-prefix and wait for the exact number of
 bytes to be sent. Once received the requester closes the substream.
@@ -240,7 +276,7 @@ Once a stream is negotiated, the requester SHOULD send the request within **3
 seconds**.
 
 The requester SHOULD then wait for a response on the negotiated stream for at
-most **10 seconds**, before resetting the stream. 
+most **10 seconds**, before resetting the stream.
 
 *Note: If a request does not require a response, such as with a `Goodbye`
 message, the stream is closed instantly.*
@@ -255,12 +291,10 @@ It can have one of the following values
 
 * 0: **Success** -- a normal response with contents matching the expected
   message schema and encoding specified in the request.
-* 1: **EncodingError** -- the receiver was not able to decode and deserialize
-  the data transmitted in the request. The response content is empty.
-* 2: **InvalidRequest** -- The contents of the request are semantically
+* 1: **InvalidRequest** -- The contents of the request are semantically
   invalid. The response content is a message with the `ErrorMessage` schema
   (described below).
-* 3: **ServerError** -- The receiver encountered an error while processing the
+* 2: **ServerError** -- The receiver encountered an error while processing the
   request. The response content is a message with the `ErrorMessage` schema
   (described below).
 
@@ -272,10 +306,9 @@ The `ErrorMessage` schema is:
 (error_message: String)
 ```
 
-*Note that the String type is encoded as utf-8 bytes when SSZ-encoded.*
+*Note that the String type is encoded as UTF-8 bytes when SSZ-encoded.*
 
-Responses that have content, send the content based on the negotiated encoding.
-A successful response therefore has the form:
+A response therefore has the form:
 
 ```
 +--------+--------+--------+--------+
@@ -283,7 +316,7 @@ A successful response therefore has the form:
 +--------+--------+--------+--------+
 ```
 
-Here `r_code` represents the response code.
+Here `r_code` represents the 1-byte response code.
 
 ### Encodings
 
