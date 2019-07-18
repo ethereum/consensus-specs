@@ -57,7 +57,7 @@ We define the following Python custom types for type hinting and readability:
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
-| `SHARD_SLOT_COMMITTEE_SIZE` | `2**5` (= 32) |
+| `MAX_PERSISTENT_COMMITTEE_SIZE` | `2**5` (= 128) |
 
 ### Initial values
 
@@ -70,7 +70,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs  | 6.2 minutes |
+| `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs | 6.4 minutes |
+| `PERSISTENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### Signature domain types
 
@@ -106,7 +107,7 @@ class ShardBlock(Container):
     parent_root: Hash
     data: ShardBlockBody
     state_root: Hash
-    attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
+    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
     attestation_signature: BLSSignature
     signature: BLSSignature
 ```
@@ -121,7 +122,7 @@ class ShardBlockHeader(Container):
     parent_root: Hash
     body_root: Hash
     state_root: Hash
-    attester_bitfield: Bitvector[SHARD_SLOT_COMMITTEE_SIZE]
+    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
     attestation_signature: BLSSignature
     signature: BLSSignature
 ```
@@ -140,18 +141,27 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
 ```python
 def get_period_committee(state: BeaconState,
                          epoch: Epoch,
-                         shard: Shard,
-                         index: uint64,
-                         count: uint64) -> Sequence[ValidatorIndex]:
+                         shard: Shard) -> List[ValidatorIndex, MAX_PERSISTENT_COMMITTEE_SIZE]:
     """
     Return committee for a period. Used to construct persistent committees.
     """
-    return compute_committee(
+    seed = get_seed(state, epoch)
+    full_committee = compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=get_seed(state, epoch),
+        seed=seed,
         index=shard * count + index,
         count=SHARD_COUNT * count,
     )
+
+    def active_and_balance_filter(i: ValidatorIndex) -> bool:
+        if not is_active_validator(state.validators[i], epoch):
+            return False 
+        active_threshold = MAX_EFFECTIVE_BALANCE * seed[i % 32] // MAX_RANDOM_BYTE
+        if state.validators[i].effective_balance < active_threshold:
+            return False
+        return True
+
+    return [i for i in full_committee if active_and_balance_filter(i)][:MAX_PERSISTENT_COMMITTEE_SIZE]
 ```
 
 ### `get_switchover_epoch`
@@ -176,23 +186,15 @@ def get_persistent_committee(state: BeaconState,
     earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
     later_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD)
 
-    committee_count = max(
-        len(get_active_validator_indices(state, earlier_start_epoch)) //
-        (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
-        len(get_active_validator_indices(state, later_start_epoch)) //
-        (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
-    ) + 1
-
-    index = slot % committee_count
-    earlier_committee = get_period_committee(state, earlier_start_epoch, shard, index, committee_count)
-    later_committee = get_period_committee(state, later_start_epoch, shard, index, committee_count)
+    earlier_committee = get_period_committee(state, earlier_start_epoch, shard)
+    later_committee = get_period_committee(state, later_start_epoch, shard)
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
-    return sorted(list(set(
+    return sorted(set(
         [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)]
         + [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
-    )))
+    ))
 ```
 
 ### `get_shard_block_proposer_index`
@@ -216,20 +218,6 @@ def get_shard_block_proposer_index(state: BeaconState,
 
     # No block can be proposed if no validator is active
     return None
-```
-
-### `get_shard_block_attester_committee`
-
-```python
-def get_shard_block_attester_committee(state: BeaconState,
-                                       shard: Shard,
-                                       slot: ShardSlot) -> Sequence[Optional[ValidatorIndex]]:
-    persistent_committee = get_persistent_committee(state, shard, slot)
-    committee_size = min(
-        len(persistent_committee),
-        SHARD_SLOT_COMMITTEE_SIZE,
-    )
-    return [get_shard_block_proposer_index(state, shard, ShardSlot(slot - i)) for i in range(committee_size)]
 ```
 
 ### `get_shard_header`
@@ -329,13 +317,15 @@ def is_valid_shard_block(beacon_state: BeaconState,
         assert signing_root(beacon_blocks[parent_block.slot]) == parent_block.beacon_chain_root
 
     # Check attestations
-    attester_committee = get_shard_block_attester_committee(beacon_state, block.shard, block.slot)
+    attester_committee = get_persistent_committee(beacon_state, block.shard, block.slot)
     pubkeys = []
     for i, index in enumerate(attester_committee):
         if block.attester_bitfield[i]:
             validator = beacon_state.validators[index]
             assert is_active_validator(validator, get_current_epoch(beacon_state))
             pubkeys.append(validator.pubkey)
+    for i in range(len(attester_committee), MAX_PERSISTENT_COMMITTEE_SIZE * 2):
+        assert block.attester_bitfield[i] is False
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(pubkeys),
         message_hash=candidate.parent_root,
