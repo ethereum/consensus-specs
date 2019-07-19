@@ -58,7 +58,7 @@ We define the following Python custom types for type hinting and readability:
 | `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
-| `MAX_PERSISTENT_COMMITTEE_SIZE` | `2**5` (= 128) |
+| `MAX_PERSISTENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 
 ### Initial values
 
