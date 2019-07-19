@@ -22,7 +22,7 @@
         - [`ShardBlockHeader`](#shardblockheader)
     - [Helper functions](#helper-functions)
         - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
-        - [`get_period_start_block`](#get_period_start_block)
+        - [`get_period_start_epoch`](#get_period_start_epoch)
         - [`get_period_committee`](#get_period_committee)
         - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_persistent_committee`](#get_persistent_committee)
@@ -137,10 +137,10 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
     return Epoch(slot // SHARD_SLOTS_PER_BEACON_SLOT // SLOTS_PER_EPOCH)
 ```
 
-### `get_period_start_block`
+### `get_period_start_epoch`
 
 ```python
-def get_period_start_block(epoch: Epoch, lookback:Epoch = 0):
+def get_period_start_epoch(epoch: Epoch, lookback:Epoch = 0) -> Epoch:
     return epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - lookback * PERSISTENT_COMMITTEE_PERIOD
 ```
 
