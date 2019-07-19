@@ -22,6 +22,7 @@
         - [`ShardBlockHeader`](#shardblockheader)
     - [Helper functions](#helper-functions)
         - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
+        - [`get_period_start_block`](#get_period_start_block)
         - [`get_period_committee`](#get_period_committee)
         - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_persistent_committee`](#get_persistent_committee)
@@ -136,6 +137,13 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
     return Epoch(slot // SHARD_SLOTS_PER_BEACON_SLOT // SLOTS_PER_EPOCH)
 ```
 
+### `get_period_start_block`
+
+```python
+def get_period_start_block(epoch: Epoch, lookback:Epoch = 0):
+    return epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - lookback * PERSISTENT_COMMITTEE_PERIOD
+```
+
 ### `get_period_committee`
 
 ```python
@@ -168,7 +176,7 @@ def get_period_committee(state: BeaconState,
 
 ```python
 def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex) -> int:
-    earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
+    earlier_start_epoch = get_period_start_epoch(epoch, lookback=2)
     return (bytes_to_int(hash(get_seed(state, earlier_start_epoch) + int_to_bytes(index, length=3)[0:8]))
             % PERSISTENT_COMMITTEE_PERIOD)
 ```
@@ -183,11 +191,9 @@ def get_persistent_committee(state: BeaconState,
     Return the persistent committee for the given ``shard`` at the given ``slot``.
     """
     epoch = compute_epoch_of_shard_slot(slot)
-    earlier_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD * 2)
-    later_start_epoch = Epoch(epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - PERSISTENT_COMMITTEE_PERIOD)
 
-    earlier_committee = get_period_committee(state, earlier_start_epoch, shard)
-    later_committee = get_period_committee(state, later_start_epoch, shard)
+    earlier_committee = get_period_committee(state, get_period_start_epoch(epoch, lookback=2), shard)
+    later_committee = get_period_committee(state, get_period_start_epoch(epoch, lookback=1), shard)
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
@@ -202,22 +208,11 @@ def get_persistent_committee(state: BeaconState,
 ```python
 def get_shard_block_proposer_index(state: BeaconState,
                                    shard: Shard,
-                                   slot: ShardSlot) -> Optional[ValidatorIndex]:
+                                   slot: Slot) -> Optional[ValidatorIndex]:
     # Randomly shift persistent committee
     persistent_committee = list(get_persistent_committee(state, shard, slot))
-    seed = hash(
-        get_seed(state, get_current_epoch(state)) + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8)
-    )
-    random_index = bytes_to_int(seed[0:8]) % len(persistent_committee)
-    persistent_committee = persistent_committee[random_index:] + persistent_committee[:random_index]
-
-    # Search for an active proposer
-    for index in persistent_committee:
-        if is_active_validator(state.validators[index], get_current_epoch(state)):
-            return index
-
-    # No block can be proposed if no validator is active
-    return None
+    seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
+    return persistent_committee[bytes_to_int(seed[0:8]) % len(persistent_committee)]
 ```
 
 ### `get_shard_header`
@@ -321,9 +316,7 @@ def is_valid_shard_block(beacon_state: BeaconState,
     pubkeys = []
     for i, index in enumerate(attester_committee):
         if block.attester_bitfield[i]:
-            validator = beacon_state.validators[index]
-            assert is_active_validator(validator, get_current_epoch(beacon_state))
-            pubkeys.append(validator.pubkey)
+            pubkeys.append(beacon_state.validators[index].pubkey)
     for i in range(len(attester_committee), MAX_PERSISTENT_COMMITTEE_SIZE * 2):
         assert block.attester_bitfield[i] is False
     assert bls_verify(
