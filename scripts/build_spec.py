@@ -24,7 +24,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    bit, boolean, Container, List, Vector, uint64,
+    bit, boolean, Container, List, Vector, uint64, byte,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
@@ -52,16 +52,22 @@ from eth2spec.utils.ssz.ssz_impl import (
     is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    bit, boolean, Container, List, Vector, Bytes, uint64,
+    bit, boolean, Container, List, Vector, Bytes, uint64, byte,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    BytesN
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
+    bls_signature_to_G2,
 )
 
 from eth2spec.utils.hash_function import hash
+'''
+SUNDRY_CONSTANTS_FUNCTIONS = '''
+def ceillog2(x: uint64) -> int:
+    return (x - 1).bit_length()
 '''
 SUNDRY_FUNCTIONS = '''
 # Monkey patch hash cache
@@ -158,6 +164,7 @@ def objects_to_spec(functions: Dict[str, str],
     spec = (
         imports
         + '\n\n' + new_type_definitions
+        + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
         + '\n\n' + constants_spec
         + '\n\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec
@@ -187,7 +194,7 @@ ignored_dependencies = [
     'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
-    'bytes'  # to be removed after updating spec doc
+    'bytes', 'byte', 'BytesN'  # to be removed after updating spec doc
 ]
 
 

@@ -5,6 +5,7 @@ bls_active = True
 
 STUB_SIGNATURE = b'\x11' * 96
 STUB_PUBKEY = b'\x22' * 48
+STUB_COORDINATES = bls.api.signature_to_G2(bls.sign(b"", 0, 0))
 
 
 def only_with_bls(alt_return=None):
@@ -47,3 +48,7 @@ def bls_aggregate_signatures(signatures):
 def bls_sign(message_hash, privkey, domain):
     return bls.sign(message_hash=message_hash, privkey=privkey,
                     domain=int.from_bytes(domain, byteorder='little'))
+
+@only_with_bls(alt_return=STUB_COORDINATES)
+def bls_signature_to_G2(signature):
+    return bls.api.signature_to_G2(signature)

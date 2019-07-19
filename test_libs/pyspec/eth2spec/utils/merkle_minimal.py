@@ -20,6 +20,13 @@ def calc_merkle_tree_from_leaves(values, layer_count=32):
     return tree
 
 
+def get_merkle_tree(values, pad_to=None):
+    layer_count = (len(values) - 1).bit_length() if pad_to == None else (pad_to - 1).bit_length()
+    if len(values) == 0:
+        return zerohashes[layer_count]
+    return calc_merkle_tree_from_leaves(values, layer_count)
+
+
 def get_merkle_root(values, pad_to=1):
     layer_count = int(log2(pad_to))
     if len(values) == 0:
@@ -29,7 +36,7 @@ def get_merkle_root(values, pad_to=1):
 
 def get_merkle_proof(tree, item_index):
     proof = []
-    for i in range(32):
+    for i in range(len(tree)):
         subindex = (item_index // 2**i) ^ 1
         proof.append(tree[i][subindex] if subindex < len(tree[i]) else zerohashes[i])
     return proof
