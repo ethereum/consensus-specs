@@ -308,7 +308,7 @@ Returns the Jacobi symbol `(a/n)`. This is the same as the Legendre symbol when 
 In a production implementation, a well-optimized library (e.g. GMP) should be used for this.
 
 ```python
-def jacobi(a, n):
+def jacobi(a: int, n: int) -> int:
     if a >= n:
         return jacobi(a % n, n)
     if a == 0:
@@ -336,7 +336,7 @@ def jacobi(a, n):
 The Jacobi symbol as a bit (0 or 1).
 
 ```python
-def jacobi_bit(a, n):
+def jacobi_bit(a: int, n: int) -> int:
     return (jacobi(a, n) + 1) // 2
 ```
 
@@ -345,7 +345,7 @@ def jacobi_bit(a, n):
 Given one proof of custody chunk, returns the proof of custody subchunks of the correct sizes.
 
 ```python
-def custody_subchunkify(x):
+def custody_subchunkify(x: bytes) -> list:
     subchunks = []
     start = 0
     for size in BYTES_PER_CUSTODY_SUBCHUNK:
