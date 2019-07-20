@@ -241,7 +241,7 @@ class Validator(Container):
     # (of the particular validator) in which the validator is activated
     # = get_reveal_period(...)
     next_custody_reveal_period: uint64
-    max_reveal_lateness: uint64
+    max_reveal_lateness: Epoch
 ```
 
 #### `BeaconState`
@@ -437,12 +437,17 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     )
 
     # Decrement max reveal lateness if response is timely
-    if revealer.next_custody_reveal_period == get_reveal_period(state, reveal.revealer_index) - 2:
-        revealer.max_reveal_lateness -= MAX_REVEAL_LATENESS_DECREMENT
-    revealer.max_reveal_lateness = max(
-        revealer.max_reveal_lateness,
-        get_reveal_period(state, reveal.revealed_index) - revealer.next_custody_reveal_period
-    )
+    if revealer.next_custody_reveal_period >= get_reveal_period(state, reveal.revealer_index) - 2:
+        if revealer.max_reveal_lateness > 0:
+            revealer.max_reveal_lateness -= MAX_REVEAL_LATENESS_DECREMENT
+    else:
+        revealer.max_reveal_lateness = max(
+            revealer.max_reveal_lateness,
+            get_randao_epoch_for_custody_period(
+                get_reveal_period(state, reveal.revealed_index),
+                reveal.revealed_index
+            ) + CUSTODY_PERIOD_TO_RANDAO_PADDING - get_current_epoch(state)
+        )
 
     # Process reveal
     revealer.next_custody_reveal_period += 1
@@ -597,9 +602,9 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
-        get_reveal_period(state, challenge.responder_index, epoch) + 1, 
+        get_reveal_period(state, challenge.responder_index, epoch), 
         challenge.responder_index
-    ) + responder.max_reveal_lateness 
+    ) + CUSTODY_PERIOD_TO_RANDAO_PADDING + responder.max_reveal_lateness
 
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
