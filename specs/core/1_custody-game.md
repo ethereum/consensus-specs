@@ -87,7 +87,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - |
 | `BYTES_PER_SHARD_BLOCK` | `2**14` (= 16,384) |
 | `BYTES_PER_CUSTODY_CHUNK` | `2**9` (= 512) |
-| `BYTES_PER_CUSTODY_SUBCHUNK` | `[48] * 10 + [32] * 1` |
+| `BYTES_PER_CUSTODY_SUBCHUNK` | `48` |
 | `CHUNKS_PER_EPOCH` | `2 * BYTES_PER_SHARD_BLOCK * SLOTS_PER_EPOCH // BYTES_PER_CUSTODY_CHUNK` |
 | `MAX_CUSTODY_CHUNKS` | `MAX_EPOCHS_PER_CROSSLINK * CHUNKS_PER_EPOCH` |
 | `CUSTODY_DATA_DEPTH` | `ceillog2(MAX_CUSTODY_CHUNKS) + 1` |
@@ -339,13 +339,10 @@ def legendre_bit(a: int, q: int) -> int:
 Given one proof of custody chunk, returns the proof of custody subchunks of the correct sizes.
 
 ```python
-def custody_subchunkify(x: bytes) -> list:
-    subchunks = []
-    start = 0
-    for size in BYTES_PER_CUSTODY_SUBCHUNK:
-        subchunks.append(x[start:start + size])
-        start += size
-    return subchunks
+def custody_subchunkify(bytez: bytes) -> list:
+    bytez += b'\x00' * (-len(bytez) % BYTES_PER_CUSTODY_SUBCHUNK)
+    return [bytez[i:i + BYTES_PER_CUSTODY_SUBCHUNK]
+            for i in range(0, len(bytez), BYTES_PER_CUSTODY_SUBCHUNK)]
 ```
 
 ### `get_custody_chunk_bit`
