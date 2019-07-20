@@ -12,6 +12,7 @@
     - [Terminology](#terminology)
     - [Constants](#constants)
         - [Misc](#misc)
+        - [Custody game parameters](#custody-game-parameters)
         - [Time parameters](#time-parameters)
         - [Max operations per block](#max-operations-per-block)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
@@ -74,7 +75,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ## Constants
 
-###
+### Misc
 
 | `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
