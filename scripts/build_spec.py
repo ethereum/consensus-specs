@@ -24,7 +24,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    bit, boolean, Container, List, Vector, uint64, byte,
+    bit, boolean, Container, List, Vector, uint64,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
@@ -52,7 +52,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    bit, boolean, Container, List, Vector, Bytes, uint64, byte,
+    bit, boolean, Container, List, Vector, Bytes, uint64,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
     BytesN
 )
@@ -116,6 +116,13 @@ def apply_constants_preset(preset: Dict[str, Any]) -> None:
     # Initialize SSZ types again, to account for changed lengths
     init_SSZ_types()
 '''
+
+
+def remove_for_phase1(functions: Dict[str, str]):
+    for key, value in functions.items():
+        lines = value.split("\n")
+        lines = filter(lambda s: "[to be removed in phase 1]" not in s, lines)
+        functions[key] = "\n".join(lines)
 
 
 def strip_comments(raw: str) -> str:
@@ -276,6 +283,7 @@ def build_phase1_spec(phase0_sourcefile: str,
                       fork_choice_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
+    remove_for_phase1(phase0_spec[0])
     phase1_custody = get_spec(phase1_custody_sourcefile)
     phase1_shard_data = get_spec(phase1_shard_sourcefile)
     fork_choice_spec = get_spec(fork_choice_sourcefile)

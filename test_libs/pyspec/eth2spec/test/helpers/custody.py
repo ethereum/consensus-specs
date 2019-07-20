@@ -1,11 +1,12 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
 from eth2spec.utils.hash_function import hash
-from eth2spec.utils.ssz.ssz_typing import Vector, byte, Bitlist, BytesN, Bitvector
+from eth2spec.utils.ssz.ssz_typing import Bitlist, BytesN, Bitvector
 from eth2spec.utils.ssz.ssz_impl import chunkify, pack, hash_tree_root
 from eth2spec.utils.merkle_minimal import get_merkle_tree, get_merkle_proof
 
 BYTES_PER_CHUNK = 32
+
 
 def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     current_epoch = spec.get_current_epoch(state)
@@ -58,11 +59,10 @@ def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False)
         attestation.data.target.epoch,
         attestation.data.crosslink.shard,
     )
-    current_epoch = spec.get_current_epoch(state)
     responder_index = crosslink_committee[0]
     challenger_index = crosslink_committee[-1]
 
-    epoch = spec.get_randao_epoch_for_custody_period(attestation.data.target.epoch, 
+    epoch = spec.get_randao_epoch_for_custody_period(attestation.data.target.epoch,
                                                      responder_index)
 
     # Generate the responder key
@@ -79,7 +79,7 @@ def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False)
     chunk_count = spec.get_custody_chunk_count(attestation.data.crosslink)
 
     chunk_bits = bitlist_from_int(spec.MAX_CUSTODY_CHUNKS, chunk_count, 0)
-    
+
     n = 0
     while spec.get_chunk_bits_root(chunk_bits) == attestation.custody_bits[0] ^ invalid_custody_bit:
         chunk_bits = bitlist_from_int(spec.MAX_CUSTODY_CHUNKS, chunk_count, n)
@@ -105,27 +105,29 @@ def get_valid_custody_response(spec, state, bit_challenge, custody_data, challen
 
     chunk_index = len(chunks) - 1
     chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index])
-    
+
     while chunk_bit == bit_challenge.chunk_bits[chunk_index] ^ invalid_chunk_bit:
         chunk_index -= 1
         chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index])
 
     chunks_hash_tree_roots = [hash_tree_root(BytesN[spec.BYTES_PER_CUSTODY_CHUNK](chunk)) for chunk in chunks]
-    chunks_hash_tree_roots += [hash_tree_root(BytesN[spec.BYTES_PER_CUSTODY_CHUNK](b"\0" * spec.BYTES_PER_CUSTODY_CHUNK)) 
-                for i in range(2 ** spec.ceillog2(len(chunks)) - len(chunks))]
+    chunks_hash_tree_roots += [
+        hash_tree_root(BytesN[spec.BYTES_PER_CUSTODY_CHUNK](b"\0" * spec.BYTES_PER_CUSTODY_CHUNK))
+        for i in range(2 ** spec.ceillog2(len(chunks)) - len(chunks))]
     data_tree = get_merkle_tree(chunks_hash_tree_roots)
-    
+
     data_branch = get_merkle_proof(data_tree, chunk_index)
 
     bitlist_chunk_index = chunk_index // BYTES_PER_CHUNK
     bitlist_chunks = chunkify(pack(bit_challenge.chunk_bits))
     bitlist_tree = get_merkle_tree(bitlist_chunks, pad_to=spec.MAX_CUSTODY_CHUNKS // 256)
-    bitlist_chunk_branch = get_merkle_proof(bitlist_tree, chunk_index // 256) + [len(bit_challenge.chunk_bits).to_bytes(32, "little")]
+    bitlist_chunk_branch = get_merkle_proof(bitlist_tree, chunk_index // 256) + \
+        [len(bit_challenge.chunk_bits).to_bytes(32, "little")]
 
     bitlist_chunk_index = chunk_index // 256
 
-    chunk_bits_leaf = Bitvector[256](bit_challenge.chunk_bits[bitlist_chunk_index * 256 :
-                    (bitlist_chunk_index + 1) * 256])
+    chunk_bits_leaf = Bitvector[256](bit_challenge.chunk_bits[bitlist_chunk_index * 256:
+                                     (bitlist_chunk_index + 1) * 256])
 
     return spec.CustodyResponse(
         challenge_index=challenge_index,

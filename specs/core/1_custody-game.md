@@ -277,10 +277,12 @@ def ceillog2(x: uint64) -> int:
 ### `is_valid_merkle_branch_with_mixin`
 
 ```python
-def is_valid_merkle_branch_with_mixin(leaf: Hash, branch: Sequence[Hash], depth: uint64, index: uint64, root: Hash, mixin: uint64) -> bool:
-    """
-    Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
-    """
+def is_valid_merkle_branch_with_mixin(leaf: Hash, 
+                                      branch: Sequence[Hash],
+                                      depth: uint64,
+                                      index: uint64,
+                                      root: Hash,
+                                      mixin: uint64) -> bool:
     value = leaf
     for i in range(depth):
         if index // (2**i) % 2:
@@ -369,8 +371,8 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
 ```python
 def get_chunk_bits_root(chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]) -> bit:
     aggregated_bits = 0
-    for i, bit in enumerate(chunk_bits):
-        aggregated_bits += 2**i * bit
+    for i, b in enumerate(chunk_bits):
+        aggregated_bits += 2**i * b
     return jacobi_bit(aggregated_bits, BLS12_381_Q)
 ```
 
@@ -604,9 +606,9 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
-            get_reveal_period(state, challenge.responder_index, epoch) + 1, 
-            challenge.responder_index
-        ) + responder.max_reveal_lateness 
+        get_reveal_period(state, challenge.responder_index, epoch) + 1, 
+        challenge.responder_index
+    ) + responder.max_reveal_lateness 
 
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)

@@ -660,8 +660,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     bit_1_indices = indexed_attestation.custody_bit_1_indices
 
     # Verify no index has custody bit equal to 1 [to be removed in phase 1]
-    #if not len(bit_1_indices) == 0:
-    #    return False
+    if not len(bit_1_indices) == 0:  # [to be removed in phase 1]
+        return False                 # [to be removed in phase 1]
     # Verify max number of indices
     if not len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE:
         return False
@@ -1658,6 +1658,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         proposer_index=get_beacon_proposer_index(state),
     )
 
+    # Check bitlist lengths
+    committee_size = get_committee_count(state, attestation.data.target.epoch)
+    assert len(attestation.aggregation_bits) == committee_size
+    assert len(attestation.custody_bits) == committee_size
+
     if data.target.epoch == get_current_epoch(state):
         assert data.source == state.current_justified_checkpoint
         parent_crosslink = state.current_crosslinks[data.crosslink.shard]
@@ -1671,7 +1676,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.start_epoch == parent_crosslink.end_epoch
     assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
-    # assert data.crosslink.data_root == Hash()  # [to be removed in phase 1]
+    assert data.crosslink.data_root == Hash()  # [to be removed in phase 1]
 
     # Check signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))

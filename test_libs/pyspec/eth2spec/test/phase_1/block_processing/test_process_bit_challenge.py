@@ -6,18 +6,13 @@ from eth2spec.test.helpers.custody import (
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
-    sign_aggregate_attestation,
-    sign_attestation,
 )
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.test.helpers.block import apply_empty_block
-from eth2spec.test.helpers.state import next_epoch, get_balance
+from eth2spec.test.helpers.state import get_balance
 from eth2spec.test.context import (
     with_all_phases_except,
     spec_state_test,
     expect_assertion_error,
-    always_bls,
-    never_bls,
 )
 from eth2spec.test.phase_0.block_processing.test_process_attestation import run_attestation_processing
 
@@ -40,13 +35,13 @@ def run_bit_challenge_processing(spec, state, custody_bit_challenge, valid=True)
 
     spec.process_bit_challenge(state, custody_bit_challenge)
 
-    assert state.custody_bit_challenge_records[state.custody_challenge_index - 1].chunk_bits_merkle_root \
-         == hash_tree_root(custody_bit_challenge.chunk_bits)
+    assert state.custody_bit_challenge_records[state.custody_challenge_index - 1].chunk_bits_merkle_root == \
+        hash_tree_root(custody_bit_challenge.chunk_bits)
     assert state.custody_bit_challenge_records[state.custody_challenge_index - 1].challenger_index == \
         custody_bit_challenge.challenger_index
     assert state.custody_bit_challenge_records[state.custody_challenge_index - 1].responder_index == \
         custody_bit_challenge.responder_index
-    
+
     yield 'post', state
 
 
@@ -88,7 +83,8 @@ def test_challenge_appended(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -110,7 +106,8 @@ def test_multiple_epochs_custody(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 3
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -132,7 +129,8 @@ def test_many_epochs_custody(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 100
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -154,7 +152,8 @@ def test_off_chain_attestatoin(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -173,7 +172,8 @@ def test_invalid_custody_bit_challenge(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -195,7 +195,8 @@ def test_late_bit_challenge(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -217,7 +218,8 @@ def test_custody_response(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -245,7 +247,8 @@ def test_custody_response_multiple_epochs(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 3
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
@@ -273,7 +276,8 @@ def test_custody_response_many_epochs(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH * 100
     attestation = get_valid_attestation(spec, state, signed=True)
 
-    test_vector = get_custody_test_vector(spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
     shard_root = get_custody_merkle_root(test_vector)
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
