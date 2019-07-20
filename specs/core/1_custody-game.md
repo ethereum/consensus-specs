@@ -308,13 +308,14 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
 Returns the Legendre symbol `(a/q)` normalizes as a bit (i.e. `((a/q) + 1) // 2`). In a production implementation, a well-optimized library (e.g. GMP) should be used for this.
 
 ```python
-def legendre_bit(a: int, n: int) -> int:
-    if a >= n:
-        return legendre_bit(a % n, n)
+def legendre_bit(a: int, q: int) -> int:
+    if a >= q:
+        return legendre_bit(a % q, q)
     if a == 0:
         return 0 
-    assert(n > a > 0 and n % 2 == 1)
+    assert(q > a > 0 and q % 2 == 1)
     t = 1
+    n = q
     while a != 0:
         while a % 2 == 0:
             a //= 2
