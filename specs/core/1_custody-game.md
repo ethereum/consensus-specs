@@ -34,6 +34,7 @@
             - [`BeaconBlockBody`](#beaconblockbody)
     - [Helpers](#helpers)
         - [`ceillog2`](#ceillog2)
+        - [`is_valid_merkle_branch_with_mixin`](#is_valid_merkle_branch_with_mixin)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`legendre_bit`](#legendre_bit)
         - [`custody_subchunkify`](#custody_subchunkify)
