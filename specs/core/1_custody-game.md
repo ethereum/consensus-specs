@@ -41,7 +41,7 @@
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
-        - [`get_reveal_period`](#get_reveal_period)
+        - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
         - [`replace_empty_or_append`](#replace_empty_or_append)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
@@ -237,10 +237,10 @@ Add the following fields to the end of the specified container objects. Fields w
 
 ```python
 class Validator(Container):
-    # next_custody_reveal_period is initialised to the custody period
+    # next_custody_secret_to_reveal is initialised to the custody period
     # (of the particular validator) in which the validator is activated
-    # = get_reveal_period(...)
-    next_custody_reveal_period: uint64
+    # = get_custody_period_for_validator(...)
+    next_custody_secret_to_reveal: uint64
     max_reveal_lateness: Epoch
 ```
 
@@ -375,10 +375,10 @@ def get_randao_epoch_for_custody_period(period: uint64, validator_index: Validat
     return Epoch(next_period_start + CUSTODY_PERIOD_TO_RANDAO_PADDING)
 ```
 
-### `get_reveal_period`
+### `get_custody_period_for_validator`
 
 ```python
-def get_reveal_period(state: BeaconState, validator_index: ValidatorIndex, epoch: Epoch=None) -> int:
+def get_custody_period_for_validator(state: BeaconState, validator_index: ValidatorIndex, epoch: Epoch=None) -> int:
     '''
     Return the reveal period for a given validator.
     '''
@@ -417,9 +417,9 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     Note that this function mutates ``state``.
     """
     revealer = state.validators[reveal.revealer_index]
-    epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_reveal_period, reveal.revealed_index)
+    epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealed_index)
 
-    assert revealer.next_custody_reveal_period < get_reveal_period(state, reveal.revealed_index)
+    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(state, reveal.revealed_index)
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -437,20 +437,20 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     )
 
     # Decrement max reveal lateness if response is timely
-    if revealer.next_custody_reveal_period >= get_reveal_period(state, reveal.revealer_index) - 2:
+    if revealer.next_custody_secret_to_reveal >= get_custody_period_for_validator(state, reveal.revealer_index) - 2:
         if revealer.max_reveal_lateness > 0:
             revealer.max_reveal_lateness -= MAX_REVEAL_LATENESS_DECREMENT
     else:
         revealer.max_reveal_lateness = max(
             revealer.max_reveal_lateness,
             get_randao_epoch_for_custody_period(
-                get_reveal_period(state, reveal.revealed_index),
+                get_custody_period_for_validator(state, reveal.revealed_index),
                 reveal.revealed_index
             ) + CUSTODY_PERIOD_TO_RANDAO_PADDING - get_current_epoch(state)
         )
 
     # Process reveal
-    revealer.next_custody_reveal_period += 1
+    revealer.next_custody_secret_to_reveal += 1
 
     # Reward Block Preposer
     proposer_index = get_beacon_proposer_index(state)
@@ -602,7 +602,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
-        get_reveal_period(state, challenge.responder_index, epoch), 
+        get_custody_period_for_validator(state, challenge.responder_index, epoch), 
         challenge.responder_index
     ) + CUSTODY_PERIOD_TO_RANDAO_PADDING + responder.max_reveal_lateness
 
@@ -614,7 +614,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
         assert record.challenger_index != challenge.challenger_index
     # Verify the responder custody key
     epoch_to_sign = get_randao_epoch_for_custody_period(
-        get_reveal_period(state, challenge.responder_index, epoch),
+        get_custody_period_for_validator(state, challenge.responder_index, epoch),
         challenge.responder_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
@@ -738,8 +738,8 @@ Run `process_reveal_deadlines(state)` immediately after `process_registry_update
 # end insert @process_reveal_deadlines
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
-        deadline = validator.next_custody_reveal_period + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
-        if get_reveal_period(state, ValidatorIndex(index)) > deadline:
+        deadline = validator.next_custody_secret_to_reveal + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
+        if get_custody_period_for_validator(state, ValidatorIndex(index)) > deadline:
             slash_validator(state, ValidatorIndex(index))
 ```
 
