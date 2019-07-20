@@ -34,8 +34,7 @@
     - [Helpers](#helpers)
         - [`ceillog2`](#ceillog2)
         - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
-        - [`jacobi`](#jacobi)
-        - [`jacobi_bit`](#jacobi_bit)
+        - [`legendre_bit`](#legendre_bit)
         - [`custody_subchunkify`](#custody_subchunkify)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`get_chunk_bits_root`](#get_chunk_bits_root)
@@ -304,16 +303,14 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
     return crosslink_length * CHUNKS_PER_EPOCH
 ```
 
-### `jacobi`
+### `legendre_bit`
 
-Returns the Jacobi symbol `(a/n)`. This is the same as the Legendre symbol when `n` is a prime.
-
-In a production implementation, a well-optimized library (e.g. GMP) should be used for this.
+Returns the Legendre symbol `(a/q)` normalizes as a bit (i.e. `((a/q) + 1) // 2`). In a production implementation, a well-optimized library (e.g. GMP) should be used for this.
 
 ```python
-def jacobi(a: int, n: int) -> int:
+def legendre_bit(a: int, n: int) -> int:
     if a >= n:
-        return jacobi(a % n, n)
+        return legendre_bit(a % n, n)
     if a == 0:
         return 0 
     assert(n > a > 0 and n % 2 == 1)
@@ -329,18 +326,9 @@ def jacobi(a: int, n: int) -> int:
             t = -t
         a %= n
     if n == 1:
-        return t
+        return (t + 1) // 2
     else:
         return 0
-```
-
-### `jacobi_bit`
-
-The Jacobi symbol as a bit (0 or 1).
-
-```python
-def jacobi_bit(a: int, n: int) -> int:
-    return (jacobi(a, n) + 1) // 2
 ```
 
 ### ```custody_subchunkify```
@@ -363,7 +351,7 @@ def custody_subchunkify(x: bytes) -> list:
 def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
     full_G2_element = bls_signature_to_G2(key)
     s = full_G2_element[0].coeffs
-    bits = [jacobi_bit((i + 1) * s[i % 2] + int.from_bytes(subchunk, "little"), BLS12_381_Q)
+    bits = [legendre_bit((i + 1) * s[i % 2] + int.from_bytes(subchunk, "little"), BLS12_381_Q)
             for i, subchunk in enumerate(custody_subchunkify(chunk))]
 
     return bool(sum(bits) % 2)
@@ -376,7 +364,7 @@ def get_chunk_bits_root(chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]) -> bit:
     aggregated_bits = 0
     for i, b in enumerate(chunk_bits):
         aggregated_bits += 2**i * b
-    return jacobi_bit(aggregated_bits, BLS12_381_Q)
+    return legendre_bit(aggregated_bits, BLS12_381_Q)
 ```
 
 ### `get_randao_epoch_for_custody_period`
