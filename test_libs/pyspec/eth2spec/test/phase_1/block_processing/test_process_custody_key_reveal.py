@@ -116,4 +116,3 @@ def test_max_decrement(spec, state):
     custody_key_reveal2 = get_valid_custody_key_reveal(spec, state)
 
     yield from run_custody_key_reveal_processing(spec, state, custody_key_reveal2)
-    
