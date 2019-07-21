@@ -49,6 +49,32 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     )
 
 
+def get_valid_custody_key_reveal(spec, state, period=None):
+    current_epoch = spec.get_current_epoch(state)
+    revealer_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    revealer = state.validators[revealer_index]
+
+    if period is None:
+        period = revealer.next_custody_secret_to_reveal
+
+    epoch_to_sign = spec.get_randao_epoch_for_custody_period(period, revealer_index)
+
+    # Generate the secret that is being revealed
+    reveal = bls_sign(
+        message_hash=hash_tree_root(spec.Epoch(epoch_to_sign)),
+        privkey=privkeys[revealer_index],
+        domain=spec.get_domain(
+            state=state,
+            domain_type=spec.DOMAIN_RANDAO,
+            message_epoch=epoch_to_sign,
+        ),
+    )
+    return spec.CustodyKeyReveal(
+        revealer_index=revealer_index,
+        reveal=reveal,
+    )
+
+
 def bitlist_from_int(max_len, num_bits, n):
     return Bitlist[max_len](*[(n >> i) & 0b1 for i in range(num_bits)])
 

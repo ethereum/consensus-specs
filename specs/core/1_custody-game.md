@@ -417,9 +417,9 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     Note that this function mutates ``state``.
     """
     revealer = state.validators[reveal.revealer_index]
-    epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealed_index)
+    epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
 
-    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(state, reveal.revealed_index)
+    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(state, reveal.revealer_index)
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -437,16 +437,15 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     )
 
     # Decrement max reveal lateness if response is timely
-    if revealer.next_custody_secret_to_reveal >= get_custody_period_for_validator(state, reveal.revealer_index) - 2:
-        if revealer.max_reveal_lateness > 0:
+    if epoch_to_sign + EPOCHS_PER_CUSTODY_PERIOD >= get_current_epoch(state):
+        if revealer.max_reveal_lateness >= MAX_REVEAL_LATENESS_DECREMENT:
             revealer.max_reveal_lateness -= MAX_REVEAL_LATENESS_DECREMENT
+        else:
+            revealer.max_reveal_lateness = 0
     else:
         revealer.max_reveal_lateness = max(
             revealer.max_reveal_lateness,
-            get_randao_epoch_for_custody_period(
-                get_custody_period_for_validator(state, reveal.revealed_index),
-                reveal.revealed_index
-            ) + CUSTODY_PERIOD_TO_RANDAO_PADDING - get_current_epoch(state)
+            get_current_epoch(state) - epoch_to_sign - EPOCHS_PER_CUSTODY_PERIOD
         )
 
     # Process reveal
@@ -604,7 +603,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
         get_custody_period_for_validator(state, challenge.responder_index, epoch), 
         challenge.responder_index
-    ) + CUSTODY_PERIOD_TO_RANDAO_PADDING + responder.max_reveal_lateness
+    ) + EPOCHS_PER_CUSTODY_PERIOD + responder.max_reveal_lateness
 
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
