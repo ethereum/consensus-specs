@@ -603,7 +603,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
         get_custody_period_for_validator(state, challenge.responder_index, epoch), 
         challenge.responder_index
-    ) + EPOCHS_PER_CUSTODY_PERIOD + responder.max_reveal_lateness
+    ) + 2 * EPOCHS_PER_CUSTODY_PERIOD + responder.max_reveal_lateness
 
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)

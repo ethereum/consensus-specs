@@ -8,7 +8,8 @@ from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.test.helpers.state import get_balance
+from eth2spec.test.helpers.state import next_epoch, get_balance
+from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.context import (
     with_all_phases_except,
     spec_state_test,
@@ -116,7 +117,7 @@ def test_multiple_epochs_custody(spec, state):
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    state.slot += spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 5)
+    state.slot += spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1)
 
     challenge = get_valid_bit_challenge(spec, state, attestation)
 
@@ -139,7 +140,7 @@ def test_many_epochs_custody(spec, state):
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    state.slot += spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 5)
+    state.slot += spec.SLOTS_PER_EPOCH * (spec.EPOCHS_PER_CUSTODY_PERIOD - 1)
 
     challenge = get_valid_bit_challenge(spec, state, attestation)
 
@@ -148,7 +149,7 @@ def test_many_epochs_custody(spec, state):
 
 @with_all_phases_except(['phase0'])
 @spec_state_test
-def test_off_chain_attestatoin(spec, state):
+def test_off_chain_attestation(spec, state):
     state.slot = spec.SLOTS_PER_EPOCH
     attestation = get_valid_attestation(spec, state, signed=True)
 
@@ -191,8 +192,10 @@ def test_invalid_custody_bit_challenge(spec, state):
 
 @with_all_phases_except(['phase0'])
 @spec_state_test
-def test_late_bit_challenge(spec, state):
-    state.slot = spec.SLOTS_PER_EPOCH
+def test_max_reveal_lateness_1(spec, state):
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
+
     attestation = get_valid_attestation(spec, state, signed=True)
 
     test_vector = get_custody_test_vector(
@@ -201,15 +204,61 @@ def test_late_bit_challenge(spec, state):
     attestation.data.crosslink.data_root = shard_root
     attestation.custody_bits[0] = 0
 
-    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
 
     _, _, _ = run_attestation_processing(spec, state, attestation)
 
-    state.slot += spec.SLOTS_PER_EPOCH * spec.EPOCHS_PER_CUSTODY_PERIOD * 3
+    challenge = get_valid_bit_challenge(spec, state, attestation)
+
+    responder_index = challenge.responder_index
+
+    state.validators[responder_index].max_reveal_lateness = 3
+
+    for i in range(spec.get_randao_epoch_for_custody_period(
+        spec.get_custody_period_for_validator(state, responder_index),
+        responder_index
+    ) + 2 * spec.EPOCHS_PER_CUSTODY_PERIOD + state.validators[responder_index].max_reveal_lateness - 2):
+        next_epoch(spec, state)
+        apply_empty_block(spec, state)
+
+    yield from run_bit_challenge_processing(spec, state, challenge)
+
+
+@with_all_phases_except(['phase0'])
+@spec_state_test
+def test_max_reveal_lateness_2(spec, state):
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
+
+    attestation = get_valid_attestation(spec, state, signed=True)
+
+    test_vector = get_custody_test_vector(
+        spec.get_custody_chunk_count(attestation.data.crosslink) * spec.BYTES_PER_CUSTODY_CHUNK)
+    shard_root = get_custody_merkle_root(test_vector)
+    attestation.data.crosslink.data_root = shard_root
+    attestation.custody_bits[0] = 0
+
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
+
+    _, _, _ = run_attestation_processing(spec, state, attestation)
 
     challenge = get_valid_bit_challenge(spec, state, attestation)
 
-    yield from run_bit_challenge_processing(spec, state, challenge, valid=False)
+    responder_index = challenge.responder_index
+
+    state.validators[responder_index].max_reveal_lateness = 3
+
+    for i in range(spec.get_randao_epoch_for_custody_period(
+        spec.get_custody_period_for_validator(state, responder_index),
+        responder_index
+    ) + 2 * spec.EPOCHS_PER_CUSTODY_PERIOD + state.validators[responder_index].max_reveal_lateness - 1):
+        next_epoch(spec, state)
+        apply_empty_block(spec, state)
+
+    yield from run_bit_challenge_processing(spec, state, challenge, False)
+
 
 
 @with_all_phases_except(['phase0'])
