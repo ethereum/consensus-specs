@@ -260,7 +260,6 @@ def test_max_reveal_lateness_2(spec, state):
     yield from run_bit_challenge_processing(spec, state, challenge, False)
 
 
-
 @with_all_phases_except(['phase0'])
 @spec_state_test
 def test_custody_response(spec, state):
