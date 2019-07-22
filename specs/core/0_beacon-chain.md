@@ -672,7 +672,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     if not (bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)):
         return False
     # Verify aggregate signature
-    if not bls_verify_multiple(
+    return bls_verify_multiple(
         pubkeys=[
             bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
             bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
@@ -683,9 +683,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
         ],
         signature=indexed_attestation.signature,
         domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
-    ):
-        return False
-    return True
+    )
 ```
 
 #### `is_valid_merkle_branch`
