@@ -17,18 +17,21 @@
         - [Signature domain types](#signature-domain-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
-        - [`ShardBlockBody`](#shardblockbody)
-        - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
+        - [`ShardBlock`](#shardblock)
+        - [`ShardBlockSignatures`](#shardblocksignatures)
+        - [`ShardBlockCore`](#shardblockcore)
+        - [`ExtendedShardBlockCore`](#extendedshardblockcore)
     - [Helper functions](#helper-functions)
         - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
         - [`get_period_start_epoch`](#get_period_start_epoch)
         - [`get_period_committee`](#get_period_committee)
-        - [`get_switchover_epoch`](#get_switchover_epoch)
         - [`get_persistent_committee`](#get_persistent_committee)
         - [`get_shard_block_proposer_index`](#get_shard_block_proposer_index)
         - [`get_shard_block_attester_committee`](#get_shard_block_attester_committee)
         - [`get_shard_header`](#get_shard_header)
+        - [`pad`](#pad)
+        - [`flatten_shard_header`](#flatten_shard_header)
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
     - [Object validity](#object-validity)
         - [Shard blocks](#shard-blocks)
@@ -55,7 +58,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value |
 | - | - |
-| `BYTES_PER_SHARD_BLOCK_BODY` | `2**14` (= 16,384) |
+| `SHARD_HEADER_SIZE` | `2**9` (= 512) |
+| `SHARD_BLOCK_SIZE_LIMIT` | `2**16` (= 65,536) |
 | `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
 | `MAX_PERSISTENT_COMMITTEE_SIZE` | `2**7` (= 128) |
@@ -72,7 +76,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `PERSISTENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
+| `EPOCHS_PER_SHARD_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 
 ### Signature domain types
 
@@ -91,41 +95,54 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 ## Data structures
 
-### `ShardBlockBody`
+_Note: the shard block header structure is carefully designed so that all of the values have the same depth in a hash tree implementation, so `hash_tree_root(SSZ_partial(x)) == hash_tree_root(x)` (using the "left-to-right leaves" scheme [here](https://github.com/ethereum/eth2.0-specs/issues/1303)), which allows shard block headers to look like an SSZ object when in the crosslink structure. This is done by balancing it so that 7 or 8 items are on the left side (the "core") and two 96-byte (ie. 3*2 = 6 chunk) items are on the right side. Change with care._
+
+### `ShardBlockHeader`
 
 ```python
-class ShardBlockBody(Container):
-    data: Vector[Bytes[PLACEHOLDER], BYTES_PER_SHARD_BLOCK_BODY]
+class ShardBlockHeader(Container):
+    core: ShardBlockCore
+    signatures: ShardBlockSignatures
 ```
 
 ### `ShardBlock`
 
 ```python
 class ShardBlock(Container):
-    slot: ShardSlot
-    shard: Shard
-    beacon_chain_root: Hash
-    parent_root: Hash
-    data: ShardBlockBody
-    state_root: Hash
-    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
-    attestation_signature: BLSSignature
-    signature: BLSSignature
+    core: ExtendedShardBlockCore
+    signatures: ShardBlockSignatures
 ```
 
-### `ShardBlockHeader`
+### `ShardBlockSignatures`
 
 ```python
-class ShardBlockHeader(Container):
+class ShardBlockSignatures(Container):
+    attestation_signature: BLSSignature
+    proposer_signature: BLSSignature
+```
+
+### `ShardBlockCore`
+
+```python
     slot: ShardSlot
-    shard: Shard
     beacon_chain_root: Hash
     parent_root: Hash
-    body_root: Hash
+    data_root: Hash
     state_root: Hash
+    total_bytes: uint64
     attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
-    attestation_signature: BLSSignature
-    signature: BLSSignature
+```
+
+### `ExtendedShardBlockCore`
+
+```python
+    slot: ShardSlot
+    beacon_chain_root: Hash
+    parent_root: Hash
+    data_root: Bytes[SHARD_BLOCK_SIZE_LIMIT - SHARD_HEADER_SIZE]
+    state_root: Hash
+    total_bytes: uint64
+    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
 ```
 
 ## Helper functions
@@ -137,10 +154,10 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
     return Epoch(slot // SHARD_SLOTS_PER_BEACON_SLOT // SLOTS_PER_EPOCH)
 ```
 
-### `get_period_start_epoch`
+### `get_shard_period_start_epoch`
 
 ```python
-def get_period_start_epoch(epoch: Epoch, lookback:Epoch = 0) -> Epoch:
+def get_shard_period_start_epoch(epoch: Epoch, lookback:Epoch = 0) -> Epoch:
     return epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - lookback * PERSISTENT_COMMITTEE_PERIOD
 ```
 
@@ -172,15 +189,6 @@ def get_period_committee(state: BeaconState,
     return [i for i in full_committee if active_and_balance_filter(i)][:MAX_PERSISTENT_COMMITTEE_SIZE]
 ```
 
-### `get_switchover_epoch`
-
-```python
-def get_switchover_epoch(state: BeaconState, epoch: Epoch, index: ValidatorIndex) -> int:
-    earlier_start_epoch = get_period_start_epoch(epoch, lookback=2)
-    return (bytes_to_int(hash(get_seed(state, earlier_start_epoch) + int_to_bytes(index, length=3)[0:8]))
-            % PERSISTENT_COMMITTEE_PERIOD)
-```
-
 ### `get_persistent_committee`
 
 ```python
@@ -198,8 +206,8 @@ def get_persistent_committee(state: BeaconState,
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(set(
-        [i for i in earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(state, epoch, i)]
-        + [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(state, epoch, i)]
+        [i for i in earlier_committee if epoch % EPOCHS_PER_SHARD_PERIOD < i % EPOCHS_PER_SHARD_PERIOD]
+        + [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= i % EPOCHS_PER_SHARD_PERIOD]
     ))
 ```
 
@@ -220,14 +228,45 @@ def get_shard_block_proposer_index(state: BeaconState,
 ```python
 def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
     return ShardBlockHeader(
-        slot=block.slot,
-        shard=block.shard,
-        beacon_chain_root=block.beacon_chain_root,
-        parent_root=block.parent_root,
-        body_root=hash_tree_root(block.body),
-        state_root=block.state_root,
-        attestation_signature=block.attestation_signature,
-        signature=block.signature,
+        core=ShardBlockCore(
+            slot=block.core.slot,
+            beacon_chain_root=block.core.beacon_chain_root,
+            parent_root=block.core.parent_root,
+            data_root=hash_tree_root(block.core.data),
+            state_root=block.core.state_root,
+            total_bytes=block.core.total_bytes,
+            attester_bitfield=block.core.attester_bitfield
+        ),
+        signatures=block.signatures
+    )
+```
+
+### `pad`
+
+```python
+def pad(x: bytes, length: int) -> bytes:
+    assert len(x) <= length
+    return x + b'\x00' * (length - len(x))
+```
+
+### `flatten_shard_header`
+
+```python
+def flatten_shard_header(header: ShardBlockHeader) -> Bytes[SHARD_HEADER_SIZE]:
+    """
+    Converts a shard block header into a flat object with the same hash tree root. Used
+    in the crosslink construction.
+    """
+    return (
+        pad(int_to_bytes8(header.core.slot), 32) +
+        header.core.beacon_chain_root +
+        header.core.parent_root +
+        header.core.data_root +
+        header.core.state_root +
+        pad(int_to_bytes8(header.core.total_bytes), 32) +
+        b'\x00' * 32 +
+        pad(header.signatures.attestation_signature, 128) +
+        pad(header.signatures.proposer_signature, 128)
     )
 ```
 
@@ -235,32 +274,10 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
 
 ```python
 def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
-    def is_power_of_two(value: uint64) -> bool:
-        return (value > 0) and (value & (value - 1) == 0)
-
-    def pad_to_power_of_2(values: MutableSequence[bytes]) -> Sequence[bytes]:
-        while not is_power_of_two(len(values)):
-            values.append(b'\x00' * BYTES_PER_SHARD_BLOCK_BODY)
-        return values
-
-    def hash_tree_root_of_bytes(data: bytes) -> Hash:
-        return hash_tree_root([data[i:i + 32] for i in range(0, len(data), 32)])
-
-    def zpad(data: bytes, length: uint64) -> bytes:
-        return data + b'\x00' * (length - len(data))
-
-    return hash(
-        # TODO untested code.
-        #  Need to either pass a typed list to hash-tree-root, or merkleize_chunks(values, pad_to=2**x)
-        hash_tree_root(pad_to_power_of_2([
-            hash_tree_root_of_bytes(
-                zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_BODY)
-            ) for block in blocks
-        ]))
-        + hash_tree_root(pad_to_power_of_2([
-            hash_tree_root_of_bytes(block.body) for block in blocks
-        ]))
-    )
+    header = b''.join([flatten_shard_header(get_shard_header(block)) for block in blocks])
+    footer = b''.join([block.core.data for block in blocks])
+    MAX_SIZE = SHARD_BLOCK_SIZE_LIMIT * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
+    return hash_tree_root(pad(header + footer, MAX_SIZE))
 ```
 
 ## Object validity
@@ -271,12 +288,14 @@ Let:
 
 - `beacon_blocks` be the `BeaconBlock` list such that `beacon_blocks[slot]` is the canonical `BeaconBlock` at slot `slot`
 - `beacon_state` be the canonical `BeaconState` after processing `beacon_blocks[-1]`
+- `shard` is the shard ID
 - `valid_shard_blocks` be the list of valid `ShardBlock`, recursively defined
 - `candidate` be a candidate `ShardBlock` for which validity is to be determined by running `is_valid_shard_block`
 
 ```python
 def is_valid_shard_block(beacon_state: BeaconState,
                          beacon_blocks: Sequence[BeaconBlock],
+                         shard: Shard,
                          valid_shard_blocks: Sequence[ShardBlock],
                          candidate: ShardBlock) -> bool:
     # Check if block is already determined valid
@@ -285,55 +304,51 @@ def is_valid_shard_block(beacon_state: BeaconState,
             return True
 
     # Check slot number
-    assert candidate.slot >= PHASE_1_FORK_SLOT
-
-    # Check shard number
-    assert candidate.shard <= SHARD_COUNT
+    assert candidate.core.slot >= PHASE_1_FORK_SLOT
 
     # Check beacon block
-    beacon_block = beacon_blocks[candidate.slot]
-    assert candidate.beacon_block_root == signing_root(beacon_block)
-    assert beacon_block.slot <= candidate.slot
+    beacon_block = beacon_blocks[candidate.core.slot - candidate.core.slot % (SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH)]
+    assert candidate.core.beacon_block_root == signing_root(beacon_block)
+    assert beacon_block.slot <= candidate.core.slot
 
     # Check state root
-    assert candidate.state_root == Hash()  # [to be removed in phase 2]
+    assert candidate.core.state_root == Hash()  # [to be removed in phase 2]
 
     # Check parent block
-    if candidate.slot == PHASE_1_FORK_SLOT:
-        assert candidate.parent_root == Hash()
+    if candidate.core.slot == PHASE_1_FORK_SLOT:
+        assert candidate.core.parent_root == Hash()
     else:
         parent_block = next(
-            (block for block in valid_shard_blocks if signing_root(block) == candidate.parent_root),
+            (block for block in valid_shard_blocks if hash_tree_root(block.core) == candidate.core.parent_root),
             None
         )
         assert parent_block is not None
-        assert parent_block.shard == candidate.shard
-        assert parent_block.slot < candidate.slot
-        assert signing_root(beacon_blocks[parent_block.slot]) == parent_block.beacon_chain_root
+        assert parent_block.core.slot < candidate.core.slot
+        assert signing_root(beacon_blocks[parent_block.core.slot]) == parent_block.core.beacon_chain_root
 
     # Check attestations
-    attester_committee = get_persistent_committee(beacon_state, block.shard, block.slot)
+    attester_committee = get_persistent_committee(beacon_state, shard, block.core.slot)
     pubkeys = []
     for i, index in enumerate(attester_committee):
-        if block.attester_bitfield[i]:
+        if block.core.attester_bitfield[i]:
             pubkeys.append(beacon_state.validators[index].pubkey)
     for i in range(len(attester_committee), MAX_PERSISTENT_COMMITTEE_SIZE * 2):
         assert block.attester_bitfield[i] is False
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(pubkeys),
-        message_hash=candidate.parent_root,
-        signature=candidate.attestation_signature,
-        domain=get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(candidate.slot))
+        message_hash=candidate.core.parent_root,
+        signature=candidate.signatures.attestation_signature,
+        domain=get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(candidate.core.slot))
     )
 
     # Check proposer
-    proposer_index = get_shard_block_proposer_index(beacon_state, candidate.shard, candidate.slot)
+    proposer_index = get_shard_block_proposer_index(beacon_state, shard, candidate.core.slot)
     assert proposer_index is not None
     assert bls_verify(
         pubkey=beacon_state.validators[proposer_index].pubkey,
-        message_hash=signing_root(candidate),
-        signature=candidate.signature,
-        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(candidate.slot)),
+        message_hash=hash_tree_root(candidate.core),
+        signature=candidate.signatures.proposer_signature,
+        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(candidate.core.slot)),
     )
 
     return True
