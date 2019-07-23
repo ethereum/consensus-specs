@@ -21,6 +21,12 @@ Core specifications for Eth 2.0 client validation can be found in [specs/core](s
 * [Custody Game](specs/core/1_custody-game.md)
 * [Shard Data Chains](specs/core/1_shard-data-chains.md)
 
+### Phase 2
+
+Phase 2 is still actively in R&D and does not yet have any formal specifications.
+
+See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for current progress, discussions, and definitions regarding this work.
+
 ### Accompanying documents can be found in [specs](specs) and include:
 
 * [SimpleSerialize (SSZ) spec](specs/simple-serialize.md)
