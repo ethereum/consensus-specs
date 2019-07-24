@@ -170,23 +170,14 @@ def get_period_committee(state: BeaconState,
     """
     Return committee for a period. Used to construct persistent committees.
     """
-    seed = get_seed(state, epoch)
     full_committee = compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=seed,
+        seed=get_seed(state, epoch),
         index=shard * count + index,
         count=SHARD_COUNT * count,
     )
 
-    def active_and_balance_filter(i: ValidatorIndex) -> bool:
-        if not is_active_validator(state.validators[i], epoch):
-            return False 
-        active_threshold = MAX_EFFECTIVE_BALANCE * seed[i % 32] // MAX_RANDOM_BYTE
-        if state.validators[i].effective_balance < active_threshold:
-            return False
-        return True
-
-    return [i for i in full_committee if active_and_balance_filter(i)][:MAX_PERSISTENT_COMMITTEE_SIZE]
+    return [i for i in full_committee if is_active_validator(state.validators[i], epoch)][:MAX_PERSISTENT_COMMITTEE_SIZE]
 ```
 
 ### `get_persistent_committee`
@@ -220,7 +211,14 @@ def get_shard_block_proposer_index(state: BeaconState,
     # Randomly shift persistent committee
     persistent_committee = list(get_persistent_committee(state, shard, slot))
     seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
-    return persistent_committee[bytes_to_int(seed[0:8]) % len(persistent_committee)]
+    i = 0
+    while True:
+        candidate_index = persistent_committee[(slot + i) % len(persistent_committee)]
+        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
+            return ValidatorIndex(candidate_index)
+        i += 1
 ```
 
 ### `get_shard_header`
