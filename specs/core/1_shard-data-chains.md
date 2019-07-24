@@ -208,7 +208,7 @@ def get_persistent_committee(state: BeaconState,
 ```python
 def get_shard_block_proposer_index(state: BeaconState,
                                    shard: Shard,
-                                   slot: Slot) -> Optional[ValidatorIndex]:
+                                   slot: ShardSlot) -> Optional[ValidatorIndex]:
     # Randomly shift persistent committee
     persistent_committee = list(get_persistent_committee(state, shard, slot))
     seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
@@ -218,7 +218,7 @@ def get_shard_block_proposer_index(state: BeaconState,
         random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-            if is_active_validator(state.validators[candidate_index], shard_slot_to_epoch(slot)):
+            if is_active_validator(state.validators[candidate_index], compute_epoch_of_shard_slot(slot)):
                 return ValidatorIndex(candidate_index)
         i += 1
 ```
@@ -251,12 +251,14 @@ def pad(x: bytes, length: int) -> bytes:
 
 ### `flatten_shard_header`
 
-```python
+```pythonpad_
 def flatten_shard_header(header: ShardBlockHeader) -> Bytes[SHARD_HEADER_SIZE]:
     """
     Converts a shard block header into a flat object with the same hash tree root. Used
     in the crosslink construction.
     """
+    attester_bits = [header.core.attester_bitfield[i] if i < len(header.core.attester_bitfield) else 0 for i in range(256)]
+    attester_bytes = bytes([sum([attester_bits[i+j] << j for j in range(8)]) for i in range(0, 256, 8)])
     return (
         pad(int_to_bytes8(header.core.slot), 32) +
         header.core.beacon_chain_root +
@@ -264,6 +266,7 @@ def flatten_shard_header(header: ShardBlockHeader) -> Bytes[SHARD_HEADER_SIZE]:
         header.core.data_root +
         header.core.state_root +
         pad(int_to_bytes8(header.core.total_bytes), 32) +
+        attester_bytes +
         b'\x00' * 32 +
         pad(header.signatures.attestation_signature, 128) +
         pad(header.signatures.proposer_signature, 128)
