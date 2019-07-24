@@ -24,6 +24,7 @@
         - [`ExtendedShardBlockCore`](#extendedshardblockcore)
     - [Helper functions](#helper-functions)
         - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
+        - [`compute_slot_of_shard_slot`](#compute_slot_of_shard_slot)
         - [`get_period_start_epoch`](#get_period_start_epoch)
         - [`get_period_committee`](#get_period_committee)
         - [`get_persistent_committee`](#get_persistent_committee)
@@ -147,6 +148,13 @@ class ExtendedShardBlockCore(Container):
 ```
 
 ## Helper functions
+
+### `compute_slot_of_shard_slot`
+
+```python
+def compute_slot_of_shard_slot(slot: ShardSlot) -> Epoch:
+    return Epoch(slot // SHARD_SLOTS_PER_BEACON_SLOT)
+```
 
 ### `compute_epoch_of_shard_slot`
 
@@ -307,10 +315,11 @@ def is_valid_shard_block(beacon_state: BeaconState,
             return True
 
     # Check slot number
-    assert candidate.core.slot >= PHASE_1_FORK_SLOT
+    assert compute_slot_of_shard_slot(candidate.core.slot) >= PHASE_1_FORK_SLOT
 
     # Check beacon block
-    beacon_block = beacon_blocks[candidate.core.slot - candidate.core.slot % (SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH)]
+    beacon_block_slot = compute_start_slot_of_epoch(compute_epoch_of_shard_slot(candidate.core.slot))
+    beacon_block = beacon_blocks[beacon_block_slot]
     assert candidate.core.beacon_block_root == signing_root(beacon_block)
     assert beacon_block.slot <= candidate.core.slot
 
@@ -318,16 +327,15 @@ def is_valid_shard_block(beacon_state: BeaconState,
     assert candidate.core.state_root == Hash()  # [to be removed in phase 2]
 
     # Check parent block
-    if candidate.core.slot == PHASE_1_FORK_SLOT:
-        assert candidate.core.parent_root == Hash()
-    else:
+    if candidate.core.parent_root != Hash():
         parent_block = next(
             (block for block in valid_shard_blocks if hash_tree_root(block.core) == candidate.core.parent_root),
             None
         )
         assert parent_block is not None
         assert parent_block.core.slot < candidate.core.slot
-        assert signing_root(beacon_blocks[parent_block.core.slot]) == parent_block.core.beacon_chain_root
+        parent_beacon_block_slot = compute_start_slot_of_epoch(compute_epoch_of_shard_slot(parent_block.core.slot))
+        assert signing_root(beacon_blocks[parent_beacon_block_slot]) == parent_block.core.beacon_chain_root
 
     # Check attestations
     attester_committee = get_persistent_committee(beacon_state, shard, block.core.slot)
