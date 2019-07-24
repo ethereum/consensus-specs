@@ -158,7 +158,7 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
 ### `get_shard_period_start_epoch`
 
 ```python
-def get_shard_period_start_epoch(epoch: Epoch, lookback:Epoch = 0) -> Epoch:
+def get_shard_period_start_epoch(epoch: Epoch, lookback: Epoch=0) -> Epoch:
     return epoch - (epoch % EPOCHS_PER_SHARD_PERIOD) - lookback * EPOCHS_PER_SHARD_PERIOD
 ```
 
