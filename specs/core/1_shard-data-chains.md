@@ -158,7 +158,7 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
 
 ```python
 def get_shard_period_start_epoch(epoch: Epoch, lookback:Epoch = 0) -> Epoch:
-    return epoch - (epoch % PERSISTENT_COMMITTEE_PERIOD) - lookback * PERSISTENT_COMMITTEE_PERIOD
+    return epoch - (epoch % EPOCHS_PER_SHARD_PERIOD) - lookback * EPOCHS_PER_SHARD_PERIOD
 ```
 
 ### `get_period_committee`
@@ -207,7 +207,7 @@ def get_persistent_committee(state: BeaconState,
     # later committee; return a sorted list of the union of the two, deduplicated
     return sorted(set(
         [i for i in earlier_committee if epoch % EPOCHS_PER_SHARD_PERIOD < i % EPOCHS_PER_SHARD_PERIOD]
-        + [i for i in later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= i % EPOCHS_PER_SHARD_PERIOD]
+        + [i for i in later_committee if epoch % EPOCHS_PER_SHARD_PERIOD >= i % EPOCHS_PER_SHARD_PERIOD]
     ))
 ```
 
