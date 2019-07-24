@@ -123,6 +123,7 @@ class ShardBlockSignatures(Container):
 ### `ShardBlockCore`
 
 ```python
+class ShardBlockCore(Container):
     slot: ShardSlot
     beacon_chain_root: Hash
     parent_root: Hash
