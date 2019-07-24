@@ -175,7 +175,7 @@ def get_period_committee(state: BeaconState,
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch),
         index=shard,
-        count=SHARD_COUNT * count,
+        count=SHARD_COUNT,
     )
 
     return [i for i in full_committee if is_active_validator(state.validators[i], epoch)][:MAX_PERSISTENT_COMMITTEE_SIZE]
