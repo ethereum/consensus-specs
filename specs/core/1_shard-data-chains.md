@@ -60,7 +60,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - |
 | `SHARD_HEADER_SIZE` | `2**9` (= 512) |
 | `SHARD_BLOCK_SIZE_LIMIT` | `2**16` (= 65,536) |
-| `MAX_SHARD_ATTESTIONS` | `2**4` (= 16) |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
 | `MAX_PERSISTENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 
