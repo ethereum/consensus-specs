@@ -174,7 +174,7 @@ def get_period_committee(state: BeaconState,
     full_committee = compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch),
-        index=shard * count + index,
+        index=shard,
         count=SHARD_COUNT * count,
     )
 
