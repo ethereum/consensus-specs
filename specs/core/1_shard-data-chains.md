@@ -218,7 +218,8 @@ def get_shard_block_proposer_index(state: BeaconState,
         random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-            return ValidatorIndex(candidate_index)
+            if is_active_validator(state.validators[candidate_index], shard_slot_to_epoch(slot)):
+                return ValidatorIndex(candidate_index)
         i += 1
 ```
 
