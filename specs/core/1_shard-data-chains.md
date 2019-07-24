@@ -52,6 +52,7 @@ This document describes the shard data layer and the shard fork choice rule in P
 ### Initial values
 
 | Name | Value |
+| - | - |
 | `PHASE_1_FORK_EPOCH` | **TBD** |
 | `PHASE_1_FORK_SLOT` | **TBD** |
 | `GENESIS_SHARD_SLOT` | 0 |
