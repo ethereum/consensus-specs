@@ -280,7 +280,7 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
     header = b''.join([flatten_shard_header(get_shard_header(block)) for block in blocks])
     footer = b''.join([block.core.data for block in blocks])
     MAX_SIZE = SHARD_BLOCK_SIZE_LIMIT * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
-    return hash_tree_root(pad(header + footer, MAX_SIZE))
+    return hash_tree_root(BytesN[MAX_SIZE](pad(header + footer, MAX_SIZE)))
 ```
 
 ## Object validity
