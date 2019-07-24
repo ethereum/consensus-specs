@@ -136,6 +136,7 @@ class ShardBlockCore(Container):
 ### `ExtendedShardBlockCore`
 
 ```python
+class ExtendedShardBlockCore(Container):
     slot: ShardSlot
     beacon_chain_root: Hash
     parent_root: Hash
