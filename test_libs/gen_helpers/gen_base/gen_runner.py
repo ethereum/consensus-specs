@@ -7,7 +7,7 @@ from ruamel.yaml import (
     YAML,
 )
 
-from gen_base.gen_typing import TestSuiteCreator
+from gen_base.gen_typing import TestProvider
 
 
 def validate_output_dir(path_str):
@@ -46,14 +46,17 @@ def validate_configs_dir(path_str):
     return path
 
 
-def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
+def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     """
     Implementation for a general test generator.
     :param generator_name: The name of the generator. (lowercase snake_case)
-    :param suite_creators: A list of suite creators, each of these builds a list of test cases.
+    :param test_providers: A list of test provider,
+            each of these returns a callable that returns an iterable of test cases.
+            The call to get the iterable may set global configuration,
+            and the iterable should not be resumed after a pause with a change of that configuration.
     :return:
     """
-
+ 
     parser = argparse.ArgumentParser(
         prog="gen-" + generator_name,
         description=f"Generate YAML test suite files for {generator_name}",
@@ -92,24 +95,32 @@ def run_generator(generator_name, suite_creators: List[TestSuiteCreator]):
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
 
-    print(f"Generating tests for {generator_name}, creating {len(suite_creators)} test suite files...")
+    print(f"Generating tests into {output_dir}...")
     print(f"Reading config presets and fork timelines from {args.configs_path}")
-    for suite_creator in suite_creators:
-        (output_name, handler, suite) = suite_creator(args.configs_path)
 
-        handler_output_dir = Path(output_dir) / Path(handler)
-        try:
-            if not handler_output_dir.exists():
-                handler_output_dir.mkdir()
-        except FileNotFoundError as e:
-            sys.exit(f'Error when creating handler dir {handler} for test "{suite["title"]}" ({e})')
+    for tprov in test_providers:
+        # loads configuration etc.
+        config_name = tprov.prepare(args.configs_path)
+        for test_case in tprov.make_cases():
+                case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
+                           / Path(test_case.runner_name) / Path(test_case.handler_name) \
+                           / Path(test_case.suite_name) / Path(test_case.case_name)
+                print(f'Generating test: {case_dir}')
 
-        out_path = handler_output_dir / Path(output_name + '.yaml')
+                case_dir.mkdir(parents=True, exist_ok=True)
 
-        try:
-            with out_path.open(file_mode) as f:
-                yaml.dump(suite, f)
-        except IOError as e:
-            sys.exit(f'Error when dumping test "{suite["title"]}" ({e})')
-
-    print("done.")
+                try:
+                    for case_part in test_case.case_fn():
+                        if case_part.out_kind == "data" or case_part.out_kind == "ssz":
+                            try:
+                                out_path = case_dir / Path(case_part.name + '.yaml')
+                                with out_path.open(file_mode) as f:
+                                    yaml.dump(case_part.data, f)
+                            except IOError as e:
+                                sys.exit(f'Error when dumping test "{case_dir}", part "{case_part.name}": {e}')
+                        # if out_kind == "ssz":
+                        #     # TODO write SSZ as binary file too.
+                        #     out_path = case_dir / Path(name + '.ssz')
+                except Exception as e:
+                    print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
+        print(f"completed {generator_name}")

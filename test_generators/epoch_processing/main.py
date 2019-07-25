@@ -14,40 +14,36 @@ from gen_from_tests.gen import generate_from_tests
 from preset_loader import loader
 
 
-def create_suite(transition_name: str, config_name: str, get_cases: Callable[[], Iterable[gen_typing.TestCase]]) \
-        -> Callable[[str], gen_typing.TestSuiteOutput]:
-    def suite_definition(configs_path: str) -> gen_typing.TestSuiteOutput:
+def create_suite(handler_name: str, tests_src, config_name: str) \
+        -> Callable[[str], gen_typing.TestProvider]:
+
+    def prepare_fn(configs_path: str) -> str:
         presets = loader.load_presets(configs_path, config_name)
         spec_phase0.apply_constants_preset(presets)
         spec_phase1.apply_constants_preset(presets)
+        return config_name
 
-        return ("%s_%s" % (transition_name, config_name), transition_name, gen_suite.render_suite(
-            title="%s epoch processing" % transition_name,
-            summary="Test suite for %s type epoch processing" % transition_name,
-            forks_timeline="testing",
-            forks=["phase0"],
-            config=config_name,
-            runner="epoch_processing",
-            handler=transition_name,
-            test_cases=get_cases()))
+    def cases_fn() -> Iterable[gen_typing.TestCase]:
+        return generate_from_tests(
+            runner_name='epoch_processing',
+            handler_name=handler_name,
+            src=tests_src,
+            fork_name='phase0'
+        )
 
-    return suite_definition
+    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
 if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
-        create_suite('crosslinks', 'minimal', lambda: generate_from_tests(test_process_crosslinks, 'phase0')),
-        create_suite('crosslinks', 'mainnet', lambda: generate_from_tests(test_process_crosslinks, 'phase0')),
-        create_suite('final_updates', 'minimal', lambda: generate_from_tests(test_process_final_updates, 'phase0')),
-        create_suite('final_updates', 'mainnet', lambda: generate_from_tests(test_process_final_updates, 'phase0')),
-        create_suite('justification_and_finalization', 'minimal',
-                     lambda: generate_from_tests(test_process_justification_and_finalization, 'phase0')),
-        create_suite('justification_and_finalization', 'mainnet',
-                     lambda: generate_from_tests(test_process_justification_and_finalization, 'phase0')),
-        create_suite('registry_updates', 'minimal',
-                     lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
-        create_suite('registry_updates', 'mainnet',
-                     lambda: generate_from_tests(test_process_registry_updates, 'phase0')),
-        create_suite('slashings', 'minimal', lambda: generate_from_tests(test_process_slashings, 'phase0')),
-        create_suite('slashings', 'mainnet', lambda: generate_from_tests(test_process_slashings, 'phase0')),
+        create_suite('crosslinks', test_process_crosslinks, 'minimal'),
+        create_suite('crosslinks', test_process_crosslinks, 'mainnet'),
+        create_suite('final_updates', test_process_final_updates, 'minimal'),
+        create_suite('final_updates', test_process_final_updates, 'mainnet'),
+        create_suite('justification_and_finalization', test_process_justification_and_finalization, 'minimal'),
+        create_suite('justification_and_finalization', test_process_justification_and_finalization, 'mainnet'),
+        create_suite('registry_updates', test_process_registry_updates, 'minimal'),
+        create_suite('registry_updates', test_process_registry_updates, 'mainnet'),
+        create_suite('slashings', test_process_slashings, 'minimal'),
+        create_suite('slashings', test_process_slashings, 'mainnet'),
     ])
