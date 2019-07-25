@@ -9,6 +9,7 @@
 - [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
     - [Table of contents](#table-of-contents)
     - [Preliminaries](#preliminaries)
+        - [Beacon chain changes](#beacon-chain-changes)
         - [Expansions](#expansions)
         - [`get_active_validator_indices`](#get_active_validator_indices)
         - [`MerklePartial`](#merklepartial)
@@ -25,69 +26,22 @@
 
 ## Preliminaries
 
+### Beacon chain changes
+
+Add three roots to thestate: `next_persistent_committee_root`, `current_persistent_committee_root`, `previous_persistent_committee_root`, which are updated at period boundary slots and are set to `hash_tree_root(committee_to_compact_committee([get_period_committee(state, get_current_epoch(state) - EPOCHS_PER_SHARD_PERIOD * k, i) for i in range(1024)]))` where `k` equals 0 for the next committee, 1 for the current committee and 2 for the previous committee.
+
 ### Expansions
 
 We define an "expansion" of an object as an object where a field in an object that is meant to represent the `hash_tree_root` of another object is replaced by the object. Note that defining expansions is not a consensus-layer-change; it is merely a "re-interpretation" of the object. Particularly, the `hash_tree_root` of an expansion of an object is identical to that of the original object, and we can define expansions where, given a complete history, it is always possible to compute the expansion of any object in the history. The opposite of an expansion is a "summary" (e.g. `BeaconBlockHeader` is a summary of `BeaconBlock`).
 
 We define two expansions:
 
-* `ExtendedBeaconState`, which is identical to a `BeaconState` except `compact_committees_roots: List[Bytes32]` is replaced by `active_indices: List[List[ValidatorIndex]]`, where `BeaconState.compact_committees_roots[i] = hash_tree_root(ExtendedBeaconState.active_indices[i])`.
+* `ExtendedBeaconState`, which is identical to a `BeaconState` except each of `(next, current, previous)_persistent_committee_root` are replaced by the corresponding `CompactCommittee`.
 * `ExtendedBeaconBlock`, which is identical to a `BeaconBlock` except `state_root` is replaced with the corresponding `state: ExtendedBeaconState`.
-
-### `get_active_validator_indices`
-
-Note that there is now a new way to compute `get_active_validator_indices`:
-
-```python
-def get_active_validator_indices(state: ExtendedBeaconState, epoch: Epoch) -> List[ValidatorIndex]:
-    return state.active_indices[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
-```
-
-Note that it takes `state` instead of `state.validators` as an argument. This does not affect its use in `get_shuffled_committee`, because `get_shuffled_committee` has access to the full `state` as one of its arguments.
-
 
 ### `MerklePartial`
 
 A `MerklePartial(f, *args)` is an object that contains a minimal Merkle proof needed to compute `f(*args)`. A `MerklePartial` can be used in place of a regular SSZ object, though a computation would return an error if it attempts to access part of the object that is not contained in the proof.
-
-### `PeriodData`
-
-```python
-{
-    'validator_count': 'uint64',
-    'seed': 'bytes32',
-    'committee': [Validator],
-}
-```
-
-### `get_earlier_start_epoch`
-
-```python
-def get_earlier_start_epoch(slot: Slot) -> int:
-    return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD * 2
-```
-
-### `get_later_start_epoch`
-
-```python
-def get_later_start_epoch(slot: Slot) -> int:
-    return slot - slot % PERSISTENT_COMMITTEE_PERIOD - PERSISTENT_COMMITTEE_PERIOD
-```
-
-### `get_period_data`
-
-```python
-def get_period_data(block: ExtendedBeaconBlock, shard_id: Shard, later: bool) -> PeriodData:
-    period_start = get_later_start_epoch(header.slot) if later else get_earlier_start_epoch(header.slot)
-    validator_count = len(get_active_validator_indices(state, period_start))
-    committee_count = validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE) + 1
-    indices = get_period_committee(block.state, shard_id, period_start, 0, committee_count)
-    return PeriodData(
-        validator_count,
-        get_seed(block.state, period_start),
-        [block.state.validators[i] for i in indices],
-    )
-```
 
 ### Light client state
 
@@ -95,70 +49,40 @@ A light client will keep track of:
 
 * A random `shard_id` in `[0...SHARD_COUNT-1]` (selected once and retained forever)
 * A block header that they consider to be finalized (`finalized_header`) and do not expect to revert.
-* `later_period_data = get_period_data(finalized_header, shard_id, later=True)`
-* `earlier_period_data = get_period_data(finalized_header, shard_id, later=False)`
+* `previous_committee = finalized_header.previous_persistent_committees[shard_id]`
+* `current_committee = finalized_header.current_persistent_committees[shard_id]`
+* `next_committee = finalized_header.next_persistent_committees[shard_id]`
 
 We use the struct `ValidatorMemory` to keep track of these variables.
 
 ### Updating the shuffled committee
 
-If a client's `validator_memory.finalized_header` changes so that `header.slot // PERSISTENT_COMMITTEE_PERIOD` increases, then the client can ask the network for a `new_committee_proof = MerklePartial(get_period_data, validator_memory.finalized_header, shard_id, later=True)`. It can then compute:
+If a client's `validator_memory.finalized_header` changes so that `header.slot // EPOCHS_PER_SHARD_PERIOD` increases, then `(previous, current)_committee` will be set to `(current, next)_committee`, but `next_committee` will need to be updated, by downloading `validator_memory.finalized_header.state.next_persistent_committees[shard_id]`.
 
-```python
-earlier_period_data = later_period_data
-later_period_data = get_period_data(new_committee_proof, finalized_header, shard_id, later=True)
+The maximum size of a proof for this new data is `32 * 10` (Merkle branch) + `56 * 128` (committee) `= 14336` bytes for a compact committee. This needs to be done once per `EPOCHS_PER_SHARD_PERIOD` epochs (256 epochs, or 27 hours), or ~0.146 bytes per second (compare Bitcoin SPV at 80 / 560 ~= 0.143 bytes per second).
+
+### Computing the persistent committee at an epoch
+
 ```
-
-The maximum size of a proof is `128 * ((22-7) * 32 + 110) = 75520` bytes for validator records and `(22-7) * 32 + 128 * 8 = 1504` for the active index proof (much smaller because the relevant active indices are all beside each other in the Merkle tree). This needs to be done once per `PERSISTENT_COMMITTEE_PERIOD` epochs (2048 epochs / 9 days), or ~38 bytes per epoch.
-
-## Computing the current committee
-
-Here is a helper to compute the committee at a slot given the maximal earlier and later committees:
-
-```python
-def compute_committee(header: BeaconBlockHeader,
-                      validator_memory: ValidatorMemory) -> List[ValidatorIndex]:
-    earlier_validator_count = validator_memory.earlier_period_data.validator_count
-    later_validator_count = validator_memory.later_period_data.validator_count
-    maximal_earlier_committee = validator_memory.earlier_period_data.committee
-    maximal_later_committee = validator_memory.later_period_data.committee
-    earlier_start_epoch = get_earlier_start_epoch(header.slot)
-    later_start_epoch = get_later_start_epoch(header.slot)
-    epoch = compute_epoch_of_slot(header.slot)
-
-    committee_count = max(
-        earlier_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
-        later_validator_count // (SHARD_COUNT * TARGET_COMMITTEE_SIZE),
-    ) + 1
-
-    def get_offset(count: int, end: bool) -> int:
-        return get_split_offset(
-            count,
-            SHARD_COUNT * committee_count,
-            validator_memory.shard_id * committee_count + (1 if end else 0),
-        )
-
-    actual_earlier_committee = maximal_earlier_committee[
-        0:get_offset(earlier_validator_count, True) - get_offset(earlier_validator_count, False)
-    ]
-    actual_later_committee = maximal_later_committee[
-        0:get_offset(later_validator_count, True) - get_offset(later_validator_count, False)
-    ]
-    def get_switchover_epoch(index):
-        return (
-            bytes_to_int(hash(validator_memory.earlier_period_data.seed + int_to_bytes(index, length=3))[0:8]) %
-            PERSISTENT_COMMITTEE_PERIOD
-        )
-
-    # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
-    # later committee; return a sorted list of the union of the two, deduplicated
-    return sorted(list(set(
-        [i for i in actual_earlier_committee if epoch % PERSISTENT_COMMITTEE_PERIOD < get_switchover_epoch(i)]
-        + [i for i in actual_later_committee if epoch % PERSISTENT_COMMITTEE_PERIOD >= get_switchover_epoch(i)]
-    )))
+def compute_persistent_committee_at_slot(memory: ValidatorMemory,
+                                         epoch: Epoch) -> Sequence[Tuple[BLSPubkey, Gwei]]:
+    current_period = memory.finalized_header.slot // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD
+    target_period = epoch // EPOCHS_PER_SHARD_PERIOD
+    if target_period == current_period + 1:
+        earlier_committee, later_committee = memory.current_committee, memory.next_committee
+    elif target_period == current_period:
+        earlier_committee, later_committee = memory.previous_committee, memory.current_committee
+    else:
+        raise Exception("Cannot compute for this slot")
+    o = []
+    for pub, aux in zip(earlier_committee.pubkeys, earlier_committee.compact_validators):
+        if epoch % EPOCHS_PER_SHARD_PERIOD < (aux >> 16) % EPOCHS_PER_SHARD_PERIOD:
+            o.append((pub, aux & (2**15-1))
+    for pub, aux in zip(later_committee.pubkeys, later_committee.compact_validators):
+        if epoch % EPOCHS_PER_SHARD_PERIOD >= (aux >> 16) % EPOCHS_PER_SHARD_PERIOD:
+            o.append((pub, aux & (2**15-1))
+    return o
 ```
-
-Note that this method makes use of the fact that the committee for any given shard always starts and ends at the same validator index independently of the committee count (this is because the validator set is split into `SHARD_COUNT * committee_count` slices but the first slice of a shard is a multiple `committee_count * i`, so the start of the slice is `n * committee_count * i // (SHARD_COUNT * committee_count) = n * i // SHARD_COUNT`, using the slightly nontrivial algebraic identity `(x * a) // ab == x // b`).
 
 ## Verifying blocks
 
@@ -166,9 +90,9 @@ If a client wants to update its `finalized_header` it asks the network for a `Bl
 
 ```python
 {
-    'header': BeaconBlockHeader,
+    'beacon_block_header': BeaconBlockHeader,
     'shard_aggregate_signature': BLSSignature,
-    'shard_bits': Bitlist[PLACEHOLDER],
+    'shard_aggregation_bits': Bitlist[PLACEHOLDER],
     'shard_parent_block': ShardBlock,
 }
 ```
@@ -177,16 +101,15 @@ The verification procedure is as follows:
 
 ```python
 def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: ValidatorMemory) -> bool:
-    assert proof.shard_parent_block.beacon_chain_root == hash_tree_root(proof.header)
-    committee = compute_committee(proof.header, validator_memory)
+    assert proof.shard_parent_block.core.beacon_chain_root == hash_tree_root(proof.beacon_block_header)
+    committee = compute_persistent_committee_at_slot(validator_memory, compute_epoch_of_shard_slot(shard_parent_block.slot))
     # Verify that we have >=50% support
-    support_balance = sum([v.effective_balance for i, v in enumerate(committee) if proof.shard_bits[i]])
-    total_balance = sum([v.effective_balance for i, v in enumerate(committee)])
+    support_balance = sum([balance for i, (pubkey, balance) in enumerate(committee) if proof.shard_aggregation_bits[i]])
+    total_balance = sum([balance for i, (pubkey, balance) in enumerate(committee)])
     assert support_balance * 2 > total_balance
     # Verify shard attestations
     group_public_key = bls_aggregate_pubkeys([
-        v.pubkey for v, index in enumerate(committee)
-        if proof.shard_bits[index]
+        pubkey for i, (pubkey, balance) in enumerate(committee) if proof.shard_aggregation_bits[i]
     ])
     assert bls_verify(
         pubkey=group_public_key,
