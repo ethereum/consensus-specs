@@ -1654,6 +1654,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
+    committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
     assert len(attestation.aggregation_bits) == len(committee)
     assert len(attestation.custody_bits) == len(committee)
 
