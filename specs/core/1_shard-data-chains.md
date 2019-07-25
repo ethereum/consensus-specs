@@ -259,7 +259,7 @@ def pad(x: bytes, length: int) -> bytes:
 
 ### `flatten_shard_header`
 
-```pythonpad_
+```python
 def flatten_shard_header(header: ShardBlockHeader) -> Bytes[SHARD_HEADER_SIZE]:
     """
     Converts a shard block header into a flat object with the same hash tree root. Used
