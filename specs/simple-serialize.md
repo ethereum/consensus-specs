@@ -25,8 +25,6 @@
         - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
     - [Deserialization](#deserialization)
     - [Merkleization](#merkleization)
-        - [`Bitvector[N]`](#bitvectorn-1)
-        - [`Bitlist[N]`](#bitlistn-1)
     - [Self-signed containers](#self-signed-containers)
     - [Implementations](#implementations)
 
@@ -120,8 +118,10 @@ return b""
 ### `Bitvector[N]`
 
 ```python
-as_integer = sum([value[i] << i for i in range(len(value))])
-return as_integer.to_bytes((N + 7) // 8, "little")
+array = [0] * ((N + 7) // 8)
+for i in range(N):
+    array[i // 8] |= value[i] << (i % 8)
+return bytes(array)
 ```
 
 ### `Bitlist[N]`
@@ -129,8 +129,11 @@ return as_integer.to_bytes((N + 7) // 8, "little")
 Note that from the offset coding, the length (in bytes) of the bitlist is known. An additional leading `1` bit is added so that the length in bits will also be known.
 
 ```python
-as_integer = (1 << len(value)) + sum([value[i] << i for i in range(len(value))])
-return as_integer.to_bytes((as_integer.bit_length() + 7) // 8, "little")
+array = [0] * ((len(value) // 8) + 1)
+for i in range(len(value)):
+    array[i // 8] |= value[i] << (i % 8)
+array[len(value) // 8] |= 1 << (len(value) % 8)
+return bytes(array)
 ```
 
 ### Vectors, containers, lists, unions
@@ -177,37 +180,36 @@ Note that deserialization requires hardening against invalid inputs. A non-exhau
 
 We first define helper functions:
 
+* `size_of(B)`, where `B` is a basic type: the length, in bytes, of the serialized form of the basic type.
+* `chunk_count(type)`: calculate the amount of leafs for merkleization of the type.
+   * all basic types: `1`
+   * `Bitlist[N]` and `Bitvector[N]`: `(N + 255) // 256` (dividing by chunk size, rounding up)
+   * `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
+   * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
+   * containers: `len(fields)`
+* `bitfield_bytes(bits)`: return the bits of the bitlist or bitvector, packed in bytes, aligned to the start. Exclusive length-delimiting bit for bitlists.
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
-* `merkleize(data, pad_for=1)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, if necessary append zero chunks so that the number of chunks is a power of two, Merkleize the chunks, and return the root.
-    * The merkleization depends on the effective input, which can be padded: if `pad_for=L`, then pad the `data` with zeroed chunks to `next_pow_of_two(L)` (virtually for memory efficiency).
+* `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:
+    * The merkleization depends on the effective input, which can be padded/limited:
+        - if no limit: pad the `chunks` with zeroed chunks to `next_pow_of_two(len(chunks))` (virtually for memory efficiency).
+        - if `limit > len(chunks)`, pad the `chunks` with zeroed chunks to `next_pow_of_two(limit)` (virtually for memory efficiency).
+        - if `limit < len(chunks)`: do not merkleize, input exceeds limit. Raise an error instead.
     * Then, merkleize the chunks (empty input is padded to 1 zero chunk):
-        - If `1` chunk: A single chunk is simply that chunk, i.e. the identity when the number of chunks is one.
-        - If `> 1` chunks: pad to `next_pow_of_two(len(chunks))`, merkleize as binary tree.
+        - If `1` chunk: the root is the chunk itself.
+        - If `> 1` chunks: merkleize as binary tree.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 * `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
 * `merkleize(pack(value))` if `value` is a basic object or a vector of basic objects.
-* `mix_in_length(merkleize(pack(value), pad_for=(N * elem_size / BYTES_PER_CHUNK)), len(value))` if `value` is a list of basic objects.
+* `merkleize(bitfield_bytes(value), limit=chunk_count(type))` if `value` is a bitvector.
+* `mix_in_length(merkleize(pack(value), limit=chunk_count(type)), len(value))` if `value` is a list of basic objects.
+* `mix_in_length(merkleize(bitfield_bytes(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
-* `mix_in_length(merkleize([hash_tree_root(element) for element in value], pad_for=N), len(value))` if `value` is a list of composite objects.
+* `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
-
-### `Bitvector[N]`
-
-```python
-as_integer = sum([value[i] << i for i in range(len(value))])
-return merkleize(pack(as_integer.to_bytes((N + 7) // 8, "little")))
-```
-
-### `Bitlist[N]`
-
-```python
-as_integer = sum([value[i] << i for i in range(len(value))])
-return mix_in_length(merkleize(pack(as_integer.to_bytes((N + 7) // 8, "little"))), len(value))
-```
 
 ## Self-signed containers
 

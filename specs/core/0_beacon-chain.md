@@ -49,9 +49,9 @@
             - [`BeaconState`](#beaconstate)
     - [Helper functions](#helper-functions)
         - [Math](#math)
-            - [`int_to_bytes`](#int_to_bytes)
             - [`integer_squareroot`](#integer_squareroot)
             - [`xor`](#xor)
+            - [`int_to_bytes`](#int_to_bytes)
             - [`bytes_to_int`](#bytes_to_int)
         - [Crypto](#crypto)
             - [`hash`](#hash)
@@ -207,6 +207,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
+| `SECONDS_PER_SLOT` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 6 seconds |
 | `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
@@ -540,8 +541,6 @@ class BeaconState(Container):
 
 ### Math
 
-#### `int_to_bytes`
-
 #### `integer_squareroot`
 
 ```python
@@ -560,12 +559,14 @@ def integer_squareroot(n: uint64) -> uint64:
 #### `xor`
 
 ```python
-def xor(bytes1: Bytes32, bytes2: Bytes32) -> Bytes32:
+def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
     """
-    return Bytes32(a ^ b for a, b in zip(bytes1, bytes2))
+    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2))
 ```
+
+#### `int_to_bytes`
 
 ```python
 def int_to_bytes(n: uint64, length: uint64) -> bytes:
@@ -653,7 +654,7 @@ def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationDa
 ```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
-    Verify validity of ``indexed_attestation``.
+    Check if ``indexed_attestation`` has valid indices and signature.
     """
     bit_0_indices = indexed_attestation.custody_bit_0_indices
     bit_1_indices = indexed_attestation.custody_bit_1_indices
@@ -865,7 +866,7 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the seed at ``epoch``.
     """
-    mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD))  # Avoid underflow
+    mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
     active_index_root = state.active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
     return hash(mix + active_index_root + int_to_bytes(epoch, length=32))
 ```
@@ -989,7 +990,7 @@ def get_total_balance(state: BeaconState, indices: Set[ValidatorIndex]) -> Gwei:
     """
     Return the combined effective balance of the ``indices``. (1 Gwei minimum to avoid divisions by zero.)
     """
-    return Gwei(max(sum([state.validators[index].effective_balance for index in indices]), 1))
+    return Gwei(max(1, sum([state.validators[index].effective_balance for index in indices])))
 ```
 
 #### `get_total_active_balance`
@@ -1216,7 +1217,7 @@ def process_slot(state: BeaconState) -> None:
     previous_state_root = hash_tree_root(state)
     state.state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
     # Cache latest block header state root
-    if state.latest_block_header.state_root == Hash():
+    if state.latest_block_header.state_root == Bytes32():
         state.latest_block_header.state_root = previous_state_root
     # Cache block root
     previous_block_root = signing_root(state.latest_block_header)
@@ -1270,7 +1271,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
         output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
-    return set(filter(lambda index: not state.validators[index].slashed, list(output)))
+    return set(filter(lambda index: not state.validators[index].slashed, output))
 ```
 
 ```python
@@ -1283,10 +1284,10 @@ def get_winning_crosslink_and_attesting_indices(state: BeaconState,
                                                 epoch: Epoch,
                                                 shard: Shard) -> Tuple[Crosslink, Set[ValidatorIndex]]:
     attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
-    crosslinks = list(filter(
+    crosslinks = filter(
         lambda c: hash_tree_root(state.current_crosslinks[shard]) in (c.parent_root, hash_tree_root(c)),
         [a.data.crosslink for a in attestations]
-    ))
+    )
     # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
     winning_crosslink = max(crosslinks, key=lambda c: (
         get_attesting_balance(state, [a for a in attestations if a.data.crosslink == c]), c.data_root
@@ -1482,7 +1483,9 @@ def process_slashings(state: BeaconState) -> None:
     total_balance = get_total_active_balance(state)
     for index, validator in enumerate(state.validators):
         if validator.slashed and epoch + EPOCHS_PER_SLASHINGS_VECTOR // 2 == validator.withdrawable_epoch:
-            penalty = validator.effective_balance * min(sum(state.slashings) * 3, total_balance) // total_balance
+            increment = EFFECTIVE_BALANCE_INCREMENT  # Factored out from penalty numerator to avoid uint64 overflow
+            penalty_numerator = validator.effective_balance // increment * min(sum(state.slashings) * 3, total_balance)
+            penalty = penalty_numerator // total_balance * increment
             decrease_balance(state, ValidatorIndex(index), penalty)
 ```
 
@@ -1546,8 +1549,9 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        state_root=Hash(),  # Overwritten in the next `process_slot` call
+        # state_root: zeroed, overwritten in the next `process_slot` call
         body_root=hash_tree_root(block.body),
+        # signature is always zeroed
     )
     # Verify proposer is not slashed
     proposer = state.validators[get_beacon_proposer_index(state)]
@@ -1670,7 +1674,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
     assert data.crosslink.start_epoch == parent_crosslink.end_epoch
     assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
-    assert data.crosslink.data_root == Hash()  # [to be removed in phase 1]
+    assert data.crosslink.data_root == Bytes32()  # [to be removed in phase 1]
 
     # Check signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
