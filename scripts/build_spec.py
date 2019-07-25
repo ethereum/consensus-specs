@@ -48,11 +48,10 @@ from dataclasses import (
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
-    serialize,
     is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    bit, boolean, Container, List, Vector, Bytes, uint64,
+    uint64, bit, boolean, Container, List, Vector, Bytes, BytesN,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (

@@ -25,7 +25,7 @@
     - [Helper functions](#helper-functions)
         - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
         - [`compute_slot_of_shard_slot`](#compute_slot_of_shard_slot)
-        - [`get_period_start_epoch`](#get_period_start_epoch)
+        - [`get_shard_period_start_epoch`](#get_shard_period_start_epoch)
         - [`get_period_committee`](#get_period_committee)
         - [`get_persistent_committee`](#get_persistent_committee)
         - [`get_shard_block_proposer_index`](#get_shard_block_proposer_index)
@@ -166,8 +166,8 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
 ### `get_shard_period_start_epoch`
 
 ```python
-def get_shard_period_start_epoch(epoch: Epoch, lookback: Epoch=0) -> Epoch:
-    return epoch - (epoch % EPOCHS_PER_SHARD_PERIOD) - lookback * EPOCHS_PER_SHARD_PERIOD
+def get_shard_period_start_epoch(epoch: Epoch, lookback: Epoch=Epoch(0)) -> Epoch:
+    return Epoch(epoch - (epoch % EPOCHS_PER_SHARD_PERIOD) - lookback * EPOCHS_PER_SHARD_PERIOD)
 ```
 
 ### `get_period_committee`
@@ -200,8 +200,8 @@ def get_persistent_committee(state: BeaconState,
     """
     epoch = compute_epoch_of_shard_slot(slot)
 
-    earlier_committee = get_period_committee(state, get_period_start_epoch(epoch, lookback=2), shard)
-    later_committee = get_period_committee(state, get_period_start_epoch(epoch, lookback=1), shard)
+    earlier_committee = get_period_committee(state, get_shard_period_start_epoch(epoch, lookback=Epoch(2)), shard)
+    later_committee = get_period_committee(state, get_shard_period_start_epoch(epoch, lookback=Epoch(1)), shard)
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
     # later committee; return a sorted list of the union of the two, deduplicated
@@ -219,7 +219,9 @@ def get_shard_block_proposer_index(state: BeaconState,
                                    slot: ShardSlot) -> Optional[ValidatorIndex]:
     # Randomly shift persistent committee
     persistent_committee = list(get_persistent_committee(state, shard, slot))
-    seed = hash(state.current_shuffling_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
+    MAX_RANDOM_BYTE = 2**8 - 1
+    current_epoch = get_current_epoch(state)
+    seed = hash(get_seed(state, current_epoch) + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
     i = 0
     while True:
         candidate_index = persistent_committee[(slot + i) % len(persistent_committee)]
@@ -265,15 +267,16 @@ def flatten_shard_header(header: ShardBlockHeader) -> Bytes[SHARD_HEADER_SIZE]:
     Converts a shard block header into a flat object with the same hash tree root. Used
     in the crosslink construction.
     """
-    attester_bits = [header.core.attester_bitfield[i] if i < len(header.core.attester_bitfield) else 0 for i in range(256)]
-    attester_bytes = bytes([sum([attester_bits[i+j] << j for j in range(8)]) for i in range(0, 256, 8)])
+    committee_size = len(header.core.attester_bitfield)
+    attester_bits = [header.core.attester_bitfield[i] if i < committee_size else 0 for i in range(256)]
+    attester_bytes = bytes([sum([attester_bits[i + j] << j for j in range(8)]) for i in range(0, 256, 8)])
     return (
-        pad(int_to_bytes8(header.core.slot), 32) +
+        pad(int_to_bytes(header.core.slot, length=8), 32) +
         header.core.beacon_chain_root +
         header.core.parent_root +
         header.core.data_root +
         header.core.state_root +
-        pad(int_to_bytes8(header.core.total_bytes), 32) +
+        pad(int_to_bytes(header.core.total_bytes, length=8), 32) +
         attester_bytes +
         b'\x00' * 32 +
         pad(header.signatures.attestation_signature, 128) +
