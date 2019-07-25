@@ -75,7 +75,7 @@ For convenience we alias:
 * `bit` to `boolean`
 * `byte` to `uint8` (this is a basic type)
 * `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
-* `null`: `{}`, i.e. the empty container
+* `null`: `{}`
 
 ### Default values
 
@@ -87,7 +87,9 @@ An SSZ object is called empty (and thus, `is_empty(object)` returns true) if it 
 
 ### Illegal types
 
-The empty `Vector[subtype, N]` and `Bitvector[N]` types, where `N == 0` are not legal. The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
+- Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
+- Containers with no fields are illegal.
+- The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
 
 ## Serialization
 
