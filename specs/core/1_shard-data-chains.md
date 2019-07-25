@@ -141,7 +141,7 @@ class ExtendedShardBlockCore(Container):
     slot: ShardSlot
     beacon_chain_root: Hash
     parent_root: Hash
-    data_root: Bytes[SHARD_BLOCK_SIZE_LIMIT - SHARD_HEADER_SIZE]
+    data: Bytes[SHARD_BLOCK_SIZE_LIMIT - SHARD_HEADER_SIZE]
     state_root: Hash
     total_bytes: uint64
     attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
