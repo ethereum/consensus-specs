@@ -88,6 +88,7 @@
             - [`get_shard_delta`](#get_shard_delta)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_attestation_data_slot`](#get_attestation_data_slot)
+            - [`committee_to_compact_committee`](#committee_to_compact_committee)
             - [`get_compact_committees_root`](#get_compact_committees_root)
             - [`get_total_balance`](#get_total_balance)
             - [`get_total_active_balance`](#get_total_active_balance)
@@ -962,6 +963,18 @@ def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot
     return Slot(compute_start_slot_of_epoch(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
 ```
 
+#### `committee_to_compact_committee`
+
+```python
+def committee_to_compact_committee(state: BeaconState, committee: Sequence[ValidatorIndex]) -> CompactCommittee:
+    compact_validators = [
+        (i << 16) + (state.validators[i].slashed << 15) + state.validators[i].effective_balance // EFFECTIVE_BALANCE_INCREMENT
+        for i in committee
+    ]
+    pubkeys = [state.validators[i].pubkey for i in committee]
+    return CompactCommittee(pubkeys=pubkeys, compact_validators=compact_validators)
+```
+
 #### `get_compact_committees_root`
 
 ```python
@@ -973,13 +986,7 @@ def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
     start_shard = get_start_shard(state, epoch)
     for committee_number in range(get_committee_count(state, epoch)):
         shard = Shard((start_shard + committee_number) % SHARD_COUNT)
-        for index in get_crosslink_committee(state, epoch, shard):
-            validator = state.validators[index]
-            committees[shard].pubkeys.append(validator.pubkey)
-            compact_balance = validator.effective_balance // EFFECTIVE_BALANCE_INCREMENT
-            # `index` (top 6 bytes) + `slashed` (16th bit) + `compact_balance` (bottom 15 bits)
-            compact_validator = uint64((index << 16) + (validator.slashed << 15) + compact_balance)
-            committees[shard].compact_validators.append(compact_validator)
+        committees[shard] = committee_to_compact_committee(state, get_crosslink_committee(state, epoch, shard))
     return hash_tree_root(Vector[CompactCommittee, SHARD_COUNT](committees))
 ```
 
