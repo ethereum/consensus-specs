@@ -116,8 +116,8 @@ def test_wrong_end_epoch_with_max_epochs_per_crosslink(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_attestation_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY

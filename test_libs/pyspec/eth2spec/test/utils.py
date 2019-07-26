@@ -3,10 +3,13 @@ from eth2spec.debug.encode import encode
 from eth2spec.utils.ssz.ssz_typing import SSZValue
 
 
-def spectest(description: str = None):
+def vector_test(description: str = None):
     """
-    Spectest decorator, should always be the most outer decorator around functions that yield data.
-    to deal with silent iteration through yielding function when in a pytest context (i.e. not in generator mode).
+    vector_test decorator: Allow a caller to pass "generator_mode=True" to make the test yield data,
+     but behave like a normal test (ignoring the yield, but fully processing) a test when not in "generator_mode"
+    This should always be the most outer decorator around functions that yield data.
+    This is to deal with silent iteration through yielding function when in a pytest
+     context (i.e. not in generator mode).
     :param description: Optional description for the test to add to the metadata.
     :return: Decorator.
     """
@@ -17,10 +20,8 @@ def spectest(description: str = None):
         #   - "ssz": raw SSZ bytes
         #   - "data": a python structure to be encoded by the user.
         def entry(*args, **kw):
-            # check generator mode, may be None/else.
-            # "pop" removes it, so it is not passed to the inner function.
-            if kw.pop('generator_mode', False) is True:
 
+            def generator_mode():
                 if description is not None:
                     # description can be explicit
                     yield 'description', 'meta', description
@@ -51,6 +52,13 @@ def spectest(description: str = None):
                             # The data will now just be yielded as any python data,
                             #  something that should be encodeable by the generator runner.
                             yield key, 'data', value
+
+            # check generator mode, may be None/else.
+            # "pop" removes it, so it is not passed to the inner function.
+            if kw.pop('generator_mode', False) is True:
+                # return the yielding function as a generator object.
+                # Don't yield in this function itself, that would make pytest skip over it.
+                return generator_mode()
             else:
                 # Just complete the function, ignore all yielded data,
                 # we are not using it (or processing it, i.e. nearly zero efficiency loss)
@@ -80,8 +88,7 @@ def with_meta_tags(tags: Dict[str, Any]):
             # Do not add tags if the function is not returning a dict at all (i.e. not in generator mode).
             # As a pytest, we do not want to be yielding anything (unsupported by pytest)
             if yielded_any:
-                for k, v in tags:
+                for k, v in tags.items():
                     yield k, 'meta', v
         return entry
     return runner
-
