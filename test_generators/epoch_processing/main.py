@@ -9,13 +9,12 @@ from eth2spec.test.phase_0.epoch_processing import (
     test_process_registry_updates,
     test_process_slashings
 )
-from gen_base import gen_runner, gen_suite, gen_typing
+from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
 from preset_loader import loader
 
 
-def create_suite(handler_name: str, tests_src, config_name: str) \
-        -> Callable[[str], gen_typing.TestProvider]:
+def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
 
     def prepare_fn(configs_path: str) -> str:
         presets = loader.load_presets(configs_path, config_name)
@@ -36,14 +35,14 @@ def create_suite(handler_name: str, tests_src, config_name: str) \
 
 if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
-        create_suite('crosslinks', test_process_crosslinks, 'minimal'),
-        create_suite('crosslinks', test_process_crosslinks, 'mainnet'),
-        create_suite('final_updates', test_process_final_updates, 'minimal'),
-        create_suite('final_updates', test_process_final_updates, 'mainnet'),
-        create_suite('justification_and_finalization', test_process_justification_and_finalization, 'minimal'),
-        create_suite('justification_and_finalization', test_process_justification_and_finalization, 'mainnet'),
-        create_suite('registry_updates', test_process_registry_updates, 'minimal'),
-        create_suite('registry_updates', test_process_registry_updates, 'mainnet'),
-        create_suite('slashings', test_process_slashings, 'minimal'),
-        create_suite('slashings', test_process_slashings, 'mainnet'),
+        create_provider('crosslinks', test_process_crosslinks, 'minimal'),
+        create_provider('crosslinks', test_process_crosslinks, 'mainnet'),
+        create_provider('final_updates', test_process_final_updates, 'minimal'),
+        create_provider('final_updates', test_process_final_updates, 'mainnet'),
+        create_provider('justification_and_finalization', test_process_justification_and_finalization, 'minimal'),
+        create_provider('justification_and_finalization', test_process_justification_and_finalization, 'mainnet'),
+        create_provider('registry_updates', test_process_registry_updates, 'minimal'),
+        create_provider('registry_updates', test_process_registry_updates, 'mainnet'),
+        create_provider('slashings', test_process_slashings, 'minimal'),
+        create_provider('slashings', test_process_slashings, 'mainnet'),
     ])

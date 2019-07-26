@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 import sys
-from typing import List
+from typing import Iterable
 
 from ruamel.yaml import (
     YAML,

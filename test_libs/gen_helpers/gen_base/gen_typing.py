@@ -3,10 +3,9 @@ from typing import (
     Callable,
     Iterable,
     NewType,
-    Dict,
     Tuple,
 )
-from collections import namedtuple
+from dataclasses import dataclass
 
 # Elements: name, out_kind, data
 #

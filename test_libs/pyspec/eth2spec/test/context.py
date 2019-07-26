@@ -4,7 +4,7 @@ from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
 
-from .utils import spectest, with_tags
+from .utils import spectest, with_meta_tags
 
 
 def with_state(fn):
@@ -53,7 +53,7 @@ def expect_assertion_error(fn):
 
 
 # Tags a test to be ignoring BLS for it to pass.
-bls_ignored = with_tags({'bls_setting': 2})
+bls_ignored = with_meta_tags({'bls_setting': 2})
 
 
 def never_bls(fn):
@@ -68,7 +68,7 @@ def never_bls(fn):
 
 
 # Tags a test to be requiring BLS for it to pass.
-bls_required = with_tags({'bls_setting': 1})
+bls_required = with_meta_tags({'bls_setting': 1})
 
 
 def always_bls(fn):

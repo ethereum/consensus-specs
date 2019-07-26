@@ -1,4 +1,5 @@
 from inspect import getmembers, isfunction
+from typing import Any, Iterable
 
 from gen_base.gen_typing import TestCase
 
@@ -34,5 +35,6 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
             handler_name=handler_name,
             suite_name='pyspec_tests',
             case_name=case_name,
-            case_fn=lambda: tfn(generator_mode=True, fork_name=fork_name, bls_active=bls_active)
+            # TODO: with_all_phases and other per-phase tooling, should be replaced with per-fork equivalent.
+            case_fn=lambda: tfn(generator_mode=True, phase=fork_name, bls_active=bls_active)
         )
