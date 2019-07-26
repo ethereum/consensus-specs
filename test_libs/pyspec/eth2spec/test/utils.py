@@ -28,30 +28,26 @@ def vector_test(description: str = None):
 
                 # transform the yielded data, and add type annotations
                 for data in fn(*args, **kw):
-                    # If there is a type argument, encode it as that type.
-                    if len(data) == 3:
-                        (key, value, typ) = data
-                        yield key, 'data', encode(value, typ)
+                    # if not 2 items, then it is assumed to be already formatted with a type:
+                    # e.g. ("bls_setting", "meta", 1)
+                    if len(data) != 2:
+                        yield data
+                        continue
+                    # Try to infer the type, but keep it as-is if it's not a SSZ type or bytes.
+                    (key, value) = data
+                    if isinstance(value, (SSZValue, bytes)):
+                        yield key, 'data', encode(value)
                         # TODO: add SSZ bytes as second output
-                    else:
-                        # Otherwise, try to infer the type, but keep it as-is if it's not a SSZ type or bytes.
-                        (key, value) = data
-                        if isinstance(value, (SSZValue, bytes)):
-                            yield key, 'data', encode(value)
+                    elif isinstance(value, list) and all([isinstance(el, (SSZValue, bytes)) for el in value]):
+                        for i, el in enumerate(value):
+                            yield f'{key}_{i}', 'data', encode(el)
                             # TODO: add SSZ bytes as second output
-                        elif isinstance(value, list) and all([isinstance(el, (SSZValue, bytes)) for el in value]):
-                            for i, el in enumerate(value):
-                                yield f'{key}_{i}', 'data', encode(el)
-                                # TODO: add SSZ bytes as second output
-                            yield f'{key}_count', 'meta', len(value)
-                        else:
-                            # not a ssz value.
-                            # It could be vector or bytes still, but it is a rare case,
-                            # and lists can't be inferred fully (generics lose element type).
-                            # In such cases, explicitly state the type of the yielded value as a third yielded object.
-                            # The data will now just be yielded as any python data,
-                            #  something that should be encodeable by the generator runner.
-                            yield key, 'data', value
+                        yield f'{key}_count', 'meta', len(value)
+                    else:
+                        # Not a ssz value.
+                        # The data will now just be yielded as any python data,
+                        #  something that should be encodeable by the generator runner.
+                        yield key, 'data', value
 
             # check generator mode, may be None/else.
             # "pop" removes it, so it is not passed to the inner function.
