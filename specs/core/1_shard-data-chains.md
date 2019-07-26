@@ -221,14 +221,15 @@ def get_shard_block_proposer_index(state: BeaconState,
     persistent_committee = list(get_persistent_committee(state, shard, slot))
     current_epoch = get_current_epoch(state)
 
-    if not any([i for i in persistent_committee if is_active_validator(state.validators[i], current_epoch)]):
+    active_indices = [i for i in persistent_committee if is_active_validator(state.validators[i], current_epoch)]
+    if not any(active_indices):
         return None
 
     MAX_RANDOM_BYTE = 2**8 - 1
     seed = hash(get_seed(state, current_epoch) + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
     i = 0
     while True:
-        candidate_index = persistent_committee[(slot + i) % len(persistent_committee)]
+        candidate_index = active_indices[(slot + i) % len(active_indices)]
         random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
         effective_balance = state.validators[candidate_index].effective_balance
         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
