@@ -22,11 +22,17 @@ def generate_from_tests(runner_name: str, handler_name: str, src: Any,
     print("generating test vectors from tests source: %s" % src.__name__)
     for name in fn_names:
         tfn = getattr(src, name)
+
+        # strip off the `test_`
+        case_name = name
+        if case_name.startswith('test_'):
+            case_name = case_name[5:]
+
         yield TestCase(
             fork_name=fork_name,
             runner_name=runner_name,
             handler_name=handler_name,
             suite_name='pyspec_tests',
-            case_name=name,
-            case_fn=lambda: tfn(generator_mode=True, phase=phase, bls_active=bls_active)
+            case_name=case_name,
+            case_fn=lambda: tfn(generator_mode=True, fork_name=fork_name, bls_active=bls_active)
         )

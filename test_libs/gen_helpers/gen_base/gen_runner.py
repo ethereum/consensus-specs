@@ -31,18 +31,6 @@ def validate_configs_dir(path_str):
     if not path.is_dir():
         raise argparse.ArgumentTypeError("Config path must lead to a directory")
 
-    if not Path(path, "constant_presets").exists():
-        raise argparse.ArgumentTypeError("Constant Presets directory must exist")
-
-    if not Path(path, "constant_presets").is_dir():
-        raise argparse.ArgumentTypeError("Constant Presets path must lead to a directory")
-
-    if not Path(path, "fork_timelines").exists():
-        raise argparse.ArgumentTypeError("Fork Timelines directory must exist")
-
-    if not Path(path, "fork_timelines").is_dir():
-        raise argparse.ArgumentTypeError("Fork Timelines path must lead to a directory")
-
     return path
 
 
@@ -56,7 +44,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
             and the iterable should not be resumed after a pause with a change of that configuration.
     :return:
     """
- 
+
     parser = argparse.ArgumentParser(
         prog="gen-" + generator_name,
         description=f"Generate YAML test suite files for {generator_name}",
@@ -74,7 +62,7 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         "--force",
         action="store_true",
         default=False,
-        help="if set overwrite test files if they exist",
+        help="if set re-generate and overwrite test files if they already exist",
     )
     parser.add_argument(
         "-c",
@@ -102,25 +90,43 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         # loads configuration etc.
         config_name = tprov.prepare(args.configs_path)
         for test_case in tprov.make_cases():
-                case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
-                           / Path(test_case.runner_name) / Path(test_case.handler_name) \
-                           / Path(test_case.suite_name) / Path(test_case.case_name)
-                print(f'Generating test: {case_dir}')
+            case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
+                       / Path(test_case.runner_name) / Path(test_case.handler_name) \
+                       / Path(test_case.suite_name) / Path(test_case.case_name)
 
+            if case_dir.exists():
+                if not args.force:
+                    print(f'Skipping already existing test: {case_dir}')
+                    continue
+                print(f'Warning, output directory {case_dir} already exist,'
+                      f' old files are not deleted but will be overwritten when a new version is produced')
+
+            print(f'Generating test: {case_dir}')
+            try:
                 case_dir.mkdir(parents=True, exist_ok=True)
+                meta = dict()
+                for (name, out_kind, data) in test_case.case_fn():
+                    if out_kind == "meta":
+                        meta[name] = data
+                    elif out_kind == "data" or out_kind == "ssz":
+                        try:
+                            out_path = case_dir / Path(name + '.yaml')
+                            with out_path.open(file_mode) as f:
+                                yaml.dump(data, f)
+                        except IOError as e:
+                            sys.exit(f'Error when dumping test "{case_dir}", part "{name}": {e}')
+                    # if out_kind == "ssz":
+                    #     # TODO write SSZ as binary file too.
+                    #     out_path = case_dir / Path(name + '.ssz')
+                # Once all meta data is collected (if any), write it to a meta data file.
+                if len(meta) != 0:
+                    try:
+                        out_path = case_dir / Path('meta.yaml')
+                        with out_path.open(file_mode) as f:
+                            yaml.dump(meta, f)
+                    except IOError as e:
+                        sys.exit(f'Error when dumping test "{case_dir}" meta data": {e}')
 
-                try:
-                    for case_part in test_case.case_fn():
-                        if case_part.out_kind == "data" or case_part.out_kind == "ssz":
-                            try:
-                                out_path = case_dir / Path(case_part.name + '.yaml')
-                                with out_path.open(file_mode) as f:
-                                    yaml.dump(case_part.data, f)
-                            except IOError as e:
-                                sys.exit(f'Error when dumping test "{case_dir}", part "{case_part.name}": {e}')
-                        # if out_kind == "ssz":
-                        #     # TODO write SSZ as binary file too.
-                        #     out_path = case_dir / Path(name + '.ssz')
-                except Exception as e:
-                    print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
+            except Exception as e:
+                print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
         print(f"completed {generator_name}")

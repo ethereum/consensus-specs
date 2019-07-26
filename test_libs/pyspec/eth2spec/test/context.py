@@ -28,7 +28,9 @@ DEFAULT_BLS_ACTIVE = False
 
 
 def spectest_with_bls_switch(fn):
-    return bls_switch(spectest()(fn))
+    # Bls switch must be wrapped by spectest,
+    # to fully go through the yielded bls switch data, before setting back the BLS setting.
+    return spectest()(bls_switch(fn))
 
 
 # shorthand for decorating @with_state @spectest()
@@ -88,9 +90,8 @@ def bls_switch(fn):
     def entry(*args, **kw):
         old_state = bls.bls_active
         bls.bls_active = kw.pop('bls_active', DEFAULT_BLS_ACTIVE)
-        out = fn(*args, **kw)
+        yield from fn(*args, **kw)
         bls.bls_active = old_state
-        return out
     return entry
 
 

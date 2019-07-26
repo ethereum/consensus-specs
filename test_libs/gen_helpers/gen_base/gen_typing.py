@@ -2,17 +2,19 @@ from typing import (
     Any,
     Callable,
     Iterable,
+    NewType,
     Dict,
     Tuple,
 )
 from collections import namedtuple
 
-
-@dataclass
-class TestCasePart(object):
-    name: str  # name of the file
-    out_kind: str  # type of data ("data" for generic, "ssz" for SSZ encoded bytes)
-    data: Any
+# Elements: name, out_kind, data
+#
+# out_kind is the type of data:
+#  - "data" for generic
+#  - "ssz" for SSZ encoded bytes
+#  - "meta" for generic data to collect into a meta data dict.
+TestCasePart = NewType("TestCasePart", Tuple[str, str, Any])
 
 
 @dataclass
