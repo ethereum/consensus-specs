@@ -64,6 +64,14 @@ The maximum size of a proof for this new data is `32 * 10` (Merkle branch) + `56
 ### Computing the persistent committee at an epoch
 
 ```
+def unpack_compact_validator(compact_validator: uint64) -> Tuple[int, bool, int]:
+    """
+    Returns validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
+    """
+    return compact_validator >> 16, (compact_validator >> 15) % 2, compact_validator & (2**15 - 1)
+```
+
+```
 def compute_persistent_committee_at_epoch(memory: ValidatorMemory,
                                          epoch: Epoch) -> Sequence[Tuple[BLSPubkey, Gwei]]:
     current_period = compute_epoch_of_slot(memory.finalized_header.slot) // EPOCHS_PER_SHARD_PERIOD
@@ -76,17 +84,19 @@ def compute_persistent_committee_at_epoch(memory: ValidatorMemory,
         raise Exception("Cannot compute for this slot")
     o = []  # list of committee (pubkey, balance) tuples
     for pub, aux in zip(earlier_committee.pubkeys, earlier_committee.compact_validators):
-        if epoch % EPOCHS_PER_SHARD_PERIOD < (aux >> 16) % EPOCHS_PER_SHARD_PERIOD:
-            o.append((pub, aux & (2**15-1))
+        index, slashed, balance = unpack_compact_validator(aux)
+        if epoch % EPOCHS_PER_SHARD_PERIOD < index % EPOCHS_PER_SHARD_PERIOD:
+            o.append((pub, balance))
     for pub, aux in zip(later_committee.pubkeys, later_committee.compact_validators):
-        if epoch % EPOCHS_PER_SHARD_PERIOD >= (aux >> 16) % EPOCHS_PER_SHARD_PERIOD:
-            o.append((pub, aux & (2**15-1))
+        index, slashed, balance = unpack_compact_validator(aux)
+        if epoch % EPOCHS_PER_SHARD_PERIOD >= index % EPOCHS_PER_SHARD_PERIOD:
+            o.append((pub, balance))
     return o
 ```
 
 ## Verifying blocks
 
-If a client wants to update its `finalized_header` it asks the network for a `BlockValidityProof`, which is simply:
+If a client wants to update its `finalized_header` it asks the network for a `BlockValidityProof`. The client sends a request containing `(shard, slot_range_start, slot_range_end)`, and gets a response of the form:
 
 ```python
 {
