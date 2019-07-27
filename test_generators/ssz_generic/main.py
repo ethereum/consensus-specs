@@ -5,6 +5,7 @@ import ssz_bitlist
 import ssz_bitvector
 import ssz_boolean
 import ssz_uints
+import ssz_container
 
 
 def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typing.TestProvider:
@@ -38,4 +39,6 @@ if __name__ == "__main__":
         create_provider("boolean", "invalid", ssz_boolean.invalid_cases),
         create_provider("uints", "valid", ssz_uints.valid_cases),
         create_provider("uints", "invalid", ssz_uints.invalid_cases),
+        create_provider("containers", "valid", ssz_container.valid_cases),
+        create_provider("containers", "invalid", ssz_container.invalid_cases),
     ])

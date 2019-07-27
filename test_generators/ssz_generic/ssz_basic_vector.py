@@ -1,4 +1,4 @@
-from .ssz_test_case import invalid_test_case, valid_test_case
+from ssz_test_case import invalid_test_case, valid_test_case
 from eth2spec.utils.ssz.ssz_typing import boolean, uint8, uint16, uint32, uint64, uint128, uint256, Vector, BasicType
 from eth2spec.utils.ssz.ssz_impl import serialize
 from random import Random
@@ -27,23 +27,34 @@ BASIC_TYPES: Dict[str, BasicType] = {
 def valid_cases():
     rng = Random(1234)
     for (name, typ) in BASIC_TYPES.items():
+        random_modes = [RandomizationMode.mode_zero, RandomizationMode.mode_max]
+        if name != 'bool':
+            random_modes.append(RandomizationMode.mode_random)
         for length in [1, 2, 3, 4, 5, 8, 16, 31, 512, 513]:
-            for mode in [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]:
-                yield f'vec_{name}_{length}_{mode.to_name()}',\
+            for mode in random_modes:
+                yield f'vec_{name}_{length}_{mode.to_name()}', \
                       valid_test_case(lambda: basic_vector_case_fn(rng, mode, typ, length))
 
 
 def invalid_cases():
     # zero length vectors are illegal
-    for (name, typ) in BASIC_TYPES:
-        yield f'vec_{name}_0', lambda: b''
+    for (name, typ) in BASIC_TYPES.items():
+        yield f'vec_{name}_0', invalid_test_case(lambda: b'')
 
     rng = Random(1234)
     for (name, typ) in BASIC_TYPES.items():
+        random_modes = [RandomizationMode.mode_zero, RandomizationMode.mode_max]
+        if name != 'bool':
+            random_modes.append(RandomizationMode.mode_random)
         for length in [1, 2, 3, 4, 5, 8, 16, 31, 512, 513]:
             yield f'vec_{name}_{length}_nil', invalid_test_case(lambda: b'')
-            for mode in [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]:
+            for mode in random_modes:
                 yield f'vec_{name}_{length}_{mode.to_name()}_one_less', \
                       invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length - 1)))
                 yield f'vec_{name}_{length}_{mode.to_name()}_one_more', \
                       invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length + 1)))
+                yield f'vec_{name}_{length}_{mode.to_name()}_one_byte_less', \
+                      invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length))[:-1])
+                yield f'vec_{name}_{length}_{mode.to_name()}_one_byte_more', \
+                      invalid_test_case(lambda: serialize(basic_vector_case_fn(rng, mode, typ, length))
+                                        + serialize(basic_vector_case_fn(rng, mode, uint8, 1)))
