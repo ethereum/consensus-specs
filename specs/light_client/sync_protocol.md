@@ -74,7 +74,7 @@ def compute_persistent_committee_at_epoch(memory: ValidatorMemory,
         earlier_committee, later_committee = memory.previous_committee, memory.current_committee
     else:
         raise Exception("Cannot compute for this slot")
-    o = []
+    o = []  # list of committee (pubkey, balance) tuples
     for pub, aux in zip(earlier_committee.pubkeys, earlier_committee.compact_validators):
         if epoch % EPOCHS_PER_SHARD_PERIOD < (aux >> 16) % EPOCHS_PER_SHARD_PERIOD:
             o.append((pub, aux & (2**15-1))
