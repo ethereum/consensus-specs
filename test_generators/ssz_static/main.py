@@ -1,5 +1,5 @@
 from random import Random
-
+from typing import Iterable
 from inspect import getmembers, isclass
 
 from eth2spec.debug import random_value, encode
@@ -10,29 +10,20 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
     serialize,
 )
-from eth_utils import (
-    to_tuple, to_dict
-)
-from gen_base import gen_runner, gen_suite, gen_typing
+from gen_base import gen_runner, gen_typing
 from preset_loader import loader
 
 MAX_BYTES_LENGTH = 100
 MAX_LIST_LENGTH = 10
 
 
-@to_dict
-def create_test_case_contents(value):
-    yield "value", encode.encode(value)
-    yield "serialized", '0x' + serialize(value).hex()
-    yield "root", '0x' + hash_tree_root(value).hex()
-    if hasattr(value, "signature"):
-        yield "signing_root", '0x' + signing_root(value).hex()
-
-
-@to_dict
-def create_test_case(rng: Random, name: str, typ, mode: random_value.RandomizationMode, chaos: bool):
+def create_test_case(rng: Random, typ, mode: random_value.RandomizationMode, chaos: bool) -> Iterable[gen_typing.TestCasePart]:
     value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
-    yield name, create_test_case_contents(value)
+    yield "value", "data", encode.encode(value)
+    yield "serialized", "ssz", serialize(value)
+    yield "root", "meta", '0x' + hash_tree_root(value).hex()
+    if hasattr(value, "signature"):
+        yield "signing_root", "meta", '0x' + signing_root(value).hex()
 
 
 def get_spec_ssz_types():
@@ -42,40 +33,38 @@ def get_spec_ssz_types():
     ]
 
 
-@to_tuple
-def ssz_static_cases(rng: Random, mode: random_value.RandomizationMode, chaos: bool, count: int):
-    for (name, ssz_type) in get_spec_ssz_types():
-        for i in range(count):
-            yield create_test_case(rng, name, ssz_type, mode, chaos)
+def ssz_static_cases(seed: int, name, ssz_type, mode: random_value.RandomizationMode, chaos: bool, count: int):
+    random_mode_name = mode.to_name()
+
+    # Reproducible RNG
+    rng = Random(seed)
+
+    for i in range(count):
+        yield gen_typing.TestCase(
+            fork_name='phase0',
+            runner_name='ssz_static',
+            handler_name=name,
+            suite_name=f"ssz_{random_mode_name}{'_chaos' if chaos else ''}",
+            case_name=f"case_{i}",
+            case_fn=lambda: create_test_case(rng, ssz_type, mode, chaos)
+        )
 
 
-def get_ssz_suite(seed: int, config_name: str, mode: random_value.RandomizationMode, chaos: bool, cases_if_random: int):
-    def ssz_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
+def create_provider(config_name: str, seed: int, mode: random_value.RandomizationMode, chaos: bool,
+                    cases_if_random: int) -> gen_typing.TestProvider:
+    def prepare_fn(configs_path: str) -> str:
         # Apply changes to presets, this affects some of the vector types.
         presets = loader.load_presets(configs_path, config_name)
         spec.apply_constants_preset(presets)
+        return config_name
 
-        # Reproducible RNG
-        rng = Random(seed)
-
-        random_mode_name = mode.to_name()
-
-        suite_name = f"ssz_{config_name}_{random_mode_name}{'_chaos' if chaos else ''}"
-
+    def cases_fn() -> Iterable[gen_typing.TestCase]:
         count = cases_if_random if chaos or mode.is_changing() else 1
-        print(f"generating SSZ-static suite ({count} cases per ssz type): {suite_name}")
 
-        return (suite_name, "core", gen_suite.render_suite(
-            title=f"ssz testing, with {config_name} config, randomized with mode {random_mode_name}{' and with chaos applied' if chaos else ''}",
-            summary="Test suite for ssz serialization and hash-tree-root",
-            forks_timeline="testing",
-            forks=["phase0"],
-            config=config_name,
-            runner="ssz",
-            handler="static",
-            test_cases=ssz_static_cases(rng, mode, chaos, count)))
+        for (i, (name, ssz_type)) in enumerate(get_spec_ssz_types()):
+            yield from ssz_static_cases(seed * 1000 + i, name, ssz_type, mode, chaos, count)
 
-    return ssz_suite
+    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
 if __name__ == "__main__":
@@ -91,6 +80,6 @@ if __name__ == "__main__":
     seed += 1
 
     gen_runner.run_generator("ssz_static", [
-        get_ssz_suite(seed, config_name, mode, chaos, cases_if_random)
-            for (seed, config_name, mode, chaos, cases_if_random) in settings
+        create_provider(config_name, seed, mode, chaos, cases_if_random)
+        for (seed, config_name, mode, chaos, cases_if_random) in settings
     ])

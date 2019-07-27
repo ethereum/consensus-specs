@@ -108,16 +108,20 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
                 for (name, out_kind, data) in test_case.case_fn():
                     if out_kind == "meta":
                         meta[name] = data
-                    elif out_kind == "data" or out_kind == "ssz":
+                    if out_kind == "data":
                         try:
                             out_path = case_dir / Path(name + '.yaml')
                             with out_path.open(file_mode) as f:
                                 yaml.dump(data, f)
                         except IOError as e:
-                            sys.exit(f'Error when dumping test "{case_dir}", part "{name}": {e}')
-                    # if out_kind == "ssz":
-                    #     # TODO write SSZ as binary file too.
-                    #     out_path = case_dir / Path(name + '.ssz')
+                            sys.exit(f'Error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}')
+                    if out_kind == "ssz":
+                        try:
+                            out_path = case_dir / Path(name + '.ssz')
+                            with out_path.open(file_mode + 'b') as f:  # write in raw binary mode
+                                f.write(data)
+                        except IOError as e:
+                            sys.exit(f'Error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}')
                 # Once all meta data is collected (if any), write it to a meta data file.
                 if len(meta) != 0:
                     try:
