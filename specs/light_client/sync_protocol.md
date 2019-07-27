@@ -66,7 +66,7 @@ The maximum size of a proof for this new data is `32 * 10` (Merkle branch) + `56
 ```
 def compute_persistent_committee_at_epoch(memory: ValidatorMemory,
                                          epoch: Epoch) -> Sequence[Tuple[BLSPubkey, Gwei]]:
-    current_period = memory.finalized_header.slot // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD
+    current_period = compute_epoch_of_slot(memory.finalized_header.slot) // EPOCHS_PER_SHARD_PERIOD
     target_period = epoch // EPOCHS_PER_SHARD_PERIOD
     if target_period == current_period + 1:
         earlier_committee, later_committee = memory.current_committee, memory.next_committee
