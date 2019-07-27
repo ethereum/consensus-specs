@@ -28,7 +28,7 @@
 
 ### Beacon chain changes
 
-Add three roots to thestate: `next_persistent_committee_root`, `current_persistent_committee_root`, `previous_persistent_committee_root`, which are updated at period boundary slots and are set to `hash_tree_root([committee_to_compact_committee(state, get_period_committee(state, get_current_epoch(state) - EPOCHS_PER_SHARD_PERIOD * k, i) for i in range(1024))])` where `k` equals 0 for the next committee, 1 for the current committee and 2 for the previous committee.
+Add three roots to the state: `next_persistent_committee_root`, `current_persistent_committee_root`, `previous_persistent_committee_root`, which are updated at period boundary slots and are set to `hash_tree_root([committee_to_compact_committee(state, get_period_committee(state, get_current_epoch(state) - EPOCHS_PER_SHARD_PERIOD * k, i) for i in range(1024))])` where `k` equals 0 for the next committee, 1 for the current committee and 2 for the previous committee.
 
 ### Expansions
 
