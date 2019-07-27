@@ -102,7 +102,7 @@ The verification procedure is as follows:
 ```python
 def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: ValidatorMemory) -> bool:
     assert proof.shard_parent_block.core.beacon_chain_root == hash_tree_root(proof.beacon_block_header)
-    committee = compute_persistent_committee_at_slot(validator_memory, compute_epoch_of_shard_slot(shard_parent_block.slot))
+    committee = compute_persistent_committee_at_epoch(validator_memory, compute_epoch_of_shard_slot(shard_parent_block.slot))
     # Verify that we have >=50% support
     support_balance = sum([balance for i, (pubkey, balance) in enumerate(committee) if proof.shard_aggregation_bits[i]])
     total_balance = sum([balance for i, (pubkey, balance) in enumerate(committee)])
