@@ -11,9 +11,12 @@ def uint_case_fn(rng: Random, mode: RandomizationMode, typ: BasicType):
                                  mode=mode, chaos=False)
 
 
+UINT_TYPES = [uint8, uint16, uint32, uint64, uint128, uint256]
+
+
 def valid_cases():
     rng = Random(1234)
-    for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
+    for uint_type in UINT_TYPES:
         yield f'uint_{uint_type.byte_len * 8}_last_byte_empty', \
               valid_test_case(lambda: uint_type((2 ** ((uint_type.byte_len - 1) * 8)) - 1))
         for variation in range(5):
@@ -23,7 +26,7 @@ def valid_cases():
 
 
 def invalid_cases():
-    for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
+    for uint_type in UINT_TYPES:
         yield f'uint_{uint_type.byte_len * 8}_one_too_high', \
             invalid_test_case(lambda: (2 ** (uint_type.byte_len * 8)).to_bytes(uint_type.byte_len + 1, 'little'))
     for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:

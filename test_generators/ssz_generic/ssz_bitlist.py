@@ -16,7 +16,11 @@ def valid_cases():
     rng = Random(1234)
     for size in [1, 2, 3, 4, 5, 8, 16, 31, 512, 513]:
         for variation in range(5):
-            for mode in [RandomizationMode.mode_random, RandomizationMode.mode_zero, RandomizationMode.mode_max]:
+            for mode in [RandomizationMode.mode_nil_count,
+                         RandomizationMode.mode_max_count,
+                         RandomizationMode.mode_random,
+                         RandomizationMode.mode_zero,
+                         RandomizationMode.mode_max]:
                 yield f'bitlist_{size}_{mode.to_name()}_{variation}', \
                       valid_test_case(lambda: bitlist_case_fn(rng, mode, size))
 
