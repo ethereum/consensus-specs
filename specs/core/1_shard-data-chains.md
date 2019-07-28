@@ -253,7 +253,7 @@ def verify_shard_attestation_signature(state: BeaconState,
 ### `flatten_block`
 
 ```python
-def flatten_block(block: ShardBlock) -> Bytes:
+def flatten_block(block: ShardBlock) -> bytes:
     return zpad(serialize(get_shard_header(block)), BYTES_PER_SHARD_BLOCK_HEADER) + serialize(block.body)
 ```
 
