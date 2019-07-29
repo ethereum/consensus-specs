@@ -1,6 +1,7 @@
 from typing import Dict, Any
 from eth2spec.debug.encode import encode
 from eth2spec.utils.ssz.ssz_typing import SSZValue
+from eth2spec.utils.ssz.ssz_impl import serialize
 
 
 def vector_test(description: str = None):
@@ -35,13 +36,22 @@ def vector_test(description: str = None):
                         continue
                     # Try to infer the type, but keep it as-is if it's not a SSZ type or bytes.
                     (key, value) = data
-                    if isinstance(value, (SSZValue, bytes)):
+                    if value is None:
+                        continue
+                    if isinstance(value, SSZValue):
                         yield key, 'data', encode(value)
-                        # TODO: add SSZ bytes as second output
+                        yield key, 'ssz', serialize(value)
+                    elif isinstance(value, bytes):
+                        yield key, 'data', encode(value)
+                        yield key, 'ssz', value
                     elif isinstance(value, list) and all([isinstance(el, (SSZValue, bytes)) for el in value]):
                         for i, el in enumerate(value):
-                            yield f'{key}_{i}', 'data', encode(el)
-                            # TODO: add SSZ bytes as second output
+                            if isinstance(value, SSZValue):
+                                yield f'{key}_{i}', 'data', encode(el)
+                                yield f'{key}_{i}', 'ssz', serialize(el)
+                            elif isinstance(value, bytes):
+                                yield f'{key}_{i}', 'data', encode(el)
+                                yield f'{key}_{i}', 'ssz', el
                         yield f'{key}_count', 'meta', len(value)
                     else:
                         # Not a ssz value.
