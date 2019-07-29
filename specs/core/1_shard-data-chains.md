@@ -132,7 +132,7 @@ class ShardBlockCore(Container):
     data_root: Hash
     state_root: Hash
     total_bytes: uint64
-    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
+    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE]
 ```
 
 ### `ExtendedShardBlockCore`
@@ -145,7 +145,7 @@ class ExtendedShardBlockCore(Container):
     data: Bytes[SHARD_BLOCK_SIZE_LIMIT - SHARD_HEADER_SIZE]
     state_root: Hash
     total_bytes: uint64
-    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
+    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE]
 ```
 
 ## Helper functions
@@ -205,11 +205,12 @@ def get_persistent_committee(state: BeaconState,
     later_committee = get_period_committee(state, get_shard_period_start_epoch(epoch, lookback=Epoch(1)), shard)
 
     # Take not-yet-cycled-out validators from earlier committee and already-cycled-in validators from
-    # later committee; return a sorted list of the union of the two, deduplicated
-    return sorted(set(
-        [i for i in earlier_committee if epoch % EPOCHS_PER_SHARD_PERIOD < i % EPOCHS_PER_SHARD_PERIOD]
-        + [i for i in later_committee if epoch % EPOCHS_PER_SHARD_PERIOD >= i % EPOCHS_PER_SHARD_PERIOD]
-    ))
+    # later committee; return a sorted list of the union of the two, deduplicated. If the combined size is
+    # too large, take out the validators with the earlier induction epochs (ie. delay their induction)
+    prev_subset = [i for i in earlier_committee if epoch % EPOCHS_PER_SHARD_PERIOD < i % EPOCHS_PER_SHARD_PERIOD]
+    post_subset = [i for i in later_committee if check_epoch % EPOCHS_PER_SHARD_PERIOD >= i % EPOCHS_PER_SHARD_PERIOD]
+    post_subset = sorted(post_subset, key=lambda i: -(i % EPOCHS_PER_SHARD_PERIOD))[:(MAX_PERSISTENT_COMMITTEE_SIZE - len(prev_subset))]
+    return sorted(set(prev_subset + post_subset))
 ```
 
 ### `get_shard_block_proposer_index`
