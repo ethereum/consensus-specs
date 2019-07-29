@@ -83,12 +83,13 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     yaml = YAML(pure=True)
     yaml.default_flow_style = None
 
-    print(f"Generating tests into {output_dir}...")
-    print(f"Reading config presets and fork timelines from {args.configs_path}")
+    print(f"Generating tests into {output_dir}")
+    print(f"Reading configs from {args.configs_path}")
 
     for tprov in test_providers:
         # loads configuration etc.
         config_name = tprov.prepare(args.configs_path)
+        print(f"generating tests with config '{config_name}' ...")
         for test_case in tprov.make_cases():
             case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
                        / Path(test_case.runner_name) / Path(test_case.handler_name) \
@@ -133,4 +134,4 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
             except Exception as e:
                 print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
-        print(f"completed {generator_name}")
+    print(f"completed {generator_name}")
