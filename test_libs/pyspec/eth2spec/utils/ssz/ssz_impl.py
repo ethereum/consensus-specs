@@ -33,7 +33,7 @@ def deserialize_basic(value, typ: BasicType):
         raise Exception(f"Type not supported: {typ}")
 
 
-def is_empty(obj: SSZValue):
+def is_zero(obj: SSZValue):
     return type(obj).default() == obj
 
 
