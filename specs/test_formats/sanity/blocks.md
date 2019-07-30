@@ -4,13 +4,37 @@ Sanity tests to cover a series of one or more blocks being processed, aiming to 
 
 ## Test case format
 
+### `meta.yaml`
+
 ```yaml
-description: string    -- description of test case, purely for debugging purposes
+description: string    -- Optional. Description of test case, purely for debugging purposes.
 bls_setting: int       -- see general test-format spec.
-pre: BeaconState       -- state before running through the transitions triggered by the blocks.
-blocks: [BeaconBlock]  -- blocks to process, in given order, following the main transition function (i.e. process slot and epoch transitions in between blocks as normal)
-post: BeaconState      -- state after applying all the transitions triggered by the blocks.
+blocks_count: int      -- the number of blocks processed in this test.
 ```
+
+
+### `pre.yaml`
+
+A YAML-encoded `BeaconState`, the state before running the block transitions.
+
+A `pre.ssz` is also available as substitute.
+
+
+### `blocks_<index>.yaml`
+
+A series of files, with `<index>` in range `[0, blocks_count)`. Blocks need to be processed in order,
+ following the main transition function (i.e. process slot and epoch transitions in between blocks as normal)
+
+Each file is a YAML-encoded `BeaconBlock`.
+
+Each block is also available as `blocks_<index>.ssz`
+
+### `post.yaml`
+
+A YAML-encoded `BeaconState`, the state after applying the block transitions.
+
+A `post.ssz` is also available as substitute.
+
 
 ## Condition
 

@@ -4,13 +4,33 @@ Sanity tests to cover a series of one or more empty-slot transitions being proce
 
 ## Test case format
 
+### `meta.yaml`
+
 ```yaml
-description: string    -- description of test case, purely for debugging purposes
+description: string    -- Optional. Description of test case, purely for debugging purposes.
 bls_setting: int       -- see general test-format spec.
-pre: BeaconState       -- state before running through the transitions.
-slots: N               -- amount of slots to process, N being a positive number.
-post: BeaconState      -- state after applying all the transitions.
 ```
+
+
+### `pre.yaml`
+
+A YAML-encoded `BeaconState`, the state before running the transitions.
+
+A `pre.ssz` is also available as substitute.
+
+
+### `slots.yaml`
+
+An integer. The amount of slots to process (i.e. the difference in slots between pre and post), always a positive number.
+
+### `post.yaml`
+
+A YAML-encoded `BeaconState`, the state after applying the transitions.
+
+A `post.ssz` is also available as substitute.
+
+
+### Processing
 
 The transition with pure time, no blocks, is known as `process_slots(state, slot)` in the spec.
 This runs state-caching (pure slot transition) and epoch processing (every E slots).

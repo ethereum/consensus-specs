@@ -18,18 +18,20 @@ An integer. The timestamp of the block, in seconds.
 
 A yaml file to help read the deposit count:
 
-```
+```yaml
 deposits_count: int    -- Amount of deposits.
 ```
 
-## `deposits_<index>.yaml`
+### `deposits_<index>.yaml`
 
-A series of files, with `<index>` ranging `[0, deposit_count)`.
+A series of files, with `<index>` in range `[0, deposits_count)`. Deposits need to be processed in order.
+Each file is a YAML-encoded `Deposit` object.
+
 Each deposit is also available as `deposits_<index>.ssz`
 
 ###  `state.yaml`
 
-The expected genesis state.
+The expected genesis state. A YAML-encoded `BeaconState` object.
 
 Also available as `state.ssz`.
 
