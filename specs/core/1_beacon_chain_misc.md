@@ -4,12 +4,21 @@
 
 <!-- TOC -->
 
+- [Classes](#classes)
+      - [ShardReceiptProof](#shardreceiptproof)
 - [Helpers](#helpers)
       - [pack_compact_validator](#pack_compact_validator)
       - [unpack_compact_validator](#unpack_compact_validator)
       - [committee_to_compact_committee](#committee_to_compact_committee)
+      - [get_previous_power_of_2](#get_previous_power_of_2)
+      - [verify_merkle_proof](#verify_merkle_proof)
+      - [concat_generalized_indices](#concat_generalized_indices)
+      - [compute_historical_state_generalized_index](#compute_historical_state_generalized_index)
+      - [get_generalized_index_of_crosslink_header](#get_generalized_index_of_crosslink_header)
+      - [process_shard_receipt](#process_shard_receipt)
 - [Changes](#changes)
       - [Persistent committees](#persistent-committees)
+      - [Shard receipt processing](#shard-receipt-processing)
 
 <!-- /TOC -->
 
@@ -52,6 +61,9 @@ def unpack_compact_validator(compact_validator: uint64) -> Tuple[uint64, bool, u
 
 ```python
 def committee_to_compact_committee(state: BeaconState, committee: Sequence[ValidatorIndex]) -> CompactCommittee:
+    """
+    Given a state and a list of validator indices, outputs the CompactCommittee representing them.
+    """
     validators = [state.validators[i] for i in committee]
     compact_validators = [
         pack_compact_validator(i, v.slashed, v.effective_balance // EFFECTIVE_BALANCE_INCREMENT)
@@ -68,11 +80,27 @@ def get_previous_power_of_2(x: int) -> int:
     return x if x <= 2 else 2 * get_previous_power_of_2(x // 2)
 ```
 
+#### `verify_merkle_proof`
+
+```python
+def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+    assert len(proof) == log2(index)
+    for i, h in enumerate(proof):
+        if index & 2**i:
+            leaf = hash(h + leaf)
+        else:
+            leaf = hash(leaf + h)
+    return leaf == root
+```
 
 #### `concat_generalized_indices`
 
 ```python
 def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> GeneralizedIndex:
+    """
+    Given generalized indices i1 for A -> B, i2 for B -> C .... i_n for Y -> Z, returns
+    the generalized index for A -> Z.
+    """
     o = GeneralizedIndex(1)
     for i in indices:
         o = o * get_previous_power_of_2(i) + i
@@ -82,11 +110,17 @@ def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> Generali
 #### `compute_historical_state_generalized_index`
 
 ```python
-def compute_historical_state_generalized_index(frm: ShardSlot, to: ShardSlot) -> GeneralizedIndex:
+def compute_historical_state_generalized_index(earlier: ShardSlot, later: ShardSlot) -> GeneralizedIndex:
+    """
+    Computes the generalized index of the state root of slot `frm` based on the state root of slot `to`.
+    Relies on the `history_acc` in the `ShardState`, where `history_acc[i]` maintains the most recent 2**i'th
+    slot state. Works by tracing a `log(later-earlier)` step path from `later` to `earlier` through intermediate
+    blocks at the next available multiples of descending powers of two.
+    """
     o = GeneralizedIndex(1)
     for i in range(63, -1, -1):
-          if (to-1) & 2**i > (frm-1) & 2**i:
-              to = to - ((to-1) % 2**i) - 1
+          if (later-1) & 2**i > (earlier-1) & 2**i:
+              later = later - ((later-1) % 2**i) - 1
               o = concat_generalized_indices(o, get_generalized_index(ShardState, 'history_acc', i))
     return o
 ```
@@ -95,6 +129,9 @@ def compute_historical_state_generalized_index(frm: ShardSlot, to: ShardSlot) ->
 
 ```python
 def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
+    """
+    Gets the generalized index for the root of the index'th header in a crosslink.
+    """
     MAX_CROSSLINK_SIZE = SHARD_BLOCK_SIZE_LIMIT * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
     assert MAX_CROSSLINK_SIZE == get_previous_power_of_2(MAX_CROSSLINK_SIZE)
     return GeneralizedIndex(MAX_CROSSLINK_SIZE // SHARD_HEADER_SIZE + index)
@@ -104,6 +141,9 @@ def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
 
 ```python
 def process_shard_receipt(state: BeaconState, receipt_proof: ShardReceiptProof):
+    """
+    Processes a ShardReceipt object.
+    """
     receipt_slot = state.next_shard_receipt_period[receipt_proof.shard] * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD
     first_slot_in_last_crosslink = state.current_crosslinks[receipt_proof.shard].start_epoch * SLOTS_PER_EPOCH
     gindex = concat_generalized_indices(
@@ -140,6 +180,9 @@ Process the following function before `process_final_updates`:
 
 ```python
 def update_persistent_committee(state: BeaconState):
+    """
+    Updates persistent committee roots at boundary blocks.
+    """
     if (get_current_epoch(state) + 1) % EPOCHS_PER_SHARD_PERIOD == 0:
         state.previous_persistent_committee_root = state.current_persistent_committee_root
         state.current_persistent_committee_root = state.next_persistent_committee_root
