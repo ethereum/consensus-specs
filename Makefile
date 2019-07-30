@@ -2,16 +2,19 @@ SPEC_DIR = ./specs
 SCRIPT_DIR = ./scripts
 TEST_LIBS_DIR = ./test_libs
 PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-YAML_TEST_DIR = ./eth2.0-spec-tests/tests
+TEST_VECTOR_DIR = ./eth2.0-spec-tests/tests
 GENERATOR_DIR = ./test_generators
 DEPOSIT_CONTRACT_DIR = ./deposit_contract
 CONFIGS_DIR = ./configs
 
 # Collect a list of generator names
-GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/)))
-# Map this list of generator paths to a list of test output paths
-YAML_TEST_TARGETS = $(patsubst $(GENERATOR_DIR)/%, $(YAML_TEST_DIR)/%, $(GENERATORS))
+GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
+# Map this list of generator paths to "gen_{generator name}" entries
+GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
 GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
+
+# To check generator matching:
+#$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
 PY_SPEC_PHASE_0_DEPS = $(SPEC_DIR)/core/0_*.md
@@ -24,14 +27,14 @@ PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
-.PHONY: clean all test citest lint gen_yaml_tests pyspec phase0 phase1 install_test open_cov \
+.PHONY: clean partial_clean all test citest lint generate_tests pyspec phase0 phase1 install_test open_cov \
         install_deposit_contract_test test_deposit_contract compile_deposit_contract
 
-all: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR) $(YAML_TEST_TARGETS)
+all: $(PY_SPEC_ALL_TARGETS)
 
 # deletes everything except the venvs
 partial_clean:
-	rm -rf $(YAML_TEST_DIR)
+	rm -rf $(TEST_VECTOR_DIR)
 	rm -rf $(GENERATOR_VENVS)
 	rm -rf $(PY_SPEC_DIR)/.pytest_cache
 	rm -rf $(PY_SPEC_ALL_TARGETS)
@@ -44,8 +47,8 @@ clean: partial_clean
 	rm -rf $(PY_SPEC_DIR)/venv
 	rm -rf $(DEPOSIT_CONTRACT_DIR)/venv
 
-# "make gen_yaml_tests" to run generators
-gen_yaml_tests: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_TARGETS)
+# "make generate_tests" to run all generators
+generate_tests: $(PY_SPEC_ALL_TARGETS) $(GENERATOR_TARGETS)
 
 # installs the packages to run pyspec tests
 install_test:
@@ -90,8 +93,8 @@ $(PY_SPEC_DIR)/eth2spec/phase1/spec.py: $(PY_SPEC_PHASE_1_DEPS)
 
 CURRENT_DIR = ${CURDIR}
 
-# The function that builds a set of suite files, by calling a generator for the given type (param 1)
-define build_yaml_tests
+# Runs a generator, identified by param 1
+define run_generator
 	# Started!
 	# Create output directory
 	# Navigate to the generator
@@ -101,23 +104,23 @@ define build_yaml_tests
 	# Run the generator. The generator is assumed to have an "main.py" file.
 	# We output to the tests dir (generator program should accept a "-o <filepath>" argument.
 	echo "generator $(1) started"; \
-	mkdir -p $(YAML_TEST_DIR)$(1); \
-	cd $(GENERATOR_DIR)$(1); \
+	mkdir -p $(TEST_VECTOR_DIR); \
+	cd $(GENERATOR_DIR)/$(1); \
 	if ! test -d venv; then python3 -m venv venv; fi; \
 	. venv/bin/activate; \
 	pip3 install -r requirements.txt; \
-	python3 main.py -o $(CURRENT_DIR)/$(YAML_TEST_DIR)$(1) -c $(CURRENT_DIR)/$(CONFIGS_DIR); \
+	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR) -c $(CURRENT_DIR)/$(CONFIGS_DIR); \
 	echo "generator $(1) finished"
 endef
 
 # The tests dir itself is simply build by creating the directory (recursively creating deeper directories if necessary)
-$(YAML_TEST_DIR):
-	$(info creating directory, to output yaml targets to: ${YAML_TEST_TARGETS})
+$(TEST_VECTOR_DIR):
+	$(info creating test output directory, for generators: ${GENERATOR_TARGETS})
 	mkdir -p $@
-$(YAML_TEST_DIR)/:
-	$(info ignoring duplicate yaml tests dir)
+$(TEST_VECTOR_DIR)/:
+	$(info ignoring duplicate tests dir)
 
-# For any target within the tests dir, build it using the build_yaml_tests function.
+# For any generator, build it using the run_generator function.
 # (creation of output dir is a dependency)
-$(YAML_TEST_DIR)%: $(PY_SPEC_ALL_TARGETS) $(YAML_TEST_DIR)
-	$(call build_yaml_tests,$*)
+gen_%: $(PY_SPEC_ALL_TARGETS) $(TEST_VECTOR_DIR)
+	$(call run_generator,$*)
