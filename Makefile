@@ -103,6 +103,7 @@ define run_generator
 	# Install all the necessary requirements
 	# Run the generator. The generator is assumed to have an "main.py" file.
 	# We output to the tests dir (generator program should accept a "-o <filepath>" argument.
+	# `-l minimal general` can be added to the generator call to filter to smaller configs, when testing.
 	echo "generator $(1) started"; \
 	mkdir -p $(TEST_VECTOR_DIR); \
 	cd $(GENERATOR_DIR)/$(1); \
