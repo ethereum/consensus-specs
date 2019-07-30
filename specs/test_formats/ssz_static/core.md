@@ -4,28 +4,51 @@ The goal of this type is to provide clients with a solid reference for how the k
 Each object described in the Phase 0 spec is covered.
 This is important, as many of the clients aiming to serialize/deserialize objects directly into structs/classes
 do not support (or have alternatives for) generic SSZ encoding/decoding.
+
 This test-format ensures these direct serializations are covered.
+
+Note that this test suite does not cover the invalid-encoding case:
+ SSZ implementations should be hardened against invalid inputs with the other SSZ tests as guide, along with fuzzing.
 
 ## Test case format
 
+Each SSZ type is a `handler`, since the format is semantically different: the type of the data is different.
+
+One can iterate over the handlers, and select the type based on the handler name.
+Suites are then the same format, but each specialized in one randomization mode.
+Some randomization modes may only produce a single test case (e.g. the all-zeroes case).
+
+The output parts are: `meta.yaml`, `serialized.ssz`, `value.yaml`
+
+### `meta.yaml`
+
+For non-container SSZ type:
+
 ```yaml
-SomeObjectName:        -- key, object name, formatted as in spec. E.g. "BeaconBlock".
-    value: dynamic     -- the YAML-encoded value, of the type specified by type_name.
-    serialized: bytes  -- string, SSZ-serialized data, hex encoded, with prefix 0x
-    root: bytes32      -- string, hash-tree-root of the value, hex encoded, with prefix 0x
-    signing_root: bytes32 -- string, signing-root of the value, hex encoded, with prefix 0x. Optional, present if type contains ``signature`` field
+root: bytes32         -- string, hash-tree-root of the value, hex encoded, with prefix 0x
+signing_root: bytes32 -- string, signing-root of the value, hex encoded, with prefix 0x. 
+                           Optional, present if type is a container and ends with a ``signature`` field.
 ```
+
+### `serialized.ssz`
+
+The raw encoded bytes.
+
+### `value.yaml`
+
+The same value as `serialized.ssz`, represented as YAML.
+
 
 ## Condition
 
 A test-runner can implement the following assertions:
 - Serialization: After parsing the `value`, SSZ-serialize it: the output should match `serialized`
-- Hash-tree-root: After parsing the `value`, Hash-tree-root it: the output should match `root`
-    - Optionally also check signing-root, if present.
+- Hash-tree-root: After parsing the `value` (or deserializing `serialized`), Hash-tree-root it: the output should match `root`
+    - Optionally also check `signing_root`, if present.
 - Deserialization: SSZ-deserialize the `serialized` value, and see if it matches the parsed `value`
 
-## References
 
+## References
 
 **`serialized`**—[SSZ serialization](../../simple-serialize.md#serialization)   
 **`root`**—[hash_tree_root](../../simple-serialize.md#merkleization) function  

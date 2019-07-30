@@ -49,22 +49,20 @@ Test formats:
 
 ## Glossary
 
-- `generator`: a program that outputs one or more `suite` files.
-  - A generator should only output one `type` of test.
-  - A generator is free to output multiple `suite` files, optionally with different `handler`s.
-- `type`: the specialization of one single `generator`.
-- `suite`: a YAML file with:
-  - a header: describes the `suite`, and defines what the `suite` is for
-  - a list of test cases
+- `generator`: a program that outputs one or more test-cases, each organized into a `config > runner > handler > suite` hierarchy.
+- `config`: tests are grouped by configuration used for spec presets. In addition to the standard configurations, 
+  `general` may be used as a catch-all for tests not restricted to one configuration. (E.g. BLS).
+- `type`: the specialization of one single `generator`. E.g. epoch processing.
 - `runner`: where a generator is a *"producer"*, this is the *"consumer"*.
   - A `runner` focuses on *only one* `type`, and each type has *only one* `runner`.
-- `handler`: a `runner` may be too limited sometimes, you may have a `suite` with a specific focus that requires a different format.
+- `handler`: a `runner` may be too limited sometimes, you may have a set of tests with a specific focus that requires a different format.
   To facilitate this, you specify a `handler`: the runner can deal with the format by using the specified handler.
-  Using a `handler` in a `runner` is optional.
-- `case`: a test case, an entry in the `test_cases` list of a `suite`. A case can be anything in general, 
-  but its format should be well-defined in the documentation corresponding to the `type` (and `handler`).\
-  A test has the same exact configuration and fork context as the other entries in the `case` list of its `suite`.
-
+- `suite`: a directory containing test cases that are coherent. Each `suite` under the same `handler` shares the same format.
+  This is an organizational/cosmetic hierarchy layer.
+- `case`: a test case, a directory in a `suite`. A case can be anything in general, 
+  but its format should be well-defined in the documentation corresponding to the `type` (and `handler`).
+- `case part`: a test case consists of different files, possibly in different formats, to facilitate the specific test case format better.
+  Optionally, a `meta.yaml` is included to declare meta-data for the test, e.g. BLS requirements. 
 
 ## Test format philosophy
 
@@ -121,10 +119,12 @@ The well known bls/shuffling/ssz_static/operations/epoch_processing/etc. Handler
 ### `<test handler name>/`
 
 Specialization within category. All suites in here will have the same test case format.
+Using a `handler` in a `runner` is optional. A `core` (or other generic) handler may be used if the `runner` does not have different formats.
 
 ### `<test suite name>/`
 
-Suites are split up. Suite size does not change memory bounds, and makes lookups of particular tests fast to find and load.
+Suites are split up. Suite size (i.e. the amount of tests) does not change the maximum memory requirement, as test cases can be loaded one by one.
+This also makes filtered sets of tests fast and easy to load.
 
 ### `<test case>/`
 
