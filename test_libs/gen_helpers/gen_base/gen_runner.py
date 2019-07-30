@@ -70,7 +70,16 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
         dest="configs_path",
         required=True,
         type=validate_configs_dir,
-        help="specify the path of the configs directory (containing constants_presets and fork_timelines)",
+        help="specify the path of the configs directory",
+    )
+    parser.add_argument(
+        "-l",
+        "--config-list",
+        dest="config_list",
+        nargs='*',
+        type=str,
+        required=False,
+        help="specify configs to run with. Allows all if no config names are specified.",
     )
 
     args = parser.parse_args()
@@ -86,9 +95,17 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     print(f"Generating tests into {output_dir}")
     print(f"Reading configs from {args.configs_path}")
 
+    configs = args.config_list
+    if len(configs) != 0:
+        print(f"Filtering test-generator runs to only include configs: {', '.join(configs)}")
+
     for tprov in test_providers:
         # loads configuration etc.
         config_name = tprov.prepare(args.configs_path)
+        if len(configs) != 0 and config_name not in configs:
+            print(f"skipping tests with config '{config_name}' since it is filtered out")
+            continue
+
         print(f"generating tests with config '{config_name}' ...")
         for test_case in tprov.make_cases():
             case_dir = Path(output_dir) / Path(config_name) / Path(test_case.fork_name) \
