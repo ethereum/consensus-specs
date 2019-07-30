@@ -12,8 +12,7 @@ def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typin
 
     def prepare_fn(configs_path: str) -> str:
         presets = loader.load_presets(configs_path, config_name)
-        spec_phase0.apply_constants_preset(presets)
-        spec_phase1.apply_constants_preset(presets)
+        spec.apply_constants_preset(presets)
         return config_name
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
