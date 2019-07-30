@@ -115,7 +115,7 @@ def get_item_position(typ: Type, index: Union[int, str]) -> Tuple[int, int, int]
         raise Exception("Only lists/vectors/containers supported")
 
 
-def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> int:
+def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> GeneralizedIndex:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
@@ -129,6 +129,42 @@ def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> int:
             root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
             typ = get_elem_type(typ, p)
     return root
+```
+
+### Helpers for generalized indices
+
+#### `concat_generalized_indices`
+
+```python
+def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> GeneralizedIndex:
+    """
+    Given generalized indices i1 for A -> B, i2 for B -> C .... i_n for Y -> Z, returns
+    the generalized index for A -> Z.
+    """
+    o = GeneralizedIndex(1)
+    for i in indices:
+        o = o * get_previous_power_of_2(i) + i
+    return o
+```
+
+#### `get_generalized_index_length`
+
+```python
+def get_generalized_index_length(index: GeneralizedIndex) -> int:
+   """
+   Returns the length of a path represented by a generalized index.
+   """
+   return log(index)
+```
+
+#### `get_generalized_index_bit`
+
+```python
+def get_generalized_index_bit(index: GeneralizedIndex, bit: int) -> bool:
+   """
+   Returns the i'th bit of a generalized index.
+   """
+   return (index & (1 << bit)) > 0
 ```
 
 ## Merkle multiproofs
