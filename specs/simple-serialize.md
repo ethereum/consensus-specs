@@ -14,7 +14,7 @@
         - [Variable-size and fixed-size](#variable-size-and-fixed-size)
         - [Aliases](#aliases)
         - [Default values](#default-values)
-            - [`is_empty`](#is_empty)
+            - [`is_zero`](#is_zero)
         - [Illegal types](#illegal-types)
     - [Serialization](#serialization)
         - [`uintN`](#uintn)
@@ -75,19 +75,21 @@ For convenience we alias:
 * `bit` to `boolean`
 * `byte` to `uint8` (this is a basic type)
 * `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
-* `null`: `{}`, i.e. the empty container
+* `null`: `{}`
 
 ### Default values
 
 The default value of a type upon initialization is recursively defined using `0` for `uintN`, `False` for `boolean` and the elements of `Bitvector`, and `[]` for lists and `Bitlist`. Unions default to the first type in the union (with type index zero), which is `null` if present in the union.
 
-#### `is_empty`
+#### `is_zero`
 
-An SSZ object is called empty (and thus, `is_empty(object)` returns true) if it is equal to the default value for that type.
+An SSZ object is called zeroed (and thus, `is_zero(object)` returns true) if it is equal to the default value for that type.
 
 ### Illegal types
 
-Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
+- Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
+- Containers with no fields are illegal.
+- The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
 
 ## Serialization
 

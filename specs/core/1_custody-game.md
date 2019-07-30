@@ -328,7 +328,7 @@ def get_reveal_period(state: BeaconState, validator_index: ValidatorIndex, epoch
 ```python
 def replace_empty_or_append(list: MutableSequence[Any], new_element: Any) -> int:
     for i in range(len(list)):
-        if is_empty(list[i]):
+        if is_zero(list[i]):
             list[i] = new_element
             return i
     list.append(new_element)

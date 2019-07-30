@@ -49,7 +49,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
     serialize,
-    is_empty,
+    is_zero,
 )
 from eth2spec.utils.ssz.ssz_typing import (
     bit, boolean, Container, List, Vector, Bytes, uint64,
