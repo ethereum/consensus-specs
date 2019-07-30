@@ -4,21 +4,23 @@
 
 <!-- TOC -->
 
-- [Classes](#classes)
-      - [ShardReceiptProof](#shardreceiptproof)
-- [Helpers](#helpers)
-      - [pack_compact_validator](#pack_compact_validator)
-      - [unpack_compact_validator](#unpack_compact_validator)
-      - [committee_to_compact_committee](#committee_to_compact_committee)
-      - [get_previous_power_of_2](#get_previous_power_of_2)
-      - [verify_merkle_proof](#verify_merkle_proof)
-      - [concat_generalized_indices](#concat_generalized_indices)
-      - [compute_historical_state_generalized_index](#compute_historical_state_generalized_index)
-      - [get_generalized_index_of_crosslink_header](#get_generalized_index_of_crosslink_header)
-      - [process_shard_receipt](#process_shard_receipt)
-- [Changes](#changes)
-      - [Persistent committees](#persistent-committees)
-      - [Shard receipt processing](#shard-receipt-processing)
+- [Phase 1 miscellaneous beacon chain changes](#phase-1-miscellaneous-beacon-chain-changes)
+    - [Table of contents](#table-of-contents)
+        - [Classes](#classes)
+        - [ShardReceiptProof](#shardreceiptproof)
+    - [Helpers](#helpers)
+        - [pack_compact_validator](#pack_compact_validator)
+        - [unpack_compact_validator](#unpack_compact_validator)
+        - [committee_to_compact_committee](#committee_to_compact_committee)
+        - [get_previous_power_of_2](#get_previous_power_of_2)
+        - [verify_merkle_proof](#verify_merkle_proof)
+        - [concat_generalized_indices](#concat_generalized_indices)
+        - [compute_historical_state_generalized_index](#compute_historical_state_generalized_index)
+        - [get_generalized_index_of_crosslink_header](#get_generalized_index_of_crosslink_header)
+        - [process_shard_receipt](#process_shard_receipt)
+    - [Changes](#changes)
+        - [Persistent committees](#persistent-committees)
+        - [Shard receipt processing](#shard-receipt-processing)
 
 <!-- /TOC -->
 
