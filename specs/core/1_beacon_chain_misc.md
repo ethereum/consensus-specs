@@ -6,7 +6,7 @@
 
 - [Phase 1 miscellaneous beacon chain changes](#phase-1-miscellaneous-beacon-chain-changes)
     - [Table of contents](#table-of-contents)
-        - [Classes](#classes)
+    - [Classes](#classes)
         - [ShardReceiptProof](#shardreceiptproof)
     - [Helpers](#helpers)
         - [pack_compact_validator](#pack_compact_validator)
