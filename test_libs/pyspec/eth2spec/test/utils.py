@@ -46,10 +46,10 @@ def vector_test(description: str = None):
                         yield key, 'ssz', value
                     elif isinstance(value, list) and all([isinstance(el, (SSZValue, bytes)) for el in value]):
                         for i, el in enumerate(value):
-                            if isinstance(value, SSZValue):
+                            if isinstance(el, SSZValue):
                                 yield f'{key}_{i}', 'data', encode(el)
                                 yield f'{key}_{i}', 'ssz', serialize(el)
-                            elif isinstance(value, bytes):
+                            elif isinstance(el, bytes):
                                 yield f'{key}_{i}', 'data', encode(el)
                                 yield f'{key}_{i}', 'ssz', el
                         yield f'{key}_count', 'meta', len(value)
