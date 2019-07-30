@@ -24,11 +24,17 @@ Options:
     Test providers loading other configs will be ignored. If none are specified, no config will be ignored.
 ```
 
-`gen_from_tests`: A util to derive tests from a tests source file.
+## `gen_from_tests`
+
+This is an util to derive tests from a tests source file.
 
 This requires the tests to yield test-case-part outputs. These outputs are then written to the test case directory.
 Yielding data is illegal in normal pytests, so it is only done when in "generator mode".
 This functionality can be attached to any function by using the `vector_test()` decorator found in `ethspec/tests/utils.py`.
+
+## Test-case parts
+
+Test cases consist of parts, which are yielded to the base generator one by one.
 
 The yielding pattern is:
 
