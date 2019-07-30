@@ -7,12 +7,26 @@ Hence, the format is shared between each test-handler. (See test condition docum
 
 ## Test case format
 
+### `meta.yaml`
+
 ```yaml
-description: string    -- description of test case, purely for debugging purposes
+description: string    -- Optional description of test case, purely for debugging purposes.
+                          Tests should use the directory name of the test case as identifier, not the description.
 bls_setting: int       -- see general test-format spec.
-pre: BeaconState       -- state before running the sub-transition
-post: BeaconState      -- state after applying the epoch sub-transition.
 ```
+
+### `pre.yaml`
+
+A YAML-encoded `BeaconState`, the state before running the epoch sub-transition.
+
+A `pre.ssz` is also available as substitute.
+
+
+### `post.yaml`
+
+A YAML-encoded `BeaconState`, the state after applying the epoch sub-transition.
+
+A `post.ssz` is also available as substitute.
 
 ## Condition
 

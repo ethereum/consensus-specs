@@ -4,14 +4,36 @@ Tests the initialization of a genesis state based on Eth1 data.
 
 ## Test case format
 
-```yaml
-description: string            -- description of test case, purely for debugging purposes
-bls_setting: int               -- see general test-format spec.
-eth1_block_hash: Bytes32       -- the root of the Eth-1 block, hex encoded, with prefix 0x
-eth1_timestamp: int            -- the timestamp of the block, in seconds.
-deposits: [Deposit]            -- list of deposits to build the genesis state with
-state: BeaconState             -- the expected genesis state.
+### `eth1_block_hash.yaml`
+
+A `Bytes32` hex encoded, with prefix 0x. The root of the Eth-1 block.
+
+A `eth1_block_hash.ssz` is available as substitute.
+
+### `eth1_timestamp.yaml`
+
+An integer. The timestamp of the block, in seconds.
+
+### `meta.yaml`
+
+A yaml file to help read the deposit count:
+
 ```
+deposits_count: int    -- Amount of deposits.
+```
+
+## `deposits_<index>.yaml`
+
+A series of files, with `<index>` ranging `[0, deposit_count)`.
+Each deposit is also available as `deposits_<index>.ssz`
+
+###  `state.yaml`
+
+The expected genesis state.
+
+Also available as `state.ssz`.
+
+## Processing
 
 To process this test, build a genesis state with the provided `eth1_block_hash`, `eth1_timestamp` and `deposits`:
 `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`,
