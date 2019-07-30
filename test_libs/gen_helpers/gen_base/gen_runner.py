@@ -96,6 +96,9 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
     print(f"Reading configs from {args.configs_path}")
 
     configs = args.config_list
+    if configs is None:
+        configs = []
+
     if len(configs) != 0:
         print(f"Filtering test-generator runs to only include configs: {', '.join(configs)}")
 
