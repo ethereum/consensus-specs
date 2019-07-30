@@ -13,6 +13,17 @@
 
 <!-- /TOC -->
 
+## Classes
+
+#### `ShardReceiptProof`
+
+```python
+class ShardReceiptProof(Container):
+      shard: Shard
+      proof: List[Hash, PLACEHOLDER]
+      receipt: List[ShardReceiptDelta, PLACEHOLDER]
+```
+
 ## Helpers
 
 #### `pack_compact_validator`
@@ -27,7 +38,7 @@ def pack_compact_validator(index: uint64, slashed: bool, balance_in_increments: 
     return (index << 16) + (slashed << 15) + balance_in_increments
 ```
 
-### `unpack_compact_validator`
+#### `unpack_compact_validator`
 
 ```python
 def unpack_compact_validator(compact_validator: uint64) -> Tuple[uint64, bool, uint64]:
@@ -92,9 +103,9 @@ def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
 #### `process_shard_receipt`
 
 ```python
-def process_shard_receipt(state: BeaconState, shard: Shard, proof: List[Hash, PLACEHOLDER], receipt: List[ShardReceiptDelta, PLACEHOLDER]):
-    receipt_slot = state.next_shard_receipt_period[shard] * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD
-    first_slot_in_last_crosslink = state.current_crosslinks[shard].start_epoch * SLOTS_PER_EPOCH
+def process_shard_receipt(state: BeaconState, receipt_proof: ShardReceiptProof):
+    receipt_slot = state.next_shard_receipt_period[receipt_proof.shard] * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD
+    first_slot_in_last_crosslink = state.current_crosslinks[receipt_proof.shard].start_epoch * SLOTS_PER_EPOCH
     gindex = concat_generalized_indices(
         get_generalized_index_of_crosslink_header(0),
         get_generalized_index(ShardBlockHeader, 'state_root')
@@ -102,11 +113,16 @@ def process_shard_receipt(state: BeaconState, shard: Shard, proof: List[Hash, PL
         get_generalized_index(ShardState, 'receipt_root')
     )
     assert verify_merkle_proof(
-        leaf=hash_tree_root(receipt),
-        proof=proof,
+        leaf=hash_tree_root(receipt_proof.receipt),
+        proof=receipt_proof.proof,
         index=gindex,
         root=state.current_crosslinks[shard].data_root
     )
+    for delta in receipt_proof.receipt:
+        increase_balance(state, delta.index, state.validators[delta.index].effective_balance * delta.reward_coefficient // REWARD_COEFFICIENT_BASE)
+        decrease_balance(state, delta.index, delta.block_fee)
+    state.next_shard_receipt_period[receipt_proof.shard] += 1
+    increase_balance(state, get_beacon_proposer_index(state), MICRO_REWARD)
 ```
 
 ## Changes
@@ -133,3 +149,11 @@ def update_persistent_committee(state: BeaconState):
         ])
         state.next_persistent_committee_root = hash_tree_root(committees)
 ```
+
+### Shard receipt processing
+
+Add to the beacon block body the following object:
+
+* `shard_receipts: List[ShardReceipt, MAX_SHARD_RECEIPTS]`
+
+Use `process_shard_receipt` to process each receipt.
