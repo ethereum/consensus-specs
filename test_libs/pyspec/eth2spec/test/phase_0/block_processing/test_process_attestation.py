@@ -373,6 +373,20 @@ def test_inconsistent_bits(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
+@with_all_phases
+@spec_state_test
+def test_extra_aggregation_bits(spec, state):
+    attestation = get_valid_attestation(spec, state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    for i in range(len(attestation.aggregation_bits), spec.MAX_VALIDATORS_PER_COMMITTEE):
+        attestation.aggregation_bits.append(True)
+
+    sign_attestation(spec, state, attestation)
+
+    yield from run_attestation_processing(spec, state, attestation)
+
+
 @with_phases(['phase0'])
 @spec_state_test
 def test_non_empty_custody_bits(spec, state):
