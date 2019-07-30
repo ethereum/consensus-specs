@@ -35,26 +35,26 @@ commands:
     description: "Restore the cache with pyspec keys"
     steps:
       - restore_cached_venv:
-          venv_name: v2-pyspec
+          venv_name: v3-pyspec-bump2
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}
   save_pyspec_cached_venv:
     description: Save a venv into a cache with pyspec keys"
     steps:
       - save_cached_venv:
-          venv_name: v2-pyspec
+          venv_name: v3-pyspec-bump2
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "test_libs/pyspec/requirements-testing.txt" }}
           venv_path: ./test_libs/pyspec/venv
   restore_deposit_contract_cached_venv:
     description: "Restore the cache with deposit_contract keys"
     steps:
       - restore_cached_venv:
-          venv_name: v4-deposit-contract
+          venv_name: v6-deposit-contract
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
   save_deposit_contract_cached_venv:
     description: Save a venv into a cache with deposit_contract keys"
     steps:
       - save_cached_venv:
-          venv_name: v4-deposit-contract
+          venv_name: v6-deposit-contract
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
           venv_path: ./deposit_contract/venv
 jobs:

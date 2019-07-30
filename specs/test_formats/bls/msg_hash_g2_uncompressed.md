@@ -1,13 +1,13 @@
 # Test format: BLS hash-uncompressed
 
-A BLS uncompressed-hash to G2. 
+A BLS uncompressed-hash to G2.
 
 ## Test case format
 
 ```yaml
-input: 
-  message: bytes32,
-  domain: bytes -- any number
+input:
+  message: bytes32
+  domain: bytes8   -- the BLS domain
 output: List[List[bytes48]] -- 3 lists, each a length of two
 ```
 

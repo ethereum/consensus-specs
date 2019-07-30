@@ -1,10 +1,6 @@
-from copy import deepcopy
-from typing import List
-
 from eth2spec.test.context import spec_state_test, never_bls, with_all_phases
-from eth2spec.test.helpers.state import next_epoch
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, apply_empty_block
-from eth2spec.test.helpers.attestations import get_valid_attestation
+from eth2spec.test.helpers.state import next_epoch, next_epoch_with_attestations
+from eth2spec.test.helpers.block import apply_empty_block
 
 
 def check_finality(spec,
@@ -14,60 +10,34 @@ def check_finality(spec,
                    previous_justified_changed,
                    finalized_changed):
     if current_justified_changed:
-        assert state.current_justified_epoch > prev_state.current_justified_epoch
-        assert state.current_justified_root != prev_state.current_justified_root
+        assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
+        assert state.current_justified_checkpoint.root != prev_state.current_justified_checkpoint.root
     else:
-        assert state.current_justified_epoch == prev_state.current_justified_epoch
-        assert state.current_justified_root == prev_state.current_justified_root
+        assert state.current_justified_checkpoint == prev_state.current_justified_checkpoint
 
     if previous_justified_changed:
-        assert state.previous_justified_epoch > prev_state.previous_justified_epoch
-        assert state.previous_justified_root != prev_state.previous_justified_root
+        assert state.previous_justified_checkpoint.epoch > prev_state.previous_justified_checkpoint.epoch
+        assert state.previous_justified_checkpoint.root != prev_state.previous_justified_checkpoint.root
     else:
-        assert state.previous_justified_epoch == prev_state.previous_justified_epoch
-        assert state.previous_justified_root == prev_state.previous_justified_root
+        assert state.previous_justified_checkpoint == prev_state.previous_justified_checkpoint
 
     if finalized_changed:
-        assert state.finalized_epoch > prev_state.finalized_epoch
-        assert state.finalized_root != prev_state.finalized_root
+        assert state.finalized_checkpoint.epoch > prev_state.finalized_checkpoint.epoch
+        assert state.finalized_checkpoint.root != prev_state.finalized_checkpoint.root
     else:
-        assert state.finalized_epoch == prev_state.finalized_epoch
-        assert state.finalized_root == prev_state.finalized_root
-
-
-def next_epoch_with_attestations(spec,
-                                 state,
-                                 fill_cur_epoch,
-                                 fill_prev_epoch):
-    post_state = deepcopy(state)
-    blocks = []
-    for _ in range(spec.SLOTS_PER_EPOCH):
-        block = build_empty_block_for_next_slot(spec, post_state)
-        if fill_cur_epoch:
-            slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
-            if slot_to_attest >= spec.get_epoch_start_slot(spec.get_current_epoch(post_state)):
-                cur_attestation = get_valid_attestation(spec, post_state, slot_to_attest)
-                block.body.attestations.append(cur_attestation)
-
-        if fill_prev_epoch:
-            slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
-            prev_attestation = get_valid_attestation(spec, post_state, slot_to_attest)
-            block.body.attestations.append(prev_attestation)
-
-        spec.state_transition(post_state, block)
-        blocks.append(block)
-
-    return state, blocks, post_state
+        assert state.finalized_checkpoint == prev_state.finalized_checkpoint
 
 
 @with_all_phases
 @never_bls
 @spec_state_test
-def test_finality_rule_4(spec, state):
+def test_finality_no_updates_at_genesis(spec, state):
+    assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
+
     yield 'pre', state
 
     blocks = []
-    for epoch in range(4):
+    for epoch in range(2):
         prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
         blocks += new_blocks
 
@@ -77,15 +47,36 @@ def test_finality_rule_4(spec, state):
         # justification/finalization skipped at GENESIS_EPOCH + 1
         elif epoch == 1:
             check_finality(spec, state, prev_state, False, False, False)
-        elif epoch == 2:
+
+    yield 'blocks', blocks
+    yield 'post', state
+
+
+@with_all_phases
+@never_bls
+@spec_state_test
+def test_finality_rule_4(spec, state):
+    # get past first two epochs that finality does not run on
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
+    next_epoch(spec, state)
+    apply_empty_block(spec, state)
+
+    yield 'pre', state
+
+    blocks = []
+    for epoch in range(2):
+        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+        blocks += new_blocks
+
+        if epoch == 0:
             check_finality(spec, state, prev_state, True, False, False)
-        elif epoch >= 3:
+        elif epoch == 1:
             # rule 4 of finality
             check_finality(spec, state, prev_state, True, True, True)
-            assert state.finalized_epoch == prev_state.current_justified_epoch
-            assert state.finalized_root == prev_state.current_justified_root
+            assert state.finalized_checkpoint == prev_state.current_justified_checkpoint
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
 
 
@@ -113,10 +104,9 @@ def test_finality_rule_1(spec, state):
         elif epoch == 2:
             # finalized by rule 1
             check_finality(spec, state, prev_state, True, True, True)
-            assert state.finalized_epoch == prev_state.previous_justified_epoch
-            assert state.finalized_root == prev_state.previous_justified_root
+            assert state.finalized_checkpoint == prev_state.previous_justified_checkpoint
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
 
 
@@ -144,12 +134,11 @@ def test_finality_rule_2(spec, state):
             prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, False, True)
             # finalized by rule 2
             check_finality(spec, state, prev_state, True, False, True)
-            assert state.finalized_epoch == prev_state.previous_justified_epoch
-            assert state.finalized_root == prev_state.previous_justified_root
+            assert state.finalized_checkpoint == prev_state.previous_justified_checkpoint
 
         blocks += new_blocks
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state
 
 
@@ -196,8 +185,7 @@ def test_finality_rule_3(spec, state):
     blocks += new_blocks
     # rule 3
     check_finality(spec, state, prev_state, True, True, True)
-    assert state.finalized_epoch == prev_state.current_justified_epoch
-    assert state.finalized_root == prev_state.current_justified_root
+    assert state.finalized_checkpoint == prev_state.current_justified_checkpoint
 
-    yield 'blocks', blocks, List[spec.BeaconBlock]
+    yield 'blocks', blocks
     yield 'post', state

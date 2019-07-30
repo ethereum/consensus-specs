@@ -1,11 +1,12 @@
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_typing import List
 
 
 def build_mock_validator(spec, i: int, balance: int):
     pubkey = pubkeys[i]
     # insecurely use pubkey as withdrawal key as well
-    withdrawal_credentials = spec.int_to_bytes(spec.BLS_WITHDRAWAL_PREFIX, length=1) + spec.hash(pubkey)[1:]
+    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
     return spec.Validator(
         pubkey=pubkeys[i],
         withdrawal_credentials=withdrawal_credentials,
@@ -22,26 +23,32 @@ def create_genesis_state(spec, num_validators):
 
     state = spec.BeaconState(
         genesis_time=0,
-        deposit_index=num_validators,
-        latest_eth1_data=spec.Eth1Data(
+        eth1_deposit_index=num_validators,
+        eth1_data=spec.Eth1Data(
             deposit_root=deposit_root,
             deposit_count=num_validators,
-            block_hash=spec.ZERO_HASH,
-        ))
+            block_hash=spec.Hash(),
+        ),
+        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+    )
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
     state.balances = [spec.MAX_EFFECTIVE_BALANCE] * num_validators
-    state.validator_registry = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
+    state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
 
     # Process genesis activations
-    for validator in state.validator_registry:
+    for validator in state.validators:
         if validator.effective_balance >= spec.MAX_EFFECTIVE_BALANCE:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 
-    genesis_active_index_root = hash_tree_root(spec.get_active_validator_indices(state, spec.GENESIS_EPOCH))
-    for index in range(spec.LATEST_ACTIVE_INDEX_ROOTS_LENGTH):
-        state.latest_active_index_roots[index] = genesis_active_index_root
+    genesis_active_index_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
+        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
+    genesis_compact_committees_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
+        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
+    for index in range(spec.EPOCHS_PER_HISTORICAL_VECTOR):
+        state.active_index_roots[index] = genesis_active_index_root
+        state.compact_committees_roots[index] = genesis_compact_committees_root
 
     return state

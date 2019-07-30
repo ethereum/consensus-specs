@@ -1,36 +1,32 @@
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root, serialize
 from eth2spec.utils.ssz.ssz_typing import (
-    is_uint_type, is_bool_type, is_list_type, is_vector_type, is_container_type,
-    read_elem_type,
-    uint
+    uint, boolean,
+    Bitlist, Bitvector, Container
 )
 
 
-def encode(value, typ, include_hash_tree_roots=False):
-    if is_uint_type(typ):
-        if hasattr(typ, '__supertype__'):
-            typ = typ.__supertype__
+def encode(value, include_hash_tree_roots=False):
+    if isinstance(value, uint):
         # Larger uints are boxed and the class declares their byte length
-        if issubclass(typ, uint) and typ.byte_len > 8:
-            return str(value)
-        return value
-    elif is_bool_type(typ):
-        assert value in (True, False)
-        return value
-    elif is_list_type(typ) or is_vector_type(typ):
-        elem_typ = read_elem_type(typ)
-        return [encode(element, elem_typ, include_hash_tree_roots) for element in value]
-    elif isinstance(typ, type) and issubclass(typ, bytes):  # both bytes and BytesN
+        if value.type().byte_len > 8:
+            return str(int(value))
+        return int(value)
+    elif isinstance(value, boolean):
+        return value == 1
+    elif isinstance(value, (Bitlist, Bitvector)):
+        return '0x' + serialize(value).hex()
+    elif isinstance(value, list):  # normal python lists, ssz-List, Vector
+        return [encode(element, include_hash_tree_roots) for element in value]
+    elif isinstance(value, bytes):  # both bytes and BytesN
         return '0x' + value.hex()
-    elif is_container_type(typ):
+    elif isinstance(value, Container):
         ret = {}
-        for field, subtype in typ.get_fields():
-            field_value = getattr(value, field)
-            ret[field] = encode(field_value, subtype, include_hash_tree_roots)
+        for field_value, field_name in zip(value, value.get_fields().keys()):
+            ret[field_name] = encode(field_value, include_hash_tree_roots)
             if include_hash_tree_roots:
-                ret[field + "_hash_tree_root"] = '0x' + hash_tree_root(field_value, subtype).hex()
+                ret[field_name + "_hash_tree_root"] = '0x' + hash_tree_root(field_value).hex()
         if include_hash_tree_roots:
-            ret["hash_tree_root"] = '0x' + hash_tree_root(value, typ).hex()
+            ret["hash_tree_root"] = '0x' + hash_tree_root(value).hex()
         return ret
     else:
-        raise Exception(f"Type not recognized: value={value}, typ={typ}")
+        raise Exception(f"Type not recognized: value={value}, typ={value.type()}")

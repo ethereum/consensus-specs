@@ -28,7 +28,7 @@ These tests are sanity tests, to verify if the spec itself is consistent.
 
 #### Automated
 
-Run `make test` from the root of the specs repository.
+Run `make test` from the root of the specs repository (after running `make install_test` if have not before).
 
 #### Manual
 
@@ -49,6 +49,10 @@ Run the tests:
 pytest --config=minimal eth2spec
 ```
 Note the package-name, this is to locate the tests.
+
+### How to view code coverage report
+
+Run `make open_cov` from the root of the specs repository after running `make test` to open the html code coverage report.
 
 
 ## Contributing

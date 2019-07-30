@@ -1,136 +1,183 @@
-from typing import List, Iterable, TypeVar, Type, NewType
-from typing import Union
-from typing_inspect import get_origin
-
-# SSZ integers
-# -----------------------------
+from typing import Dict, Iterator
+import copy
+from types import GeneratorType
 
 
-class uint(int):
+class DefaultingTypeMeta(type):
+    def default(cls):
+        raise Exception("Not implemented")
+
+
+class SSZType(DefaultingTypeMeta):
+
+    def is_fixed_size(cls):
+        raise Exception("Not implemented")
+
+
+class SSZValue(object, metaclass=SSZType):
+
+    def type(self):
+        return self.__class__
+
+
+class BasicType(SSZType):
     byte_len = 0
 
-    def __new__(cls, value, *args, **kwargs):
+    def is_fixed_size(cls):
+        return True
+
+
+class BasicValue(int, SSZValue, metaclass=BasicType):
+    pass
+
+
+class boolean(BasicValue):  # can't subclass bool.
+    byte_len = 1
+
+    def __new__(cls, value: int):  # int value, but can be any subclass of int (bool, Bit, Bool, etc...)
+        if value < 0 or value > 1:
+            raise ValueError(f"value {value} out of bounds for bit")
+        return super().__new__(cls, value)
+
+    @classmethod
+    def default(cls):
+        return cls(0)
+
+    def __bool__(self):
+        return self > 0
+
+
+# Alias for Bool
+class bit(boolean):
+    pass
+
+
+class uint(BasicValue, metaclass=BasicType):
+
+    def __new__(cls, value: int):
         if value < 0:
             raise ValueError("unsigned types must not be negative")
+        if cls.byte_len and value.bit_length() > (cls.byte_len << 3):
+            raise ValueError("value out of bounds for uint{}".format(cls.byte_len * 8))
         return super().__new__(cls, value)
+
+    def __add__(self, other):
+        return self.__class__(super().__add__(coerce_type_maybe(other, self.__class__, strict=True)))
+
+    def __sub__(self, other):
+        return self.__class__(super().__sub__(coerce_type_maybe(other, self.__class__, strict=True)))
+
+    @classmethod
+    def default(cls):
+        return cls(0)
 
 
 class uint8(uint):
     byte_len = 1
 
-    def __new__(cls, value, *args, **kwargs):
-        if value.bit_length() > 8:
-            raise ValueError("value out of bounds for uint8")
-        return super().__new__(cls, value)
-
 
 # Alias for uint8
-byte = NewType('byte', uint8)
+class byte(uint8):
+    pass
 
 
 class uint16(uint):
     byte_len = 2
 
-    def __new__(cls, value, *args, **kwargs):
-        if value.bit_length() > 16:
-            raise ValueError("value out of bounds for uint16")
-        return super().__new__(cls, value)
-
 
 class uint32(uint):
     byte_len = 4
 
-    def __new__(cls, value, *args, **kwargs):
-        if value.bit_length() > 32:
-            raise ValueError("value out of bounds for uint16")
-        return super().__new__(cls, value)
 
-
-# We simply default to uint64. But do give it a name, for readability
-uint64 = NewType('uint64', int)
+class uint64(uint):
+    byte_len = 8
 
 
 class uint128(uint):
     byte_len = 16
 
-    def __new__(cls, value, *args, **kwargs):
-        if value.bit_length() > 128:
-            raise ValueError("value out of bounds for uint128")
-        return super().__new__(cls, value)
-
 
 class uint256(uint):
     byte_len = 32
 
-    def __new__(cls, value, *args, **kwargs):
-        if value.bit_length() > 256:
-            raise ValueError("value out of bounds for uint256")
-        return super().__new__(cls, value)
+
+def coerce_type_maybe(v, typ: SSZType, strict: bool = False):
+    v_typ = type(v)
+    # shortcut if it's already the type we are looking for
+    if v_typ == typ:
+        return v
+    elif isinstance(v, int):
+        if isinstance(v, uint):  # do not coerce from one uintX to another uintY
+            if issubclass(typ, uint) and v.type().byte_len == typ.byte_len:
+                return typ(v)
+            # revert to default behavior below if-else. (ValueError/bare)
+        else:
+            return typ(v)
+    elif isinstance(v, (list, tuple)):
+        return typ(*v)
+    elif isinstance(v, (bytes, BytesN, Bytes)):
+        return typ(v)
+    elif isinstance(v, GeneratorType):
+        return typ(v)
+
+    # just return as-is, Value-checkers will take care of it not being coerced, if we are not strict.
+    if strict and not isinstance(v, typ):
+        raise ValueError("Type coercion of {} to {} failed".format(v, typ))
+    return v
 
 
-def is_uint_type(typ):
-    # All integers are uint in the scope of the spec here.
-    # Since we default to uint64. Bounds can be checked elsewhere.
-    # However, some are wrapped in a NewType
-    if hasattr(typ, '__supertype__'):
-        # get the type that the NewType is wrapping
-        typ = typ.__supertype__
+class Series(SSZValue):
 
-    return isinstance(typ, type) and issubclass(typ, int) and not issubclass(typ, bool)
+    def __iter__(self) -> Iterator[SSZValue]:
+        raise Exception("Not implemented")
 
-
-def uint_byte_size(typ):
-    if hasattr(typ, '__supertype__'):
-        typ = typ.__supertype__
-
-    if isinstance(typ, type):
-        if issubclass(typ, uint):
-            return typ.byte_len
-        elif issubclass(typ, int):
-            # Default to uint64
-            return 8
-    else:
-        raise TypeError("Type %s is not an uint (or int-default uint64) type" % typ)
-
-
-# SSZ Container base class
-# -----------------------------
 
 # Note: importing ssz functionality locally, to avoid import loop
 
-class Container(object):
+class Container(Series, metaclass=SSZType):
 
     def __init__(self, **kwargs):
         cls = self.__class__
-        for f, t in cls.get_fields():
+        for f, t in cls.get_fields().items():
             if f not in kwargs:
-                setattr(self, f, get_zero_value(t))
+                setattr(self, f, t.default())
             else:
-                setattr(self, f, kwargs[f])
+                value = coerce_type_maybe(kwargs[f], t)
+                if not isinstance(value, t):
+                    raise ValueError(f"Bad input for class {self.__class__}:"
+                                     f" field: {f} type: {t} value: {value} value type: {type(value)}")
+                setattr(self, f, value)
 
     def serialize(self):
         from .ssz_impl import serialize
-        return serialize(self, self.__class__)
+        return serialize(self)
 
     def hash_tree_root(self):
         from .ssz_impl import hash_tree_root
-        return hash_tree_root(self, self.__class__)
+        return hash_tree_root(self)
 
     def signing_root(self):
         from .ssz_impl import signing_root
-        return signing_root(self, self.__class__)
+        return signing_root(self)
 
-    def get_field_values(self):
-        cls = self.__class__
-        return [getattr(self, field) for field in cls.get_field_names()]
+    def __setattr__(self, name, value):
+        if name not in self.__class__.__annotations__:
+            raise AttributeError("Cannot change non-existing SSZ-container attribute")
+        field_typ = self.__class__.__annotations__[name]
+        value = coerce_type_maybe(value, field_typ)
+        if not isinstance(value, field_typ):
+            raise ValueError(f"Cannot set field of {self.__class__}:"
+                             f" field: {name} type: {field_typ} value: {value} value type: {type(value)}")
+        super().__setattr__(name, value)
 
     def __repr__(self):
-        return repr({field: getattr(self, field) for field in self.get_field_names()})
+        return repr({field: (getattr(self, field) if hasattr(self, field) else 'unset')
+                     for field in self.get_fields().keys()})
 
     def __str__(self):
-        output = []
-        for field in self.get_field_names():
-            output.append(f'{field}: {getattr(self, field)}')
+        output = [f'{self.__class__.__name__}']
+        for field in self.get_fields().keys():
+            output.append(f'  {field}: {getattr(self, field)}')
         return "\n".join(output)
 
     def __eq__(self, other):
@@ -139,385 +186,324 @@ class Container(object):
     def __hash__(self):
         return hash(self.hash_tree_root())
 
+    def copy(self):
+        return copy.deepcopy(self)
+
     @classmethod
-    def get_fields_dict(cls):
+    def get_fields(cls) -> Dict[str, SSZType]:
+        if not hasattr(cls, '__annotations__'):  # no container fields
+            return {}
         return dict(cls.__annotations__)
 
     @classmethod
-    def get_fields(cls):
-        return list(dict(cls.__annotations__).items())
-
-    def get_typed_values(self):
-        return list(zip(self.get_field_values(), self.get_field_types()))
+    def default(cls):
+        return cls(**{f: t.default() for f, t in cls.get_fields().items()})
 
     @classmethod
-    def get_field_names(cls):
-        return list(cls.__annotations__.keys())
+    def is_fixed_size(cls):
+        return all(t.is_fixed_size() for t in cls.get_fields().values())
 
-    @classmethod
-    def get_field_types(cls):
-        # values of annotations are the types corresponding to the fields, not instance values.
-        return list(cls.__annotations__.values())
+    def __iter__(self) -> Iterator[SSZValue]:
+        return iter([getattr(self, field) for field in self.get_fields().keys()])
 
 
-# SSZ vector
-# -----------------------------
+class ParamsBase(Series):
+    _has_params = False
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._has_params:
+            raise Exception("cannot init bare type without params")
+        return super().__new__(cls, **kwargs)
 
 
-def _is_vector_instance_of(a, b):
-    # Other must not be a BytesN
-    if issubclass(b, bytes):
-        return False
-    elif not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
-        # Vector (b) is not an instance of Vector[X, Y] (a)
-        return False
-    elif not hasattr(a, 'elem_type') or not hasattr(a, 'length'):
-        # Vector[X, Y] (b) is an instance of Vector (a)
-        return True
-    else:
-        # Vector[X, Y] (a) is an instance of Vector[X, Y] (b)
-        return a.elem_type == b.elem_type and a.length == b.length
+class ParamsMeta(SSZType):
 
-
-def _is_equal_vector_type(a, b):
-    # Other must not be a BytesN
-    if issubclass(b, bytes):
-        return False
-    elif not hasattr(a, 'elem_type') or not hasattr(a, 'length'):
-        if not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
-            # Vector == Vector
-            return True
-        else:
-            # Vector != Vector[X, Y]
-            return False
-    elif not hasattr(b, 'elem_type') or not hasattr(b, 'length'):
-        # Vector[X, Y] != Vector
-        return False
-    else:
-        # Vector[X, Y] == Vector[X, Y]
-        return a.elem_type == b.elem_type and a.length == b.length
-
-
-class VectorMeta(type):
     def __new__(cls, class_name, parents, attrs):
         out = type.__new__(cls, class_name, parents, attrs)
-        if 'elem_type' in attrs and 'length' in attrs:
-            setattr(out, 'elem_type', attrs['elem_type'])
-            setattr(out, 'length', attrs['length'])
+        if hasattr(out, "_has_params") and getattr(out, "_has_params"):
+            for k, v in attrs.items():
+                setattr(out, k, v)
         return out
 
     def __getitem__(self, params):
-        if not isinstance(params, tuple) or len(params) != 2:
-            raise Exception("Vector must be instantiated with two args: elem type and length")
-        o = self.__class__(self.__name__, (Vector,), {'elem_type': params[0], 'length': params[1]})
-        o._name = 'Vector'
+        o = self.__class__(self.__name__, (self,), self.attr_from_params(params))
         return o
 
-    def __subclasscheck__(self, sub):
-        return _is_vector_instance_of(self, sub)
-
-    def __instancecheck__(self, other):
-        return _is_vector_instance_of(self, other.__class__)
-
-    def __eq__(self, other):
-        return _is_equal_vector_type(self, other)
-
-    def __ne__(self, other):
-        return not _is_equal_vector_type(self, other)
-
-    def __hash__(self):
-        return hash(self.__class__)
-
-
-class Vector(metaclass=VectorMeta):
-
-    def __init__(self, *args: Iterable):
-        cls = self.__class__
-        if not hasattr(cls, 'elem_type'):
-            raise TypeError("Type Vector without elem_type data cannot be instantiated")
-        elif not hasattr(cls, 'length'):
-            raise TypeError("Type Vector without length data cannot be instantiated")
-
-        if len(args) != cls.length:
-            if len(args) == 0:
-                args = [get_zero_value(cls.elem_type) for _ in range(cls.length)]
-            else:
-                raise TypeError("Typed vector with length %d cannot hold %d items" % (cls.length, len(args)))
-
-        self.items = list(args)
-
-        # cannot check non-type objects, or parametrized types
-        if isinstance(cls.elem_type, type) and not hasattr(cls.elem_type, '__args__'):
-            for i, item in enumerate(self.items):
-                if not issubclass(type(item), cls.elem_type):
-                    raise TypeError("Typed vector cannot hold differently typed value"
-                                    " at index %d. Got type: %s, expected type: %s" % (i, type(item), cls.elem_type))
-
-    def serialize(self):
-        from .ssz_impl import serialize
-        return serialize(self, self.__class__)
-
-    def hash_tree_root(self):
-        from .ssz_impl import hash_tree_root
-        return hash_tree_root(self, self.__class__)
+    def __str__(self):
+        return f"{self.__name__}~{self.__class__.__name__}"
 
     def __repr__(self):
-        return repr({'length': self.__class__.length, 'items': self.items})
+        return f"{self.__name__}~{self.__class__.__name__}"
 
-    def __getitem__(self, key):
-        return self.items[key]
-
-    def __setitem__(self, key, value):
-        self.items[key] = value
-
-    def __iter__(self):
-        return iter(self.items)
-
-    def __len__(self):
-        return len(self.items)
-
-    def __eq__(self, other):
-        return self.hash_tree_root() == other.hash_tree_root()
-
-
-# SSZ BytesN
-# -----------------------------
-
-
-def _is_bytes_n_instance_of(a, b):
-    # Other has to be a Bytes derivative class to be a BytesN
-    if not issubclass(b, bytes):
-        return False
-    elif not hasattr(b, 'length'):
-        # BytesN (b) is not an instance of BytesN[X] (a)
-        return False
-    elif not hasattr(a, 'length'):
-        # BytesN[X] (b) is an instance of BytesN (a)
-        return True
-    else:
-        # BytesN[X] (a) is an instance of BytesN[X] (b)
-        return a.length == b.length
-
-
-def _is_equal_bytes_n_type(a, b):
-    # Other has to be a Bytes derivative class to be a BytesN
-    if not issubclass(b, bytes):
-        return False
-    elif not hasattr(a, 'length'):
-        if not hasattr(b, 'length'):
-            # BytesN == BytesN
-            return True
-        else:
-            # BytesN != BytesN[X]
-            return False
-    elif not hasattr(b, 'length'):
-        # BytesN[X] != BytesN
-        return False
-    else:
-        # BytesN[X] == BytesN[X]
-        return a.length == b.length
-
-
-class BytesNMeta(type):
-    def __new__(cls, class_name, parents, attrs):
-        out = type.__new__(cls, class_name, parents, attrs)
-        if 'length' in attrs:
-            setattr(out, 'length', attrs['length'])
-        out._name = 'BytesN'
-        out.elem_type = byte
-        return out
-
-    def __getitem__(self, n):
-        return self.__class__(self.__name__, (BytesN,), {'length': n})
-
-    def __subclasscheck__(self, sub):
-        return _is_bytes_n_instance_of(self, sub)
-
-    def __instancecheck__(self, other):
-        return _is_bytes_n_instance_of(self, other.__class__)
-
-    def __eq__(self, other):
-        return _is_equal_bytes_n_type(self, other)
-
-    def __ne__(self, other):
-        return not _is_equal_bytes_n_type(self, other)
-
-    def __hash__(self):
-        return hash(self.__class__)
-
-
-def parse_bytes(val):
-    if val is None:
-        return None
-    elif isinstance(val, str):
-        # TODO: import from eth-utils instead, and do: hexstr_if_str(to_bytes, val)
-        return None
-    elif isinstance(val, bytes):
-        return val
-    elif isinstance(val, int):
-        return bytes([val])
-    else:
-        return None
-
-
-class BytesN(bytes, metaclass=BytesNMeta):
-    def __new__(cls, *args):
-        if not hasattr(cls, 'length'):
-            return
-        bytesval = None
-        if len(args) == 1:
-            val: Union[bytes, int, str] = args[0]
-            bytesval = parse_bytes(val)
-        elif len(args) > 1:
-            # TODO: each int is 1 byte, check size, create bytesval
-            bytesval = bytes(args)
-
-        if bytesval is None:
-            if cls.length == 0:
-                bytesval = b''
+    def attr_from_params(self, p):
+        # single key params are valid too. Wrap them in a tuple.
+        params = p if isinstance(p, tuple) else (p,)
+        res = {'_has_params': True}
+        i = 0
+        for (name, typ) in self.__annotations__.items():
+            if hasattr(self.__class__, name):
+                res[name] = getattr(self.__class__, name)
             else:
-                bytesval = b'\x00' * cls.length
-        if len(bytesval) != cls.length:
-            raise TypeError("BytesN[%d] cannot be initialized with value of %d bytes" % (cls.length, len(bytesval)))
-        return super().__new__(cls, bytesval)
+                if i >= len(params):
+                    i += 1
+                    continue
+                param = params[i]
+                if not isinstance(param, typ):
+                    raise TypeError(
+                        "cannot create parametrized class with param {} as {} of type {}".format(param, name, typ))
+                res[name] = param
+                i += 1
+        if len(params) != i:
+            raise TypeError("provided parameters {} mismatch required parameter count {}".format(params, i))
+        return res
 
-    def serialize(self):
-        from .ssz_impl import serialize
-        return serialize(self, self.__class__)
+    def __subclasscheck__(self, subclass):
+        # check regular class system if we can, solves a lot of the normal cases.
+        if super().__subclasscheck__(subclass):
+            return True
+        # if they are not normal subclasses, they are of the same class.
+        # then they should have the same name
+        if subclass.__name__ != self.__name__:
+            return False
+        # If they do have the same name, they should also have the same params.
+        for name, typ in self.__annotations__.items():
+            if hasattr(self, name) and hasattr(subclass, name) \
+                    and getattr(subclass, name) != getattr(self, name):
+                return False
+        return True
 
-    def hash_tree_root(self):
-        from .ssz_impl import hash_tree_root
-        return hash_tree_root(self, self.__class__)
+    def __instancecheck__(self, obj):
+        return self.__subclasscheck__(obj.__class__)
 
 
-# SSZ Defaults
-# -----------------------------
-def get_zero_value(typ):
-    if is_uint_type(typ):
-        return 0
-    elif is_list_type(typ):
-        return []
-    elif is_bool_type(typ):
+class ElementsType(ParamsMeta):
+    elem_type: SSZType
+    length: int
+
+
+class Elements(ParamsBase, metaclass=ElementsType):
+    pass
+
+
+class BaseList(list, Elements):
+
+    def __init__(self, *args):
+        items = self.extract_args(*args)
+
+        if not self.value_check(items):
+            raise ValueError(f"Bad input for class {self.__class__}: {items}")
+        super().__init__(items)
+
+    @classmethod
+    def value_check(cls, value):
+        return all(isinstance(v, cls.elem_type) for v in value) and len(value) <= cls.length
+
+    @classmethod
+    def extract_args(cls, *args):
+        x = list(args)
+        if len(x) == 1 and isinstance(x[0], (GeneratorType, list, tuple)):
+            x = list(x[0])
+        x = [coerce_type_maybe(v, cls.elem_type) for v in x]
+        return x
+
+    def __str__(self):
+        cls = self.__class__
+        return f"{cls.__name__}[{cls.elem_type.__name__}, {cls.length}]({', '.join(str(v) for v in self)})"
+
+    def __repr__(self):
+        cls = self.__class__
+        return f"{cls.__name__}[{cls.elem_type.__name__}, {cls.length}]({', '.join(str(v) for v in self)})"
+
+    def __getitem__(self, k) -> SSZValue:
+        if isinstance(k, int):  # check if we are just doing a lookup, and not slicing
+            if k < 0:
+                raise IndexError(f"cannot get item in type {self.__class__} at negative index {k}")
+            if k > len(self):
+                raise IndexError(f"cannot get item in type {self.__class__}"
+                                 f" at out of bounds index {k}")
+        return super().__getitem__(k)
+
+    def __setitem__(self, k, v):
+        if type(k) == slice:
+            if (k.start is not None and k.start < 0) or (k.stop is not None and k.stop > len(self)):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds slice {k} (to {v}, bound: {len(self)})")
+            super().__setitem__(k, [coerce_type_maybe(x, self.__class__.elem_type) for x in v])
+        else:
+            if k < 0:
+                raise IndexError(f"cannot set item in type {self.__class__} at negative index {k} (to {v})")
+            if k > len(self):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds index {k} (to {v}, bound: {len(self)})")
+            super().__setitem__(k, coerce_type_maybe(v, self.__class__.elem_type, strict=True))
+
+    def append(self, v):
+        super().append(coerce_type_maybe(v, self.__class__.elem_type, strict=True))
+
+    def __iter__(self) -> Iterator[SSZValue]:
+        return super().__iter__()
+
+    def last(self):
+        # be explict about getting the last item, for the non-python readers, and negative-index safety
+        return self[len(self) - 1]
+
+
+class BitElementsType(ElementsType):
+    elem_type: SSZType = boolean
+    length: int
+
+
+class Bits(BaseList, metaclass=BitElementsType):
+
+    def as_bytes(self):
+        as_bytearray = [0] * ((len(self) + 7) // 8)
+        for i in range(len(self)):
+            as_bytearray[i // 8] |= int(self[i]) << (i % 8)
+        return bytes(as_bytearray)
+
+
+class Bitlist(Bits):
+    @classmethod
+    def is_fixed_size(cls):
         return False
-    elif is_vector_type(typ):
-        return typ()
-    elif is_bytesn_type(typ):
-        return typ()
-    elif is_bytes_type(typ):
+
+    @classmethod
+    def default(cls):
+        return cls()
+
+
+class Bitvector(Bits):
+
+    @classmethod
+    def extract_args(cls, *args):
+        if len(args) == 0:
+            return cls.default()
+        else:
+            return super().extract_args(*args)
+
+    @classmethod
+    def value_check(cls, value):
+        # check length limit strictly
+        return len(value) == cls.length and super().value_check(value)
+
+    @classmethod
+    def is_fixed_size(cls):
+        return True
+
+    @classmethod
+    def default(cls):
+        return cls(0 for _ in range(cls.length))
+
+
+class List(BaseList):
+
+    @classmethod
+    def default(cls):
+        return cls()
+
+    @classmethod
+    def is_fixed_size(cls):
+        return False
+
+
+class Vector(BaseList):
+
+    @classmethod
+    def value_check(cls, value):
+        # check length limit strictly
+        return len(value) == cls.length and super().value_check(value)
+
+    @classmethod
+    def default(cls):
+        return cls(cls.elem_type.default() for _ in range(cls.length))
+
+    @classmethod
+    def is_fixed_size(cls):
+        return cls.elem_type.is_fixed_size()
+
+    def append(self, v):
+        # Deep-copy and other utils like to change the internals during work.
+        # Only complain if we had the right size.
+        if len(self) == self.__class__.length:
+            raise Exception("cannot modify vector length")
+        else:
+            super().append(v)
+
+    def pop(self, *args):
+        raise Exception("cannot modify vector length")
+
+
+class BytesType(ElementsType):
+    elem_type: SSZType = byte
+    length: int
+
+
+class BaseBytes(bytes, Elements, metaclass=BytesType):
+
+    def __new__(cls, *args) -> "BaseBytes":
+        extracted_val = cls.extract_args(*args)
+        if not cls.value_check(extracted_val):
+            raise ValueError(f"Bad input for class {cls}: {extracted_val}")
+        return super().__new__(cls, extracted_val)
+
+    @classmethod
+    def extract_args(cls, *args):
+        x = args
+        if len(x) == 1 and isinstance(x[0], (GeneratorType, bytes)):
+            x = x[0]
+        if isinstance(x, bytes):  # Includes BytesLike
+            return x
+        else:
+            return bytes(x)  # E.g. GeneratorType put into bytes.
+
+    @classmethod
+    def value_check(cls, value):
+        # check type and virtual length limit
+        return isinstance(value, bytes) and len(value) <= cls.length
+
+    def __str__(self):
+        cls = self.__class__
+        return f"{cls.__name__}[{cls.length}]: {self.hex()}"
+
+
+class Bytes(BaseBytes):
+
+    @classmethod
+    def default(cls):
         return b''
-    elif is_container_type(typ):
-        return typ(**{f: get_zero_value(t) for f, t in typ.get_fields()})
-    else:
-        raise Exception("Type not supported: {}".format(typ))
+
+    @classmethod
+    def is_fixed_size(cls):
+        return False
 
 
-# Type helpers
-# -----------------------------
+class BytesN(BaseBytes):
+
+    @classmethod
+    def extract_args(cls, *args):
+        if len(args) == 0:
+            return cls.default()
+        else:
+            return super().extract_args(*args)
+
+    @classmethod
+    def default(cls):
+        return b'\x00' * cls.length
+
+    @classmethod
+    def value_check(cls, value):
+        # check length limit strictly
+        return len(value) == cls.length and super().value_check(value)
+
+    @classmethod
+    def is_fixed_size(cls):
+        return True
 
 
-def infer_type(obj):
-    if is_uint_type(obj.__class__):
-        return obj.__class__
-    elif isinstance(obj, int):
-        return uint64
-    elif isinstance(obj, list):
-        return List[infer_type(obj[0])]
-    elif isinstance(obj, (Vector, Container, bool, BytesN, bytes)):
-        return obj.__class__
-    else:
-        raise Exception("Unknown type for {}".format(obj))
-
-
-def infer_input_type(fn):
-    """
-    Decorator to run infer_type on the obj if typ argument is None
-    """
-    def infer_helper(obj, typ=None, **kwargs):
-        if typ is None:
-            typ = infer_type(obj)
-        return fn(obj, typ=typ, **kwargs)
-    return infer_helper
-
-
-def is_bool_type(typ):
-    """
-    Check if the given type is a bool.
-    """
-    if hasattr(typ, '__supertype__'):
-        typ = typ.__supertype__
-    return isinstance(typ, type) and issubclass(typ, bool)
-
-
-def is_list_type(typ):
-    """
-    Check if the given type is a list.
-    """
-    return get_origin(typ) is List or get_origin(typ) is list
-
-
-def is_bytes_type(typ):
-    """
-    Check if the given type is a ``bytes``.
-    """
-    # Do not accept subclasses of bytes here, to avoid confusion with BytesN
-    return typ == bytes
-
-
-def is_bytesn_type(typ):
-    """
-    Check if the given type is a BytesN.
-    """
-    return isinstance(typ, type) and issubclass(typ, BytesN)
-
-
-def is_list_kind(typ):
-    """
-    Check if the given type is a kind of list. Can be bytes.
-    """
-    return is_list_type(typ) or is_bytes_type(typ)
-
-
-def is_vector_type(typ):
-    """
-    Check if the given type is a vector.
-    """
-    return isinstance(typ, type) and issubclass(typ, Vector)
-
-
-def is_vector_kind(typ):
-    """
-    Check if the given type is a kind of vector. Can be BytesN.
-    """
-    return is_vector_type(typ) or is_bytesn_type(typ)
-
-
-def is_container_type(typ):
-    """
-    Check if the given type is a container.
-    """
-    return isinstance(typ, type) and issubclass(typ, Container)
-
-
-T = TypeVar('T')
-L = TypeVar('L')
-
-
-def read_list_elem_type(list_typ: Type[List[T]]) -> T:
-    if list_typ.__args__ is None or len(list_typ.__args__) != 1:
-        raise TypeError("Supplied list-type is invalid, no element type found.")
-    return list_typ.__args__[0]
-
-
-def read_vector_elem_type(vector_typ: Type[Vector[T, L]]) -> T:
-    return vector_typ.elem_type
-
-
-def read_elem_type(typ):
-    if typ == bytes or (isinstance(typ, type) and issubclass(typ, bytes)):  # bytes or bytesN
-        return byte
-    elif is_list_type(typ):
-        return read_list_elem_type(typ)
-    elif is_vector_type(typ):
-        return read_vector_elem_type(typ)
-    else:
-        raise TypeError("Unexpected type: {}".format(typ))
+# Helpers for common BytesN types
+Bytes1: BytesType = BytesN[1]
+Bytes4: BytesType = BytesN[4]
+Bytes8: BytesType = BytesN[8]
+Bytes32: BytesType = BytesN[32]
+Bytes48: BytesType = BytesN[48]
+Bytes96: BytesType = BytesN[96]

@@ -5,30 +5,34 @@ BLS test vectors generator
 from typing import Tuple
 
 from eth_utils import (
-    to_tuple, int_to_big_endian
+    encode_hex,
+    int_to_big_endian,
+    to_tuple,
 )
 from gen_base import gen_runner, gen_suite, gen_typing
 
 from py_ecc import bls
 
 
-def int_to_hex(n: int) -> str:
-    return '0x' + int_to_big_endian(n).hex()
+F2Q_COEFF_LEN = 48
+G2_COMPRESSED_Z_LEN = 48
+
+
+def int_to_hex(n: int, byte_length: int=None) -> str:
+    byte_value = int_to_big_endian(n)
+    if byte_length:
+        byte_value = byte_value.rjust(byte_length, b'\x00')
+    return encode_hex(byte_value)
 
 
 def hex_to_int(x: str) -> int:
     return int(x, 16)
 
 
-# Note: even though a domain is only an uint64,
-# To avoid issues with YAML parsers that are limited to 53-bit (JS language limit)
-# It is serialized as an hex string as well.
 DOMAINS = [
-    0,
-    1,
-    1234,
-    2**32-1,
-    2**64-1
+    b'\x00\x00\x00\x00\x00\x00\x00\x00',
+    b'\x00\x00\x00\x00\x00\x00\x00\x01',
+    b'\xff\xff\xff\xff\xff\xff\xff\xff'
 ]
 
 MESSAGES = [
@@ -47,36 +51,35 @@ PRIVKEYS = [
 
 
 def hash_message(msg: bytes,
-                 domain: int) ->Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
+                 domain: bytes) ->Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
     """
     Hash message
     Input:
-        - Message as bytes
-        - domain as uint64
+        - Message as bytes32
+        - domain as bytes8
     Output:
         - Message hash as a G2 point
     """
     return [
         [
-            int_to_hex(fq2.coeffs[0]),
-            int_to_hex(fq2.coeffs[1]),
+            int_to_hex(fq2.coeffs[0], F2Q_COEFF_LEN),
+            int_to_hex(fq2.coeffs[1], F2Q_COEFF_LEN),
         ]
         for fq2 in bls.utils.hash_to_G2(msg, domain)
     ]
 
 
-def hash_message_compressed(msg: bytes, domain: int) -> Tuple[str, str]:
+def hash_message_compressed(msg: bytes, domain: bytes) -> Tuple[str, str]:
     """
     Hash message
     Input:
-        - Message as bytes
-        - domain as uint64
+        - Message as bytes32
+        - domain as bytes8
     Output:
         - Message hash as a compressed G2 point
     """
     z1, z2 = bls.utils.compress_G2(bls.utils.hash_to_G2(msg, domain))
-    return [int_to_hex(z1), int_to_hex(z2)]
-
+    return [int_to_hex(z1, G2_COMPRESSED_Z_LEN), int_to_hex(z2, G2_COMPRESSED_Z_LEN)]
 
 
 @to_tuple
@@ -85,8 +88,8 @@ def case01_message_hash_G2_uncompressed():
         for domain in DOMAINS:
             yield {
                 'input': {
-                    'message': '0x' + msg.hex(),
-                    'domain': int_to_hex(domain)
+                    'message': encode_hex(msg),
+                    'domain': encode_hex(domain),
                 },
                 'output': hash_message(msg, domain)
             }
@@ -97,8 +100,8 @@ def case02_message_hash_G2_compressed():
         for domain in DOMAINS:
             yield {
                 'input': {
-                    'message': '0x' + msg.hex(),
-                    'domain': int_to_hex(domain)
+                    'message': encode_hex(msg),
+                    'domain': encode_hex(domain),
                 },
                 'output': hash_message_compressed(msg, domain)
             }
@@ -122,10 +125,10 @@ def case04_sign_messages():
                 yield {
                     'input': {
                         'privkey': int_to_hex(privkey),
-                        'message': '0x' + message.hex(),
-                        'domain': int_to_hex(domain)
+                        'message': encode_hex(message),
+                        'domain': encode_hex(domain),
                     },
-                    'output': '0x' + sig.hex()
+                    'output': encode_hex(sig)
                 }
 
 # TODO: case05_verify_messages: Verify messages signed in case04
@@ -138,17 +141,17 @@ def case06_aggregate_sigs():
         for message in MESSAGES:
             sigs = [bls.sign(message, privkey, domain) for privkey in PRIVKEYS]
             yield {
-                'input': ['0x' + sig.hex() for sig in sigs],
-                'output': '0x' + bls.aggregate_signatures(sigs).hex(),
+                'input': [encode_hex(sig) for sig in sigs],
+                'output': encode_hex(bls.aggregate_signatures(sigs)),
             }
 
 @to_tuple
 def case07_aggregate_pubkeys():
     pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
-    pubkeys_serial = ['0x' + pubkey.hex() for pubkey in pubkeys]
+    pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
     yield {
         'input': pubkeys_serial,
-        'output': '0x' + bls.aggregate_pubkeys(pubkeys).hex(),
+        'output': encode_hex(bls.aggregate_pubkeys(pubkeys)),
     }
 
 

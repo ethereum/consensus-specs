@@ -14,7 +14,7 @@
         - [`deposit` function](#deposit-function)
             - [Deposit amount](#deposit-amount)
             - [Withdrawal credentials](#withdrawal-credentials)
-            - [`Deposit` log](#deposit-log)
+            - [`DepositEvent` log](#depositevent-log)
     - [Vyper code](#vyper-code)
 
 <!-- /TOC -->
@@ -48,17 +48,17 @@ The amount of ETH (rounded down to the closest Gwei) sent to the deposit contrac
 
 One of the `DepositData` fields is `withdrawal_credentials`. It is a commitment to credentials for withdrawing validator balance (e.g. to another validator, or to shards). The first byte of `withdrawal_credentials` is a version number. As of now, the only expected format is as follows:
 
-* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX_BYTE`
+* `withdrawal_credentials[:1] == BLS_WITHDRAWAL_PREFIX`
 * `withdrawal_credentials[1:] == hash(withdrawal_pubkey)[1:]` where `withdrawal_pubkey` is a BLS pubkey
 
 The private key corresponding to `withdrawal_pubkey` will be required to initiate a withdrawal. It can be stored separately until a withdrawal is required, e.g. in cold storage.
 
-#### `Deposit` log
+#### `DepositEvent` log
 
-Every Ethereum 1.0 deposit emits a `Deposit` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
+Every Ethereum 1.0 deposit emits a `DepositEvent` log for consumption by the beacon chain. The deposit contract does little validation, pushing most of the validator onboarding logic to the beacon chain. In particular, the proof of possession (a BLS12-381 signature) is not verified by the deposit contract.
 
 ## Vyper code
 
-The deposit contract source code, written in Vyper, is available [here](https://github.com/ethereum/eth2.0-specs/blob/dev/deposit_contract/contracts/validator_registration.v.py).
+The deposit contract source code, written in Vyper, is available [here](../../deposit_contract/contracts/validator_registration.v.py).
 
-*Note*: To save on gas the deposit contract uses a progressive Merkle root calculation algorithm that requires only O(log(n)) storage. See [here](https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py) for a Python implementation, and [here](https://github.com/runtimeverification/verified-smart-contracts/blob/master/deposit/formal-incremental-merkle-tree-algorithm.pdf) for a formal correctness proof.
+*Note*: To save on gas, the deposit contract uses a progressive Merkle root calculation algorithm that requires only O(log(n)) storage. See [here](https://github.com/ethereum/research/blob/master/beacon_chain_impl/progressive_merkle_tree.py) for a Python implementation, and [here](https://github.com/runtimeverification/verified-smart-contracts/blob/master/deposit/formal-incremental-merkle-tree-algorithm.pdf) for a formal correctness proof.

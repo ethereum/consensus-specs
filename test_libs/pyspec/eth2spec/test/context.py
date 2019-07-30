@@ -27,9 +27,13 @@ def with_state(fn):
 DEFAULT_BLS_ACTIVE = False
 
 
+def spectest_with_bls_switch(fn):
+    return bls_switch(spectest()(fn))
+
+
 # shorthand for decorating @with_state @spectest()
 def spec_state_test(fn):
-    return with_state(bls_switch(spectest()(fn)))
+    return with_state(spectest_with_bls_switch(fn))
 
 
 def expect_assertion_error(fn):

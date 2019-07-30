@@ -29,6 +29,8 @@ def get_spec(file_name: str) -> SpecObject:
     inserts = {}
     function_matcher = re.compile(FUNCTION_REGEX)
     inserts_matcher = re.compile(BEGIN_INSERT_REGEX)
+    is_ssz = False
+    custom_types = {}
     for linenum, line in enumerate(open(file_name).readlines()):
         line = line.rstrip()
         if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
@@ -64,7 +66,7 @@ def get_spec(file_name: str) -> SpecObject:
                     ssz_objects[current_name] = ssz_objects.get(current_name, '') + line + '\n'
                 else:
                     functions[current_name] = functions.get(current_name, '') + line + '\n'
-            # Handle constant table entries
+            # Handle constant and custom types table entries
             elif pulling_from is None and len(line) > 0 and line[0] == '|':
                 row = line[1:].split('|')
                 if len(row) >= 2:
@@ -72,12 +74,14 @@ def get_spec(file_name: str) -> SpecObject:
                         row[i] = row[i].strip().strip('`')
                         if '`' in row[i]:
                             row[i] = row[i][:row[i].find('`')]
-                    eligible = True
+                    is_constant_def = True
                     if row[0][0] not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_':
-                        eligible = False
+                        is_constant_def = False
                     for c in row[0]:
                         if c not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789':
-                            eligible = False
-                    if eligible:
+                            is_constant_def = False
+                    if is_constant_def:
                         constants[row[0]] = row[1].replace('**TBD**', '0x1234567890123456789012345678901234567890')
-    return functions, constants, ssz_objects, inserts
+                    elif row[1].startswith('uint') or row[1].startswith('Bytes'):
+                        custom_types[row[0]] = row[1]
+    return functions, custom_types, constants, ssz_objects, inserts

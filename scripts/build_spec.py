@@ -6,17 +6,17 @@ from function_puller import (
 from argparse import ArgumentParser
 from typing import (
     Dict,
-    List,
     Optional,
 )
 
 
 PHASE0_IMPORTS = '''from typing import (
-    Any,
-    Dict,
-    List,
-    NewType,
-    Tuple,
+    Any, Dict, Set, Sequence, Tuple, Optional
+)
+
+from dataclasses import (
+    dataclass,
+    field,
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
@@ -24,35 +24,35 @@ from eth2spec.utils.ssz.ssz_impl import (
     signing_root,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector, BytesN
+    bit, boolean, Container, List, Vector, uint64,
+    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
+    bls_sign,
 )
-# Note: 'int' type defaults to being interpreted as a uint64 by SSZ implementation.
 
 from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any,
-    Dict,
-    List,
-    NewType,
-    Tuple,
+    Any, Dict, Optional, Set, Sequence, MutableSequence, Tuple,
+)
+
+from dataclasses import (
+    dataclass,
+    field,
 )
 
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     signing_root,
-    serialize,
     is_empty,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    # unused: uint8, uint16, uint32, uint128, uint256,
-    uint64, Container, Vector, BytesN
+    uint64, bit, boolean, Container, List, Vector, Bytes, BytesN,
+    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -62,89 +62,101 @@ from eth2spec.utils.bls import (
 
 from eth2spec.utils.hash_function import hash
 '''
-NEW_TYPES = {
-    'Slot': 'int',
-    'Epoch': 'int',
-    'Shard': 'int',
-    'ValidatorIndex': 'int',
-    'Gwei': 'int',
-}
-BYTE_TYPES = [4, 32, 48, 96]
 SUNDRY_FUNCTIONS = '''
-def get_ssz_type_by_name(name: str) -> Container:
-    return globals()[name]
+# Monkey patch hash cache
+_hash = hash
+hash_cache: Dict[bytes, Hash] = {}
+
+
+def get_eth1_data(distance: uint64) -> Hash:
+    return hash(distance)
+
+
+def hash(x: bytes) -> Hash:
+    if x not in hash_cache:
+        hash_cache[x] = Hash(_hash(x))
+    return hash_cache[x]
 
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache = {}
+committee_cache: Dict[Tuple[Hash, Hash, int, int], Sequence[ValidatorIndex]] = {}
 
 
-def compute_committee(indices: List[ValidatorIndex], seed: Bytes32, index: int, count: int) -> List[ValidatorIndex]:
-    param_hash = (hash_tree_root(indices), seed, index, count)
+def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
+                      seed: Hash,
+                      index: int,
+                      count: int) -> Sequence[ValidatorIndex]:
+    param_hash = (hash(b''.join(index.to_bytes(length=4, byteorder='little') for index in indices)), seed, index, count)
 
-    if param_hash in committee_cache:
-        return committee_cache[param_hash]
-    else:
-        ret = _compute_committee(indices, seed, index, count)
-        committee_cache[param_hash] = ret
-        return ret
-
-
-# Monkey patch hash cache
-_hash = hash
-hash_cache = {}
-
-
-def hash(x):
-    if x in hash_cache:
-        return hash_cache[x]
-    else:
-        ret = _hash(x)
-        hash_cache[x] = ret
-        return ret
+    if param_hash not in committee_cache:
+        committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
+    return committee_cache[param_hash]
 
 
 # Access to overwrite spec constants based on configuration
-def apply_constants_preset(preset: Dict[str, Any]):
+def apply_constants_preset(preset: Dict[str, Any]) -> None:
     global_vars = globals()
     for k, v in preset.items():
-        global_vars[k] = v
+        if k.startswith('DOMAIN_'):
+            global_vars[k] = DomainType(v)  # domain types are defined as bytes in the configs
+        else:
+            global_vars[k] = v
 
     # Deal with derived constants
-    global_vars['GENESIS_EPOCH'] = slot_to_epoch(GENESIS_SLOT)
+    global_vars['GENESIS_EPOCH'] = compute_epoch_of_slot(GENESIS_SLOT)
 
     # Initialize SSZ types again, to account for changed lengths
     init_SSZ_types()
 '''
 
 
+def strip_comments(raw: str) -> str:
+    comment_line_regex = re.compile(r'^\s+# ')
+    lines = raw.split('\n')
+    out = []
+    for line in lines:
+        if not comment_line_regex.match(line):
+            if '  #' in line:
+                line = line[:line.index('  #')]
+            out.append(line)
+    return '\n'.join(out)
+
+
 def objects_to_spec(functions: Dict[str, str],
+                    custom_types: Dict[str, str],
                     constants: Dict[str, str],
                     ssz_objects: Dict[str, str],
                     inserts: Dict[str, str],
                     imports: Dict[str, str],
-                    new_types: Dict[str, str],
-                    byte_types: List[int],
                     ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
     """
-    new_type_definitions = \
-        '\n'.join(['''%s = NewType('%s', %s)''' % (key, key, value) for key, value in new_types.items()])
-    new_type_definitions += '\n' + '\n'.join(['Bytes%s = BytesN[%s]' % (n, n) for n in byte_types])
+    new_type_definitions = (
+        '\n\n'.join(
+            [
+                f"class {key}({value}):\n    pass\n"
+                for key, value in custom_types.items()
+            ]
+        )
+    )
     functions_spec = '\n\n'.join(functions.values())
+    for k in list(constants.keys()):
+        if k.startswith('DOMAIN_'):
+            constants[k] = f"DomainType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
-        'def init_SSZ_types():\n    global_vars = globals()\n\n    '
-        + '\n\n    '.join([re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]) for value in ssz_objects.values()])
+        'def init_SSZ_types() -> None:\n    global_vars = globals()\n\n    '
+        + '\n\n    '.join([strip_comments(re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]))
+                           for value in ssz_objects.values()])
         + '\n\n'
         + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
     )
     spec = (
         imports
-        + '\n' + new_type_definitions
+        + '\n\n' + new_type_definitions
         + '\n\n' + constants_spec
         + '\n\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec
@@ -170,23 +182,38 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
     return old_constants
 
 
-def dependency_order_ssz_objects(objects: Dict[str, str]) -> None:
+ignored_dependencies = [
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
+    'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
+    'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
+    'bytes'  # to be removed after updating spec doc
+]
+
+
+def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str, str]) -> None:
     """
     Determines which SSZ Object is depenedent on which other and orders them appropriately
     """
     items = list(objects.items())
     for key, value in items:
-        dependencies = re.findall(r'(: [A-Z][\w[]*)', value)
-        dependencies = map(lambda x: re.sub(r'\W|Vector|List|Container|uint\d+|Bytes\d+|bytes', '', x), dependencies)
+        dependencies = []
+        for line in value.split('\n'):
+            if not re.match(r'\s+\w+: .+', line):
+                continue  # skip whitespace etc.
+            line = line[line.index(':') + 1:]  # strip of field name
+            if '#' in line:
+                line = line[:line.index('#')]  # strip of comment
+            dependencies.extend(re.findall(r'(\w+)', line))  # catch all legible words, potential dependencies
+        dependencies = filter(lambda x: '_' not in x and x.upper() != x, dependencies)  # filter out constants
+        dependencies = filter(lambda x: x not in ignored_dependencies, dependencies)
+        dependencies = filter(lambda x: x not in custom_types, dependencies)
         for dep in dependencies:
-            if dep in NEW_TYPES or len(dep) == 0:
-                continue
             key_list = list(objects.keys())
             for item in [dep, key] + key_list[key_list.index(dep)+1:]:
                 objects[item] = objects.pop(item)
 
 
-def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]) -> Dict[str, str]:
+def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str], custom_types) -> Dict[str, str]:
     """
     Takes in old spec and new spec ssz objects, combines them,
     and returns the newer versions of the objects in dependency order.
@@ -198,7 +225,7 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
             # remove leading variable name
             value = re.sub(r'^class [\w]*\(Container\):\n', '', value)
         old_objects[key] = old_objects.get(key, '') + value
-    dependency_order_ssz_objects(old_objects)
+    dependency_order_ssz_objects(old_objects, custom_types)
     return old_objects
 
 
@@ -210,18 +237,25 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     """
     Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
     """
-    functions0, constants0, ssz_objects0, inserts0 = spec0
-    functions1, constants1, ssz_objects1, inserts1 = spec1
+    functions0, custom_types0, constants0, ssz_objects0, inserts0 = spec0
+    functions1, custom_types1, constants1, ssz_objects1, inserts1 = spec1
     functions = combine_functions(functions0, functions1)
+    custom_types = combine_constants(custom_types0, custom_types1)
     constants = combine_constants(constants0, constants1)
-    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1)
+    ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1, custom_types)
     inserts = combine_inserts(inserts0, inserts1)
-    return functions, constants, ssz_objects, inserts
+    return functions, custom_types, constants, ssz_objects, inserts
 
 
-def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
-    functions, constants, ssz_objects, inserts = get_spec(sourcefile)
-    spec = objects_to_spec(functions, constants, ssz_objects, inserts, PHASE0_IMPORTS, NEW_TYPES, BYTE_TYPES)
+def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
+                      v_guide_sourcefile: str, outfile: str=None) -> Optional[str]:
+    phase0_spec = get_spec(phase0_sourcefile)
+    fork_choice_spec = get_spec(fork_choice_sourcefile)
+    v_guide = get_spec(v_guide_sourcefile)
+    spec_objects = phase0_spec
+    for value in [fork_choice_spec, v_guide]:
+        spec_objects = combine_spec_objects(spec_objects, value)
+    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -231,14 +265,16 @@ def build_phase0_spec(sourcefile: str, outfile: str=None) -> Optional[str]:
 def build_phase1_spec(phase0_sourcefile: str,
                       phase1_custody_sourcefile: str,
                       phase1_shard_sourcefile: str,
+                      fork_choice_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
     phase1_custody = get_spec(phase1_custody_sourcefile)
     phase1_shard_data = get_spec(phase1_shard_sourcefile)
+    fork_choice_spec = get_spec(fork_choice_sourcefile)
     spec_objects = phase0_spec
-    for value in [phase1_custody, phase1_shard_data]:
+    for value in [phase1_custody, phase1_shard_data, fork_choice_spec]:
         spec_objects = combine_spec_objects(spec_objects, value)
-    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, NEW_TYPES, BYTE_TYPES)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -250,13 +286,16 @@ if __name__ == '__main__':
 Build the specs from the md docs.
 If building phase 0:
     1st argument is input spec.md
-    2nd argument is output spec.py
+    2nd argument is input fork_choice.md
+    3rd argument is input validator_guide.md
+    4th argument is output spec.py
 
 If building phase 1:
     1st argument is input spec_phase0.md
     2nd argument is input spec_phase1_custody.md
     3rd argument is input spec_phase1_shard_data.md
-    4th argument is output spec.py
+    4th argument is input fork_choice.md
+    5th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -264,14 +303,15 @@ If building phase 1:
 
     args = parser.parse_args()
     if args.phase == 0:
-        if len(args.files) == 2:
+        if len(args.files) == 4:
             build_phase0_spec(*args.files)
         else:
-            print(" Phase 0 requires an output as well as an input file.")
+            print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
-        if len(args.files) == 4:
+        if len(args.files) == 5:
             build_phase1_spec(*args.files)
         else:
-            print(" Phase 1 requires an output as well as 3 input files (phase0.md and phase1.md, phase1.md)")
+            print(" Phase 1 requires 4 input files as well as an output file: "
+                  + "(phase0.md and phase1.md, phase1.md, fork_choice.md, output.py)")
     else:
         print("Invalid phase: {0}".format(args.phase))

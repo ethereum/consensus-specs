@@ -17,13 +17,17 @@ post: BeaconState      -- state after applying the epoch sub-transition.
 ## Condition
 
 A handler of the `epoch_processing` test-runner should process these cases, 
- calling the corresponding processing implementation.
+ calling the corresponding processing implementation (same name, prefixed with `process_`).
+This excludes the other parts of the epoch-transition.
+The provided pre-state is already transitioned to just before the specific sub-transition of focus of the handler.
 
 Sub-transitions:
 
-| *`sub-transition-name`* | *`processing call`*               |
-|-------------------------|-----------------------------------|
-| `crosslinks`            | `process_crosslinks(state)`       |
-| `registry_updates`      | `process_registry_updates(state)` |
+- `justification_and_finalization`
+- `crosslinks`
+- *`rewards_and_penalties` - planned testing extension*
+- `registry_updates`
+- `slashings`
+- `final_updates`
 
 The resulting state should match the expected `post` state.

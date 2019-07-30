@@ -21,8 +21,8 @@ MAX_LIST_LENGTH = 10
 
 
 @to_dict
-def create_test_case_contents(value, typ):
-    yield "value", encode.encode(value, typ)
+def create_test_case_contents(value):
+    yield "value", encode.encode(value)
     yield "serialized", '0x' + serialize(value).hex()
     yield "root", '0x' + hash_tree_root(value).hex()
     if hasattr(value, "signature"):
@@ -32,7 +32,7 @@ def create_test_case_contents(value, typ):
 @to_dict
 def create_test_case(rng: Random, name: str, typ, mode: random_value.RandomizationMode, chaos: bool):
     value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
-    yield name, create_test_case_contents(value, typ)
+    yield name, create_test_case_contents(value)
 
 
 def get_spec_ssz_types():

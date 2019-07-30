@@ -4,13 +4,15 @@ from eth2spec.utils.bls import bls_sign
 from eth2spec.utils.ssz.ssz_impl import signing_root
 
 
-def get_valid_transfer(spec, state, slot=None, sender_index=None, amount=None, fee=None, signed=False):
+def get_valid_transfer(spec, state, slot=None, sender_index=None,
+                       recipient_index=None, amount=None, fee=None, signed=False):
     if slot is None:
         slot = state.slot
     current_epoch = spec.get_current_epoch(state)
     if sender_index is None:
         sender_index = spec.get_active_validator_indices(state, current_epoch)[-1]
-    recipient_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    if recipient_index is None:
+        recipient_index = spec.get_active_validator_indices(state, current_epoch)[0]
     transfer_pubkey = pubkeys[-1]
     transfer_privkey = privkeys[-1]
 
@@ -31,8 +33,8 @@ def get_valid_transfer(spec, state, slot=None, sender_index=None, amount=None, f
         sign_transfer(spec, state, transfer, transfer_privkey)
 
     # ensure withdrawal_credentials reproducible
-    state.validator_registry[transfer.sender].withdrawal_credentials = (
-        spec.int_to_bytes(spec.BLS_WITHDRAWAL_PREFIX, length=1) + spec.hash(transfer.pubkey)[1:]
+    state.validators[transfer.sender].withdrawal_credentials = (
+        spec.BLS_WITHDRAWAL_PREFIX + spec.hash(transfer.pubkey)[1:]
     )
 
     return transfer
