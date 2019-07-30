@@ -22,7 +22,7 @@ count: int
 mapping: List[int]
 ```
 
-- The `bytes32` is encoded a string, hexadecimal encoding, prefixed with `0x`.
+- The `bytes32` is encoded as a string, hexadecimal encoding, prefixed with `0x`.
 - Integers are validator indices. These are `uint64`, but realistically they are not as big.
 
 The `count` specifies the validator registry size. One should compute the shuffling for indices `0, 1, 2, 3, ..., count (exclusive)`.
