@@ -166,8 +166,9 @@ def create_provider(handler_name: str,
                     test_case_fn: Callable[[], Iterable[Tuple[str, Dict[str, Any]]]]) -> gen_typing.TestProvider:
 
     def prepare_fn(configs_path: str) -> str:
-        # Nothing to load / change in spec. Maybe in future forks. Put the tests into the minimal config category.
-        return 'minimal'
+        # Nothing to load / change in spec. Maybe in future forks.
+        # Put the tests into the general config category, to not require any particular configuration.
+        return 'general'
 
     def cases_fn() -> Iterable[gen_typing.TestCase]:
         for data in test_case_fn():
