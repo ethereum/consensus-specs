@@ -16,19 +16,19 @@ bls_setting: int       -- see general test-format spec.
 
 A YAML-encoded `BeaconState`, the state before applying the operation.
 
-A `pre.ssz` is also available as substitute.
+Also available as `pre.ssz`.
 
 ### `<operation-name>.yaml`
 
 A YAML-encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
 
-A `<operation-name>.ssz` is also available as substitute.
+Also available as `<operation-name>.ssz`.
 
 ### `post.yaml`
 
 A YAML-encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
 
-A `post.ssz` is also available as substitute.
+Also available as `post.ssz`.
 
 
 ## Condition

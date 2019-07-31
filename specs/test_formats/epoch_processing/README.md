@@ -19,14 +19,14 @@ bls_setting: int       -- see general test-format spec.
 
 A YAML-encoded `BeaconState`, the state before running the epoch sub-transition.
 
-A `pre.ssz` is also available as substitute.
+Also available as `pre.ssz`.
 
 
 ### `post.yaml`
 
 A YAML-encoded `BeaconState`, the state after applying the epoch sub-transition.
 
-A `post.ssz` is also available as substitute.
+Also available as `post.ssz`.
 
 ## Condition
 

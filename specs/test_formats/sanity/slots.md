@@ -16,7 +16,7 @@ bls_setting: int       -- see general test-format spec.
 
 A YAML-encoded `BeaconState`, the state before running the transitions.
 
-A `pre.ssz` is also available as substitute.
+Also available as `pre.ssz`.
 
 
 ### `slots.yaml`
@@ -27,7 +27,7 @@ An integer. The amount of slots to process (i.e. the difference in slots between
 
 A YAML-encoded `BeaconState`, the state after applying the transitions.
 
-A `post.ssz` is also available as substitute.
+Also available as `post.ssz`.
 
 
 ### Processing

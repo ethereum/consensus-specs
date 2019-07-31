@@ -8,7 +8,7 @@ Tests the initialization of a genesis state based on Eth1 data.
 
 A `Bytes32` hex encoded, with prefix 0x. The root of the Eth-1 block.
 
-A `eth1_block_hash.ssz` is available as substitute.
+Also available as `eth1_block_hash.ssz`.
 
 ### `eth1_timestamp.yaml`
 

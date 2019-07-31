@@ -17,7 +17,7 @@ blocks_count: int      -- the number of blocks processed in this test.
 
 A YAML-encoded `BeaconState`, the state before running the block transitions.
 
-A `pre.ssz` is also available as substitute.
+Also available as `pre.ssz`.
 
 
 ### `blocks_<index>.yaml`
@@ -33,7 +33,7 @@ Each block is also available as `blocks_<index>.ssz`
 
 A YAML-encoded `BeaconState`, the state after applying the block transitions.
 
-A `post.ssz` is also available as substitute.
+Also available as `post.ssz`.
 
 
 ## Condition
