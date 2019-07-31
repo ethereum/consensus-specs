@@ -175,11 +175,11 @@ Separation of configuration and tests aims to:
 - Prevent duplication of configuration
 - Make all tests easy to upgrade (e.g. when a new config constant is introduced)
 - Clearly define which constants to use
-- Shareable between clients, for cross-client short- or long-lived testnets
-- Minimize the amounts of different constants permutations to compile as a client.
+- Be easily shareable between clients, for cross-client short- or long-lived testnets
+- Minimize the amount of different constants permutations to compile as a client.
   *Note*: Some clients prefer compile-time constants and optimizations.
   They should compile for each configuration once, and run the corresponding tests per build target.
-- Includes constants to coordinate forking with.
+- Include constants to coordinate forking with
 
 The format is described in [`/configs`](../../configs/README.md#format).
 
