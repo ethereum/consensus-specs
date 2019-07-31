@@ -335,8 +335,16 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
 
 ```python
 def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardState:
-    earlier_committee = get_period_committee(beacon_state, PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD * 2, shard)
-    later_committee = get_period_committee(beacon_state, PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD, shard)
+    earlier_committee = get_period_committee(
+        beacon_state,
+        Epoch(PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD * 2),
+        shard,
+    )
+    later_committee = get_period_committee(
+        beacon_state,
+        Epoch(PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD),
+        shard,
+    )
     return ShardState(
         basefee=1,
         shard=shard,
@@ -344,7 +352,7 @@ def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardSta
         earlier_committee_rewards=[REWARD_COEFFICIENT_BASE for _ in range(len(earlier_committee))],
         later_committee_rewards=[REWARD_COEFFICIENT_BASE for _ in range(len(later_committee))],
         earlier_committee_fees=[0 for _ in range(len(earlier_committee))],
-        later_committee_fees=[0 for _ in range(len(later_committee))],        
+        later_committee_fees=[0 for _ in range(len(later_committee))],
     )
 ```
 
@@ -365,7 +373,11 @@ Note that these acceptance conditions depend on the canonical beacon chain; when
 ```python
 def add_reward(state: ShardState, beacon_state: BeaconState, index: ValidatorIndex, delta: Gwei) -> None:
     epoch = compute_epoch_of_shard_slot(state.slot)
-    earlier_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=2), state.shard)
+    earlier_committee = get_period_committee(
+        beacon_state,
+        get_shard_period_start_epoch(epoch, lookback=2),
+        state.shard,
+    )
     later_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=1), state.shard)
     if index in earlier_committee:
         state.earlier_committee_rewards[earlier_committee.index(index)] += delta
@@ -403,21 +415,29 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
     # Correct saved state root
     if state.most_recent_block_core.state_root == Hash():
         state.most_recent_block_core.state_root = hash_tree_root(state)
-    
+
     # Save states in history accumulator
     depth = 0
     h = hash_tree_root(state)
     while state.slot % 2**depth == 0:
         state.history_acc[depth] = h
-        
+
     # Period transitions
     if (state.slot + 1) % (SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD) == 0:
         epoch = compute_epoch_of_shard_slot(state.slot)
-        earlier_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=2), state.shard)
-        later_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=1), state.shard)
+        earlier_committee = get_period_committee(
+            beacon_state,
+            get_shard_period_start_epoch(epoch, lookback=2),
+            state.shard,
+        )
+        later_committee = get_period_committee(
+            beacon_state,
+            get_shard_period_start_epoch(epoch, lookback=1),
+            state.shard,
+        )
         state.receipt_root = hash_tree_root(List[ShardReceiptDelta, PLACEHOLDER]([
             ShardReceiptDelta(index, state.earlier_committee_rewards[i], state.earlier_committee_fees[i])
-            for i, index in enumerate(committee)
+            for i, index in enumerate(earlier_committee)
         ]))
         state.earlier_committee_rewards = state.later_committee_rewards
         state.earlier_committee_fees = state.later_committee_fees
@@ -425,66 +445,74 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
         state.later_committee_fees = [0 for _ in range(len(later_committee))],
     else:
         state.receipt_root = Hash()
-    state.slot += 1
+    state.slot += ShardSlot(1)
 ```
 
 ```python
 def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: ShardBlock) -> None:
     # Check slot number
-    assert candidate.core.slot == state.slot
-    
+    assert block.core.slot == state.slot
+
     # Check parent block
-    if candidate.core.parent_root != Hash():
-        assert candidate.core.parent_root == hash_tree_root(state.most_recent_block_core)
-        
+    if block.core.parent_root != Hash():
+        assert block.core.parent_root == hash_tree_root(state.most_recent_block_core)
+
     # Calculate base reward
     total_balance = get_total_active_balance(beacon_state)
-    base_reward = Gwei(REWARD_COEFFICIENT_BASE * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
-    
+    base_reward = Gwei(
+        REWARD_COEFFICIENT_BASE * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH
+    )
+
     # Check attestations
-    attester_committee = get_persistent_committee(beacon_state, shard, block.core.slot)
+    attester_committee = get_persistent_committee(beacon_state, state.shard, block.core.slot)
     pubkeys = []
     attestations = 0
-    
+
     for i, index in enumerate(attester_committee):
         if block.core.attester_bitfield[i]:
             pubkeys.append(beacon_state.validators[index].pubkey)
             add_reward(state, beacon_state, index, base_reward)
             attestations += 1
-            
+
     for i in range(len(attester_committee), MAX_PERSISTENT_COMMITTEE_SIZE):
         assert block.attester_bitfield[i] is False
-        
+
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(pubkeys),
-        message_hash=candidate.core.parent_root,
-        signature=candidate.signatures.attestation_signature,
-        domain=get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(candidate.core.slot))
+        message_hash=block.core.parent_root,
+        signature=block.signatures.attestation_signature,
+        domain=get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(block.core.slot))
     )
 
     # Check proposer
-    proposer_index = get_shard_block_proposer_index(beacon_state, shard, candidate.core.slot)
+    proposer_index = get_shard_block_proposer_index(beacon_state, state.shard, block.core.slot)
     assert proposer_index is not None
-    add_reward(state, beacon_state, proposer_index, attestations * base_reward // PROPOSER_REWARD_QUOTIENT)
+    add_reward(state, beacon_state, proposer_index, Gwei(attestations * base_reward // PROPOSER_REWARD_QUOTIENT))
     assert bls_verify(
         pubkey=beacon_state.validators[proposer_index].pubkey,
-        message_hash=hash_tree_root(candidate.core),
-        signature=candidate.signatures.proposer_signature,
-        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(candidate.core.slot)),
+        message_hash=hash_tree_root(block.core),
+        signature=block.signatures.proposer_signature,
+        domain=get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.core.slot)),
     )
-    
+
     # Process and update block data fees
-    add_fee(state, beacon_state, proposer_index, state.basefee * len(block.core.data) // SHARD_BLOCK_SIZE_LIMIT)
+    add_fee(state, beacon_state, proposer_index, Gwei(state.basefee * len(block.core.data) // SHARD_BLOCK_SIZE_LIMIT))
     QUOTIENT = SHARD_BLOCK_SIZE_LIMIT * BASEFEE_ADJUSTMENT_FACTOR
     if len(block.core.data) > SHARD_BLOCK_SIZE_TARGET:
-        state.basefee += min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT)
+        state.basefee += Gwei(min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT))
     elif len(block.core.data) < SHARD_BLOCK_SIZE_TARGET:
-        state.basefee -= min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT)
-    state.basefee = max(1, min(EFFECTIVE_BALANCE_INCREMENT // EPOCHS_PER_SHARD_PERIOD // SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH, state.basefee))
-    
+        state.basefee -= Gwei(min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT))
+    state.basefee = Gwei(max(
+        1,
+        min(
+            EFFECTIVE_BALANCE_INCREMENT // EPOCHS_PER_SHARD_PERIOD // SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH,
+            state.basefee,
+        )
+    ))
+
     # Check total bytes
     assert block.core.total_bytes == state.most_recent_block_core.total_bytes + len(block.core.data)
-    
+
     # Update in-state block header
     state.most_recent_block_core = ShardBlockCore(
         slot=block.core.slot,
@@ -495,7 +523,7 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
         total_bytes=block.core.total_bytes,
         attester_bitfield=block.core.attester_bitfield
     )
-    
+
     # Check state root
     assert hash_tree_root(state) == block.core.state_root
 ```
