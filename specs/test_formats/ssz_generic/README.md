@@ -26,7 +26,7 @@ The `ssz_generic` tests are split up into different handler, each specialized in
 
 ## Format
 
-For each type, a `valid` and a `invalid` suite is implemented.
+For each type, a `valid` and an `invalid` suite is implemented.
 The cases have the same format, but those in the `invalid` suite only declare a subset of the data a test in the `valid` declares.
 
 Each of the handlers encodes the SSZ type declaration in the file-name. See [Type Declarations](#type-declarations).
@@ -79,7 +79,7 @@ This is a valid way of detecting `invalid` data too. E.g. a 0-length basic vecto
 
 ## Type declarations
 
-Most types are not as static, and reasonably be constructed during test runtime from the test case name.
+Most types are not as static, and can reasonably be constructed during test runtime from the test case name.
 Formats are listed below.
 
 For each test case, an additional `_{extra...}` may be appended to the name,

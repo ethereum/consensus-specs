@@ -27,7 +27,7 @@ deposits_count: int    -- Amount of deposits.
 A series of files, with `<index>` in range `[0, deposits_count)`. Deposits need to be processed in order.
 Each file is a YAML-encoded `Deposit` object.
 
-Each deposit is also available as `deposits_<index>.ssz`
+Each deposit is also available as `deposits_<index>.ssz`.
 
 ###  `state.yaml`
 
