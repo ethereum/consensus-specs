@@ -282,9 +282,9 @@ def get_shard_header(block: ShardBlock) -> ShardBlockHeader:
             data_root=hash_tree_root(block.core.data),
             state_root=block.core.state_root,
             total_bytes=block.core.total_bytes,
-            attester_bitfield=block.core.attester_bitfield
+            attester_bitfield=block.core.attester_bitfield,
         ),
-        signatures=block.signatures
+        signatures=block.signatures,
     )
 ```
 
@@ -475,7 +475,7 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
             attestations += 1
 
     for i in range(len(attester_committee), MAX_PERSISTENT_COMMITTEE_SIZE):
-        assert block.attester_bitfield[i] is False
+        assert block.core.attester_bitfield[i] is False or block.core.attester_bitfield[i] == 0  # TODO: FIX Bitvector
 
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(pubkeys),
@@ -521,7 +521,7 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
         data_root=block.core.data_root,
         state_root=Hash(),
         total_bytes=block.core.total_bytes,
-        attester_bitfield=block.core.attester_bitfield
+        attester_bitfield=block.core.attester_bitfield,
     )
 
     # Check state root
