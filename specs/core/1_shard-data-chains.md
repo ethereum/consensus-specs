@@ -421,6 +421,7 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
     h = hash_tree_root(state)
     while state.slot % 2**depth == 0:
         state.history_acc[depth] = h
+        depth += 1
 
     # Period transitions
     if (state.slot + 1) % (SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD) == 0:
