@@ -22,21 +22,24 @@
         - [`ShardBlockSignatures`](#shardblocksignatures)
         - [`ShardBlockCore`](#shardblockcore)
         - [`ExtendedShardBlockCore`](#extendedshardblockcore)
+        - [`ShardState`](#shardstate)
+        - [`ShardReceiptDelta`](#shardreceiptdelta)
     - [Helper functions](#helper-functions)
-        - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
         - [`compute_slot_of_shard_slot`](#compute_slot_of_shard_slot)
+        - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
         - [`get_shard_period_start_epoch`](#get_shard_period_start_epoch)
         - [`get_period_committee`](#get_period_committee)
         - [`get_persistent_committee`](#get_persistent_committee)
         - [`get_shard_block_proposer_index`](#get_shard_block_proposer_index)
-        - [`get_shard_block_attester_committee`](#get_shard_block_attester_committee)
         - [`get_shard_header`](#get_shard_header)
         - [`pad`](#pad)
         - [`flatten_shard_header`](#flatten_shard_header)
         - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
         - [`get_default_shard_state`](#get_default_shard_state)
     - [Object validity](#object-validity)
-        - [Shard blocks](#shard-blocks)
+        - [Shard block validation: preliminary](#shard-block-validation-preliminary)
+        - [Shard state transition function helpers](#shard-state-transition-function-helpers)
+        - [Shard state transition function](#shard-state-transition-function)
         - [Beacon attestations](#beacon-attestations)
     - [Shard fork choice rule](#shard-fork-choice-rule)
 
@@ -332,8 +335,8 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
 
 ```python
 def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardState:
-    earlier_committee = get_period_committee(beacon_state, PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD * 2, shard)
-    later_committee = get_period_committee(beacon_state, PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD, shard)
+    earlier_committee = get_period_committee(beacon_state, PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD * 2, shard)
+    later_committee = get_period_committee(beacon_state, PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD, shard)
     return ShardState(
         basefee=1,
         shard=shard,
@@ -360,7 +363,7 @@ Note that these acceptance conditions depend on the canonical beacon chain; when
 ### Shard state transition function helpers
 
 ```python
-def add_reward(state: ShardState, beacon_state: BeaconState, index: ValidatorIndex, delta: uint):
+def add_reward(state: ShardState, beacon_state: BeaconState, index: ValidatorIndex, delta: Gwei) -> None:
     epoch = compute_epoch_of_shard_slot(state.slot)
     earlier_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=2), state.shard)
     later_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=1), state.shard)
@@ -373,7 +376,7 @@ def add_reward(state: ShardState, beacon_state: BeaconState, index: ValidatorInd
 ```
 
 ```python
-def add_fee(state: ShardState, beacon_state: BeaconState, index: ValidatorIndex, delta: uint):
+def add_fee(state: ShardState, beacon_state: BeaconState, index: ValidatorIndex, delta: Gwei) -> None:
     epoch = compute_epoch_of_shard_slot(state.slot)
     earlier_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=2), state.shard)
     later_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=1), state.shard)
@@ -388,7 +391,7 @@ def add_fee(state: ShardState, beacon_state: BeaconState, index: ValidatorIndex,
 ### Shard state transition function
 
 ```python
-def shard_state_transition(state: ShardState, beacon_state: BeaconState, block: ShardBlock):
+def shard_state_transition(state: ShardState, beacon_state: BeaconState, block: ShardBlock) -> None:
     assert block.core.slot > state.slot
     for slot in range(state.slot, block.core.slot):
         shard_slot_transition(state, beacon_state)
@@ -396,7 +399,7 @@ def shard_state_transition(state: ShardState, beacon_state: BeaconState, block: 
 ```
 
 ```python
-def shard_slot_transition(state: ShardState, beacon_state: BeaconState):
+def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
     # Correct saved state root
     if state.most_recent_block_core.state_root == ZERO_HASH:
         state.most_recent_block_core.state_root = hash_tree_root(state)
@@ -408,7 +411,7 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState):
         state.history_acc[depth] = h
         
     # Period transitions
-    if (state.slot + 1) % (SHARD_SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD) == 0:
+    if (state.slot + 1) % (SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD) == 0:
         epoch = compute_epoch_of_shard_slot(state.slot)
         earlier_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=2), state.shard)
         later_committee = get_period_committee(beacon_state, get_shard_period_start_epoch(epoch, lookback=1), state.shard)
@@ -426,7 +429,7 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState):
 ```
 
 ```python
-def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: ShardBlock):
+def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: ShardBlock) -> None:
     # Check slot number
     assert candidate.core.slot == state.slot
     
@@ -472,12 +475,12 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
     
     # Process and update block data fees
     add_fee(state, beacon_state, proposer_index, state.basefee * len(block.core.data) // SHARD_BLOCK_SIZE_LIMIT)
-    QUOTIENT = SHARD_BLOCK_SIZE_LIMIT * BASEFEE_ADJUSTMENT_FACTOR)
+    QUOTIENT = SHARD_BLOCK_SIZE_LIMIT * BASEFEE_ADJUSTMENT_FACTOR
     if len(block.core.data) > SHARD_BLOCK_SIZE_TARGET:
         state.basefee += min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT)
     elif len(block.core.data) < SHARD_BLOCK_SIZE_TARGET:
         state.basefee -= min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT)
-    state.basefee = max(1, min(EFFECTIVE_BALANCE_INCREMENT // EPOCHS_PER_SHARD_PERIOD // SHARD_SLOTS_PER_EPOCH, state.basefee))
+    state.basefee = max(1, min(EFFECTIVE_BALANCE_INCREMENT // EPOCHS_PER_SHARD_PERIOD // SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH, state.basefee))
     
     # Check total bytes
     assert block.core.total_bytes == state.most_recent_block_core.total_bytes + len(block.core.data)
