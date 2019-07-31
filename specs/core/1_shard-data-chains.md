@@ -354,7 +354,7 @@ def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardSta
 
 Accept a shard block `block` only if all of the following are correct:
 
-* Either `block.core.parent_root == ZERO_HASH` or a block `parent` such that `hash_tree_root(parent.core) == block.core.parent_root` has already been accepted.
+* Either `block.core.parent_root == Hash()` or a block `parent` such that `hash_tree_root(parent.core) == block.core.parent_root` has already been accepted.
 * `block.core.beacon_chain_root == get_block_root(head_beacon_state, compute_epoch_of_shard_slot(parent.core.slot))` where `head_beacon_state` is the current beacon chain head state. Alternatively phrased, a beacon chain block `beacon_ref` such that `signing_root(beacon_ref) == block.core.beacon_chain_root` has already been accepted and is part of the canonical chain, and no block with slot `beacon_ref.slot < slot <= compute_start_slot_of_epoch(compute_epoch_of_shard_slot(parent.core.slot))` is part of the canonical chain.
 * Let `beacon_state` be the state where `beacon_ref.state_root == hash_tree_root(beacon_state)`. Let `prev_state` be the post-state of the `parent` if the `parent` exists, otherwise let it be `get_default_shard_state(beacon_state, shard)` (defined below). `block.core.state_root` must equal the `hash_tree_root` of the state after applying `shard_state_transition(prev_state, beacon_state, block)`.
 
@@ -401,7 +401,7 @@ def shard_state_transition(state: ShardState, beacon_state: BeaconState, block: 
 ```python
 def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
     # Correct saved state root
-    if state.most_recent_block_core.state_root == ZERO_HASH:
+    if state.most_recent_block_core.state_root == Hash():
         state.most_recent_block_core.state_root = hash_tree_root(state)
     
     # Save states in history accumulator
@@ -424,7 +424,7 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
         state.later_committee_rewards = [REWARD_COEFFICIENT_BASE for _ in range(len(later_committee))],
         state.later_committee_fees = [0 for _ in range(len(later_committee))],
     else:
-        state.receipt_root = ZERO_HASH
+        state.receipt_root = Hash()
     state.slot += 1
 ```
 
@@ -491,7 +491,7 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
         beacon_chain_root=block.core.beacon_chain_root,
         parent_root=block.core.parent_root,
         data_root=block.core.data_root,
-        state_root=ZERO_HASH,
+        state_root=Hash(),
         total_bytes=block.core.total_bytes,
         attester_bitfield=block.core.attester_bitfield
     )
