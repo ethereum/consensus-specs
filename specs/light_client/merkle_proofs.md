@@ -202,7 +202,7 @@ def get_expanded_indices(indices: List[int]) -> List[int]:
     branches = set()
     for index in indices:
         branches = branches.union(set(get_branch_indices(index) + [index]))
-    return sorted(list([x for x in branches if x*2 not in branches or x*2+1 not in branches]))[::-1]
+    return sorted([x for x in branches if x*2 not in branches or x*2+1 not in branches])[::-1]
 ```
 
 Generating a proof that covers paths `p1 ... pn` is simply a matter of taking the chunks in the SSZ hash tree with generalized indices `get_expanded_indices([p1 ... pn])`.
