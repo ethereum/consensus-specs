@@ -500,9 +500,9 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
     add_fee(state, beacon_state, proposer_index, Gwei(state.basefee * len(block.core.data) // SHARD_BLOCK_SIZE_LIMIT))
     QUOTIENT = SHARD_BLOCK_SIZE_LIMIT * BASEFEE_ADJUSTMENT_FACTOR
     if len(block.core.data) > SHARD_BLOCK_SIZE_TARGET:
-        state.basefee += Gwei(min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT))
+        state.basefee += Gwei(max(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT))
     elif len(block.core.data) < SHARD_BLOCK_SIZE_TARGET:
-        state.basefee -= Gwei(min(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT))
+        state.basefee -= Gwei(max(1, state.basefee * (len(block.core.data) - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT))
     state.basefee = Gwei(max(
         1,
         min(
