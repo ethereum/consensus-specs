@@ -30,9 +30,9 @@
 
 ```python
 class ShardReceiptProof(Container):
-      shard: Shard
-      proof: List[Hash, PLACEHOLDER]
-      receipt: List[ShardReceiptDelta, PLACEHOLDER]
+    shard: Shard
+    proof: List[Hash, PLACEHOLDER]
+    receipt: List[ShardReceiptDelta, PLACEHOLDER]
 ```
 
 ## Helpers
@@ -107,9 +107,9 @@ def compute_historical_state_generalized_index(earlier: ShardSlot, later: ShardS
     """
     o = GeneralizedIndex(1)
     for i in range(63, -1, -1):
-          if (later-1) & 2**i > (earlier-1) & 2**i:
-              later = later - ((later-1) % 2**i) - 1
-              o = concat_generalized_indices(o, get_generalized_index(ShardState, 'history_acc', i))
+        if (later - 1) & 2**i > (earlier - 1) & 2**i:
+            later = later - ((later - 1) % 2**i) - 1
+            o = concat_generalized_indices(o, get_generalized_index(ShardState, 'history_acc', i))
     return o
 ```
 
@@ -136,8 +136,8 @@ def process_shard_receipt(state: BeaconState, receipt_proof: ShardReceiptProof):
     first_slot_in_last_crosslink = state.current_crosslinks[receipt_proof.shard].start_epoch * SLOTS_PER_EPOCH
     gindex = concat_generalized_indices(
         get_generalized_index_of_crosslink_header(0),
-        get_generalized_index(ShardBlockHeader, 'state_root')
-        compute_historical_state_generalized_index(receipt_slot, first_slot_in_last_crosslink)
+        get_generalized_index(ShardBlockHeader, 'state_root'),
+        compute_historical_state_generalized_index(receipt_slot, first_slot_in_last_crosslink),
         get_generalized_index(ShardState, 'receipt_root')
     )
     assert verify_merkle_proof(
