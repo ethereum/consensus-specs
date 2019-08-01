@@ -159,15 +159,23 @@ def process_shard_receipt(state: BeaconState, receipt_proof: ShardReceiptProof):
 
 Add to the beacon state the following fields:
 
-* `previous_persistent_committee_root: Hash`
-* `current_persistent_committee_root: Hash`
-* `next_persistent_committee_root: Hash`
-* `next_shard_receipt_period: Vector[uint, SHARD_COUNT]`, values initialized to `PHASE_1_FORK_SLOT // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD`
+```python
+# begin insert @persistent_committee_fields
+    previous_persistent_committee_root: Hash
+    current_persistent_committee_root: Hash
+    next_persistent_committee_root: Hash
+    next_shard_receipt_period: Vector[uint, SHARD_COUNT]
+# end insert @persistent_committee_fields
+```
+`next_shard_receipt_period` values initialized to `PHASE_1_FORK_SLOT // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD`
 
-Process the following function before `process_final_updates`:
+Run `update_persistent_committee` immediately before `process_final_updates`:
 
 ```python
-def update_persistent_committee(state: BeaconState):
+# begin insert @update_persistent_committee
+    update_persistent_committee(state)
+# end insert @update_persistent_committee
+def update_persistent_committee(state: BeaconState) -> None:
     """
     Updates persistent committee roots at boundary blocks.
     """
@@ -183,8 +191,18 @@ def update_persistent_committee(state: BeaconState):
 
 ### Shard receipt processing
 
-Add to the beacon block body the following object:
+Add the `shard_receipts` operation to `BeaconBlockBody`:
 
-* `shard_receipts: List[ShardReceipt, MAX_SHARD_RECEIPTS]`
+```python
+# begin insert @shard_receipts
+    shard_receipts: List[ShardReceipt, MAX_SHARD_RECEIPTS]
+# end insert @shard_receipts
+```
 
 Use `process_shard_receipt` to process each receipt.
+
+```python
+# begin insert @process_shard_receipts
+        (body.shard_receipts, process_shard_receipts),
+# end insert @process_shard_receipts
+```

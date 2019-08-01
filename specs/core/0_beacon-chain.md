@@ -480,6 +480,7 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
     transfers: List[Transfer, MAX_TRANSFERS]
+    # @shard_receipts
 ```
 
 #### `BeaconBlock`
@@ -533,6 +534,8 @@ class BeaconState(Container):
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
+
+    # @persistent_committee_fields
 ```
 
 ## Helper functions
@@ -1237,6 +1240,7 @@ def process_epoch(state: BeaconState) -> None:
     # @process_reveal_deadlines
     # @process_challenge_deadlines
     process_slashings(state)
+    # @update_persistent_committee
     process_final_updates(state)
     # @after_process_final_updates
 ```
@@ -1598,6 +1602,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         (body.deposits, process_deposit),
         (body.voluntary_exits, process_voluntary_exit),
         (body.transfers, process_transfer),
+        # @process_shard_receipts
     ):
         for operation in operations:
             function(state, operation)
