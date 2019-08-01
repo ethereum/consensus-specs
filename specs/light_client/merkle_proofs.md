@@ -221,7 +221,7 @@ def fill(objects: Dict[int, Bytes32]) -> Dict[int, Bytes32]:
     while pos < len(keys):
         k = keys[pos]
         if k in objects and k ^ 1 in objects and k // 2 not in objects:
-            objects[k // 2] = hash(objects[k & - 2] + objects[k | 1])
+            objects[k // 2] = hash(objects[k & -2] + objects[k | 1])
             keys.append(k // 2)
         pos += 1
     # Completeness and consistency check
