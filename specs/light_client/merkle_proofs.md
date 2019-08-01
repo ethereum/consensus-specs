@@ -75,7 +75,8 @@ def get_elem_type(typ: ComplexType, index: int) -> Type:
     or member variable name (eg. `7` for `x[7]`, `"foo"` for `x.foo`)
     """
     return typ.get_fields()[key] if issubclass(typ, Container) else typ.elem_type        
-        
+
+
 def chunk_count(typ: SSZType) -> int:
     """
     Returns the number of hashes needed to represent the top-level elements in the given type
