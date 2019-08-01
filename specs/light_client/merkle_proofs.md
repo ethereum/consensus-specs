@@ -120,6 +120,7 @@ def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> Generalized
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
     """
+    root = 1
     for p in path:
         assert not is_basic_type(typ)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
