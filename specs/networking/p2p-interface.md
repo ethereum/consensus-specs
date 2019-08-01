@@ -10,7 +10,33 @@ It consists of four main sections:
 4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which ETH 2.0 clients are being developed.
 
 ## Table of Contents
-[TOC]
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Network Fundamentals](#network-fundamentals)
+  - [Transport](#transport)
+  - [Encryption and identification](#encryption-and-identification)
+  - [Protocol Negotiation](#protocol-negotiation)
+  - [Multiplexing](#multiplexing)
+- [ETH2 network interaction domains](#eth2-network-interaction-domains)
+  - [Constants](#constants)
+  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [The discovery domain: discv5](#the-discovery-domain-discv5)
+  - [The Req/Resp domain](#the-reqresp-domain)
+- [Design Decision Rationale](#design-decision-rationale)
+  - [Transport](#transport-1)
+  - [Multiplexing](#multiplexing-1)
+  - [Protocol Negotiation](#protocol-negotiation-1)
+  - [Encryption](#encryption)
+  - [Gossipsub](#gossipsub)
+  - [Req/Resp](#reqresp)
+  - [Discovery](#discovery)
+  - [Compression/Encoding](#compressionencoding)
+- [libp2p Implementations Matrix](#libp2p-implementations-matrix)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 # Network Fundamentals
 
@@ -529,7 +555,7 @@ We won’t be using it for mainnet because, amongst other things, it requires se
 
 SecIO is not considered secure for the purposes of this spec.
 
-## Why are we using Noise/TLS 1.3 for mainnet?
+### Why are we using Noise/TLS 1.3 for mainnet?
 
 Copied from the Noise Protocol Framework website:
 
