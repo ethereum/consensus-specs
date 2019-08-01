@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 import sys
-from typing import Iterable
+from typing import Iterable, AnyStr, Any, Callable
 
 from ruamel.yaml import (
     YAML,
@@ -124,34 +124,48 @@ def run_generator(generator_name, test_providers: Iterable[TestProvider]):
 
             print(f'Generating test: {case_dir}')
             try:
-                case_dir.mkdir(parents=True, exist_ok=True)
+                def output_part(out_kind: str, name: str, fn: Callable[[Path, ], None]):
+                    # make sure the test case directory is created before any test part is written.
+                    case_dir.mkdir(parents=True, exist_ok=True)
+                    try:
+                        fn(case_dir)
+                    except IOError as e:
+                        sys.exit(f'Error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}')
+
+                written_part = False
                 meta = dict()
                 for (name, out_kind, data) in test_case.case_fn():
+                    written_part = True
                     if out_kind == "meta":
                         meta[name] = data
                     if out_kind == "data":
-                        try:
-                            out_path = case_dir / Path(name + '.yaml')
-                            with out_path.open(file_mode) as f:
-                                yaml.dump(data, f)
-                        except IOError as e:
-                            sys.exit(f'Error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}')
+                        output_part("data", name, dump_yaml_fn(data, name, file_mode, yaml))
                     if out_kind == "ssz":
-                        try:
-                            out_path = case_dir / Path(name + '.ssz')
-                            with out_path.open(file_mode + 'b') as f:  # write in raw binary mode
-                                f.write(data)
-                        except IOError as e:
-                            sys.exit(f'Error when dumping test "{case_dir}", part "{name}", kind "{out_kind}": {e}')
+                        output_part("ssz", name, dump_ssz_fn(data, name, file_mode))
                 # Once all meta data is collected (if any), write it to a meta data file.
                 if len(meta) != 0:
-                    try:
-                        out_path = case_dir / Path('meta.yaml')
-                        with out_path.open(file_mode) as f:
-                            yaml.dump(meta, f)
-                    except IOError as e:
-                        sys.exit(f'Error when dumping test "{case_dir}" meta data": {e}')
+                    written_part = True
+                    output_part("data", "meta", dump_yaml_fn(meta, "meta", file_mode, yaml))
+
+                if not written_part:
+                    print(f"test case {case_dir} did not produce any test case parts")
 
             except Exception as e:
                 print(f"ERROR: failed to generate vector(s) for test {case_dir}: {e}")
     print(f"completed {generator_name}")
+
+
+def dump_yaml_fn(data: Any, name: str, file_mode: str, yaml_encoder: YAML):
+    def dump(case_path: Path):
+        out_path = case_path / Path(name + '.yaml')
+        with out_path.open(file_mode) as f:
+            yaml_encoder.dump(data, f)
+    return dump
+
+
+def dump_ssz_fn(data: AnyStr, name: str, file_mode: str):
+    def dump(case_path: Path):
+        out_path = case_path / Path(name + '.ssz')
+        with out_path.open(file_mode + 'b') as f:  # write in raw binary mode
+            f.write(data)
+    return dump
