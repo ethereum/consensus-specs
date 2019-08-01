@@ -604,7 +604,11 @@ Such upgrades lead to fragmentation, so they’ll need to be carried out in a co
 
 ### Why are the topics strings and not hashes?
 
-Topics names have a hierarchical structure. In the future, gossipsub may support wildcard subscriptions (e.g. subscribe to all children topics under a root prefix). Using hashes as topic names would preclude us from leveraging such features going forward. No security guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway.
+Topics names have a hierarchical structure. In the future, gossipsub may support wildcard subscriptions (e.g. subscribe to all children topics under a root prefix) by way of prefix matching. Enforcing hashes for topic names would preclude us from leveraging such features going forward.
+
+No security or privacy guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway, and calculating a digest's preimage would be trivial.
+
+Furthermore, the ETH2 topic names are shorter their digest equivalents (asuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
 ### Why are there `SHARD_SUBNET_COUNT` subnets, and why is this not defined?
 
