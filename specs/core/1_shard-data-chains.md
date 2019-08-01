@@ -342,7 +342,7 @@ def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardSta
     )
     later_committee = get_period_committee(
         beacon_state,
-        PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD * 2,
+        PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD,
         shard,
     )
     return ShardState(
