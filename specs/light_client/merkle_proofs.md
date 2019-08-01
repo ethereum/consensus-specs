@@ -267,7 +267,7 @@ def extract_value_at_path(chunks: Dict[int, Bytes32], typ: Type, path: List[Unio
     for p in path:
         if p == '__len__':
             return deserialize_basic(chunks[root * 2 + 1][:8], uint64)
-        if iissubclass(typ, (List, Bytes)):
+        if issubclass(typ, (List, Bytes)):
             assert 0 <= p < deserialize_basic(chunks[root * 2 + 1][:8], uint64)
         pos, start, end = get_item_position(typ, p)
         root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
