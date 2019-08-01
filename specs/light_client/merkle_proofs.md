@@ -74,7 +74,7 @@ def get_elem_type(typ: ComplexType, index: Union[int, str]) -> Type:
     Returns the type of the element of an object of the given type with the given index
     or member variable name (eg. `7` for `x[7]`, `"foo"` for `x.foo`)
     """
-    return typ.get_fields()[key] if issubclass(typ, Container) else typ.elem_type        
+    return typ.get_fields()[index] if issubclass(typ, Container) else typ.elem_type        
 
 
 def chunk_count(typ: SSZType) -> int:
