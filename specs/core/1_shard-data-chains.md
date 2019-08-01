@@ -14,6 +14,8 @@
         - [Misc](#misc)
         - [Initial values](#initial-values)
         - [Time parameters](#time-parameters)
+        - [State list lengths](#state-list-lengths)
+        - [Rewards and penalties](#rewards-and-penalties)
         - [Signature domain types](#signature-domain-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
@@ -63,13 +65,11 @@ We define the following Python custom types for type hinting and readability:
 
 | Name | Value |
 | - | - |
-| `SHARD_HEADER_SIZE` | `2**9` (= 512) |
-| `SHARD_BLOCK_SIZE_LIMIT` | `2**16` (= 65,536) |
-| `SHARD_BLOCK_SIZE_TARGET` | `2**14` (= 16,384) |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
 | `MAX_PERSISTENT_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `REWARD_COEFFICIENT_BASE` | `2**20` ( = 1,048,576) |
-| `BASEFEE_ADJUSTMENT_FACTOR` | `2**3` (= 8) |
+| `SHARD_HEADER_SIZE` | `2**9` (= 512) |
+| `SHARD_BLOCK_SIZE_TARGET` | `2**14` (= 16,384) |
+| `SHARD_BLOCK_SIZE_LIMIT` | `2**16` (= 65,536) |
 
 ### Initial values
 
@@ -77,7 +77,6 @@ We define the following Python custom types for type hinting and readability:
 | - | - |
 | `PHASE_1_FORK_EPOCH` | **TBD** |
 | `PHASE_1_FORK_SLOT` | **TBD** |
-| `GENESIS_SHARD_SLOT` | 0 |
 
 ### Time parameters
 
@@ -85,6 +84,19 @@ We define the following Python custom types for type hinting and readability:
 | - | - | :-: | :-: |
 | `CROSSLINK_LOOKBACK` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `EPOCHS_PER_SHARD_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
+
+### State list lengths
+
+| Name | Value | Unit |
+| - | - | :-: |
+| `HISTORY_ACCUMULATOR_VECTOR` | `2**6` (= 64) | state tree maximum depth |
+
+### Rewards and penalties
+
+| Name | Value |
+| - | - |
+| `BASEFEE_ADJUSTMENT_FACTOR` | `2**3` (= 8) |
+| `REWARD_COEFFICIENT_BASE` | `2**20` ( = 1,048,576) |
 
 ### Signature domain types
 
@@ -159,7 +171,7 @@ class ExtendedShardBlockCore(Container):
 
 ```python
 class ShardState(Container):
-    history_acc: Vector[Hash, 64]
+    history_accumulator: Vector[Hash, HISTORY_ACCUMULATOR_VECTOR]
     earlier_committee_rewards: List[uint64, MAX_PERSISTENT_COMMITTEE_SIZE]
     later_committee_rewards: List[uint64, MAX_PERSISTENT_COMMITTEE_SIZE]
     earlier_committee_fees: List[Gwei, MAX_PERSISTENT_COMMITTEE_SIZE]
@@ -337,12 +349,12 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
 def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardState:
     earlier_committee = get_period_committee(
         beacon_state,
-        PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD * 2,
+        Epoch(PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD * 2),
         shard,
     )
     later_committee = get_period_committee(
         beacon_state,
-        PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD,
+        Epoch(PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD),
         shard,
     )
     return ShardState(
@@ -403,11 +415,14 @@ def add_fee(state: ShardState, beacon_state: BeaconState, index: ValidatorIndex,
 ### Shard state transition function
 
 ```python
-def shard_state_transition(state: ShardState, beacon_state: BeaconState, block: ShardBlock) -> None:
+def shard_state_transition(state: ShardState,
+                           beacon_state: BeaconState,
+                           block: ShardBlock,
+                           validate_state_root: bool=False) -> None:
     assert block.core.slot > state.slot
     for slot in range(state.slot, block.core.slot):
         shard_slot_transition(state, beacon_state)
-    shard_block_transition(state, beacon_state, block)
+    shard_block_transition(state, beacon_state, block, validate_state_root=validate_state_root)
 ```
 
 ```python
@@ -420,7 +435,7 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
     depth = 0
     h = hash_tree_root(state)
     while state.slot % 2**depth == 0:
-        state.history_acc[depth] = h
+        state.history_accumulator[depth] = h
         depth += 1
 
     # Period transitions
@@ -450,7 +465,10 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
 ```
 
 ```python
-def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: ShardBlock) -> None:
+def shard_block_transition(state: ShardState,
+                           beacon_state: BeaconState,
+                           block: ShardBlock,
+                           validate_state_root: bool) -> None:
     # Check slot number
     assert block.core.slot == state.slot
 
@@ -526,7 +544,8 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
     )
 
     # Check state root
-    assert hash_tree_root(state) == block.core.state_root
+    if validate_state_root:
+        assert block.core.state_root == hash_tree_root(state)
 ```
 
 ### Beacon attestations
