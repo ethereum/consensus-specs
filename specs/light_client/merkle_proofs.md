@@ -157,11 +157,32 @@ def get_generalized_index_length(index: GeneralizedIndex) -> int:
 #### `get_generalized_index_bit`
 
 ```python
-def get_generalized_index_bit(index: GeneralizedIndex, bit: int) -> bool:
+def get_generalized_index_bit(index: GeneralizedIndex, position: int) -> bool:
    """
-   Returns the i'th bit of a generalized index.
+   Returns the given bit of a generalized index.
    """
-   return (index & (1 << bit)) > 0
+   return (index & (1 << position)) > 0
+```
+
+#### `generalized_index_sibling`
+
+```python
+def generalized_index_sibling(index: GeneralizedIndex) -> GeneralizedIndex:
+   return index ^ 1
+```
+
+#### `generalized_index_child`
+
+```python
+def generalized_index_child(index: GeneralizedIndex, right_side: bool) -> GeneralizedIndex:
+   return index * 2 + right_side
+```
+
+#### `generalized_index_parent`
+
+```python
+def generalized_index_parent(index: GeneralizedIndex) -> GeneralizedIndex:
+   return index // 2
 ```
 
 ## Merkle multiproofs
@@ -180,38 +201,57 @@ x x . . . . x *
 First, we provide a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
 
 ```
-def get_branch_indices(tree_index: int) -> List[int]:
+def get_branch_indices(tree_index: GeneralizedIndex) -> List[GeneralizedIndex]:
     """
     Get the generalized indices of the sister chunks along the path from the chunk with the
     given tree index to the root.
     """
-    o = [tree_index ^ 1]
+    o = [generalized_index_sibling(tree_index)]
     while o[-1] > 1:
-        o.append((o[-1] // 2) ^ 1)
+        o.append(generalized_index_sibling(generalized_index_parent(o[-1])))
     return o[:-1]
 
-def get_expanded_indices(indices: List[int]) -> List[int]:
+def get_helper_indices(indices: List[GeneralizedIndex]) -> List[GeneralizedIndex]:
     """
-    Get the generalized indices of all chunks in the tree needed to prove the chunks with the given
-    generalized indices, including the leaves.
+    Get the generalized indices of all "extra" chunks in the tree needed to prove the chunks with the given
+    generalized indices. Note that the decreasing order is chosen deliberately to ensure equivalence to the
+    order of hashes in a regular single-item Merkle proof in the single-item case.
     """
-    branches = set()
+    all_indices = set()
     for index in indices:
-        branches = branches.union(set(get_branch_indices(index) + [index]))
-    return sorted([x for x in branches if x*2 not in branches or x*2+1 not in branches])[::-1]
+        all_indices = all_indices.union(set(get_branch_indices(index) + [index]))
+    
+    return sorted([
+        x for x in all_indices if not
+        (generalized_index_child(x, 0) in all_indices and generalized_index_child(x, 1) in all_indices) and not
+        (x in indices)
+    ])[::-1]
 ```
 
-Generating a proof that covers paths `p1 ... pn` is simply a matter of taking the chunks in the SSZ hash tree with generalized indices `get_expanded_indices([p1 ... pn])`.
-
-We now provide the bulk of the proving machinery, a function that takes a `{generalized_index: chunk}` map and fills in chunks that can be inferred (inferring the parent by hashing its two children):
+Now we provide the Merkle proof verification functions. First, for single item proofs:
 
 ```python
-def fill(objects: Dict[int, Bytes32]) -> Dict[int, Bytes32]:
-    """
-    Fills in chunks that can be inferred from other chunks. For a set of chunks that constitutes
-    a valid proof, this includes the root (generalized index 1).
-    """
-    objects = {k: v for k, v in objects.items()}
+def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+    assert len(proof) == get_generalized_index_length(index)
+    for i, h in enumerate(proof):
+        if get_generalized_index_bit(index, i):
+            leaf = hash(h + leaf)
+        else:
+            leaf = hash(leaf + h)
+    return leaf == root
+```
+
+Now for multi-item proofs:
+
+```python
+def verify_merkle_multiproof(leaves: Sequence[Hash], proof: Sequence[Hash], indices: Sequence[GeneralizedIndex], root: Hash) -> bool:
+    assert len(leaves) == len(indices)
+    helper_indices = get_helper_indices(indices)
+    assert len(proof) == len(helper_indices)
+    objects = {
+        **{index:node for index, node in zip(indices, leaves)},
+        **{index:node for index, node in zip(helper_indices, proof)}
+    }
     keys = sorted(objects.keys())[::-1]
     pos = 0
     while pos < len(keys):
@@ -220,55 +260,7 @@ def fill(objects: Dict[int, Bytes32]) -> Dict[int, Bytes32]:
             objects[k // 2] = hash(objects[k & -2] + objects[k | 1])
             keys.append(k // 2)
         pos += 1
-    # Completeness and consistency check
-    assert 1 in objects
-    for k in objects:
-        if k > 1:
-            assert objects[k // 2] == hash(objects[k & -2] + objects[k | 1])
-    return objects
+    return objects[1] == root
 ```
 
-## MerklePartial
-
-We define a container that encodes an SSZ partial, and provide the methods for converting it into a `{generalized_index: chunk}` map, for which we provide a method to extract individual values. To determine the hash tree root of an object represented by an SSZ partial, simply check `decode_ssz_partial(partial)[1]`.
-
-### `SSZMerklePartial`
-
-```python
-class SSZMerklePartial(Container):
-    indices: List[uint64, 2**32]
-    chunks: List[Bytes32, 2**32]
-```
-
-### `decode_ssz_partial`
-
-```python
-def decode_ssz_partial(encoded: SSZMerklePartial) -> Dict[int, Bytes32]:
-    """
-    Decodes an encoded SSZ partial into a generalized index -> chunk map, and verify hash consistency.
-    """
-    full_indices = get_expanded_indices(encoded.indices)
-    return fill({k:v for k,v in zip(full_indices, encoded.chunks)})
-```
-
-### `extract_value_at_path`
-
-```python
-def extract_value_at_path(chunks: Dict[int, Bytes32], typ: Type, path: List[Union[int, str]]) -> Any:
-    """
-    Provides the value of the element in the object represented by the given encoded SSZ partial at
-    the given path. Returns a KeyError if that path is not covered by this SSZ partial.
-    """
-    root = 1
-    for p in path:
-        if p == '__len__':
-            return deserialize_basic(chunks[root * 2 + 1][:8], uint64)
-        if issubclass(typ, (List, Bytes)):
-            assert 0 <= p < deserialize_basic(chunks[root * 2 + 1][:8], uint64)
-        pos, start, end = get_item_position(typ, p)
-        root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * next_power_of_two(get_chunk_count(typ)) + pos
-        typ = get_elem_type(typ, p)
-    return deserialize_basic(chunks[root][start: end], typ)
-```
-
-Here [link TBD] is a python implementation of SSZ partials that represents them as a class that can be read and written to just like the underlying objects, so you can eg. perform state transitions on SSZ partials and compute the resulting root
+Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`).
