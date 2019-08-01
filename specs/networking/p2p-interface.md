@@ -313,8 +313,8 @@ The responder SHOULD send a response promptly, starting with a **single-byte** r
 It can have one of the following values:
 
 -  0: **Success** -- a normal response follows, with contents matching the expected message schema and encoding specified in the request.
--  1: **InvalidRequest** -- the contents of the request are semantically invalid, or the payload is malformed, or could not be understood. The response payload adheres to the ErrorMessage schema (described below).
--  2: **ServerError** -- the responder encountered an error while processing the request. The response payload adheres to the ErrorMessage schema (described below).
+-  1: **InvalidRequest** -- the contents of the request are semantically invalid, or the payload is malformed, or could not be understood. The response payload adheres to the `ErrorMessage` schema (described below).
+-  2: **ServerError** -- the responder encountered an error while processing the request. The response payload adheres to the `ErrorMessage` schema (described below).
 
 Clients MAY use response codes above `128` to indicate alternative, erroneous request-specific responses.
 
