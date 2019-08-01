@@ -11,6 +11,7 @@ It consists of four main sections:
 
 ## Table of Contents
 
+<!-- cmd: doctoc --maxlevel=2 p2p-interface.md -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
