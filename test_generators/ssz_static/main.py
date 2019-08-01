@@ -21,9 +21,12 @@ def create_test_case(rng: Random, typ, mode: random_value.RandomizationMode, cha
     value = random_value.get_random_ssz_object(rng, typ, MAX_BYTES_LENGTH, MAX_LIST_LENGTH, mode, chaos)
     yield "value", "data", encode.encode(value)
     yield "serialized", "ssz", serialize(value)
-    yield "root", "meta", '0x' + hash_tree_root(value).hex()
-    if hasattr(value, "signature"):
-        yield "signing_root", "meta", '0x' + signing_root(value).hex()
+    roots_data = {
+        "root": '0x' + hash_tree_root(value).hex()
+    }
+    if isinstance(value, Container) and hasattr(value, "signature"):
+        roots_data["signing_root"] = '0x' + signing_root(value).hex()
+    yield "roots", "data", roots_data
 
 
 def get_spec_ssz_types():

@@ -18,16 +18,14 @@ One can iterate over the handlers, and select the type based on the handler name
 Suites are then the same format, but each specialized in one randomization mode.
 Some randomization modes may only produce a single test case (e.g. the all-zeroes case).
 
-The output parts are: `meta.yaml`, `serialized.ssz`, `value.yaml`
+The output parts are: `roots.yaml`, `serialized.ssz`, `value.yaml`
 
-### `meta.yaml`
-
-For non-container SSZ type:
+### `roots.yaml`
 
 ```yaml
 root: bytes32         -- string, hash-tree-root of the value, hex encoded, with prefix 0x
 signing_root: bytes32 -- string, signing-root of the value, hex encoded, with prefix 0x. 
-                           Optional, present if type is a container and ends with a ``signature`` field.
+                           *Optional*, present if type is a container and ends with a ``signature`` field.
 ```
 
 ### `serialized.ssz`
