@@ -69,7 +69,7 @@ def item_length(typ: SSZType) -> int:
         return 32
         
         
-def get_elem_type(typ: ComplexType, index: int) -> Type:
+def get_elem_type(typ: ComplexType, index: Union[int, str]) -> Type:
     """
     Returns the type of the element of an object of the given type with the given index
     or member variable name (eg. `7` for `x[7]`, `"foo"` for `x.foo`)
