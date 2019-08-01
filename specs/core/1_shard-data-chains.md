@@ -199,7 +199,7 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
 ### `get_shard_period_start_epoch`
 
 ```python
-def get_shard_period_start_epoch(epoch: Epoch, lookback: uint64=0) -> Epoch:
+def get_shard_period_start_epoch(epoch: Epoch, lookback: int=0) -> Epoch:
     return Epoch(epoch - (epoch % EPOCHS_PER_SHARD_PERIOD) - lookback * EPOCHS_PER_SHARD_PERIOD)
 ```
 
@@ -337,12 +337,12 @@ def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
 def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardState:
     earlier_committee = get_period_committee(
         beacon_state,
-        Epoch(PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD * 2),
+        PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD * 2,
         shard,
     )
     later_committee = get_period_committee(
         beacon_state,
-        Epoch(PHASE_1_FORK_SLOT - SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD),
+        PHASE_1_FORK_EPOCH - EPOCHS_PER_SHARD_PERIOD * 2,
         shard,
     )
     return ShardState(
@@ -519,7 +519,7 @@ def shard_block_transition(state: ShardState, beacon_state: BeaconState, block: 
         slot=block.core.slot,
         beacon_chain_root=block.core.beacon_chain_root,
         parent_root=block.core.parent_root,
-        data_root=block.core.data_root,
+        data_root=hash_tree_root(block.core.data),
         state_root=Hash(),
         total_bytes=block.core.total_bytes,
         attester_bitfield=block.core.attester_bitfield,
