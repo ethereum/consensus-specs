@@ -86,27 +86,13 @@ def get_previous_power_of_2(x: int) -> int:
 
 ```python
 def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
-    assert len(proof) == log2(index)
+    assert len(proof) == get_generalized_index_length(index)
     for i, h in enumerate(proof):
-        if index & 2**i:
+        if get_generalized_index_bit(index, i):
             leaf = hash(h + leaf)
         else:
             leaf = hash(leaf + h)
     return leaf == root
-```
-
-#### `concat_generalized_indices`
-
-```python
-def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> GeneralizedIndex:
-    """
-    Given generalized indices i1 for A -> B, i2 for B -> C .... i_n for Y -> Z, returns
-    the generalized index for A -> Z.
-    """
-    o = GeneralizedIndex(1)
-    for i in indices:
-        o = o * get_previous_power_of_2(i) + i
-    return o
 ```
 
 #### `compute_historical_state_generalized_index`
