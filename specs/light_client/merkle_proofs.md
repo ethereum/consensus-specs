@@ -120,7 +120,7 @@ def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> Generalized
     for p in path:
         assert not issubclass(typ, BasicValue)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
-            typ, root = uint256, root * 2 + 1 if issubclass(typ, (List, Bytes)) else None
+            typ, root = uint64, root * 2 + 1 if issubclass(typ, (List, Bytes)) else None
         else:
             pos, _, _ = get_item_position(typ, p)
             root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * next_power_of_two(chunk_count(typ)) + pos
