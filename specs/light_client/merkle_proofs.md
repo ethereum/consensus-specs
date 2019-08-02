@@ -100,7 +100,7 @@ def chunk_count(typ: SSZType) -> int:
 def get_item_position(typ: SSZType, index: Union[int, str]) -> Tuple[int, int, int]:
     """
     Returns three variables: (i) the index of the chunk in which the given element of the item is
-    represented, (ii) the starting byte position, (iii) the ending byte position. For example for
+    represented, (ii) the starting byte position within the chunk, (iii) the ending byte position within the chunk. For example for
     a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
     """
     if issubclass(typ, Elements):
