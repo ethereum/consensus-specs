@@ -229,7 +229,7 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 
 In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry ETH2 capability information, as it would be superfluous.
 
-Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed a ETH2 peer, in order to eschew connecting to ETH1 peers.
+Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an ETH2 peer, in order to eschew connecting to ETH1 peers.
 
 #### Mainnet
 
@@ -609,7 +609,7 @@ Topics names have a hierarchical structure. In the future, gossipsub may support
 
 No security or privacy guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway, and calculating a digest's preimage would be trivial.
 
-Furthermore, the ETH2 topic names are shorter their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
+Furthermore, the ETH2 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
 ### Why are there `SHARD_SUBNET_COUNT` subnets, and why is this not defined?
 
@@ -637,7 +637,7 @@ Requests are segregated by protocol ID to:
 
 1. Leverage protocol routing in libp2p, such that the libp2p stack will route the incoming stream to the appropriate handler. This allows each the handler function for each request type to be self-contained. For an analogy, think about how you attach HTTP handlers to a REST API server.
 2. Version requests independently. In a coarser-grained umbrella protocol, the entire protocol would have to be versioned even if just one field in a single message changed.
-3. Enable clients to select the individual requests/versions they support. It would no longer be a strict requirement to support all requests, and clients, in principle, could support a subset of equests and variety of versions.
+3. Enable clients to select the individual requests/versions they support. It would no longer be a strict requirement to support all requests, and clients, in principle, could support a subset of requests and variety of versions.
 4. Enable flexibility and agility for clients adopting spec changes that impact the request, by signalling to peers exactly which subset of new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request granularity. Without this, clients would be forced to support entire versions of the coarser request protocol.
 6. Parallelise RFCs (or ETH2 EIPs). By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently without relying on a synchronisation point to version the general top-level protocol.
