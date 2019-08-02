@@ -22,10 +22,10 @@ It consists of four main sections:
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [ETH2 network interaction domains](#eth2-network-interaction-domains)
-  - [Constants](#constants)
+  - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-  - [The discovery domain: discv5](#the-discovery-domain-discv5)
   - [The Req/Resp domain](#the-reqresp-domain)
+  - [The discovery domain: discv5](#the-discovery-domain-discv5)
 - [Design Decision Rationale](#design-decision-rationale)
   - [Transport](#transport-1)
   - [Multiplexing](#multiplexing-1)
@@ -89,6 +89,8 @@ Noise support will presumably include IX, IK and XX handshake patterns, and may 
 
 ## Protocol Negotiation
 
+Clients MUST use exact equality when negotiating protocol versions to use and MAY use the version to give priority to higher version numbers.
+
 #### Interop
 
 Connection-level and stream-level (see the rationale section below for explanations) protocol negotiation MUST be conducted using [multistream-select v1.0](https://github.com/multiformats/multistream-select/). Its protocol ID is: `/multistream/1.0.0`.
@@ -107,16 +109,15 @@ Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) 
 
 # ETH2 network interaction domains
 
-## Constants
+## Configuration
 
 This section outlines constants that are used in this spec.
 
-- `RQRP_MAX_SIZE`: The max size of uncompressed req/resp messages that clients will allow.
- Value: TBD
-- `GOSSIP_MAX_SIZE`: The max size of uncompressed gossip messages
- Value: 1MB (estimated from expected largest uncompressed block size).
-- `SHARD_SUBNET_COUNT`: The number of shard subnets used in the gossipsub protocol.
- Value: TBD
+| `REQ_RESP_MAX_SIZE` | `TODO` | The max size of uncompressed req/resp messages that clients will allow. |
+| `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The max size of uncompressed gossip messages |
+| `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
+| `TTFB_TIMEOUT` | `5s` | Maximum time to wait for first byte of request response (time-to-first-byte) |
+| `RESP_TIMEOUT` | `10s` | Maximum time for complete response transfer |
 
 ## The gossip domain: gossipsub
 
@@ -128,7 +129,7 @@ Clients MUST support the [gossipsub](https://github.com/libp2p/specs/tree/master
 
 *Note: Parameters listed here are subject to a large-scale network feasibility study.*
 
-The following gossipsub parameters will be used:
+The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub#meshsub-an-overlay-mesh-router) will be used:
 
 - `D` (topic stable mesh target count): 6
 - `D_low` (topic stable mesh low watermark): 4
@@ -147,8 +148,8 @@ Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the 
 
 There are two main topics used to propagate attestations and beacon blocks to all nodes on the network. Their `TopicName`'s are:
 
-- `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients who receive a block on this topic MUST validate the block proposer signature before forwarding it across the network.
-- `beacon_attestation` - This topic is used to propagate aggregated attestations (in their entirety) to subscribing nodes (typically block proposers) to be included in future blocks. Similarly to beacon blocks, clients will be expected to perform some sort of validation before forwarding, but the precise mechanism is still TBD.
+- `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
+- `beacon_attestation` - This topic is used to propagate aggregated attestations (in their entirety) to subscribing nodes (typically block proposers) to be included in future blocks. Clients MUST validate that the block being voted for passes validation before forwarding the attestation on the network (TODO: [additional validations](https://github.com/ethereum/eth2.0-specs/issues/1332)).
 
 Additional topics are used to propagate lower frequency validator messages. Their `TopicName`’s are:
 
@@ -158,11 +159,13 @@ Additional topics are used to propagate lower frequency validator messages. Thei
 
 #### Interop
 
-Unaggregated attestations from all shards are sent to the `beacon_attestation` topic.
+Unaggregated and aggregated attestations from all shards are sent to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them.
 
 #### Mainnet
 
 Shards are grouped into their own subnets (defined by a shard topic). The number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard `shard_number % SHARD_SUBNET_COUNT` is assigned to the topic: `shard{shard_number % SHARD_SUBNET_COUNT}_beacon_attestation`. Unaggregated attestations are sent to the subnet topic. Aggregated attestations are sent to the `beacon_attestation` topic.
+
+TODO: [aggregation strategy](https://github.com/ethereum/eth2.0-specs/issues/1331)
 
 ### Messages
 
@@ -199,51 +202,6 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 - `ssz_snappy` - All objects are ssz-encoded and then compressed with snappy. Example: The beacon attestation topic string is: `/beacon_attestation/ssz_snappy` and the data field of a gossipsub message is an `Attestation` that has been ssz-encoded then compressed with snappy.
 
 Implementations MUST use a single encoding. Changing an encoding will require coordination between participating implementations.
-
-## The discovery domain: discv5
-
-Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery, both in the interoperability testnet and mainnet.
-
-`discv5` is a standalone protocol, running on UDP on a dedicated port, meant for peer discovery only. `discv5` supports self-certified, flexible peer records (ENRs) and topic-based advertisement, both of which are (or will be) requirements in this context.
-
-### Integration into libp2p stacks
-
-`discv5` SHOULD be integrated into the client’s libp2p stack by implementing an adaptor to make it conform to the [service discovery](https://github.com/libp2p/go-libp2p-core/blob/master/discovery/discovery.go) and [peer routing](https://github.com/libp2p/go-libp2p-core/blob/master/routing/routing.go#L36-L44) abstractions and interfaces (go-libp2p links provided).
-
-Inputs to operations include peer IDs (when locating a specific peer), or capabilities (when searching for peers with a specific capability), and the outputs will be multiaddrs converted from the ENR records returned by the discv5 backend.
-
-This integration enables the libp2p stack to subsequently form connections and streams with discovered peers.
-
-### ENR structure
-
-The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the following entries (exclusive of the sequence number and signature, which MUST be present in an ENR):
-
--  The compressed secp256k1 publickey, 33 bytes (`secp256k1` field).
--  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
--  A TCP port (`tcp` field) representing the local libp2p listening port.
--  A UDP port (`udp` field) representing the local discv5 listening port.
-
-Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
-
-#### Interop
-
-In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry ETH2 capability information, as it would be superfluous.
-
-Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an ETH2 peer, in order to eschew connecting to ETH1 peers.
-
-#### Mainnet
-
-On mainnet, ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner. The concrete solution is currently undefined. Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
-
-### Topic advertisement
-
-#### Interop
-
-This feature will not be used in the interoperability testnet.
-
-#### Mainnet
-
-In mainnet, we plan to use discv5’s topic advertisement feature as a rendezvous facility for peers on shards (thus subscribing to the relevant gossipsub topics).
 
 ## The Req/Resp domain
 
@@ -288,7 +246,7 @@ Once a new stream with the protocol ID for the request type has been negotiated,
 
 The requester MUST close the write side of the stream once it finishes writing the request message - at this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of **5 seconds** for the first response byte to arrive (time to first byte – or TTFB – timeout). On that happening, the requester will allow further **10 seconds** to receive the full response.
+The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte – or TTFB – timeout). On that happening, the requester will allow further `RESP_TIMEOUT` to receive the full response.
 
 If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
 
@@ -306,11 +264,11 @@ The responder MUST:
 
 If steps (1), (2) or (3) fail due to invalid, malformed or inconsistent data, the responder MUST respond in error. Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
 
-The entire request should be read in no more than **5 seconds**. Upon a timeout, the responder SHOULD reset the stream.
+The entire request should be read in no more than `RESP_TIMEOUT`. Upon a timeout, the responder SHOULD reset the stream.
 
 The responder SHOULD send a response promptly, starting with a **single-byte** response code which determines the contents of the response (`result` particle in the BNF grammar above).
 
-It can have one of the following values:
+It can have one of the following values, encoded as a single unsigned byte:
 
 -  0: **Success** -- a normal response follows, with contents matching the expected message schema and encoding specified in the request.
 -  1: **InvalidRequest** -- the contents of the request are semantically invalid, or the payload is malformed, or could not be understood. The response payload adheres to the `ErrorMessage` schema (described below).
@@ -461,6 +419,53 @@ Requests blocks by their block roots. The response is a list of `BeaconBlock` wi
 
 Clients MUST support requesting blocks since the latest finalized epoch.
 
+## The discovery domain: discv5
+
+Discovery Version 5 ([discv5](https://github.com/ethereum/devp2p/blob/master/discv5/discv5.md)) is used for peer discovery, both in the interoperability testnet and mainnet.
+
+`discv5` is a standalone protocol, running on UDP on a dedicated port, meant for peer discovery only. `discv5` supports self-certified, flexible peer records (ENRs) and topic-based advertisement, both of which are (or will be) requirements in this context.
+
+:warning: Under construction. :warning:
+
+### Integration into libp2p stacks
+
+`discv5` SHOULD be integrated into the client’s libp2p stack by implementing an adaptor to make it conform to the [service discovery](https://github.com/libp2p/go-libp2p-core/blob/master/discovery/discovery.go) and [peer routing](https://github.com/libp2p/go-libp2p-core/blob/master/routing/routing.go#L36-L44) abstractions and interfaces (go-libp2p links provided).
+
+Inputs to operations include peer IDs (when locating a specific peer), or capabilities (when searching for peers with a specific capability), and the outputs will be multiaddrs converted from the ENR records returned by the discv5 backend.
+
+This integration enables the libp2p stack to subsequently form connections and streams with discovered peers.
+
+### ENR structure
+
+The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the following entries (exclusive of the sequence number and signature, which MUST be present in an ENR):
+
+-  The compressed secp256k1 publickey, 33 bytes (`secp256k1` field).
+-  An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
+-  A TCP port (`tcp` field) representing the local libp2p listening port.
+-  A UDP port (`udp` field) representing the local discv5 listening port.
+
+Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
+
+#### Interop
+
+In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry ETH2 capability information, as it would be superfluous.
+
+Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an ETH2 peer, in order to eschew connecting to ETH1 peers.
+
+#### Mainnet
+
+On mainnet, ENRs MUST include a structure enumerating the capabilities offered by the peer in an efficient manner. The concrete solution is currently undefined. Proposals include using namespaced bloom filters mapping capabilities to specific protocol IDs supported under that capability.
+
+### Topic advertisement
+
+#### Interop
+
+This feature will not be used in the interoperability testnet.
+
+#### Mainnet
+
+In mainnet, we plan to use discv5’s topic advertisement feature as a rendezvous facility for peers on shards (thus subscribing to the relevant gossipsub topics).
+
 # Design Decision Rationale
 
 ## Transport
@@ -601,7 +606,19 @@ For future extensibility with almost zero overhead now (besides the extra bytes 
 
 ### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
-Such upgrades lead to fragmentation, so they’ll need to be carried out in a coordinated manner most likely during a hard fork.
+Changing gossipsub / broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, for example during a hard fork.
+
+One can envision a two-phase deployment as well where clients start listening to the new topic in a first phase then start publishing some time later, letting the traffic naturally move over to the new topic.
+
+### Why must all clients use the same gossip topic instead of one negotiated between each peer pair?
+
+Supporting multiple topics / encodings would require the presence of relayers to translate between encodings and topics so as to avoid network fragmentation where participants have diverging views on the gossiped state, making the protocol more complicated and fragile.
+
+Gossip protocols typically remember what messages they've seen for a finite period of time based on message identity - if you publish the same message again after that time has passed, it will be re-broadcast - adding a relay delay also makes this scenario more likely.
+
+One can imagine that in a complicated upgrade scenario, we might have peers publishing the same message on two topics/encodings, but the price here is pretty high in terms of overhead - both computational and networking, so we'd rather avoid that.
+
+It is permitted for clients to publish data on alternative topics as long as they also publish on the network-wide mandatory topic.
 
 ### Why are the topics strings and not hashes?
 
@@ -625,7 +642,7 @@ The prohibition of unverified-block-gossiping extends to nodes that cannot verif
 
 ### How are we going to discover peers in a gossipsub topic?
 
-Via discv5 topics. ENRs should not be used for this purpose, as they store identity, location and capability info, not volatile advertisements.
+Via discv5 topics. ENRs should not be used for this purpose, as they store identity, location and capability info, not volatile [advertisements](#topic-advertisement).
 
 In the interoperability testnet, all peers will be subscribed to all global beacon chain topics, so discovering peers in specific shard topics will be unnecessary.
 
