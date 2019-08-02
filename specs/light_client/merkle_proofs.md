@@ -201,7 +201,7 @@ x x . . . . x *
 
 First, we provide a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
 
-```
+```python
 def get_branch_indices(tree_index: GeneralizedIndex) -> List[GeneralizedIndex]:
     """
     Get the generalized indices of the sister chunks along the path from the chunk with the
