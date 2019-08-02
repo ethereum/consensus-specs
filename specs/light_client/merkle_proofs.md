@@ -132,6 +132,8 @@ def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> Generalized
 
 ### Helpers for generalized indices
 
+_Usage note: functions outside this section should manipulate generalized indices using only functions inside this section. This is to make it easier for developers to implement generalized indices with underlying representations other than bigints._
+
 #### `concat_generalized_indices`
 
 ```python
