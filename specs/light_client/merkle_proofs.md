@@ -142,7 +142,7 @@ def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> Generali
     """
     o = GeneralizedIndex(1)
     for i in indices:
-        o = o * get_previous_power_of_2(i) + i
+        o = o * get_previous_power_of_2(i) + (i - get_previous_power_of_2(i))
     return o
 ```
 
