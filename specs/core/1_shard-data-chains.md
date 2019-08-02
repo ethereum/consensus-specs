@@ -432,7 +432,7 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
     # Save states in history accumulator
     depth = 0
     h = hash_tree_root(state)
-    while state.slot % 2**depth == 0:
+    while state.slot % 2**depth == 0 and depth <= HISTORY_ACCUMULATOR_VECTOR:
         state.history_accumulator[depth] = h
         depth += 1
 
