@@ -79,13 +79,13 @@ The following SecIO parameters MUST be supported by all stacks:
 
 -  Key agreement: ECDH-P256.
 -  Cipher: AES-128.
--  Digest: SHA256.
+-  Digest: SHA-256.
 
 #### Mainnet
 
 [Noise Framework](http://www.noiseprotocol.org/) handshakes will be used for mainnet. libp2p Noise support [is in the process of being standardised](https://github.com/libp2p/specs/issues/195) in the libp2p project.
 
-Noise support will presumably include IX, IK and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA256 as a hash function. These aspects are being actively debated in the referenced issue [ETH 2.0 implementers are welcome to comment and contribute to the discussion.]
+Noise support will presumably include IX, IK and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue [ETH 2.0 implementers are welcome to comment and contribute to the discussion.]
 
 ## Protocol Negotiation
 
@@ -427,7 +427,7 @@ Response Content:
 )
 ```
 
-Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root`. The response MUST contain no more than count blocks. step defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root`. The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
 
 `BeaconBlocks` is primarily used to sync historical blocks.
 
@@ -609,7 +609,7 @@ Topics names have a hierarchical structure. In the future, gossipsub may support
 
 No security or privacy guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway, and calculating a digest's preimage would be trivial.
 
-Furthermore, the ETH2 topic names are shorter their digest equivalents (asuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
+Furthermore, the ETH2 topic names are shorter their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
 ### Why are there `SHARD_SUBNET_COUNT` subnets, and why is this not defined?
 
