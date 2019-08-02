@@ -85,6 +85,7 @@ def chunk_count(typ: SSZType) -> int:
     hash. For lists/vectors of basic types, it is often fewer because multiple basic elements
     can be packed into one 32-byte chunk.
     """
+    # typ.length describes the limit for list types, or the length for vector types.
     if issubclass(typ, BasicValue):
         return 1
     elif issubclass(typ, Bits):
