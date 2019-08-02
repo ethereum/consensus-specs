@@ -153,7 +153,7 @@ def get_generalized_index_length(index: GeneralizedIndex) -> int:
    """
    Returns the length of a path represented by a generalized index.
    """
-   return log(index)
+   return log2(index)
 ```
 
 #### `get_generalized_index_bit`
