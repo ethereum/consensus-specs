@@ -1,6 +1,0 @@
-# Testing fork timeline
-
-# Equal to GENESIS_EPOCH
-phase0: 536870912
-
-# No other forks considered in testing yet (to be implemented)

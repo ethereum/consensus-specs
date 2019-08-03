@@ -94,8 +94,8 @@ def test_new_deposit_over_max(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
@@ -115,8 +115,8 @@ def test_success_top_up(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4

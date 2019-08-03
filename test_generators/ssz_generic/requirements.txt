@@ -1,4 +1,4 @@
 eth-utils==1.6.0
 ../../test_libs/gen_helpers
 ../../test_libs/config_helpers
-ssz==0.1.3
+../../test_libs/pyspec
