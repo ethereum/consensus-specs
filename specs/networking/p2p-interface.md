@@ -51,9 +51,7 @@ Even though libp2p is a multi-transport stack (designed to listen on multiple si
 
 #### Interop
 
-All implementations MUST support the TCP libp2p transport, and it MUST be enabled for both dialing and listening (i.e. outbound and inbound connections).
-
-The libp2p TCP transport supports listening on IPv4 and IPv6 addresses (and on multiple simultaneously). Clients SHOULD allow the operator to configure the listen IP addresses and ports, including the addressing schemes (IPv4, IPv6).
+All implementations MUST support the TCP libp2p transport, and it MUST be enabled for both dialing and listening (i.e. outbound and inbound connections). The libp2p TCP transport supports listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
 
 To facilitate connectivity, and avert possible IPv6 routability/support issues, clients participating in the interoperability testnet MUST expose at least ONE IPv4 endpoint.
 
@@ -236,9 +234,9 @@ result    ::= “0” | “1” | “2” | [“128” ... ”255”]
 
 The encoding-dependent header may carry metadata or assertions such as the encoded payload length, for integrity and attack proofing purposes. It is not strictly necessary to length-prefix payloads, because req/resp streams are single-use, and stream closures implicitly delimit the boundaries, but certain encodings like SSZ do, for added security.
 
-`encoded-payload` has a maximum byte size of `RQRP_MAX_SIZE`.
+`encoded-payload` has a maximum byte size of `REQ_RESP_MAX_SIZE`.
 
-Clients MUST ensure the payload size is less than or equal to `RQRP_MAX_SIZE`, if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
+Clients MUST ensure the payload size is less than or equal to `REQ_RESP_MAX_SIZE`, if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
 
 #### Requesting side
 
@@ -286,7 +284,7 @@ The `ErrorMessage` schema is:
 )
 ```
 
-*Note that the String type is encoded as UTF-8 bytes when SSZ-encoded.*
+*Note that the String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded.*
 
 A response therefore has the form:
 ```
