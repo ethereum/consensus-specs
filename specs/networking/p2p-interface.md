@@ -664,11 +664,23 @@ CAVEAT: the protocol negotiation component in the current version of libp2p is c
 
 ### Why are messages length-prefixed with a protobuf varint in the SSZ encoding?
 
-In stream-oriented protocols, we need to delimit messages from one another, so that the reader knows where one message ends and the next one starts. Length-prefixing is an effective solution. Alternatively, one could set a delimiter char/string, but this can readily cause ambiguity if the message itself may contain the delimiter. It also introduces another set of edge cases to model for, thus causing unnecessary complexity, especially if messages are to be compressed (and thus mutated beyond our control).
+We are using single-use streams where each stream is closed at the end of the message - thus libp2p transparently handles message delimiting in the underlying stream. libp2p streams are full-duplex, and each party is responsible for closing their write side (like in TCP). We can therefore use stream closure to mark the end of the request and response independently.
 
-That said, in our case, streams are single-use. libp2p streams are full-duplex, and each party is responsible for closing their write side (like in TCP). We therefore use stream closure to mark the end of a request.
+Nevertheless, messages are still length-prefixed - this is now being considered for removal.
 
-Nevertheless, messages are still length-prefixed to prevent DOS attacks where malicious actors send large amounts of data disguised as a request. A length prefix allows clients to set a maximum limit, and once that limit is read, the client can cease reading and disconnect the stream. This allows a client to determine the exact length of the packet being sent, and it capacitates it to reset the stream early if the other party expresses they intend to send too much data.
+Advantages of length-prefixing include:
+
+* Reader can prepare a correctly sized buffer before reading message
+* Alignment with protocols like gRPC over HTTP/2 that prefix with length
+* Sanity checking of stream closure / message length
+
+Disadvantages include:
+
+* Redundant methods of message delimiting - both stream end marker and length prefix
+* Harder to stream as length must be known up-front
+* Additional code path required to verify length
+
+In some protocols, adding a length prefix serves as a form of DoS protection against very long messages, allowing the client to abort if an overlong message is about to be sent. In this protocol, we are globally limiting message sizes using `REQ_RESP_MAX_SIZE`, thus an the length prefix does not afford any additional protection.
 
 [Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length ints. Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
 
@@ -728,7 +740,7 @@ SSZ has well defined schema’s for consensus objects (typically sent across the
 
 We compress on the wire to achieve smaller payloads per-message, which, in aggregate, result in higher efficiency, better utilisation of available bandwidth, and overall reduction in network-wide traffic overhead.
 
-At this time, libp2p does not have an out-of-the-box compression feature that can be dynamically negotiated and layered atop connections and streams, but this will be raised in the libp2p community for consideration.
+At this time, libp2p does not have an out-of-the-box compression feature that can be dynamically negotiated and layered atop connections and streams, but is [being considered](https://github.com/libp2p/libp2p/issues/81).
 
 This is a non-trivial feature because the behaviour of network IO loops, kernel buffers, chunking, packet fragmentation, amongst others, need to be taken into account. libp2p streams are unbounded streams, whereas compression algorithms work best on bounded byte streams of which we have some prior knowledge.
 
