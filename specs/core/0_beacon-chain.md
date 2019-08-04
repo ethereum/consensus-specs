@@ -207,6 +207,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
+| `SECONDS_PER_SLOT` | `6` | seconds | 6 seconds |
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 6 seconds |
 | `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
@@ -1270,7 +1271,7 @@ def get_unslashed_attesting_indices(state: BeaconState,
     output = set()  # type: Set[ValidatorIndex]
     for a in attestations:
         output = output.union(get_attesting_indices(state, a.data, a.aggregation_bits))
-    return set(filter(lambda index: not state.validators[index].slashed, list(output)))
+    return set(filter(lambda index: not state.validators[index].slashed, output))
 ```
 
 ```python
@@ -1283,10 +1284,10 @@ def get_winning_crosslink_and_attesting_indices(state: BeaconState,
                                                 epoch: Epoch,
                                                 shard: Shard) -> Tuple[Crosslink, Set[ValidatorIndex]]:
     attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
-    crosslinks = list(filter(
+    crosslinks = filter(
         lambda c: hash_tree_root(state.current_crosslinks[shard]) in (c.parent_root, hash_tree_root(c)),
         [a.data.crosslink for a in attestations]
-    ))
+    )
     # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
     winning_crosslink = max(crosslinks, key=lambda c: (
         get_attesting_balance(state, [a for a in attestations if a.data.crosslink == c]), c.data_root
@@ -1503,8 +1504,6 @@ def process_final_updates(state: BeaconState) -> None:
         HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
         if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    # Update start shard
-    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
     index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
     index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
@@ -1521,6 +1520,8 @@ def process_final_updates(state: BeaconState) -> None:
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
+    # Update start shard
+    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
@@ -1652,6 +1653,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
+
+    committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
+    assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
         data=data,

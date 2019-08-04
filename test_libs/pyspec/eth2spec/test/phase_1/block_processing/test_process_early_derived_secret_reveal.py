@@ -42,8 +42,8 @@ def run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal, v
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_success(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state)
 
@@ -51,8 +51,8 @@ def test_success(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@never_bls
 @spec_state_test
+@never_bls
 def test_reveal_from_current_epoch(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state))
 
@@ -60,8 +60,8 @@ def test_reveal_from_current_epoch(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@never_bls
 @spec_state_test
+@never_bls
 def test_reveal_from_past_epoch(spec, state):
     next_epoch(spec, state)
     apply_empty_block(spec, state)
@@ -71,8 +71,8 @@ def test_reveal_from_past_epoch(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_reveal_with_custody_padding(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(
         spec,
@@ -83,8 +83,8 @@ def test_reveal_with_custody_padding(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@always_bls
 @spec_state_test
+@always_bls
 def test_reveal_with_custody_padding_minus_one(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(
         spec,
@@ -95,8 +95,8 @@ def test_reveal_with_custody_padding_minus_one(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@never_bls
 @spec_state_test
+@never_bls
 def test_double_reveal(spec, state):
     randao_key_reveal1 = get_valid_early_derived_secret_reveal(
         spec,
@@ -120,8 +120,8 @@ def test_double_reveal(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@never_bls
 @spec_state_test
+@never_bls
 def test_revealer_is_slashed(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(spec, state, spec.get_current_epoch(state))
     state.validators[randao_key_reveal.revealed_index].slashed = True
@@ -130,8 +130,8 @@ def test_revealer_is_slashed(spec, state):
 
 
 @with_all_phases_except(['phase0'])
-@never_bls
 @spec_state_test
+@never_bls
 def test_far_future_epoch(spec, state):
     randao_key_reveal = get_valid_early_derived_secret_reveal(
         spec,

@@ -14,7 +14,7 @@
         - [Variable-size and fixed-size](#variable-size-and-fixed-size)
         - [Aliases](#aliases)
         - [Default values](#default-values)
-            - [`is_empty`](#is_empty)
+            - [`is_zero`](#is_zero)
         - [Illegal types](#illegal-types)
     - [Serialization](#serialization)
         - [`uintN`](#uintn)
@@ -75,19 +75,21 @@ For convenience we alias:
 * `bit` to `boolean`
 * `byte` to `uint8` (this is a basic type)
 * `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
-* `null`: `{}`, i.e. the empty container
+* `null`: `{}`
 
 ### Default values
 
 The default value of a type upon initialization is recursively defined using `0` for `uintN`, `False` for `boolean` and the elements of `Bitvector`, and `[]` for lists and `Bitlist`. Unions default to the first type in the union (with type index zero), which is `null` if present in the union.
 
-#### `is_empty`
+#### `is_zero`
 
-An SSZ object is called empty (and thus, `is_empty(object)` returns true) if it is equal to the default value for that type.
+An SSZ object is called zeroed (and thus, `is_zero(object)` returns true) if it is equal to the default value for that type.
 
 ### Illegal types
 
-Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
+- Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
+- Containers with no fields are illegal.
+- The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
 
 ## Serialization
 
@@ -187,7 +189,7 @@ We first define helper functions:
    * `List[B, N]` and `Vector[B, N]`, where `B` is a basic type: `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
    * `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
    * containers: `len(fields)`
-* `bitfield_bytes(bits)`: return the bits of the bitlist or bitvector, packed in bytes, aligned to the start. Exclusive length-delimiting bit for bitlists.
+* `bitfield_bytes(bits)`: return the bits of the bitlist or bitvector, packed in bytes, aligned to the start. Length-delimiting bit for bitlists is excluded.
 * `pack`: Given ordered objects of the same basic type, serialize them, pack them into `BYTES_PER_CHUNK`-byte chunks, right-pad the last chunk with zero bytes, and return the chunks.
 * `next_pow_of_two(i)`: get the next power of 2 of `i`, if not already a power of 2, with 0 mapping to 1. Examples: `0->1, 1->1, 2->2, 3->4, 4->4, 6->8, 9->16`
 * `merkleize(chunks, limit=None)`: Given ordered `BYTES_PER_CHUNK`-byte chunks, merkleize the chunks, and return the root:

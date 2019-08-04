@@ -108,8 +108,8 @@ def test_success_surround(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_success_already_exited_recent(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_indices = (
@@ -123,8 +123,8 @@ def test_success_already_exited_recent(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_success_already_exited_long_ago(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_indices = (
@@ -139,24 +139,24 @@ def test_success_already_exited_long_ago(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_1_and_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
@@ -212,9 +212,9 @@ def test_custody_bit_0_and_1_intersect(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@always_bls
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_att1_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -228,9 +228,9 @@ def test_att1_bad_extra_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@always_bls
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_att1_bad_replaced_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -244,9 +244,9 @@ def test_att1_bad_replaced_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@always_bls
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_att2_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -260,9 +260,9 @@ def test_att2_bad_extra_index(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
 
-@always_bls
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_att2_bad_replaced_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 

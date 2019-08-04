@@ -1,23 +1,24 @@
-# Minimal preset
+# Mainnet preset
+# Note: the intention of this file (for now) is to illustrate what a mainnet configuration could look like.
+# Some of these constants may still change before the launch of Phase 0.
 
 
 # Misc
 # ---------------------------------------------------------------
-
-# [customized] Just 8 shards for testing purposes
-SHARD_COUNT: 8
-# [customized] unsecure, but fast
-TARGET_COMMITTEE_SIZE: 4
+# 2**10 (= 1,024)
+SHARD_COUNT: 1024
+# 2**7 (= 128)
+TARGET_COMMITTEE_SIZE: 128
 # 2**12 (= 4,096)
 MAX_VALIDATORS_PER_COMMITTEE: 4096
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
 CHURN_LIMIT_QUOTIENT: 65536
-# [customized] Faster, but unsecure.
-SHUFFLE_ROUND_COUNT: 10
-# [customized]
-MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 64
+# See issue 563
+SHUFFLE_ROUND_COUNT: 90
+# `2**16` (= 65,536)
+MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 65536
 # Jan 3, 2020
 MIN_GENESIS_TIME: 1578009600
 
@@ -54,35 +55,36 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 SECONDS_PER_SLOT: 6
 # 2**0 (= 1) slots 6 seconds
 MIN_ATTESTATION_INCLUSION_DELAY: 1
-# [customized] fast epochs
-SLOTS_PER_EPOCH: 8
-# 2**0 (= 1) epochs
+# 2**6 (= 64) slots 6.4 minutes
+SLOTS_PER_EPOCH: 64
+# 2**0 (= 1) epochs 6.4 minutes
 MIN_SEED_LOOKAHEAD: 1
-# 2**2 (= 4) epochs
+# 2**2 (= 4) epochs 25.6 minutes
 ACTIVATION_EXIT_DELAY: 4
-# [customized] higher frequency new deposits from eth1 for testing
-SLOTS_PER_ETH1_VOTING_PERIOD: 16
-# [customized] smaller state
-SLOTS_PER_HISTORICAL_ROOT: 64
-# 2**8 (= 256) epochs
+# 2**10 (= 1,024) slots ~1.7 hours
+SLOTS_PER_ETH1_VOTING_PERIOD: 1024
+# 2**13 (= 8,192) slots ~13 hours
+SLOTS_PER_HISTORICAL_ROOT: 8192
+# 2**8 (= 256) epochs ~27 hours
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
-# 2**11 (= 2,048) epochs
+# 2**11 (= 2,048) epochs 9 days
 PERSISTENT_COMMITTEE_PERIOD: 2048
-# [customized] fast catchup crosslinks
-MAX_EPOCHS_PER_CROSSLINK: 4
-# 2**2 (= 4) epochs
+# 2**6 (= 64) epochs ~7 hours
+MAX_EPOCHS_PER_CROSSLINK: 64
+# 2**2 (= 4) epochs 25.6 minutes
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
-# [customized] 2**12 (= 4,096) epochs
-EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 4096
+# 2**14 (= 16,384) epochs ~73 days
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 16384
+
 
 
 # State vector lengths
 # ---------------------------------------------------------------
-# [customized] smaller state
-EPOCHS_PER_HISTORICAL_VECTOR: 64
-# [customized] smaller state
-EPOCHS_PER_SLASHINGS_VECTOR: 64
-# 2**24 (= 16,777,216) historical roots
+# 2**16 (= 65,536) epochs ~0.8 years
+EPOCHS_PER_HISTORICAL_VECTOR: 65536
+# 2**13 (= 8,192) epochs ~36 days
+EPOCHS_PER_SLASHINGS_VECTOR: 8192
+# 2**24 (= 16,777,216) historical roots, ~26,131 years
 HISTORICAL_ROOTS_LIMIT: 16777216
 # 2**40 (= 1,099,511,627,776) validator spots
 VALIDATOR_REGISTRY_LIMIT: 1099511627776
@@ -126,3 +128,6 @@ DOMAIN_ATTESTATION: 0x02000000
 DOMAIN_DEPOSIT: 0x03000000
 DOMAIN_VOLUNTARY_EXIT: 0x04000000
 DOMAIN_TRANSFER: 0x05000000
+DOMAIN_CUSTODY_BIT_CHALLENGE: 0x06000000
+DOMAIN_SHARD_PROPOSER: 0x80000000
+DOMAIN_SHARD_ATTESTER: 0x81000000

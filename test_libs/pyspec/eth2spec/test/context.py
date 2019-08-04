@@ -4,7 +4,7 @@ from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
 
-from .utils import spectest, with_tags
+from .utils import vector_test, with_meta_tags
 
 
 def with_state(fn):
@@ -12,7 +12,7 @@ def with_state(fn):
         try:
             kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
         except KeyError:
-            raise TypeError('Spec decorator must come before state decorator to inject spec into state.')
+            raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
         return fn(*args, **kw)
     return entry
 
@@ -27,13 +27,18 @@ def with_state(fn):
 DEFAULT_BLS_ACTIVE = False
 
 
-def spectest_with_bls_switch(fn):
-    return bls_switch(spectest()(fn))
+def spec_test(fn):
+    # Bls switch must be wrapped by vector_test,
+    # to fully go through the yielded bls switch data, before setting back the BLS setting.
+    # A test may apply BLS overrides such as @always_bls,
+    #  but if it yields data (n.b. @always_bls yields the bls setting), it should be wrapped by this decorator.
+    #  This is why @alway_bls has its own bls switch, since the override is beyond the reach of the outer switch.
+    return vector_test()(bls_switch(fn))
 
 
-# shorthand for decorating @with_state @spectest()
+# shorthand for decorating @spectest() @with_state
 def spec_state_test(fn):
-    return with_state(spectest_with_bls_switch(fn))
+    return spec_test(with_state(fn))
 
 
 def expect_assertion_error(fn):
@@ -50,47 +55,44 @@ def expect_assertion_error(fn):
         raise AssertionError('expected an assertion error, but got none.')
 
 
-# Tags a test to be ignoring BLS for it to pass.
-bls_ignored = with_tags({'bls_setting': 2})
-
-
 def never_bls(fn):
     """
     Decorator to apply on ``bls_switch`` decorator to force BLS de-activation. Useful to mark tests as BLS-ignorant.
+    This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
+     as the yielding needs to complete before setting back the BLS setting.
     """
     def entry(*args, **kw):
         # override bls setting
         kw['bls_active'] = False
-        return fn(*args, **kw)
-    return bls_ignored(entry)
-
-
-# Tags a test to be requiring BLS for it to pass.
-bls_required = with_tags({'bls_setting': 1})
+        return bls_switch(fn)(*args, **kw)
+    return with_meta_tags({'bls_setting': 2})(entry)
 
 
 def always_bls(fn):
     """
     Decorator to apply on ``bls_switch`` decorator to force BLS activation. Useful to mark tests as BLS-dependent.
+    This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
+     as the yielding needs to complete before setting back the BLS setting.
     """
     def entry(*args, **kw):
         # override bls setting
         kw['bls_active'] = True
-        return fn(*args, **kw)
-    return bls_required(entry)
+        return bls_switch(fn)(*args, **kw)
+    return with_meta_tags({'bls_setting': 1})(entry)
 
 
 def bls_switch(fn):
     """
     Decorator to make a function execute with BLS ON, or BLS off.
     Based on an optional bool argument ``bls_active``, passed to the function at runtime.
+    This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
+     as the yielding needs to complete before setting back the BLS setting.
     """
     def entry(*args, **kw):
         old_state = bls.bls_active
         bls.bls_active = kw.pop('bls_active', DEFAULT_BLS_ACTIVE)
-        out = fn(*args, **kw)
+        yield from fn(*args, **kw)
         bls.bls_active = old_state
-        return out
     return entry
 
 

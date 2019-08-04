@@ -4,13 +4,32 @@ The different kinds of operations ("transactions") are tested individually with 
 
 ## Test case format
 
+### `meta.yaml`
+
 ```yaml
-description: string                    -- description of test case, purely for debugging purposes
-bls_setting: int                       -- see general test-format spec.
-pre: BeaconState                       -- state before applying the operation
-<operation-name>: <operation-object>   -- the YAML encoded operation, e.g. a "ProposerSlashing", or "Deposit".
-post: BeaconState                      -- state after applying the operation. No value if operation processing is aborted.
+description: string    -- Optional description of test case, purely for debugging purposes.
+                          Tests should use the directory name of the test case as identifier, not the description.
+bls_setting: int       -- see general test-format spec.
 ```
+
+### `pre.yaml`
+
+A YAML-encoded `BeaconState`, the state before applying the operation.
+
+Also available as `pre.ssz`.
+
+### `<operation-name>.yaml`
+
+A YAML-encoded operation object, e.g. a `ProposerSlashing`, or `Deposit`.
+
+Also available as `<operation-name>.ssz`.
+
+### `post.yaml`
+
+A YAML-encoded `BeaconState`, the state after applying the operation. No value if operation processing is aborted.
+
+Also available as `post.ssz`.
+
 
 ## Condition
 
@@ -24,7 +43,7 @@ Operations:
 |-------------------------|----------------------|----------------------|--------------------------------------------------------|
 | `attestation`           | `Attestation`        | `attestation`        | `process_attestation(state, attestation)`              |
 | `attester_slashing`     | `AttesterSlashing`   | `attester_slashing`  | `process_attester_slashing(state, attester_slashing)`  |
-| `block_header`          | `Block`              | `block`              | `process_block_header(state, block)`                   |
+| `block_header`          | `Block`              | **`block`**           | `process_block_header(state, block)`                   |
 | `deposit`               | `Deposit`            | `deposit`            | `process_deposit(state, deposit)`                      |
 | `proposer_slashing`     | `ProposerSlashing`   | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`  |
 | `transfer`              | `Transfer`           | `transfer`           | `process_transfer(state, transfer)`                    |
