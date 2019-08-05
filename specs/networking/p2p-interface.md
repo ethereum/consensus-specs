@@ -5,7 +5,7 @@ This document contains the networking specification for Ethereum 2.0 clients.
 It consists of four main sections:
 
 1. A specification of the network fundamentals detailing the two network configurations: interoperability test network and mainnet launch.
-2. A specification of the three network interaction *domains* of Eth 2.0: (a) the gossip domain, (b) the discovery domain, (c) the Req/Resp domain.
+2. A specification of the three network interaction *domains* of Eth 2.0: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
 3. The rationale and further explanation for the design choices made in the previous two sections.
 4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth 2.0 clients are being developed.
 
@@ -65,7 +65,7 @@ All requirements from the interoperability testnet apply, except for the IPv4 ad
 
 At this stage, clients are licensed to drop IPv4 support if they wish to do so, cognizant of the potential disadvantages in terms of Internet-wide routability/support. Clients MAY choose to listen only on IPv6, but MUST retain capability to dial both IPv4 and IPv6 addresses.
 
-Usage of circuit relay, AutoNAT or AutoRelay will be specifically re-examined closer to the time.
+Usage of circuit relay, AutoNAT, or AutoRelay will be specifically re-examined closer to the time.
 
 ## Encryption and identification
 
@@ -83,7 +83,7 @@ The following SecIO parameters MUST be supported by all stacks:
 
 [Noise Framework](http://www.noiseprotocol.org/) handshakes will be used for mainnet. libp2p Noise support [is in the process of being standardized](https://github.com/libp2p/specs/issues/195) in the libp2p project.
 
-Noise support will presumably include IX, IK, and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue [Eth 2.0 implementers are welcome to comment and contribute to the discussion.]
+Noise support will presumably include IX, IK, and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue (Eth 2.0 implementers are welcome to comment and contribute to the discussion).
 
 ## Protocol Negotiation
 
@@ -220,7 +220,7 @@ With:
 - `SchemaVersion` - an ordinal version number (e.g. 1, 2, 3…). Each schema is versioned to facilitate backward and forward-compatibility when possible.
 - `Encoding` - while the schema defines the data types in more abstract terms, the encoding strategy describes a specific representation of bytes that will be transmitted over the wire. See the [Encodings](#Encoding-strategies) section for further details.
 
-This protocol segregation allows libp2p `multistream-select 1.0` / `multiselect 2.0` to handle the request type, version and encoding negotiation before establishing the underlying streams.
+This protocol segregation allows libp2p `multistream-select 1.0` / `multiselect 2.0` to handle the request type, version, and encoding negotiation before establishing the underlying streams.
 
 ### Req/Resp interaction
 
@@ -621,7 +621,7 @@ It is permitted for clients to publish data on alternative topics as long as the
 
 ### Why are the topics strings and not hashes?
 
-Topics names have a hierarchical structure. In the future, gossipsub may support wildcard subscriptions (e.g. subscribe to all children topics under a root prefix) by way of prefix matching. Enforcing hashes for topic names would preclude us from leveraging such features going forward.
+Topic names have a hierarchical structure. In the future, gossipsub may support wildcard subscriptions (e.g. subscribe to all children topics under a root prefix) by way of prefix matching. Enforcing hashes for topic names would preclude us from leveraging such features going forward.
 
 No security or privacy guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway, and calculating a digest's preimage would be trivial.
 
@@ -651,7 +651,7 @@ In the interoperability testnet, all peers will be subscribed to all global beac
 
 Requests are segregated by protocol ID to:
 
-1. Leverage protocol routing in libp2p, such that the libp2p stack will route the incoming stream to the appropriate handler. This allows each the handler function for each request type to be self-contained. For an analogy, think about how you attach HTTP handlers to a REST API server.
+1. Leverage protocol routing in libp2p, such that the libp2p stack will route the incoming stream to the appropriate handler. This allows the handler function for each request type to be self-contained. For an analogy, think about how you attach HTTP handlers to a REST API server.
 2. Version requests independently. In a coarser-grained umbrella protocol, the entire protocol would have to be versioned even if just one field in a single message changed.
 3. Enable clients to select the individual requests/versions they support. It would no longer be a strict requirement to support all requests, and clients, in principle, could support a subset of requests and variety of versions.
 4. Enable flexibility and agility for clients adopting spec changes that impact the request, by signalling to peers exactly which subset of new/old requests they support.
@@ -681,7 +681,7 @@ Disadvantages include:
 * Harder to stream as length must be known up-front
 * Additional code path required to verify length
 
-In some protocols, adding a length prefix serves as a form of DoS protection against very long messages, allowing the client to abort if an overlong message is about to be sent. In this protocol, we are globally limiting message sizes using `REQ_RESP_MAX_SIZE`, thus an the length prefix does not afford any additional protection.
+In some protocols, adding a length prefix serves as a form of DoS protection against very long messages, allowing the client to abort if an overlong message is about to be sent. In this protocol, we are globally limiting message sizes using `REQ_RESP_MAX_SIZE`, thus the length prefix does not afford any additional protection.
 
 [Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length ints. Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
 
@@ -696,9 +696,9 @@ These two peers should never speak to each other because the results can be unpr
 
 For this reason, we rely on negotiation of explicit, verbatim protocols. In the above case, peer B would provide backwards compatibility by supporting and advertising both v1.1.1 and v1.1.2 of the protocol.
 
-Therefore, semver would be relegated to convey expectations at the human level, and it wouldn't do a good job there either, because it's unclear if "backwards-compatibility" and "breaking change" apply only to wire schema level, to behavior, etc.
+Therefore, semver would be relegated to convey expectations at the human level, and it wouldn't do a good job there either, because it's unclear if "backwards compatibility" and "breaking change" apply only to wire schema level, to behavior, etc.
 
-For this reason, we remove semver out of the picture, replace it with ordinals that require explicit agreement, and do not mandate a specific policy for changes.
+For this reason, we remove and replace semver with ordinals that require explicit agreement and do not mandate a specific policy for changes.
 
 ### Why is it called Req/Resp and not RPC?
 
@@ -712,7 +712,7 @@ discv5 is a standalone protocol, running on UDP on a dedicated port, meant for p
 
 On the other hand, libp2p Kademlia DHT is a fully-fledged DHT protocol/implementation with content routing and storage capabilities, both of which are irrelevant in this context.
 
-We assume that Eth 1.0 nodes will evolve to support discv5. By sharing the discovery network between Eth 1.0 and 2.0, we benefit from the additive effect on network size that enhances resilience and resistance against certain attacks, to which smaller networks are more vulnerable. It should also assist light clients of both networks find nodes with specific capabilities.
+We assume that Eth 1.0 nodes will evolve to support discv5. By sharing the discovery network between Eth 1.0 and 2.0, we benefit from the additive effect on network size that enhances resilience and resistance against certain attacks, to which smaller networks are more vulnerable. It should also help light clients of both networks find nodes with specific capabilities.
 
 discv5 is in the process of being audited.
 
