@@ -29,7 +29,7 @@ It consists of four main sections:
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
   - [Multiplexing](#multiplexing-1)
-  - [Protocol Negotiation](#protocol-negotiation-1)
+  - [Protocol negotiation](#protocol-negotiation-1)
   - [Encryption](#encryption)
   - [Gossipsub](#gossipsub)
   - [Req/Resp](#reqresp)
@@ -113,11 +113,11 @@ This section outlines constants that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `REQ_RESP_MAX_SIZE` | `TODO` | The max size of uncompressed req/resp messages that clients will allow. |
-| `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The max size of uncompressed gossip messages |
+| `REQ_RESP_MAX_SIZE` | `TODO` | The maximum size of uncompressed req/resp messages that clients will allow. |
+| `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum size of uncompressed gossip messages. |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
-| `TTFB_TIMEOUT` | `5s` | Maximum time to wait for first byte of request response (time-to-first-byte) |
-| `RESP_TIMEOUT` | `10s` | Maximum time for complete response transfer |
+| `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
+| `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 
 ## The gossip domain: gossipsub
 
@@ -127,7 +127,7 @@ Clients MUST support the [gossipsub](https://github.com/libp2p/specs/tree/master
 
 **Gossipsub Parameters**
 
-*Note: Parameters listed here are subject to a large-scale network feasibility study.*
+*Note*: Parameters listed here are subject to a large-scale network feasibility study.
 
 The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub#meshsub-an-overlay-mesh-router) will be used:
 
@@ -257,7 +257,7 @@ Once a new stream with the protocol ID for the request type has been negotiated,
 The responder MUST:
 
 1. Use the encoding strategy to read the optional header.
-2. If there are any length assertions for length `N`, it should read exactly `N` bytes from the stream, at which point an EOF should arise (no more bytes). Should this is not the case, it should be treated as a failure.
+2. If there are any length assertions for length `N`, it should read exactly `N` bytes from the stream, at which point an EOF should arise (no more bytes). Should this not be the case, it should be treated as a failure.
 3. Deserialize the expected type, and process the request.
 4. Write the response (result, optional header, payload).
 5. Close their write side of the stream. At this point, the stream will be fully closed.
@@ -286,7 +286,7 @@ The `ErrorMessage` schema is:
 )
 ```
 
-*Note that the String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded.*
+*Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded.
 
 A response therefore has the form:
 ```
@@ -300,8 +300,8 @@ Here, `result` represents the 1-byte response code.
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
--  `ssz`: the contents are [SSZ-encoded](#ssz-encoding). This encoding type MUST be supported by all clients.
--  `ssz_snappy`: the contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
+-  `ssz`: The contents are [SSZ-encoded](#ssz-encoding). This encoding type MUST be supported by all clients.
+-  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
 
 #### SSZ-encoding strategy (with or without Snappy)
 
@@ -309,7 +309,7 @@ The [SimpleSerialize (SSZ) specification](../simple-serialize.md) outlines how o
 
 **Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST prefix all encoded and compressed (if applicable) payloads with an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
-Note that parameters defined as `[]VariableName` are SSZ-encoded containerless vectors.
+*Note*: Parameters defined as `[]VariableName` are SSZ-encoded containerless vectors.
 
 ### Messages
 
@@ -493,7 +493,7 @@ The usage of one handshake procedure or the other shall be transparent to the Et
 
 TCP is a reliable, ordered, full-duplex, congestion controlled network protocol that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run atop TCP.
 
-QUIC is a new protocol that’s in the final stages of specification by the IETF QUIC WG. It emerged from Google’s SPDY experiment. The QUIC transport is undoubtedly promising. It’s UDP based yet reliable, ordered, reduces latency vs. TCP, is multiplexed, natively secure (TLS 1.3), offers stream-level and connection-level congestion control (thus removing head-of-line blocking), 0-RTT connection establishment, and endpoint migration, amongst other features. UDP also has better NAT traversal properties than TCP—something we desperately pursue in peer-to-peer networks.
+QUIC is a new protocol that’s in the final stages of specification by the IETF QUIC WG. It emerged from Google’s SPDY experiment. The QUIC transport is undoubtedly promising. It’s UDP-based yet reliable, ordered, multiplexed, natively secure (TLS 1.3), reduces latency vs. TCP, and offers stream-level and connection-level congestion control (thus removing head-of-line blocking), 0-RTT connection establishment, and endpoint migration, amongst other features. UDP also has better NAT traversal properties than TCP—something we desperately pursue in peer-to-peer networks.
 
 QUIC is being adopted as the underlying protocol for HTTP/3. This has the potential to award us censorship resistance via deep packet inspection for free. Provided that we use the same port numbers and encryption mechanisms as HTTP/3, our traffic may be indistinguishable from standard web traffic, and we may only become subject to standard IP-based firewall filtering—something we can counteract via other mechanisms.
 
@@ -573,7 +573,7 @@ Noise handshakes are lightweight and simple to understand, and are used in major
 
 On the other hand, TLS 1.3 is the newest, simplified iteration of TLS. Old, insecure, obsolete ciphers and algorithms have been removed, adopting Ed25519 as the sole ECDH key agreement function. Handshakes are faster, 1-RTT data is supported, and session resumption is a reality, amongst other features.
 
-Note that [TLS 1.3 is a prerequisite of the QUIC transport](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7), although an experiment exists to integrate Noise as the QUIC crypto layer: [nQUIC](https://eprint.iacr.org/2019/028).
+*Note*: [TLS 1.3 is a prerequisite of the QUIC transport](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7), although an experiment exists to integrate Noise as the QUIC crypto layer: [nQUIC](https://eprint.iacr.org/2019/028).
 
 ### Why are we using encryption at all?
 
@@ -590,7 +590,6 @@ Note that transport-level encryption is not exclusive of application-level encry
 ### Will mainnnet networking be untested when it launches?
 
 Before launching mainnet, the testnet will be switched over to mainnet networking parameters, including Noise handshakes, and other new protocols. This gives us an opportunity to drill coordinated network upgrades and verifying that there are no significant upgradeability gaps.
-
 
 ## Gossipsub
 
@@ -642,7 +641,7 @@ The prohibition of unverified-block-gossiping extends to nodes that cannot verif
 
 ### How are we going to discover peers in a gossipsub topic?
 
-Via discv5 topics. ENRs should not be used for this purpose, as they store identity, location, and capability info, not volatile [advertisements](#topic-advertisement).
+Via discv5 topics. ENRs should not be used for this purpose, as they store identity, location, and capability information, not volatile [advertisements](#topic-advertisement).
 
 In the interoperability testnet, all peers will be subscribed to all global beacon chain topics, so discovering peers in specific shard topics will be unnecessary.
 
@@ -657,12 +656,12 @@ Requests are segregated by protocol ID to:
 3. Enable clients to select the individual requests/versions they support. It would no longer be a strict requirement to support all requests, and clients, in principle, could support a subset of requests and variety of versions.
 4. Enable flexibility and agility for clients adopting spec changes that impact the request, by signalling to peers exactly which subset of new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request granularity. Without this, clients would be forced to support entire versions of the coarser request protocol.
-6. Parallelise RFCs (or ETH2 EIPs). By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently without relying on a synchronization point to version the general top-level protocol.
+6. Parallelise RFCs (or Eth 2.0 EIPs). By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently without relying on a synchronization point to version the general top-level protocol.
   1. This has the benefit that clients can explicitly choose which RFCs to deploy without buying into all other RFCs that may be included in that top-level version.
   2. Affording this level of granularity with a top-level protocol would imply creating as many variants (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs inflight, O(n^2).
 7. Allow us to simplify the payload of requests. Request-id’s and method-ids no longer need to be sent. The encoding/request type and version can all be handled by the framework.
 
-*CAVEAT*: The protocol negotiation component in the current version of libp2p is called multistream-select 1.0. It is somewhat naïve and introduces overhead on every request when negotiating streams, although implementation-specific optimizations are possible to save this cost. Multiselect 2.0 will remove this overhead by memoizing previously selected protocols, and modelling shared protocol tables. Fortunately this req/resp protocol is not the expected network bottleneck in the protocol so the additional overhead is not expected to hinder interop testing. More info is to be released from the libp2p community in the coming weeks.
+**Caveat**: The protocol negotiation component in the current version of libp2p is called multistream-select 1.0. It is somewhat naïve and introduces overhead on every request when negotiating streams, although implementation-specific optimizations are possible to save this cost. Multiselect 2.0 will remove this overhead by memoizing previously selected protocols, and modelling shared protocol tables. Fortunately, this req/resp protocol is not the expected network bottleneck in the protocol so the additional overhead is not expected to hinder interop testing. More info is to be released from the libp2p community in the coming weeks.
 
 ### Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?
 
@@ -697,7 +696,7 @@ These two peers should never speak to each other because the results can be unpr
 
 For this reason, we rely on negotiation of explicit, verbatim protocols. In the above case, peer B would provide backwards compatibility by supporting and advertising both v1.1.1 and v1.1.2 of the protocol.
 
-Therefore, semver would be relegated to convey expectations at the human level, and it wouldn't do a good job there either, because it's unclear if "backwards-compatibility" and "breaking change" apply only to wire schema level, to behaviour, etc.
+Therefore, semver would be relegated to convey expectations at the human level, and it wouldn't do a good job there either, because it's unclear if "backwards-compatibility" and "breaking change" apply only to wire schema level, to behavior, etc.
 
 For this reason, we remove semver out of the picture, replace it with ordinals that require explicit agreement, and do not mandate a specific policy for changes.
 
@@ -723,7 +722,7 @@ Ethereum Node Records are self-certified node records. Nodes craft and dissemina
 
 ENRs are key-value records with string-indexed ASCII keys. They can store arbitrary information, but EIP-778 specifies a pre-defined dictionary, including IPv4 and IPv6 addresses, secp256k1 public keys, etc.
 
-Comparing ENRs and multiaddrs is like comparing apples and bananas. ENRs are self-certified containers of identity, addresses, and metadata about a node. Multiaddrs are address strings with the peculiarity that they’re self-describing, composable and future-proof. An ENR can contain multiaddrs, and multiaddrs can be derived securely from the fields of an authenticated ENR.
+Comparing ENRs and multiaddrs is like comparing apples and oranges. ENRs are self-certified containers of identity, addresses, and metadata about a node. Multiaddrs are address strings with the peculiarity that they’re self-describing, composable and future-proof. An ENR can contain multiaddrs, and multiaddrs can be derived securely from the fields of an authenticated ENR.
 
 discv5 uses ENRs and we will presumably need to:
 
@@ -744,7 +743,7 @@ We compress on the wire to achieve smaller payloads per-message, which, in aggre
 
 At this time, libp2p does not have an out-of-the-box compression feature that can be dynamically negotiated and layered atop connections and streams, but it is [being considered](https://github.com/libp2p/libp2p/issues/81).
 
-This is a non-trivial feature because the behaviour of network IO loops, kernel buffers, chunking, and packet fragmentation, amongst others, need to be taken into account. libp2p streams are unbounded streams, whereas compression algorithms work best on bounded byte streams of which we have some prior knowledge.
+This is a non-trivial feature because the behavior of network IO loops, kernel buffers, chunking, and packet fragmentation, amongst others, need to be taken into account. libp2p streams are unbounded streams, whereas compression algorithms work best on bounded byte streams of which we have some prior knowledge.
 
 Compression tends not to be a one-size-fits-all problem. A lot of variables need careful evaluation, and generic approaches/choices lead to poor size shavings, which may even be counterproductive when factoring in the CPU and memory tradeoff.
 
