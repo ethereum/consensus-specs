@@ -111,6 +111,8 @@ Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) 
 
 This section outlines constants that are used in this spec.
 
+| Name | Value | Description |
+|---|---|---|
 | `REQ_RESP_MAX_SIZE` | `TODO` | The max size of uncompressed req/resp messages that clients will allow. |
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The max size of uncompressed gossip messages |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
