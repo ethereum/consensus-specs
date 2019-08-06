@@ -7,6 +7,7 @@
 - [Phase 1 miscellaneous beacon chain changes](#phase-1-miscellaneous-beacon-chain-changes)
     - [Table of contents](#table-of-contents)
     - [Classes](#classes)
+        - [CompactCommittee](#compactcommittee)
         - [ShardReceiptProof](#shardreceiptproof)
     - [Helpers](#helpers)
         - [pack_compact_validator](#pack_compact_validator)
@@ -25,6 +26,14 @@
 <!-- /TOC -->
 
 ## Classes
+
+#### `CompactCommittee`
+
+```python
+class CompactCommittee(Container):
+    pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
+    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
+```
 
 #### `ShardReceiptProof`
 
