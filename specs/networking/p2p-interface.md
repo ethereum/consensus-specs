@@ -503,7 +503,7 @@ WebSockets and/or WebRTC transports are necessary for interaction with browsers,
 
 Networks evolve. Hardcoding design decisions leads to ossification, preventing the evolution of networks alongside the state of the art. Introducing changes on an ossified protocol is very costly, and sometimes, downright impracticable without causing undesirable breakage.
 
-Modelling for upgradeability and dynamic transport selection from the get-go lays the foundation for a future-proof stack.
+Modeling for upgradeability and dynamic transport selection from the get-go lays the foundation for a future-proof stack.
 
 Clients can adopt new transports without breaking old ones, and the multi-transport ability enables constrained and sandboxed environments (e.g. browsers, embedded devices) to interact with the network as first-class citizens via suitable/native transports (e.g. WSS), without the need for proxying or trust delegation to servers.
 
