@@ -472,7 +472,7 @@ In mainnet, we plan to use discv5’s topic advertisement feature as a rendezvou
 
 ### Why are we defining specific transports?
 
-libp2p peers can listen on multiple transports concurrently, and these can change over time. Multiaddrs not only encode the address, but also the transport to be used to dial.
+libp2p peers can listen on multiple transports concurrently, and these can change over time. Multiaddrs encode not only the address but also the transport to be used to dial.
 
 Due to this dynamic nature, agreeing on specific transports like TCP, QUIC, or WebSockets on paper becomes irrelevant.
 
