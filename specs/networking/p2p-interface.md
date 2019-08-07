@@ -491,7 +491,7 @@ The usage of one handshake procedure or the other shall be transparent to the Et
 
 ### What are advantages of using TCP/QUIC/Websockets?
 
-TCP is a reliable, ordered, full-duplex, congestion controlled network protocol that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run atop TCP.
+TCP is a reliable, ordered, full-duplex, congestion-controlled network protocol that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run atop TCP.
 
 QUIC is a new protocol that’s in the final stages of specification by the IETF QUIC WG. It emerged from Google’s SPDY experiment. The QUIC transport is undoubtedly promising. It’s UDP-based yet reliable, ordered, multiplexed, natively secure (TLS 1.3), reduces latency vs. TCP, and offers stream-level and connection-level congestion control (thus removing head-of-line blocking), 0-RTT connection establishment, and endpoint migration, amongst other features. UDP also has better NAT traversal properties than TCP—something we desperately pursue in peer-to-peer networks.
 
