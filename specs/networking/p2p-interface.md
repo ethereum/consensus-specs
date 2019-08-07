@@ -525,7 +525,7 @@ Overlay multiplexers are not necessary with QUIC since the protocol provides nat
 
 ### When is multiselect 2.0 due and why are we using it for mainnet?
 
-multiselect 2.0 is currently being conceptualized. Debate started [on this issue](https://github.com/libp2p/specs/pull/95), but it got overloaded—as it tends to happen with large conceptual OSS discussions that touch the heart and core of a system.
+multiselect 2.0 is currently being conceptualized. The debate started [on this issue](https://github.com/libp2p/specs/pull/95), but it got overloaded—as it tends to happen with large conceptual OSS discussions that touch the heart and core of a system.
 
 In the following weeks (August 2019), there will be a renewed initiative to first define the requirements, constraints, assumptions, and features, in order to lock in basic consensus upfront and subsequently build on that consensus by submitting a specification for implementation.
 
