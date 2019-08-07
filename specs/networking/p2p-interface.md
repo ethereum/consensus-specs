@@ -613,7 +613,7 @@ One can envision a two-phase deployment as well where clients start listening to
 
 Supporting multiple topics/encodings would require the presence of relayers to translate between encodings and topics so as to avoid network fragmentation where participants have diverging views on the gossiped state, making the protocol more complicated and fragile.
 
-Gossip protocols typically remember what messages they've seen for a finite period of time based on message identity—if you publish the same message again after that time has passed, it will be re-broadcast—adding a relay delay also makes this scenario more likely.
+Gossip protocols typically remember what messages they've seen for a finite period of time-based on message identity—if you publish the same message again after that time has passed, it will be re-broadcast—adding a relay delay also makes this scenario more likely.
 
 One can imagine that in a complicated upgrade scenario, we might have peers publishing the same message on two topics/encodings, but the price here is pretty high in terms of overhead—both computational and networking—so we'd rather avoid that.
 
