@@ -535,7 +535,6 @@ def shard_block_transition(state: ShardState,
     state.total_bytes += len(block.core.data)
     assert block.core.total_bytes == state.total_bytes
 
-
     # Update in-state block header
     state.most_recent_block_core = ShardBlockCore(
         slot=block.core.slot,
@@ -599,7 +598,7 @@ def is_valid_beacon_attestation(shard: Shard,
             blocks.append(ShardBlockHeader(ShardBlockCore(
                 slot=slot,
                 state_root=shard_blocks_or_state_roots[slot],
-                total_bytes=state.total_bytes
+                total_bytes=pre_state.total_bytes
             ), ShardBlockSignatures()))
     assert candidate.data.crosslink.data_root == compute_crosslink_data_root(blocks)
 
