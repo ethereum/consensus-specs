@@ -489,7 +489,7 @@ The libp2p QUIC transport inherently relies on TLS 1.3 per requirement in sectio
 
 The usage of one handshake procedure or the other shall be transparent to the Eth 2.0 application layer, once the libp2p Host/Node object has been configured appropriately.
 
-### What are advantages of using TCP/QUIC/Websockets?
+### What are the advantages of using TCP/QUIC/Websockets?
 
 TCP is a reliable, ordered, full-duplex, congestion-controlled network protocol that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run atop TCP.
 
