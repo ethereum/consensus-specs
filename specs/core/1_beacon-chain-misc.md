@@ -156,8 +156,9 @@ def process_shard_receipt(state: BeaconState, receipt_proof: ShardReceiptProof):
         root=state.current_crosslinks[shard].data_root
     )
     for delta in receipt_proof.receipt:
-        increase_balance(state, delta.index, state.validators[delta.index].effective_balance * delta.reward_coefficient // REWARD_COEFFICIENT_BASE)
-        decrease_balance(state, delta.index, delta.block_fee)
+        if get_current_epoch(state) < state.validators[delta.index].withdrawable_epoch:
+            increase_balance(state, delta.index, state.validators[delta.index].effective_balance * delta.reward_coefficient // REWARD_COEFFICIENT_BASE)
+            decrease_balance(state, delta.index, delta.block_fee)
     state.next_shard_receipt_period[receipt_proof.shard] += 1
     increase_balance(state, get_beacon_proposer_index(state), MICRO_REWARD)
 ```
