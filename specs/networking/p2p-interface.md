@@ -482,7 +482,7 @@ However, it is useful to define a minimum baseline for interoperability purposes
 
 Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC transports, if available in the language of choice. While interoperability shall not be harmed by lack of such support, the advantages are desirable:
 
--  better latency, performance, and other QoS characteristics (QUIC).
+-  Better latency, performance, and other QoS characteristics (QUIC).
 -  paving the way for interfacing with future light clients (WebSockets, WebRTC).
 
 The libp2p QUIC transport inherently relies on TLS 1.3 per requirement in section 7 of the [QUIC protocol specification](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7) and the accompanying [QUIC-TLS document](https://tools.ietf.org/html/draft-ietf-quic-tls-22).
