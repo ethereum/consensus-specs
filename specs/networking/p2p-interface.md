@@ -607,7 +607,7 @@ For future extensibility with almost zero overhead now (besides the extra bytes 
 
 Changing gossipsub/broadcasts requires a coordinated upgrade where all clients start publishing to the new topic together, for example during a hard fork.
 
-One can envision a two-phase deployment as well where clients start listening to the new topic in a first phase then start publishing some time later, letting the traffic naturally move over to the new topic.
+One can envision a two-phase deployment as well where clients start listening to the new topic in the first phase then start publishing some time later, letting the traffic naturally move over to the new topic.
 
 ### Why must all clients use the same gossip topic instead of one negotiated between each peer pair?
 
