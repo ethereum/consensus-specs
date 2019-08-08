@@ -53,7 +53,6 @@ from eth2spec.utils.ssz.ssz_impl import (
 from eth2spec.utils.ssz.ssz_typing import (
     uint64, bit, boolean, Container, List, Vector, Bytes, BytesN,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
-    BytesN
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
