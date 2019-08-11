@@ -1,4 +1,4 @@
-from eth2spec.test.context import with_all_phases, with_state, bls_switch
+from eth2spec.test.context import with_all_phases, with_state, bls_switch, with_phases
 
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation
@@ -103,7 +103,7 @@ def test_on_attestation_same_slot(spec, state):
     run_on_attestation(spec, state, store, attestation, False)
 
 
-@with_all_phases
+@with_phases(['phase0'])
 @with_state
 @bls_switch
 def test_on_attestation_invalid_attestation(spec, state):
