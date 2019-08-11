@@ -269,12 +269,12 @@ def build_phase1_spec(phase0_sourcefile: str,
                       fork_choice_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
-    phase1_shard_misc = get_spec(phase1_phase1_shard_misc_source_file)
     phase1_custody = get_spec(phase1_custody_sourcefile)
     phase1_shard_data = get_spec(phase1_shard_sourcefile)
+    phase1_shard_misc = get_spec(phase1_phase1_shard_misc_source_file)
     fork_choice_spec = get_spec(fork_choice_sourcefile)
     spec_objects = phase0_spec
-    for value in [phase1_shard_misc, phase1_custody, phase1_shard_data, fork_choice_spec]:
+    for value in [phase1_custody, phase1_shard_data, phase1_shard_misc, fork_choice_spec]:
         spec_objects = combine_spec_objects(spec_objects, value)
     spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
@@ -294,9 +294,9 @@ If building phase 0:
 
 If building phase 1:
     1st argument is input 0_beacon-chain.md
-    2nd argument is input 1_shard-chain-misc.md
-    3rd argument is input 1_custody-game.md
-    4th argument is input 1_shard-data-chains.md
+    2nd argument is input 1_custody-game.md
+    3rd argument is input 1_shard-data-chains.md
+    4th argument is input 1_shard-chain-misc.md
     5th argument is input 0_fork-choice.md
     6th argument is output spec.py
 '''
@@ -315,6 +315,6 @@ If building phase 1:
             build_phase1_spec(*args.files)
         else:
             print(" Phase 1 requires 6 input files as well as an output file: "
-                  + "(0_fork-choice.md, 0_beacon-chain.md and 1_shard-chain-misc.md, 1_custody-game.md, 1_shard-data-chains.md, output.py)")
+                  + "(0_fork-choice.md, 0_beacon-chain.md and 1_custody-game.md, 1_shard-data-chains.md, 1_shard-chain-misc.md output.py)")
     else:
         print("Invalid phase: {0}".format(args.phase))
