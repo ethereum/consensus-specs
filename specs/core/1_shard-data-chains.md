@@ -555,16 +555,14 @@ def shard_block_transition(state: ShardState,
 
 Let:
 
-- `shard` be a valid `Shard`
 - `pre_state` is the `ShardState` before processing any blocks
-- `shard_blocks_or_state_roots` be the `Union[ShardBlock, Hash]` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `shard` at slot `slot` if a block exists, or the post-state-root of processing state up to and including that slot if a block does not exist.
+- `shard_blocks_or_state_roots` be the `Union[ShardBlock, Hash]` list such that `shard_blocks[slot]` is the canonical `ShardBlock` for shard `pre_state.shard` at slot `slot` if a block exists, or the post-state-root of processing state up to and including that slot if a block does not exist.
 - `beacon_state` be the canonical `BeaconState`
 - `valid_attestations` be the set of valid `Attestation` objects, recursively defined
 - `candidate` be a candidate `Attestation` which is valid under Phase 0 rules, and for which validity is to be determined under Phase 1 rules by running `is_valid_beacon_attestation`
 
 ```python
-def is_valid_beacon_attestation(shard: Shard,
-                                pre_state: ShardState,
+def is_valid_beacon_attestation(pre_state: ShardState,
                                 shard_blocks_or_state_roots: Sequence[Union[ShardBlock, Hash]],
                                 beacon_state: BeaconState,
                                 valid_attestations: Set[Attestation],
@@ -587,7 +585,7 @@ def is_valid_beacon_attestation(shard: Shard,
         assert candidate.data.previous_attestation.epoch < compute_epoch_of_slot(candidate.data.slot)
 
     # Check crosslink data root
-    start_epoch = beacon_state.crosslinks[shard].epoch
+    start_epoch = beacon_state.crosslinks[pre_state.shard].epoch
     end_epoch = min(compute_epoch_of_slot(candidate.data.slot) - CROSSLINK_LOOKBACK,
                     start_epoch + MAX_EPOCHS_PER_CROSSLINK)
     blocks = []
@@ -595,11 +593,14 @@ def is_valid_beacon_attestation(shard: Shard,
         if isinstance(shard_blocks_or_state_roots[slot], ShardBlock):
             blocks.append(shard_blocks_or_state_roots[slot])
         else:
-            blocks.append(ShardBlockHeader(ShardBlockCore(
-                slot=slot,
-                state_root=shard_blocks_or_state_roots[slot],
-                total_bytes=pre_state.total_bytes
-            ), ShardBlockSignatures()))
+            blocks.append(ShardBlock(
+                core=ExtendedShardBlockCore(
+                    slot=slot,
+                    state_root=shard_blocks_or_state_roots[slot],
+                    total_bytes=pre_state.total_bytes,
+                ),
+                signatures=ShardBlockSignatures(),
+            ))
     assert candidate.data.crosslink.data_root == compute_crosslink_data_root(blocks)
 
     return True
