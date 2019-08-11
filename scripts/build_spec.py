@@ -263,16 +263,18 @@ def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
 
 
 def build_phase1_spec(phase0_sourcefile: str,
+                      phase1_phase1_shard_misc_source_file: str,
                       phase1_custody_sourcefile: str,
                       phase1_shard_sourcefile: str,
                       fork_choice_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
+    phase1_shard_misc = get_spec(phase1_phase1_shard_misc_source_file)
     phase1_custody = get_spec(phase1_custody_sourcefile)
     phase1_shard_data = get_spec(phase1_shard_sourcefile)
     fork_choice_spec = get_spec(fork_choice_sourcefile)
     spec_objects = phase0_spec
-    for value in [phase1_custody, phase1_shard_data, fork_choice_spec]:
+    for value in [phase1_shard_misc, phase1_custody, phase1_shard_data, fork_choice_spec]:
         spec_objects = combine_spec_objects(spec_objects, value)
     spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
@@ -285,17 +287,18 @@ if __name__ == '__main__':
     description = '''
 Build the specs from the md docs.
 If building phase 0:
-    1st argument is input spec.md
-    2nd argument is input fork_choice.md
-    3rd argument is input validator_guide.md
+    1st argument is input 0_beacon-chain.md
+    2nd argument is input 0_fork-choice.md
+    3rd argument is input 0_beacon-chain-validator.md
     4th argument is output spec.py
 
 If building phase 1:
-    1st argument is input spec_phase0.md
-    2nd argument is input spec_phase1_custody.md
-    3rd argument is input spec_phase1_shard_data.md
-    4th argument is input fork_choice.md
-    5th argument is output spec.py
+    1st argument is input 0_beacon-chain.md
+    2nd argument is input 1_shard-chain-misc.md
+    3rd argument is input 1_custody-game.md
+    4th argument is input 1_shard-data-chains.md
+    5th argument is input 0_fork-choice.md
+    6th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -308,10 +311,10 @@ If building phase 1:
         else:
             print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
-        if len(args.files) == 5:
+        if len(args.files) == 6:
             build_phase1_spec(*args.files)
         else:
-            print(" Phase 1 requires 4 input files as well as an output file: "
-                  + "(phase0.md and phase1.md, phase1.md, fork_choice.md, output.py)")
+            print(" Phase 1 requires 6 input files as well as an output file: "
+                  + "(0_fork-choice.md, 0_beacon-chain.md and 1_shard-chain-misc.md, 1_custody-game.md, 1_shard-data-chains.md, output.py)")
     else:
         print("Invalid phase: {0}".format(args.phase))
