@@ -58,9 +58,14 @@ from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
+    bls_signature_to_G2,
 )
 
 from eth2spec.utils.hash_function import hash
+'''
+SUNDRY_CONSTANTS_FUNCTIONS = '''
+def ceillog2(x: uint64) -> int:
+    return (x - 1).bit_length()
 '''
 SUNDRY_FUNCTIONS = '''
 # Monkey patch hash cache
@@ -111,6 +116,13 @@ def apply_constants_preset(preset: Dict[str, Any]) -> None:
 '''
 
 
+def remove_for_phase1(functions: Dict[str, str]):
+    for key, value in functions.items():
+        lines = value.split("\n")
+        lines = filter(lambda s: "[to be removed in phase 1]" not in s, lines)
+        functions[key] = "\n".join(lines)
+
+
 def strip_comments(raw: str) -> str:
     comment_line_regex = re.compile(r'^\s+# ')
     lines = raw.split('\n')
@@ -141,10 +153,15 @@ def objects_to_spec(functions: Dict[str, str],
             ]
         )
     )
+    for k in list(functions):
+        if "ceillog2" in k:
+            del functions[k]
     functions_spec = '\n\n'.join(functions.values())
     for k in list(constants.keys()):
         if k.startswith('DOMAIN_'):
             constants[k] = f"DomainType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
+        if k == "BLS12_381_Q":
+            constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
@@ -157,6 +174,7 @@ def objects_to_spec(functions: Dict[str, str],
     spec = (
         imports
         + '\n\n' + new_type_definitions
+        + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
         + '\n\n' + constants_spec
         + '\n\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec
@@ -186,7 +204,7 @@ ignored_dependencies = [
     'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
-    'bytes'  # to be removed after updating spec doc
+    'bytes', 'byte', 'BytesN'  # to be removed after updating spec doc
 ]
 
 
@@ -268,6 +286,7 @@ def build_phase1_spec(phase0_sourcefile: str,
                       fork_choice_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
+    remove_for_phase1(phase0_spec[0])
     phase1_custody = get_spec(phase1_custody_sourcefile)
     phase1_shard_data = get_spec(phase1_shard_sourcefile)
     fork_choice_spec = get_spec(fork_choice_sourcefile)
