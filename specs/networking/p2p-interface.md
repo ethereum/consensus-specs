@@ -301,7 +301,7 @@ Here `result` represents the 1-byte response code.
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
--  `ssz`: the contents are [SSZ](https://github.com/ethereum/eth2.0-specs/blob/192442be51a8a6907d6401dffbf5c73cb220b760/specs/networking/libp2p-standardization.md#ssz-encoding) encoded. This encoding type MUST be supported by all clients. 
+-  `ssz`: the contents are [SSZ](#ssz-encoding) encoded. This encoding type MUST be supported by all clients. 
 	For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocks` response would be an SSZ-encoded list of `BeaconBlock`s. All SSZ-Lists in the Req/Resp domain will have a max-list size of `SSZ_MAX_LIST_SIZE`.
 -  `ssz_snappy`: the contents are SSZ encoded, and subsequently compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; and MUST be supported in mainnet.
 
