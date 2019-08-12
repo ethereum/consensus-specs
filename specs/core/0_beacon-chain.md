@@ -1504,8 +1504,6 @@ def process_final_updates(state: BeaconState) -> None:
         HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
         if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    # Update start shard
-    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
     index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
     index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
@@ -1522,6 +1520,8 @@ def process_final_updates(state: BeaconState) -> None:
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
+    # Update start shard
+    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
@@ -1653,6 +1653,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
+
+    committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
+    assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
         data=data,

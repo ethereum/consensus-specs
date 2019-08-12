@@ -4,6 +4,8 @@ A BLS compressed-hash to G2.
 
 ## Test case format
 
+The test data is declared in a `data.yaml` file:
+
 ```yaml
 input: 
   message: bytes32
