@@ -61,7 +61,7 @@ def pack_compact_validator(index: int, slashed: bool, balance_in_increments: int
 #### `unpack_compact_validator`
 
 ```python
-def unpack_compact_validator(compact_validator: uint64) -> Tuple[uint64, bool, uint64]:
+def unpack_compact_validator(compact_validator: int) -> Tuple[int, bool, int]:
     """
     Returns validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
     """
