@@ -9,9 +9,7 @@ def test_decoder():
     rng = Random(123)
 
     # check these types only, Block covers a lot of operation types already.
-    # TODO: Once has Bitlists and Bitvectors, add back
-    #       spec.BeaconState and spec.BeaconBlock
-    for typ in [spec.IndexedAttestation, spec.AttestationDataAndCustodyBit]:
+    for typ in [spec.AttestationDataAndCustodyBit, spec.BeaconState, spec.BeaconBlock]:
         # create a random pyspec value
         original = random_value.get_random_ssz_object(rng, typ, 100, 10,
                                                       mode=random_value.RandomizationMode.mode_random,
@@ -32,4 +30,6 @@ def test_decoder():
         block = translate_value(raw_value, typ)
 
         # and see if the hash-tree-root of the original matches the hash-tree-root of the decoded & translated value.
-        assert spec_ssz_impl.hash_tree_root(original) == spec_ssz_impl.hash_tree_root(block)
+        original_hash_tree_root = spec_ssz_impl.hash_tree_root(original)
+        assert original_hash_tree_root == spec_ssz_impl.hash_tree_root(block)
+        assert original_hash_tree_root == block_sedes.get_hash_tree_root(raw_value)

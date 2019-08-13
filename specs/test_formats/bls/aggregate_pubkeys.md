@@ -4,6 +4,8 @@ A BLS pubkey aggregation combines a series of pubkeys into a single pubkey.
 
 ## Test case format
 
+The test data is declared in a `data.yaml` file:
+
 ```yaml
 input: List[BLS Pubkey] -- list of input BLS pubkeys
 output: BLS Pubkey -- expected output, single BLS pubkey
