@@ -49,7 +49,7 @@ class ShardReceiptProof(Container):
 #### `pack_compact_validator`
 
 ```python
-def pack_compact_validator(index: uint64, slashed: bool, balance_in_increments: uint64) -> uint64:
+def pack_compact_validator(index: int, slashed: bool, balance_in_increments: int) -> int:
     """
     Creates a compact validator object representing index, slashed status, and compressed balance.
     Takes as input balance-in-increments (// EFFECTIVE_BALANCE_INCREMENT) to preserve symmetry with
