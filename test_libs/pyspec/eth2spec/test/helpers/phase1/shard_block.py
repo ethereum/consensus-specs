@@ -57,7 +57,7 @@ def build_empty_shard_block(spec,
         attester_committee = spec.get_persistent_committee(beacon_state, shard_state.shard, block.core.slot)
         block.core.attester_bitfield = list(
             (True,) * len(attester_committee) +
-            (False,) * (spec.MAX_PERSISTENT_COMMITTEE_SIZE * 2 - len(attester_committee))
+            (False,) * (spec.TARGET_PERSISTENT_COMMITTEE_SIZE * 2 - len(attester_committee))
         )
         block.signatures.attestation_signature = sign_shard_attestation(
             spec,
