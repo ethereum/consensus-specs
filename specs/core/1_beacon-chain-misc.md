@@ -205,7 +205,7 @@ Add the `shard_receipts` operation to `BeaconBlockBody`:
 
 ```python
 # begin insert @shard_receipts
-    shard_receipts: List[ShardReceiptProof, MAX_SHARD_RECEIPTS]
+    shard_receipt_proofs: List[ShardReceiptProof, MAX_SHARD_RECEIPTS]
 # end insert @shard_receipts
 ```
 
