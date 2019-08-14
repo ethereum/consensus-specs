@@ -256,7 +256,7 @@ def verify_merkle_multiproof(leaves: Sequence[Hash], proof: Sequence[Hash], indi
         **{index:node for index, node in zip(indices, leaves)},
         **{index:node for index, node in zip(helper_indices, proof)}
     }
-    keys = sorted(objects.keys())[::-1]
+    keys = sorted(objects.keys(), reverse=True)
     pos = 0
     while pos < len(keys):
         k = keys[pos]
