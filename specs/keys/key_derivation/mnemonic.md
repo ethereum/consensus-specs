@@ -2,9 +2,9 @@
 
 This mnemonic generation strategy is largely based on that of [BIP39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) and thus uses the same algorithms and wordlists with a few exceptions in the interests of security and simplicity.
 
-## What is different compared to BIP32
+## What is different compared to BIP39
 
-This document is the same as BIP32 save for the following exceptions:
+This document is the same as BIP39 save for the following exceptions:
 
 * HMAC-SHA512 is replaced with HKDF-SHA256
 * Only 256-bit entropy seeds are utilized to generate the mnemonic and therefore all mnemonics are 24 words long
@@ -48,7 +48,7 @@ The parameters for scrypt are as follows:
 Thus, the seed derivation function is given by:
 
 ```python
-def get_seed(*, mnemonic: str, password: str='') -> bytes:
+def get_seed(mnemonic: str, password: str='') -> bytes:
     mnemonic = normalize('NFKD', mnemonic)
     password = normalize('NFKD', 'mnemonic' + password)
     return scrypt(password=mnemonic, salt=password, n=2**18, r=1, p=8, dklen=32)
