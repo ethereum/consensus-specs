@@ -170,4 +170,4 @@ Once every `EPOCHS_PER_SHARD_PERIOD` epochs (~27 hours) a light client downloads
 
 The total overhead is 8,124 bytes, or ~0.083 bytes per second. The Bitcoin SPV equivalent is 80 bytes per ~560 seconds, or ~0.143 bytes per second. Various compression optimisations (similar to [these](https://github.com/RCasatta/compressedheaders)) are possible.
 
-A light client can choose to update the header (without updating the committee) more frequently than once every `EPOCHS_PER_SHARD_PERIOD` epochs at a cost of 476 bytes per update.
+A light client can choose to update the header (without updating the committee) more frequently than once every `EPOCHS_PER_SHARD_PERIOD` epochs at a cost of 32 + 4 + 16 + 96 + 200 + 128 = 476 bytes per update.
