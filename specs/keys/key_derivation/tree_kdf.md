@@ -27,13 +27,9 @@ This specification provides the functionality of both *non-hardened* and *harden
 `int_hash` is the core of this tree KDF specification. It takes in an integer (private key) and repeatedly hashes it, checking each time whether the result of the hash is less than the curve order, `52435875175126190479447740508185965837690552500527637822603658699938581184513` in the case of BLS12-381. If the result is less than the curve order, it is returned as an integer. This rejection sampling mechanism ensures a uniform distribution over the key-space under the random oracle assumption for SHA256.
 
 ```python
-def int_hash(x: int) -> int:
-    while True:
-        hashed_int = sha256(x.to_bytes(32, byteorder='big'))
-        x = int.from_bytes(hashed_int, byteorder='big')
-        if x < curve_order and x != 0:
-            return x
-
+def bytes_to_privkey(ikm: bytes) -> int:
+    okm = hkdf(master=ikm, salt="BLS-SIG-KEYGEN-SALT-", key_len=48, hashmod=sha256)
+    return int.from_bytes(okm, byteorder=big) % curve_order
 ```
 
 ### Master Key Derivation
@@ -42,8 +38,7 @@ The master key is the root of the key-tree and is derived from a 256-bit seed. W
 
 ```python
 def derive_master_privkey(seed: bytes) -> int:
-    int_seed = int.from_bytes(seed, byteorder='big')
-    return int_hash(int_seed)
+    return bytes_to_privkey(seed)
 ```
 
 ### Child Key Derivation
@@ -52,8 +47,8 @@ The child key derivation function takes in the parent's private key and the inde
 
 ```python
 def derive_child_privkey(parent_privkey: int, i: int) -> int:
-    i_hash = int_hash(i)
-    sk_hash = int_hash(parent_privkey)
+    i_hash = bytes_to_privkey(i.to_bytes(length=32, byteorder='big'))
+    parent_hash = bytes_to_privkey(parent_privkey.to_bytes(length=32, byteorder='big'))
     mod_sum = (i_hash + sk_hash) % curve_order
-    return mod_sum if i < 2**31 else int_hash(mod_sum)
+    return mod_sum if i < 2**31 else bytes_to_privkey(i.to_bytes(length=32, byteorder='big'))
 ```
