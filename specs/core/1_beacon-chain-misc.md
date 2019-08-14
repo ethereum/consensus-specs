@@ -18,7 +18,7 @@
         - [concat_generalized_indices](#concat_generalized_indices)
         - [compute_historical_state_generalized_index](#compute_historical_state_generalized_index)
         - [get_generalized_index_of_crosslink_header](#get_generalized_index_of_crosslink_header)
-        - [process_shard_receipt](#process_shard_receipt)
+        - [process_shard_receipt_proof](#process_shard_receipt_proof)
     - [Changes](#changes)
         - [Persistent committees](#persistent-committees)
         - [Shard receipt processing](#shard-receipt-processing)
@@ -134,10 +134,10 @@ def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
     return GeneralizedIndex(MAX_CROSSLINK_SIZE // SHARD_HEADER_SIZE + index)
 ```
 
-#### `process_shard_receipt`
+#### `process_shard_receipt_proof`
 
 ```python
-def process_shard_receipt(state: BeaconState, receipt_proof: ShardReceiptProof):
+def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptProof):
     """
     Processes a ShardReceipt object.
     """
