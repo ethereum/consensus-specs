@@ -209,7 +209,7 @@ Add the `shard_receipts` operation to `BeaconBlockBody`:
 # end insert @shard_receipts
 ```
 
-Use `process_shard_receipt` to process each receipt.
+Use `process_shard_receipt_proof` to process each receipt.
 
 ```python
 # begin insert @process_shard_receipts
