@@ -110,7 +110,7 @@ def get_persistent_committee_pubkeys_and_balances(memory: LightClientMemory,
 
 ## Light client state updates
 
-The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending `memory.header.slot` and `memory.shard`, and calls `next_memory(memory, update)`.
+The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending `memory.header.slot` and `memory.shard`, and calls `update_memory(memory, update)`.
 
 ```python
 def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
@@ -126,7 +126,7 @@ def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
         branch=update.header_branch,
         depth=BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH,
         index=BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_INDEX,
-        root=shard_block_root,
+        root=update.shard_block_root,
     )
 
     # Verify persistent committee votes pass 2/3 threshold
@@ -136,7 +136,7 @@ def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
     # Verify shard attestations
     pubkey = bls_aggregate_pubkeys(filter(lambda i: update.aggregation_bits[i], pubkeys))
     domain = compute_domain(DOMAIN_SHARD_ATTESTER, update.fork_version)
-    assert bls_verify(pubkey, shard_block_root, update.signature, domain)
+    assert bls_verify(pubkey, update.shard_block_root, update.signature, domain)
 
     # Update persistent committees if entering a new period
     if next_period == current_period + 1:
@@ -163,11 +163,11 @@ Once every `EPOCHS_PER_SHARD_PERIOD` epochs (~27 hours) a light client downloads
 * `fork_version`: 4 bytes
 * `aggregation_bits`: 16 bytes
 * `signature`: 96 bytes
-* `header`: 200 bytes (8 + 32 + 32 + 32 + 96)
-* `header_branch`: 128 bytes
-* `committee`: 7,168 bytes (128 * (48 + 8))
-* `committee_branch`: 480 bytes
+* `header`: 8 + 32 + 32 + 32 + 96 = 200 bytes
+* `header_branch`: 4 * 32 = 128 bytes
+* `committee`: 128 * (48 + 8) = 7,168 bytes
+* `committee_branch`: (5 + 10) * 32 = 480 bytes
 
 The total overhead is 8,124 bytes, or ~0.083 bytes per second. The Bitcoin SPV equivalent is 80 bytes per ~560 seconds, or ~0.143 bytes per second. Various compression optimisations (similar to [these](https://github.com/RCasatta/compressedheaders)) are possible.
 
-A light client can choose to update the header (without updating the committee) more frequently than once every `EPOCHS_PER_SHARD_PERIOD` epochs with 476 bytes per update.
+A light client can choose to update the header (without updating the committee) more frequently than once every `EPOCHS_PER_SHARD_PERIOD` epochs at a cost of 476 bytes per update.
