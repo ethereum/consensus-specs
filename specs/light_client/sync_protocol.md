@@ -59,10 +59,10 @@ class LightClientUpdate(container):
     signature: BLSSignature
     # Updated beacon header (and authenticating branch)
     header: BeaconBlockHeader
-    header_branch: Vector[Hash, BEACON_BLOCK_HEADER_TREE_DEPTH]
+    header_branch: Vector[Hash, BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH]
     # Updated persistent committee (and authenticating branch)
     committee: CompactCommittee
-    committee_branch: Vector[Hash, BEACON_STATE_CONTAINER_TREE_DEPTH + log_2(SHARD_COUNT)]
+    committee_branch: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
 ```
 
 ## Helper functions
@@ -110,7 +110,7 @@ def get_persistent_committee_pubkeys_and_balances(memory: LightClientMemory,
 
 ## Light client state updates
 
-The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending `memory.header.slot` and `memory.shard`, and calls `update_memory(memory, update)`.
+The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending `memory.header` and `memory.shard`, and calls `update_memory(memory, update)`.
 
 ```python
 def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
