@@ -213,6 +213,6 @@ Use `process_shard_receipt` to process each receipt.
 
 ```python
 # begin insert @process_shard_receipts
-        (body.shard_receipts, process_shard_receipts),
+        (body.shard_receipt_proofs, process_shard_receipt_proofs),
 # end insert @process_shard_receipts
 ```
