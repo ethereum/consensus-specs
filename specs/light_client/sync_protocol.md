@@ -1,127 +1,173 @@
-# Beacon Chain Light Client Syncing
+# Minimal Light Client Design
 
-**Notice**: This document is a work-in-progress for researchers and implementers. One of the design goals of the Eth 2.0 beacon chain is light-client friendliness, not only to allow low-resource clients (mobile phones, IoT, etc.) to maintain access to the blockchain in a reasonably safe way, but also to facilitate the development of "bridges" between the Eth 2.0 beacon chain and other chains.
+**Notice**: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
 <!-- TOC -->
 
-- [Beacon Chain Light Client Syncing](#beacon-chain-light-client-syncing)
+- [Minimal Light Client Design](#minimal-light-client-design)
     - [Table of contents](#table-of-contents)
-    - [Preliminaries](#preliminaries)
-        - [Expansions](#expansions)
-        - [`get_active_validator_indices`](#get_active_validator_indices)
-        - [`MerklePartial`](#merklepartial)
-        - [`PeriodData`](#perioddata)
-        - [`get_earlier_start_epoch`](#get_earlier_start_epoch)
-        - [`get_later_start_epoch`](#get_later_start_epoch)
-        - [`get_period_data`](#get_period_data)
-        - [Light client state](#light-client-state)
-        - [Updating the shuffled committee](#updating-the-shuffled-committee)
-    - [Computing the current committee](#computing-the-current-committee)
-    - [Verifying blocks](#verifying-blocks)
+    - [Introduction](#introduction)
+    - [Constants](#constants)
+    - [Containers](#containers)
+        - [`LightClientMemory`](#lightclientmemory)
+        - [`LightClientUpdate`](#lightclientupdate)
+    - [Helper functions](#helper-functions)
+        - [`unpack_compact_validator`](#unpack_compact_validator)
+        - [`get_persistent_committee_pubkeys_and_balances`](#get_persistent_committee_pubkeys_and_balances)
+    - [Light client state updates](#light-client-state-updates)
+    - [Data overhead](#data-overhead)
 
 <!-- /TOC -->
 
-## Preliminaries
+## Introduction
 
-### Expansions
+Ethereum 2.0 is designed to be light client friendly. This allows low-resource clients such as mobile phones to access Ethereum 2.0 with reasonable safety and liveness. It also facilitates the development of "bridges" to external blockchains. This document suggests a minimal light client design for the beacon chain.
 
-We define an "expansion" of an object as an object where a field in an object that is meant to represent the `hash_tree_root` of another object is replaced by the object. Note that defining expansions is not a consensus-layer-change; it is merely a "re-interpretation" of the object. Particularly, the `hash_tree_root` of an expansion of an object is identical to that of the original object, and we can define expansions where, given a complete history, it is always possible to compute the expansion of any object in the history. The opposite of an expansion is a "summary" (e.g. `BeaconBlockHeader` is a summary of `BeaconBlock`).
+## Constants
 
-We define two expansions:
+| Name | Value |
+| - | - |
+| `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH` | `4` |
+| `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_INDEX` | **TBD** |
+| `PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH` | `5` |
+| `PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX` | **TBD** |
 
-* `ExtendedBeaconState`, which is identical to a `BeaconState` except each of `(next, current, previous)_persistent_committee_root` are replaced by the corresponding `CompactCommittee`.
-* `ExtendedBeaconBlock`, which is identical to a `BeaconBlock` except `state_root` is replaced with the corresponding `state: ExtendedBeaconState`.
+## Containers
 
-### `MerklePartial`
+### `LightClientMemory`
 
-A `MerklePartial(f, *args)` is an object that contains a minimal Merkle proof needed to compute `f(*args)`. A `MerklePartial` can be used in place of a regular SSZ object, though a computation would return an error if it attempts to access part of the object that is not contained in the proof.
-
-### Light client state
-
-A light client will keep track of:
-
-* A random `shard_id` in `[0...SHARD_COUNT-1]` (selected once and retained forever)
-* A block header that they consider to be finalized (`finalized_header`) and do not expect to revert.
-* `previous_committee = finalized_header.previous_persistent_committees[shard_id]`
-* `current_committee = finalized_header.current_persistent_committees[shard_id]`
-* `next_committee = finalized_header.next_persistent_committees[shard_id]`
-
-We use the struct `ValidatorMemory` to keep track of these variables.
-
-### Updating the shuffled committee
-
-If a client's `validator_memory.finalized_header` changes so that `header.slot // EPOCHS_PER_SHARD_PERIOD` increases, then `(previous, current)_committee` will be set to `(current, next)_committee`, but `next_committee` will need to be updated, by downloading `validator_memory.finalized_header.state.next_persistent_committees[shard_id]`.
-
-The maximum size of a proof for this new data is `32 * 10` (Merkle branch) + `56 * 128` (committee) `= 14336` bytes for a compact committee. This needs to be done once per `EPOCHS_PER_SHARD_PERIOD` epochs (256 epochs, or 27 hours), or ~0.146 bytes per second (compare Bitcoin SPV at 80 / 560 ~= 0.143 bytes per second).
-
-### Computing the persistent committee at an epoch
-
+```python
+class LightClientMemory(Container):
+    shard: Shard  # Randomly initialized and retained forever
+    header: BeaconBlockHeader  # Beacon header which is not expected to revert
+    # Persistent committees corresponding to the beacon header
+    previous_committee: CompactCommittee
+    current_committee: CompactCommittee
+    next_committee: CompactCommittee
 ```
-def unpack_compact_validator(compact_validator: uint64) -> Tuple[int, bool, int]:
+
+### `LightClientUpdate`
+
+```python
+class LightClientUpdate(container):
+    # Shard block root (and authenticating signature data)
+    shard_block_root: Hash
+    fork_version: Version
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    signature: BLSSignature
+    # Updated beacon header (and authenticating branch)
+    header: BeaconBlockHeader
+    header_branch: Vector[Hash, BEACON_BLOCK_HEADER_TREE_DEPTH]
+    # Updated persistent committee (and authenticating branch)
+    committee: CompactCommittee
+    committee_branch: Vector[Hash, BEACON_STATE_CONTAINER_TREE_DEPTH + log_2(SHARD_COUNT)]
+```
+
+## Helper functions
+
+### `unpack_compact_validator`
+
+```python
+def unpack_compact_validator(compact_validator: CompactValidator) -> Tuple[ValidatorIndex, bool, uint64]:
     """
-    Returns validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
+    Return the index, slashed, effective_balance // EFFECTIVE_BALANCE_INCREMENT of ``compact_validator``.
     """
-    return compact_validator >> 16, (compact_validator >> 15) % 2, compact_validator & (2**15 - 1)
+    return compact_validator >> 16, (compact_validator >> 15) % 2, uint64(compact_validator & (2**15 - 1))
 ```
 
-```
-def compute_persistent_committee_at_epoch(memory: ValidatorMemory,
-                                         epoch: Epoch) -> Sequence[Tuple[BLSPubkey, Gwei]]:
-    current_period = compute_epoch_of_slot(memory.finalized_header.slot) // EPOCHS_PER_SHARD_PERIOD
-    target_period = epoch // EPOCHS_PER_SHARD_PERIOD
-    if target_period == current_period + 1:
-        earlier_committee, later_committee = memory.current_committee, memory.next_committee
-    elif target_period == current_period:
+### `get_persistent_committee_pubkeys_and_balances`
+
+```python
+def get_persistent_committee_pubkeys_and_balances(memory: LightClientMemory,
+                                                  epoch: Epoch) -> Tuple[Sequence[BLSPubkey], Sequence[uint64]]:
+    """
+    Return pubkeys and balances for the persistent committee at ``epoch``.
+    """
+    current_period = compute_epoch_of_slot(memory.header.slot) // EPOCHS_PER_SHARD_PERIOD
+    next_period = epoch // EPOCHS_PER_SHARD_PERIOD
+    assert next_period in (current_period, current_period + 1)
+    if next_period == current_period:
         earlier_committee, later_committee = memory.previous_committee, memory.current_committee
     else:
-        raise Exception("Cannot compute for this slot")
-    o = []  # list of committee (pubkey, balance) tuples
-    for pub, aux in zip(earlier_committee.pubkeys, earlier_committee.compact_validators):
-        index, slashed, balance = unpack_compact_validator(aux)
+        earlier_committee, later_committee = memory.current_committee, memory.next_committee
+
+    pubkeys = []
+    balances = []
+    for pubkey, compact_validator in zip(earlier_committee.pubkeys, earlier_committee.compact_validators):
+        index, slashed, balance = unpack_compact_validator(compact_validator)
         if epoch % EPOCHS_PER_SHARD_PERIOD < index % EPOCHS_PER_SHARD_PERIOD:
-            o.append((pub, balance))
-    for pub, aux in zip(later_committee.pubkeys, later_committee.compact_validators):
-        index, slashed, balance = unpack_compact_validator(aux)
+            pubkeys.append(pubkey)
+            balances.append(balance)
+    for pubkey, compact_validator in zip(later_committee.pubkeys, later_committee.compact_validators):
+        index, slashed, balance = unpack_compact_validator(compact_validator)
         if epoch % EPOCHS_PER_SHARD_PERIOD >= index % EPOCHS_PER_SHARD_PERIOD:
-            o.append((pub, balance))
-    return o
+            pubkeys.append(pubkey)
+            balances.append(balance)
+    return pubkeys, balances
 ```
 
-## Verifying blocks
+## Light client state updates
 
-If a client wants to update its `finalized_header` it asks the network for a `BlockValidityProof`. The client sends a request containing `(shard, slot_range_start, slot_range_end)`, and gets a response of the form:
-
-```python
-{
-    'beacon_block_header': BeaconBlockHeader,
-    'shard_aggregate_signature': BLSSignature,
-    'shard_aggregation_bits': Bitlist[PLACEHOLDER],
-    'shard_parent_block': ShardBlock,
-}
-```
-
-The verification procedure is as follows:
+The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending `memory.header.slot` and `memory.shard`, and calls `next_memory(memory, update)`.
 
 ```python
-def verify_block_validity_proof(proof: BlockValidityProof, validator_memory: ValidatorMemory) -> bool:
-    assert proof.shard_parent_block.core.beacon_chain_root == hash_tree_root(proof.beacon_block_header)
-    committee = compute_persistent_committee_at_epoch(validator_memory, compute_epoch_of_shard_slot(shard_parent_block.slot))
-    # Verify that we have >=50% support
-    support_balance = sum([balance for i, (pubkey, balance) in enumerate(committee) if proof.shard_aggregation_bits[i]])
-    total_balance = sum([balance for i, (pubkey, balance) in enumerate(committee)])
-    assert support_balance * 2 > total_balance
-    # Verify shard attestations
-    group_public_key = bls_aggregate_pubkeys([
-        pubkey for i, (pubkey, balance) in enumerate(committee) if proof.shard_aggregation_bits[i]
-    ])
-    assert bls_verify(
-        pubkey=group_public_key,
-        message_hash=hash_tree_root(shard_parent_block),
-        signature=proof.shard_aggregate_signature,
-        domain=get_domain(state, compute_epoch_of_slot(shard_block.slot), DOMAIN_SHARD_ATTESTER),
+def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
+    # Verify the update does not skip a period
+    current_period = compute_epoch_of_slot(memory.header.slot) // EPOCHS_PER_SHARD_PERIOD
+    next_epoch = compute_epoch_of_shard_slot(update.header.slot)
+    next_period = next_epoch // EPOCHS_PER_SHARD_PERIOD
+    assert next_period in (current_period, current_period + 1)  
+
+    # Verify update header against shard block root and header branch
+    assert is_valid_merkle_branch(
+        leaf=hash_tree_root(update.header),
+        branch=update.header_branch,
+        depth=BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH,
+        index=BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_INDEX,
+        root=shard_block_root,
     )
+
+    # Verify persistent committee votes pass 2/3 threshold
+    pubkeys, balances = get_persistent_committee_pubkeys_and_balances(memory, next_epoch)
+    assert 3 * sum(filter(lambda i: update.aggregation_bits[i], balances)) > 2 * sum(balances)
+
+    # Verify shard attestations
+    pubkey = bls_aggregate_pubkeys(filter(lambda i: update.aggregation_bits[i], pubkeys))
+    domain = compute_domain(DOMAIN_SHARD_ATTESTER, update.fork_version)
+    assert bls_verify(pubkey, shard_block_root, update.signature, domain)
+
+    # Update persistent committees if entering a new period
+    if next_period == current_period + 1:
+        assert is_valid_merkle_branch(
+            leaf=hash_tree_root(update.committee),
+            branch=update.committee_branch,
+            depth=PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT),
+            index=PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX << log_2(SHARD_COUNT) + memory.shard,
+            root=hash_tree_root(update.header),
+        )
+        memory.previous_committee = memory.current_committee
+        memory.current_committee = memory.next_committee
+        memory.next_committee = update.committee
+
+    # Update header
+    memory.header = update.header
 ```
 
-The size of this proof is only 200 (header) + 96 (signature) + 16 (bits) + 352 (shard block) = 664 bytes. It can be reduced further by replacing `ShardBlock` with `MerklePartial(lambda x: x.beacon_chain_root, ShardBlock)`, which would cut off ~220 bytes.
+## Data overhead
+
+Once every `EPOCHS_PER_SHARD_PERIOD` epochs (~27 hours) a light client downloads a `LightClientUpdate` object:
+
+* `shard_block_root`: 32 bytes
+* `fork_version`: 4 bytes
+* `aggregation_bits`: 16 bytes
+* `signature`: 96 bytes
+* `header`: 200 bytes (8 + 32 + 32 + 32 + 96)
+* `header_branch`: 128 bytes
+* `committee`: 7,168 bytes (128 * (48 + 8))
+* `committee_branch`: 480 bytes
+
+The total overhead is 8,124 bytes, or ~0.083 bytes per second. The Bitcoin SPV equivalent is 80 bytes per ~560 seconds, or ~0.143 bytes per second. Various compression optimisations (similar to [these](https://github.com/RCasatta/compressedheaders)) are possible.
+
+A light client can choose to update the header (without updating the committee) more frequently than once every `EPOCHS_PER_SHARD_PERIOD` epochs with 476 bytes per update.
