@@ -66,7 +66,7 @@ We define the following Python custom types for type hinting and readability:
 | Name | Value |
 | - | - |
 | `SHARD_SLOTS_PER_BEACON_SLOT` | `2**1` (= 2) |
-| `MAX_PERSISTENT_COMMITTEE_SIZE` | `2**7` (= 128) |
+| `TARGET_PERSISTENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `SHARD_HEADER_SIZE` | `2**9` (= 512) |
 | `SHARD_BLOCK_SIZE_TARGET` | `2**14` (= 16,384) |
 | `SHARD_BLOCK_SIZE_LIMIT` | `2**16` (= 65,536) |
@@ -151,7 +151,7 @@ class ShardBlockCore(Container):
     data_root: Hash
     state_root: Hash
     total_bytes: uint64
-    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
+    attester_bitfield: Bitvector[TARGET_PERSISTENT_COMMITTEE_SIZE * 2]
 ```
 
 ### `ExtendedShardBlockCore`
@@ -164,7 +164,7 @@ class ExtendedShardBlockCore(Container):
     data: Bytes[SHARD_BLOCK_SIZE_LIMIT - SHARD_HEADER_SIZE]
     state_root: Hash
     total_bytes: uint64
-    attester_bitfield: Bitvector[MAX_PERSISTENT_COMMITTEE_SIZE * 2]
+    attester_bitfield: Bitvector[TARGET_PERSISTENT_COMMITTEE_SIZE * 2]
 ```
 
 ### `ShardState`
@@ -172,10 +172,10 @@ class ExtendedShardBlockCore(Container):
 ```python
 class ShardState(Container):
     history_accumulator: Vector[Hash, HISTORY_ACCUMULATOR_VECTOR]
-    earlier_committee_rewards: List[uint64, MAX_PERSISTENT_COMMITTEE_SIZE]
-    later_committee_rewards: List[uint64, MAX_PERSISTENT_COMMITTEE_SIZE]
-    earlier_committee_fees: List[Gwei, MAX_PERSISTENT_COMMITTEE_SIZE]
-    later_committee_fees: List[Gwei, MAX_PERSISTENT_COMMITTEE_SIZE]
+    earlier_committee_rewards: List[uint64, TARGET_PERSISTENT_COMMITTEE_SIZE]
+    later_committee_rewards: List[uint64, TARGET_PERSISTENT_COMMITTEE_SIZE]
+    earlier_committee_fees: List[Gwei, TARGET_PERSISTENT_COMMITTEE_SIZE]
+    later_committee_fees: List[Gwei, TARGET_PERSISTENT_COMMITTEE_SIZE]
     basefee: Gwei
     slot: ShardSlot
     shard: Shard
@@ -230,7 +230,7 @@ def get_period_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> Sequ
         count=SHARD_COUNT,
     )
 
-    return full_committee[:MAX_PERSISTENT_COMMITTEE_SIZE]
+    return full_committee[:TARGET_PERSISTENT_COMMITTEE_SIZE]
 ```
 
 ### `get_persistent_committee`
@@ -495,7 +495,7 @@ def shard_block_transition(state: ShardState,
             add_reward(state, beacon_state, validator_index, base_reward)
             attestations += 1
 
-    for i in range(len(attester_committee), MAX_PERSISTENT_COMMITTEE_SIZE):
+    for i in range(len(attester_committee), TARGET_PERSISTENT_COMMITTEE_SIZE):
         assert block.core.attester_bitfield[i] is False or block.core.attester_bitfield[i] == 0  # TODO: FIX Bitvector
 
     assert bls_verify(
