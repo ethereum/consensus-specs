@@ -24,7 +24,7 @@ This specification provides the functionality of both *non-hardened* and *harden
 
 ### Helper functions
 
-`int_hash` is the core of this tree KDF specification. It takes in an integer (private key) and repeatedly hashes it, checking each time whether the result of the hash is less than the curve order, `52435875175126190479447740508185965837690552500527637822603658699938581184513` in the case of BLS12-381. If the result is less than the curve order, it is returned as an integer. This rejection sampling mechanism ensures a uniform distribution over the key-space under the random oracle assumption for SHA256.
+`bytes_to_privkey` is the core of this tree KDF specification. It operates in the same way as the `KeyGen` function described in the [draft IETF BLS standard](https://github.com/cfrg/draft-irtf-cfrg-bls-signature/blob/master/draft-irtf-cfrg-bls-signature-00.txt) and therefore the private key obtained from `KeyGen` is equal to that obtained from `bytes_to_privkey` for the same seed bytes.
 
 ```python
 def bytes_to_privkey(ikm: bytes) -> int:
