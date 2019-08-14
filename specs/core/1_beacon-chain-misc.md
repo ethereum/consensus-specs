@@ -201,7 +201,7 @@ def update_persistent_committee(state: BeaconState) -> None:
 
 ### Shard receipt processing
 
-Add the `shard_receipts` operation to `BeaconBlockBody`:
+Add the `shard_receipt_proofs` operation to `BeaconBlockBody`:
 
 ```python
 # begin insert @shard_receipts
