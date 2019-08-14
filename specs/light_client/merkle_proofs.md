@@ -229,7 +229,7 @@ def get_helper_indices(indices: List[GeneralizedIndex]) -> List[GeneralizedIndex
         x for x in all_indices if not
         (generalized_index_child(x, 0) in all_indices and generalized_index_child(x, 1) in all_indices) and not
         (x in indices)
-    ])[::-1]
+    ], reverse=True)
 ```
 
 Now we provide the Merkle proof verification functions. First, for single item proofs:
