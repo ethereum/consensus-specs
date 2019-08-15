@@ -49,6 +49,6 @@ The child key derivation function takes in the parent's private key and the inde
 def derive_child_privkey(parent_privkey: int, i: int) -> int:
     parent_hash = bytes_to_privkey(parent_privkey.to_bytes(length=32, byteorder='big'))
     parent_double_hash = bytes_to_privkey(parent_hash.to_bytes(length=32, byteorder='big'))
-    mod_sum = (parent_hash + (i * parent_double_hash)) % curve_order
-    return mod_sum if i < 2**31 else bytes_to_privkey(i.to_bytes(length=32, byteorder='big'))
+    mod_sum = (parent_hash + parent_double_hash + (i * parent_double_hash)) % curve_order
+    return mod_sum if i < 2**31 else bytes_to_privkey(mod_sum.to_bytes(length=32, byteorder='big'))
 ```
