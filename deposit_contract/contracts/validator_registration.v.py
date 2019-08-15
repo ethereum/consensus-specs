@@ -70,18 +70,15 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     # Avoid overflowing the Merkle tree (and prevent edge case in computing `self.branch`)
     assert self.deposit_count < MAX_DEPOSIT_COUNT
 
-    # Validate deposit data
+    # Check deposit amount
     deposit_amount: uint256 = msg.value / as_wei_value(1, "gwei")
     assert deposit_amount >= MIN_DEPOSIT_AMOUNT
-    assert len(pubkey) == PUBKEY_LENGTH
-    assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
-    assert len(signature) == SIGNATURE_LENGTH
 
     # Emit `DepositEvent` log
     amount: bytes[8] = self.to_little_endian_64(deposit_amount)
     log.DepositEvent(pubkey, withdrawal_credentials, amount, signature, self.to_little_endian_64(self.deposit_count))
 
-    # Compute `DepositData` hash tree root
+    # Compute deposit data root (`DepositData` hash tree root)
     zero_bytes32: bytes32 = 0x0000000000000000000000000000000000000000000000000000000000000000
     pubkey_root: bytes32 = sha256(concat(pubkey, slice(zero_bytes32, start=0, len=64 - PUBKEY_LENGTH)))
     signature_root: bytes32 = sha256(concat(
@@ -95,7 +92,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     # Verify calculated and expected deposit data roots match
     assert node == deposit_data_root
 
-    # Add `DepositData` hash tree root to Merkle tree (update a single `branch` node)
+    # Add deposit data root to Merkle tree (update a single `branch` node)
     self.deposit_count += 1
     size: uint256 = self.deposit_count
     for height in range(DEPOSIT_CONTRACT_TREE_DEPTH):
