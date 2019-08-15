@@ -156,19 +156,20 @@ def get_item_position(typ: SSZType, index: Union[int, str]) -> Tuple[int, int, i
 ```
 
 ```python
-def get_generalized_index(typ: SSZType, path: List[Union[int, str]]) -> GeneralizedIndex:
+def get_generalized_index(typ: SSZType, path: List[Union[int, str]]) -> Optional[GeneralizedIndex]:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
     """
-    root = 1
+    root: Optional[GeneralizedIndex] = GeneralizedIndex(1)
     for p in path:
         assert not issubclass(typ, BasicValue)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
             typ, root = uint64, root * 2 + 1 if issubclass(typ, (List, Bytes)) else None
         else:
             pos, _, _ = get_item_position(typ, p)
-            root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * get_next_power_of_two(chunk_count(typ)) + pos
+            base_index = (GeneralizedIndex(2) if issubclass(typ, (List, Bytes)) else GeneralizedIndex(1))
+            root = root * base_index * get_next_power_of_two(chunk_count(typ)) + pos
             typ = get_elem_type(typ, p)
     return root
 ```
@@ -180,14 +181,14 @@ _Usage note: functions outside this section should manipulate generalized indice
 #### `concat_generalized_indices`
 
 ```python
-def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> GeneralizedIndex:
+def concat_generalized_indices(indices: Sequence[GeneralizedIndex]) -> GeneralizedIndex:
     """
     Given generalized indices i1 for A -> B, i2 for B -> C .... i_n for Y -> Z, returns
     the generalized index for A -> Z.
     """
     o = GeneralizedIndex(1)
     for i in indices:
-        o = o * get_previous_power_of_two(i) + (i - get_previous_power_of_two(i))
+        o = GeneralizedIndex(o * get_previous_power_of_two(i) + (i - get_previous_power_of_two(i)))
     return o
 ```
 
@@ -198,7 +199,7 @@ def get_generalized_index_length(index: GeneralizedIndex) -> int:
     """
     Return the length of a path represented by a generalized index.
     """
-    return log2(index)
+    return int(log2(index))
 ```
 
 #### `get_generalized_index_bit`
@@ -215,21 +216,21 @@ def get_generalized_index_bit(index: GeneralizedIndex, position: int) -> bool:
 
 ```python
 def generalized_index_sibling(index: GeneralizedIndex) -> GeneralizedIndex:
-    return index ^ 1
+    return GeneralizedIndex(index ^ 1)
 ```
 
 #### `generalized_index_child`
 
 ```python
 def generalized_index_child(index: GeneralizedIndex, right_side: bool) -> GeneralizedIndex:
-    return index * 2 + right_side
+    return GeneralizedIndex(index * 2 + right_side)
 ```
 
 #### `generalized_index_parent`
 
 ```python
 def generalized_index_parent(index: GeneralizedIndex) -> GeneralizedIndex:
-    return index // 2
+    return GeneralizedIndex(index // 2)
 ```
 
 ## Merkle multiproofs
@@ -266,14 +267,17 @@ def get_helper_indices(indices: List[GeneralizedIndex]) -> List[GeneralizedIndex
     generalized indices. Note that the decreasing order is chosen deliberately to ensure equivalence to the
     order of hashes in a regular single-item Merkle proof in the single-item case.
     """
-    all_indices = set()
+    all_indices: Set[GeneralizedIndex] = set()
     for index in indices:
         all_indices = all_indices.union(set(get_branch_indices(index) + [index]))
 
     return sorted([
-        x for x in all_indices if not
-        (generalized_index_child(x, 0) in all_indices and generalized_index_child(x, 1) in all_indices) and not
-        (x in indices)
+        x for x in all_indices if (
+            not (
+                generalized_index_child(x, GeneralizedIndex(0)) in all_indices and
+                generalized_index_child(x, GeneralizedIndex(1)) in all_indices
+            ) and not (x in indices)
+        )
     ], reverse=True)
 ```
 
@@ -309,10 +313,13 @@ def verify_merkle_multiproof(leaves: Sequence[Hash],
     while pos < len(keys):
         k = keys[pos]
         if k in objects and k ^ 1 in objects and k // 2 not in objects:
-            objects[k // 2] = hash(objects[(k | 1) ^ 1] + objects[k | 1])
-            keys.append(k // 2)
+            objects[GeneralizedIndex(k // 2)] = hash(
+                objects[GeneralizedIndex((k | 1) ^ 1)] +
+                objects[GeneralizedIndex(k | 1)]
+            )
+            keys.append(GeneralizedIndex(k // 2))
         pos += 1
-    return objects[1] == root
+    return objects[GeneralizedIndex(1)] == root
 ```
 
 Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`).
