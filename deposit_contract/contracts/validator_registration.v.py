@@ -89,7 +89,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
         sha256(concat(pubkey_root, withdrawal_credentials)),
         sha256(concat(amount, slice(zero_bytes32, start=0, len=32 - AMOUNT_LENGTH), signature_root)),
     ))
-    # Verify calculated and expected deposit data roots match
+    # Verify computed and expected deposit data roots match
     assert node == deposit_data_root
 
     # Add deposit data root to Merkle tree (update a single `branch` node)
