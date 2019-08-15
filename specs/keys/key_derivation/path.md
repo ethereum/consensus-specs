@@ -15,7 +15,7 @@ m / purpose' / coin_type' /  account' / other'
 The notation used within the path is specified within the [Tree KDF specification](./tree_kdf.md), but is summarized again below for convenience.
 
 * `m` Denotes the master node (or root) of the tree
-* `\` Separates the tree into depths, thus `i / j` signifies that `j` is a child of `i`
+* `/` Separates the tree into depths, thus `i / j` signifies that `j` is a child of `i`
 * `'` Indicates that hardened key derivation is used at this level
 
 ### Purpose

@@ -34,7 +34,7 @@ def bytes_to_privkey(ikm: bytes) -> int:
 
 ### Master Key Derivation
 
-The master key is the root of the key-tree and is derived from a 256-bit seed. While this seed can be any arbitrary 256 bits, it is intended to be the output of the seed derivation process described in the [mnemonic generation specification](.mnemonic.md).
+The master key is the root of the key-tree and is derived from a 256-bit seed. While this seed can be any arbitrary 256 bits, it is intended to be the output of the seed derivation process described in the [mnemonic generation specification](./mnemonic.md).
 
 ```python
 def derive_master_privkey(seed: bytes) -> int:
