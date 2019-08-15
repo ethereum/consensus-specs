@@ -6,16 +6,53 @@
 <!-- TOC -->
 
 - [Merkle proof formats](#merkle-proof-formats)
-   - [Table of contents](#table-of-contents)
-   - [Constants](#constants)
-   - [Generalized Merkle tree index](#generalized-merkle-tree-index)
-   - [SSZ object to index](#ssz-object-to-index)
-   - [Merkle multiproofs](#merkle-multiproofs)
-   - [MerklePartial](#merklepartial)
-       - [`SSZMerklePartial`](#sszmerklepartial)
-       - [Proofs for execution](#proofs-for-execution)
+    - [Table of contents](#table-of-contents)
+    - [Custom types](#custom-types)
+    - [Helpers](#helpers)
+    - [Generalized Merkle tree index](#generalized-merkle-tree-index)
+    - [SSZ object to index](#ssz-object-to-index)
+        - [Helpers for generalized indices](#helpers-for-generalized-indices)
+            - [`concat_generalized_indices`](#concat_generalized_indices)
+            - [`get_generalized_index_length`](#get_generalized_index_length)
+            - [`get_generalized_index_bit`](#get_generalized_index_bit)
+            - [`generalized_index_sibling`](#generalized_index_sibling)
+            - [`generalized_index_child`](#generalized_index_child)
+            - [`generalized_index_parent`](#generalized_index_parent)
+    - [Merkle multiproofs](#merkle-multiproofs)
 
 <!-- /TOC -->
+
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `GeneralizedIndex` | `uint64` | the index of a node in a binary Merkle tree |
+
+## Helpers
+
+```python
+def get_next_power_of_two(x: int) -> int:
+    """
+    Get next power of 2 >= the input.
+    """
+    if x <= 2:
+        return x
+    elif x % 2 == 0:
+        return 2 * get_next_power_of_two(x // 2)
+    else:
+        return 2 * get_next_power_of_two((x + 1) // 2)
+```
+
+```python
+def get_previous_power_of_two(x: int) -> int:
+    """
+    Get the previous power of 2 >= the input.
+    """
+    assert x >= 2
+    return get_next_power_of_two(x) // 2
+```
 
 ## Generalized Merkle tree index
 
@@ -32,8 +69,8 @@ Note that the generalized index has the convenient property that the two childre
 
 ```python
 def merkle_tree(leaves: List[Bytes32]) -> List[Bytes32]:
-    padded_length = next_power_of_2(len(leaves))
-    o = [ZERO_HASH] * padded_length + leaves + [ZERO_HASH] * (padded_length - len(leaves))
+    padded_length = get_next_power_of_two(len(leaves))
+    o = [Hash()] * padded_length + leaves + [Hash()] * (padded_length - len(leaves))
     for i in range(len(leaves) - 1, 0, -1):
         o[i] = hash(o[i * 2] + o[i * 2 + 1])
     return o
@@ -61,25 +98,27 @@ We can now define a concept of a "path", a way of describing a function that tak
 ```python
 def item_length(typ: SSZType) -> int:
     """
-    Returns the number of bytes in a basic type, or 32 (a full hash) for compound types.
+    Return the number of bytes in a basic type, or 32 (a full hash) for compound types.
     """
     if issubclass(typ, BasicValue):
         return typ.byte_len
     else:
         return 32
-        
-        
-def get_elem_type(typ: ComplexType, index: Union[int, str]) -> Type:
+```
+
+```python
+def get_elem_type(typ: Union[BaseList, Container], index: Union[int, str]) -> SSZType:
     """
-    Returns the type of the element of an object of the given type with the given index
+    Return the type of the element of an object of the given type with the given index
     or member variable name (eg. `7` for `x[7]`, `"foo"` for `x.foo`)
     """
-    return typ.get_fields()[index] if issubclass(typ, Container) else typ.elem_type        
+    return typ.get_fields()[index] if issubclass(typ, Container) else typ.elem_type
+```
 
-
+```python
 def chunk_count(typ: SSZType) -> int:
     """
-    Returns the number of hashes needed to represent the top-level elements in the given type
+    Return the number of hashes needed to represent the top-level elements in the given type
     (eg. `x.foo` or `x[7]` but not `x[7].bar` or `x.foo.baz`). In all cases except lists/vectors
     of basic types, this is simply the number of top-level elements, as each element gets one
     hash. For lists/vectors of basic types, it is often fewer because multiple basic elements
@@ -96,13 +135,16 @@ def chunk_count(typ: SSZType) -> int:
         return len(typ.get_fields())
     else:
         raise Exception(f"Type not supported: {typ}")
+```
 
-
+```python
 def get_item_position(typ: SSZType, index: Union[int, str]) -> Tuple[int, int, int]:
     """
-    Returns three variables: (i) the index of the chunk in which the given element of the item is
-    represented, (ii) the starting byte position within the chunk, (iii) the ending byte position within the chunk. For example for
-    a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
+    Return three variables:
+        (i) the index of the chunk in which the given element of the item is represented;
+        (ii) the starting byte position within the chunk;
+        (iii) the ending byte position within the chunk.
+    For example: for a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
     """
     if issubclass(typ, Elements):
         start = index * item_length(typ.elem_type)
@@ -111,9 +153,10 @@ def get_item_position(typ: SSZType, index: Union[int, str]) -> Tuple[int, int, i
         return typ.get_field_names().index(index), 0, item_length(get_elem_type(typ, index))
     else:
         raise Exception("Only lists/vectors/containers supported")
+```
 
-
-def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> GeneralizedIndex:
+```python
+def get_generalized_index(typ: SSZType, path: List[Union[int, str]]) -> GeneralizedIndex:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
@@ -125,7 +168,7 @@ def get_generalized_index(typ: Type, path: List[Union[int, str]]) -> Generalized
             typ, root = uint64, root * 2 + 1 if issubclass(typ, (List, Bytes)) else None
         else:
             pos, _, _ = get_item_position(typ, p)
-            root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * next_power_of_two(chunk_count(typ)) + pos
+            root = root * (2 if issubclass(typ, (List, Bytes)) else 1) * get_next_power_of_two(chunk_count(typ)) + pos
             typ = get_elem_type(typ, p)
     return root
 ```
@@ -144,7 +187,7 @@ def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> Generali
     """
     o = GeneralizedIndex(1)
     for i in indices:
-        o = o * get_previous_power_of_2(i) + (i - get_previous_power_of_2(i))
+        o = o * get_previous_power_of_two(i) + (i - get_previous_power_of_two(i))
     return o
 ```
 
@@ -152,41 +195,41 @@ def concat_generalized_indices(*indices: Sequence[GeneralizedIndex]) -> Generali
 
 ```python
 def get_generalized_index_length(index: GeneralizedIndex) -> int:
-   """
-   Returns the length of a path represented by a generalized index.
-   """
-   return log2(index)
+    """
+    Return the length of a path represented by a generalized index.
+    """
+    return log2(index)
 ```
 
 #### `get_generalized_index_bit`
 
 ```python
 def get_generalized_index_bit(index: GeneralizedIndex, position: int) -> bool:
-   """
-   Returns the given bit of a generalized index.
-   """
-   return (index & (1 << position)) > 0
+    """
+    Return the given bit of a generalized index.
+    """
+    return (index & (1 << position)) > 0
 ```
 
 #### `generalized_index_sibling`
 
 ```python
 def generalized_index_sibling(index: GeneralizedIndex) -> GeneralizedIndex:
-   return index ^ 1
+    return index ^ 1
 ```
 
 #### `generalized_index_child`
 
 ```python
 def generalized_index_child(index: GeneralizedIndex, right_side: bool) -> GeneralizedIndex:
-   return index * 2 + right_side
+    return index * 2 + right_side
 ```
 
 #### `generalized_index_parent`
 
 ```python
 def generalized_index_parent(index: GeneralizedIndex) -> GeneralizedIndex:
-   return index // 2
+    return index // 2
 ```
 
 ## Merkle multiproofs
@@ -214,7 +257,9 @@ def get_branch_indices(tree_index: GeneralizedIndex) -> List[GeneralizedIndex]:
     while o[-1] > 1:
         o.append(generalized_index_sibling(generalized_index_parent(o[-1])))
     return o[:-1]
+```
 
+```python
 def get_helper_indices(indices: List[GeneralizedIndex]) -> List[GeneralizedIndex]:
     """
     Get the generalized indices of all "extra" chunks in the tree needed to prove the chunks with the given
@@ -224,7 +269,7 @@ def get_helper_indices(indices: List[GeneralizedIndex]) -> List[GeneralizedIndex
     all_indices = set()
     for index in indices:
         all_indices = all_indices.union(set(get_branch_indices(index) + [index]))
-    
+
     return sorted([
         x for x in all_indices if not
         (generalized_index_child(x, 0) in all_indices and generalized_index_child(x, 1) in all_indices) and not
@@ -248,13 +293,16 @@ def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedInd
 Now for multi-item proofs:
 
 ```python
-def verify_merkle_multiproof(leaves: Sequence[Hash], proof: Sequence[Hash], indices: Sequence[GeneralizedIndex], root: Hash) -> bool:
+def verify_merkle_multiproof(leaves: Sequence[Hash],
+                             proof: Sequence[Hash],
+                             indices: Sequence[GeneralizedIndex],
+                             root: Hash) -> bool:
     assert len(leaves) == len(indices)
     helper_indices = get_helper_indices(indices)
     assert len(proof) == len(helper_indices)
     objects = {
-        **{index:node for index, node in zip(indices, leaves)},
-        **{index:node for index, node in zip(helper_indices, proof)}
+        **{index: node for index, node in zip(indices, leaves)},
+        **{index: node for index, node in zip(helper_indices, proof)}
     }
     keys = sorted(objects.keys(), reverse=True)
     pos = 0

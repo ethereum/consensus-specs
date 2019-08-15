@@ -39,6 +39,9 @@ from eth2spec.utils.hash_function import hash
 PHASE1_IMPORTS = '''from typing import (
     Any, Dict, Optional, Set, Sequence, MutableSequence, Tuple, Union,
 )
+from math import (
+    log2,
+)
 
 from dataclasses import (
     dataclass,
@@ -51,8 +54,10 @@ from eth2spec.utils.ssz.ssz_impl import (
     is_zero,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    uint64, bit, boolean, Container, List, Vector, Bytes, BytesN,
-    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    BasicValue, Elements, BaseList, SSZType,
+    Container, List, Vector, Bytes, BytesN, Bitlist, Bitvector, Bits,
+    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
+    uint64, bit, boolean,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
