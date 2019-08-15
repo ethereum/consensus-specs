@@ -8,7 +8,7 @@
 - [Merkle proof formats](#merkle-proof-formats)
     - [Table of contents](#table-of-contents)
     - [Custom types](#custom-types)
-    - [Helpers](#helpers)
+    - [Helper functions](#helper-functions)
     - [Generalized Merkle tree index](#generalized-merkle-tree-index)
     - [SSZ object to index](#ssz-object-to-index)
         - [Helpers for generalized indices](#helpers-for-generalized-indices)
@@ -30,7 +30,7 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `GeneralizedIndex` | `uint64` | the index of a node in a binary Merkle tree |
 
-## Helpers
+## Helper functions
 
 ```python
 def get_next_power_of_two(x: int) -> int:
@@ -67,7 +67,7 @@ In a binary Merkle tree, we define a "generalized index" of a node as `2**depth 
 Note that the generalized index has the convenient property that the two children of node `k` are `2k` and `2k+1`, and also that it equals the position of a node in the linear representation of the Merkle tree that's computed by this function:
 
 ```python
-def merkle_tree(leaves: List[Bytes32]) -> List[Bytes32]:
+def merkle_tree(leaves: Squence[Hash]) -> Squence[Hash]:
     padded_length = get_next_power_of_two(len(leaves))
     o = [Hash()] * padded_length + leaves + [Hash()] * (padded_length - len(leaves))
     for i in range(len(leaves) - 1, 0, -1):

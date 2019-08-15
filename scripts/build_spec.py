@@ -343,7 +343,7 @@ If building phase 1:
             build_phase1_spec(*args.files)
         else:
             print(
-                " Phase 1 requires  input files as well as an output file:\n"
+                " Phase 1 requires input files as well as an output file:\n"
                 "\t core/phase_0: (0_beacon-chain.md, 0_fork-choice.md)\n"
                 "\t core/phase_1: (1_custody-game.md, 1_shard-data-chains.md)\n"
                 "\t light_client: (merkle_proofs.md)\n"
