@@ -1,6 +1,9 @@
-from typing import Dict, Iterator
+from typing import Dict, Iterator, NewType
 import copy
 from types import GeneratorType
+
+
+SSZVariableName = NewType('SSZVariableName', str)
 
 
 class DefaultingTypeMeta(type):
