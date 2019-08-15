@@ -32,4 +32,4 @@ def test_decoder():
         # and see if the hash-tree-root of the original matches the hash-tree-root of the decoded & translated value.
         original_hash_tree_root = spec_ssz_impl.hash_tree_root(original)
         assert original_hash_tree_root == spec_ssz_impl.hash_tree_root(block)
-        assert original_hash_tree_root == block_sedes.get_deposit_root(raw_value)
+        assert original_hash_tree_root == block_sedes.get_hash_tree_root(raw_value)
