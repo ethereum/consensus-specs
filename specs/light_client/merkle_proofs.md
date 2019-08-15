@@ -26,7 +26,6 @@
 
 We define the following Python custom types for type hinting and readability:
 
-| Name | SSZ equivalent | Description |
 | - | - | - |
 | `GeneralizedIndex` | `uint64` | the index of a node in a binary Merkle tree |
 
@@ -50,7 +49,7 @@ def get_previous_power_of_two(x: int) -> int:
     """
     Get the previous power of 2 >= the input.
     """
-    return x if x <= 2 else 2 * get_previous_power_of_2(x // 2)
+    return x if x <= 2 else 2 * get_previous_power_of_two(x // 2)
 ```
 
 ## Generalized Merkle tree index
@@ -67,9 +66,9 @@ In a binary Merkle tree, we define a "generalized index" of a node as `2**depth 
 Note that the generalized index has the convenient property that the two children of node `k` are `2k` and `2k+1`, and also that it equals the position of a node in the linear representation of the Merkle tree that's computed by this function:
 
 ```python
-def merkle_tree(leaves: Squence[Hash]) -> Squence[Hash]:
+def merkle_tree(leaves: Sequence[Hash]) -> Sequence[Hash]:
     padded_length = get_next_power_of_two(len(leaves))
-    o = [Hash()] * padded_length + leaves + [Hash()] * (padded_length - len(leaves))
+    o = [Hash()] * padded_length + list(leaves) + [Hash()] * (padded_length - len(leaves))
     for i in range(len(leaves) - 1, 0, -1):
         o[i] = hash(o[i * 2] + o[i * 2 + 1])
     return o
@@ -106,12 +105,12 @@ def item_length(typ: SSZType) -> int:
 ```
 
 ```python
-def get_elem_type(typ: Union[BaseList, Container], index: Union[int, str]) -> SSZType:
+def get_elem_type(typ: Union[BaseList, Container], index_or_variable_name: Union[int, SSZVariableName]) -> SSZType:
     """
     Return the type of the element of an object of the given type with the given index
     or member variable name (eg. `7` for `x[7]`, `"foo"` for `x.foo`)
     """
-    return typ.get_fields()[index] if issubclass(typ, Container) else typ.elem_type
+    return typ.get_fields()[index_or_variable_name] if issubclass(typ, Container) else typ.elem_type
 ```
 
 ```python
@@ -137,7 +136,7 @@ def chunk_count(typ: SSZType) -> int:
 ```
 
 ```python
-def get_item_position(typ: SSZType, index: Union[int, str]) -> Tuple[int, int, int]:
+def get_item_position(typ: SSZType, index_or_variable_name: Union[int, SSZVariableName]) -> Tuple[int, int, int]:
     """
     Return three variables:
         (i) the index of the chunk in which the given element of the item is represented;
@@ -146,16 +145,18 @@ def get_item_position(typ: SSZType, index: Union[int, str]) -> Tuple[int, int, i
     For example: for a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
     """
     if issubclass(typ, Elements):
+        index = int(index_or_variable_name)
         start = index * item_length(typ.elem_type)
         return start // 32, start % 32, start % 32 + item_length(typ.elem_type)
     elif issubclass(typ, Container):
-        return typ.get_field_names().index(index), 0, item_length(get_elem_type(typ, index))
+        variable_name = int(index_or_variable_name)
+        return typ.get_field_names().index(variable_name), 0, item_length(get_elem_type(typ, variable_name))
     else:
         raise Exception("Only lists/vectors/containers supported")
 ```
 
 ```python
-def get_generalized_index(typ: SSZType, path: List[Union[int, str]]) -> Optional[GeneralizedIndex]:
+def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableName]]) -> Optional[GeneralizedIndex]:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
@@ -248,7 +249,7 @@ x x . . . . x *
 First, we provide a method for computing the generalized indices of the auxiliary tree nodes that a proof of a given set of generalized indices will require:
 
 ```python
-def get_branch_indices(tree_index: GeneralizedIndex) -> List[GeneralizedIndex]:
+def get_branch_indices(tree_index: GeneralizedIndex) -> Sequence[GeneralizedIndex]:
     """
     Get the generalized indices of the sister chunks along the path from the chunk with the
     given tree index to the root.
@@ -260,7 +261,7 @@ def get_branch_indices(tree_index: GeneralizedIndex) -> List[GeneralizedIndex]:
 ```
 
 ```python
-def get_helper_indices(indices: List[GeneralizedIndex]) -> List[GeneralizedIndex]:
+def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[GeneralizedIndex]:
     """
     Get the generalized indices of all "extra" chunks in the tree needed to prove the chunks with the given
     generalized indices. Note that the decreasing order is chosen deliberately to ensure equivalence to the
@@ -268,7 +269,7 @@ def get_helper_indices(indices: List[GeneralizedIndex]) -> List[GeneralizedIndex
     """
     all_indices: Set[GeneralizedIndex] = set()
     for index in indices:
-        all_indices = all_indices.union(set(get_branch_indices(index) + [index]))
+        all_indices = all_indices.union(set(list(get_branch_indices(index)) + [index]))
 
     return sorted([
         x for x in all_indices if (
