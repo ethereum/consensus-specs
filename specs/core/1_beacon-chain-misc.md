@@ -6,6 +6,7 @@
 
 - [Phase 1 miscellaneous beacon chain changes](#phase-1-miscellaneous-beacon-chain-changes)
     - [Table of contents](#table-of-contents)
+    - [Configuration](#configuration)
     - [Classes](#classes)
         - [CompactCommittee](#compactcommittee)
         - [ShardReceiptProof](#shardreceiptproof)
@@ -24,6 +25,13 @@
         - [Shard receipt processing](#shard-receipt-processing)
 
 <!-- /TOC -->
+
+## Configuration
+
+| Name | Value | Unit | Duration
+| - | - | - | - |
+| `MAX_SHARD_RECEIPT_PROOFS` | `2**0` (= 1) | - | - |
+| `PERSISTENT_COMMITTEE_ROOT_LENGTH` | `2**8` (= 256) | periods | ~9 months |
 
 ## Classes
 
@@ -171,9 +179,7 @@ Add to the beacon state the following fields:
 
 ```python
 # begin insert @persistent_committee_fields
-    previous_persistent_committee_root: Hash
-    current_persistent_committee_root: Hash
-    next_persistent_committee_root: Hash
+    persistent_committee_roots: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_LENGTH]
     next_shard_receipt_period: Vector[uint, SHARD_COUNT]
 # end insert @persistent_committee_fields
 ```
@@ -190,13 +196,12 @@ def update_persistent_committee(state: BeaconState) -> None:
     Updates persistent committee roots at boundary blocks.
     """
     if (get_current_epoch(state) + 1) % EPOCHS_PER_SHARD_PERIOD == 0:
-        state.previous_persistent_committee_root = state.current_persistent_committee_root
-        state.current_persistent_committee_root = state.next_persistent_committee_root
+        period = (get_current_epoch(state) + 1) // EPOCHS_PER_SHARD_PERIOD
         committees = Vector[CompactCommittee, SHARD_COUNT]([
             committee_to_compact_committee(state, get_period_committee(state, get_current_epoch(state) + 1, i))
             for i in range(SHARD_COUNT)
         ])
-        state.next_persistent_committee_root = hash_tree_root(committees)
+        state.persistent_committee_roots[period % PERSISTENT_COMMITTEE_ROOT_LENGTH] = hash_tree_root(committees)
 ```
 
 ### Shard receipt processing
@@ -205,7 +210,7 @@ Add the `shard_receipt_proofs` operation to `BeaconBlockBody`:
 
 ```python
 # begin insert @shard_receipts
-    shard_receipt_proofs: List[ShardReceiptProof, MAX_SHARD_RECEIPTS]
+    shard_receipt_proofs: List[ShardReceiptProof, MAX_SHARD_RECEIPT_PROOFS]
 # end insert @shard_receipts
 ```
 
