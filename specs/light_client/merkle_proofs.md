@@ -50,8 +50,7 @@ def get_previous_power_of_two(x: int) -> int:
     """
     Get the previous power of 2 >= the input.
     """
-    assert x >= 2
-    return get_next_power_of_two(x) // 2
+    return x if x <= 2 else 2 * get_previous_power_of_2(x // 2)
 ```
 
 ## Generalized Merkle tree index
