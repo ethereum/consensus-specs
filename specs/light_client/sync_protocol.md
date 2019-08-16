@@ -124,7 +124,7 @@ def get_persistent_committee_pubkeys_and_balances(memory: LightClientMemory,
 
 ## Light client state updates
 
-The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending `memory.header` and `memory.shard`, and calls `update_memory(memory, update)`.
+The state of a light client is stored in a `memory` object of type `LightClientMemory`. To advance its state a light client requests an `update` object of type `LightClientUpdate` from the network by sending a request containing `(memory.shard, memory.header.slot, slot_range_end)` and calls `update_memory(memory, update)`.
 
 ```python
 def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
