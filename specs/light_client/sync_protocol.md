@@ -9,6 +9,7 @@
 - [Minimal Light Client Design](#minimal-light-client-design)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
+    - [Custom types](#custom-types)
     - [Constants](#constants)
     - [Containers](#containers)
         - [`LightClientUpdate`](#lightclientupdate)
@@ -25,6 +26,14 @@
 
 Ethereum 2.0 is designed to be light client friendly. This allows low-resource clients such as mobile phones to access Ethereum 2.0 with reasonable safety and liveness. It also facilitates the development of "bridges" to external blockchains. This document suggests a minimal light client design for the beacon chain.
 
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `CompactValidator` | `uint64` | compact representation of a validator for light clients |
+
 ## Constants
 
 | Name | Value |
@@ -35,6 +44,7 @@ Ethereum 2.0 is designed to be light client friendly. This allows low-resource c
 | `PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX` | **TBD** |
 
 ## Containers
+
 ### `LightClientUpdate`
 
 ```python
@@ -74,7 +84,11 @@ def unpack_compact_validator(compact_validator: CompactValidator) -> Tuple[Valid
     """
     Return the index, slashed, effective_balance // EFFECTIVE_BALANCE_INCREMENT of ``compact_validator``.
     """
-    return compact_validator >> 16, (compact_validator >> 15) % 2, uint64(compact_validator & (2**15 - 1))
+    return (
+        ValidatorIndex(compact_validator >> 16),
+        (compact_validator >> 15) % 2,
+        uint64(compact_validator & (2**15 - 1)),
+    )
 ```
 
 ### `get_persistent_committee_pubkeys_and_balances`
