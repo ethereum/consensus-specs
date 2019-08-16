@@ -37,6 +37,14 @@ See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) fo
 * [Beacon node API for validator](specs/validator/0_beacon-node-validator-api.md)
 
 
+## Additional specifications for client implementers
+
+Additional specifications and standards outside of core consensus can be found in the following repos:
+
+* [Eth2.0 APIs](https://github.com/ethereum/eth2.0-apis)
+* [Eth2.0 Metrics](https://github.com/ethereum/eth2.0-metrics/)
+* [Interop Standards in Eth2.0-pm](https://github.com/ethereum/eth2.0-pm/tree/master/interop)
+
 ## Design goals
 
 The following are the broad design goals for Ethereum 2.0:
