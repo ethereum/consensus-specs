@@ -11,9 +11,9 @@
     - [Introduction](#introduction)
     - [Constants](#constants)
     - [Containers](#containers)
-        - [`LightClientMemory`](#lightclientmemory)
         - [`LightClientUpdate`](#lightclientupdate)
-    - [Helper functions](#helper-functions)
+    - [Helpers](#helpers)
+        - [`LightClientMemory`](#lightclientmemory)
         - [`unpack_compact_validator`](#unpack_compact_validator)
         - [`get_persistent_committee_pubkeys_and_balances`](#get_persistent_committee_pubkeys_and_balances)
     - [Light client state updates](#light-client-state-updates)
@@ -35,19 +35,6 @@ Ethereum 2.0 is designed to be light client friendly. This allows low-resource c
 | `PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX` | **TBD** |
 
 ## Containers
-
-### `LightClientMemory`
-
-```python
-class LightClientMemory(Container):
-    shard: Shard  # Randomly initialized and retained forever
-    header: BeaconBlockHeader  # Beacon header which is not expected to revert
-    # Persistent committees corresponding to the beacon header
-    previous_committee: CompactCommittee
-    current_committee: CompactCommittee
-    next_committee: CompactCommittee
-```
-
 ### `LightClientUpdate`
 
 ```python
@@ -65,7 +52,20 @@ class LightClientUpdate(container):
     committee_branch: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
 ```
 
-## Helper functions
+## Helpers
+
+### `LightClientMemory`
+
+```python
+@dataclass
+class LightClientMemory(object):
+    shard: Shard  # Randomly initialized and retained forever
+    header: BeaconBlockHeader  # Beacon header which is not expected to revert
+    # Persistent committees corresponding to the beacon header
+    previous_committee: CompactCommittee
+    current_committee: CompactCommittee
+    next_committee: CompactCommittee
+```
 
 ### `unpack_compact_validator`
 
