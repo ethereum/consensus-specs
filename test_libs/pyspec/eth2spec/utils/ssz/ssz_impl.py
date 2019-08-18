@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series,
+    SSZValue, SSZType, BasicValue, BasicType, ComplexValue,
     ElementsType, BitElementsType, Bits, boolean, Container, List, ByteList,
     Bitlist, Bitvector, uint,
 )
@@ -40,13 +40,13 @@ def serialize(obj: SSZValue):
         else:
             as_bytearray[len(obj) // 8] |= 1 << (len(obj) % 8)
         return bytes(as_bytearray)
-    elif isinstance(obj, Series):
+    elif isinstance(obj, ComplexValue):
         return encode_series(obj)
     else:
         raise Exception(f"Type not supported: {type(obj)}")
 
 
-def encode_series(values: Series):
+def encode_series(values: ComplexValue):
     if isinstance(values, bytes):  # Bytes and BytesN are already like serialized output
         return values
 
@@ -83,7 +83,7 @@ def encode_series(values: Series):
 # -----------------------------
 
 
-def pack(values: Series):
+def pack(values: ComplexValue):
     if isinstance(values, bytes):  # Bytes and BytesN are already packed
         return values
     elif isinstance(values, Bits):
@@ -131,7 +131,7 @@ def chunk_count(typ: SSZType) -> int:
 
 
 def hash_tree_root(obj: SSZValue):
-    if isinstance(obj, Series):
+    if isinstance(obj, ComplexValue):
         if is_bottom_layer_kind(obj.type()):
             leaves = chunkify(pack(obj))
         else:

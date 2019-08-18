@@ -134,7 +134,11 @@ def coerce_type_maybe(v, typ: SSZType, strict: bool = False):
     return v
 
 
-class Series(SSZValue):
+class ComplexType(SSZType):
+    pass
+
+
+class ComplexValue(SSZValue, metaclass=ComplexType):
 
     def __iter__(self) -> Iterator[SSZValue]:
         raise Exception("Not implemented")
@@ -145,7 +149,7 @@ class Series(SSZValue):
 
 # Note: importing ssz functionality locally, to avoid import loop
 
-class Container(Series, metaclass=SSZType):
+class Container(ComplexValue, metaclass=SSZType):
 
     def __init__(self, **kwargs):
         cls = self.__class__
@@ -301,7 +305,7 @@ class ParamsMeta(SSZType):
         return self.__subclasscheck__(obj.__class__)
 
 
-class ElementsType(ParamsMeta):
+class ElementsType(ParamsMeta, ComplexType):
     elem_type: SSZType
 
     def max_elements(cls) -> int:
@@ -315,7 +319,7 @@ class Elements(ParamsBase, metaclass=ElementsType):
         raise Exception("Implemented by subclasses as class-method")
 
 
-class TypedElementsBase(list, Series, ParamsBase, metaclass=ElementsType):
+class TypedElementsBase(list, ComplexValue, ParamsBase, metaclass=ElementsType):
 
     def __init__(self, *args):
         items = self.extract_args(*args)
@@ -516,7 +520,7 @@ class BytesType(ElementsType):
     elem_type: SSZType = byte
 
 
-class ByteElementsBase(bytes, Series, metaclass=BytesType):
+class ByteElementsBase(bytes, ComplexValue, metaclass=BytesType):
 
     def __new__(cls, *args) -> "ByteElementsBase":
         extracted_val = cls.extract_args(*args)
@@ -609,3 +613,6 @@ Bytes8: ByteVector = ByteVector[8]
 Bytes32: ByteVector = ByteVector[32]
 Bytes48: ByteVector = ByteVector[48]
 Bytes96: ByteVector = ByteVector[96]
+
+# Just an alias to the trusty Python big int; generalized indices are not serialized, they are just for processing.
+GeneralizedIndex = int

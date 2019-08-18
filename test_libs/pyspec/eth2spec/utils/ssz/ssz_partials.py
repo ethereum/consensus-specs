@@ -1,12 +1,11 @@
 from ..merkle_minimal import hash, next_power_of_two
 
 from .ssz_typing import (
-    Container, Elements,
+    Container, Elements, ByteList, Bitlist,
     List, Bytes32, uint64, BasicValue, SSZValue, SSZType, coerce_type_maybe
 )
 from .ssz_impl import (
     chunkify,
-    deserialize_basic,
     is_bottom_layer_kind,
     item_length,
     chunk_count,
@@ -55,7 +54,7 @@ def ssz_leaves(obj: SSZValue, root=1):
     intermediate chunks or compute the root.
     """
     typ = obj.type()
-    if isinstance(obj, (List, Bytes)):
+    if isinstance(obj, (List, ByteList, Bitlist)):
         o = {root * 2 + 1: len(obj).to_bytes(32, 'little')}
         base = root * 2
     else:

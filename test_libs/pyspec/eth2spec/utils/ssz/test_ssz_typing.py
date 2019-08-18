@@ -1,6 +1,7 @@
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType,
-    TypedElementsBase, ByteElementsBase, bit, boolean, Container, List, Vector, ByteList, ByteVector,
+    SSZValue, SSZType, BasicValue, BasicType, ComplexValue, ComplexType, ElementsType,
+    TypedElementsBase, ByteElementsBase, bit, boolean, Container,
+    List, Vector, ByteList, ByteVector, Bitlist, Bitvector,
     byte, uint, uint8, uint16, uint32, uint64, uint128, uint256,
     Bytes32, Bytes48
 )
@@ -25,14 +26,15 @@ def test_subclasses():
     assert issubclass(boolean, BasicValue)
     assert isinstance(boolean, BasicType)
 
-    for c in [Container, List, Vector, ByteList, ByteVector]:
-        assert issubclass(c, Series)
+    for c in [Container, List, Vector, ByteList, ByteVector, Bitlist, Bitvector]:
+        assert issubclass(c, ComplexValue)
+        assert isinstance(c, ComplexType)
         assert issubclass(c, SSZValue)
         assert isinstance(c, SSZType)
         assert not issubclass(c, BasicValue)
         assert not isinstance(c, BasicType)
 
-    for c in [List, Vector]:
+    for c in [List, Vector, Bitlist, Bitvector]:
         assert issubclass(c, TypedElementsBase)
         assert isinstance(c, ElementsType)
 
@@ -91,7 +93,8 @@ def test_container():
 
     assert issubclass(Foo, Container)
     assert issubclass(Foo, SSZValue)
-    assert issubclass(Foo, Series)
+    assert issubclass(Foo, ComplexValue)
+    assert isinstance(Foo, ComplexType)
 
     assert Foo.is_fixed_size()
     x = Foo(a=uint8(123), b=uint32(45))
@@ -143,7 +146,8 @@ def test_list():
     typ = List[uint64, 128]
     assert issubclass(typ, List)
     assert issubclass(typ, SSZValue)
-    assert issubclass(typ, Series)
+    assert issubclass(typ, ComplexValue)
+    assert isinstance(typ, ComplexType)
     assert issubclass(typ, TypedElementsBase)
     assert isinstance(typ, ElementsType)
 
@@ -165,7 +169,9 @@ def test_list():
     assert isinstance(v, List[uint64, 128])
     assert isinstance(v, typ)
     assert isinstance(v, SSZValue)
-    assert isinstance(v, Series)
+    assert isinstance(v, ComplexValue)
+    assert issubclass(v.type(), ComplexValue)
+    assert isinstance(v.type(), ComplexType)
     assert issubclass(v.type(), TypedElementsBase)
     assert isinstance(v.type(), ElementsType)
 
