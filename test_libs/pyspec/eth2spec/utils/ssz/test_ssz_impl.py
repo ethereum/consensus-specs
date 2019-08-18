@@ -1,7 +1,7 @@
 from typing import Iterable
 from .ssz_impl import serialize, hash_tree_root
 from .ssz_typing import (
-    bit, boolean, Container, List, Vector, Bytes, BytesN,
+    bit, boolean, Container, List, Vector, ByteList, ByteVector,
     Bitlist, Bitvector,
     uint8, uint16, uint32, uint64, uint256, byte
 )
@@ -39,7 +39,7 @@ class ComplexTestStruct(Container):
     A: uint16
     B: List[uint16, 128]
     C: uint8
-    D: Bytes[256]
+    D: ByteList[256]
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
     G: Vector[VarTestStruct, 2]
@@ -116,7 +116,7 @@ test_data = [
     ("uint32 01234567", uint32(0x01234567), "67452301", chunk("67452301")),
     ("uint64 0000000000000000", uint64(0x00000000), "0000000000000000", chunk("0000000000000000")),
     ("uint64 0123456789abcdef", uint64(0x0123456789abcdef), "efcdab8967452301", chunk("efcdab8967452301")),
-    ("sig", BytesN[96](*sig_test_data),
+    ("sig", ByteVector[96](*sig_test_data),
      "0100000000000000000000000000000000000000000000000000000000000000"
      "0200000000000000000000000000000000000000000000000000000000000000"
      "03000000000000000000000000000000000000000000000000000000000000ff",
@@ -187,7 +187,7 @@ test_data = [
          A=0xaabb,
          B=List[uint16, 128](0x1122, 0x3344),
          C=0xff,
-         D=Bytes[256](b"foobar"),
+         D=ByteList[256](b"foobar"),
          E=VarTestStruct(A=0xabcd, B=List[uint16, 1024](1, 2, 3), C=0xff),
          F=Vector[FixedTestStruct, 4](
              FixedTestStruct(A=0xcc, B=0x4242424242424242, C=0x13371337),

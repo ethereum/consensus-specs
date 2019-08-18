@@ -1,6 +1,6 @@
 from .ssz_typing import (
     SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType,
-    Elements, bit, boolean, Container, List, Vector, Bytes, BytesN,
+    TypedElementsBase, ByteElementsBase, bit, boolean, Container, List, Vector, ByteList, ByteVector,
     byte, uint, uint8, uint16, uint32, uint64, uint128, uint256,
     Bytes32, Bytes48
 )
@@ -25,15 +25,19 @@ def test_subclasses():
     assert issubclass(boolean, BasicValue)
     assert isinstance(boolean, BasicType)
 
-    for c in [Container, List, Vector, Bytes, BytesN]:
+    for c in [Container, List, Vector, ByteList, ByteVector]:
         assert issubclass(c, Series)
         assert issubclass(c, SSZValue)
         assert isinstance(c, SSZType)
         assert not issubclass(c, BasicValue)
         assert not isinstance(c, BasicType)
 
-    for c in [List, Vector, Bytes, BytesN]:
-        assert issubclass(c, Elements)
+    for c in [List, Vector]:
+        assert issubclass(c, TypedElementsBase)
+        assert isinstance(c, ElementsType)
+
+    for c in [ByteList, ByteVector]:
+        assert issubclass(c, ByteElementsBase)
         assert isinstance(c, ElementsType)
 
 
@@ -113,7 +117,7 @@ def test_container():
     assert y.b[0] == 1
     v: List = y.b
     assert v.type().elem_type == uint8
-    assert v.type().length == 1024
+    assert v.type().limit == 1024
 
     y.a = 42
     try:
@@ -140,7 +144,7 @@ def test_list():
     assert issubclass(typ, List)
     assert issubclass(typ, SSZValue)
     assert issubclass(typ, Series)
-    assert issubclass(typ, Elements)
+    assert issubclass(typ, TypedElementsBase)
     assert isinstance(typ, ElementsType)
 
     assert not typ.is_fixed_size()
@@ -162,7 +166,7 @@ def test_list():
     assert isinstance(v, typ)
     assert isinstance(v, SSZValue)
     assert isinstance(v, Series)
-    assert issubclass(v.type(), Elements)
+    assert issubclass(v.type(), TypedElementsBase)
     assert isinstance(v.type(), ElementsType)
 
     assert len(typ([i for i in range(10)])) == 10  # cast py list to SSZ list
@@ -203,10 +207,10 @@ def test_list():
 
 
 def test_bytesn_subclass():
-    assert isinstance(BytesN[32](b'\xab' * 32), Bytes32)
-    assert not isinstance(BytesN[32](b'\xab' * 32), Bytes48)
-    assert issubclass(BytesN[32](b'\xab' * 32).type(), Bytes32)
-    assert issubclass(BytesN[32], Bytes32)
+    assert isinstance(ByteVector[32](b'\xab' * 32), Bytes32)
+    assert not isinstance(ByteVector[32](b'\xab' * 32), Bytes48)
+    assert issubclass(ByteVector[32](b'\xab' * 32).type(), Bytes32)
+    assert issubclass(ByteVector[32], Bytes32)
 
     class Hash(Bytes32):
         pass
