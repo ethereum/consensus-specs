@@ -1,4 +1,5 @@
-from ..merkle_minimal import hash, next_power_of_two
+from .ssz_math import next_power_of_two
+from eth2spec.utils.hash_function import hash
 
 from .ssz_typing import (
     Container, Elements, ByteList, Bitlist,

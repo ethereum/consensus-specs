@@ -1,6 +1,8 @@
 import pytest
-from .merkle_minimal import zerohashes, merkleize_chunks, get_merkle_root
-from .hash_function import hash
+from .merkleize import merkleize_chunks
+from .ssz_full_tree import get_merkle_root
+from .ssz_zero_hashes import zerohashes
+from eth2spec.utils.hash_function import hash
 
 
 def h(a: bytes, b: bytes) -> bytes:

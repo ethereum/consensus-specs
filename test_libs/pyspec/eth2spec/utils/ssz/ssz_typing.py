@@ -613,6 +613,3 @@ Bytes8: ByteVector = ByteVector[8]
 Bytes32: ByteVector = ByteVector[32]
 Bytes48: ByteVector = ByteVector[48]
 Bytes96: ByteVector = ByteVector[96]
-
-# Just an alias to the trusty Python big int; generalized indices are not serialized, they are just for processing.
-GeneralizedIndex = int

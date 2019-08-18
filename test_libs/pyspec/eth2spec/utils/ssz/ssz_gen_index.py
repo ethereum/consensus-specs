@@ -1,18 +1,21 @@
-from ..merkle_minimal import next_power_of_two, previous_power_of_two
+from .ssz_math import next_power_of_two, previous_power_of_two
 from .ssz_typing import (
     SSZType, BasicValue, ComplexType,
     ElementsType, Container, List, ByteList, uint64,
-    Bitlist, GeneralizedIndex
+    Bitlist
 )
 from .ssz_impl import item_length, chunk_count
 from typing import Union, Tuple, Sequence
+
+# Just an alias to the trusty Python big int; generalized indices are not serialized, they are just for processing.
+GeneralizedIndex = int
 
 
 def get_item_position(typ: SSZType, index: Union[int, str]) -> Tuple[int, int, int]:
     """
     Returns three variables: (i) the index of the chunk in which the given element of the item is
-    represented, (ii) the starting byte position within the chunk, (iii) the ending byte position within the chunk. For example for
-    a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
+    represented, (ii) the starting byte position within the chunk, (iii) the ending byte position within the chunk.
+    For example for a 6-item list of uint64 values, index=2 will return (0, 16, 24), index=5 will return (1, 8, 16)
     """
     if isinstance(typ, ElementsType):
         start = index * item_length(typ.elem_type)

@@ -1,4 +1,4 @@
-from ..merkle_minimal import merkleize_chunks
+from .merkleize import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
     SSZValue, SSZType, BasicValue, BasicType, ComplexValue,
