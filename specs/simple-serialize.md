@@ -26,6 +26,7 @@
     - [Deserialization](#deserialization)
     - [Merkleization](#merkleization)
     - [Self-signed containers](#self-signed-containers)
+    - [Summaries and expansions](#summaries-and-expansions)
     - [Implementations](#implementations)
 
 <!-- /TOC -->
