@@ -150,6 +150,11 @@ class ComplexValue(SSZValue, metaclass=ComplexType):
 # Note: importing ssz functionality locally, to avoid import loop
 
 class Container(ComplexValue, metaclass=SSZType):
+    __ssz_fields__: Dict[str, SSZType]
+
+    def __new__(cls, *args, **kwargs):
+        cls.__ssz_fields__ = cls.__annotations__
+        return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, **kwargs):
         cls = self.__class__
@@ -176,9 +181,9 @@ class Container(ComplexValue, metaclass=SSZType):
         return signing_root(self)
 
     def set_field(self, name, value):
-        if name not in self.__class__.__annotations__:
+        if name not in self.__class__.__ssz_fields__:
             raise AttributeError("Cannot change non-existing SSZ-container attribute")
-        field_typ = self.__class__.__annotations__[name]
+        field_typ = self.__class__.__ssz_fields__[name]
         value = coerce_type_maybe(value, field_typ)
         if not isinstance(value, field_typ):
             raise ValueError(f"Cannot set field of {self.__class__}:"
@@ -211,15 +216,15 @@ class Container(ComplexValue, metaclass=SSZType):
 
     @classmethod
     def get_fields(cls) -> Dict[str, SSZType]:
-        if not hasattr(cls, '__annotations__'):  # no container fields
+        if not hasattr(cls, '__ssz_fields__'):  # no container fields
             return {}
-        return dict(cls.__annotations__)
+        return dict(cls.__ssz_fields__)
 
     @classmethod
     def field_count(cls) -> int:
-        if not hasattr(cls, '__annotations__'):  # no container fields
+        if not hasattr(cls, '__ssz_fields__'):  # no container fields
             return 0
-        return len(cls.__annotations__)
+        return len(cls.__ssz_fields__)
 
     def __len__(self):
         return self.__class__.field_count()

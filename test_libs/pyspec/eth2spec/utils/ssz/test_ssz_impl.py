@@ -1,11 +1,11 @@
 from typing import Iterable
-from .ssz_impl import serialize, hash_tree_root
-from .ssz_typing import (
+from eth2spec.utils.ssz.ssz_impl import serialize, hash_tree_root
+from eth2spec.utils.ssz.ssz_typing import (
     bit, boolean, Container, List, Vector, ByteList, ByteVector,
     Bitlist, Bitvector,
     uint8, uint16, uint32, uint64, uint256, byte
 )
-from ..hash_function import hash as bytes_hash
+from eth2spec.utils.hash_function import hash as bytes_hash
 
 import pytest
 
