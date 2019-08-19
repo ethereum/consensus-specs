@@ -39,7 +39,7 @@ See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) fo
 
 ## Additional specifications for client implementers
 
-Additional specifications and standards outside of core consensus can be found in the following repos:
+Additional specifications and standards outside of requisite client functionality can be found in the following repos:
 
 * [Eth2.0 APIs](https://github.com/ethereum/eth2.0-apis)
 * [Eth2.0 Metrics](https://github.com/ethereum/eth2.0-metrics/)
