@@ -101,7 +101,7 @@ all_phases = ['phase0', 'phase1']
 
 def with_all_phases(fn):
     """
-    A decorator for running a test wil every phase
+    A decorator for running a test with every phase
     """
     return with_phases(all_phases)(fn)
 
