@@ -222,7 +222,7 @@ def test_bytesn_subclass():
 
 
 def test_uint_math():
-    assert uint8(0) + uint8(uint32(16)) == uint8(16)  # allow explict casting to make invalid addition valid
+    assert uint8(0) + uint8(uint32(16)) == uint8(16)  # allow explicit casting to make invalid addition valid
 
     expect_value_error(lambda: uint8(0) - uint8(1), "no underflows allowed")
     expect_value_error(lambda: uint8(1) + uint8(255), "no overflows allowed")

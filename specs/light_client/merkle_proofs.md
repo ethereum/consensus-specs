@@ -6,14 +6,17 @@
 <!-- TOC -->
 
 - [Merkle proof formats](#merkle-proof-formats)
-   - [Table of contents](#table-of-contents)
-   - [Constants](#constants)
-   - [Generalized Merkle tree index](#generalized-merkle-tree-index)
-   - [SSZ object to index](#ssz-object-to-index)
-   - [Merkle multiproofs](#merkle-multiproofs)
-   - [MerklePartial](#merklepartial)
-       - [`SSZMerklePartial`](#sszmerklepartial)
-       - [Proofs for execution](#proofs-for-execution)
+  - [Table of contents](#table-of-contents)
+  - [Generalized Merkle tree index](#generalized-merkle-tree-index)
+  - [SSZ object to index](#ssz-object-to-index)
+    - [Helpers for generalized indices](#helpers-for-generalized-indices)
+      - [`concat_generalized_indices`](#concat_generalized_indices)
+      - [`get_generalized_index_length`](#get_generalized_index_length)
+      - [`get_generalized_index_bit`](#get_generalized_index_bit)
+      - [`generalized_index_sibling`](#generalized_index_sibling)
+      - [`generalized_index_child`](#generalized_index_child)
+      - [`generalized_index_parent`](#generalized_index_parent)
+  - [Merkle multiproofs](#merkle-multiproofs)
 
 <!-- /TOC -->
 

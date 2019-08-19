@@ -9,6 +9,24 @@ On releases, test generators are run by the release manager. Test-generation of 
 
 An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.  
 
+## Table of contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [How to run generators](#how-to-run-generators)
+  - [Cleaning](#cleaning)
+  - [Running all test generators](#running-all-test-generators)
+  - [Running a single generator](#running-a-single-generator)
+- [Developing a generator](#developing-a-generator)
+- [How to add a new test generator](#how-to-add-a-new-test-generator)
+- [How to remove a test generator](#how-to-remove-a-test-generator)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
+
 ## How to run generators
 
 Prerequisites:

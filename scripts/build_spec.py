@@ -210,7 +210,7 @@ ignored_dependencies = [
 
 def dependency_order_ssz_objects(objects: Dict[str, str], custom_types: Dict[str, str]) -> None:
     """
-    Determines which SSZ Object is depenedent on which other and orders them appropriately
+    Determines which SSZ Object is dependent on which other and orders them appropriately
     """
     items = list(objects.items())
     for key, value in items:
