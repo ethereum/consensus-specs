@@ -96,3 +96,53 @@ def test_get_generalized_index(spec, state):
         yield 'typ', typ
         yield 'path', path
         yield 'generalized_index', generalized_index
+
+
+@with_all_phases_except(['phase0'])
+@spec_state_test
+def test_verify_merkle_proof(spec, state):
+    h = spec.hash
+    a = b'\x11' * 32
+    b = b'\x22' * 32
+    c = b'\x33' * 32
+    d = b'\x44' * 32
+    root = h(h(a + b) + h(c + d))
+    leaf = a
+    generalized_index = 4
+    proof = [b, h(c + d)]
+
+    is_valid = spec.verify_merkle_proof(
+        leaf=leaf,
+        proof=proof,
+        index=generalized_index,
+        root=root,
+    )
+    assert is_valid
+
+    yield 'proof', proof
+    yield 'is_valid', is_valid
+
+
+@with_all_phases_except(['phase0'])
+@spec_state_test
+def test_verify_merkle_multiproof(spec, state):
+    h = spec.hash
+    a = b'\x11' * 32
+    b = b'\x22' * 32
+    c = b'\x33' * 32
+    d = b'\x44' * 32
+    root = h(h(a + b) + h(c + d))
+    leaves = [a, d]
+    generalized_indices = [4, 7]
+    proof = [c, b]  # helper_indices = [6, 5]
+
+    is_valid = spec.verify_merkle_multiproof(
+        leaves=leaves,
+        proof=proof,
+        indices=generalized_indices,
+        root=root,
+    )
+    assert is_valid
+
+    yield 'proof', proof
+    yield 'is_valid', is_valid
