@@ -1,9 +1,6 @@
-from typing import Dict, Iterator, NewType
+from typing import Dict, Iterator, Iterable
 import copy
 from types import GeneratorType
-
-
-SSZVariableName = NewType('SSZVariableName', str)
 
 
 class DefaultingTypeMeta(type):
@@ -197,6 +194,12 @@ class Container(Series, metaclass=SSZType):
         if not hasattr(cls, '__annotations__'):  # no container fields
             return {}
         return dict(cls.__annotations__)
+
+    @classmethod
+    def get_field_names(cls) -> Iterable[SSZType]:
+        if not hasattr(cls, '__annotations__'):  # no container fields
+            return ()
+        return list(cls.__annotations__.keys())
 
     @classmethod
     def default(cls):

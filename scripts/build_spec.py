@@ -55,7 +55,6 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     BasicValue, Elements, BaseList, SSZType,
-    SSZVariableName,
     Container, List, Vector, Bytes, BytesN, Bitlist, Bitvector, Bits,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
     uint64, bit, boolean,
@@ -68,6 +67,9 @@ from eth2spec.utils.bls import (
 )
 
 from eth2spec.utils.hash_function import hash
+
+
+SSZVariableName = str
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
