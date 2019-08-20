@@ -106,7 +106,8 @@ def item_length(typ: SSZType) -> int:
 ```
 
 ```python
-def get_elem_type(typ: Union[BaseList, Container], index_or_variable_name: Union[int, SSZVariableName]) -> SSZType:
+def get_elem_type(typ: Union[BaseBytes, BaseList, Container],
+                  index_or_variable_name: Union[int, SSZVariableName]) -> SSZType:
     """
     Return the type of the element of an object of the given type with the given index
     or member variable name (eg. `7` for `x[7]`, `"foo"` for `x.foo`)
