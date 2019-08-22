@@ -169,23 +169,35 @@ class Foo(Container):
 
 class PFoo2(Partial[Foo]):
     Bar: uint64
-    Wowow: uint64
+    Wowow: BeaconBlock
 
+a = PFoo2()
+a.Wowow = BeaconBlock(Slot=10)
 
 class PFoo(Partial[Foo]):
     Bar: uint64
 
-pf = PFoo
-
-pfi = pf()
-
-print(pfi)
+# pf = PFoo
+#
+# pfi = pf()
+#
+# print(pfi)
 
 FooLi = List[Foo, 128]
 
 # make a partial of the list type, requiring specific list-indices
 PFooLi = Partial[FooLi, [2, 4, 5]]
 
+Partial[FooLi, {1: A, 4: B, 5: A}]
+
 f = PFooLi()
 
+f[123]
+
 print(f)
+#
+# a = PFoo()
+# if a.load_and_verify_proof(leaves, proof, root):
+#     run_something()
+# else:
+#     raise Exception("invalid proof!")

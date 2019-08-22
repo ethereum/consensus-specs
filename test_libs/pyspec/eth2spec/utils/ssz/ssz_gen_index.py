@@ -39,7 +39,7 @@ def get_elem_type(typ: ComplexType, index: Union[int, str]) -> SSZType:
         raise Exception("Only Containers and series of Elements can have an indexed element type")
 
 
-def get_generalized_index(typ: SSZType, path: List[Union[int, str]]) -> GeneralizedIndex:
+def get_generalized_index(typ: SSZType, path: Sequence[Union[int, str]]) -> GeneralizedIndex:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
