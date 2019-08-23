@@ -38,7 +38,7 @@ The initial deployment phases of Ethereum 2.0 are implemented without consensus 
 
 ### `deposit` function
 
-The deposit contract has a public `deposit` function to make deposits. It takes as arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]` corresponding to a `DepositData` object.
+The deposit contract has a public `deposit` function to make deposits. It takes as arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]` corresponding to a [`DepositData`](./0_beacon-chain.md#depositdata) object.
 
 #### Deposit amount
 

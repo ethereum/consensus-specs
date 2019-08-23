@@ -1,4 +1,4 @@
-from typing import Callable, Iterable
+from typing import Iterable
 
 from eth2spec.test.phase_0.block_processing import (
     test_process_attestation,
@@ -10,48 +10,48 @@ from eth2spec.test.phase_0.block_processing import (
     test_process_voluntary_exit,
 )
 
-from gen_base import gen_runner, gen_suite, gen_typing
+from gen_base import gen_runner, gen_typing
 from gen_from_tests.gen import generate_from_tests
 from preset_loader import loader
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 
 
-def create_suite(operation_name: str, config_name: str, get_cases: Callable[[], Iterable[gen_typing.TestCase]]) \
-        -> Callable[[str], gen_typing.TestSuiteOutput]:
-    def suite_definition(configs_path: str) -> gen_typing.TestSuiteOutput:
+def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
+
+    def prepare_fn(configs_path: str) -> str:
         presets = loader.load_presets(configs_path, config_name)
         spec_phase0.apply_constants_preset(presets)
         spec_phase1.apply_constants_preset(presets)
+        return config_name
 
-        return ("%s_%s" % (operation_name, config_name), operation_name, gen_suite.render_suite(
-            title="%s operation" % operation_name,
-            summary="Test suite for %s type operation processing" % operation_name,
-            forks_timeline="testing",
-            forks=["phase0"],
-            config=config_name,
-            runner="operations",
-            handler=operation_name,
-            test_cases=get_cases()))
-    return suite_definition
+    def cases_fn() -> Iterable[gen_typing.TestCase]:
+        return generate_from_tests(
+            runner_name='operations',
+            handler_name=handler_name,
+            src=tests_src,
+            fork_name='phase0'
+        )
+
+    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
 if __name__ == "__main__":
     gen_runner.run_generator("operations", [
-        create_suite('attestation',       'minimal', lambda: generate_from_tests(test_process_attestation, 'phase0')),
-        create_suite('attestation',       'mainnet', lambda: generate_from_tests(test_process_attestation, 'phase0')),
-        create_suite('attester_slashing', 'minimal', lambda: generate_from_tests(test_process_attester_slashing, 'phase0')),
-        create_suite('attester_slashing', 'mainnet', lambda: generate_from_tests(test_process_attester_slashing, 'phase0')),
-        create_suite('block_header',      'minimal', lambda: generate_from_tests(test_process_block_header, 'phase0')),
-        create_suite('block_header',      'mainnet', lambda: generate_from_tests(test_process_block_header, 'phase0')),
-        create_suite('deposit',           'minimal', lambda: generate_from_tests(test_process_deposit, 'phase0')),
-        create_suite('deposit',           'mainnet', lambda: generate_from_tests(test_process_deposit, 'phase0')),
-        create_suite('proposer_slashing', 'minimal', lambda: generate_from_tests(test_process_proposer_slashing, 'phase0')),
-        create_suite('proposer_slashing', 'mainnet', lambda: generate_from_tests(test_process_proposer_slashing, 'phase0')),
-        create_suite('transfer',          'minimal', lambda: generate_from_tests(test_process_transfer, 'phase0')),
+        create_provider('attestation', test_process_attestation, 'minimal'),
+        create_provider('attestation', test_process_attestation, 'mainnet'),
+        create_provider('attester_slashing', test_process_attester_slashing, 'minimal'),
+        create_provider('attester_slashing', test_process_attester_slashing, 'mainnet'),
+        create_provider('block_header', test_process_block_header, 'minimal'),
+        create_provider('block_header', test_process_block_header, 'mainnet'),
+        create_provider('deposit', test_process_deposit, 'minimal'),
+        create_provider('deposit', test_process_deposit, 'mainnet'),
+        create_provider('proposer_slashing', test_process_proposer_slashing, 'minimal'),
+        create_provider('proposer_slashing', test_process_proposer_slashing, 'mainnet'),
+        create_provider('transfer', test_process_transfer, 'minimal'),
         # Disabled, due to the high amount of different transfer tests, this produces a shocking size of tests.
         # Unnecessarily, as transfer are disabled currently, so not a priority.
-        # create_suite('transfer',          'mainnet', lambda: generate_from_tests(test_process_transfer, 'phase0')),
-        create_suite('voluntary_exit',    'minimal', lambda: generate_from_tests(test_process_voluntary_exit, 'phase0')),
-        create_suite('voluntary_exit',    'mainnet', lambda: generate_from_tests(test_process_voluntary_exit, 'phase0')),
+        # create_provider('transfer', test_process_transfer, 'mainnet'),
+        create_provider('voluntary_exit', test_process_voluntary_exit, 'minimal'),
+        create_provider('voluntary_exit', test_process_voluntary_exit, 'mainnet'),
     ])

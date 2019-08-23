@@ -4,6 +4,8 @@ A BLS private key to public key conversion.
 
 ## Test case format
 
+The test data is declared in a `data.yaml` file:
+
 ```yaml
 input: bytes32 -- the private key
 output: bytes48 -- the public key

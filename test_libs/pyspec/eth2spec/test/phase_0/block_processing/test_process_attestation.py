@@ -116,8 +116,8 @@ def test_wrong_end_epoch_with_max_epochs_per_crosslink(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_attestation_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
@@ -363,7 +363,7 @@ def test_inconsistent_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    custody_bits = attestation.aggregation_bits[:]
+    custody_bits = attestation.custody_bits[:]
     custody_bits.append(False)
 
     attestation.custody_bits = custody_bits
@@ -398,3 +398,61 @@ def test_empty_aggregation_bits(spec, state):
     sign_attestation(spec, state, attestation)
 
     yield from run_attestation_processing(spec, state, attestation)
+
+
+@with_all_phases
+@spec_state_test
+def test_too_many_aggregation_bits(spec, state):
+    attestation = get_valid_attestation(spec, state, signed=True)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    # one too many bits
+    attestation.aggregation_bits.append(0b0)
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_too_few_aggregation_bits(spec, state):
+    attestation = get_valid_attestation(spec, state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+        *([0b1] + [0b0] * (len(attestation.aggregation_bits) - 1)))
+
+    sign_attestation(spec, state, attestation)
+
+    # one too few bits
+    attestation.aggregation_bits = attestation.aggregation_bits[:-1]
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_too_many_custody_bits(spec, state):
+    attestation = get_valid_attestation(spec, state, signed=True)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    # one too many bits
+    attestation.custody_bits.append(0b0)
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_too_few_custody_bits(spec, state):
+    attestation = get_valid_attestation(spec, state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.custody_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](
+        *([0b1] + [0b0] * (len(attestation.custody_bits) - 1)))
+
+    sign_attestation(spec, state, attestation)
+
+    # one too few bits
+    attestation.custody_bits = attestation.custody_bits[:-1]
+
+    yield from run_attestation_processing(spec, state, attestation, False)

@@ -10,10 +10,10 @@ from os.path import join
 def load_presets(configs_dir, presets_name) -> Dict[str, Any]:
     """
     Loads the given preset
-    :param presets_name: The name of the generator. (lowercase snake_case)
+    :param presets_name: The name of the presets. (lowercase snake_case)
     :return: Dictionary, mapping of constant-name -> constant-value
     """
-    path = Path(join(configs_dir, 'constant_presets', presets_name+'.yaml'))
+    path = Path(join(configs_dir, presets_name+'.yaml'))
     yaml = YAML(typ='base')
     loaded = yaml.load(path)
     out = dict()

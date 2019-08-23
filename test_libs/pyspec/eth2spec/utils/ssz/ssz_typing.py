@@ -1,4 +1,4 @@
-from typing import Dict, Iterator
+from typing import Dict, Iterator, Iterable
 import copy
 from types import GeneratorType
 
@@ -196,6 +196,12 @@ class Container(Series, metaclass=SSZType):
         return dict(cls.__annotations__)
 
     @classmethod
+    def get_field_names(cls) -> Iterable[SSZType]:
+        if not hasattr(cls, '__annotations__'):  # no container fields
+            return ()
+        return list(cls.__annotations__.keys())
+
+    @classmethod
     def default(cls):
         return cls(**{f: t.default() for f, t in cls.get_fields().items()})
 
@@ -344,7 +350,7 @@ class BaseList(list, Elements):
         return super().__iter__()
 
     def last(self):
-        # be explict about getting the last item, for the non-python readers, and negative-index safety
+        # be explicit about getting the last item, for the non-python readers, and negative-index safety
         return self[len(self) - 1]
 
 

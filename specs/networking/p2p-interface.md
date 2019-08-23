@@ -114,6 +114,7 @@ This section outlines constants that are used in this spec.
 | Name | Value | Description |
 |---|---|---|
 | `REQ_RESP_MAX_SIZE` | `TODO` | The maximum size of uncompressed req/resp messages that clients will allow. |
+| `SSZ_MAX_LIST_SIZE` | `TODO` | The maximum size of SSZ-encoded variable lists. |
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum size of uncompressed gossip messages. |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
@@ -195,11 +196,11 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 
 #### Interop
 
-- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `BeaconBlock`.
+- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/eth2/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `BeaconBlock`.
 
 #### Mainnet
 
-- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon attestation topic string is `/beacon_attestation/ssz_snappy`, and the data field of a gossipsub message is an `Attestation` that has been SSZ-encoded and then compressed with Snappy.
+- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon attestation topic string is `/eth2/beacon_attestation/ssz_snappy`, and the data field of a gossipsub message is an `Attestation` that has been SSZ-encoded and then compressed with Snappy.
 
 Implementations MUST use a single encoding. Changing an encoding will require coordination between participating implementations.
 
@@ -286,7 +287,7 @@ The `ErrorMessage` schema is:
 )
 ```
 
-*Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded.
+*Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded. As the `ErrorMessage` is not an SSZ-container, only the UTF-8 bytes will be sent when SSZ-encoded.
 
 A response therefore has the form:
 ```
@@ -300,7 +301,7 @@ Here, `result` represents the 1-byte response code.
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
--  `ssz`: The contents are [SSZ-encoded](#ssz-encoding). This encoding type MUST be supported by all clients.
+-  `ssz`: The contents are [SSZ-encoded](../simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocks` response would be an SSZ-encoded list of `BeaconBlock`s. All SSZ-Lists in the Req/Resp domain will have a maximum list size of `SSZ_MAX_LIST_SIZE`.
 -  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
 
 #### SSZ-encoding strategy (with or without Snappy)

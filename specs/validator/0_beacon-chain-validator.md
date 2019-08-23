@@ -266,7 +266,7 @@ Up to `MAX_ATTESTATIONS`, aggregate attestations can be included in the `block`.
 
 ##### Deposits
 
-If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth 1.0 deposit contract](../core/0_deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
+If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth 1.0 deposit contract](../core/0_deposit-contract.md) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
 
 The `proof` for each deposit must be constructed against the deposit root contained in `state.eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
@@ -322,13 +322,13 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregation bits
 
-- Let `attestation.aggregation_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
+- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
 ##### Custody bits
 
-- Let `attestation.custody_bits` be a `Bitlist[MAX_INDICES_PER_ATTESTATION]` filled with zeros of length `len(committee)`.
+- Let `attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
 
 *Note*: This is a stub for Phase 0.
 

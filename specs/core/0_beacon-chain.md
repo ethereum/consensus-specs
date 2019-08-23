@@ -169,7 +169,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 ## Configuration
 
-*Note*: The default mainnet configuration values are included here for spec-design purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs/constant_presets) directory. These configurations are updated for releases and may be out of sync during `dev` changes.
+*Note*: The default mainnet configuration values are included here for spec-design purposes. The different configurations for mainnet, testnets, and YAML-based testing can be found in the [`configs/constant_presets`](../../configs) directory. These configurations are updated for releases and may be out of sync during `dev` changes.
 
 ### Misc
 
@@ -660,8 +660,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     bit_1_indices = indexed_attestation.custody_bit_1_indices
 
     # Verify no index has custody bit equal to 1 [to be removed in phase 1]
-    if not len(bit_1_indices) == 0:
-        return False
+    if not len(bit_1_indices) == 0:  # [to be removed in phase 1]
+        return False                 # [to be removed in phase 1]
     # Verify max number of indices
     if not len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE:
         return False
@@ -1505,8 +1505,6 @@ def process_final_updates(state: BeaconState) -> None:
         HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
         if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    # Update start shard
-    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Set active index root
     index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
     index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
@@ -1523,6 +1521,8 @@ def process_final_updates(state: BeaconState) -> None:
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
+    # Update start shard
+    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
@@ -1656,12 +1656,20 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     attestation_slot = get_attestation_data_slot(state, data)
     assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
 
+    committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
+    assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
+
     pending_attestation = PendingAttestation(
         data=data,
         aggregation_bits=attestation.aggregation_bits,
         inclusion_delay=state.slot - attestation_slot,
         proposer_index=get_beacon_proposer_index(state),
     )
+
+    # Check bitlist lengths
+    committee_size = get_committee_count(state, attestation.data.target.epoch)
+    assert len(attestation.aggregation_bits) == committee_size
+    assert len(attestation.custody_bits) == committee_size
 
     if data.target.epoch == get_current_epoch(state):
         assert data.source == state.current_justified_checkpoint

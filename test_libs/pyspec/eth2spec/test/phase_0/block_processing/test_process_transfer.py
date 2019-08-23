@@ -81,8 +81,8 @@ def test_success_active_above_max_effective_fee(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_signature(spec, state):
     transfer = get_valid_transfer(spec, state)
     # un-activate so validator can transfer
