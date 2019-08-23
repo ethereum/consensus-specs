@@ -37,7 +37,10 @@ from eth2spec.utils.bls import (
 from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Dict, Optional, Set, Sequence, MutableSequence, Tuple, Union,
+    Any, Dict, Optional, Set, Sequence, MutableSequence, NewType, Tuple, Union,
+)
+from math import (
+    log2,
 )
 
 from dataclasses import (
@@ -51,8 +54,10 @@ from eth2spec.utils.ssz.ssz_impl import (
     is_zero,
 )
 from eth2spec.utils.ssz.ssz_typing import (
-    uint64, bit, boolean, Container, List, Vector, Bytes, BytesN,
-    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
+    BasicValue, Elements, BaseBytes, BaseList, SSZType,
+    Container, List, Vector, Bytes, BytesN, Bitlist, Bitvector, Bits,
+    Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
+    uint64, bit, boolean,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -62,6 +67,10 @@ from eth2spec.utils.bls import (
 )
 
 from eth2spec.utils.hash_function import hash
+
+
+SSZVariableName = str
+GeneralizedIndex = NewType('GeneralizedIndex', int)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
@@ -281,17 +290,23 @@ def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
 
 
 def build_phase1_spec(phase0_sourcefile: str,
+                      fork_choice_sourcefile: str,
                       phase1_custody_sourcefile: str,
                       phase1_shard_sourcefile: str,
-                      fork_choice_sourcefile: str,
+                      merkle_proofs_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
-    phase0_spec = get_spec(phase0_sourcefile)
-    remove_for_phase1(phase0_spec[0])
-    phase1_custody = get_spec(phase1_custody_sourcefile)
-    phase1_shard_data = get_spec(phase1_shard_sourcefile)
-    fork_choice_spec = get_spec(fork_choice_sourcefile)
-    spec_objects = phase0_spec
-    for value in [phase1_custody, phase1_shard_data, fork_choice_spec]:
+    all_sourcefiles = (
+        phase0_sourcefile,
+        fork_choice_sourcefile,
+        phase1_custody_sourcefile,
+        phase1_shard_sourcefile,
+        merkle_proofs_sourcefile,
+    )
+    all_spescs = [get_spec(spec) for spec in all_sourcefiles]
+    for spec in all_spescs:
+        remove_for_phase1(spec[0])
+    spec_objects = all_spescs[0]
+    for value in all_spescs[1:]:
         spec_objects = combine_spec_objects(spec_objects, value)
     spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
@@ -304,17 +319,18 @@ if __name__ == '__main__':
     description = '''
 Build the specs from the md docs.
 If building phase 0:
-    1st argument is input spec.md
-    2nd argument is input fork_choice.md
-    3rd argument is input validator_guide.md
+    1st argument is input /core/0_beacon-chain.md
+    2nd argument is input /core/0_fork-choice.md
+    3rd argument is input /core/0_beacon-chain-validator.md
     4th argument is output spec.py
 
 If building phase 1:
-    1st argument is input spec_phase0.md
-    2nd argument is input spec_phase1_custody.md
-    3rd argument is input spec_phase1_shard_data.md
-    4th argument is input fork_choice.md
-    5th argument is output spec.py
+    1st argument is input /core/0_beacon-chain.md
+    2nd argument is input /core/0_fork-choice.md
+    3rd argument is input /core/1_custody-game.md
+    4th argument is input /core/1_shard-data-chains.md
+    5th argument is input /light_client/merkle_proofs.md
+    6th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -327,10 +343,15 @@ If building phase 1:
         else:
             print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
-        if len(args.files) == 5:
+        if len(args.files) == 6:
             build_phase1_spec(*args.files)
         else:
-            print(" Phase 1 requires 4 input files as well as an output file: "
-                  + "(phase0.md and phase1.md, phase1.md, fork_choice.md, output.py)")
+            print(
+                " Phase 1 requires input files as well as an output file:\n"
+                "\t core/phase_0: (0_beacon-chain.md, 0_fork-choice.md)\n"
+                "\t core/phase_1: (1_custody-game.md, 1_shard-data-chains.md)\n"
+                "\t light_client: (merkle_proofs.md)\n"
+                "\t and output.py"
+            )
     else:
         print("Invalid phase: {0}".format(args.phase))
