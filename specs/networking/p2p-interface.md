@@ -160,7 +160,7 @@ Additional topics are used to propagate lower frequency validator messages. Thei
 
 #### Interop
 
-Unaggregated and aggregated attestations from all shards are sent to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them.
+Unaggregated and aggregated attestations from all shards are sent to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD to perform local attestation aggregation to prepare for block proposing.
 
 #### Mainnet
 
