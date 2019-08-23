@@ -76,7 +76,7 @@ def unpack_compact_validator(compact_validator: int) -> Tuple[int, bool, int]:
     """
     Returns validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
     """
-    return compact_validator >> 16, (compact_validator >> 15) % 2, compact_validator & (2**15 - 1)
+    return compact_validator >> 16, bool((compact_validator >> 15) % 2), compact_validator & (2**15 - 1)
 ```
 
 #### `committee_to_compact_committee`
@@ -129,7 +129,7 @@ def compute_historical_state_generalized_index(earlier: ShardSlot, later: ShardS
     for i in range(63, -1, -1):
         if (later - 1) & 2**i > (earlier - 1) & 2**i:
             later = later - ((later - 1) % 2**i) - 1
-            o = concat_generalized_indices(o, get_generalized_index(ShardState, 'history_acc', i))
+            o = concat_generalized_indices(o, get_generalized_index(ShardState, ['history_acc', i]))
     return o
 ```
 
@@ -150,7 +150,7 @@ def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
 #### `process_shard_receipt_proof`
 
 ```python
-def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptProof):
+def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptProof) -> None:
     """
     Processes a ShardReceipt object.
     """
@@ -221,8 +221,11 @@ def update_persistent_committee(state: BeaconState) -> None:
     if (get_current_epoch(state) + 1) % EPOCHS_PER_SHARD_PERIOD == 0:
         period = (get_current_epoch(state) + 1) // EPOCHS_PER_SHARD_PERIOD
         committees = Vector[CompactCommittee, SHARD_COUNT]([
-            committee_to_compact_committee(state, get_period_committee(state, get_current_epoch(state) + 1, i))
-            for i in range(SHARD_COUNT)
+            committee_to_compact_committee(
+                state,
+                get_period_committee(state, Epoch(get_current_epoch(state) + 1), Shard(shard)),
+            )
+            for shard in range(SHARD_COUNT)
         ])
         state.persistent_committee_roots[period % PERSISTENT_COMMITTEE_ROOT_LENGTH] = hash_tree_root(committees)
 ```

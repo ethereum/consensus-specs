@@ -181,7 +181,7 @@ _Usage note: functions outside this section should manipulate generalized indice
 #### `concat_generalized_indices`
 
 ```python
-def concat_generalized_indices(indices: Sequence[GeneralizedIndex]) -> GeneralizedIndex:
+def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
     """
     Given generalized indices i1 for A -> B, i2 for B -> C .... i_n for Y -> Z, returns
     the generalized index for A -> Z.
