@@ -152,7 +152,7 @@ def get_item_position(typ: SSZType, index_or_variable_name: Union[int, SSZVariab
 ```
 
 ```python
-def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableName]]) -> Optional[GeneralizedIndex]:
+def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableName]]) -> GeneralizedIndex:
     """
     Converts a path (eg. `[7, "foo", 3]` for `x[7].foo[3]`, `[12, "bar", "__len__"]` for
     `len(x[12].bar)`) into the generalized index representing its position in the Merkle tree.
@@ -162,10 +162,8 @@ def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableNam
         assert not issubclass(typ, BasicValue)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
             typ = uint64
-            if issubclass(typ, (List, Bytes)):
-                root = GeneralizedIndex(root * 2 + 1)
-            else:
-                return None
+            assert issubclass(typ, (List, Bytes))
+            root = GeneralizedIndex(root * 2 + 1)
         else:
             pos, _, _ = get_item_position(typ, p)
             base_index = (GeneralizedIndex(2) if issubclass(typ, (List, Bytes)) else GeneralizedIndex(1))

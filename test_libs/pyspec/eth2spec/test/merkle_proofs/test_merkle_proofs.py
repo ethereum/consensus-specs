@@ -1,10 +1,10 @@
-
 import re
 from eth_utils import (
     to_tuple,
 )
 
 from eth2spec.test.context import (
+    expect_assertion_error,
     spec_state_test,
     with_all_phases_except,
 )
@@ -89,10 +89,14 @@ generalized_index_cases = [
 @spec_state_test
 def test_get_generalized_index(spec, state):
     for typ, path, generalized_index in generalized_index_cases:
-        assert spec.get_generalized_index(
-            typ=typ,
-            path=path,
-        ) == generalized_index
+        if generalized_index is not None:
+            assert spec.get_generalized_index(
+                typ=typ,
+                path=path,
+            ) == generalized_index
+        else:
+            expect_assertion_error(lambda: spec.get_generalized_index(typ=typ, path=path))
+
         yield 'typ', typ
         yield 'path', path
         yield 'generalized_index', generalized_index

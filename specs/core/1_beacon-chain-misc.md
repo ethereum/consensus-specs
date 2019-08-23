@@ -129,7 +129,7 @@ def compute_historical_state_generalized_index(earlier: ShardSlot, later: ShardS
     for i in range(63, -1, -1):
         if (later - 1) & 2**i > (earlier - 1) & 2**i:
             later = later - ((later - 1) % 2**i) - 1
-            o = concat_generalized_indices(o, get_generalized_index(ShardState, ['history_acc', i]))
+            o = concat_generalized_indices(o, GeneralizedIndex(get_generalized_index(ShardState, ['history_acc', i])))
     return o
 ```
 
@@ -158,9 +158,9 @@ def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptP
     first_slot_in_last_crosslink = state.current_crosslinks[receipt_proof.shard].start_epoch * SLOTS_PER_EPOCH
     gindex = concat_generalized_indices(
         get_generalized_index_of_crosslink_header(0),
-        get_generalized_index(ShardBlockHeader, 'state_root'),
+        GeneralizedIndex(get_generalized_index(ShardBlockHeader, 'state_root')),
         compute_historical_state_generalized_index(receipt_slot, first_slot_in_last_crosslink),
-        get_generalized_index(ShardState, 'receipt_root')
+        GeneralizedIndex(get_generalized_index(ShardState, 'receipt_root'))
     )
     assert verify_merkle_proof(
         leaf=hash_tree_root(receipt_proof.receipt),
