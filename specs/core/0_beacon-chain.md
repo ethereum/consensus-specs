@@ -480,7 +480,6 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
     transfers: List[Transfer, MAX_TRANSFERS]
-    # @shard_receipts
 ```
 
 #### `BeaconBlock`
@@ -534,7 +533,6 @@ class BeaconState(Container):
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    # @persistent_committee_fields
 ```
 
 ## Helper functions

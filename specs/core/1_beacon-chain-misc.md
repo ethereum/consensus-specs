@@ -182,17 +182,32 @@ def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptP
 
 ## Changes
 
-### Persistent committees
+### Phase 0 container updates
 
-Add to the beacon state the following fields:
+Add the following fields to the end of the specified container objects.
+
+#### `BeaconState`
 
 ```python
-# begin insert @persistent_committee_fields
+class BeaconState(Container):
+    # Persistent committees
     persistent_committee_roots: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_LENGTH]
     next_shard_receipt_period: Vector[uint64, SHARD_COUNT]
-# end insert @persistent_committee_fields
 ```
-`next_shard_receipt_period` values initialized to `PHASE_1_FORK_SLOT // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD`
+
+`persistent_committee_roots` values are initialized to `Bytes32()` (empty bytes value).
+`next_shard_receipt_period` values are initialized to `PHASE_1_FORK_SLOT // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD`.
+
+#### `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(Container):
+    shard_receipt_proofs: List[ShardReceiptProof, MAX_SHARD_RECEIPT_PROOFS]
+```
+
+`shard_receipt_proofs` is initialized to `[]`.
+
+### Persistent committees
 
 Run `update_persistent_committee` immediately before `process_final_updates`:
 
@@ -215,18 +230,10 @@ def update_persistent_committee(state: BeaconState) -> None:
 
 ### Shard receipt processing
 
-Add the `shard_receipt_proofs` operation to `BeaconBlockBody`:
-
-```python
-# begin insert @shard_receipts
-    shard_receipt_proofs: List[ShardReceiptProof, MAX_SHARD_RECEIPT_PROOFS]
-# end insert @shard_receipts
-```
-
-Use `process_shard_receipt_proof` to process each receipt.
+Run `process_shard_receipt_proof` on each `ShardReceiptProof` during block processing.
 
 ```python
 # begin insert @process_shard_receipts
-        (body.shard_receipt_proofs, process_shard_receipt_proofs),
+        (body.shard_receipt_proofs, process_shard_receipt_proof),
 # end insert @process_shard_receipts
 ```
