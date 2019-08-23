@@ -33,7 +33,6 @@
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
             - [`DepositData`](#depositdata)
-            - [`CompactCommittee`](#compactcommittee)
             - [`BeaconBlockHeader`](#beaconblockheader)
         - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
@@ -88,7 +87,6 @@
             - [`get_shard_delta`](#get_shard_delta)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_attestation_data_slot`](#get_attestation_data_slot)
-            - [`get_compact_committees_root`](#get_compact_committees_root)
             - [`get_total_balance`](#get_total_balance)
             - [`get_total_active_balance`](#get_total_active_balance)
             - [`get_domain`](#get_domain)
@@ -386,14 +384,6 @@ class DepositData(Container):
     signature: BLSSignature
 ```
 
-#### `CompactCommittee`
-
-```python
-class CompactCommittee(Container):
-    pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
-    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
-```
-
 #### `BeaconBlockHeader`
 
 ```python
@@ -518,8 +508,6 @@ class BeaconState(Container):
     # Shuffling
     start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
-    active_index_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Active index digests for light clients
-    compact_committees_roots: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]  # Committee digests for light clients
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
@@ -867,8 +855,7 @@ def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-    active_index_root = state.active_index_roots[epoch % EPOCHS_PER_HISTORICAL_VECTOR]
-    return hash(mix + active_index_root + int_to_bytes(epoch, length=32))
+    return hash(mix + int_to_bytes(epoch, length=32))
 ```
 
 #### `get_committee_count`
@@ -960,27 +947,6 @@ def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot
     committee_count = get_committee_count(state, data.target.epoch)
     offset = (data.crosslink.shard + SHARD_COUNT - get_start_shard(state, data.target.epoch)) % SHARD_COUNT
     return Slot(compute_start_slot_of_epoch(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
-```
-
-#### `get_compact_committees_root`
-
-```python
-def get_compact_committees_root(state: BeaconState, epoch: Epoch) -> Hash:
-    """
-    Return the compact committee root at ``epoch``.
-    """
-    committees = [CompactCommittee() for _ in range(SHARD_COUNT)]
-    start_shard = get_start_shard(state, epoch)
-    for committee_number in range(get_committee_count(state, epoch)):
-        shard = Shard((start_shard + committee_number) % SHARD_COUNT)
-        for index in get_crosslink_committee(state, epoch, shard):
-            validator = state.validators[index]
-            committees[shard].pubkeys.append(validator.pubkey)
-            compact_balance = validator.effective_balance // EFFECTIVE_BALANCE_INCREMENT
-            # `index` (top 6 bytes) + `slashed` (16th bit) + `compact_balance` (bottom 15 bits)
-            compact_validator = uint64((index << 16) + (validator.slashed << 15) + compact_balance)
-            committees[shard].compact_validators.append(compact_validator)
-    return hash_tree_root(Vector[CompactCommittee, SHARD_COUNT](committees))
 ```
 
 #### `get_total_balance`
@@ -1154,13 +1120,6 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
             validator.activation_eligibility_epoch = GENESIS_EPOCH
             validator.activation_epoch = GENESIS_EPOCH
 
-    # Populate active_index_roots and compact_committees_roots
-    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, GENESIS_EPOCH))
-    active_index_root = hash_tree_root(indices_list)
-    committee_root = get_compact_committees_root(state, GENESIS_EPOCH)
-    for index in range(EPOCHS_PER_HISTORICAL_VECTOR):
-        state.active_index_roots[index] = active_index_root
-        state.compact_committees_roots[index] = committee_root
     return state
 ```
 
@@ -1504,14 +1463,6 @@ def process_final_updates(state: BeaconState) -> None:
         HALF_INCREMENT = EFFECTIVE_BALANCE_INCREMENT // 2
         if balance < validator.effective_balance or validator.effective_balance + 3 * HALF_INCREMENT < balance:
             validator.effective_balance = min(balance - balance % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE)
-    # Set active index root
-    index_epoch = Epoch(next_epoch + ACTIVATION_EXIT_DELAY)
-    index_root_position = index_epoch % EPOCHS_PER_HISTORICAL_VECTOR
-    indices_list = List[ValidatorIndex, VALIDATOR_REGISTRY_LIMIT](get_active_validator_indices(state, index_epoch))
-    state.active_index_roots[index_root_position] = hash_tree_root(indices_list)
-    # Set committees root
-    committee_root_position = next_epoch % EPOCHS_PER_HISTORICAL_VECTOR
-    state.compact_committees_roots[committee_root_position] = get_compact_committees_root(state, next_epoch)
     # Reset slashings
     state.slashings[next_epoch % EPOCHS_PER_SLASHINGS_VECTOR] = Gwei(0)
     # Set randao mix
@@ -1549,9 +1500,9 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
-        # state_root: zeroed, overwritten in the next `process_slot` call
+        # `state_root` is zeroed and overwritten in the next `process_slot` call
         body_root=hash_tree_root(block.body),
-        # signature is always zeroed
+        # `signature` is zeroed
     )
     # Verify proposer is not slashed
     proposer = state.validators[get_beacon_proposer_index(state)]
