@@ -14,7 +14,7 @@
         - [Variable-size and fixed-size](#variable-size-and-fixed-size)
         - [Aliases](#aliases)
         - [Default values](#default-values)
-            - [`is_empty`](#is_empty)
+            - [`is_zero`](#is_zero)
         - [Illegal types](#illegal-types)
     - [Serialization](#serialization)
         - [`uintN`](#uintn)
@@ -26,6 +26,7 @@
     - [Deserialization](#deserialization)
     - [Merkleization](#merkleization)
     - [Self-signed containers](#self-signed-containers)
+    - [Summaries and expansions](#summaries-and-expansions)
     - [Implementations](#implementations)
 
 <!-- /TOC -->
@@ -75,19 +76,21 @@ For convenience we alias:
 * `bit` to `boolean`
 * `byte` to `uint8` (this is a basic type)
 * `BytesN` to `Vector[byte, N]` (this is *not* a basic type)
-* `null`: `{}`, i.e. the empty container
+* `null`: `{}`
 
 ### Default values
 
 The default value of a type upon initialization is recursively defined using `0` for `uintN`, `False` for `boolean` and the elements of `Bitvector`, and `[]` for lists and `Bitlist`. Unions default to the first type in the union (with type index zero), which is `null` if present in the union.
 
-#### `is_empty`
+#### `is_zero`
 
-An SSZ object is called empty (and thus, `is_empty(object)` returns true) if it is equal to the default value for that type.
+An SSZ object is called zeroed (and thus, `is_zero(object)` returns true) if it is equal to the default value for that type.
 
 ### Illegal types
 
-Empty vector types (i.e. `[subtype, 0]` for some `subtype`) are not legal. The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
+- Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
+- Containers with no fields are illegal.
+- The `null` type is only legal as the first type in a union subtype (i.e. with type index zero).
 
 ## Serialization
 
@@ -215,6 +218,12 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 
 Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
+## Summaries and expansions
+
+Let `A` be an object derived from another object `B` by replacing some of the (possibly nested) values of `B` by their `hash_tree_root`. We say `A` is a "summary" of `B`, and that `B` is an "expansion" of `A`. Notice `hash_tree_root(A) == hash_tree_root(B)`.
+
+We similarly define "summary types" and "expansion types". For example, [`BeaconBlock`](./core/0_beacon-chain.md#beaconblock) is an expansion type of [`BeaconBlockHeader`](./core/0_beacon-chain.md#beaconblockheader). Notice that objects expand to at most one object of a given expansion type. For example, `BeaconBlockHeader` objects uniquely expand to `BeaconBlock` objects.
+
 ## Implementations
 
 | Language | Project | Maintainer | Implementation |
@@ -222,7 +231,7 @@ Let `value` be a self-signed container object. The convention is that the signat
 | Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
 | Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz](https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz) |
 | Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
-| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/util/ssz) |
+| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/utils/ssz) |
 | TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz-js) |
 | Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
 | Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/go-ssz](https://github.com/prysmaticlabs/go-ssz) |

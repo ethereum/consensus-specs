@@ -2,23 +2,21 @@
 BLS test vectors generator
 """
 
-from typing import Tuple
+from typing import Tuple, Iterable, Any, Callable, Dict
 
 from eth_utils import (
     encode_hex,
     int_to_big_endian,
-    to_tuple,
 )
-from gen_base import gen_runner, gen_suite, gen_typing
+from gen_base import gen_runner, gen_typing
 
 from py_ecc import bls
-
 
 F2Q_COEFF_LEN = 48
 G2_COMPRESSED_Z_LEN = 48
 
 
-def int_to_hex(n: int, byte_length: int=None) -> str:
+def int_to_hex(n: int, byte_length: int = None) -> str:
     byte_value = int_to_big_endian(n)
     if byte_length:
         byte_value = byte_value.rjust(byte_length, b'\x00')
@@ -32,6 +30,9 @@ def hex_to_int(x: str) -> int:
 DOMAINS = [
     b'\x00\x00\x00\x00\x00\x00\x00\x00',
     b'\x00\x00\x00\x00\x00\x00\x00\x01',
+    b'\x01\x00\x00\x00\x00\x00\x00\x00',
+    b'\x80\x00\x00\x00\x00\x00\x00\x00',
+    b'\x01\x23\x45\x67\x89\xab\xcd\xef',
     b'\xff\xff\xff\xff\xff\xff\xff\xff'
 ]
 
@@ -51,7 +52,7 @@ PRIVKEYS = [
 
 
 def hash_message(msg: bytes,
-                 domain: bytes) ->Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
+                 domain: bytes) -> Tuple[Tuple[str, str], Tuple[str, str], Tuple[str, str]]:
     """
     Hash message
     Input:
@@ -82,11 +83,10 @@ def hash_message_compressed(msg: bytes, domain: bytes) -> Tuple[str, str]:
     return [int_to_hex(z1, G2_COMPRESSED_Z_LEN), int_to_hex(z2, G2_COMPRESSED_Z_LEN)]
 
 
-@to_tuple
 def case01_message_hash_G2_uncompressed():
     for msg in MESSAGES:
         for domain in DOMAINS:
-            yield {
+            yield f'uncom_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
                 'input': {
                     'message': encode_hex(msg),
                     'domain': encode_hex(domain),
@@ -94,11 +94,11 @@ def case01_message_hash_G2_uncompressed():
                 'output': hash_message(msg, domain)
             }
 
-@to_tuple
+
 def case02_message_hash_G2_compressed():
     for msg in MESSAGES:
         for domain in DOMAINS:
-            yield {
+            yield f'com_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
                 'input': {
                     'message': encode_hex(msg),
                     'domain': encode_hex(domain),
@@ -106,23 +106,23 @@ def case02_message_hash_G2_compressed():
                 'output': hash_message_compressed(msg, domain)
             }
 
-@to_tuple
+
 def case03_private_to_public_key():
     pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
     pubkeys_serial = ['0x' + pubkey.hex() for pubkey in pubkeys]
     for privkey, pubkey_serial in zip(PRIVKEYS, pubkeys_serial):
-        yield {
+        yield f'priv_to_pub_{int_to_hex(privkey)}', {
             'input': int_to_hex(privkey),
             'output': pubkey_serial,
         }
 
-@to_tuple
+
 def case04_sign_messages():
     for privkey in PRIVKEYS:
         for message in MESSAGES:
             for domain in DOMAINS:
                 sig = bls.sign(message, privkey, domain)
-                yield {
+                yield f'sign_msg_{int_to_hex(privkey)}_{encode_hex(message)}_{encode_hex(domain)}', {
                     'input': {
                         'privkey': int_to_hex(privkey),
                         'message': encode_hex(message),
@@ -131,25 +131,25 @@ def case04_sign_messages():
                     'output': encode_hex(sig)
                 }
 
+
 # TODO: case05_verify_messages: Verify messages signed in case04
 # It takes too long, empty for now
 
 
-@to_tuple
 def case06_aggregate_sigs():
     for domain in DOMAINS:
         for message in MESSAGES:
             sigs = [bls.sign(message, privkey, domain) for privkey in PRIVKEYS]
-            yield {
+            yield f'agg_sigs_{encode_hex(message)}_{encode_hex(domain)}', {
                 'input': [encode_hex(sig) for sig in sigs],
                 'output': encode_hex(bls.aggregate_signatures(sigs)),
             }
 
-@to_tuple
+
 def case07_aggregate_pubkeys():
     pubkeys = [bls.privtopub(privkey) for privkey in PRIVKEYS]
     pubkeys_serial = [encode_hex(pubkey) for pubkey in pubkeys]
-    yield {
+    yield f'agg_pub_keys', {
         'input': pubkeys_serial,
         'output': encode_hex(bls.aggregate_pubkeys(pubkeys)),
     }
@@ -162,85 +162,36 @@ def case07_aggregate_pubkeys():
 # Proof-of-possession
 
 
-def bls_msg_hash_uncompressed_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("g2_uncompressed", "msg_hash_g2_uncompressed", gen_suite.render_suite(
-        title="BLS G2 Uncompressed msg hash",
-        summary="BLS G2 Uncompressed msg hash",
-        forks_timeline="mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="bls",
-        handler="msg_hash_uncompressed",
-        test_cases=case01_message_hash_G2_uncompressed()))
+def create_provider(handler_name: str,
+                    test_case_fn: Callable[[], Iterable[Tuple[str, Dict[str, Any]]]]) -> gen_typing.TestProvider:
 
+    def prepare_fn(configs_path: str) -> str:
+        # Nothing to load / change in spec. Maybe in future forks.
+        # Put the tests into the general config category, to not require any particular configuration.
+        return 'general'
 
-def bls_msg_hash_compressed_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("g2_compressed", "msg_hash_g2_compressed", gen_suite.render_suite(
-        title="BLS G2 Compressed msg hash",
-        summary="BLS G2 Compressed msg hash",
-        forks_timeline="mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="bls",
-        handler="msg_hash_compressed",
-        test_cases=case02_message_hash_G2_compressed()))
+    def cases_fn() -> Iterable[gen_typing.TestCase]:
+        for data in test_case_fn():
+            print(data)
+            (case_name, case_content) = data
+            yield gen_typing.TestCase(
+                fork_name='phase0',
+                runner_name='bls',
+                handler_name=handler_name,
+                suite_name='small',
+                case_name=case_name,
+                case_fn=lambda: [('data', 'data', case_content)]
+            )
 
-
-
-def bls_priv_to_pub_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("priv_to_pub", "priv_to_pub", gen_suite.render_suite(
-        title="BLS private key to pubkey",
-        summary="BLS Convert private key to public key",
-        forks_timeline="mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="bls",
-        handler="priv_to_pub",
-        test_cases=case03_private_to_public_key()))
-
-
-def bls_sign_msg_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("sign_msg", "sign_msg", gen_suite.render_suite(
-        title="BLS sign msg",
-        summary="BLS Sign a message",
-        forks_timeline="mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="bls",
-        handler="sign_msg",
-        test_cases=case04_sign_messages()))
-
-
-def bls_aggregate_sigs_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("aggregate_sigs", "aggregate_sigs", gen_suite.render_suite(
-        title="BLS aggregate sigs",
-        summary="BLS Aggregate signatures",
-        forks_timeline="mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="bls",
-        handler="aggregate_sigs",
-        test_cases=case06_aggregate_sigs()))
-
-
-def bls_aggregate_pubkeys_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("aggregate_pubkeys", "aggregate_pubkeys", gen_suite.render_suite(
-        title="BLS aggregate pubkeys",
-        summary="BLS Aggregate public keys",
-        forks_timeline="mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="bls",
-        handler="aggregate_pubkeys",
-        test_cases=case07_aggregate_pubkeys()))
+    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
 if __name__ == "__main__":
     gen_runner.run_generator("bls", [
-        bls_msg_hash_compressed_suite,
-        bls_msg_hash_uncompressed_suite,
-        bls_priv_to_pub_suite,
-        bls_sign_msg_suite,
-        bls_aggregate_sigs_suite,
-        bls_aggregate_pubkeys_suite
+        create_provider('msg_hash_uncompressed', case01_message_hash_G2_uncompressed),
+        create_provider('msg_hash_compressed', case02_message_hash_G2_compressed),
+        create_provider('priv_to_pub', case03_private_to_public_key),
+        create_provider('sign_msg', case04_sign_messages),
+        create_provider('aggregate_sigs', case06_aggregate_sigs),
+        create_provider('aggregate_pubkeys', case07_aggregate_pubkeys),
     ])

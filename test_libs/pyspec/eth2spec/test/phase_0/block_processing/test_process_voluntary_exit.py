@@ -47,8 +47,8 @@ def test_success(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_signature(spec, state):
     # move state forward PERSISTENT_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.PERSISTENT_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH

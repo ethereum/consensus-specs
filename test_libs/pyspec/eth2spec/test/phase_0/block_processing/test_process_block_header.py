@@ -42,8 +42,8 @@ def test_success_block_header(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_block_header(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     yield from run_block_header_processing(spec, state, block, valid=False)

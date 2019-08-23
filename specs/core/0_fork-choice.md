@@ -91,8 +91,12 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
 ```python
 def get_ancestor(store: Store, root: Hash, slot: Slot) -> Hash:
     block = store.blocks[root]
-    assert block.slot >= slot
-    return root if block.slot == slot else get_ancestor(store, block.parent_root, slot)
+    if block.slot > slot:
+        return get_ancestor(store, block.parent_root, slot)
+    elif block.slot == slot:
+        return root
+    else:
+        return Bytes32()  # root is older than queried slot: no results. 
 ```
 
 #### `get_latest_attesting_balance`

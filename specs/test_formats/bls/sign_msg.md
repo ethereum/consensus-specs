@@ -4,6 +4,8 @@ Message signing with BLS should produce a signature.
 
 ## Test case format
 
+The test data is declared in a `data.yaml` file:
+
 ```yaml
 input:
   privkey: bytes32 -- the private key used for signing

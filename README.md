@@ -1,6 +1,6 @@
 # Ethereum 2.0 Specifications
 
-[![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://discord.gg/hpFs23p](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/hpFs23p) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://github.com/ethereum/wiki/wiki/Sharding-FAQ) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
@@ -47,7 +47,14 @@ The following are the broad design goals for Ethereum 2.0:
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
 
 
+## Useful external resources
+
+* [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
+* [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+
+
 ## For spec contributors
+
 
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](test_generators/README.md)

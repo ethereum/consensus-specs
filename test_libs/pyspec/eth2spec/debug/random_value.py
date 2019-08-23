@@ -56,15 +56,15 @@ def get_random_ssz_object(rng: Random,
         if mode == RandomizationMode.mode_nil_count:
             return typ(b'')
         elif mode == RandomizationMode.mode_max_count:
-            return typ(get_random_bytes_list(rng, max_bytes_length))
+            return typ(get_random_bytes_list(rng, min(max_bytes_length, typ.length)))
         elif mode == RandomizationMode.mode_one_count:
-            return typ(get_random_bytes_list(rng, 1))
+            return typ(get_random_bytes_list(rng, min(1, typ.length)))
         elif mode == RandomizationMode.mode_zero:
-            return typ(b'\x00')
+            return typ(b'\x00' * min(1, typ.length))
         elif mode == RandomizationMode.mode_max:
-            return typ(b'\xff')
+            return typ(b'\xff' * min(1, typ.length))
         else:
-            return typ(get_random_bytes_list(rng, rng.randint(0, max_bytes_length)))
+            return typ(get_random_bytes_list(rng, rng.randint(0, min(max_bytes_length, typ.length))))
     elif issubclass(typ, BytesN):
         # Sanity, don't generate absurdly big random values
         # If a client is aiming to performance-test, they should create a benchmark suite.

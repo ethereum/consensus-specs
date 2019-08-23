@@ -1,11 +1,31 @@
 # Eth 2.0 Test Generators
 
-This directory contains all the generators for YAML tests, consumed by Eth 2.0 client implementations.
+This directory contains all the generators for tests, consumed by Eth 2.0 client implementations.
 
-Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs, here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
+Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs,
+ here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).
 
-Whenever a release is made, the new tests are automatically built, and
-[eth2TestGenBot](https://github.com/eth2TestGenBot) commits the changes to the test repository.
+On releases, test generators are run by the release manager. Test-generation of mainnet tests can take a significant amount of time, and is better left out of a CI setup.
+
+An automated nightly tests release system, with a config filter applied, is being considered as implementation needs mature.  
+
+## Table of contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [How to run generators](#how-to-run-generators)
+  - [Cleaning](#cleaning)
+  - [Running all test generators](#running-all-test-generators)
+  - [Running a single generator](#running-a-single-generator)
+- [Developing a generator](#developing-a-generator)
+- [How to add a new test generator](#how-to-add-a-new-test-generator)
+- [How to remove a test generator](#how-to-remove-a-test-generator)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+
 
 ## How to run generators
 
@@ -58,11 +78,11 @@ It's recommended to extend the base-generator.
 
 Create a `requirements.txt` in the root of your generator directory:
 ```
-eth-utils==1.6.0
 ../../test_libs/gen_helpers
 ../../test_libs/config_helpers
 ../../test_libs/pyspec
 ```
+
 The config helper and pyspec is optional, but preferred. We encourage generators to derive tests from the spec itself in order to prevent code duplication and outdated tests.
 Applying configurations to the spec is simple and enables you to create test suites with different contexts.
 
@@ -73,72 +93,115 @@ Install all the necessary requirements (re-run when you add more):
 pip3 install -r requirements.txt
 ```
 
+Note that you may need `PYTHONPATH` to include the pyspec directory, as with running normal tests,
+ to run test generators manually. The makefile handles this for you already.
+
 And write your initial test generator, extending the base generator:
 
-Write a `main.py` file. See example:
+Write a `main.py` file. The shuffling test generator is a good minimal starting point:
 
 ```python
-from gen_base import gen_runner, gen_suite, gen_typing
-
-from eth_utils import (
-    to_dict, to_tuple
-)
-
+from eth2spec.phase0 import spec as spec
+from eth_utils import to_tuple
+from gen_base import gen_runner, gen_typing
 from preset_loader import loader
-from eth2spec.phase0 import spec
+from typing import Iterable
 
-@to_dict
-def example_test_case(v: int):
-    yield "spec_SHARD_COUNT", spec.SHARD_COUNT
-    yield "example", v
+
+def shuffling_case_fn(seed, count):
+    yield 'mapping', 'data', {
+        'seed': '0x' + seed.hex(),
+        'count': count,
+        'mapping': [int(spec.compute_shuffled_index(i, count, seed)) for i in range(count)]
+    }
+
+
+def shuffling_case(seed, count):
+    return f'shuffle_0x{seed.hex()}_{count}', lambda: shuffling_case_fn(seed, count)
 
 
 @to_tuple
-def generate_example_test_cases():
-    for i in range(10):
-        yield example_test_case(i)
+def shuffling_test_cases():
+    for seed in [spec.hash(seed_init_value.to_bytes(length=4, byteorder='little')) for seed_init_value in range(30)]:
+        for count in [0, 1, 2, 3, 5, 10, 33, 100, 1000, 9999]:
+            yield shuffling_case(seed, count)
 
 
-def example_minimal_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    presets = loader.load_presets(configs_path, 'minimal')
-    spec.apply_constants_preset(presets)
+def create_provider(config_name: str) -> gen_typing.TestProvider:
 
-    return ("mini", "core", gen_suite.render_suite(
-        title="example_minimal",
-        summary="Minimal example suite, testing bar.",
-        forks_timeline="testing",
-        forks=["phase0"],
-        config="minimal",
-        handler="main",
-        test_cases=generate_example_test_cases()))
+    def prepare_fn(configs_path: str) -> str:
+        presets = loader.load_presets(configs_path, config_name)
+        spec.apply_constants_preset(presets)
+        return config_name
 
+    def cases_fn() -> Iterable[gen_typing.TestCase]:
+        for (case_name, case_fn) in shuffling_test_cases():
+            yield gen_typing.TestCase(
+                fork_name='phase0',
+                runner_name='shuffling',
+                handler_name='core',
+                suite_name='shuffle',
+                case_name=case_name,
+                case_fn=case_fn
+            )
 
-def example_mainnet_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    presets = loader.load_presets(configs_path, 'mainnet')
-    spec.apply_constants_preset(presets)
-
-    return ("full", "core", gen_suite.render_suite(
-        title="example_main_net",
-        summary="Main net based example suite.",
-        forks_timeline= "mainnet",
-        forks=["phase0"],
-        config="testing",
-        handler="main",
-        test_cases=generate_example_test_cases()))
+    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("example", [example_minimal_suite, example_mainnet_suite])
+    gen_runner.run_generator("shuffling", [create_provider("minimal"), create_provider("mainnet")])
 ```
 
+This generator:
+- builds off of `gen_runner.run_generator` to handle configuration / filter / output logic.
+- parametrized the creation of a test-provider to support multiple configs.
+- Iterates through tests cases.
+- Each test case provides a `case_fn`, to be executed by the `gen_runner.run_generator` if the case needs to be generated. But skipped otherwise.
+
+To extend this, one could decide to parametrize the `shuffling_test_cases` function, and create test provider for any test-yielding function.
+
+Another example, to generate tests from pytests:
+
+```python
+def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typing.TestProvider:
+
+    def prepare_fn(configs_path: str) -> str:
+        presets = loader.load_presets(configs_path, config_name)
+        spec_phase0.apply_constants_preset(presets)
+        spec_phase1.apply_constants_preset(presets)
+        return config_name
+
+    def cases_fn() -> Iterable[gen_typing.TestCase]:
+        return generate_from_tests(
+            runner_name='epoch_processing',
+            handler_name=handler_name,
+            src=tests_src,
+            fork_name='phase0'
+        )
+
+    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
+
+
+if __name__ == "__main__":
+    gen_runner.run_generator("epoch_processing", [
+        create_provider('crosslinks', test_process_crosslinks, 'minimal'),
+        ...
+    ])
+
+```
+
+Here multiple phases load the configuration, and the stream of test cases is derived from a pytest file using the `generate_from_tests` utility.
+
+
 Recommendations:
-- You can have more than just one suite creator, e.g. ` gen_runner.run_generator("foo", [bar_test_suite, abc_test_suite, example_test_suite])`.
-- You can concatenate lists of test cases if you don't want to split it up in suites, however, make sure they can be run with one handler.
-- You can split your suite creators into different Python files/packages; this is good for code organization.
-- Use config "minimal" for performance, but also implement a suite with the default config where necessary. 
-- You may be able to write your test suite creator in a way where it does not make assumptions on constants.
-  If so, you can generate test suites with different configurations for the same scenario (see example). 
-- The test-generator accepts `--output` and `--force` (overwrite output).
+- You can have more than just one test provider.
+- Your test provider is free to output any configuration and combination of runner/handler/fork/case name.
+- You can split your test case generators into different Python files/packages; this is good for code organization.
+- Use config `minimal` for performance and simplicity, but also implement a suite with the `mainnet` config where necessary. 
+- You may be able to write your test case provider in a way where it does not make assumptions on constants.
+  If so, you can generate test cases with different configurations for the same scenario (see example). 
+- See [`test_libs/gen_helpers/README.md`](../test_libs/gen_helpers/README.md) for command line options for generators.
+
 
 ## How to add a new test generator
 
@@ -151,11 +214,10 @@ To add a new test generator that builds `New Tests`:
 3. Your generator is assumed to have a `main.py` file in its root.
  By adding the base generator to your requirements, you can make a generator really easily. See docs below.
 4. Your generator is called with `-o some/file/path/for_testing/can/be_anything -c some/other/path/to_configs/`.
- The base generator helps you handle this; you only have to define suite headers
- and a list of tests for each suite you generate.
+ The base generator helps you handle this; you only have to define test case providers.
 5. Finally, add any linting or testing commands to the
- [circleci config file](https://github.com/ethereum/eth2.0-test-generators/blob/master/.circleci/config.yml)
- if desired to increase code quality.
+ [circleci config file](../.circleci/config.yml) if desired to increase code quality.
+ Or add it to the [`Makefile`](../Makefile), if it can be run locally. 
 
 *Note*: You do not have to change the makefile.
 However, if necessary (e.g. not using Python, or mixing in other languages), submit an issue, and it can be a special case.

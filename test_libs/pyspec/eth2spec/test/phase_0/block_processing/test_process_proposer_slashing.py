@@ -49,24 +49,24 @@ def test_success(spec, state):
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_1(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=True)
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_2(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
 
 @with_all_phases
-@always_bls
 @spec_state_test
+@always_bls
 def test_invalid_sig_1_and_2(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=False)
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)

@@ -9,7 +9,7 @@ setup(
         "eth-typing>=2.1.0,<3.0.0",
         "pycryptodome==3.7.3",
         "py_ecc==1.7.1",
-        "ssz==0.1.0a10",
+        "ssz==0.1.3",
         "dataclasses==0.6",
     ]
 )

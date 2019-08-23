@@ -29,8 +29,8 @@ def check_finality(spec,
 
 
 @with_all_phases
-@never_bls
 @spec_state_test
+@never_bls
 def test_finality_no_updates_at_genesis(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH
 
@@ -53,8 +53,8 @@ def test_finality_no_updates_at_genesis(spec, state):
 
 
 @with_all_phases
-@never_bls
 @spec_state_test
+@never_bls
 def test_finality_rule_4(spec, state):
     # get past first two epochs that finality does not run on
     next_epoch(spec, state)
@@ -81,8 +81,8 @@ def test_finality_rule_4(spec, state):
 
 
 @with_all_phases
-@never_bls
 @spec_state_test
+@never_bls
 def test_finality_rule_1(spec, state):
     # get past first two epochs that finality does not run on
     next_epoch(spec, state)
@@ -111,8 +111,8 @@ def test_finality_rule_1(spec, state):
 
 
 @with_all_phases
-@never_bls
 @spec_state_test
+@never_bls
 def test_finality_rule_2(spec, state):
     # get past first two epochs that finality does not run on
     next_epoch(spec, state)
@@ -143,8 +143,8 @@ def test_finality_rule_2(spec, state):
 
 
 @with_all_phases
-@never_bls
 @spec_state_test
+@never_bls
 def test_finality_rule_3(spec, state):
     """
     Test scenario described here

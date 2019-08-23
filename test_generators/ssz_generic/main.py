@@ -1,47 +1,44 @@
-from uint_test_cases import (
-    generate_random_uint_test_cases,
-    generate_uint_wrong_length_test_cases,
-    generate_uint_bounds_test_cases,
-    generate_uint_out_of_bounds_test_cases
-)
-
-from gen_base import gen_runner, gen_suite, gen_typing
-
-def ssz_random_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("uint_random", "uint", gen_suite.render_suite(
-        title="UInt Random",
-        summary="Random integers chosen uniformly over the allowed value range",
-        forks_timeline= "mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="ssz",
-        handler="uint",
-        test_cases=generate_random_uint_test_cases()))
+from typing import Iterable
+from gen_base import gen_runner, gen_typing
+import ssz_basic_vector
+import ssz_bitlist
+import ssz_bitvector
+import ssz_boolean
+import ssz_uints
+import ssz_container
 
 
-def ssz_wrong_uint_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("uint_wrong_length", "uint", gen_suite.render_suite(
-        title="UInt Wrong Length",
-        summary="Serialized integers that are too short or too long",
-        forks_timeline= "mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="ssz",
-        handler="uint",
-        test_cases=generate_uint_wrong_length_test_cases()))
+def create_provider(handler_name: str, suite_name: str, case_maker) -> gen_typing.TestProvider:
 
+    def prepare_fn(configs_path: str) -> str:
+        return "general"
 
-def ssz_uint_bounds_suite(configs_path: str) -> gen_typing.TestSuiteOutput:
-    return ("uint_bounds", "uint", gen_suite.render_suite(
-        title="UInt Bounds",
-        summary="Integers right at or beyond the bounds of the allowed value range",
-        forks_timeline= "mainnet",
-        forks=["phase0"],
-        config="mainnet",
-        runner="ssz",
-        handler="uint",
-        test_cases=generate_uint_bounds_test_cases() + generate_uint_out_of_bounds_test_cases()))
+    def cases_fn() -> Iterable[gen_typing.TestCase]:
+        for (case_name, case_fn) in case_maker():
+            yield gen_typing.TestCase(
+                fork_name='phase0',
+                runner_name='ssz_generic',
+                handler_name=handler_name,
+                suite_name=suite_name,
+                case_name=case_name,
+                case_fn=case_fn
+            )
+
+    return gen_typing.TestProvider(prepare=prepare_fn, make_cases=cases_fn)
 
 
 if __name__ == "__main__":
-    gen_runner.run_generator("ssz_generic", [ssz_random_uint_suite, ssz_wrong_uint_suite, ssz_uint_bounds_suite])
+    gen_runner.run_generator("ssz_generic", [
+        create_provider("basic_vector", "valid", ssz_basic_vector.valid_cases),
+        create_provider("basic_vector", "invalid", ssz_basic_vector.invalid_cases),
+        create_provider("bitlist", "valid", ssz_bitlist.valid_cases),
+        create_provider("bitlist", "invalid", ssz_bitlist.invalid_cases),
+        create_provider("bitvector", "valid", ssz_bitvector.valid_cases),
+        create_provider("bitvector", "invalid", ssz_bitvector.invalid_cases),
+        create_provider("boolean", "valid", ssz_boolean.valid_cases),
+        create_provider("boolean", "invalid", ssz_boolean.invalid_cases),
+        create_provider("uints", "valid", ssz_uints.valid_cases),
+        create_provider("uints", "invalid", ssz_uints.invalid_cases),
+        create_provider("containers", "valid", ssz_container.valid_cases),
+        create_provider("containers", "invalid", ssz_container.invalid_cases),
+    ])

@@ -1,4 +1,4 @@
-from eth2spec.test.context import spectest_with_bls_switch, with_phases
+from eth2spec.test.context import spec_test, with_phases
 from eth2spec.test.helpers.deposits import (
     prepare_genesis_deposits,
 )
@@ -26,7 +26,7 @@ def run_is_valid_genesis_state(spec, state, valid=True):
 
 
 @with_phases(['phase0'])
-@spectest_with_bls_switch
+@spec_test
 def test_is_valid_genesis_state_true(spec):
     state = create_valid_beacon_state(spec)
 
@@ -34,7 +34,7 @@ def test_is_valid_genesis_state_true(spec):
 
 
 @with_phases(['phase0'])
-@spectest_with_bls_switch
+@spec_test
 def test_is_valid_genesis_state_false_invalid_timestamp(spec):
     state = create_valid_beacon_state(spec)
     state.genesis_time = spec.MIN_GENESIS_TIME - 1
@@ -43,7 +43,7 @@ def test_is_valid_genesis_state_false_invalid_timestamp(spec):
 
 
 @with_phases(['phase0'])
-@spectest_with_bls_switch
+@spec_test
 def test_is_valid_genesis_state_true_more_balance(spec):
     state = create_valid_beacon_state(spec)
     state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE + 1
@@ -53,7 +53,7 @@ def test_is_valid_genesis_state_true_more_balance(spec):
 
 # TODO: not part of the genesis function yet. Erroneously merged.
 # @with_phases(['phase0'])
-# @spectest_with_bls_switch
+# @spec_test
 # def test_is_valid_genesis_state_false_not_enough_balance(spec):
 #     state = create_valid_beacon_state(spec)
 #     state.validators[0].effective_balance = spec.MAX_EFFECTIVE_BALANCE - 1
@@ -62,7 +62,7 @@ def test_is_valid_genesis_state_true_more_balance(spec):
 
 
 @with_phases(['phase0'])
-@spectest_with_bls_switch
+@spec_test
 def test_is_valid_genesis_state_true_one_more_validator(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT + 1
     deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE, signed=True)
@@ -75,7 +75,7 @@ def test_is_valid_genesis_state_true_one_more_validator(spec):
 
 
 @with_phases(['phase0'])
-@spectest_with_bls_switch
+@spec_test
 def test_is_valid_genesis_state_false_not_enough_validator(spec):
     deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT - 1
     deposits, _ = prepare_genesis_deposits(spec, deposit_count, spec.MAX_EFFECTIVE_BALANCE, signed=True)
