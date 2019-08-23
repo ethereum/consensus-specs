@@ -6,6 +6,7 @@
 
 - [Phase 1 miscellaneous beacon chain changes](#phase-1-miscellaneous-beacon-chain-changes)
     - [Table of contents](#table-of-contents)
+    - [Custom types](#custom-types)
     - [Configuration](#configuration)
     - [Classes](#classes)
         - [CompactCommittee](#compactcommittee)
@@ -25,6 +26,14 @@
         - [Shard receipt processing](#shard-receipt-processing)
 
 <!-- /TOC -->
+
+## Custom types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name | SSZ equivalent | Description |
+| - | - | - |
+| `GeneralizedIndex` | `uint64` | a generalized index into an SSZ merkle tree |
 
 ## Configuration
 
