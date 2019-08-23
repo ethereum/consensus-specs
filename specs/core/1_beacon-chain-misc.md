@@ -6,34 +6,27 @@
 
 - [Phase 1 miscellaneous beacon chain changes](#phase-1-miscellaneous-beacon-chain-changes)
     - [Table of contents](#table-of-contents)
-    - [Custom types](#custom-types)
     - [Configuration](#configuration)
-    - [Classes](#classes)
-        - [CompactCommittee](#compactcommittee)
-        - [ShardReceiptProof](#shardreceiptproof)
-    - [Helpers](#helpers)
-        - [pack_compact_validator](#pack_compact_validator)
-        - [unpack_compact_validator](#unpack_compact_validator)
-        - [committee_to_compact_committee](#committee_to_compact_committee)
-        - [get_previous_power_of_2](#get_previous_power_of_2)
-        - [verify_merkle_proof](#verify_merkle_proof)
-        - [concat_generalized_indices](#concat_generalized_indices)
-        - [compute_historical_state_generalized_index](#compute_historical_state_generalized_index)
-        - [get_generalized_index_of_crosslink_header](#get_generalized_index_of_crosslink_header)
-        - [process_shard_receipt_proof](#process_shard_receipt_proof)
+    - [Containers](#containers)
+            - [`CompactCommittee`](#compactcommittee)
+            - [`ShardReceiptProof`](#shardreceiptproof)
+    - [Helper functions](#helper-functions)
+            - [`pack_compact_validator`](#pack_compact_validator)
+            - [`unpack_compact_validator`](#unpack_compact_validator)
+            - [`committee_to_compact_committee`](#committee_to_compact_committee)
+            - [`get_previous_power_of_2`](#get_previous_power_of_2)
+            - [`verify_merkle_proof`](#verify_merkle_proof)
+            - [`compute_historical_state_generalized_index`](#compute_historical_state_generalized_index)
+            - [`get_generalized_index_of_crosslink_header`](#get_generalized_index_of_crosslink_header)
+            - [`process_shard_receipt_proof`](#process_shard_receipt_proof)
     - [Changes](#changes)
+        - [Phase 0 container updates](#phase-0-container-updates)
+            - [`BeaconState`](#beaconstate)
+            - [`BeaconBlockBody`](#beaconblockbody)
         - [Persistent committees](#persistent-committees)
         - [Shard receipt processing](#shard-receipt-processing)
 
 <!-- /TOC -->
-
-## Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name | SSZ equivalent | Description |
-| - | - | - |
-| `GeneralizedIndex` | `uint64` | a generalized index into an SSZ merkle tree |
 
 ## Configuration
 
@@ -41,8 +34,9 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - | - |
 | `MAX_SHARD_RECEIPT_PROOFS` | `2**0` (= 1) | - | - |
 | `PERSISTENT_COMMITTEE_ROOT_LENGTH` | `2**8` (= 256) | periods | ~9 months |
+| `MICRO_REWARD` | `Gwei(2**0)` (=1) | Gwei | - |
 
-## Classes
+## Containers
 
 #### `CompactCommittee`
 
@@ -61,7 +55,7 @@ class ShardReceiptProof(Container):
     receipt: List[ShardReceiptDelta, PLACEHOLDER]
 ```
 
-## Helpers
+## Helper functions
 
 #### `pack_compact_validator`
 
@@ -146,7 +140,9 @@ def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
     """
     Gets the generalized index for the root of the index'th header in a crosslink.
     """
-    MAX_CROSSLINK_SIZE = SHARD_BLOCK_SIZE_LIMIT * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
+    MAX_CROSSLINK_SIZE = (
+        SHARD_BLOCK_SIZE_LIMIT * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
+    )
     assert MAX_CROSSLINK_SIZE == get_previous_power_of_2(MAX_CROSSLINK_SIZE)
     return GeneralizedIndex(MAX_CROSSLINK_SIZE // SHARD_HEADER_SIZE + index)
 ```
@@ -170,11 +166,14 @@ def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptP
         leaf=hash_tree_root(receipt_proof.receipt),
         proof=receipt_proof.proof,
         index=gindex,
-        root=state.current_crosslinks[shard].data_root
+        root=state.current_crosslinks[receipt_proof.shard].data_root
     )
     for delta in receipt_proof.receipt:
         if get_current_epoch(state) < state.validators[delta.index].withdrawable_epoch:
-            increase_balance(state, delta.index, state.validators[delta.index].effective_balance * delta.reward_coefficient // REWARD_COEFFICIENT_BASE)
+            increase_amount = (
+                state.validators[delta.index].effective_balance * delta.reward_coefficient // REWARD_COEFFICIENT_BASE
+            )
+            increase_balance(state, delta.index, increase_amount)
             decrease_balance(state, delta.index, delta.block_fee)
     state.next_shard_receipt_period[receipt_proof.shard] += 1
     increase_balance(state, get_beacon_proposer_index(state), MICRO_REWARD)
