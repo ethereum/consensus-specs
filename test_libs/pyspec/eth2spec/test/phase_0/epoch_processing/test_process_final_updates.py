@@ -89,20 +89,3 @@ def test_historical_root_accumulator(spec, state):
     yield from run_process_final_updates(spec, state)
 
     assert len(state.historical_roots) == history_len + 1
-
-
-@with_all_phases
-@spec_state_test
-def test_compact_committees_root(spec, state):
-    assert spec.SLOTS_PER_ETH1_VOTING_PERIOD > spec.SLOTS_PER_EPOCH
-    # skip ahead to the end of the epoch
-    state.slot = spec.SLOTS_PER_EPOCH - 1
-
-    next_epoch = spec.get_current_epoch(state) + 1
-
-    # ensure that order in which items are processed in final_updates
-    # does not alter the expected_root
-    expected_root = spec.get_compact_committees_root(state, next_epoch)
-    yield from run_process_final_updates(spec, state)
-
-    assert state.compact_committees_roots[next_epoch % spec.EPOCHS_PER_HISTORICAL_VECTOR] == expected_root
