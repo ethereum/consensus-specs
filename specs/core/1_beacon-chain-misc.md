@@ -180,7 +180,7 @@ Add to the beacon state the following fields:
 ```python
 # begin insert @persistent_committee_fields
     persistent_committee_roots: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_LENGTH]
-    next_shard_receipt_period: Vector[uint, SHARD_COUNT]
+    next_shard_receipt_period: Vector[uint64, SHARD_COUNT]
 # end insert @persistent_committee_fields
 ```
 `next_shard_receipt_period` values initialized to `PHASE_1_FORK_SLOT // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD`
