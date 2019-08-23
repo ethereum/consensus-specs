@@ -5,7 +5,7 @@ from random import Random
 from eth2spec.debug.random_value import RandomizationMode, get_random_ssz_object
 
 
-def bitvector_case_fn(rng: Random, mode: RandomizationMode, size: int, invalid_making_pos: int):
+def bitvector_case_fn(rng: Random, mode: RandomizationMode, size: int, invalid_making_pos: int=None):
     bits = get_random_ssz_object(rng, Bitvector[size],
                                  max_bytes_length=(size + 7) // 8,
                                  max_list_length=size,
