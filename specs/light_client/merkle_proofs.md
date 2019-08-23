@@ -7,7 +7,6 @@
 
 - [Merkle proof formats](#merkle-proof-formats)
     - [Table of contents](#table-of-contents)
-    - [Custom types](#custom-types)
     - [Helper functions](#helper-functions)
     - [Generalized Merkle tree index](#generalized-merkle-tree-index)
     - [SSZ object to index](#ssz-object-to-index)
@@ -21,13 +20,6 @@
     - [Merkle multiproofs](#merkle-multiproofs)
 
 <!-- /TOC -->
-
-## Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| - | - | - |
-| `GeneralizedIndex` | `uint64` | the index of a node in a binary Merkle tree |
 
 ## Helper functions
 
@@ -74,6 +66,8 @@ def merkle_tree(leaves: Sequence[Hash]) -> Sequence[Hash]:
         o[i] = hash(o[i * 2] + o[i * 2 + 1])
     return o
 ```
+
+We define a custom type `GeneralizedIndex` as a Python integer type in this document. It can be represented as a Bitvector/Bitlist object as well.
 
 We will define Merkle proofs in terms of generalized indices.
 
@@ -175,7 +169,7 @@ def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableNam
         else:
             pos, _, _ = get_item_position(typ, p)
             base_index = (GeneralizedIndex(2) if issubclass(typ, (List, Bytes)) else GeneralizedIndex(1))
-            root = root * base_index * get_next_power_of_two(chunk_count(typ)) + pos
+            root = GeneralizedIndex(root * base_index * get_next_power_of_two(chunk_count(typ)) + pos)
             typ = get_elem_type(typ, p)
     return root
 ```
@@ -280,8 +274,8 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
     return sorted([
         x for x in all_indices if (
             not (
-                generalized_index_child(x, GeneralizedIndex(0)) in all_indices and
-                generalized_index_child(x, GeneralizedIndex(1)) in all_indices
+                generalized_index_child(x, False) in all_indices and
+                generalized_index_child(x, True) in all_indices
             ) and not (x in indices)
         )
     ], reverse=True)

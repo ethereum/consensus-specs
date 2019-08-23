@@ -37,7 +37,7 @@ from eth2spec.utils.bls import (
 from eth2spec.utils.hash_function import hash
 '''
 PHASE1_IMPORTS = '''from typing import (
-    Any, Dict, Optional, Set, Sequence, MutableSequence, Tuple, Union,
+    Any, Dict, Optional, Set, Sequence, MutableSequence, NewType, Tuple, Union,
 )
 from math import (
     log2,
@@ -70,6 +70,7 @@ from eth2spec.utils.hash_function import hash
 
 
 SSZVariableName = str
+GeneralizedIndex = NewType('GeneralizedIndex', int)
 '''
 SUNDRY_CONSTANTS_FUNCTIONS = '''
 def ceillog2(x: uint64) -> int:
