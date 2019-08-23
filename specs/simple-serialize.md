@@ -62,7 +62,7 @@
 * **bitlist**: ordered variable-length collection of `boolean` values, limited to `N` bits
     * notation `Bitlist[N]`
 * **union**: union type containing one of the given subtypes
-    * notation `Union[type_1, type_2, ...]`, e.g. `union[null, uint64]`
+    * notation `Union[type_0, type_1, ...]`, e.g. `union[null, uint64]`
 
 ### Variable-size and fixed-size
 
@@ -78,8 +78,18 @@ For convenience we alias:
 * `null`: `{}`
 
 ### Default values
+Assuming a helper function `default(type)` which returns the default value for `type`, we can recursively define the default value for all types.
 
-The default value of a type upon initialization is recursively defined using `0` for `uintN`, `False` for `boolean` and the elements of `Bitvector`, and `[]` for lists and `Bitlist`. Unions default to the first type in the union (with type index zero), which is `null` if present in the union.
+| Type | Default Value |
+| ---- | ------------- |
+| `uintN` | `0` |
+| `boolean` | `False` |
+| `Container` | `[default(type) for type in container]` |
+| `Vector[type, N]` | `[default(type)] * N` |
+| `Bitvector[boolean, N]` | `[False] * N` |
+| `List[type, N]` | `[]` |
+| `Bitlist[boolean, N]` | `[]` |
+| `Union[type_0, type_1, ...]` | `default(type_0)` |
 
 #### `is_zero`
 
