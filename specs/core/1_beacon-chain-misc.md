@@ -33,7 +33,7 @@
 | Name | Value | Unit | Duration
 | - | - | - | - |
 | `MAX_SHARD_RECEIPT_PROOFS` | `2**0` (= 1) | - | - |
-| `PERSISTENT_COMMITTEE_ROOT_LENGTH` | `2**8` (= 256) | periods | ~9 months |
+| `PERIOD_COMMITTEE_ROOT_LENGTH` | `2**8` (= 256) | periods | ~9 months |
 | `MICRO_REWARD` | `Gwei(2**0)` (=1) | Gwei | - |
 
 ## Containers
@@ -189,12 +189,12 @@ Add the following fields to the end of the specified container objects.
 
 ```python
 class BeaconState(Container):
-    # Persistent committees
-    persistent_committee_roots: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_LENGTH]
+    # Period committees
+    period_committee_roots: Vector[Hash, PERIOD_COMMITTEE_ROOT_LENGTH]
     next_shard_receipt_period: Vector[uint64, SHARD_COUNT]
 ```
 
-`persistent_committee_roots` values are initialized to `Bytes32()` (empty bytes value).
+`period_committee_roots` values are initialized to `Bytes32()` (empty bytes value).
 `next_shard_receipt_period` values are initialized to `PHASE_1_FORK_SLOT // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD`.
 
 #### `BeaconBlockBody`
@@ -208,15 +208,15 @@ class BeaconBlockBody(Container):
 
 ### Persistent committees
 
-Run `update_persistent_committee` immediately before `process_final_updates`:
+Run `update_period_committee` immediately before `process_final_updates`:
 
 ```python
-# begin insert @update_persistent_committee
-    update_persistent_committee(state)
-# end insert @update_persistent_committee
-def update_persistent_committee(state: BeaconState) -> None:
+# begin insert @update_period_committee
+    update_period_committee(state)
+# end insert @update_period_committee
+def update_period_committee(state: BeaconState) -> None:
     """
-    Updates persistent committee roots at boundary blocks.
+    Updates period committee roots at boundary blocks.
     """
     if (get_current_epoch(state) + 1) % EPOCHS_PER_SHARD_PERIOD == 0:
         period = (get_current_epoch(state) + 1) // EPOCHS_PER_SHARD_PERIOD
@@ -227,7 +227,7 @@ def update_persistent_committee(state: BeaconState) -> None:
             )
             for shard in range(SHARD_COUNT)
         ])
-        state.persistent_committee_roots[period % PERSISTENT_COMMITTEE_ROOT_LENGTH] = hash_tree_root(committees)
+        state.period_committee_roots[period % PERIOD_COMMITTEE_ROOT_LENGTH] = hash_tree_root(committees)
 ```
 
 ### Shard receipt processing
@@ -235,7 +235,7 @@ def update_persistent_committee(state: BeaconState) -> None:
 Run `process_shard_receipt_proof` on each `ShardReceiptProof` during block processing.
 
 ```python
-# begin insert @process_shard_receipts
+# begin insert @process_shard_receipt_proofs
         (body.shard_receipt_proofs, process_shard_receipt_proof),
-# end insert @process_shard_receipts
+# end insert @process_shard_receipt_proofs
 ```
