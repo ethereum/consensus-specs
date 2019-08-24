@@ -430,12 +430,14 @@ def shard_slot_transition(state: ShardState, beacon_state: BeaconState) -> None:
     if state.most_recent_block_core.state_root == Hash():
         state.most_recent_block_core.state_root = hash_tree_root(state)
 
-    # Save states in history accumulator
-    depth = 0
+    # Save state root to highest matching index in accumulator
+    depth = HISTORY_ACCUMULATOR_VECTOR - 1
     h = hash_tree_root(state)
-    while state.slot % 2**depth == 0 and depth < HISTORY_ACCUMULATOR_VECTOR:
-        state.history_accumulator[depth] = h
-        depth += 1
+    while depth >= 0:
+        if state.slot % 2**depth == 0:
+            state.history_accumulator[depth] = h
+            break
+        depth -= 1
 
     # Period transitions
     if (state.slot + 1) % (SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD) == 0:
