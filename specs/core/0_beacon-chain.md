@@ -1550,7 +1550,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         (body.deposits, process_deposit),
         (body.voluntary_exits, process_voluntary_exit),
         (body.transfers, process_transfer),
-        # @process_shard_receipts
+        # @process_shard_receipt_proofs
     ):
         for operation in operations:
             function(state, operation)
