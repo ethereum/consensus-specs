@@ -34,7 +34,7 @@
 | - | - | - | - |
 | `MAX_SHARD_RECEIPT_PROOFS` | `2**0` (= 1) | - | - |
 | `PERIOD_COMMITTEE_ROOT_LENGTH` | `2**8` (= 256) | periods | ~9 months |
-| `MICRO_REWARD` | `Gwei(2**0)` (=1) | Gwei | - |
+| `MINOR_REWARD_QUOTIENT` | `2**8` (=256) | - | - |
 
 ## Containers
 
@@ -176,7 +176,8 @@ def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptP
             increase_balance(state, delta.index, increase_amount)
             decrease_balance(state, delta.index, delta.block_fee)
     state.next_shard_receipt_period[receipt_proof.shard] += 1
-    increase_balance(state, get_beacon_proposer_index(state), MICRO_REWARD)
+    proposer_index = get_beacon_proposer_index(state)
+    increase_balance(state, proposer_index, Gwei(get_base_reward(state, proposer_index) // MINOR_REWARD_QUOTIENT))
 ```
 
 ## Changes
