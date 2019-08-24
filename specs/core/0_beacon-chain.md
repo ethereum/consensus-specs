@@ -1196,7 +1196,7 @@ def process_epoch(state: BeaconState) -> None:
     # @process_reveal_deadlines
     # @process_challenge_deadlines
     process_slashings(state)
-    # @update_persistent_committee
+    # @update_period_committee
     process_final_updates(state)
     # @after_process_final_updates
 ```
