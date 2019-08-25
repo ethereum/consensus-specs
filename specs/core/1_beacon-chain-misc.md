@@ -14,7 +14,6 @@
         - [`pack_compact_validator`](#pack_compact_validator)
         - [`unpack_compact_validator`](#unpack_compact_validator)
         - [`committee_to_compact_committee`](#committee_to_compact_committee)
-        - [`get_previous_power_of_2`](#get_previous_power_of_2)
         - [`verify_merkle_proof`](#verify_merkle_proof)
         - [`compute_historical_state_generalized_index`](#compute_historical_state_generalized_index)
         - [`get_generalized_index_of_crosslink_header`](#get_generalized_index_of_crosslink_header)
@@ -95,13 +94,6 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
     return CompactCommittee(pubkeys=pubkeys, compact_validators=compact_validators)
 ```
 
-#### `get_previous_power_of_2`
-
-```python
-def get_previous_power_of_2(x: int) -> int:
-    return x if x <= 2 else 2 * get_previous_power_of_2(x // 2)
-```
-
 #### `verify_merkle_proof`
 
 ```python
@@ -143,7 +135,7 @@ def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
     MAX_CROSSLINK_SIZE = (
         SHARD_BLOCK_SIZE_LIMIT * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
     )
-    assert MAX_CROSSLINK_SIZE == get_previous_power_of_2(MAX_CROSSLINK_SIZE)
+    assert MAX_CROSSLINK_SIZE == get_previous_power_of_two(MAX_CROSSLINK_SIZE)
     return GeneralizedIndex(MAX_CROSSLINK_SIZE // SHARD_HEADER_SIZE + index)
 ```
 
