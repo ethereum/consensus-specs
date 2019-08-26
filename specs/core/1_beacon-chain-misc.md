@@ -118,7 +118,7 @@ def compute_historical_state_generalized_index(earlier: ShardSlot, later: ShardS
     blocks at the next available multiples of descending powers of two.
     """
     o = GeneralizedIndex(1)
-    for i in range(63, -1, -1):
+    for i in range(HISTORY_ACCUMULATOR_VECTOR - 1, -1, -1):
         if (later - 1) & 2**i > (earlier - 1) & 2**i:
             later = later - ((later - 1) % 2**i) - 1
             o = concat_generalized_indices(o, GeneralizedIndex(get_generalized_index(ShardState, ['history_acc', i])))
