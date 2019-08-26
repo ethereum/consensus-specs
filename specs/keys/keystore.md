@@ -60,7 +60,7 @@ Keystores provide a common interface for all clients to ingest validator credent
 
 **Why use scrypt over PBKPRF2?**\
 
-scyrpt and PBKPRF2 both rely on the security of their underlying hash-function for their safety (SHA256), however scrypt additionally provides memory hardness. The benefit of this is greater ASIC resistance meaning brute-force attacks against scyrpt are generally slower and harder.
+scrypt and PBKPRF2 both rely on the security of their underlying hash-function for their safety (SHA256), however scrypt additionally provides memory hardness. The benefit of this is greater ASIC resistance meaning brute-force attacks against scrypt are generally slower and harder.
 
 **Why are private keys encoded with Big Endian?**
 
