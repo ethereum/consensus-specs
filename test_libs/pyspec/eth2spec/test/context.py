@@ -10,7 +10,7 @@ from .utils import vector_test, with_meta_tags
 def with_state(fn):
     def entry(*args, **kw):
         try:
-            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
+            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 9)
         except KeyError:
             raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
         return fn(*args, **kw)

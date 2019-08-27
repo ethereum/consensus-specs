@@ -1615,11 +1615,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         proposer_index=get_beacon_proposer_index(state),
     )
 
-    # Check bitlist lengths
-    committee_size = get_committee_count(state, attestation.data.target.epoch)
-    assert len(attestation.aggregation_bits) == committee_size
-    assert len(attestation.custody_bits) == committee_size
-
     if data.target.epoch == get_current_epoch(state):
         assert data.source == state.current_justified_checkpoint
         parent_crosslink = state.current_crosslinks[data.crosslink.shard]
