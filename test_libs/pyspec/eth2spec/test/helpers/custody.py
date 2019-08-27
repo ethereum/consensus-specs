@@ -107,7 +107,7 @@ def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False)
     chunk_bits = bitlist_from_int(spec.MAX_CUSTODY_CHUNKS, chunk_count, 0)
 
     n = 0
-    while spec.get_chunk_bits_root(chunk_bits) == attestation.custody_bits[0] ^ invalid_custody_bit:
+    while spec.get_chunk_bits_root(responder_key, chunk_bits) == attestation.custody_bits[0] ^ invalid_custody_bit:
         chunk_bits = bitlist_from_int(spec.MAX_CUSTODY_CHUNKS, chunk_count, n)
         n += 1
 

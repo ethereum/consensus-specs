@@ -345,26 +345,52 @@ def custody_subchunkify(bytez: bytes) -> list:
             for i in range(0, len(bytez), BYTES_PER_CUSTODY_SUBCHUNK)]
 ```
 
+### `get_polynomial_uhf`
+
+Compute the polynomial universal hash function of a block sequence.
+
+```python
+def get_polynomial_uhf(subchunks: list, key: int) -> list:
+    r = key
+    for subchunk in subchunks:
+        r *= (r + int.from_bytes(subchunk, 'little')) % BLS12_381_Q
+    return r
+```
+
+### `get_legendre_prf`
+
+Compute the Legendre PRF of an integer input
+
+```python
+def get_legendre_prf(data: int, key: int) -> bit:
+    return legendre_bit(key + data, BLS12_381_Q)
+```
+
 ### `get_custody_chunk_bit`
 
 ```python
-def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
+def get_custody_chunk_bit(key: BLSSignature, chunk: bytes, index: int) -> bool:
     full_G2_element = bls_signature_to_G2(key)
-    s = full_G2_element[0].coeffs
-    bits = [legendre_bit((i + 1) * s[i % 2] + int.from_bytes(subchunk, "little"), BLS12_381_Q)
-            for i, subchunk in enumerate(custody_subchunkify(chunk))]
-
-    return bool(sum(bits) % 2)
+    s0, s1 = full_G2_element[0].coeffs
+    if index % 2:
+        s0, s1 = s1, s0
+    subchunks = custody_subchunkify(chunk)
+    uhf = get_polynomial_uhf(subchunks, s0)
+    return get_legendre_prf(uhf, s1)
 ```
 
 ### `get_chunk_bits_root`
 
 ```python
-def get_chunk_bits_root(chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]) -> bit:
-    aggregated_bits = 0
+def get_chunk_bits_root(key: BLSSignature, chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]) -> bit:
+    bytez = b''
+    current_byte = 0
     for i, b in enumerate(chunk_bits):
-        aggregated_bits += 2**i * b
-    return legendre_bit(aggregated_bits, BLS12_381_Q)
+        current_byte |= b << (i % 8) 
+        if i % 8 == 7:
+            bytez += current_byte.to_bytes(1, 'little')
+            current_byte = 0
+    return get_custody_chunk_bit(key, bytez, 0)
 ```
 
 ### `get_randao_epoch_for_custody_period`
@@ -624,7 +650,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify custody bit is incorrect
     committee = get_crosslink_committee(state, epoch, shard)
     custody_bit = attestation.custody_bits[committee.index(challenge.responder_index)]
-    assert custody_bit != get_chunk_bits_root(challenge.chunk_bits)
+    assert custody_bit != get_chunk_bits_root(challenge.responder_key, challenge.chunk_bits)
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(
         challenge_index=state.custody_challenge_index,
