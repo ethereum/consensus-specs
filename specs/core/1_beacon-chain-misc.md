@@ -147,7 +147,10 @@ def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptP
     Processes a ShardReceipt object.
     """
     SHARD_SLOTS_PER_EPOCH = SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH
-    receipt_slot = state.next_shard_receipt_period[receipt_proof.shard] * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD
+    receipt_slot = (
+        state.next_shard_receipt_period[receipt_proof.shard] *
+        SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD
+    )
     first_slot_in_last_crosslink = state.current_crosslinks[receipt_proof.shard].start_epoch * SHARD_SLOTS_PER_EPOCH
     gindex = concat_generalized_indices(
         get_generalized_index_of_crosslink_header(0),
