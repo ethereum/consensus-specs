@@ -73,10 +73,10 @@ We define the following Python custom types for type hinting and readability:
 
 ### Initial values
 
-| Name | Value |
-| - | - |
-| `PHASE_1_FORK_EPOCH` | **TBD** |
-| `PHASE_1_FORK_SLOT` | **TBD** |
+| Name | Value | Unit |
+| - | - | - |
+| `PHASE_1_FORK_EPOCH` | **TBD** | Epoch |
+| `PHASE_1_FORK_SLOT` | **TBD** | Slot |
 
 ### Time parameters
 
@@ -359,7 +359,7 @@ def get_default_shard_state(beacon_state: BeaconState, shard: Shard) -> ShardSta
     return ShardState(
         basefee=1,
         shard=shard,
-        slot=PHASE_1_FORK_SLOT,
+        slot=PHASE_1_FORK_SLOT * SHARD_SLOTS_PER_BEACON_SLOT,
         earlier_committee_rewards=[REWARD_COEFFICIENT_BASE for _ in range(len(earlier_committee))],
         later_committee_rewards=[REWARD_COEFFICIENT_BASE for _ in range(len(later_committee))],
         earlier_committee_fees=[Gwei(0) for _ in range(len(earlier_committee))],
