@@ -86,7 +86,7 @@ def unpack_compact_validator(compact_validator: CompactValidator) -> Tuple[Valid
     """
     return (
         ValidatorIndex(compact_validator >> 16),
-        (compact_validator >> 15) % 2,
+        (compact_validator >> 15) % 2 == 0,
         uint64(compact_validator & (2**15 - 1)),
     )
 ```
