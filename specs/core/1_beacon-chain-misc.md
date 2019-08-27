@@ -189,7 +189,7 @@ class BeaconState(Container):
 ```
 
 `period_committee_roots` values are initialized to `Bytes32()` (empty bytes value).
-`next_shard_receipt_period` values are initialized to `PHASE_1_FORK_SLOT // SLOTS_PER_EPOCH // EPOCHS_PER_SHARD_PERIOD`.
+`next_shard_receipt_period` values are initialized to `compute_epoch_of_shard_slot(PHASE_1_FORK_SLOT) // EPOCHS_PER_SHARD_PERIOD`.
 
 #### `BeaconBlockBody`
 
