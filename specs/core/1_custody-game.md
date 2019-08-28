@@ -310,7 +310,7 @@ def get_custody_chunk_count(crosslink: Crosslink) -> int:
 Returns the Legendre symbol `(a/q)` normalizes as a bit (i.e. `((a/q) + 1) // 2`). In a production implementation, a well-optimized library (e.g. GMP) should be used for this.
 
 ```python
-def legendre_bit(a: int, q: int) -> int:
+def legendre_bit(a: int, q: int) -> bool:
     if a >= q:
         return legendre_bit(a % q, q)
     if a == 0:
@@ -350,10 +350,10 @@ def custody_subchunkify(bytez: bytes) -> list:
 Compute the polynomial universal hash function of a block sequence.
 
 ```python
-def get_polynomial_uhf(subchunks: list, key: int) -> list:
+def get_polynomial_uhf(subchunks: list, key: int) -> int:
     r = key
-    for subchunk in subchunks:
-        r *= (r + int.from_bytes(subchunk, 'little')) % BLS12_381_Q
+    for subchunk in reversed(subchunks):
+        r *= (key + int.from_bytes(subchunk, 'little')) % BLS12_381_Q
     return r
 ```
 
@@ -362,7 +362,7 @@ def get_polynomial_uhf(subchunks: list, key: int) -> list:
 Compute the Legendre PRF of an integer input
 
 ```python
-def get_legendre_prf(data: int, key: int) -> bit:
+def get_legendre_prf(data: int, key: int) -> bool:
     return legendre_bit(key + data, BLS12_381_Q)
 ```
 
@@ -382,7 +382,7 @@ def get_custody_chunk_bit(key: BLSSignature, chunk: bytes, index: int) -> bool:
 ### `get_chunk_bits_root`
 
 ```python
-def get_chunk_bits_root(key: BLSSignature, chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]) -> bit:
+def get_chunk_bits_root(key: BLSSignature, chunk_bits: Bitlist[MAX_CUSTODY_CHUNKS]) -> bool:
     bytez = b''
     current_byte = 0
     for i, b in enumerate(chunk_bits):
@@ -742,7 +742,7 @@ def process_bit_challenge_response(state: BeaconState,
         mixin=challenge.chunk_count,
     )
     # Verify the chunk bit does not match the challenge chunk bit
-    assert (get_custody_chunk_bit(challenge.responder_key, response.chunk)
+    assert (get_custody_chunk_bit(challenge.responder_key, response.chunk, response.chunk_index)
             != response.chunk_bits_leaf[response.chunk_index % 256])
     # Clear the challenge
     records = state.custody_bit_challenge_records

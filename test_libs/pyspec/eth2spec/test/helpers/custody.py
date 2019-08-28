@@ -130,11 +130,11 @@ def get_valid_custody_response(spec, state, bit_challenge, custody_data, challen
     chunks = custody_chunkify(spec, custody_data)
 
     chunk_index = len(chunks) - 1
-    chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index])
+    chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index], chunk_index)
 
     while chunk_bit == bit_challenge.chunk_bits[chunk_index] ^ invalid_chunk_bit:
         chunk_index -= 1
-        chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index])
+        chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index], chunk_index)
 
     chunks_hash_tree_roots = [hash_tree_root(BytesN[spec.BYTES_PER_CUSTODY_CHUNK](chunk)) for chunk in chunks]
     chunks_hash_tree_roots += [
