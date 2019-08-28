@@ -68,6 +68,7 @@
             - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
         - [Misc](#misc-1)
             - [`compute_shuffled_index`](#compute_shuffled_index)
+            - [`compute_proposer_index`](#compute_proposer_index)
             - [`compute_committee`](#compute_committee)
             - [`compute_epoch_of_slot`](#compute_epoch_of_slot)
             - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
@@ -729,6 +730,25 @@ def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Has
     return ValidatorIndex(index)
 ```
 
+#### `compute_proposer_index`
+
+```python
+def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Hash) -> ValidatorIndex:
+    """
+    Return from ``indices`` a random index sampled by effective balance.
+    """
+    assert len(indices) > 0
+    MAX_RANDOM_BYTE = 2**8 - 1
+    i = 0
+    while True:
+        candidate_index = indices[compute_shuffled_index(ValidatorIndex(i % len(indices)), len(indices), seed)]
+        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
+            return ValidatorIndex(candidate_index)
+        i += 1
+```
+
 #### `compute_committee`
 
 ```python
@@ -934,17 +954,9 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
-    indices = get_active_validator_indices(state, epoch)
     seed = hash(get_seed(state, epoch) + int_to_bytes(state.slot, length=8))
-    MAX_RANDOM_BYTE = 2**8 - 1
-    i = 0
-    while True:
-        candidate_index = indices[compute_shuffled_index(ValidatorIndex(i % len(indices)), len(indices), seed)]
-        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
-        effective_balance = state.validators[candidate_index].effective_balance
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-            return ValidatorIndex(candidate_index)
-        i += 1
+    indices = get_active_validator_indices(state, epoch)
+    return compute_proposer_index(state, indices, seed)
 ```
 
 #### `get_attestation_data_slot`
