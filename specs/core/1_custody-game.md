@@ -314,24 +314,24 @@ def legendre_bit(a: int, q: int) -> bool:
     if a >= q:
         return legendre_bit(a % q, q)
     if a == 0:
-        return 0 
+        return True
     assert(q > a > 0 and q % 2 == 1)
-    t = 1
+    t = True
     n = q
     while a != 0:
         while a % 2 == 0:
             a //= 2
             r = n % 8
             if r == 3 or r == 5:
-                t = -t
+                t = not t
         a, n = n, a
         if a % 4 == n % 4 == 3:
-            t = -t
+            t = not t
         a %= n
     if n == 1:
-        return (t + 1) // 2
+        return t
     else:
-        return 0
+        return True
 ```
 
 ### ```custody_subchunkify```
