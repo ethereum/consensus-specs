@@ -778,7 +778,14 @@ def after_process_final_updates(state: BeaconState) -> None:
         [record.challenger_index for record in records] + [record.responder_index for record in records]
     )
     for index, validator in enumerate(state.validators):
-        if index not in validator_indices_in_records:
-            if validator.exit_epoch != FAR_FUTURE_EPOCH and validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
-                validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+        if validator.exit_epoch != FAR_FUTURE_EPOCH:
+            if (index in validator_indices_in_records 
+                    or validator.next_custody_secret_to_reveal 
+                    <= get_custody_period_for_validator(state, ValidatorIndex(index), validator.exit_epoch)):
+                # Delay withdrawable epochs if challenge records are not empty
+                validator.withdrawable_epoch = FAR_FUTURE_EPOCH
+            else:
+                # Reset withdrawable epochs if challenge records are empty
+                if validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
+                    validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
 ```
