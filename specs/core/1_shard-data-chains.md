@@ -24,15 +24,11 @@
         - [`ShardBlockHeaderData`](#shardblockheaderdata)
         - [`ShardBlockHeader`](#shardblockheader)
         - [`ShardState`](#shardstate)
-        - [`ShardReceipt`](#shardreceipt)
         - [`ShardCheckpoint`](#shardcheckpoint)
     - [Helper functions](#helper-functions)
         - [Misc](#misc-1)
-            - [`compute_padded_data`](#compute_padded_data)
             - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
             - [`compute_shard_period_start_epoch`](#compute_shard_period_start_epoch)
-            - [`compute_flat_shard_header`](#compute_flat_shard_header)
-            - [`compute_crosslink_data_root`](#compute_crosslink_data_root)
         - [Beacon state accessors](#beacon-state-accessors)
             - [`get_period_committee`](#get_period_committee)
             - [`get_shard_committee`](#get_shard_committee)
@@ -167,23 +163,13 @@ class ShardState(Container):
     slot: ShardSlot
     history_accumulator: Vector[Hash, HISTORY_ACCUMULATOR_VECTOR]
     latest_block_header_data: ShardBlockHeader
-    receipt_root: Hash
     block_size_sum: uint64
-    # Rewards and fees
+    # Fees and rewards
     block_size_price: Gwei
-    older_committee_rewards: List[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
-    newer_committee_rewards: List[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
     older_committee_fees: List[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
     newer_committee_fees: List[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
-```
-
-### `ShardReceipt`
-
-```python
-class ShardReceipt(Container):
-    index: ValidatorIndex
-    rewards: Gwei
-    fees: Gwei
+    older_committee_rewards: List[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
+    newer_committee_rewards: List[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
 ```
 
 ### `ShardCheckpoint`
@@ -198,14 +184,6 @@ class ShardCheckpoint(Container):
 
 ### Misc
 
-#### `compute_padded_data`
-
-```python
-def compute_padded_data(data: bytes, length: uint64) -> bytes:
-    assert len(data) <= length
-    return data + b'\x00' * (length - len(data))
-```
-
 #### `compute_epoch_of_shard_slot`
 
 ```python
@@ -218,40 +196,6 @@ def compute_epoch_of_shard_slot(slot: ShardSlot) -> Epoch:
 ```python
 def compute_shard_period_start_epoch(epoch: Epoch, lookback: uint64) -> Epoch:
     return Epoch(epoch - (epoch % EPOCHS_PER_SHARD_PERIOD) - lookback * EPOCHS_PER_SHARD_PERIOD)
-```
-
-#### `compute_flat_shard_header`
-
-```python
-def compute_flat_shard_header(block: ShardBlock) -> Bytes[SHARD_HEADER_SIZE]:
-    """
-    Return a flat serialisation of the ``block`` header, preserving hash tree root.
-    """
-    data = block.data
-    return (
-        # Left half of the hash tree
-        compute_padded_data(int_to_bytes(data.slot, length=8), 32) +
-        data.beacon_block_root +
-        data.parent_root +
-        hash_tree_root(data.body) +
-        data.state_root +
-        compute_padded_data(int_to_bytes(data.block_size_sum, length=8), 32) +
-        bytes([sum([data.aggregation_bits[i + j] << j for j in range(8)]) for i in range(0, 256, 8)]) +
-        Bytes32() +  # Padding
-        # Right half of the hash tree
-        compute_padded_data(block.signatures.attesters, 128) +
-        compute_padded_data(block.signatures.proposer, 128)
-    )
-```
-
-#### `compute_crosslink_data_root`
-
-```python
-def compute_crosslink_data_root(blocks: Sequence[ShardBlock]) -> Hash:
-    headers = b''.join([compute_flat_shard_header(block) for block in blocks])
-    bodies = b''.join([block.data.body for block in blocks])
-    MAX_SIZE = MAX_EPOCHS_PER_CROSSLINK * SHARD_SLOTS_PER_EPOCH * SHARD_BLOCK_SIZE_LIMIT
-    return hash_tree_root(BytesN[MAX_SIZE](compute_padded_data(headers + bodies, MAX_SIZE)))
 ```
 
 ### Beacon state accessors
@@ -338,11 +282,10 @@ def get_genesis_shard_state(state: BeaconState, shard: Shard) -> ShardState:
 
 ```python
 def get_genesis_shard_block(state: BeaconState, shard: Shard) -> ShardBlock:
-    genesis_state = get_genesis_shard_state(state, shard)
     return ShardBlock(data=ShardBlockData(
         shard=shard,
         slot=ShardSlot(SHARD_GENESIS_EPOCH * SHARD_SLOTS_PER_EPOCH),
-        state_root=hash_tree_root(genesis_state),
+        state_root=hash_tree_root(get_genesis_shard_state(state, shard)),
     ))
 ```
 
@@ -392,15 +335,9 @@ def process_shard_slot(state: BeaconState, shard_state: ShardState) -> None:
 
 ```python
 def process_shard_period(shard_state: ShardState, state: BeaconState) -> None:
-    epoch = compute_epoch_of_shard_slot(state.slot)
-    older_committee = get_period_committee(state, state.shard, compute_shard_period_start_epoch(epoch, 2))
-    newer_committee = get_period_committee(state, state.shard, compute_shard_period_start_epoch(epoch, 1))
-    # Compute receipt root for older committee
-    state.receipt_root = hash_tree_root(List[ShardReceipt, MAX_PERIOD_COMMITTEE_SIZE]([
-        ShardReceipt(validator_index, state.older_committee_rewards[i], state.older_committee_fees[i])
-        for i, validator_index in enumerate(older_committee)
-    ]))
     # Rotate rewards and fees
+    epoch = compute_epoch_of_shard_slot(state.slot)
+    newer_committee = get_period_committee(state, state.shard, compute_shard_period_start_epoch(epoch, 1))
     state.older_committee_rewards = state.newer_committee_rewards
     state.newer_committee_rewards = [Gwei(0) for _ in range(len(newer_committee))]
     state.older_committee_fees = state.newer_committee_fees
@@ -443,7 +380,9 @@ def process_shard_block_header(state: BeaconState, shard_state: ShardState, bloc
     pubkey = state.validators[proposer_index].pubkey
     domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(data.slot))
     assert bls_verify(pubkey, hash_tree_root(block.data), block.signatures.proposer, domain)
-    # Verify total body bytes count
+    # Verify body size is a multiple of the header size
+    assert len(data.body) % SHARD_HEADER_SIZE == 0
+    # Verify the sum of the block sizes since genesis
     state.block_size_sum += SHARD_HEADER_SIZE + len(data.body)
     assert data.block_size_sum == state.block_size_sum
 ```
