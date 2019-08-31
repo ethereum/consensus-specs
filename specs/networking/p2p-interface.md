@@ -310,7 +310,7 @@ The [SimpleSerialize (SSZ) specification](../simple-serialize.md) outlines how o
 
 **Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST prefix all encoded and compressed (if applicable) payloads with an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
-*Note*: Parameters defined as `[]VariableName` are SSZ-encoded containerless vectors.
+*Note*: Parameters defined as `[]VariableName` are SSZ-encoded lists of max size `SSZ_MAX_LIST_SIZE`.
 
 ### Messages
 
