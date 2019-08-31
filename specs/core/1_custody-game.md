@@ -420,12 +420,13 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     revealer = state.validators[reveal.revealer_index]
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
     revealer_current_custody_period = get_custody_period_for_validator(state, reveal.revealer_index)
+    revealer_exit_custody_period = get_custody_period_for_validator(state, reveal.revealer_index, revealer.exit_epoch)
 
     # Only past custody periods can be revealed, except after exiting the current 
     # period can be revealed
     assert (revealer.next_custody_secret_to_reveal < revealer_current_custody_period 
             or (revealer.exit_epoch <= get_current_epoch(state) and 
-                revealer.next_custody_secret_to_reveal <= revealer_current_custody_period))
+                revealer.next_custody_secret_to_reveal <= revealer_exit_custody_period))
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -455,7 +456,7 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
         )
 
     # Process reveal
-    if revealer.next_custody_secret_to_reveal == revealer_current_custody_period:
+    if revealer.next_custody_secret_to_reveal == revealer_exit_custody_period:
         revealer.all_custody_secrets_revealed_epoch = get_current_epoch(state)
 
     revealer.next_custody_secret_to_reveal += 1
