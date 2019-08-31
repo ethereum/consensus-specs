@@ -241,6 +241,7 @@ class Validator(Container):
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
     next_custody_secret_to_reveal: uint64
+    all_custody_secrets_revealed_epoch: Epoch
     max_reveal_lateness: Epoch
 ```
 
@@ -418,8 +419,13 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     """
     revealer = state.validators[reveal.revealer_index]
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
+    revealer_current_custody_period = get_custody_period_for_validator(state, reveal.revealer_index)
 
-    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(state, reveal.revealer_index)
+    # Only past custody periods can be revealed, except after exiting the current 
+    # period can be revealed
+    assert (revealer.next_custody_secret_to_reveal < revealer_current_custody_period 
+            or (revealer.exit_epoch <= get_current_epoch(state) and 
+                revealer.next_custody_secret_to_reveal <= revealer_current_custody_period))
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -449,6 +455,9 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
         )
 
     # Process reveal
+    if revealer.next_custody_secret_to_reveal == revealer_current_custody_period:
+        revealer.all_custody_secrets_revealed_epoch = get_current_epoch(state)
+
     revealer.next_custody_secret_to_reveal += 1
 
     # Reward Block Preposer
@@ -477,7 +486,8 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
 
     assert reveal.epoch >= get_current_epoch(state) + RANDAO_PENALTY_EPOCHS
     assert reveal.epoch < get_current_epoch(state) + EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    assert not revealed_validator.slashed
+    assert is_slashable_validator(revealed_validator, get_current_epoch(state))
+    assert get_current_epoch(state) < revealed_validator.exit_epoch 
     assert reveal.revealed_index not in state.exposed_derived_secrets[derived_secret_location]
 
     # Verify signature correctness
@@ -780,12 +790,24 @@ def after_process_final_updates(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         if validator.exit_epoch != FAR_FUTURE_EPOCH:
             if (index in validator_indices_in_records 
-                    or validator.next_custody_secret_to_reveal 
-                    <= get_custody_period_for_validator(state, ValidatorIndex(index), validator.exit_epoch)):
-                # Delay withdrawable epochs if challenge records are not empty
+                    or validator.all_custody_secrets_revealed_epoch == FAR_FUTURE_EPOCH):
+                # Delay withdrawable epochs if challenge records are not empty or not all
+                # custody secrets revealed
                 validator.withdrawable_epoch = FAR_FUTURE_EPOCH
             else:
                 # Reset withdrawable epochs if challenge records are empty
                 if validator.withdrawable_epoch == FAR_FUTURE_EPOCH:
-                    validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+                    validator.withdrawable_epoch = Epoch(validator.all_custody_secrets_revealed_epoch
+                                                         + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+```
+
+## Additional validator initialization parameters
+
+```python
+# begin insert @additional_validator_init_params
+            next_custody_secret_to_reveal=get_custody_period_for_validator(
+                state, ValidatorIndex(len(state.validators))),
+            all_custody_secrets_revealed_epoch=FAR_FUTURE_EPOCH,
+            max_reveal_lateness=0,
+# end insert @additional_validator_init_params
 ```

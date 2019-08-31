@@ -1670,6 +1670,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             exit_epoch=FAR_FUTURE_EPOCH,
             withdrawable_epoch=FAR_FUTURE_EPOCH,
             effective_balance=min(amount - amount % EFFECTIVE_BALANCE_INCREMENT, MAX_EFFECTIVE_BALANCE),
+            # @additional_validator_init_params
         ))
         state.balances.append(amount)
     else:
