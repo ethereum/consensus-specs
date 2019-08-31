@@ -251,7 +251,8 @@ class Validator(Container):
 class BeaconState(Container):
     custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, PLACEHOLDER]
     custody_bit_challenge_records: List[CustodyBitChallengeRecord, PLACEHOLDER]
-    custody_challenge_index: uint64
+    custody_chunk_challenge_index: uint64
+    custody_bit_challenge_index: uint64
 
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
@@ -556,10 +557,11 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Verify the attestation
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge
-    assert (compute_epoch_of_slot(challenge.attestation.data.slot)
-            >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY)
+    assert (challenge.attestation.data.target.epoch + MAX_CHUNK_CHALLENGE_DELAY
+            >= get_current_epoch(state))
     responder = state.validators[challenge.responder_index]
-    assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
+    assert (responder.exit_epoch == FAR_FUTURE_EPOCH 
+            or + MAX_CHUNK_CHALLENGE_DELAY >= get_current_epoch(state))
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bits)
     assert challenge.responder_index in attesters
@@ -574,7 +576,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     assert challenge.chunk_index < 2**depth
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
-        challenge_index=state.custody_challenge_index,
+        challenge_index=state.custody_chunk_challenge_index,
         challenger_index=get_beacon_proposer_index(state),
         responder_index=challenge.responder_index,
         inclusion_epoch=get_current_epoch(state),
@@ -584,7 +586,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     )
     replace_empty_or_append(state.custody_chunk_challenge_records, new_record)
 
-    state.custody_challenge_index += 1
+    state.custody_chunk_challenge_index += 1
     # Postpone responder withdrawability
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
@@ -638,7 +640,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     assert custody_bit != get_chunk_bits_root(challenge.chunk_bits)
     # Add new bit challenge record
     new_record = CustodyBitChallengeRecord(
-        challenge_index=state.custody_challenge_index,
+        challenge_index=state.custody_bit_challenge_index,
         challenger_index=challenge.challenger_index,
         responder_index=challenge.responder_index,
         inclusion_epoch=get_current_epoch(state),
@@ -648,7 +650,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
         responder_key=challenge.responder_key,
     )
     replace_empty_or_append(state.custody_bit_challenge_records, new_record)
-    state.custody_challenge_index += 1
+    state.custody_bit_challenge_index += 1
     # Postpone responder withdrawability
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH
 ```
@@ -681,9 +683,7 @@ def process_chunk_challenge_response(state: BeaconState,
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
     # Verify bit challenge data is null
-    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Hash()
-    # Verify minimum delay
-    assert get_current_epoch(state) >= challenge.inclusion_epoch + ACTIVATION_EXIT_DELAY
+    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Bitvector[256]()
     # Verify the chunk matches the crosslink data root
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),

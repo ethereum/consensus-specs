@@ -1,6 +1,6 @@
 from eth2spec.test.helpers.custody import (
     get_valid_bit_challenge,
-    get_valid_custody_response,
+    get_valid_custody_bit_response,
     get_custody_test_vector,
     get_custody_merkle_root
 )
@@ -36,11 +36,11 @@ def run_bit_challenge_processing(spec, state, custody_bit_challenge, valid=True)
 
     spec.process_bit_challenge(state, custody_bit_challenge)
 
-    assert state.custody_bit_challenge_records[state.custody_challenge_index - 1].chunk_bits_merkle_root == \
+    assert state.custody_bit_challenge_records[state.custody_bit_challenge_index - 1].chunk_bits_merkle_root == \
         hash_tree_root(custody_bit_challenge.chunk_bits)
-    assert state.custody_bit_challenge_records[state.custody_challenge_index - 1].challenger_index == \
+    assert state.custody_bit_challenge_records[state.custody_bit_challenge_index - 1].challenger_index == \
         custody_bit_challenge.challenger_index
-    assert state.custody_bit_challenge_records[state.custody_challenge_index - 1].responder_index == \
+    assert state.custody_bit_challenge_records[state.custody_bit_challenge_index - 1].responder_index == \
         custody_bit_challenge.responder_index
 
     yield 'post', state
@@ -62,7 +62,6 @@ def run_custody_response_processing(spec, state, custody_response, valid=True):
         yield 'post', None
         return
 
-    # TODO: Add capability to also process chunk challenges, not only bit challenges
     challenge = state.custody_bit_challenge_records[custody_response.challenge_index]
     pre_slashed_balance = get_balance(state, challenge.challenger_index)
 
@@ -285,9 +284,9 @@ def test_custody_response(spec, state):
 
     _, _, _ = run_bit_challenge_processing(spec, state, challenge)
 
-    bit_challenge_index = state.custody_challenge_index - 1
+    bit_challenge_index = state.custody_bit_challenge_index - 1
 
-    custody_response = get_valid_custody_response(spec, state, challenge, test_vector, bit_challenge_index)
+    custody_response = get_valid_custody_bit_response(spec, state, challenge, test_vector, bit_challenge_index)
 
     yield from run_custody_response_processing(spec, state, custody_response)
 
@@ -314,9 +313,9 @@ def test_custody_response_multiple_epochs(spec, state):
 
     _, _, _ = run_bit_challenge_processing(spec, state, challenge)
 
-    bit_challenge_index = state.custody_challenge_index - 1
+    bit_challenge_index = state.custody_bit_challenge_index - 1
 
-    custody_response = get_valid_custody_response(spec, state, challenge, test_vector, bit_challenge_index)
+    custody_response = get_valid_custody_bit_response(spec, state, challenge, test_vector, bit_challenge_index)
 
     yield from run_custody_response_processing(spec, state, custody_response)
 
@@ -343,8 +342,8 @@ def test_custody_response_many_epochs(spec, state):
 
     _, _, _ = run_bit_challenge_processing(spec, state, challenge)
 
-    bit_challenge_index = state.custody_challenge_index - 1
+    bit_challenge_index = state.custody_bit_challenge_index - 1
 
-    custody_response = get_valid_custody_response(spec, state, challenge, test_vector, bit_challenge_index)
+    custody_response = get_valid_custody_bit_response(spec, state, challenge, test_vector, bit_challenge_index)
 
     yield from run_custody_response_processing(spec, state, custody_response)
