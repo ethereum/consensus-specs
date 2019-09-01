@@ -150,6 +150,7 @@ def objects_to_spec(functions: Dict[str, str],
                     ssz_objects: Dict[str, str],
                     inserts: Dict[str, str],
                     imports: Dict[str, str],
+                    phase: str,
                     ) -> str:
     """
     Given all the objects that constitute a spec, combine them into a single pyfile.
@@ -189,6 +190,7 @@ def objects_to_spec(functions: Dict[str, str],
         + '\n\n' + functions_spec
         + '\n' + SUNDRY_FUNCTIONS
         + '\n\n' + ssz_objects_reinitialization_spec
+        + '\n\n\n' + 'SPEC_PHASE = "' + phase + '"'
         + '\n'
     )
     # Handle @inserts
@@ -282,7 +284,7 @@ def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
     spec_objects = phase0_spec
     for value in [fork_choice_spec, v_guide]:
         spec_objects = combine_spec_objects(spec_objects, value)
-    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS)
+    spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS, 'phase0')
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)
@@ -308,7 +310,7 @@ def build_phase1_spec(phase0_sourcefile: str,
     spec_objects = all_spescs[0]
     for value in all_spescs[1:]:
         spec_objects = combine_spec_objects(spec_objects, value)
-    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
+    spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS, 'phase1')
     if outfile is not None:
         with open(outfile, 'w') as out:
             out.write(spec)

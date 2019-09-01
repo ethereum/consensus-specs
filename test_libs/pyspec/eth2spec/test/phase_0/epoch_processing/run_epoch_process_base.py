@@ -8,7 +8,7 @@ process_calls = [
     'process_challenge_deadlines',
     'process_slashings',
     'process_final_updates',
-    'after_process_final_updates',
+    'process_related_custody_updates',
 ]
 
 

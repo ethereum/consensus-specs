@@ -421,13 +421,13 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     revealer = state.validators[reveal.revealer_index]
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
     revealer_current_custody_period = get_custody_period_for_validator(state, reveal.revealer_index)
-    revealer_exit_custody_period = get_custody_period_for_validator(state, reveal.revealer_index, revealer.exit_epoch)
 
-    # Only past custody periods can be revealed, except after exiting the current 
+    # Only past custody periods can be revealed, except after exiting the exit 
     # period can be revealed
     assert (revealer.next_custody_secret_to_reveal < revealer_current_custody_period 
             or (revealer.exit_epoch <= get_current_epoch(state) and 
-                revealer.next_custody_secret_to_reveal <= revealer_exit_custody_period))
+                revealer.next_custody_secret_to_reveal
+                <= get_custody_period_for_validator(state, reveal.revealer_index, revealer.exit_epoch - 1)))
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -457,7 +457,9 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
         )
 
     # Process reveal
-    if revealer.next_custody_secret_to_reveal == revealer_exit_custody_period:
+    if (revealer.exit_epoch <= get_current_epoch(state) and 
+            revealer.next_custody_secret_to_reveal
+            == get_custody_period_for_validator(state, reveal.revealer_index, revealer.exit_epoch - 1)):
         revealer.all_custody_secrets_revealed_epoch = get_current_epoch(state)
 
     revealer.next_custody_secret_to_reveal += 1
@@ -777,9 +779,9 @@ Append this to `process_final_updates(state)`:
 
 ```python
 # begin insert @after_process_final_updates
-    after_process_final_updates(state)
+    process_final_custody_updates(state)
 # end insert @after_process_final_updates
-def after_process_final_updates(state: BeaconState) -> None:
+def process_final_custody_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []

@@ -1,19 +1,34 @@
 from eth2spec.test.helpers.keys import pubkeys
 
 
-def build_mock_validator(spec, i: int, balance: int):
+def build_mock_validator(spec, state, i: int, balance: int):
     pubkey = pubkeys[i]
     # insecurely use pubkey as withdrawal key as well
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(pubkey)[1:]
-    return spec.Validator(
-        pubkey=pubkeys[i],
-        withdrawal_credentials=withdrawal_credentials,
-        activation_eligibility_epoch=spec.FAR_FUTURE_EPOCH,
-        activation_epoch=spec.FAR_FUTURE_EPOCH,
-        exit_epoch=spec.FAR_FUTURE_EPOCH,
-        withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-        effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE)
-    )
+    if spec.SPEC_PHASE == 'phase0':
+        return spec.Validator(
+            pubkey=pubkeys[i],
+            withdrawal_credentials=withdrawal_credentials,
+            activation_eligibility_epoch=spec.FAR_FUTURE_EPOCH,
+            activation_epoch=spec.FAR_FUTURE_EPOCH,
+            exit_epoch=spec.FAR_FUTURE_EPOCH,
+            withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
+            effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE),
+        )
+    else:
+        return spec.Validator(
+            pubkey=pubkeys[i],
+            withdrawal_credentials=withdrawal_credentials,
+            activation_eligibility_epoch=spec.FAR_FUTURE_EPOCH,
+            activation_epoch=spec.FAR_FUTURE_EPOCH,
+            exit_epoch=spec.FAR_FUTURE_EPOCH,
+            withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
+            effective_balance=min(balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE),
+            next_custody_secret_to_reveal=spec.get_custody_period_for_validator(
+                state, spec.ValidatorIndex(i)),
+            all_custody_secrets_revealed_epoch=spec.FAR_FUTURE_EPOCH,
+            max_reveal_lateness=0,
+        )
 
 
 def create_genesis_state(spec, num_validators):
@@ -33,7 +48,7 @@ def create_genesis_state(spec, num_validators):
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
     state.balances = [spec.MAX_EFFECTIVE_BALANCE] * num_validators
-    state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
+    state.validators = [build_mock_validator(spec, state, i, state.balances[i]) for i in range(num_validators)]
 
     # Process genesis activations
     for validator in state.validators:
