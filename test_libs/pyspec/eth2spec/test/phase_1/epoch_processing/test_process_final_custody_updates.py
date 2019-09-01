@@ -8,7 +8,7 @@ from eth2spec.test.helpers.custody import (
     get_custody_merkle_root,
 )
 from eth2spec.test.helpers.attestations import (
-   get_valid_attestation,
+    get_valid_attestation,
 )
 # from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.test.helpers.state import next_epoch  # , get_balance
