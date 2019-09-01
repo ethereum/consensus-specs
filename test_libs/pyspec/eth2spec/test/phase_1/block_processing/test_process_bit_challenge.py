@@ -2,7 +2,7 @@ from eth2spec.test.helpers.custody import (
     get_valid_bit_challenge,
     get_valid_custody_bit_response,
     get_custody_test_vector,
-    get_custody_merkle_root
+    get_custody_merkle_root,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
