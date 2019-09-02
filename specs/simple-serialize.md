@@ -228,7 +228,7 @@ for element in elements:
     child = flatten(element)
     # Pad output to a multiple of the length of the child, then add the child
     output += b'\x00' * (-len(output) % len(child)) + child
-return output
+return pad_to_power_of_2(output)
 ```
 
 `pad_to_power_of_2` simply zero-bytes to the right end of a `bytes` value to increase its size to the next power of two (leaving the value unchanged if its length is a power of two already).
