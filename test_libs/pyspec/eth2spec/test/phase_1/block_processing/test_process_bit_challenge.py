@@ -46,7 +46,7 @@ def run_bit_challenge_processing(spec, state, custody_bit_challenge, valid=True)
     yield 'post', state
 
 
-def run_custody_response_processing(spec, state, custody_response, valid=True):
+def run_custody_bit_response_processing(spec, state, custody_response, valid=True):
     """
     Run ``process_bit_challenge_response``, yielding:
       - pre-state ('pre')
@@ -288,7 +288,7 @@ def test_custody_response(spec, state):
 
     custody_response = get_valid_custody_bit_response(spec, state, challenge, test_vector, bit_challenge_index)
 
-    yield from run_custody_response_processing(spec, state, custody_response)
+    yield from run_custody_bit_response_processing(spec, state, custody_response)
 
 
 @with_all_phases_except(['phase0'])
@@ -317,7 +317,7 @@ def test_custody_response_multiple_epochs(spec, state):
 
     custody_response = get_valid_custody_bit_response(spec, state, challenge, test_vector, bit_challenge_index)
 
-    yield from run_custody_response_processing(spec, state, custody_response)
+    yield from run_custody_bit_response_processing(spec, state, custody_response)
 
 
 @with_all_phases_except(['phase0'])
@@ -346,4 +346,4 @@ def test_custody_response_many_epochs(spec, state):
 
     custody_response = get_valid_custody_bit_response(spec, state, challenge, test_vector, bit_challenge_index)
 
-    yield from run_custody_response_processing(spec, state, custody_response)
+    yield from run_custody_bit_response_processing(spec, state, custody_response)

@@ -563,7 +563,9 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
             >= get_current_epoch(state))
     responder = state.validators[challenge.responder_index]
     assert (responder.exit_epoch == FAR_FUTURE_EPOCH 
-            or + MAX_CHUNK_CHALLENGE_DELAY >= get_current_epoch(state))
+            or responder.exit_epoch + MAX_CHUNK_CHALLENGE_DELAY >= get_current_epoch(state))
+    # Verify responder is slashable
+    assert is_slashable_validator(responder, get_current_epoch(state))
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, challenge.attestation.data, challenge.attestation.aggregation_bits)
     assert challenge.responder_index in attesters
@@ -620,6 +622,8 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
         challenge.responder_index
     ) + 2 * EPOCHS_PER_CUSTODY_PERIOD + responder.max_reveal_lateness
 
+    # Verify responder is slashable
+    assert is_slashable_validator(responder, get_current_epoch(state))
     # Verify the responder participated in the attestation
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
     assert challenge.responder_index in attesters
