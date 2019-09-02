@@ -52,6 +52,7 @@
             - [Custody responses](#custody-responses)
     - [Per-epoch processing](#per-epoch-processing)
         - [Handling of custody-related deadlines](#handling-of-custody-related-deadlines)
+    - [Additional validator initialization parameters](#additional-validator-initialization-parameters)
 
 <!-- /TOC -->
 
