@@ -123,7 +123,7 @@ def test_validator_withdrawal_suspend_after_bit_challenge(spec, state):
 
     yield from run_process_final_custody_updates(spec, state)
 
-    assert state.validators[0].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+    assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases_except(['phase0'])
@@ -179,7 +179,7 @@ def test_validator_withdrawal_suspend_after_chunk_challenge(spec, state):
 
     yield from run_process_final_custody_updates(spec, state)
 
-    assert state.validators[0].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+    assert state.validators[validator_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases_except(['phase0'])
