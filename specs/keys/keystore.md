@@ -1,6 +1,6 @@
 # Keystores
 
-A keystore is a JSON file which store an encrypted version of a user's private key. It is designed to be an easy-to-implement format for storing and exchanging keys. Furthermore, this specification is designed to utilize as few crypto-constructions and make a minimal number of security assumptions
+A keystore is a JSON file which stores an encrypted version of a user's private key. It is designed to be an easy-to-implement format for storing and exchanging keys. Furthermore, this specification is designed to utilize as few crypto-constructions and make a minimal number of security assumptions.
 
 ![Keystore Diagram](./keystore.png)
 
@@ -9,7 +9,7 @@ A keystore is a JSON file which store an encrypted version of a user's private k
 Private key is obtained by taking the bitwise XOR of the `ciphertext` and the `derived_key`. The `derived_key` is obtained by running scrypt with the user-provided password and the `scryptparams` obtained from within the keystore file as parameters. If a keystore file is being generated for the first time, the `salt` KDF parameter must be obtained from a CSPRNG. The `ciphertext` is simply read from the keystore file. The length of the `ciphertext` and the output key length of scrypt.
 
 ```python
-def decrypt_keystore(password, dklen, n, p, r, salt, ciphertext) -> bytes
+def decrypt_keystore(password, dklen, n, p, r, salt, ciphertext) -> bytes:
     assert len(ciphertext) == dklen
     derived_key = scrypt(password, dklen, n, p, r, salt)
     return bytes(a ^ b for a, b in zip(derived_key, ciphertext))

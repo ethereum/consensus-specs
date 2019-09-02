@@ -32,4 +32,4 @@ Account is a (hardened) field that provides the ability for a user to have disti
 
 ### Other
 
-This level is designed to provide a set of related (and co-derivable given the chain-code) keys that can be used for any purpose. It is required to support this level in the tree, although, for many purposes it will remain `0 '`. Additionally, although not recommended, implementors MAY choose to make use of non-hardened keys at this level if their is a specific need for doing so.
+This level is designed to provide a set of related (and co-derivable given the chain-code) keys that can be used for any purpose. It is required to support this level in the tree, although, for many purposes it will remain `0'`. Additionally, although not recommended, implementors MAY choose to make use of non-hardened keys at this level if their is a specific need for doing so.
