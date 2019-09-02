@@ -2,7 +2,7 @@
 
 ## Validator withdrawal and signing keys
 
-A validator's withdrawal and signing keys are elements of the key-tree as described below. They are designed to be stored in [keystore files](./eth2.md) with the idea being that clients need only concern themselves with ingesting a signing-key keystore and that this sufficient for a to launch a validator instance.
+A validator's withdrawal and signing keys are elements of the key-tree as described below. They are designed to be stored in [keystore files](./keystore.md) with the idea being that clients need only concern themselves with ingesting a signing-key keystore and that this sufficient for a to launch a validator instance.
 
 ### Withdrawal keys
 
