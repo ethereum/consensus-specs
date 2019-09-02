@@ -289,18 +289,20 @@ def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
     return spec
 
 
-def build_phase1_spec(phase0_sourcefile: str,
-                      fork_choice_sourcefile: str,
+def build_phase1_spec(phase0_beacon_sourcefile: str,
+                      phase0_fork_choice_sourcefile: str,
+                      merkle_proofs_sourcefile: str,
                       phase1_custody_sourcefile: str,
                       phase1_shard_sourcefile: str,
-                      merkle_proofs_sourcefile: str,
+                      phase1_beacon_misc_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     all_sourcefiles = (
-        phase0_sourcefile,
-        fork_choice_sourcefile,
+        phase0_beacon_sourcefile,
+        phase0_fork_choice_sourcefile,
+        merkle_proofs_sourcefile,
         phase1_custody_sourcefile,
         phase1_shard_sourcefile,
-        merkle_proofs_sourcefile,
+        phase1_beacon_misc_sourcefile,
     )
     all_spescs = [get_spec(spec) for spec in all_sourcefiles]
     for spec in all_spescs:
@@ -327,10 +329,11 @@ If building phase 0:
 If building phase 1:
     1st argument is input /core/0_beacon-chain.md
     2nd argument is input /core/0_fork-choice.md
-    3rd argument is input /core/1_custody-game.md
-    4th argument is input /core/1_shard-data-chains.md
-    5th argument is input /light_client/merkle_proofs.md
-    6th argument is output spec.py
+    3rd argument is input /light_client/merkle_proofs.md
+    4th argument is input /core/1_custody-game.md
+    5th argument is input /core/1_shard-data-chains.md
+    6th argument is input /core/1_beacon-chain-misc.md
+    7th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -343,14 +346,14 @@ If building phase 1:
         else:
             print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
-        if len(args.files) == 6:
+        if len(args.files) == 7:
             build_phase1_spec(*args.files)
         else:
             print(
                 " Phase 1 requires input files as well as an output file:\n"
                 "\t core/phase_0: (0_beacon-chain.md, 0_fork-choice.md)\n"
-                "\t core/phase_1: (1_custody-game.md, 1_shard-data-chains.md)\n"
                 "\t light_client: (merkle_proofs.md)\n"
+                "\t core/phase_1: (1_custody-game.md, 1_shard-data-chains.md, 1_beacon-chain-misc.md)\n"
                 "\t and output.py"
             )
     else:
