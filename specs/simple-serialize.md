@@ -214,6 +214,25 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
 
+## FlatContainers
+
+We create a second type of container called a FlatContainer, which has different Merkelization rules. FlatContainer only supports fixed-size types. `hash_tree_root(value)` for a FlatContainer is always defined via `merkelize(flatten(value))` where `flatten(value)` is defined recursively:
+
+* `pad_to_power_of_2(pack(value))` is `value` is a basic object or a vector of basic objects.
+* `pad_to_power_of_2(bitfield_bytes(value))` if `value` is a bitvector.
+* If the object is a vector of composite objects or a FlatContainer, use the algorithm below, where `elements` is the list of elements if the object is a vector, and an ordered list of its field values if it is a FlatContainer:
+
+```python
+output = b''
+for element in elements:
+    child = flatten(element)
+    # Pad output to a multiple of the length of the child, then add the child
+    output += b'\x00' * (-len(output) % len(child)) + child
+return output
+```
+
+`pad_to_power_of_2` simply zero-bytes to the right end of a `bytes` value to increase its size to the next power of two (leaving the value unchanged if its length is a power of two already).
+
 ## Self-signed containers
 
 Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
