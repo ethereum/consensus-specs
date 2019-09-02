@@ -58,9 +58,9 @@ Keystores provide a common interface for all clients to ingest validator credent
 * There are too many parameters and options in Eth1 keystores
 * Eth1 keystores use Keccak256 which makes them unfriendly to other projects who wish to only rely on SHA256
 
-**Why use scrypt over PBKPRF2?**\
+**Why use scrypt over PBKDF2?**\
 
-scrypt and PBKPRF2 both rely on the security of their underlying hash-function for their safety (SHA256), however scrypt additionally provides memory hardness. The benefit of this is greater ASIC resistance meaning brute-force attacks against scrypt are generally slower and harder.
+scrypt and PBKDF2 both rely on the security of their underlying hash-function for their safety (SHA256), however scrypt additionally provides memory hardness. The benefit of this is greater ASIC resistance meaning brute-force attacks against scrypt are generally slower and harder.
 
 **Why are private keys encoded with Big Endian?**
 
