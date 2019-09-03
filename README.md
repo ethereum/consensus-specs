@@ -1,6 +1,6 @@
 # Ethereum 2.0 Specifications
 
-[![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://discord.gg/hpFs23p](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/hpFs23p) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://github.com/ethereum/wiki/wiki/Sharding-FAQ) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
@@ -20,6 +20,7 @@ Core specifications for Eth 2.0 client validation can be found in [specs/core](s
 ### Phase 1
 * [Custody Game](specs/core/1_custody-game.md)
 * [Shard Data Chains](specs/core/1_shard-data-chains.md)
+* [Misc beacon chain updates](specs/core/1_beacon-chain-misc.md)
 
 ### Phase 2
 
@@ -37,6 +38,14 @@ See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) fo
 * [Beacon node API for validator](specs/validator/0_beacon-node-validator-api.md)
 
 
+## Additional specifications for client implementers
+
+Additional specifications and standards outside of requisite client functionality can be found in the following repos:
+
+* [Eth2.0 APIs](https://github.com/ethereum/eth2.0-apis)
+* [Eth2.0 Metrics](https://github.com/ethereum/eth2.0-metrics/)
+* [Interop Standards in Eth2.0-pm](https://github.com/ethereum/eth2.0-pm/tree/master/interop)
+
 ## Design goals
 
 The following are the broad design goals for Ethereum 2.0:
@@ -47,7 +56,14 @@ The following are the broad design goals for Ethereum 2.0:
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
 
 
+## Useful external resources
+
+* [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
+* [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+
+
 ## For spec contributors
+
 
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](test_generators/README.md)
