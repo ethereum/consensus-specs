@@ -40,7 +40,7 @@
         - [Block processing](#block-processing)
             - [Block header](#block-header)
             - [Attestations](#attestations)
-            - [Block body fee](#block-body-fee)
+            - [Block body](#block-body)
     - [Shard fork choice rule](#shard-fork-choice-rule)
 
 <!-- /TOC -->
@@ -113,8 +113,8 @@ class ShardBlock(FlatContainer):
     state_root: Hash
     block_size_sum: uint64
     body: List[byte, MAX_SHARD_BLOCK_SIZE - SHARD_HEADER_SIZE]
-    attestation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
-    attestation_signature: BLSSignature
+    aggregation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
+    attestations: BLSSignature
     signature: BLSSignature
 ```
 
@@ -128,9 +128,9 @@ class ShardBlockHeader(FlatContainer):
     parent_root: Hash
     state_root: Hash
     block_size_sum: uint64
-    body_root: List[byte, MAX_SHARD_BLOCK_SIZE - SHARD_HEADER_SIZE]
-    attestation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
-    attestation_signature: BLSSignature
+    body_root: Hash
+    aggregation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
+    attestations: BLSSignature
     signature: BLSSignature
 ```
 
@@ -305,19 +305,21 @@ def process_shard_period(state: BeaconState, shard_state: ShardState) -> None:
 def process_shard_block(state: BeaconState, shard_state: ShardState, block: ShardBlock) -> None:
     process_shard_block_header(state, shard_state, block)
     process_shard_attestations(state, shard_state, block)
-    process_shard_block_body_fee(state, shard_state, block)
+    process_shard_block_body(state, shard_state, block)
 ```
 
 #### Block header
 
 ```python
 def process_shard_block_header(state: BeaconState, shard_state: ShardState, block: ShardBlock) -> None:
-    # Verify that the slots match
+    # Verify the shard number
+    assert block.shard == state.shard
+    # Verify the slot number
     assert block.slot == state.slot
-    # Verify that the beacon chain root matches
+    # Verify the beacon chain root
     parent_epoch = compute_epoch_of_shard_slot(state.latest_block_header.slot)
     assert block.beacon_block_root == get_block_root(state, parent_epoch)
-    # Verify that the parent matches
+    # Verify the parent root
     assert block.parent_root == hash_tree_root(state.latest_block_header)
     # Save current block as the new latest block
     state.latest_block_header = ShardBlockHeader(
@@ -328,20 +330,18 @@ def process_shard_block_header(state: BeaconState, shard_state: ShardState, bloc
         # `state_root` is zeroed and overwritten in the next `process_shard_slot` call
         block_size_sum=block.block_size_sum,
         body_root=hash_tree_root(block.body),
-        attestation_bits=block.attestation_bits,
-        attestation_signature=block.attestation_signature,
+        aggregation_bits=block.aggregation_bits,
+        attestations=block.attestations,
         # `signature` is zeroed
     )
+    # Verify the sum of the block sizes since genesis
+    state.block_size_sum += SHARD_HEADER_SIZE + len(block.body)
+    assert block.block_size_sum == state.block_size_sum
     # Verify proposer signature
     proposer_index = get_shard_proposer_index(state, state.shard, block.slot)
     pubkey = state.validators[proposer_index].pubkey
     domain = get_domain(state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
     assert bls_verify(pubkey, hash_tree_root(block.block), block.proposer, domain)
-    # Verify body size is a multiple of the header size
-    assert len(block.body) % SHARD_HEADER_SIZE == 0
-    # Verify the sum of the block sizes since genesis
-    state.block_size_sum += SHARD_HEADER_SIZE + len(block.body)
-    assert block.block_size_sum == state.block_size_sum
 ```
 
 #### Attestations
@@ -352,27 +352,29 @@ def process_shard_attestations(state: BeaconState, shard_state: ShardState, bloc
     attestation_count = 0
     shard_committee = get_shard_committee(state, state.shard, block.slot)
     for i, validator_index in enumerate(shard_committee):
-        if block.attestation_bits[i]:
+        if block.aggregation_bits[i]:
             pubkeys.append(state.validators[validator_index].pubkey)
             process_delta(state, shard_state, validator_index, get_base_reward(state, validator_index))
             attestation_count += 1
     # Verify there are no extraneous bits set beyond the shard committee
     for i in range(len(shard_committee), 2 * MAX_PERIOD_COMMITTEE_SIZE):
-        assert block.attestation_bits[i] == 0b0
+        assert block.aggregation_bits[i] == 0b0
     # Verify attester aggregate signature
     domain = get_domain(state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(block.slot))
     message = hash_tree_root(ShardCheckpoint(shard_state.slot, block.parent_root))
-    assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestation_signature, domain)
+    assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestations, domain)
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(state, state.shard, block.slot)
     reward = attestation_count * get_base_reward(state, proposer_index) // PROPOSER_REWARD_QUOTIENT
     process_delta(state, shard_state, proposer_index, reward)
 ```
 
-#### Block body fee
+#### Block body
 
 ```python
-def process_shard_block_body_fee(state: BeaconState, shard_state: ShardState, block: ShardBlock) -> None:
+def process_shard_block_body(state: BeaconState, shard_state: ShardState, block: ShardBlock) -> None:
+    # Verify block body size is a multiple of the header size
+    assert len(block.body) % SHARD_HEADER_SIZE == 0
     # Apply proposer block body fee
     proposer_index = get_shard_proposer_index(state, state.shard, block.slot)
     block_body_fee = state.block_body_price * len(block.body) // MAX_SHARD_BLOCK_SIZE
