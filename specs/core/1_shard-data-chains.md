@@ -240,11 +240,11 @@ def get_genesis_shard_state(shard: Shard) -> ShardState:
 ### `get_genesis_shard_block`
 
 ```python
-def get_genesis_shard_block(beacon_state: BeaconState, shard: Shard) -> ShardBlock:
+def get_genesis_shard_block(shard: Shard) -> ShardBlock:
     return ShardBlock(
         shard=shard,
         slot=ShardSlot(SHARD_GENESIS_EPOCH * SHARD_SLOTS_PER_EPOCH),
-        state_root=hash_tree_root(get_genesis_shard_state(beacon_state, shard)),
+        state_root=hash_tree_root(get_genesis_shard_state(shard)),
     )
 ```
 
