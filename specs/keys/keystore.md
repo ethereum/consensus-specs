@@ -96,18 +96,16 @@ The `id` provided in the keystore is a randomly generated UUID and is intended t
 
 ## Test vectors
 
-**The following is not a valid test. It is a placeholder that will be populated with valid data soon** (tm):
-
 Test values:
 
 * Password: `testpassword`
-* Secret: `7a28b5ba57c53603b0b07b56bba752f7784bf506fa95edc395f5cf6c7514fe9d`
+* Secret: `1b4b68192611faea208fca21627be9dae6c3f2564d42588fb1119dae7c9f4b87`
 
 ```json
 {
     "crypto": {
-        "ciphertext": "d172bf743a674da9cdad04534d56926ef8358534d458fffccd4e6ad2fbde479c",
-        "mac": "e39cee865733698f50a84c33f13222da5857b8af9721f401ae011fa549c0b7f1",
+        "ciphertext": "e18afad793ec8dc3263169c07add77515d9f301464a05508d7ecb42ced24ed3a",
+        "mac": "e1c5e3d08f8aec999df5287dd9f2b0aafdaa86d263ca6287e2bd1c6b20c19c0f",
         "scryptparams": {
             "dklen": 32,
             "n": 262144,
@@ -116,7 +114,7 @@ Test values:
             "salt": "ab0c7876052600dd703518d6fc3fe8984592145b591fc8fb5c6d43190334ba19"
         }
     },
-    "id": "3198bc9c-6672-5ab3-d995-4942343ae5b6",
+    "id": "e5e79c63-b6bc-49f2-a4f8-f0dcea550ff6",
     "version": 4
 }
 ```
@@ -125,7 +123,7 @@ Test values:
 
 **Why are keystores needed at all?**
 
-Keystores provide a common interface for all clients to ingest validator credentials. By standardising this, switching between clients becomes easier as there is a common interface through which to switch.
+Keystores provide a common interface for all clients to ingest validator credentials. By standardizing this, switching between clients becomes easier as there is a common interface through which to switch.
 
 **Why not reuse Eth1 keystores?**
 
@@ -133,7 +131,7 @@ Keystores provide a common interface for all clients to ingest validator credent
 * There are too many parameters and options in Eth1 keystores
 * Eth1 keystores use Keccak256 which makes them unfriendly to other projects who wish to only rely on SHA256
 
-**Why use scrypt over PBKDF2?**\
+**Why use scrypt over PBKDF2?**
 
 scrypt and PBKDF2 both rely on the security of their underlying hash-function for their safety (SHA256), however scrypt additionally provides memory hardness. The benefit of this is greater ASIC resistance meaning brute-force attacks against scrypt are generally slower and harder.
 

@@ -52,5 +52,4 @@ def get_seed(mnemonic: str, password: str='') -> bytes:
     mnemonic = normalize('NFKD', mnemonic)
     password = normalize('NFKD', 'mnemonic' + password)
     return scrypt(password=mnemonic, salt=password, n=2**18, r=1, p=8, dklen=32)
-
 ```
