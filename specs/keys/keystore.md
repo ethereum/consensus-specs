@@ -1,6 +1,6 @@
 # Keystores
 
-A keystore is a JSON file which stores an encrypted version of a user's private key. It is designed to be an easy-to-implement format for storing and exchanging keys. Furthermore, this specification is designed to utilize as few crypto-constructions and make a minimal number of security assumptions.
+A keystore is a JSON file which stores a password encrypted version of a user's private key. It is designed to be an easy-to-implement format for storing and exchanging keys. Furthermore, this specification is designed to utilize as few crypto-constructions and make a minimal number of security assumptions.
 
 ![Keystore Diagram](./keystore.png)
 
@@ -9,15 +9,25 @@ A keystore is a JSON file which stores an encrypted version of a user's private 
 Private key is obtained by taking the bitwise XOR of the `ciphertext` and the `derived_key`. The `derived_key` is obtained by running scrypt with the user-provided password and the `scryptparams` obtained from within the keystore file as parameters. If a keystore file is being generated for the first time, the `salt` KDF parameter must be obtained from a CSPRNG. The `ciphertext` is simply read from the keystore file. The length of the `ciphertext` and the output key length of scrypt.
 
 ```python
-def decrypt_keystore(password, dklen, n, p, r, salt, ciphertext) -> bytes:
+def decrypt_keystore(password: str, dklen: int, n: int, p: int, r: int, salt: bytes, ciphertext) -> bytes:
     assert len(ciphertext) == dklen
     derived_key = scrypt(password, dklen, n, p, r, salt)
     return bytes(a ^ b for a, b in zip(derived_key, ciphertext))
 ```
 
+## MAC
+
+The `mac` acts as a method for verifying that password provided by the user is indeed correct. This is done by means of an equality check between the SHA256 hash of the `derived_key` and the `mac`.
+
+```python
+def verify_password(password: str, dklen: int, n: int, p: int, r: int, salt: bytes, mac: bytes) -> bool:
+    derived_key = scrypt(password, dklen, n, p, r, salt)
+    return sha256(derived_key) == mac
+```
+
 ## UUIDs
 
-The ID provided in the keystore is randomly generated and is designed to be used as a 128-bit proxy for referring to a set of keys or account. This level of abstraction provides a means of preserving privacy for a secret-key.
+The `id` provided in the keystore is a randomly generated UUID and is intended to be used as a 128-bit proxy for referring to a particular set of keys or account. This level of abstraction provides a means of preserving privacy for a secret-key or for referring to keys when they are not decrypted.
 
 ## Test vectors
 
@@ -33,6 +43,7 @@ This is not a valid test, it is a placeholder.
 {
     "crypto" : {
         "ciphertext" : "d172bf743a674da9cdad04534d56926ef8358534d458fffccd4e6ad2fbde479c",
+        "mac": "e39cee865733698f50a84c33f13222da5857b8af9721f401ae011fa549c0b7f1",
         "scryptparams" : {
             "dklen" : 32,
             "n" : 262144,
