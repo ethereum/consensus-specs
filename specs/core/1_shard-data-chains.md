@@ -195,7 +195,8 @@ def get_shard_committee(beacon_state: BeaconState, shard: Shard, epoch: Epoch) -
     # Every epoch cycle out validators from the older committee and cycle in validators from the newer committee
     older_subcommittee = [i for i in older_committee if i % EPOCHS_PER_SHARD_PERIOD > epoch % EPOCHS_PER_SHARD_PERIOD]
     newer_subcommittee = [i for i in newer_committee if i % EPOCHS_PER_SHARD_PERIOD <= epoch % EPOCHS_PER_SHARD_PERIOD]
-    return older_subcommittee + newer_subcommittee
+    # Deduplicate and sort indices
+    return sorted(set(older_subcommittee + newer_subcommittee))
 ```
 
 #### `get_shard_proposer_index`
