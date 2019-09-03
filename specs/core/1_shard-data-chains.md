@@ -283,7 +283,6 @@ def get_genesis_shard_state(state: BeaconState, shard: Shard) -> ShardState:
 ```python
 def get_genesis_shard_block(state: BeaconState, shard: Shard) -> ShardBlock:
     return ShardBlock(data=ShardBlockData(
-        shard=shard,
         slot=ShardSlot(SHARD_GENESIS_EPOCH * SHARD_SLOTS_PER_EPOCH),
         state_root=hash_tree_root(get_genesis_shard_state(state, shard)),
     ))
