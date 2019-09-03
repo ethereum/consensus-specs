@@ -62,11 +62,11 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | Value |
 | - | - |
-| `MIN_BLOCK_SIZE_PRICE` | `2**0` (= 1) |
+| `MIN_BLOCK_BODY_PRICE` | `2**0` (= 1) |
 | `MAX_PERIOD_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `SHARD_HEADER_SIZE` | `2**9` (= 512) |
 | `SHARD_BLOCK_SIZE_TARGET` | `2**14` (= 16,384) |
-| `SHARD_BLOCK_SIZE_LIMIT` | `2**16` (= 65,536) |
+| `MAX_SHARD_BLOCK_SIZE` | `2**16` (= 65,536) |
 
 ### Initial values
 
@@ -91,7 +91,7 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | Value |
 | - | - |
-| `SHARD_BLOCK_SIZE_PRICE_QUOTIENT` | `2**3` (= 8) |
+| `BLOCK_BODY_PRICE_QUOTIENT` | `2**3` (= 8) |
 
 ### Signature domain types
 
@@ -112,7 +112,7 @@ class ShardBlock(FlatContainer):
     parent_root: Hash
     state_root: Hash
     block_size_sum: uint64
-    body: List[byte, SHARD_BLOCK_SIZE_LIMIT - SHARD_HEADER_SIZE]
+    body: List[byte, MAX_SHARD_BLOCK_SIZE - SHARD_HEADER_SIZE]
     attestation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
     attestation_signature: BLSSignature
     signature: BLSSignature
@@ -128,7 +128,7 @@ class ShardBlockHeader(FlatContainer):
     parent_root: Hash
     state_root: Hash
     block_size_sum: uint64
-    body_root: List[byte, SHARD_BLOCK_SIZE_LIMIT - SHARD_HEADER_SIZE]
+    body_root: List[byte, MAX_SHARD_BLOCK_SIZE - SHARD_HEADER_SIZE]
     attestation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
     attestation_signature: BLSSignature
     signature: BLSSignature
@@ -233,7 +233,7 @@ def get_genesis_shard_state(state: BeaconState, shard: Shard) -> ShardState:
     return ShardState(
         shard=shard,
         slot=ShardSlot(SHARD_GENESIS_EPOCH * SHARD_SLOTS_PER_EPOCH),
-        block_body_price=MIN_BLOCK_SIZE_PRICE,
+        block_body_price=MIN_BLOCK_BODY_PRICE,
     )
 ```
 
@@ -375,19 +375,19 @@ def process_shard_attestations(state: BeaconState, shard_state: ShardState, bloc
 def process_shard_block_body_fee(state: BeaconState, shard_state: ShardState, block: ShardBlock) -> None:
     # Apply proposer block body fee
     proposer_index = get_shard_proposer_index(state, state.shard, block.slot)
-    block_body_fee = state.block_body_price * len(block.body) // SHARD_BLOCK_SIZE_LIMIT
+    block_body_fee = state.block_body_price * len(block.body) // MAX_SHARD_BLOCK_SIZE
     process_delta(state, shard_state, proposer_index, -block_body_fee)  # Burn
     process_delta(state, shard_state, proposer_index, block_body_fee // PROPOSER_REWARD_QUOTIENT)  # Reward
     # Calculate new block body price
     block_size = SHARD_HEADER_SIZE + len(block.body)
-    QUOTIENT = SHARD_BLOCK_SIZE_LIMIT * SHARD_BLOCK_SIZE_PRICE_QUOTIENT
+    QUOTIENT = MAX_SHARD_BLOCK_SIZE * BLOCK_BODY_PRICE_QUOTIENT
     price_delta = GweiDelta(state.block_body_price * (block_size - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT)
     if price_delta > 0:
-        # The maximum gas price caps the amount burnt on gas fees within a period
-        MAX_BLOCK_SIZE_PRICE = MAX_EFFECTIVE_BALANCE // EPOCHS_PER_SHARD_PERIOD // SHARD_SLOTS_PER_EPOCH
-        state.block_body_price = Gwei(min(MAX_BLOCK_SIZE_PRICE, state.block_body_price + price_delta))
+        # The maximum block body price caps the amount burnt on fees within a period
+        MAX_BLOCK_BODY_PRICE = MAX_EFFECTIVE_BALANCE // EPOCHS_PER_SHARD_PERIOD // SHARD_SLOTS_PER_EPOCH
+        state.block_body_price = Gwei(min(MAX_BLOCK_BODY_PRICE, state.block_body_price + price_delta))
     else:
-        state.block_body_price = Gwei(max(MIN_BLOCK_SIZE_PRICE, state.block_body_price + price_delta))
+        state.block_body_price = Gwei(max(MIN_BLOCK_BODY_PRICE, state.block_body_price + price_delta))
 ```
 
 ## Shard fork choice rule
