@@ -256,7 +256,7 @@ def shard_state_transition(beacon_state: BeaconState,
                            block: ShardBlock,
                            validate_state_root: bool=False) -> ShardState:
     # Process slots (including those with no blocks) since block
-    process_shard_slots(beacon_state, shard_state, block.slot)
+    process_shard_slots(shard_state, block.slot)
     # Process block
     process_shard_block(beacon_state, shard_state, block)
     # Validate state root (`validate_state_root == True` in production)
@@ -267,7 +267,7 @@ def shard_state_transition(beacon_state: BeaconState,
 ```
 
 ```python
-def process_shard_slots(beacon_state: BeaconState, shard_state: ShardState, slot: ShardSlot) -> None:
+def process_shard_slots(shard_state: ShardState, slot: ShardSlot) -> None:
     assert shard_state.slot <= slot
     while shard_state.slot < slot:
         process_shard_slot(shard_state)
