@@ -194,5 +194,8 @@ def test_deposit_tree(registration_contract, w3, assert_tx_failed):
 
         assert log["index"] == i.to_bytes(8, 'little')
 
+        # Check deposit count and root
+        count = len(deposit_data_list).to_bytes(8, 'little')
+        assert count == registration_contract.functions.get_deposit_count().call()
         root = hash_tree_root(List[DepositData, 2**32](*deposit_data_list))
         assert root == registration_contract.functions.get_deposit_root().call()
