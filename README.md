@@ -20,6 +20,7 @@ Core specifications for Eth 2.0 client validation can be found in [specs/core](s
 ### Phase 1
 * [Custody Game](specs/core/1_custody-game.md)
 * [Shard Data Chains](specs/core/1_shard-data-chains.md)
+* [Misc beacon chain updates](specs/core/1_beacon-chain-misc.md)
 
 ### Phase 2
 
