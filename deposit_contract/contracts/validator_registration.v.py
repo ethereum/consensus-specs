@@ -75,6 +75,11 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     deposit_amount: uint256 = msg.value / as_wei_value(1, "gwei")
     assert deposit_amount >= MIN_DEPOSIT_AMOUNT
 
+    # Length checks to facilitate formal verification (see https://github.com/ethereum/eth2.0-specs/pull/1362/files#r320361859)
+    assert len(pubkey) == PUBKEY_LENGTH
+    assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
+    assert len(signature) == SIGNATURE_LENGTH
+
     # Emit `DepositEvent` log
     amount: bytes[8] = self.to_little_endian_64(deposit_amount)
     log.DepositEvent(pubkey, withdrawal_credentials, amount, signature, self.to_little_endian_64(self.deposit_count))
