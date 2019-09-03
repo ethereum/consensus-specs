@@ -29,6 +29,71 @@ def verify_password(password: str, dklen: int, n: int, p: int, r: int, salt: byt
 
 The `id` provided in the keystore is a randomly generated UUID and is intended to be used as a 128-bit proxy for referring to a particular set of keys or account. This level of abstraction provides a means of preserving privacy for a secret-key or for referring to keys when they are not decrypted.
 
+## JSON schema
+
+```json
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "crypto": {
+            "type": "object",
+            "properties": {
+                "ciphertext": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "scryptparams": {
+                    "type": "object",
+                    "properties": {
+                        "dklen": {
+                            "type": "integer"
+                        },
+                        "n": {
+                            "type": "integer"
+                        },
+                        "p": {
+                            "type": "integer"
+                        },
+                        "r": {
+                            "type": "integer"
+                        },
+                        "salt": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "dklen",
+                        "n",
+                        "p",
+                        "r",
+                        "salt"
+                    ]
+                }
+            },
+            "required": [
+                "ciphertext",
+                "mac",
+                "scryptparams"
+            ]
+        },
+        "id": {
+            "type": "string"
+        },
+        "version": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "crypto",
+        "id",
+        "version"
+    ]
+}
+```
+
 ## Test vectors
 
 **The following is not a valid test. It is a placeholder that will be populated with valid data soon** (tm):
@@ -39,21 +104,20 @@ Test values:
 * Secret: `7a28b5ba57c53603b0b07b56bba752f7784bf506fa95edc395f5cf6c7514fe9d`
 
 ```json
-This is not a valid test, it is a placeholder.
 {
-    "crypto" : {
-        "ciphertext" : "d172bf743a674da9cdad04534d56926ef8358534d458fffccd4e6ad2fbde479c",
+    "crypto": {
+        "ciphertext": "d172bf743a674da9cdad04534d56926ef8358534d458fffccd4e6ad2fbde479c",
         "mac": "e39cee865733698f50a84c33f13222da5857b8af9721f401ae011fa549c0b7f1",
-        "scryptparams" : {
-            "dklen" : 32,
-            "n" : 262144,
-            "p" : 8,
-            "r" : 1,
-            "salt" : "ab0c7876052600dd703518d6fc3fe8984592145b591fc8fb5c6d43190334ba19"
-        },
+        "scryptparams": {
+            "dklen": 32,
+            "n": 262144,
+            "p": 8,
+            "r": 1,
+            "salt": "ab0c7876052600dd703518d6fc3fe8984592145b591fc8fb5c6d43190334ba19"
+        }
     },
-    "id" : "3198bc9c-6672-5ab3-d995-4942343ae5b6",
-    "version" : 4
+    "id": "3198bc9c-6672-5ab3-d995-4942343ae5b6",
+    "version": 4
 }
 ```
 
