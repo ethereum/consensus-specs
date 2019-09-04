@@ -13,9 +13,8 @@
     - [Constants](#constants)
     - [Containers](#containers)
         - [`LightClientUpdate`](#lightclientupdate)
-    - [Helpers](#helpers)
         - [`LightClientMemory`](#lightclientmemory)
-        - [`unpack_compact_validator`](#unpack_compact_validator)
+    - [Helpers](#helpers)
         - [`get_persistent_committee_pubkeys_and_balances`](#get_persistent_committee_pubkeys_and_balances)
     - [Light client state updates](#light-client-state-updates)
     - [Data overhead](#data-overhead)
@@ -62,12 +61,9 @@ class LightClientUpdate(container):
     committee_branch: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
 ```
 
-## Helpers
-
 ### `LightClientMemory`
 
 ```python
-@dataclass
 class LightClientMemory(object):
     shard: Shard  # Randomly initialized and retained forever
     header: BeaconBlockHeader  # Beacon header which is not expected to revert
@@ -77,19 +73,7 @@ class LightClientMemory(object):
     next_committee: CompactCommittee
 ```
 
-### `unpack_compact_validator`
-
-```python
-def unpack_compact_validator(compact_validator: CompactValidator) -> Tuple[ValidatorIndex, bool, uint64]:
-    """
-    Return the index, slashed, effective_balance // EFFECTIVE_BALANCE_INCREMENT of ``compact_validator``.
-    """
-    return (
-        ValidatorIndex(compact_validator >> 16),
-        bool((compact_validator >> 15) % 2),
-        uint64(compact_validator & (2**15 - 1)),
-    )
-```
+## Helpers
 
 ### `get_persistent_committee_pubkeys_and_balances`
 
