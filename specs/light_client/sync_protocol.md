@@ -61,10 +61,13 @@ class LightClientUpdate(container):
     committee_branch: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
 ```
 
+## Helpers
+
 ### `LightClientMemory`
 
 ```python
 class LightClientMemory(object):
+    @dataclass
     shard: Shard  # Randomly initialized and retained forever
     header: BeaconBlockHeader  # Beacon header which is not expected to revert
     # Persistent committees corresponding to the beacon header
@@ -72,8 +75,6 @@ class LightClientMemory(object):
     current_committee: CompactCommittee
     next_committee: CompactCommittee
 ```
-
-## Helpers
 
 ### `get_persistent_committee_pubkeys_and_balances`
 
