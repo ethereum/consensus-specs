@@ -69,10 +69,10 @@ We require:
 
 ```python
 def hash_to_G2(message_hash: Bytes32) -> Tuple[uint384, uint384]:
-    hash_to_curve(message_hash)
+    return hash_to_curve(message_hash)
 ```
 
-`hash_to_curve` is found in the [BLS standard](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve) and uses the ciphersuite `BLS12381G2-SHA256-SSWU-RO` found in section 8.7. It consists of three parts:
+`hash_to_curve` is found in the [BLS standard](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve) with this interpretation reflecting draft version 4. We use the ciphersuite `BLS12381G2-SHA256-SSWU-RO` found in section 8.7. It consists of three parts:
 
 * `hash_to_base` - Converting a message from bytes to a field point. The required constant parameters are: Security `k = 128` bits, Field Degree `m = 2` (i.e. Fp2), Length of HKDF `L = 64`, `H = SHA256`, Domain Separation Tag `DST = BLS12381G2-SHA256-SSWU-RO`.
 * `map_to_curve` - Converting a field point to a point on the elliptic curve (G2 Point). First apply a [Simplified SWU Map](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-04#section-6.9.2) to the [3-Isogney curve](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-04#section-8.7) `E'`. Note this can be improved with am optimised SWU Map found in section 4 of [this paper](https://eprint.iacr.org/2019/403.pdf). Second map the `E'` point to G2 using `iso_map` detailed [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-04#appendix-C.2).
