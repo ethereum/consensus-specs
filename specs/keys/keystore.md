@@ -140,7 +140,7 @@ The keystore, at its core, is constructed with modules which allow for the confi
 
 ## Test vectors
 
-Test values:
+The following test is a valid test for the initial Eth2.0 keystore definition.
 
 * Password: `testpassword`
 * Secret: `1b4b68192611faea208fca21627be9dae6c3f2564d42588fb1119dae7c9f4b87`
