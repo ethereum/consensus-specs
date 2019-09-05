@@ -91,7 +91,7 @@ def hash_to_curve(alpha: Bytes) -> Tuple[unit384, uint384]:
    return P
  ```
 
- An implementation of `hash_to_curve` can be found [here](https://github.com/kwantam/bls_sigs_ref/blob/master/python-impl/opt_swu_g2.py#L130).
+ An implementation of `hash_to_curve` can be found [here](https://github.com/kwantam/bls_sigs_ref/blob/d82335835cfddd9b9e7f30b99d2dab653d2c3a14/python-impl/opt_swu_g2.py#L130).
 
 ## Aggregation operations
 
