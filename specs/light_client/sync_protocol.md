@@ -13,8 +13,8 @@
     - [Constants](#constants)
     - [Containers](#containers)
         - [`LightClientUpdate`](#lightclientupdate)
-        - [`LightClientMemory`](#lightclientmemory)
     - [Helpers](#helpers)
+        - [`LightClientMemory`](#lightclientmemory)
         - [`get_persistent_committee_pubkeys_and_balances`](#get_persistent_committee_pubkeys_and_balances)
     - [Light client state updates](#light-client-state-updates)
     - [Data overhead](#data-overhead)
@@ -66,8 +66,8 @@ class LightClientUpdate(container):
 ### `LightClientMemory`
 
 ```python
+@dataclass
 class LightClientMemory(object):
-    @dataclass
     shard: Shard  # Randomly initialized and retained forever
     header: BeaconBlockHeader  # Beacon header which is not expected to revert
     # Persistent committees corresponding to the beacon header
