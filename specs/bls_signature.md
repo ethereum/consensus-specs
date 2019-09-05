@@ -68,45 +68,30 @@ We require:
 ### `hash_to_G2`
 
 ```python
-G2_cofactor = 305502333931268344200999753193121504214466019254188142667664032982267604182971884026507427359259977847832272839041616661285803823378372096355777062779109
-q = 4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787
-
-def hash_to_G2(message_hash: Bytes32, domain: Bytes8) -> Tuple[uint384, uint384]:
-    # Initial candidate x coordinate
-    x_re = int.from_bytes(hash(message_hash + domain + b'\x01'), 'big')
-    x_im = int.from_bytes(hash(message_hash + domain + b'\x02'), 'big')
-    x_coordinate = Fq2([x_re, x_im])  # x = x_re + i * x_im
-    
-    # Test candidate y coordinates until a one is found
-    while 1:
-        y_coordinate_squared = x_coordinate ** 3 + Fq2([4, 4])  # The curve is y^2 = x^3 + 4(i + 1)
-        y_coordinate = modular_squareroot(y_coordinate_squared)
-        if y_coordinate is not None:  # Check if quadratic residue found
-            return multiply_in_G2((x_coordinate, y_coordinate), G2_cofactor)
-        x_coordinate += Fq2([1, 0])  # Add 1 and try again
+def hash_to_G2(message_hash: Bytes32) -> Tuple[uint384, uint384]:
+    hash_to_curve(message_hash)
 ```
 
-### `modular_squareroot`
+`hash_to_curve` is found in the [BLS standard](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve) and uses the ciphersuite `BLS12381G2-SHA256-SSWU-RO` found in section 8.7. It consists of three parts:
 
-`modular_squareroot(x)` returns a solution `y` to `y**2 % q == x`, and `None` if none exists. If there are two solutions, the one with higher imaginary component is favored; if both solutions have equal imaginary component, the one with higher real component is favored (note that this is equivalent to saying that the single solution with either imaginary component > p/2 or imaginary component zero and real component > p/2 is favored).
+* `hash_to_base` - Converting a message from bytes to a field point. The required constant parameters are: Security `k = 128` bits, Field Degree `m = 2` (i.e. Fp2), Length of HKDF `L = 64`, `H = SHA256`, Domain Separation Tag `DST = BLS12381G2-SHA256-SSWU-RO`.
+* `map_to_curve` - Converting a field point to a point on the elliptic curve (G2 Point). First apply a [Simplified SWU Map](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-04#section-6.9.2) to the [3-Isogney curve](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-04#section-8.7) `E'`. Note this can be improved with am optimised SWU Map found in section 4 of [this paper](https://eprint.iacr.org/2019/403.pdf). Second map the `E'` point to G2 using `iso_map` detailed [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-04#appendix-C.2).
+* `clear_cofactor` - Ensuring resultant G2 Point is in the correct subfield this should be done using the method described in section 4.1 of [this paper](https://eprint.iacr.org/2017/419). Note pseudo code is in the process being be added to the standard.
 
-The following is a sample implementation; implementers are free to implement modular square roots as they wish. Note that `x2 = -x1` is an _additive modular inverse_ so real and imaginary coefficients remain in `[0 .. q-1]`. `coerce_to_int(element: Fq) -> int` is a function that takes Fq element `element` (i.e. integers `mod q`) and converts it to a regular integer.
+Details of the `hash_to_curve` function are shown below.
 
 ```python
-Fq2_order = q ** 2 - 1
-eighth_roots_of_unity = [Fq2([1,1]) ** ((Fq2_order * k) // 8) for k in range(8)]
+def hash_to_curve(alpha: Bytes) -> Tuple[unit384, uint384]:
+   u0 = hash_to_base(alpha, 0)
+   u1 = hash_to_base(alpha, 1)
+   Q0 = map_to_curve(u0)
+   Q1 = map_to_curve(u1)
+   R = Q0 + Q1 # Point Addition
+   P = clear_cofactor(R)
+   return P
+ ```
 
-def modular_squareroot(value: Fq2) -> Fq2:
-    candidate_squareroot = value ** ((Fq2_order + 8) // 16)
-    check = candidate_squareroot ** 2 / value
-    if check in eighth_roots_of_unity[::2]:
-        x1 = candidate_squareroot / eighth_roots_of_unity[eighth_roots_of_unity.index(check) // 2]
-        x2 = -x1
-        x1_re, x1_im = coerce_to_int(x1.coeffs[0]), coerce_to_int(x1.coeffs[1])
-        x2_re, x2_im = coerce_to_int(x2.coeffs[0]), coerce_to_int(x2.coeffs[1])
-        return x1 if (x1_im > x2_im or (x1_im == x2_im and x1_re > x2_re)) else x2
-    return None
-```
+ An implementation of `hash_to_curve` can be found [here](https://github.com/kwantam/bls_sigs_ref/blob/master/python-impl/opt_swu_g2.py#L130).
 
 ## Aggregation operations
 
