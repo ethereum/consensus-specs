@@ -2,8 +2,6 @@
 
 A keystore is a JSON file which stores a password encrypted version of a user's private key. It is designed to be an easy-to-implement, yet versatile, format for storing and exchanging keys. A keystore format that is customizable with many Key Derivation Functions (KDFs) and encryption ciphers is more future proof and thus is the model adopted by Eth1 V3 keystores. Unfortunately each option also requires implementations of the various crypto constructions and appropriate tests and therefore, this keystore standard locks down which KDF and ciphers are used for the initial phases of Eth2.0.
 
-![Keystore Diagram](./keystore.png)
-
 ## Definition
 
 The process of decrypting the secret held within a keystore can be broken down into 3 sub-processes: obtaining the decryption key, verifying the password and decrypting the secret. Each process has its own functions which can be selected from as well as parameters required for the function all of which are specified within the keystore file itself.
