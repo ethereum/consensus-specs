@@ -35,8 +35,6 @@ See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) fo
 * [General test format](specs/test_formats/README.md)
 * [Merkle proof formats](specs/light_client/merkle_proofs.md)
 * [Light client syncing protocol](specs/light_client/sync_protocol.md)
-* [Beacon node API for validator](https://github.com/ethereum/eth2.0-APIs/blob/master/apis/validator/beacon-node-validator-api.md)
-
 
 ## Additional specifications for client implementers
 
