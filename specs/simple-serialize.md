@@ -203,6 +203,27 @@ We first define helper functions:
         - If `> 1` chunks: merkleize as binary tree.
 * `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"` little-endian serialization) return `hash(root + length)`.
 * `mix_in_type`: Given a Merkle root `root` and a type_index `type_index` (`"uint256"` little-endian serialization) return `hash(root + type_index)`.
+* `get_elements`: Given a `Vector` object, returns the object itself. Given a `Container` object, returns the result of the following code:
+
+```python
+def get_elements(value: Container):
+    o = []
+    for element in value:
+        # For normal elements, just append each element to the list
+        if not isinstance(element, Embedded):
+            o.append(element)
+        # For embedded elements, attach the full list consisting of recursively
+        # running `get_elements` on the element to the top-level list, with padding
+        # so that the child element gets an aligned subtree of the hash tree.
+        else:
+            list_to_embed = get_elements(element)
+            while len(o) % next_pow_of_two(len(list_to_embed)) != 0:
+                o.append(Bytes32())
+            o.extend(list_to_embed) + [Bytes32() for i in range(next_pow_of_two(len(list_to_embed)) - len(list_to_embed)]
+    return o
+```
+
+For example a class with three members `(bar: Bytes32, baz: Vector[uint64, 3], bak: bool)`, `get_elements` would treat it the same as a class with elements `(bar: Bytes32, padding_0: Bytes32, padding_1: Bytes32, padding_2: Bytes32, baz_0: uint64, baz_1: uint64, baz_2: uint64, padding_3: Bytes32, bak: bool)` where the `padding_*` elements are all filled with the default zero value.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value` recursively:
 
@@ -210,7 +231,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `merkleize(bitfield_bytes(value), limit=chunk_count(type))` if `value` is a bitvector.
 * `mix_in_length(merkleize(pack(value), limit=chunk_count(type)), len(value))` if `value` is a list of basic objects.
 * `mix_in_length(merkleize(bitfield_bytes(value), limit=chunk_count(type)), len(value))` if `value` is a bitlist.
-* `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
+* `merkleize([hash_tree_root(element) for element in get_elements(value)])` if `value` is a vector of composite objects or a container.
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
 
