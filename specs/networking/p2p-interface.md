@@ -248,7 +248,7 @@ Once a new stream with the protocol ID for the request type has been negotiated,
 
 The requester MUST close the write side of the stream once it finishes writing the request message—at this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester will allow further `RESP_TIMEOUT` to receive the full response. For requests consisting of many `response_chunk` the requester should read from the stream until either; a) An error is received by one of the chunks, b) The responder closes the stream or c) `REQ_RESP_MAX_SIZE` bytes have been read. Requests that have a single `response_chunk` and a length-prefix, requesters can read the exact number of bytes defined by the length-prefix before closing the stream.
+The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` to receive the full response. For requests consisting of many `response_chunk` the requester SHOULD read from the stream until either; a) An error is received in one of the chunks, b) The responder closes the stream or c) `REQ_RESP_MAX_SIZE` bytes have been read. For requests consisting of a single `response_chunk` and a length-prefix, the requester should read the exact number of bytes defined by the length-prefix before closing the stream.
 
 If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
 
@@ -261,7 +261,7 @@ The responder MUST:
 1. Use the encoding strategy to read the optional header.
 2. If there are any length assertions for length `N`, it should read exactly `N` bytes from the stream, at which point an EOF should arise (no more bytes). Should this not be the case, it should be treated as a failure.
 3. Deserialize the expected type, and process the request.
-4. Write the response which may consist of one or many `response_chunks` (result, optional header, payload).
+4. Write the response which may consist of one or many `response_chunk` (result, optional header, payload).
 5. Close their write side of the stream. At this point, the stream will be fully closed.
 
 If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, the responder MUST respond in error. Clients tracking peer reputation MAY record such failures, as well as unexpected events, e.g. early stream resets.
@@ -290,8 +290,7 @@ The `ErrorMessage` schema is:
 
 *Note*: The String type is encoded as UTF-8 bytes without NULL terminator when SSZ-encoded. As the `ErrorMessage` is not an SSZ-container, only the UTF-8 bytes will be sent when SSZ-encoded.
 
-A response therefore has the form of 1 or more `response_chunk` which look
-like:
+A response therefore has the form of one or more `response_chunk`, each structured as follows:
 ```
   +--------+--------+--------+--------+--------+--------+
   | result |   header (opt)  |     encoded_response     |
@@ -312,11 +311,11 @@ The [SimpleSerialize (SSZ) specification](../simple-serialize.md) outlines how o
 
 **Encoding-dependent header:** Req/Resp protocols using the `ssz` or `ssz_snappy` encoding strategies MUST prefix all encoded and compressed (if applicable) payloads with an unsigned [protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
-All messages that have a single field, are not encoded as SSZ containers.
+All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
 Responses that are SSZ list objects (for example `[]BeaconBlocks`) send their
 constituents individually as `response_chunk`. For example, the
-`[]BeaconBlocks` response send many `response_chunk`s with each payload being a `BeaconBlock`.
+`[]BeaconBlocks` response type sends one or more `response_chunk`s. Each successful `response_chunk` has a single `BeaconBlock` payload.
 
 ### Messages
 
@@ -344,8 +343,9 @@ The fields are:
 
 The dialing client MUST send a `Hello` request upon connection.
 
-This MUST be encoded as an SSZ-container. The response consists of a single
-`response_chunk`.
+The request/response MUST be encoded as an SSZ-container.
+
+The response MUST consist of a single `response_chunk`.
 
 Clients SHOULD immediately disconnect from one another following the handshake above under the following conditions:
 
@@ -374,8 +374,9 @@ Clients MAY use reason codes above `128` to indicate alternative, erroneous requ
 
 The range `[4, 127]` is RESERVED for future usage.
 
-This MUST be encoded as a single SSZ-field. The response consists of a
-single `response_chunk`.
+The request/response MUST be encoded as a single SSZ-field.
+
+The response MUST consist of a single `response_chunk`.
 
 #### BeaconBlocksByRange
 
@@ -400,8 +401,9 @@ Response Content:
 
 Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root`. The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
 
-The request MUST be encoded as an SSZ-container. The response is sent as many
-`response_chunk` with each chunk consisting of a single `BeaconBlock`.
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of at least one `response_chunk` and MAY consist of many. Each successful `response_chunk` MUST contain a single `BeaconBlock` payload.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
@@ -439,7 +441,9 @@ Requests blocks by their block roots. The response is a list of `BeaconBlock` wh
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (ex. when receiving a block or attestation whose parent is unknown).
 
-The request MUST be encoded as an SSZ-field. The response is sent as many `response_chunk` with each chunk consisting of a single `BeaconBlock`.
+The request MUST be encoded as an SSZ-field. 
+
+The response MUST consist of at least one `response_chunk` and MAY consist of many. Each successful `response_chunk` MUST contain a single `BeaconBlock` payload.
 
 Clients MUST support requesting blocks since the latest finalized epoch.
 
