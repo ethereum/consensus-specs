@@ -94,6 +94,8 @@ def get_random_ssz_object(rng: Random,
             length = 1
         elif mode == RandomizationMode.mode_max_count:
             length = max_list_length
+        elif mode == RandomizationMode.mode_nil_count:
+            length = 0
 
         if typ.length < length:  # SSZ imposes a hard limit on lists, we can't put in more than that
             length = typ.length
