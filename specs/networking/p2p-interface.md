@@ -113,7 +113,7 @@ This section outlines constants that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `REQ_RESP_MAX_SIZE` | `TODO` | The maximum size of uncompressed req/resp messages that clients will allow. |
+| `REQ_RESP_MAX_SIZE` | `2**22` (4194304, 4 MiB) | The maximum size of uncompressed req/resp messages that clients will allow. |
 | `SSZ_MAX_LIST_SIZE` | `TODO` | The maximum size of SSZ-encoded variable lists. |
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum size of uncompressed gossip messages. |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
@@ -301,7 +301,7 @@ Here, `result` represents the 1-byte response code.
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
--  `ssz`: the contents are [SSZ-encoded](#ssz-encoding). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocks` response would be an SSZ-encoded list of `BeaconBlock`s. All SSZ-Lists in the Req/Resp domain will have a maximum list size of `SSZ_MAX_LIST_SIZE`.
+-  `ssz`: the contents are [SSZ-encoded](../simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRange` response would be an SSZ-encoded list of `BeaconBlock`s. All SSZ-Lists in the Req/Resp domain will have a maximum list size of `SSZ_MAX_LIST_SIZE`.
 -  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
 
 #### SSZ-encoding strategy (with or without Snappy)
@@ -318,10 +318,10 @@ The [SimpleSerialize (SSZ) specification](../simple-serialize.md) outlines how o
 
 **Protocol ID:** ``/eth2/beacon_chain/req/hello/1/``
 
-**Content**:
+Request, Response Content:
 ```
 (
-  fork_version: bytes4
+  head_fork_version: bytes4
   finalized_root: bytes32
   finalized_epoch: uint64
   head_root: bytes32
@@ -330,26 +330,28 @@ The [SimpleSerialize (SSZ) specification](../simple-serialize.md) outlines how o
 ```
 The fields are:
 
-- `fork_version`: The beacon_state `Fork` version.
+- `head_fork_version`: The beacon_state `Fork` version.
 - `finalized_root`: The latest finalized root the node knows about.
 - `finalized_epoch`: The latest finalized epoch the node knows about.
 - `head_root`: The block hash tree root corresponding to the head of the chain as seen by the sending node.
 - `head_slot`: The slot corresponding to the `head_root`.
 
-Clients exchange hello messages upon connection, forming a two-phase handshake. The first message the initiating client sends MUST be the hello message. In response, the receiving client MUST respond with its own hello message.
+The dialing client MUST send a `Hello` request upon connection.
+
+This should be encoded as an SSZ-container.
 
 Clients SHOULD immediately disconnect from one another following the handshake above under the following conditions:
 
-1. If `fork_version` doesn’t match the local fork version, since the client’s chain is on another fork. `fork_version` can also be used to segregate testnets.
+1. If `head_fork_version` doesn’t match the expected fork version at the epoch of the `head_slot`, since the client’s chain is on another fork. `head_fork_version` can also be used to segregate testnets.
 2. If the (`finalized_root`, `finalized_epoch`) shared by the peer is not in the client's chain at the expected epoch. For example, if Peer 1 sends (root, epoch) of (A, 5) and Peer 2 sends (B, 3) but Peer 1 has root C at epoch 3, then Peer 1 would disconnect because it knows that their chains are irreparably disjoint.
 
-Once the handshake completes, the client with the lower `finalized_epoch` or `head_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon blocks from its counterparty via the `BeaconBlocks` request.
+Once the handshake completes, the client with the lower `finalized_epoch` or `head_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange` request.
 
 #### Goodbye
 
 **Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
 
-**Content:**
+Request, Response Content:
 ```
 (
   reason: uint64
@@ -365,11 +367,13 @@ Clients MAY use reason codes above `128` to indicate alternative, erroneous requ
 
 The range `[4, 127]` is RESERVED for future usage.
 
-#### BeaconBlocks
+This should not be encoded as an SSZ-container.
 
-**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks/1/`
+#### BeaconBlocksByRange
 
-Request Content
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/1/`
+
+Request Content:
 ```
 (
   head_block_root: HashTreeRoot
@@ -388,15 +392,24 @@ Response Content:
 
 Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root`. The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
 
-`BeaconBlocks` is primarily used to sync historical blocks.
+The request is encoded as an SSZ-container, the response is not encoded as an
+SSZ container.
+
+`BeaconBlocksByRange` is primarily used to sync historical blocks.
 
 Clients MUST support requesting blocks since the start of the weak subjectivity period and up to the given `head_block_root`.
 
 Clients MUST support `head_block_root` values since the latest finalized epoch.
 
-#### RecentBeaconBlocks
+Clients MUST respond with at least one block, if they have it.
 
-**Protocol ID:** `/eth2/beacon_chain/req/recent_beacon_blocks/1/`
+Clients MUST order blocks by increasing slot number.
+
+Clients MAY respond with fewer blocks than requested, for example when the size of the response would exceed `REQ_RESP_MAX_SIZE` or `SSZ_MAX_LIST_SIZE`.
+
+#### BeaconBlocksByRoot
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/1/`
 
 Request Content:
 
@@ -414,11 +427,17 @@ Response Content:
 )
 ```
 
-Requests blocks by their block roots. The response is a list of `BeaconBlock` with the same length as the request. Blocks are returned in order of the request and any missing/unknown blocks are left empty (SSZ null `BeaconBlock`).
+Requests blocks by their block roots. The response is a list of `BeaconBlock` whose length is less or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
 
-`RecentBeaconBlocks` is primarily used to recover recent blocks (ex. when receiving a block or attestation whose parent is unknown).
+`BeaconBlocksByRoot` is primarily used to recover recent blocks (ex. when receiving a block or attestation whose parent is unknown).
+
+Both the request and the response should not be encoded as an SSZ-container.
 
 Clients MUST support requesting blocks since the latest finalized epoch.
+
+Clients MUST respond with at least one block, if they have it.
+
+Clients MAY respond with fewer blocks than requested, for example when the size of the response would exceed `REQ_RESP_MAX_SIZE` or `SSZ_MAX_LIST_SIZE`.
 
 ## The discovery domain: discv5
 
