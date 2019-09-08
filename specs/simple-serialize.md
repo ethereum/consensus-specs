@@ -237,7 +237,7 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 
 ## Self-signed containers
 
-Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
+Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`. In the case where the last element is `Embedded`, the entire last element is truncated, not just the last element's own last element.
 
 ## Summaries and expansions
 
