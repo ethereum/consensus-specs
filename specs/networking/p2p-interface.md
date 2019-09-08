@@ -113,7 +113,7 @@ This section outlines constants that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `REQ_RESP_MAX_SIZE` | `2**22` (4194304, 4 MiB) | The maximum size of uncompressed req/resp messages that clients will allow. |
+| `REQ_RESP_MAX_SIZE` | `2**20` (1048576, 1 MiB) | The maximum size of uncompressed req/resp messages that clients will allow. |
 | `SSZ_MAX_LIST_SIZE` | `TODO` | The maximum size of SSZ-encoded variable lists. |
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum size of uncompressed gossip messages. |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
@@ -244,7 +244,7 @@ Clients MUST ensure the total `response` is less than or equal to `REQ_RESP_MAX_
 
 #### Requesting side
 
-Once a new stream with the protocol ID for the request type has been negotiated, the full request message should be sent immediately. It should be encoded according to the encoding strategy.
+Once a new stream with the protocol ID for the request type has been negotiated, the full request message should be sent immediately. It MUST be encoded according to the encoding strategy.
 
 The requester MUST close the write side of the stream once it finishes writing the request message—at this point, the stream will be half-closed.
 
@@ -344,7 +344,7 @@ The fields are:
 
 The dialing client MUST send a `Hello` request upon connection.
 
-This should be encoded as an SSZ-container. The response consists of a single
+This MUST be encoded as an SSZ-container. The response consists of a single
 `response_chunk`.
 
 Clients SHOULD immediately disconnect from one another following the handshake above under the following conditions:
@@ -374,7 +374,7 @@ Clients MAY use reason codes above `128` to indicate alternative, erroneous requ
 
 The range `[4, 127]` is RESERVED for future usage.
 
-This should not be encoded as an SSZ-container. The response consists of a
+This MUST be encoded as a single SSZ-field. The response consists of a
 single `response_chunk`.
 
 #### BeaconBlocksByRange
@@ -400,7 +400,7 @@ Response Content:
 
 Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root`. The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
 
-The request is encoded as an SSZ-container. The response is sent as many
+The request MUST be encoded as an SSZ-container. The response is sent as many
 `response_chunk` with each chunk consisting of a single `BeaconBlock`.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
@@ -439,7 +439,7 @@ Requests blocks by their block roots. The response is a list of `BeaconBlock` wh
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (ex. when receiving a block or attestation whose parent is unknown).
 
-The request is not encoded as an SSZ-container. The response is sent as many `response_chunk` with each chunk consisting of a single `BeaconBlock`.
+The request MUST be encoded as an SSZ-field. The response is sent as many `response_chunk` with each chunk consisting of a single `BeaconBlock`.
 
 Clients MUST support requesting blocks since the latest finalized epoch.
 
