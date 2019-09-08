@@ -113,9 +113,9 @@ This section outlines constants that are used in this spec.
 
 | Name | Value | Description |
 |---|---|---|
-| `REQ_RESP_MAX_SIZE` | `2**20` (1048576, 1 MiB) | The maximum size of uncompressed req/resp messages that clients will allow. |
+| `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
+| `REQ_RESP_MAX_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp messages. |
 | `SSZ_MAX_LIST_SIZE` | `TODO` | The maximum size of SSZ-encoded variable lists. |
-| `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum size of uncompressed gossip messages. |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
