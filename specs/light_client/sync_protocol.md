@@ -15,7 +15,6 @@
         - [`LightClientUpdate`](#lightclientupdate)
     - [Helpers](#helpers)
         - [`LightClientMemory`](#lightclientmemory)
-        - [`unpack_compact_validator`](#unpack_compact_validator)
         - [`get_persistent_committee_pubkeys_and_balances`](#get_persistent_committee_pubkeys_and_balances)
     - [Light client state updates](#light-client-state-updates)
     - [Data overhead](#data-overhead)
@@ -75,20 +74,6 @@ class LightClientMemory(object):
     previous_committee: CompactCommittee
     current_committee: CompactCommittee
     next_committee: CompactCommittee
-```
-
-### `unpack_compact_validator`
-
-```python
-def unpack_compact_validator(compact_validator: CompactValidator) -> Tuple[ValidatorIndex, bool, uint64]:
-    """
-    Return the index, slashed, effective_balance // EFFECTIVE_BALANCE_INCREMENT of ``compact_validator``.
-    """
-    return (
-        ValidatorIndex(compact_validator >> 16),
-        bool((compact_validator >> 15) % 2),
-        uint64(compact_validator & (2**15 - 1)),
-    )
 ```
 
 ### `get_persistent_committee_pubkeys_and_balances`
