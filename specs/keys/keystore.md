@@ -22,9 +22,9 @@ The password verification verifies step verifies that the password is correct wi
 ```python
 def is_valid_password(decryption_key: bytes, cipher_message: bytes, checksum_message: bytes, checksum_function: str,) -> bool:
     if checksum_function == 'sha256':
-        return sha256(decryption_key[16:31] + checksum_message) == mac
+        return sha256(decryption_key[16:32] + cipher_message) == checksum_message
     elif checksum_function == 'keccak256':
-        return keccak256(decryption_key[16:31] + checksum_message) == mac
+        return keccak256(decryption_key[16:32] + cipher_message) == checksum_message
     return False
 ```
 
