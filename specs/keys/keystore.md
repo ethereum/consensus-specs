@@ -1,6 +1,6 @@
 # Keystores
 
-A keystore is a JSON file which stores a password encrypted version of a user's private key. It is designed to be an easy-to-implement, yet versatile, format for storing and exchanging keys. A keystore format that is customizable with many Key Derivation Functions (KDFs) and encryption ciphers is more future proof and thus is the model adopted by Eth1 V3 keystores. Unfortunately each option also requires implementations of the various crypto constructions and appropriate tests and therefore, this keystore standard locks down which KDF and ciphers are used for the initial phases of Eth2.0.
+A keystore is a JSON file which stores a password encrypted version of a user's private key. It is designed to be an easy-to-implement, yet versatile format for storing and exchanging keys. A keystore is comprised of modules which specify a cryptographic construction and the corresponding parameters for a specific portion of deriving a secret.
 
 ## Definition
 
@@ -45,33 +45,6 @@ The `cipher.function` encrypts the secret using the decryption key, thus to decr
 ## UUIDs
 
 The `id` provided in the keystore is a randomly generated UUID and is intended to be used as a 128-bit proxy for referring to a particular set of keys or account. This level of abstraction provides a means of preserving privacy for a secret-key or for referring to keys when they are not decrypted.
-
-## Keystores within Eth2.0
-
-Initially, Eth2.0 only uses a subset of the options presented in this keystore specification to allow implementers to focus their time on other tasks that are more important in the short term. The particular `cipher`, `checksum`, and `kdf` functions are specified below:
-
-* **KDF:** scrypt
-* **Checksum:** SHA256
-* **Cipher:** XOR
-
-### Python implementation
-
-```python
-def get_decryption_key(password: str, kdf_params_dklen: int,
-                       kdf_params_n: int, kdf_params_p: int, kdf_params_salt: bytes) -> bytes:
-    return scrypt(password, kdf_params_dklen, kdf_params_n, kdf_params_p, kdf_params_r, kdf_params_salt)
-```
-
-```python
-def verify_password(decryption_key: bytes, cipher_message: bytes, checksum_message: bytes):
-    assert sha256(decryption_key[16:31] + cipher_message) == checksum_message
-```
-
-```python
-def get_private_key(decryption_key: bytes, cipher_message: bytes):
-    assert len(decryption_key) == len(cipher_message)
-    return bytes(a ^ b for a, b in zip(decryption_key, cipher_message))
-```
 
 ## JSON schema
 
@@ -137,8 +110,6 @@ The keystore, at its core, is constructed with modules which allow for the confi
 ```
 
 ## Test vectors
-
-The following test is a valid test for the initial Eth2.0 keystore definition.
 
 * Password: `testpassword`
 * Secret: `1b4b68192611faea208fca21627be9dae6c3f2564d42588fb1119dae7c9f4b87`
