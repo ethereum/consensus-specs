@@ -4,7 +4,7 @@ The tree KDF describes how to take a parent key and a child-leaf index and arriv
 
 ## The Tree Structure
 
-The key tree is defined purely through the relationship between a child-node and its ancestors. Starting with the root of the tree, the *master key*, a child node can be derived by knowing the parent's private key (or its hash in non-hardened cases) and the index of the child. The tree is broken up into depths which are indicated by `/` and the master node is described as `m`. The first child of the master node is therefore described as `m / 0`.
+The key tree is defined purely through the relationship between a child-node and its ancestors. Starting with the root of the tree, the *master key*, a child node can be derived by knowing the parent's private key and the index of the child. The tree is broken up into depths which are indicated by `/` and the master node is described as `m`. The first child of the master node is therefore described as `m / 0`.
 
 ```text
       [m / 0] - [m / 0 / 0]
@@ -15,10 +15,6 @@ The key tree is defined purely through the relationship between a child-node and
      ...
       [m / i]
 ```
-
-## Hardened keys
-
-This specification provides the functionality of both *non-hardened* and *hardened* keys. A hardened key has the property that given the parent public key and the key-pairs of siblings of the desired child, it is not possible to derive any information about the child key. Hardened keys should be considered the default key type and should be used unless there is an explicit reason not to do so. Hardened keys are defined as all keys with index `i >= 2**31`. For ease of notation, hardened keys are indicated with a `'` where `i'` means the key at index `i + 2**31`, thus `m / 0 / 42'` should be parsed as `m / 0 / 4294967338`.
 
 ## Specification
 
@@ -63,7 +59,7 @@ def derive_master_privkey(seed: bytes) -> int:
 
 ### Child Key Derivation
 
-The child key derivation function takes in the parent's private key and the index of the child and returns the child private key. The returned result is the modulo-sum of the hashed versions of the index and the parent key in the non-hardened case and the hashed version of that in the case of a hardened index.
+The child key derivation function takes in the parent's private key and the index of the child and returns the child private key.
 
 ```python
 def derive_child_privkey(parent_privkey: int, i: int) -> int:
