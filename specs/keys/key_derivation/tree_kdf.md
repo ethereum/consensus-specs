@@ -18,15 +18,9 @@ The key tree is defined purely through the relationship between a child-node and
 
 ## Specification
 
+Every key generated via the key derivation process derives a child key via a set of intermediate Lamport keys. The idea behind the Lamport keys is to provide a quantum secure backup incase BLS12-381 is no longer deemed secure. At a high level, the key derivation process works by using the parent node's privkey as an entropy source for the Lamport privkeys which are then merkleized into a compressed Lamport public key, this public key is then hashed into BLS12-381's private key group.
+
 ### Helper functions
-
-`hkdf_mod_r` is the core of this tree KDF specification. It operates in the same way as the `KeyGen` function described in the [draft IETF BLS standard](https://github.com/cfrg/draft-irtf-cfrg-bls-signature/blob/master/draft-irtf-cfrg-bls-signature-00.txt) and therefore the private key obtained from `KeyGen` is equal to that obtained from `hkdf_mod_r` for the same seed bytes.
-
-```python
-def hkdf_mod_r(ikm: bytes) -> int:
-    okm = hkdf(master=ikm, salt="BLS-SIG-KEYGEN-SALT-", key_len=48, hashmod=sha256)
-    return int.from_bytes(okm, byteorder='big') % curve_order
-```
 
 ```python
 def flip_bits(input: int) -> bytes:
@@ -46,6 +40,14 @@ def parent_privkey_to_lamport_root(parent_key: int, index: int) -> bytes:
     lamport_1 = seed_to_lamport_keys(flip_bits(parent_key), index)
     merkle_leaves = lamport_0 + [b'x\00' * 32] + lamport_1 + [b'x\00' * 32]
     return merkle_root(merkle_leaves)
+```
+
+`hkdf_mod_r` is used to hash 32 random bytes into the field of the BLS12-381 private keys. It operates in the same way as the `KeyGen` function described in the [draft IETF BLS standard](https://github.com/cfrg/draft-irtf-cfrg-bls-signature/blob/master/draft-irtf-cfrg-bls-signature-00.txt) and therefore the private key obtained from `KeyGen` is equal to that obtained from `hkdf_mod_r` for the same seed bytes.
+
+```python
+def hkdf_mod_r(ikm: bytes) -> int:
+    okm = hkdf(master=ikm, salt="BLS-SIG-KEYGEN-SALT-", key_len=48, hashmod=sha256)
+    return int.from_bytes(okm, byteorder='big') % curve_order
 ```
 
 ### Master Key Derivation
