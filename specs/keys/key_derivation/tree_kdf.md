@@ -32,13 +32,33 @@ def hkdf_mod_r(ikm: bytes) -> int:
     return int.from_bytes(okm, byteorder='big') % curve_order
 ```
 
+```python
+def flip_bits(input: int) -> bytes:
+    return = input ^ (2**256 - 1)
+```
+
+```python
+def seed_to_lamport_keys(seed: int, index: int) -> List[bytes]:
+    combined_bytes = hkdf(master=seed.to_bytes(32, byteorder='big'),
+                          salt=index.to_bytes(32, byteorder='big'), key_len=8160, hashmod=sha256)
+    return [combined_bytes[i: i + 32] for i in range(31)]
+```
+
+```python
+def parent_privkey_to_lamport_root(parent_key: int, index: int) -> bytes:
+    lamport_0 = seed_to_lamport_keys(parent_key, index)
+    lamport_1 = seed_to_lamport_keys(flip_bits(parent_key), index)
+    merkle_leaves = lamport_0 + [b'x\00' * 32] + lamport_1 + [b'x\00' * 32]
+    return merkle_root(merkle_leaves)
+```
+
 ### Master Key Derivation
 
 The master key is the root of the key-tree and is derived from a 256-bit seed. While this seed can be any arbitrary 256 bits, it is intended to be the output of the seed derivation process described in the [mnemonic generation specification](./mnemonic.md).
 
 ```python
 def derive_master_privkey(seed: bytes) -> int:
-    return hkdf_mod_r(seed)
+    return derive_child_privkey(int.from_bytes(seed, byteorder='big'), 0)
 ```
 
 ### Child Key Derivation
@@ -47,8 +67,6 @@ The child key derivation function takes in the parent's private key and the inde
 
 ```python
 def derive_child_privkey(parent_privkey: int, i: int) -> int:
-    parent_hash = hkdf_mod_r(parent_privkey.to_bytes(length=32, byteorder='big'))
-    parent_double_hash = hkdf_mod_r(parent_hash.to_bytes(length=32, byteorder='big'))
-    mod_sum = (parent_hash + parent_double_hash + (i * parent_double_hash)) % curve_order
-    return mod_sum if i < 2**31 else hkdf_mod_r(mod_sum.to_bytes(length=32, byteorder='big'))
+    lamport_root = parent_privkey_to_lamport_root(parent_privkey, i)
+    return hkdf_mod_r(lamport_root)
 ```
