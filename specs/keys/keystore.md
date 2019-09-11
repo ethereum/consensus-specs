@@ -131,7 +131,7 @@ The keystore, at its core, is constructed with modules which allow for the confi
         "checksum": {
             "function": "sha256",
             "params": {},
-            "message": "e1c5e3d08f8aec999df5287dd9f2b0aafdaa86d263ca6287e2bd1c6b20c19c0f"
+            "message": "cb27fe860c96f269f7838525ba8dce0886e0b7753caccc14162195bcdacbf49e"
         },
         "cipher": {
             "function": "xor",
@@ -143,3 +143,7 @@ The keystore, at its core, is constructed with modules which allow for the confi
     "version": 4
 }
 ```
+
+Intermediates:
+
+* Derived key: `fac192ceb5fd772906bea3e118a69e8bbb5cc24229e20d8766fd298291bba6bd'`
