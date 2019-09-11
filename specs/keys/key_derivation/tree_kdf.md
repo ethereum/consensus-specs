@@ -38,8 +38,9 @@ def seed_to_lamport_keys(seed: int, index: int) -> List[bytes]:
 def parent_privkey_to_lamport_root(parent_key: int, index: int) -> bytes:
     lamport_0 = seed_to_lamport_keys(parent_key, index)
     lamport_1 = seed_to_lamport_keys(flip_bits(parent_key), index)
-    merkle_leaves = lamport_0 + [b'x\00' * 32] + lamport_1 + [b'x\00' * 32]
-    return merkle_root(merkle_leaves)
+    lamport_privkeys = lamport_0 + lamport_1
+    lamport_pubkeys = [sha256(sk) for sk in lamport_privkeys]
+    return sha256(lamport_pubkeys(lamport_pubkeys.join(b'')))
 ```
 
 `hkdf_mod_r` is used to hash 32 random bytes into the field of the BLS12-381 private keys. It operates in the same way as the `KeyGen` function described in the [draft IETF BLS standard](https://github.com/cfrg/draft-irtf-cfrg-bls-signature/blob/master/draft-irtf-cfrg-bls-signature-00.txt) and therefore the private key obtained from `KeyGen` is equal to that obtained from `hkdf_mod_r` for the same seed bytes.
