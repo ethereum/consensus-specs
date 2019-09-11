@@ -115,8 +115,6 @@ This section outlines constants that are used in this spec.
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `REQ_RESP_MAX_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `MAX_REQUESTED_BLOCKS` | `20` | The maximum allowed number of blocks that can
-be requested. |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
@@ -249,7 +247,7 @@ Once a new stream with the protocol ID for the request type has been negotiated,
 
 The requester MUST close the write side of the stream once it finishes writing the request message. At this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` to receive the full response. For responses consisting of potentially many `response_chunk`s (an SSZ-list) the requester SHOULD read from the stream until either; a) An error result is received in one of the chunks, b) The responder closes the stream,  c) More than `REQ_RESP_MAX_SIZE` bytes have been read for a single `response_chunk` payload or d) More than the maximum number of requested chunks are read. For requests consisting of a single `response_chunk` and a length-prefix, the requester should read the exact number of bytes defined by the length-prefix before closing the stream.
+The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received. For responses consisting of potentially many `response_chunk`s (an SSZ-list) the requester SHOULD read from the stream until either; a) An error result is received in one of the chunks, b) The responder closes the stream,  c) More than `REQ_RESP_MAX_SIZE` bytes have been read for a single `response_chunk` payload or d) More than the maximum number of requested chunks are read. For requests consisting of a single `response_chunk` and a length-prefix, the requester should read the exact number of bytes defined by the length-prefix before closing the stream.
 
 If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
 
@@ -404,8 +402,6 @@ Requests count beacon blocks from the peer starting from `start_slot` on the cha
 
 The request MUST be encoded as an SSZ-container.
 
-The `count` MUST not exceed MAX_REQUESTED_BLOCKS.
-
 The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `BeaconBlock` payload.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
@@ -441,8 +437,6 @@ Response Content:
 Requests blocks by their block roots. The response is a list of `BeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
-
-The length of `block_roots` MUST not exceed MAX_REQUESTED_BLOCKS.
 
 The request MUST be encoded as an SSZ-field.
 
