@@ -146,4 +146,4 @@ The keystore, at its core, is constructed with modules which allow for the confi
 
 Intermediates:
 
-* Derived key: `fac192ceb5fd772906bea3e118a69e8bbb5cc24229e20d8766fd298291bba6bd'`
+* Derived key: `fac192ceb5fd772906bea3e118a69e8bbb5cc24229e20d8766fd298291bba6bd`
