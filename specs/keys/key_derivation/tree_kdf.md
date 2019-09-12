@@ -23,7 +23,7 @@ Every key generated via the key derivation process derives a child key via a set
 ### Helper functions
 
 ```python
-def flip_bits(input: int) -> bytes:
+def flip_bits(input: int) -> int:
     return input ^ (2**256 - 1)
 ```
 
@@ -31,7 +31,7 @@ def flip_bits(input: int) -> bytes:
 def seed_to_lamport_keys(seed: int, index: int) -> List[bytes]:
     combined_bytes = hkdf(master=seed.to_bytes(32, byteorder='big'),
                           salt=index.to_bytes(32, byteorder='big'), key_len=8160, hashmod=sha256)
-    return [combined_bytes[i: i + 32] for i in range(31)]
+    return [combined_bytes[i: i + 32] for i in range(255)]
 ```
 
 ```python
@@ -40,14 +40,14 @@ def parent_privkey_to_lamport_root(parent_key: int, index: int) -> bytes:
     lamport_1 = seed_to_lamport_keys(flip_bits(parent_key), index)
     lamport_privkeys = lamport_0 + lamport_1
     lamport_pubkeys = [sha256(sk) for sk in lamport_privkeys]
-    return sha256(lamport_pubkeys(lamport_pubkeys.join(b'')))
+    return sha256(b''.join(lamport_pubkeys))
 ```
 
 `hkdf_mod_r` is used to hash 32 random bytes into the field of the BLS12-381 private keys. It operates in the same way as the `KeyGen` function described in the [draft IETF BLS standard](https://github.com/cfrg/draft-irtf-cfrg-bls-signature/blob/master/draft-irtf-cfrg-bls-signature-00.txt) and therefore the private key obtained from `KeyGen` is equal to that obtained from `hkdf_mod_r` for the same seed bytes.
 
 ```python
 def hkdf_mod_r(ikm: bytes) -> int:
-    okm = hkdf(master=ikm, salt="BLS-SIG-KEYGEN-SALT-", key_len=48, hashmod=sha256)
+    okm = hkdf(master=ikm, salt=b'BLS-SIG-KEYGEN-SALT-', key_len=48, hashmod=sha256)
     return int.from_bytes(okm, byteorder='big') % curve_order
 ```
 
@@ -57,6 +57,7 @@ The master key is the root of the key-tree and is derived from a 256-bit seed. W
 
 ```python
 def derive_master_privkey(seed: bytes) -> int:
+    seed = seed[:32]
     return derive_child_privkey(int.from_bytes(seed, byteorder='big'), 0)
 ```
 
