@@ -24,7 +24,7 @@ Every key generated via the key derivation process derives a child key via a set
 
 ```python
 def flip_bits(input: int) -> bytes:
-    return = input ^ (2**256 - 1)
+    return input ^ (2**256 - 1)
 ```
 
 ```python
