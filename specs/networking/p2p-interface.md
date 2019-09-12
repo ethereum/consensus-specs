@@ -114,7 +114,7 @@ This section outlines constants that are used in this spec.
 | Name | Value | Description |
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
-| `REQ_RESP_MAX_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
+| `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
@@ -237,9 +237,9 @@ result    ::= “0” | “1” | “2” | [“128” ... ”255”]
 
 The encoding-dependent header may carry metadata or assertions such as the encoded payload length, for integrity and attack proofing purposes. Because req/resp streams are single-use and stream closures implicitly delimit the boundaries, it is not strictly necessary to length-prefix payloads; however, certain encodings like SSZ do, for added security.
 
-A `response` is formed by one or more `response_chunk`s. The exact request determines whether a response consists of a single `response_chunk` or possibly many. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `REQ_RESP_MAX_SIZE`.
+A `response` is formed by one or more `response_chunk`s. The exact request determines whether a response consists of a single `response_chunk` or possibly many. Responses that consist of a single SSZ-list (such as `BlocksByRange` and `BlocksByRoot`) send each list item as a `response_chunk`. All other response types (non-Lists) send a single `response_chunk`. The encoded-payload of a `response_chunk` has a maximum uncompressed byte size of `MAX_CHUNK_SIZE`.
 
-Clients MUST ensure the each encoded payload of a `response_chunk` is less than or equal to `REQ_RESP_MAX_SIZE`; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
+Clients MUST ensure the each encoded payload of a `response_chunk` is less than or equal to `MAX_CHUNK_SIZE`; if not, they SHOULD reset the stream immediately. Clients tracking peer reputation MAY decrement the score of the misbehaving peer under this circumstance.
 
 #### Requesting side
 
@@ -247,7 +247,7 @@ Once a new stream with the protocol ID for the request type has been negotiated,
 
 The requester MUST close the write side of the stream once it finishes writing the request message. At this point, the stream will be half-closed.
 
-The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received. For responses consisting of potentially many `response_chunk`s (an SSZ-list) the requester SHOULD read from the stream until either; a) An error result is received in one of the chunks, b) The responder closes the stream,  c) More than `REQ_RESP_MAX_SIZE` bytes have been read for a single `response_chunk` payload or d) More than the maximum number of requested chunks are read. For requests consisting of a single `response_chunk` and a length-prefix, the requester should read the exact number of bytes defined by the length-prefix before closing the stream.
+The requester MUST wait a maximum of `TTFB_TIMEOUT` for the first response byte to arrive (time to first byte—or TTFB—timeout). On that happening, the requester allows a further `RESP_TIMEOUT` for each subsequent `response_chunk` received. For responses consisting of potentially many `response_chunk`s (an SSZ-list) the requester SHOULD read from the stream until either; a) An error result is received in one of the chunks, b) The responder closes the stream,  c) More than `MAX_CHUNK_SIZE` bytes have been read for a single `response_chunk` payload or d) More than the maximum number of requested chunks are read. For requests consisting of a single `response_chunk` and a length-prefix, the requester should read the exact number of bytes defined by the length-prefix before closing the stream.
 
 If any of these timeouts fire, the requester SHOULD reset the stream and deem the req/resp operation to have failed.
 
@@ -267,7 +267,7 @@ If steps (1), (2), or (3) fail due to invalid, malformed, or inconsistent data, 
 
 The entire request should be read in no more than `RESP_TIMEOUT`. Upon a timeout, the responder SHOULD reset the stream.
 
-The responder SHOULD send a `response_chunk` promptly. Chunks start with a **single-byte** response code which determines the contents of the `response_chunk` (`result` particle in the BNF grammar above).
+The responder SHOULD send a `response_chunk` promptly. Chunks start with a **single-byte** response code which determines the contents of the `response_chunk` (`result` particle in the BNF grammar above). For multiple chunks, only the last chunk is allowed to have a non-zero error code (i.e. The chunk stream is terminated once an error occurs).
 
 The response code can have one of the following values, encoded as a single unsigned byte:
 
@@ -708,7 +708,7 @@ Disadvantages include:
 * Harder to stream as length must be known up-front
 * Additional code path required to verify length
 
-In some protocols, adding a length prefix serves as a form of DoS protection against very long messages, allowing the client to abort if an overlong message is about to be sent. In this protocol, we are globally limiting message sizes using `REQ_RESP_MAX_SIZE`, thus the length prefix does not afford any additional protection.
+In some protocols, adding a length prefix serves as a form of DoS protection against very long messages, allowing the client to abort if an overlong message is about to be sent. In this protocol, we are globally limiting message sizes using `MAX_CHUNK_SIZE`, thus the length prefix does not afford any additional protection.
 
 [Protobuf varint](https://developers.google.com/protocol-buffers/docs/encoding#varints) is an efficient technique to encode variable-length ints. Instead of reserving a fixed-size field of as many bytes as necessary to convey the maximum possible value, this field is elastic in exchange for 1-bit overhead per byte.
 
