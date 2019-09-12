@@ -18,7 +18,7 @@ The key tree is defined purely through the relationship between a child-node and
 
 ## Specification
 
-Every key generated via the key derivation process derives a child key via a set of intermediate Lamport keys. The idea behind the Lamport keys is to provide a quantum secure backup incase BLS12-381 is no longer deemed secure. At a high level, the key derivation process works by using the parent node's privkey as an entropy source for the Lamport privkeys which are then merkleized into a compressed Lamport public key, this public key is then hashed into BLS12-381's private key group.
+Every key generated via the key derivation process derives a child key via a set of intermediate Lamport keys. The idea behind the Lamport keys is to provide a quantum secure backup incase BLS12-381 is no longer deemed secure. At a high level, the key derivation process works by using the parent node's privkey as an entropy source for the Lamport privkeys which are then hashed together into a compressed Lamport public key, this public key is then hashed into BLS12-381's private key group.
 
 ### Helper functions
 
