@@ -105,6 +105,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | `EPOCHS_PER_CUSTODY_PERIOD` | `2**11` (= 2,048) | epochs | ~9 days |
 | `CUSTODY_PERIOD_TO_RANDAO_PADDING` | `2**11` (= 2,048) | epochs | ~9 days |
 | `MAX_REVEAL_LATENESS_DECREMENT` | `2**7` (= 128) | epochs | ~14 hours |
+| `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | ~25.6 minutes |
 
 ### Max operations per block
 
@@ -691,6 +692,8 @@ def process_chunk_challenge_response(state: BeaconState,
     assert response.chunk_index == challenge.chunk_index
     # Verify bit challenge data is null
     assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Bitvector[256]()
+    # Verify minimum delay (to avoid self challenge with riskless reply)
+    assert get_current_epoch(state) >= challenge.inclusion_epoch + MAX_SEED_LOOKAHEAD
     # Verify the chunk matches the crosslink data root
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),
