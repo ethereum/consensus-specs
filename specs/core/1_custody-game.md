@@ -77,7 +77,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 ## Constants
 
 ### Misc
-
+| Name | Value |
+| - | - |
 | `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 
