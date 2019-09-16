@@ -340,7 +340,7 @@ def legendre_bit(a: int, q: int) -> int:
 Given one proof of custody chunk, returns the proof of custody subchunks of the correct sizes.
 
 ```python
-def custody_subchunkify(bytez: bytes) -> list[bytes]:
+def custody_subchunkify(bytez: bytes) -> Sequence[bytes]:
     bytez += b'\x00' * (-len(bytez) % BYTES_PER_CUSTODY_SUBCHUNK)
     return [bytez[i:i + BYTES_PER_CUSTODY_SUBCHUNK]
             for i in range(0, len(bytez), BYTES_PER_CUSTODY_SUBCHUNK)]
