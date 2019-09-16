@@ -31,7 +31,7 @@ def flip_bits(input: int) -> int:
 def seed_to_lamport_keys(seed: int, index: int) -> List[bytes]:
     combined_bytes = hkdf(master=seed.to_bytes(32, byteorder='big'),
                           salt=index.to_bytes(32, byteorder='big'), key_len=8160, hashmod=sha256)
-    return [combined_bytes[i: i + 32] for i in range(255)]
+    return [combined_bytes[i: i + 32] for i in range(0, 8160, 32)]
 ```
 
 ```python
