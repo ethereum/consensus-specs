@@ -62,7 +62,7 @@ Note that the generalized index has the convenient property that the two childre
 def merkle_tree(leaves: Sequence[Hash]) -> Sequence[Hash]:
     padded_length = get_next_power_of_two(len(leaves))
     o = [Hash()] * padded_length + list(leaves) + [Hash()] * (padded_length - len(leaves))
-    for i in range(len(leaves) - 1, 0, -1):
+    for i in range(padded_length - 1, 0, -1):
         o[i] = hash(o[i * 2] + o[i * 2 + 1])
     return o
 ```
