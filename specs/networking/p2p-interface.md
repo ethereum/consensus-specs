@@ -422,7 +422,7 @@ Request Content:
 
 ```
 (
-  block_roots: []HashTreeRoot
+  []HashTreeRoot
 )
 ```
 
@@ -430,7 +430,7 @@ Response Content:
 
 ```
 (
-  blocks: []BeaconBlock
+  []BeaconBlock
 )
 ```
 
