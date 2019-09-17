@@ -17,21 +17,16 @@ The decryption key is an intermediate key which is used both to verify the user-
 
 ### Password verification
 
-The password verification verifies step verifies that the password is correct with respect to the `checksum.message`, `cipher.message`, and `kdf`. This is done by appending the `cipher.message` to the 2nd 16 bytes of the decryption key, passing it through the function specified by`checksum.function` and verifying whether it matches the `checksum.message`.
+The password verification verifies step verifies that the password is correct with respect to the `checksum.message`, `cipher.message`, and `kdf`. This is done by appending the `cipher.message` to the 2nd 16 bytes of the decryption key, obtaining its SHA256 hash and verifying whether it matches the `checksum.message`.
 
 ```python
-def is_valid_password(decryption_key: bytes, cipher_message: bytes, checksum_message: bytes, checksum_function: str,) -> bool:
-    if checksum_function == 'sha256':
-        return sha256(decryption_key[16:32] + cipher_message) == checksum_message
-    elif checksum_function == 'keccak256':
-        return keccak256(decryption_key[16:32] + cipher_message) == checksum_message
-    return False
+def is_valid_password(decryption_key: bytes, cipher_message: bytes, checksum_message: bytes) -> bool:
+    return sha256(decryption_key[16:32] + cipher_message) == checksum_message
 ```
 
 | Hash       | `"function"`    | `"params"` | `"message"` |
 |------------|-----------------|------------|-------------|
-| SHA-256    | `"sha256"`      |  |
-| Keccak-256 | `"keccak256"`   |  |
+| SHA-256    | `"sha256"`      |            |             |
 
 ### Secret decryption
 
@@ -40,7 +35,6 @@ The `cipher.function` encrypts the secret using the decryption key, thus to decr
 | Cipher          | `"function"`    | `"params"` | `"message"` | Cipher Definition                                                                       |
 |-----------------|-----------------|------------|-------------|-----------------------------------------------------------------------------------------|
 | XOR             | `"xor"`         |            |             | `lambda decryption_key, cipher_message: bytes(a ^ b for a, b in zip(decryption_key, cipher_message))` |
-| AES 128 Counter | `"aes-128-ctr"` |            |             | [RFC 3686](https://tools.ietf.org/html/rfc3686)                                         |
 
 ## UUIDs
 
