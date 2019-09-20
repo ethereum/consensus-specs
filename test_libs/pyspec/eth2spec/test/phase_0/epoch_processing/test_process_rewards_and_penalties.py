@@ -9,7 +9,6 @@ from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
     fill_aggregate_attestation,
     get_valid_attestation,
-    sign_attestation,
 )
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
@@ -36,8 +35,8 @@ def test_genesis_epoch_no_attestations_no_penalties(spec, state):
 def test_genesis_epoch_full_attestations_no_rewards(spec, state):
     attestations = []
     for slot in range(spec.SLOTS_PER_EPOCH - spec.MIN_ATTESTATION_INCLUSION_DELAY - 1):
-        attestation = get_valid_attestation(spec, state, signed=True)
-        fill_aggregate_attestation(spec, state, attestation)
+        attestation = get_valid_attestation(spec, state)
+        fill_aggregate_attestation(spec, state, attestation, signed=True)
         attestations.append(attestation)
         next_slot(spec, state)
     add_attestations_to_state(spec, state, attestations, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
@@ -67,8 +66,8 @@ def test_no_attestations_all_penalties(spec, state):
 @with_all_phases
 @spec_state_test
 def test_duplicate_attestation(spec, state):
-    attestation = get_valid_attestation(spec, state, signed=True)
-    fill_aggregate_attestation(spec, state, attestation)
+    attestation = get_valid_attestation(spec, state)
+    fill_aggregate_attestation(spec, state, attestation, signed=True)
 
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
     participants = indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices
