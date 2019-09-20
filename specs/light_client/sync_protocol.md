@@ -39,8 +39,8 @@ We define the following Python custom types for type hinting and readability:
 | - | - |
 | `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH` | `4` |
 | `BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_INDEX` | **TBD** |
-| `PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH` | `5` |
-| `PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX` | **TBD** |
+| `PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH` | `5` |
+| `PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX` | **TBD** |
 
 ## Containers
 
@@ -56,9 +56,9 @@ class LightClientUpdate(container):
     # Updated beacon header (and authenticating branch)
     header: BeaconBlockHeader
     header_branch: Vector[Hash, BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH]
-    # Updated persistent committee (and authenticating branch)
+    # Updated period committee (and authenticating branch)
     committee: CompactCommittee
-    committee_branch: Vector[Hash, PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
+    committee_branch: Vector[Hash, PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
 ```
 
 ## Helpers
@@ -70,7 +70,7 @@ class LightClientUpdate(container):
 class LightClientMemory(object):
     shard: Shard  # Randomly initialized and retained forever
     header: BeaconBlockHeader  # Beacon header which is not expected to revert
-    # Persistent committees corresponding to the beacon header
+    # period committees corresponding to the beacon header
     previous_committee: CompactCommittee
     current_committee: CompactCommittee
     next_committee: CompactCommittee
@@ -137,13 +137,13 @@ def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
     domain = compute_domain(DOMAIN_SHARD_ATTESTER, update.fork_version)
     assert bls_verify(pubkey, update.shard_block_root, update.signature, domain)
 
-    # Update persistent committees if entering a new period
+    # Update period committees if entering a new period
     if next_period == current_period + 1:
         assert is_valid_merkle_branch(
             leaf=hash_tree_root(update.committee),
             branch=update.committee_branch,
-            depth=PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT),
-            index=PERSISTENT_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX << log_2(SHARD_COUNT) + memory.shard,
+            depth=PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT),
+            index=PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_INDEX << log_2(SHARD_COUNT) + memory.shard,
             root=hash_tree_root(update.header),
         )
         memory.previous_committee = memory.current_committee
