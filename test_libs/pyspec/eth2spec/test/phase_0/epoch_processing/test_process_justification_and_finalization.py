@@ -16,7 +16,7 @@ def get_shards_for_slot(spec, state, slot):
     return [shard + i for i in range(committees_per_slot)]
 
 
-def add_mock_attestations(spec, state, epoch, source, target, sufficient_support=False):
+def add_mock_attestations(spec, state, epoch, source, target, sufficient_support=False, messed_up_target=False):
     # we must be at the end of the epoch
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
 
@@ -67,6 +67,8 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
                 ),
                 inclusion_delay=1,
             ))
+            if messed_up_target:
+                attestations[len(attestations) - 1].data.target.root = b'\x99' * 32
 
 
 def get_checkpoints(spec, epoch):
@@ -196,7 +198,7 @@ def finalize_on_123(spec, state, epoch, sufficient_support):
         assert state.finalized_checkpoint == old_finalized  # no new finalized
 
 
-def finalize_on_12(spec, state, epoch, sufficient_support):
+def finalize_on_12(spec, state, epoch, sufficient_support, messed_up_target):
     assert epoch > 2
     state.slot = (spec.SLOTS_PER_EPOCH * epoch) - 1  # skip ahead to just before epoch
 
@@ -218,13 +220,13 @@ def finalize_on_12(spec, state, epoch, sufficient_support):
                           epoch=epoch - 1,
                           source=c2,
                           target=c1,
-                          sufficient_support=sufficient_support)
+                          sufficient_support=sufficient_support, messed_up_target=messed_up_target)
 
     # process!
     yield from run_process_just_and_fin(spec, state)
 
     assert state.previous_justified_checkpoint == c2  # changed to old current
-    if sufficient_support:
+    if sufficient_support and not messed_up_target:
         assert state.current_justified_checkpoint == c1  # changed to 1st latest
         assert state.finalized_checkpoint == c2  # finalized previous justified epoch
     else:
@@ -271,10 +273,16 @@ def test_123_poor_support(spec, state):
 @with_all_phases
 @spec_state_test
 def test_12_ok_support(spec, state):
-    yield from finalize_on_12(spec, state, 3, True)
+    yield from finalize_on_12(spec, state, 3, True, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_12_ok_support_messed_target(spec, state):
+    yield from finalize_on_12(spec, state, 3, True, True)
 
 
 @with_all_phases
 @spec_state_test
 def test_12_poor_support(spec, state):
-    yield from finalize_on_12(spec, state, 3, False)
+    yield from finalize_on_12(spec, state, 3, False, False)
