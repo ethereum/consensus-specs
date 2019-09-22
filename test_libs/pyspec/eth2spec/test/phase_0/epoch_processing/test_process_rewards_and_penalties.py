@@ -53,9 +53,34 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_full_attestations(spec, state):
+    attestations = []
+    for slot in range(spec.SLOTS_PER_EPOCH - spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        attestation = get_valid_attestation(spec, state)
+        fill_aggregate_attestation(spec, state, attestation, signed=True)
+        attestations.append(attestation)
+        next_slot(spec, state)
+    add_attestations_to_state(spec, state, attestations, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+
+    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
+
+    pre_state = deepcopy(state)
+
+    yield from run_process_rewards_and_penalties(spec, state)
+
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    assert len(attesting_indices) > 0
+    for index in attesting_indices:
+        assert state.balances[index] > pre_state.balances[index]
+
+
+@with_all_phases
+@spec_state_test
 def test_no_attestations_all_penalties(spec, state):
     next_epoch(spec, state)
     pre_state = deepcopy(state)
+
+    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
 
     yield from run_process_rewards_and_penalties(spec, state)
 
@@ -66,6 +91,12 @@ def test_no_attestations_all_penalties(spec, state):
 @with_all_phases
 @spec_state_test
 def test_duplicate_attestation(spec, state):
+    """
+    Although duplicate attestations can be included on-chain, they should only
+    be rewarded for once.
+    This test addresses this issue found at Interop
+    https://github.com/djrtwo/interop-test-cases/tree/master/tests/prysm_16_duplicate_attestation_rewards
+    """
     attestation = get_valid_attestation(spec, state)
     fill_aggregate_attestation(spec, state, attestation, signed=True)
 
