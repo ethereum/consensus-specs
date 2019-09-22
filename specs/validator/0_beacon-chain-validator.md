@@ -345,7 +345,7 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
         custody_bit=0b0,
     )
 
-    domain = get_domain(state, DOMAIN_ATTESTATION, attestation.data.target.epoch)
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
 ```
 

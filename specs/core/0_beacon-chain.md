@@ -19,7 +19,7 @@
         - [State list lengths](#state-list-lengths)
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
-        - [Signature domain types](#signature-domain-types)
+        - [Domain types](#domain-types)
     - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
@@ -148,7 +148,7 @@ We define the following Python custom types for type hinting and readability:
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Hash` | `Bytes32` | a hash |
 | `Version` | `Bytes4` | a fork version number |
-| `DomainType` | `Bytes4` | a signature domain type |
+| `DomainType` | `Bytes4` | a domain type |
 | `Domain` | `Bytes8` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
@@ -250,15 +250,15 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 | `MAX_TRANSFERS` | `0` |
 
-### Signature domain types
+### Domain types
 
 The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
 | `DOMAIN_BEACON_PROPOSER` | `0` |
-| `DOMAIN_RANDAO` | `1` |
-| `DOMAIN_ATTESTATION` | `2` |
+| `DOMAIN_BEACON_ATTESTER` | `1` |
+| `DOMAIN_RANDAO` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
 | `DOMAIN_VOLUNTARY_EXIT` | `4` |
 | `DOMAIN_TRANSFER` | `5` |
@@ -671,7 +671,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
         signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
+        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
     ):
         return False
     return True
@@ -870,12 +870,12 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
 #### `get_seed`
 
 ```python
-def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
+def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
     """
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-    return hash(mix + int_to_bytes(epoch, length=32))
+    return hash(domain_type + mix + int_to_bytes(epoch, length=32))
 ```
 
 #### `get_committee_count`
@@ -901,7 +901,7 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
     """
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=get_seed(state, epoch),
+        seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
         index=(shard + SHARD_COUNT - get_start_shard(state, epoch)) % SHARD_COUNT,
         count=get_committee_count(state, epoch),
     )
@@ -941,7 +941,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
-    seed = hash(get_seed(state, epoch) + int_to_bytes(state.slot, length=8))
+    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=8))
     indices = get_active_validator_indices(state, epoch)
     return compute_proposer_index(state, indices, seed)
 ```
