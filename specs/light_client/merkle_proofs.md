@@ -282,23 +282,27 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
 Now we provide the Merkle proof verification functions. First, for single item proofs:
 
 ```python
-def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+def calculate_merkle_root(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex) -> Hash:
     assert len(proof) == get_generalized_index_length(index)
     for i, h in enumerate(proof):
         if get_generalized_index_bit(index, i):
             leaf = hash(h + leaf)
         else:
             leaf = hash(leaf + h)
-    return leaf == root
+    return leaf
+```
+
+```python
+def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+    return calculate_merkle_root(leaf, proof, index) == root
 ```
 
 Now for multi-item proofs:
 
 ```python
-def verify_merkle_multiproof(leaves: Sequence[Hash],
-                             proof: Sequence[Hash],
-                             indices: Sequence[GeneralizedIndex],
-                             root: Hash) -> bool:
+def calculate_multi_merkle_root(leaves: Sequence[Hash],
+                                proof: Sequence[Hash],
+                                indices: Sequence[GeneralizedIndex]) -> Hash:
     assert len(leaves) == len(indices)
     helper_indices = get_helper_indices(indices)
     assert len(proof) == len(helper_indices)
@@ -317,7 +321,15 @@ def verify_merkle_multiproof(leaves: Sequence[Hash],
             )
             keys.append(GeneralizedIndex(k // 2))
         pos += 1
-    return objects[GeneralizedIndex(1)] == root
+    return objects[GeneralizedIndex(1)]
 ```
 
-Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`).
+```python
+def verify_merkle_multiproof(leaves: Sequence[Hash],
+                             proof: Sequence[Hash],
+                             indices: Sequence[GeneralizedIndex],
+                             root: Hash) -> bool:
+    return calculate_multi_merkle_root(leaf, proof, index) == root
+```
+
+Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root` and `calculate_multi_merkle_root` can be used independently to compute the new Merkle root of a proof with leaves updated.
