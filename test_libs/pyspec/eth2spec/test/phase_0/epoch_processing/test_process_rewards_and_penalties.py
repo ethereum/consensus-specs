@@ -34,13 +34,19 @@ def test_genesis_epoch_no_attestations_no_penalties(spec, state):
 @spec_state_test
 def test_genesis_epoch_full_attestations_no_rewards(spec, state):
     attestations = []
-    for slot in range(spec.SLOTS_PER_EPOCH - spec.MIN_ATTESTATION_INCLUSION_DELAY - 1):
-        attestation = get_valid_attestation(spec, state)
-        fill_aggregate_attestation(spec, state, attestation, signed=True)
-        attestations.append(attestation)
+    for slot in range(spec.SLOTS_PER_EPOCH - 1):
+        # create an attestation for each slot
+        if slot < spec.SLOTS_PER_EPOCH:
+            attestation = get_valid_attestation(spec, state)
+            fill_aggregate_attestation(spec, state, attestation, signed=True)
+            attestations.append(attestation)
+        # fill each created slot in state after inclusion delay
+        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
+            include_att = attestations[slot - spec.MIN_ATTESTATION_INCLUSION_DELAY]
+            add_attestations_to_state(spec, state, [include_att], state.slot)
         next_slot(spec, state)
-    add_attestations_to_state(spec, state, attestations, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
+    # ensure has not cross the epoch boundary
     assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH
 
     pre_state = deepcopy(state)
