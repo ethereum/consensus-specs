@@ -875,7 +875,7 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-    return hash(domain_type + mix + int_to_bytes(epoch, length=32))
+    return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
 ```
 
 #### `get_committee_count`
