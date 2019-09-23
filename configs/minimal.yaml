@@ -59,7 +59,7 @@ SLOTS_PER_EPOCH: 8
 # 2**0 (= 1) epochs
 MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs
-ACTIVATION_EXIT_DELAY: 4
+MAX_SEED_LOOKAHEAD: 4
 # [customized] higher frequency new deposits from eth1 for testing
 SLOTS_PER_ETH1_VOTING_PERIOD: 16
 # [customized] smaller state
