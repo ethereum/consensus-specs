@@ -114,7 +114,7 @@ Once a validator has been processed and added to the beacon state's `validators`
 
 ### Activation
 
-In normal operation, the validator is quickly activated, at which point the validator is added to the shuffling and begins validation after an additional `ACTIVATION_EXIT_DELAY` epochs (25.6 minutes).
+In normal operation, the validator is quickly activated, at which point the validator is added to the shuffling and begins validation after an additional `MAX_SEED_LOOKAHEAD` epochs (25.6 minutes).
 
 The function [`is_active_validator`](../core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
@@ -345,7 +345,7 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
         custody_bit=0b0,
     )
 
-    domain = get_domain(state, DOMAIN_ATTESTATION, attestation.data.target.epoch)
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
 ```
 

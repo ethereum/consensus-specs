@@ -21,7 +21,7 @@ def test_activation(spec, state):
     index = 0
     mock_deposit(spec, state, index)
 
-    for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
+    for _ in range(spec.MAX_SEED_LOOKAHEAD + 1):
         next_epoch(spec, state)
 
     yield from run_process_registry_updates(spec, state)
@@ -73,7 +73,7 @@ def test_ejection(spec, state):
     # Mock an ejection
     state.validators[index].effective_balance = spec.EJECTION_BALANCE
 
-    for _ in range(spec.ACTIVATION_EXIT_DELAY + 1):
+    for _ in range(spec.MAX_SEED_LOOKAHEAD + 1):
         next_epoch(spec, state)
 
     yield from run_process_registry_updates(spec, state)

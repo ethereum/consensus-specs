@@ -225,7 +225,7 @@ def get_period_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> Sequ
     """
     full_committee = compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=get_seed(state, epoch),
+        seed=get_seed(state, epoch, DOMAIN_SHARD_ATTESTER),
         index=shard,
         count=SHARD_COUNT,
     )
@@ -270,7 +270,8 @@ def get_shard_block_proposer_index(state: BeaconState,
         return None
 
     MAX_RANDOM_BYTE = 2**8 - 1
-    seed = hash(get_seed(state, current_epoch) + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
+    epoch_seed = get_seed(state, current_epoch, DOMAIN_SHARD_PROPOSER)
+    seed = hash(epoch_seed + int_to_bytes(shard, length=8) + int_to_bytes(slot, length=8))
     i = 0
     while True:
         candidate_index = active_indices[(slot + i) % len(active_indices)]

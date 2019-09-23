@@ -122,7 +122,7 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
         privkey=privkey,
         domain=spec.get_domain(
             state=state,
-            domain_type=spec.DOMAIN_ATTESTATION,
+            domain_type=spec.DOMAIN_BEACON_ATTESTER,
             message_epoch=attestation_data.target.epoch,
         )
     )
