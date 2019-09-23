@@ -160,7 +160,7 @@ def get_committee_assignment(state: BeaconState,
     return None
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
+A validator can use the following function to see if they are supposed to propose during a slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
 def is_proposer(state: BeaconState,
@@ -169,6 +169,8 @@ def is_proposer(state: BeaconState,
 ```
 
 *Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
+
+*Note*: `BeaconBlock` proposal is distinct from crosslink committee assignment, and in a given epoch each responsibility might occur at different a different slot.
 
 ### Lookahead
 
