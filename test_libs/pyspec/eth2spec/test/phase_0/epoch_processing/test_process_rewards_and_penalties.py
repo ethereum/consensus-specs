@@ -7,7 +7,6 @@ from eth2spec.test.helpers.state import (
 )
 from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
-    fill_aggregate_attestation,
     get_valid_attestation,
 )
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
@@ -37,8 +36,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
     for slot in range(spec.SLOTS_PER_EPOCH - 1):
         # create an attestation for each slot
         if slot < spec.SLOTS_PER_EPOCH:
-            attestation = get_valid_attestation(spec, state)
-            fill_aggregate_attestation(spec, state, attestation, signed=True)
+            attestation = get_valid_attestation(spec, state, signed=True)
             attestations.append(attestation)
         # fill each created slot in state after inclusion delay
         if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
@@ -64,8 +62,7 @@ def test_full_attestations(spec, state):
     for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
         # create an attestation for each slot in epoch
         if slot < spec.SLOTS_PER_EPOCH:
-            attestation = get_valid_attestation(spec, state)
-            fill_aggregate_attestation(spec, state, attestation, signed=True)
+            attestation = get_valid_attestation(spec, state, signed=True)
             attestations.append(attestation)
         # fill each created slot in state after inclusion delay
         if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
@@ -112,8 +109,7 @@ def test_duplicate_attestation(spec, state):
     This test addresses this issue found at Interop
     https://github.com/djrtwo/interop-test-cases/tree/master/tests/prysm_16_duplicate_attestation_rewards
     """
-    attestation = get_valid_attestation(spec, state)
-    fill_aggregate_attestation(spec, state, attestation, signed=True)
+    attestation = get_valid_attestation(spec, state, signed=True)
 
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
     participants = indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices
@@ -131,7 +127,8 @@ def test_duplicate_attestation(spec, state):
     next_epoch(spec, dup_state)
 
     # Run non-duplicate inclusion rewards for comparision. Do not yield test vectors
-    pre, post = run_process_rewards_and_penalties(spec, single_state)
+    for _ in run_process_rewards_and_penalties(spec, single_state):
+        pass
 
     # Output duplicate inclusion to test vectors
     yield from run_process_rewards_and_penalties(spec, dup_state)
