@@ -8,9 +8,8 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.test.helpers.attestations import (
     add_attestations_to_state,
-    fill_aggregate_attestation,
     get_valid_attestation,
-)
+    sign_attestation)
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
 
@@ -32,9 +31,8 @@ def test_no_attestations(spec, state):
 def test_single_crosslink_update_from_current_epoch(spec, state):
     next_epoch(spec, state)
 
-    attestation = get_valid_attestation(spec, state)
+    attestation = get_valid_attestation(spec, state, signed=True)
 
-    fill_aggregate_attestation(spec, state, attestation, signed=True)
     add_attestations_to_state(spec, state, [attestation], state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     assert len(state.current_epoch_attestations) == 1
@@ -53,9 +51,8 @@ def test_single_crosslink_update_from_current_epoch(spec, state):
 def test_single_crosslink_update_from_previous_epoch(spec, state):
     next_epoch(spec, state)
 
-    attestation = get_valid_attestation(spec, state)
+    attestation = get_valid_attestation(spec, state, signed=True)
 
-    fill_aggregate_attestation(spec, state, attestation, signed=True)
     add_attestations_to_state(spec, state, [attestation], state.slot + spec.SLOTS_PER_EPOCH)
 
     assert len(state.previous_epoch_attestations) == 1
@@ -89,8 +86,7 @@ def test_double_late_crosslink(spec, state):
     next_epoch(spec, state)
     state.slot += 4
 
-    attestation_1 = get_valid_attestation(spec, state)
-    fill_aggregate_attestation(spec, state, attestation_1, signed=True)
+    attestation_1 = get_valid_attestation(spec, state, signed=True)
 
     # add attestation_1 to next epoch
     next_epoch(spec, state)
@@ -99,7 +95,7 @@ def test_double_late_crosslink(spec, state):
     for _ in range(spec.SLOTS_PER_EPOCH):
         attestation_2 = get_valid_attestation(spec, state)
         if attestation_2.data.crosslink.shard == attestation_1.data.crosslink.shard:
-            fill_aggregate_attestation(spec, state, attestation_2, signed=True)
+            sign_attestation(spec, state, attestation_2)
             break
         next_slot(spec, state)
     apply_empty_block(spec, state)
@@ -139,7 +135,7 @@ def test_tied_crosslink_between_epochs(spec, state):
     Ensure that ties on crosslinks between epochs are broken by previous epoch.
     """
     prev_attestation = get_valid_attestation(spec, state)
-    fill_aggregate_attestation(spec, state, prev_attestation, signed=True)
+    sign_attestation(spec, state, prev_attestation)
 
     # add attestation at start of next epoch
     next_epoch(spec, state)
@@ -149,7 +145,7 @@ def test_tied_crosslink_between_epochs(spec, state):
     for _ in range(spec.SLOTS_PER_EPOCH):
         cur_attestation = get_valid_attestation(spec, state)
         if cur_attestation.data.crosslink.shard == prev_attestation.data.crosslink.shard:
-            fill_aggregate_attestation(spec, state, cur_attestation, signed=True)
+            sign_attestation(spec, state, cur_attestation)
             break
         next_slot(spec, state)
 
