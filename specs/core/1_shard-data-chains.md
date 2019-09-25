@@ -70,9 +70,9 @@ This document describes the shard transition function (data layer only) and the 
 
 ### Initial values
 
-| Name | Value |
+| Name | Value | Unit |
 | - | - |
-| `SHARD_GENESIS_EPOCH` | **TBD** |
+| `SHARD_GENESIS_EPOCH` | **TBD** | Epoch |
 
 ### Time parameters
 
@@ -182,7 +182,7 @@ def compute_shard_period_start_epoch(epoch: Epoch, lookback: uint64) -> Epoch:
 ```python
 def get_period_committee(beacon_state: BeaconState, shard: Shard, epoch: Epoch) -> Sequence[ValidatorIndex]:
     active_validator_indices = get_active_validator_indices(beacon_state, epoch)
-    seed = get_seed(beacon_state, epoch)
+    seed = get_seed(beacon_state, epoch, DOMAIN_SHARD_ATTESTER)
     return compute_committee(active_validator_indices, seed, shard, SHARD_COUNT)[:MAX_PERIOD_COMMITTEE_SIZE]
 ```
 
@@ -201,12 +201,16 @@ def get_shard_committee(beacon_state: BeaconState, shard: Shard, epoch: Epoch) -
 #### `get_shard_proposer_index`
 
 ```python
-def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: ShardSlot) -> ValidatorIndex:
+def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: ShardSlot) -> Optional[ValidatorIndex]:
     epoch = get_current_epoch(beacon_state)
     shard_committee = get_shard_committee(beacon_state, shard, epoch)
     active_indices = [i for i in shard_committee if is_active_validator(beacon_state.validators[i], epoch)]
-    seed = hash(get_seed(beacon_state, epoch) + int_to_bytes(slot, length=8) + int_to_bytes(shard, length=8))
-    compute_proposer_index(beacon_state, active_indices, seed)
+    if not any(active_indices):
+        return None
+
+    epoch_seed = get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER)
+    seed = hash(epoch_seed + int_to_bytes(slot, length=8) + int_to_bytes(shard, length=8))
+    return compute_proposer_index(beacon_state, active_indices, seed)
 ```
 
 ### Shard state mutators

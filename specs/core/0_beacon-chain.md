@@ -19,7 +19,7 @@
         - [State list lengths](#state-list-lengths)
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
-        - [Signature domain types](#signature-domain-types)
+        - [Domain types](#domain-types)
     - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
@@ -67,6 +67,7 @@
             - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
         - [Misc](#misc-1)
             - [`compute_shuffled_index`](#compute_shuffled_index)
+            - [`compute_proposer_index`](#compute_proposer_index)
             - [`compute_committee`](#compute_committee)
             - [`compute_epoch_of_slot`](#compute_epoch_of_slot)
             - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
@@ -147,7 +148,7 @@ We define the following Python custom types for type hinting and readability:
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Hash` | `Bytes32` | a hash |
 | `Version` | `Bytes4` | a fork version number |
-| `DomainType` | `Bytes4` | a signature domain type |
+| `DomainType` | `Bytes4` | a domain type |
 | `Domain` | `Bytes8` | a signature domain |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
@@ -209,7 +210,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 6 seconds |
 | `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
-| `ACTIVATION_EXIT_DELAY` | `2**2` (= 4) | epochs | 25.6 minutes |
+| `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
@@ -249,15 +250,15 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 | `MAX_TRANSFERS` | `0` |
 
-### Signature domain types
+### Domain types
 
 The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
 | `DOMAIN_BEACON_PROPOSER` | `0` |
-| `DOMAIN_RANDAO` | `1` |
-| `DOMAIN_ATTESTATION` | `2` |
+| `DOMAIN_BEACON_ATTESTER` | `1` |
+| `DOMAIN_RANDAO` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
 | `DOMAIN_VOLUNTARY_EXIT` | `4` |
 | `DOMAIN_TRANSFER` | `5` |
@@ -670,7 +671,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
         signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_ATTESTATION, indexed_attestation.data.target.epoch),
+        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
     ):
         return False
     return True
@@ -717,6 +718,25 @@ def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Has
     return ValidatorIndex(index)
 ```
 
+#### `compute_proposer_index`
+
+```python
+def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Hash) -> ValidatorIndex:
+    """
+    Return from ``indices`` a random index sampled by effective balance.
+    """
+    assert len(indices) > 0
+    MAX_RANDOM_BYTE = 2**8 - 1
+    i = 0
+    while True:
+        candidate_index = indices[compute_shuffled_index(ValidatorIndex(i % len(indices)), len(indices), seed)]
+        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
+        effective_balance = state.validators[candidate_index].effective_balance
+        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
+            return ValidatorIndex(candidate_index)
+        i += 1
+```
+
 #### `compute_committee`
 
 ```python
@@ -759,7 +779,7 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     """
     Return the epoch during which validator activations and exits initiated in ``epoch`` take effect.
     """
-    return Epoch(epoch + 1 + ACTIVATION_EXIT_DELAY)
+    return Epoch(epoch + 1 + MAX_SEED_LOOKAHEAD)
 ```
 
 #### `compute_domain`
@@ -850,12 +870,12 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
 #### `get_seed`
 
 ```python
-def get_seed(state: BeaconState, epoch: Epoch) -> Hash:
+def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
     """
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-    return hash(mix + int_to_bytes(epoch, length=32))
+    return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
 ```
 
 #### `get_committee_count`
@@ -881,7 +901,7 @@ def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> S
     """
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=get_seed(state, epoch),
+        seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
         index=(shard + SHARD_COUNT - get_start_shard(state, epoch)) % SHARD_COUNT,
         count=get_committee_count(state, epoch),
     )
@@ -921,20 +941,9 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
-    committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    offset = committees_per_slot * (state.slot % SLOTS_PER_EPOCH)
-    shard = Shard((get_start_shard(state, epoch) + offset) % SHARD_COUNT)
-    first_committee = get_crosslink_committee(state, epoch, shard)
-    MAX_RANDOM_BYTE = 2**8 - 1
-    seed = get_seed(state, epoch)
-    i = 0
-    while True:
-        candidate_index = first_committee[(epoch + i) % len(first_committee)]
-        random_byte = hash(seed + int_to_bytes(i // 32, length=8))[i % 32]
-        effective_balance = state.validators[candidate_index].effective_balance
-        if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-            return ValidatorIndex(candidate_index)
-        i += 1
+    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=8))
+    indices = get_active_validator_indices(state, epoch)
+    return compute_proposer_index(state, indices, seed)
 ```
 
 #### `get_attestation_data_slot`
@@ -1196,6 +1205,7 @@ def process_epoch(state: BeaconState) -> None:
     # @process_reveal_deadlines
     # @process_challenge_deadlines
     process_slashings(state)
+    # @update_period_committee
     process_final_updates(state)
     # @after_process_final_updates
 ```
@@ -1549,6 +1559,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         (body.deposits, process_deposit),
         (body.voluntary_exits, process_voluntary_exit),
         (body.transfers, process_transfer),
+        # @process_shard_receipt_proofs
     ):
         for operation in operations:
             function(state, operation)
@@ -1559,9 +1570,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ```python
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     proposer = state.validators[proposer_slashing.proposer_index]
-    # Verify that the epoch is the same
-    assert (compute_epoch_of_slot(proposer_slashing.header_1.slot)
-            == compute_epoch_of_slot(proposer_slashing.header_2.slot))
+    # Verify slots match
+    assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
     # But the headers are different
     assert proposer_slashing.header_1 != proposer_slashing.header_2
     # Check proposer is slashable
@@ -1614,11 +1624,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         inclusion_delay=state.slot - attestation_slot,
         proposer_index=get_beacon_proposer_index(state),
     )
-
-    # Check bitlist lengths
-    committee_size = get_committee_count(state, attestation.data.target.epoch)
-    assert len(attestation.aggregation_bits) == committee_size
-    assert len(attestation.custody_bits) == committee_size
 
     if data.target.epoch == get_current_epoch(state):
         assert data.source == state.current_justified_checkpoint

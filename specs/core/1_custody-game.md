@@ -77,7 +77,8 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 ## Constants
 
 ### Misc
-
+| Name | Value |
+| - | - |
 | `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
 
@@ -281,7 +282,7 @@ def ceillog2(x: uint64) -> int:
 ### `is_valid_merkle_branch_with_mixin`
 
 ```python
-def is_valid_merkle_branch_with_mixin(leaf: Hash, 
+def is_valid_merkle_branch_with_mixin(leaf: Hash,
                                       branch: Sequence[Hash],
                                       depth: uint64,
                                       index: uint64,
@@ -314,7 +315,7 @@ def legendre_bit(a: int, q: int) -> int:
     if a >= q:
         return legendre_bit(a % q, q)
     if a == 0:
-        return 0 
+        return 0
     assert(q > a > 0 and q % 2 == 1)
     t = 1
     n = q
@@ -339,7 +340,7 @@ def legendre_bit(a: int, q: int) -> int:
 Given one proof of custody chunk, returns the proof of custody subchunks of the correct sizes.
 
 ```python
-def custody_subchunkify(bytez: bytes) -> list:
+def custody_subchunkify(bytez: bytes) -> Sequence[bytes]:
     bytez += b'\x00' * (-len(bytez) % BYTES_PER_CUSTODY_SUBCHUNK)
     return [bytez[i:i + BYTES_PER_CUSTODY_SUBCHUNK]
             for i in range(0, len(bytez), BYTES_PER_CUSTODY_SUBCHUNK)]
@@ -601,7 +602,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
-        get_custody_period_for_validator(state, challenge.responder_index, epoch), 
+        get_custody_period_for_validator(state, challenge.responder_index, epoch),
         challenge.responder_index
     ) + 2 * EPOCHS_PER_CUSTODY_PERIOD + responder.max_reveal_lateness
 
@@ -672,7 +673,7 @@ def process_chunk_challenge_response(state: BeaconState,
     # Verify bit challenge data is null
     assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Hash()
     # Verify minimum delay
-    assert get_current_epoch(state) >= challenge.inclusion_epoch + ACTIVATION_EXIT_DELAY
+    assert get_current_epoch(state) >= challenge.inclusion_epoch + MAX_SEED_LOOKAHEAD
     # Verify the chunk matches the crosslink data root
     assert is_valid_merkle_branch(
         leaf=hash_tree_root(response.chunk),

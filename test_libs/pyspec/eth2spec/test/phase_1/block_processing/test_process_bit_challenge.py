@@ -212,13 +212,16 @@ def test_max_reveal_lateness_1(spec, state):
     challenge = get_valid_bit_challenge(spec, state, attestation)
 
     responder_index = challenge.responder_index
+    target_epoch = attestation.data.target.epoch
 
     state.validators[responder_index].max_reveal_lateness = 3
 
-    for i in range(spec.get_randao_epoch_for_custody_period(
-        spec.get_custody_period_for_validator(state, responder_index),
+    latest_reveal_epoch = spec.get_randao_epoch_for_custody_period(
+        spec.get_custody_period_for_validator(state, responder_index, target_epoch),
         responder_index
-    ) + 2 * spec.EPOCHS_PER_CUSTODY_PERIOD + state.validators[responder_index].max_reveal_lateness - 2):
+    ) + 2 * spec.EPOCHS_PER_CUSTODY_PERIOD + state.validators[responder_index].max_reveal_lateness
+
+    while spec.get_current_epoch(state) < latest_reveal_epoch - 2:
         next_epoch(spec, state)
         apply_empty_block(spec, state)
 

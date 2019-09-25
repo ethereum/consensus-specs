@@ -114,7 +114,7 @@ Once a validator has been processed and added to the beacon state's `validators`
 
 ### Activation
 
-In normal operation, the validator is quickly activated, at which point the validator is added to the shuffling and begins validation after an additional `ACTIVATION_EXIT_DELAY` epochs (25.6 minutes).
+In normal operation, the validator is quickly activated, at which point the validator is added to the shuffling and begins validation after an additional `MAX_SEED_LOOKAHEAD` epochs (25.6 minutes).
 
 The function [`is_active_validator`](../core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
@@ -160,7 +160,7 @@ def get_committee_assignment(state: BeaconState,
     return None
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
+A validator can use the following function to see if they are supposed to propose during a slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
 def is_proposer(state: BeaconState,
@@ -169,6 +169,8 @@ def is_proposer(state: BeaconState,
 ```
 
 *Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
+
+*Note*: `BeaconBlock` proposal is distinct from crosslink committee assignment, and in a given epoch each responsibility might occur at different a different slot.
 
 ### Lookahead
 
@@ -218,7 +220,7 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 ##### Eth1 Data
 
-The `block.eth1_data` field is for block proposers to vote on recent Eth 1.0 data. This recent data contains an Eth 1.0 block hash as well as the associated deposit root (as calculated by the `get_hash_tree_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth 1.0 block. If over half of the block proposers in the current Eth 1.0 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
+The `block.eth1_data` field is for block proposers to vote on recent Eth 1.0 data. This recent data contains an Eth 1.0 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth 1.0 block. If over half of the block proposers in the current Eth 1.0 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
 Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth 1.0 data at distance `distance` relative to the Eth 1.0 head at the start of the current Eth 1.0 voting period. Let `previous_eth1_distance` be the distance relative to the Eth 1.0 block corresponding to `state.eth1_data.block_hash` at the start of the current Eth 1.0 voting period. An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
 
@@ -343,7 +345,7 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
         custody_bit=0b0,
     )
 
-    domain = get_domain(state, DOMAIN_ATTESTATION, attestation.data.target.epoch)
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
 ```
 

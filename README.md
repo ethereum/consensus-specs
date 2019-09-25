@@ -20,6 +20,7 @@ Core specifications for Eth 2.0 client validation can be found in [specs/core](s
 ### Phase 1
 * [Custody Game](specs/core/1_custody-game.md)
 * [Shard Data Chains](specs/core/1_shard-data-chains.md)
+* [Misc beacon chain updates](specs/core/1_beacon-chain-misc.md)
 
 ### Phase 2
 
@@ -34,8 +35,6 @@ See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) fo
 * [General test format](specs/test_formats/README.md)
 * [Merkle proof formats](specs/light_client/merkle_proofs.md)
 * [Light client syncing protocol](specs/light_client/sync_protocol.md)
-* [Beacon node API for validator](specs/validator/0_beacon-node-validator-api.md)
-
 
 ## Additional specifications for client implementers
 
