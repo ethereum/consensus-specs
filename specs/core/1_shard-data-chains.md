@@ -54,7 +54,6 @@ This document describes the shard transition function (data layer only) and the 
 | Name | SSZ equivalent | Description |
 | - | - | - |
 | `ShardSlot` | `uint64` | a shard slot number |
-| `GweiDelta` | `int64` | a signed Gwei delta |
 
 ## Configuration
 
@@ -105,7 +104,7 @@ This document describes the shard transition function (data layer only) and the 
 ### `ShardBlock`
 
 ```python
-class ShardBlock(FlatContainer):
+class ShardBlock(Container):
     shard: Shard
     slot: ShardSlot
     beacon_block_root: Hash
@@ -121,7 +120,7 @@ class ShardBlock(FlatContainer):
 ### `ShardBlockHeader`
 
 ```python
-class ShardBlockHeader(FlatContainer):
+class ShardBlockHeader(Container):
     shard: Shard
     slot: ShardSlot
     beacon_block_root: Hash
@@ -137,7 +136,7 @@ class ShardBlockHeader(FlatContainer):
 ### `ShardState`
 
 ```python
-class ShardState(FlatContainer):
+class ShardState(Container):
     shard: Shard
     slot: ShardSlot
     history_accumulator: Vector[Hash, HISTORY_ACCUMULATOR_DEPTH]
@@ -145,8 +144,10 @@ class ShardState(FlatContainer):
     block_size_sum: uint64
     # Fees and rewards
     block_body_price: Gwei
-    older_committee_deltas: Vector[GweiDelta, MAX_PERIOD_COMMITTEE_SIZE]
-    newer_committee_deltas: Vector[GweiDelta, MAX_PERIOD_COMMITTEE_SIZE]
+    older_committee_positive_deltas: Vector[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
+    older_committee_negative_deltas: Vector[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
+    newer_committee_positive_deltas: Vector[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
+    newer_committee_negative_deltas: Vector[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
 ```
 
 ### `ShardCheckpoint`
@@ -218,14 +219,24 @@ def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: Shar
 #### `process_delta`
 
 ```python
-def process_delta(beacon_state: BeaconState, shard_state: ShardState, index: ValidatorIndex, delta: GweiDelta) -> None:
+def process_delta(beacon_state: BeaconState,
+                  shard_state: ShardState,
+                  index: ValidatorIndex,
+                  delta: Gwei,
+                  positive: bool=True) -> None:
     epoch = compute_epoch_of_shard_slot(beacon_state.slot)
     older_committee = get_period_committee(beacon_state, shard_state.shard, compute_shard_period_start_epoch(epoch, 2))
     newer_committee = get_period_committee(beacon_state, shard_state.shard, compute_shard_period_start_epoch(epoch, 1))
     if index in older_committee:
-        shard_state.older_committee_deltas[older_committee.index(index)] += delta
+        if positive:
+            shard_state.older_committee_positive_deltas[older_committee.index(index)] += delta
+        else:
+            shard_state.older_committee_negative_deltas[older_committee.index(index)] += delta
     elif index in newer_committee:
-        shard_state.newer_committee_deltas[newer_committee.index(index)] += delta
+        if positive:
+            shard_state.newer_committee_positive_deltas[newer_committee.index(index)] += delta
+        else:
+            shard_state.newer_committee_negative_deltas[newer_committee.index(index)] += delta
 ```
 
 ## Genesis
@@ -299,8 +310,10 @@ def process_shard_slot(shard_state: ShardState) -> None:
 ```python
 def process_shard_period(shard_state: ShardState) -> None:
     # Rotate committee deltas
-    shard_state.older_committee_deltas = shard_state.newer_committee_deltas
-    shard_state.newer_committee_deltas = [GweiDelta(0) for _ in range(MAX_PERIOD_COMMITTEE_SIZE)]
+    shard_state.older_committee_positive_deltas = shard_state.newer_committee_positive_deltas
+    shard_state.older_committee_negative_deltas = shard_state.newer_committee_negative_deltas
+    shard_state.newer_committee_positive_deltas = [Gwei(0) for _ in range(MAX_PERIOD_COMMITTEE_SIZE)]
+    shard_state.newer_committee_negative_deltas = [Gwei(0) for _ in range(MAX_PERIOD_COMMITTEE_SIZE)]
 ```
 
 ### Block processing
@@ -381,17 +394,18 @@ def process_shard_block_body(beacon_state: BeaconState, shard_state: ShardState,
     # Apply proposer block body fee
     block_body_fee = shard_state.block_body_price * len(block.body) // MAX_SHARD_BLOCK_SIZE
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
-    process_delta(beacon_state, shard_state, proposer_index, -block_body_fee)  # Burn
+    process_delta(beacon_state, shard_state, proposer_index, block_body_fee, positive=False)  # Burn
     process_delta(beacon_state, shard_state, proposer_index, block_body_fee // PROPOSER_REWARD_QUOTIENT)  # Reward
     # Calculate new block body price
     block_size = SHARD_HEADER_SIZE + len(block.body)
     QUOTIENT = MAX_SHARD_BLOCK_SIZE * BLOCK_BODY_PRICE_QUOTIENT
-    price_delta = GweiDelta(shard_state.block_body_price * (block_size - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT)
-    if price_delta > 0:
+    if block_size > SHARD_BLOCK_SIZE_TARGET:
+        price_delta = Gwei(shard_state.block_body_price * (block_size - SHARD_BLOCK_SIZE_TARGET) // QUOTIENT)
         # The maximum block body price caps the amount burnt on fees within a shard period
         MAX_BLOCK_BODY_PRICE = MAX_EFFECTIVE_BALANCE // EPOCHS_PER_SHARD_PERIOD // SHARD_SLOTS_PER_EPOCH
         shard_state.block_body_price = Gwei(min(MAX_BLOCK_BODY_PRICE, shard_state.block_body_price + price_delta))
     else:
+        price_delta = Gwei(shard_state.block_body_price * (SHARD_BLOCK_SIZE_TARGET - block_size) // QUOTIENT)
         shard_state.block_body_price = Gwei(max(MIN_BLOCK_BODY_PRICE, shard_state.block_body_price + price_delta))
 ```
 
