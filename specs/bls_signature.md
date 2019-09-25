@@ -81,7 +81,7 @@ def hash_to_G2(message_hash: Bytes32) -> Tuple[uint384, uint384]:
 Details of the `hash_to_curve` function are shown below.
 
 ```python
-def hash_to_curve(alpha: Bytes) -> Tuple[unit384, uint384]:
+def hash_to_curve(alpha: Bytes) -> Tuple[uint384, uint384]:
    u0 = hash_to_base(alpha, 0)
    u1 = hash_to_base(alpha, 1)
    Q0 = map_to_curve(u0)
