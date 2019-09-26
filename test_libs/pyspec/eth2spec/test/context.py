@@ -10,7 +10,19 @@ from .utils import vector_test, with_meta_tags
 def with_state(fn):
     def entry(*args, **kw):
         try:
-            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
+            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8,
+                                               validator_balance=spec_phase0.MAX_EFFECTIVE_BALANCE)
+        except KeyError:
+            raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
+        return fn(*args, **kw)
+    return entry
+
+
+def with_state_low_balance(fn):
+    def entry(*args, **kw):
+        try:
+            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8,
+                                               validator_balance=18 * 10**9)
         except KeyError:
             raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
         return fn(*args, **kw)
@@ -39,6 +51,10 @@ def spec_test(fn):
 # shorthand for decorating @spectest() @with_state
 def spec_state_test(fn):
     return spec_test(with_state(fn))
+
+
+def spec_state_low_balance_test(fn):
+    return spec_test(with_state_low_balance(fn))
 
 
 def expect_assertion_error(fn):

@@ -18,7 +18,7 @@ def build_mock_validator(spec, i: int, balance: int):
     )
 
 
-def create_genesis_state(spec, num_validators):
+def create_genesis_state(spec, num_validators, validator_balance):
     deposit_root = b'\x42' * 32
 
     state = spec.BeaconState(
@@ -34,12 +34,12 @@ def create_genesis_state(spec, num_validators):
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
-    state.balances = [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+    state.balances = [validator_balance] * num_validators
     state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
 
     # Process genesis activations
     for validator in state.validators:
-        if validator.effective_balance >= spec.MAX_EFFECTIVE_BALANCE:
+        if validator.effective_balance >= validator_balance:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 
