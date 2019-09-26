@@ -1,4 +1,5 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, with_all_phases, with_phases
+from eth2spec.test.context import spec_state_test, spec_state_low_balance_test, expect_assertion_error, always_bls, \
+    with_all_phases, with_phases
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     sign_aggregate_attestation,
@@ -50,6 +51,16 @@ def run_attestation_processing(spec, state, attestation, valid=True):
 @with_all_phases
 @spec_state_test
 def test_success(spec, state):
+    attestation = get_valid_attestation(spec, state, signed=True)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    yield from run_attestation_processing(spec, state, attestation)
+
+
+@with_all_phases
+@spec_state_low_balance_test
+def test_success_multi_proposer_index_iterations(spec, state):
+    state.slot += spec.SLOTS_PER_EPOCH * 2
     attestation = get_valid_attestation(spec, state, signed=True)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
