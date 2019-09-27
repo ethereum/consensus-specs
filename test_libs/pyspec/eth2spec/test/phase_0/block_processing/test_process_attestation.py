@@ -60,7 +60,7 @@ def test_success(spec, state):
 @with_all_phases
 @spec_state_low_balance_test
 def test_success_multi_proposer_index_iterations(spec, state):
-    state.slot += spec.SLOTS_PER_EPOCH * 2
+    state.slot += spec.SLOTS_PER_EPOCH * 9 # min value for 3 iterations
     attestation = get_valid_attestation(spec, state, signed=True)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
