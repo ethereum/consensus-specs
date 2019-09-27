@@ -224,7 +224,7 @@ def process_delta(beacon_state: BeaconState,
                   index: ValidatorIndex,
                   delta: Gwei,
                   positive: bool=True) -> None:
-    epoch = compute_epoch_of_shard_slot(beacon_state.slot)
+    epoch = compute_epoch_of_shard_slot(shard_state.slot)
     older_committee = get_period_committee(beacon_state, shard_state.shard, compute_shard_period_start_epoch(epoch, 2))
     newer_committee = get_period_committee(beacon_state, shard_state.shard, compute_shard_period_start_epoch(epoch, 1))
     if index in older_committee:

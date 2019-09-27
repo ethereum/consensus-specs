@@ -226,16 +226,18 @@ def update_period_committee(state: BeaconState) -> None:
     """
     Updates period committee roots at boundary blocks.
     """
-    if (get_current_epoch(state) + 1) % EPOCHS_PER_SHARD_PERIOD == 0:
-        period = (get_current_epoch(state) + 1) // EPOCHS_PER_SHARD_PERIOD
-        committees = Vector[CompactCommittee, SHARD_COUNT]([
-            committee_to_compact_committee(
-                state,
-                get_period_committee(state, Epoch(get_current_epoch(state) + 1), Shard(shard)),
-            )
-            for shard in range(SHARD_COUNT)
-        ])
-        state.period_committee_roots[period % PERIOD_COMMITTEE_ROOT_LENGTH] = hash_tree_root(committees)
+    if (get_current_epoch(state) + 1) % EPOCHS_PER_SHARD_PERIOD != 0:
+        return
+
+    period = (get_current_epoch(state) + 1) // EPOCHS_PER_SHARD_PERIOD
+    committees = Vector[CompactCommittee, SHARD_COUNT]([
+        committee_to_compact_committee(
+            state,
+            get_period_committee(state, Shard(shard), Epoch(get_current_epoch(state) + 1)),
+        )
+        for shard in range(SHARD_COUNT)
+    ])
+    state.period_committee_roots[period % PERIOD_COMMITTEE_ROOT_LENGTH] = hash_tree_root(committees)
 ```
 
 ### Shard receipt processing
