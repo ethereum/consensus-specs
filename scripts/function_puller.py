@@ -81,7 +81,7 @@ def get_spec(file_name: str) -> SpecObject:
                         if c not in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789':
                             is_constant_def = False
                     if is_constant_def:
-                        constants[row[0]] = row[1].replace('**TBD**', '0x1234567890123456789012345678901234567890')
+                        constants[row[0]] = row[1].replace('**TBD**', '2**32')
                     elif row[1].startswith('uint') or row[1].startswith('Bytes'):
                         custom_types[row[0]] = row[1]
     return functions, custom_types, constants, ssz_objects, inserts
