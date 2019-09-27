@@ -11,7 +11,8 @@ from eth2spec.test.context import (
 @with_all_phases_except(['phase0'])
 @spec_state_test
 @always_bls
-def test_process_empty_shard_block(spec, beacon_state):
+def test_process_empty_shard_block(spec, state):
+    beacon_state = state
     beacon_state.slot = spec.Slot(spec.SHARD_GENESIS_EPOCH * spec.SLOTS_PER_EPOCH)
     shard_state = spec.get_genesis_shard_state(spec.Shard(0))
     shard_state.slot = spec.ShardSlot(spec.SHARD_GENESIS_EPOCH * spec.SHARD_SLOTS_PER_EPOCH)
@@ -37,7 +38,8 @@ def test_process_empty_shard_block(spec, beacon_state):
 @with_all_phases_except(['phase0'])
 @spec_state_test
 @always_bls
-def test_process_full_attestation_shard_block(spec, beacon_state):
+def test_process_full_attestation_shard_block(spec, state):
+    beacon_state = state
     beacon_state.slot = spec.Slot(spec.SHARD_GENESIS_EPOCH * spec.SLOTS_PER_EPOCH)
     shard_state = spec.get_genesis_shard_state(spec.Shard(0))
     shard_state.slot = spec.SHARD_GENESIS_EPOCH * spec.SHARD_SLOTS_PER_EPOCH
