@@ -356,6 +356,8 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     assert block.block_size_sum == shard_state.block_size_sum
     # Verify proposer signature
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
+    assert proposer_index is not None
+
     domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
     assert bls_verify(beacon_state.validators[proposer_index].pubkey, signing_root(block), block.signature, domain)
 ```
@@ -381,8 +383,9 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
     assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestations, domain)
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
+    assert proposer_index is not None
     reward = attestation_count * get_base_reward(beacon_state, proposer_index) // PROPOSER_REWARD_QUOTIENT
-    process_delta(beacon_state, shard_state, proposer_index, reward)
+    process_delta(beacon_state, shard_state, proposer_index, Gwei(reward))
 ```
 
 #### Block body
@@ -394,8 +397,9 @@ def process_shard_block_body(beacon_state: BeaconState, shard_state: ShardState,
     # Apply proposer block body fee
     block_body_fee = shard_state.block_body_price * len(block.body) // MAX_SHARD_BLOCK_SIZE
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
-    process_delta(beacon_state, shard_state, proposer_index, block_body_fee, positive=False)  # Burn
-    process_delta(beacon_state, shard_state, proposer_index, block_body_fee // PROPOSER_REWARD_QUOTIENT)  # Reward
+    assert proposer_index is not None
+    process_delta(beacon_state, shard_state, proposer_index, Gwei(block_body_fee), positive=False)  # Burn
+    process_delta(beacon_state, shard_state, proposer_index, Gwei(block_body_fee // PROPOSER_REWARD_QUOTIENT))  # Reward
     # Calculate new block body price
     block_size = SHARD_HEADER_SIZE + len(block.body)
     QUOTIENT = MAX_SHARD_BLOCK_SIZE * BLOCK_BODY_PRICE_QUOTIENT

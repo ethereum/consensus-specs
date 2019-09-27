@@ -34,6 +34,7 @@
 | `MAX_SHARD_RECEIPT_PROOFS` | `2**0` (= 1) | - | - |
 | `PERIOD_COMMITTEE_ROOT_LENGTH` | `2**8` (= 256) | periods | ~9 months |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (=256) | - | - |
+| `REWARD_COEFFICIENT_BASE` | **TBD** | - | - |
 
 ## Containers
 
@@ -44,6 +45,16 @@ class CompactCommittee(Container):
     pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
     compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
 ```
+
+#### `ShardReceiptDelta`
+
+```python
+class ShardReceiptDelta(Container):
+    index: ValidatorIndex
+    reward_coefficient: uint64
+    block_fee: Gwei
+```
+
 
 #### `ShardReceiptProof`
 
@@ -112,16 +123,17 @@ def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedInd
 ```python
 def compute_historical_state_generalized_index(earlier: ShardSlot, later: ShardSlot) -> GeneralizedIndex:
     """
-    Computes the generalized index of the state root of slot `frm` based on the state root of slot `to`.
-    Relies on the `history_acc` in the `ShardState`, where `history_acc[i]` maintains the most recent 2**i'th
-    slot state. Works by tracing a `log(later-earlier)` step path from `later` to `earlier` through intermediate
-    blocks at the next available multiples of descending powers of two.
+    Computes the generalized index of the state root of slot `earlier` based on the state root of slot `later`.
+    Relies on the `history_accumulator` in the `ShardState`, where `history_accumulator[i]` maintains the most
+    recent 2**i'th slot state. Works by tracing a `log(later-earlier)` step path from `later` to `earlier`
+    through intermediate blocks at the next available multiples of descending powers of two.
     """
     o = GeneralizedIndex(1)
-    for i in range(HISTORY_ACCUMULATOR_VECTOR - 1, -1, -1):
+    for i in range(HISTORY_ACCUMULATOR_DEPTH - 1, -1, -1):
         if (later - 1) & 2**i > (earlier - 1) & 2**i:
             later = later - ((later - 1) % 2**i) - 1
-            o = concat_generalized_indices(o, GeneralizedIndex(get_generalized_index(ShardState, ['history_acc', i])))
+            gindex = GeneralizedIndex(get_generalized_index(ShardState, ['history_accumulator', i]))
+            o = concat_generalized_indices(o, gindex)
     return o
 ```
 
@@ -133,7 +145,7 @@ def get_generalized_index_of_crosslink_header(index: int) -> GeneralizedIndex:
     Gets the generalized index for the root of the index'th header in a crosslink.
     """
     MAX_CROSSLINK_SIZE = (
-        SHARD_BLOCK_SIZE_LIMIT * SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
+        MAX_SHARD_BLOCK_SIZE * SHARD_SLOTS_PER_EPOCH * MAX_EPOCHS_PER_CROSSLINK
     )
     assert MAX_CROSSLINK_SIZE == get_previous_power_of_two(MAX_CROSSLINK_SIZE)
     return GeneralizedIndex(MAX_CROSSLINK_SIZE // SHARD_HEADER_SIZE + index)
@@ -146,10 +158,9 @@ def process_shard_receipt_proof(state: BeaconState, receipt_proof: ShardReceiptP
     """
     Processes a ShardReceipt object.
     """
-    SHARD_SLOTS_PER_EPOCH = SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH
     receipt_slot = (
         state.next_shard_receipt_period[receipt_proof.shard] *
-        SHARD_SLOTS_PER_BEACON_SLOT * SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD
+        SHARD_SLOTS_PER_EPOCH * EPOCHS_PER_SHARD_PERIOD
     )
     first_slot_in_last_crosslink = state.current_crosslinks[receipt_proof.shard].start_epoch * SHARD_SLOTS_PER_EPOCH
     gindex = concat_generalized_indices(
