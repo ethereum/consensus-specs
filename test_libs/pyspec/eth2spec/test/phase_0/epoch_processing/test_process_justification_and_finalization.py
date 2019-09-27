@@ -275,10 +275,12 @@ def test_123_poor_support(spec, state):
 def test_12_ok_support(spec, state):
     yield from finalize_on_12(spec, state, 3, True, False)
 
+
 @with_all_phases
 @spec_state_test
 def test_12_ok_support_messed_target(spec, state):
     yield from finalize_on_12(spec, state, 3, True, True)
+
 
 @with_all_phases
 @spec_state_test
