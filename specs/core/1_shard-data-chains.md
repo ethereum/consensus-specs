@@ -21,7 +21,7 @@
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
         - [`ShardState`](#shardstate)
-        - [`ShardCheckpoint`](#shardcheckpoint)
+        - [`ShardAttestationData`](#ShardAttestationData)
     - [Helper functions](#helper-functions)
         - [Misc](#misc-1)
             - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
@@ -63,7 +63,7 @@ This document describes the shard transition function (data layer only) and the 
 | - | - |
 | `MIN_BLOCK_BODY_PRICE` | `2**0` (= 1) |
 | `MAX_PERIOD_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `SHARD_HEADER_SIZE` | `2**9` (= 512) |
+| `SHARD_HEADER_SIZE` | `2**10` (= 1024) |
 | `SHARD_BLOCK_SIZE_TARGET` | `2**14` (= 16,384) |
 | `MAX_SHARD_BLOCK_SIZE` | `2**16` (= 65,536) |
 
@@ -150,10 +150,10 @@ class ShardState(Container):
     newer_committee_negative_deltas: Vector[Gwei, MAX_PERIOD_COMMITTEE_SIZE]
 ```
 
-### `ShardCheckpoint`
+### `ShardAttestationData`
 
 ```python
-class ShardCheckpoint(Container):
+class ShardAttestationData(Container):
     slot: ShardSlot
     parent_root: Hash
 ```
@@ -354,12 +354,14 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     # Verify the sum of the block sizes since genesis
     shard_state.block_size_sum += SHARD_HEADER_SIZE + len(block.body)
     assert block.block_size_sum == shard_state.block_size_sum
-    # Verify proposer signature
+    # Verify proposer is not slashed
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
     assert proposer_index is not None
-
+    proposer = beacon_state.validators[proposer_index]
+    assert not proposer.slashed
+    # Verify proposer signature
     domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
-    assert bls_verify(beacon_state.validators[proposer_index].pubkey, signing_root(block), block.signature, domain)
+    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, domain)
 ```
 
 #### Attestations
@@ -379,7 +381,7 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
         assert block.aggregation_bits[i] == 0b0
     # Verify attester aggregate signature
     domain = get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(block.slot))
-    message = hash_tree_root(ShardCheckpoint(shard_state.slot, block.parent_root))
+    message = hash_tree_root(ShardAttestationData(shard_state.slot, block.parent_root))
     assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestations, domain)
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
