@@ -202,12 +202,11 @@ def get_shard_committee(beacon_state: BeaconState, shard: Shard, epoch: Epoch) -
 #### `get_shard_proposer_index`
 
 ```python
-def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: ShardSlot) -> Optional[ValidatorIndex]:
+def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: ShardSlot) -> ValidatorIndex:
     epoch = get_current_epoch(beacon_state)
     shard_committee = get_shard_committee(beacon_state, shard, epoch)
     active_indices = [i for i in shard_committee if is_active_validator(beacon_state.validators[i], epoch)]
-    if not any(active_indices):
-        return None
+    assert any(active_indices)
 
     epoch_seed = get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER)
     seed = hash(epoch_seed + int_to_bytes(slot, length=8) + int_to_bytes(shard, length=8))
@@ -224,7 +223,7 @@ def process_delta(beacon_state: BeaconState,
                   index: ValidatorIndex,
                   delta: Gwei,
                   positive: bool=True) -> None:
-    epoch = compute_epoch_of_shard_slot(beacon_state.slot)
+    epoch = compute_epoch_of_shard_slot(shard_state.slot)
     older_committee = get_period_committee(beacon_state, shard_state.shard, compute_shard_period_start_epoch(epoch, 2))
     newer_committee = get_period_committee(beacon_state, shard_state.shard, compute_shard_period_start_epoch(epoch, 1))
     if index in older_committee:
@@ -355,7 +354,8 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     shard_state.block_size_sum += SHARD_HEADER_SIZE + len(block.body)
     assert block.block_size_sum == shard_state.block_size_sum
     # Verify proposer is not slashed
-    proposer = beacon_state.validators[get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)]
+    proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
+    proposer = beacon_state.validators[proposer_index]
     assert not proposer.slashed
     # Verify proposer signature
     domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
@@ -384,7 +384,7 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
     reward = attestation_count * get_base_reward(beacon_state, proposer_index) // PROPOSER_REWARD_QUOTIENT
-    process_delta(beacon_state, shard_state, proposer_index, reward)
+    process_delta(beacon_state, shard_state, proposer_index, Gwei(reward))
 ```
 
 #### Block body
@@ -396,8 +396,8 @@ def process_shard_block_body(beacon_state: BeaconState, shard_state: ShardState,
     # Apply proposer block body fee
     block_body_fee = shard_state.block_body_price * len(block.body) // MAX_SHARD_BLOCK_SIZE
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
-    process_delta(beacon_state, shard_state, proposer_index, block_body_fee, positive=False)  # Burn
-    process_delta(beacon_state, shard_state, proposer_index, block_body_fee // PROPOSER_REWARD_QUOTIENT)  # Reward
+    process_delta(beacon_state, shard_state, proposer_index, Gwei(block_body_fee), positive=False)  # Burn
+    process_delta(beacon_state, shard_state, proposer_index, Gwei(block_body_fee // PROPOSER_REWARD_QUOTIENT))  # Reward
     # Calculate new block body price
     block_size = SHARD_HEADER_SIZE + len(block.body)
     QUOTIENT = MAX_SHARD_BLOCK_SIZE * BLOCK_BODY_PRICE_QUOTIENT
