@@ -154,6 +154,13 @@ def test_empty_shard_period_transition(spec, state):
     shard_state.newer_committee_negative_deltas[0] = stub_delta
 
     slot = shard_state.slot + spec.SHARD_SLOTS_PER_EPOCH * spec.EPOCHS_PER_SHARD_PERIOD
+    beacon_state.slot = spec.compute_epoch_of_shard_slot(slot) * spec.SLOTS_PER_EPOCH - 4
+    spec.process_slots(beacon_state, spec.compute_epoch_of_shard_slot(slot) * spec.SLOTS_PER_EPOCH)
+
+    # all validators get slashed for not revealing keys
+    # undo this to allow for a block proposal
+    for index in range(len(beacon_state.validators)):
+        beacon_state.validators[index].slashed = False
     block = build_empty_shard_block(spec, beacon_state, shard_state, slot=slot, signed=True)
 
     yield 'pre', shard_state

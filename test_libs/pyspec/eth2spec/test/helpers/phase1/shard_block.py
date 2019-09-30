@@ -41,11 +41,11 @@ def build_empty_shard_block(spec,
     if slot is None:
         slot = shard_state.slot
 
-    parent_epoch = spec.compute_epoch_of_shard_slot(shard_state.latest_block_header.slot)
-    if parent_epoch * spec.SLOTS_PER_EPOCH == beacon_state.slot:
+    epoch = spec.compute_epoch_of_shard_slot(slot)
+    if epoch * spec.SLOTS_PER_EPOCH == beacon_state.slot:
         beacon_block_root = spec.signing_root(beacon_state.latest_block_header)
     else:
-        beacon_block_root = spec.get_block_root(beacon_state, parent_epoch)
+        beacon_block_root = spec.get_block_root(beacon_state, epoch)
 
     previous_block_header = deepcopy(shard_state.latest_block_header)
     if previous_block_header.state_root == spec.Hash():
