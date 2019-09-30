@@ -202,12 +202,11 @@ def get_shard_committee(beacon_state: BeaconState, shard: Shard, epoch: Epoch) -
 #### `get_shard_proposer_index`
 
 ```python
-def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: ShardSlot) -> Optional[ValidatorIndex]:
+def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: ShardSlot) -> ValidatorIndex:
     epoch = get_current_epoch(beacon_state)
     shard_committee = get_shard_committee(beacon_state, shard, epoch)
     active_indices = [i for i in shard_committee if is_active_validator(beacon_state.validators[i], epoch)]
-    if not any(active_indices):
-        return None
+    assert any(active_indices)
 
     epoch_seed = get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER)
     seed = hash(epoch_seed + int_to_bytes(slot, length=8) + int_to_bytes(shard, length=8))
@@ -366,7 +365,6 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     assert block.block_size_sum == shard_state.block_size_sum
     # Verify proposer is not slashed
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
-    assert proposer_index is not None
     proposer = beacon_state.validators[proposer_index]
     assert not proposer.slashed
     # Verify proposer signature
@@ -400,7 +398,6 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
     assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestations, domain)
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
-    assert proposer_index is not None
     reward = attestation_count * get_base_reward(beacon_state, proposer_index) // PROPOSER_REWARD_QUOTIENT
     process_delta(beacon_state, shard_state, proposer_index, Gwei(reward))
 ```
@@ -414,7 +411,6 @@ def process_shard_block_body(beacon_state: BeaconState, shard_state: ShardState,
     # Apply proposer block body fee
     block_body_fee = shard_state.block_body_price * len(block.body) // MAX_SHARD_BLOCK_SIZE
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
-    assert proposer_index is not None
     process_delta(beacon_state, shard_state, proposer_index, Gwei(block_body_fee), positive=False)  # Burn
     process_delta(beacon_state, shard_state, proposer_index, Gwei(block_body_fee // PROPOSER_REWARD_QUOTIENT))  # Reward
     # Calculate new block body price
