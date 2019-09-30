@@ -338,12 +338,12 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     # Verify the slot number
     assert block.slot == shard_state.slot
     # Verify the beacon chain root
-    parent_epoch = compute_epoch_of_shard_slot(shard_state.latest_block_header.slot)
-    # --super dirty. need to think-- #
-    if parent_epoch * SLOTS_PER_EPOCH == beacon_state.slot:
+    epoch = compute_epoch_of_shard_slot(shard_state.slot)
+    assert epoch == compute_epoch_of_slot(beacon_state.slot)
+    if epoch * SLOTS_PER_EPOCH == beacon_state.slot:
         beacon_block_root = signing_root(beacon_state.latest_block_header)
     else:
-        beacon_block_root = get_block_root(beacon_state, parent_epoch)
+        beacon_block_root = get_block_root(beacon_state, epoch)
     assert block.beacon_block_root == beacon_block_root
     # Verify the parent root
     assert block.parent_root == signing_root(shard_state.latest_block_header)
