@@ -15,9 +15,9 @@ from .attestations import (
 
 
 @only_with_bls()
-def sign_shard_block(spec, beacon_state, block, shard, proposer_index=None):
+def sign_shard_block(spec, beacon_state, shard_state, block, proposer_index=None):
     if proposer_index is None:
-        proposer_index = spec.get_shard_proposer_index(beacon_state, shard, block.slot)
+        proposer_index = spec.get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
 
     privkey = privkeys[proposer_index]
 
@@ -75,6 +75,6 @@ def build_empty_shard_block(spec,
         )
 
     if signed:
-        sign_shard_block(spec, beacon_state, block, shard_state.shard)
+        sign_shard_block(spec, beacon_state, shard_state, block)
 
     return block
