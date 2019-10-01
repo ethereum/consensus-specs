@@ -259,23 +259,32 @@ def get_branch_indices(tree_index: GeneralizedIndex) -> Sequence[GeneralizedInde
 ```
 
 ```python
+def get_path_indices(tree_index: GeneralizedIndex) -> Sequence[GeneralizedIndex]:
+    """
+    Get the generalized indices of the chunks along the path from the chunk with the
+    given tree index to the root.
+    """
+    o = [tree_index]
+    while o[-1] > 1:
+        o.append(generalized_index_parent(o[-1]))
+    return o[:-1]
+```
+
+```python
 def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[GeneralizedIndex]:
     """
     Get the generalized indices of all "extra" chunks in the tree needed to prove the chunks with the given
     generalized indices. Note that the decreasing order is chosen deliberately to ensure equivalence to the
     order of hashes in a regular single-item Merkle proof in the single-item case.
     """
-    all_indices: Set[GeneralizedIndex] = set()
+    all_helper_indices: Set[GeneralizedIndex] = set()
+    all_path_indices: Set[GeneralizedIndex] = set()
     for index in indices:
-        all_indices = all_indices.union(set(list(get_branch_indices(index)) + [index]))
+        all_helper_indices = all_helper_indices.union(set(get_branch_indices(index)))
+        all_path_indices = all_path_indices.union(set(get_path_indices(index)))
 
     return sorted([
-        x for x in all_indices if (
-            not (
-                generalized_index_child(x, False) in all_indices and
-                generalized_index_child(x, True) in all_indices
-            ) and not (x in indices)
-        )
+        x for x in all_helper_indices if x not in all_path_indices
     ], reverse=True)
 ```
 
