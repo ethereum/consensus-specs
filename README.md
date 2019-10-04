@@ -4,12 +4,12 @@
 
 To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://github.com/ethereum/wiki/wiki/Sharding-FAQ) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
-This repository hosts the current Eth 2.0 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
+This repository hosts the current Eth2 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 
 
 ## Specs
 
-Core specifications for Eth 2.0 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
+Core specifications for Eth2 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
 ### Phase 0
 * [The Beacon Chain](specs/core/0_beacon-chain.md)
@@ -26,7 +26,7 @@ Core specifications for Eth 2.0 client validation can be found in [specs/core](s
 
 Phase 2 is still actively in R&D and does not yet have any formal specifications.
 
-See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for current progress, discussions, and definitions regarding this work.
+See the [Eth2 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for current progress, discussions, and definitions regarding this work.
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
@@ -40,9 +40,9 @@ See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) fo
 
 Additional specifications and standards outside of requisite client functionality can be found in the following repos:
 
-* [Eth2.0 APIs](https://github.com/ethereum/eth2.0-apis)
-* [Eth2.0 Metrics](https://github.com/ethereum/eth2.0-metrics/)
-* [Interop Standards in Eth2.0-pm](https://github.com/ethereum/eth2.0-pm/tree/master/interop)
+* [Eth2 APIs](https://github.com/ethereum/eth2.0-apis)
+* [Eth2 Metrics](https://github.com/ethereum/eth2.0-metrics/)
+* [Interop Standards in Eth2 PM](https://github.com/ethereum/eth2.0-pm/tree/master/interop)
 
 ## Design goals
 
