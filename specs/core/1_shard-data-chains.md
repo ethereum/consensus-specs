@@ -339,12 +339,16 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     assert block.slot == shard_state.slot
     # Verify the beacon chain root
     epoch = compute_epoch_of_shard_slot(shard_state.slot)
-    assert epoch == compute_epoch_of_slot(beacon_state.slot)
-    if epoch * SLOTS_PER_EPOCH == beacon_state.slot:
-        beacon_block_root = signing_root(beacon_state.latest_block_header)
-    else:
-        beacon_block_root = get_block_root(beacon_state, epoch)
-    assert block.beacon_block_root == beacon_block_root
+    assert epoch * SLOTS_PER_EPOCH == beacon_state.slot
+    beacon_block_header = BeaconBlockHeader(
+        slot=beacon_state.latest_block_header.slot,
+        parent_root=beacon_state.latest_block_header.parent_root,
+        state_root=beacon_state.latest_block_header.state_root,
+        body_root=beacon_state.latest_block_header.body_root,
+    )
+    if beacon_block_header.state_root == Bytes32():
+        beacon_block_header.state_root = hash_tree_root(beacon_state)
+    assert block.beacon_block_root == signing_root(beacon_block_header)
     # Verify the parent root
     assert block.parent_root == signing_root(shard_state.latest_block_header)
     # Save current block as the new latest block
