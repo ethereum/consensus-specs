@@ -384,11 +384,6 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
             pubkeys.append(beacon_state.validators[validator_index].pubkey)
             process_delta(beacon_state, shard_state, validator_index, get_base_reward(beacon_state, validator_index))
             attestation_count += 1
-    # Exit early if no participants
-    if not any(pubkeys):
-        assert block.attestations == BLSSignature()
-        return
-
     # Verify there are no extraneous bits set beyond the shard committee
     for i in range(len(shard_committee), 2 * MAX_PERIOD_COMMITTEE_SIZE):
         assert block.aggregation_bits[i] == 0b0

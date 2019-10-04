@@ -66,13 +66,16 @@ def build_empty_shard_block(spec,
             (True,) * len(shard_committee) +
             (False,) * (spec.MAX_PERIOD_COMMITTEE_SIZE * 2 - len(shard_committee))
         )
-        block.attestations = sign_shard_attestation(
-            spec,
-            beacon_state,
-            shard_state,
-            block,
-            participants=shard_committee,
-        )
+    else:
+        shard_committee = []
+
+    block.attestations = sign_shard_attestation(
+        spec,
+        beacon_state,
+        shard_state,
+        block,
+        participants=shard_committee,
+    )
 
     if signed:
         sign_shard_block(spec, beacon_state, shard_state, block)
