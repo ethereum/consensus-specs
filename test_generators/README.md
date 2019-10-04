@@ -1,4 +1,4 @@
-# Eth2 Test Generators
+# Eth2 test generators
 
 This directory contains all the generators for tests, consumed by Eth2 client implementations.
 
