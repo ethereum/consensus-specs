@@ -36,7 +36,7 @@ def test_initialize_beacon_state_from_eth1(spec):
 def test_initialize_beacon_state_some_small_balances(spec):
     main_deposit_count = spec.MIN_GENESIS_ACTIVE_VALIDATOR_COUNT
     main_deposits, _, deposit_data_list = prepare_genesis_deposits(spec, main_deposit_count,
-                                                              spec.MAX_EFFECTIVE_BALANCE, signed=True)
+                                                                   spec.MAX_EFFECTIVE_BALANCE, signed=True)
     # For deposits above, and for another deposit_count, add a balance of EFFECTIVE_BALANCE_INCREMENT
     small_deposit_count = main_deposit_count * 2
     small_deposits, deposit_root, _ = prepare_genesis_deposits(spec, small_deposit_count,

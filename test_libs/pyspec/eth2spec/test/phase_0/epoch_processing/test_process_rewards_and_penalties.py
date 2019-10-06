@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, with_all_phases
+from eth2spec.test.context import spec_state_test, spec_state_misc_balances_test, with_all_phases
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -84,6 +84,40 @@ def test_full_attestations(spec, state):
             assert state.balances[index] > pre_state.balances[index]
         else:
             assert state.balances[index] < pre_state.balances[index]
+
+
+@with_all_phases
+@spec_state_misc_balances_test
+def test_full_attestations_misc_balances(spec, state):
+    attestations = []
+    for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
+        # create an attestation for each slot in epoch
+        if slot < spec.SLOTS_PER_EPOCH:
+            attestation = get_valid_attestation(spec, state, signed=True)
+            attestations.append(attestation)
+        # fill each created slot in state after inclusion delay
+        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
+            include_att = attestations[slot - spec.MIN_ATTESTATION_INCLUSION_DELAY]
+            add_attestations_to_state(spec, state, [include_att], state.slot)
+        next_slot(spec, state)
+
+    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
+    assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
+
+    pre_state = deepcopy(state)
+
+    yield from run_process_rewards_and_penalties(spec, state)
+
+    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    assert len(attesting_indices) > 0
+    assert len(attesting_indices) != len(pre_state.validators)
+    for index in range(len(pre_state.validators)):
+        if index in attesting_indices:
+            assert state.balances[index] > pre_state.balances[index]
+        elif spec.is_active_validator(pre_state.validators[index], spec.compute_epoch_of_slot(state.slot)):
+            assert state.balances[index] < pre_state.balances[index]
+        else:
+            assert state.balances[index] == pre_state.balances[index]
 
 
 @with_all_phases

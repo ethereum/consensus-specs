@@ -1,6 +1,7 @@
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import List
+import copy
 
 
 def build_mock_validator(spec, i: int, balance: int):
@@ -40,6 +41,42 @@ def create_genesis_state(spec, num_validators, validator_balance):
     # Process genesis activations
     for validator in state.validators:
         if validator.effective_balance >= validator_balance:
+            validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
+            validator.activation_epoch = spec.GENESIS_EPOCH
+
+    genesis_active_index_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
+        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
+    genesis_compact_committees_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
+        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
+    for index in range(spec.EPOCHS_PER_HISTORICAL_VECTOR):
+        state.active_index_roots[index] = genesis_active_index_root
+        state.compact_committees_roots[index] = genesis_compact_committees_root
+
+    return state
+
+
+def create_genesis_state_misc_balances(spec, validator_balances):
+    deposit_root = b'\x42' * 32
+
+    state = spec.BeaconState(
+        genesis_time=0,
+        eth1_deposit_index=len(validator_balances),
+        eth1_data=spec.Eth1Data(
+            deposit_root=deposit_root,
+            deposit_count=len(validator_balances),
+            block_hash=spec.Hash(),
+        ),
+        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+    )
+
+    # We "hack" in the initial validators,
+    #  as it is much faster than creating and processing genesis deposits for every single test case.
+    state.balances = copy.deepcopy(validator_balances)
+    state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))]
+
+    # Process genesis activations
+    for validator in state.validators:
+        if validator.effective_balance > spec.EJECTION_BALANCE:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 

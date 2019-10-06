@@ -2,7 +2,7 @@ from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
-from .helpers.genesis import create_genesis_state
+from .helpers.genesis import create_genesis_state, create_genesis_state_misc_balances
 
 from .utils import vector_test, with_meta_tags
 
@@ -23,6 +23,18 @@ def with_state_low_balance(fn):
         try:
             kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8,
                                                validator_balance=18 * 10**9)
+        except KeyError:
+            raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
+        return fn(*args, **kw)
+    return entry
+
+
+def with_state_misc_balances(fn):
+    def entry(*args, **kw):
+        try:
+            validator_balances = [spec_phase0.MAX_EFFECTIVE_BALANCE] * (spec_phase0.SLOTS_PER_EPOCH * 8) + [
+                spec_phase0.MIN_DEPOSIT_AMOUNT] * spec_phase0.SLOTS_PER_EPOCH
+            kw['state'] = create_genesis_state_misc_balances(spec=kw['spec'], validator_balances=validator_balances)
         except KeyError:
             raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
         return fn(*args, **kw)
@@ -55,6 +67,10 @@ def spec_state_test(fn):
 
 def spec_state_low_balance_test(fn):
     return spec_test(with_state_low_balance(fn))
+
+
+def spec_state_misc_balances_test(fn):
+    return spec_test(with_state_misc_balances(fn))
 
 
 def expect_assertion_error(fn):
