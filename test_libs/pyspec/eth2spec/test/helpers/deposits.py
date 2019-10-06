@@ -55,8 +55,9 @@ def build_deposit(spec,
     return deposit, root, deposit_data_list
 
 
-def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False):
-    deposit_data_list = []
+def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False, deposit_data_list=None):
+    if deposit_data_list is None:
+        deposit_data_list = []
     genesis_deposits = []
     for validator_index in range(genesis_validator_count):
         pubkey = pubkeys[validator_index]
@@ -75,7 +76,7 @@ def prepare_genesis_deposits(spec, genesis_validator_count, amount, signed=False
         )
         genesis_deposits.append(deposit)
 
-    return genesis_deposits, root
+    return genesis_deposits, root, deposit_data_list
 
 
 def prepare_state_and_deposit(spec, state, validator_index, amount, withdrawal_credentials=None, signed=False):
