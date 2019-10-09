@@ -247,6 +247,11 @@ def get_genesis_shard_state(shard: Shard) -> ShardState:
     return ShardState(
         shard=shard,
         slot=ShardSlot(SHARD_GENESIS_EPOCH * SHARD_SLOTS_PER_EPOCH),
+        latest_block_header=ShardBlockHeader(
+            shard=shard,
+            slot=ShardSlot(SHARD_GENESIS_EPOCH * SHARD_SLOTS_PER_EPOCH),
+            body_root=hash_tree_root(List[byte, MAX_SHARD_BLOCK_SIZE - SHARD_HEADER_SIZE]()),
+        ),
         block_body_price=MIN_BLOCK_BODY_PRICE,
     )
 ```
@@ -333,10 +338,19 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     # Verify the slot number
     assert block.slot == shard_state.slot
     # Verify the beacon chain root
-    parent_epoch = compute_epoch_of_shard_slot(shard_state.latest_block_header.slot)
-    assert block.beacon_block_root == get_block_root(beacon_state, parent_epoch)
+    epoch = compute_epoch_of_shard_slot(shard_state.slot)
+    assert epoch * SLOTS_PER_EPOCH == beacon_state.slot
+    beacon_block_header = BeaconBlockHeader(
+        slot=beacon_state.latest_block_header.slot,
+        parent_root=beacon_state.latest_block_header.parent_root,
+        state_root=beacon_state.latest_block_header.state_root,
+        body_root=beacon_state.latest_block_header.body_root,
+    )
+    if beacon_block_header.state_root == Bytes32():
+        beacon_block_header.state_root = hash_tree_root(beacon_state)
+    assert block.beacon_block_root == signing_root(beacon_block_header)
     # Verify the parent root
-    assert block.parent_root == hash_tree_root(shard_state.latest_block_header)
+    assert block.parent_root == signing_root(shard_state.latest_block_header)
     # Save current block as the new latest block
     shard_state.latest_block_header = ShardBlockHeader(
         shard=block.shard,
@@ -379,7 +393,7 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
         assert block.aggregation_bits[i] == 0b0
     # Verify attester aggregate signature
     domain = get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(block.slot))
-    message = hash_tree_root(ShardAttestationData(shard_state.slot, block.parent_root))
+    message = hash_tree_root(ShardAttestationData(slot=shard_state.slot, parent_root=block.parent_root))
     assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestations, domain)
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)

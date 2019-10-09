@@ -5,17 +5,20 @@ from eth2spec.utils.bls import (
 )
 
 
-def sign_shard_attestation(spec, shard_state, beacon_state, block, participants):
+def sign_shard_attestation(spec, beacon_state, shard_state, block, participants):
     signatures = []
-    message_hash = block.core.parent_root
-    block_epoch = spec.compute_epoch_of_shard_slot(block.core.slot)
+    message_hash = spec.ShardAttestationData(
+        slot=block.slot,
+        parent_root=block.parent_root,
+    ).hash_tree_root()
+    block_epoch = spec.compute_epoch_of_shard_slot(block.slot)
     for validator_index in participants:
         privkey = privkeys[validator_index]
         signatures.append(
             get_attestation_signature(
                 spec,
-                shard_state,
                 beacon_state,
+                shard_state,
                 message_hash,
                 block_epoch,
                 privkey,
@@ -25,7 +28,7 @@ def sign_shard_attestation(spec, shard_state, beacon_state, block, participants)
     return bls_aggregate_signatures(signatures)
 
 
-def get_attestation_signature(spec, shard_state, beacon_state, message_hash, block_epoch, privkey):
+def get_attestation_signature(spec, beacon_state, shard_state, message_hash, block_epoch, privkey):
     return bls_sign(
         message_hash=message_hash,
         privkey=privkey,
