@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import (
     bls_sign,
@@ -13,69 +15,68 @@ from .attestations import (
 
 
 @only_with_bls()
-def sign_shard_block(spec, state, block, shard, proposer_index=None):
+def sign_shard_block(spec, beacon_state, shard_state, block, proposer_index=None):
     if proposer_index is None:
-        proposer_index = spec.get_shard_block_proposer_index(state, shard, block.core.slot)
+        proposer_index = spec.get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
 
     privkey = privkeys[proposer_index]
 
-    block.signatures.proposer_signature = bls_sign(
+    block.signature = bls_sign(
         message_hash=signing_root(block),
         privkey=privkey,
         domain=spec.get_domain(
-            state,
+            beacon_state,
             spec.DOMAIN_SHARD_PROPOSER,
-            spec.compute_epoch_of_shard_slot(block.core.slot),
+            spec.compute_epoch_of_shard_slot(block.slot),
         )
     )
 
 
 def build_empty_shard_block(spec,
-                            shard_state,
                             beacon_state,
+                            shard_state,
                             slot,
-                            parent_root,
                             signed=False,
                             full_attestation=False):
     if slot is None:
         slot = shard_state.slot
 
+    previous_beacon_header = deepcopy(beacon_state.latest_block_header)
+    if previous_beacon_header.state_root == spec.Bytes32():
+        previous_beacon_header.state_root = beacon_state.hash_tree_root()
+    beacon_block_root = spec.signing_root(previous_beacon_header)
+
+    previous_block_header = deepcopy(shard_state.latest_block_header)
+    if previous_block_header.state_root == spec.Bytes32():
+        previous_block_header.state_root = shard_state.hash_tree_root()
+    parent_root = signing_root(previous_block_header)
+
     block = spec.ShardBlock(
-        core=spec.ExtendedShardBlockCore(
-            slot=slot,
-            beacon_chain_root=beacon_state.block_roots[beacon_state.slot % spec.SLOTS_PER_HISTORICAL_ROOT],
-            parent_root=parent_root,
-        ),
-        signatures=spec.ShardBlockSignatures(
-            attestation_signature=b'\x00' * 96,
-            proposer_signature=b'\x25' * 96,
-        )
+        shard=shard_state.shard,
+        slot=slot,
+        beacon_block_root=beacon_block_root,
+        parent_root=parent_root,
+        block_size_sum=shard_state.block_size_sum + spec.SHARD_HEADER_SIZE,
     )
 
-    # attestation
     if full_attestation:
-        attester_committee = spec.get_persistent_committee(beacon_state, shard_state.shard, block.core.slot)
-        block.core.attester_bitfield = list(
-            (True,) * len(attester_committee) +
-            (False,) * (spec.TARGET_PERSISTENT_COMMITTEE_SIZE * 2 - len(attester_committee))
-        )
-        block.signatures.attestation_signature = sign_shard_attestation(
-            spec,
-            shard_state,
-            beacon_state,
-            block,
-            participants=attester_committee,
+        shard_committee = spec.get_shard_committee(beacon_state, shard_state.shard, block.slot)
+        block.aggregation_bits = list(
+            (True,) * len(shard_committee) +
+            (False,) * (spec.MAX_PERIOD_COMMITTEE_SIZE * 2 - len(shard_committee))
         )
     else:
-        block.signatures.attestation_signature = sign_shard_attestation(
-            spec,
-            shard_state,
-            beacon_state,
-            block,
-            participants=(),
-        )
+        shard_committee = []
+
+    block.attestations = sign_shard_attestation(
+        spec,
+        beacon_state,
+        shard_state,
+        block,
+        participants=shard_committee,
+    )
 
     if signed:
-        sign_shard_block(spec, beacon_state, block, shard_state.shard)
+        sign_shard_block(spec, beacon_state, shard_state, block)
 
     return block
