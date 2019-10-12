@@ -150,7 +150,7 @@ def get_committee_assignment(state: BeaconState,
     start_slot = compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
         for index in range(COMMITTEES_PER_SLOT):
-            committee = get_crosslink_committee(state, epoch, index)
+            committee = get_crosslink_committee(state, Slot(slot), index)
             if validator_index in committee:
                 return committee, index, Slot(slot)
     return None

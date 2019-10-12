@@ -48,7 +48,7 @@ def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
 
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation_data.target.epoch,
+        attestation_data.slot,
         attestation_data.index,
     )
 
@@ -117,7 +117,7 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
 def fill_aggregate_attestation(spec, state, attestation):
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation.data.target.epoch,
+        attestation.data.slot,
         attestation.data.index,
     )
     for i in range(len(crosslink_committee)):

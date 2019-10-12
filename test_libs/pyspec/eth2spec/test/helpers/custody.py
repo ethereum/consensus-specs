@@ -82,7 +82,7 @@ def bitlist_from_int(max_len, num_bits, n):
 def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False):
     crosslink_committee = spec.get_crosslink_committee(
         state,
-        attestation.data.target.epoch,
+        attestation.data.slot,
         attestation.data.crosslink.shard,
     )
     responder_index = crosslink_committee[0]

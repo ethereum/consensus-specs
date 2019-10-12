@@ -880,15 +880,16 @@ def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
 #### `get_crosslink_committee`
 
 ```python
-def get_crosslink_committee(state: BeaconState, epoch: Epoch, index: uint64) -> Sequence[ValidatorIndex]:
+def get_crosslink_committee(state: BeaconState, slot: Slot, index: uint64) -> Sequence[ValidatorIndex]:
     """
     Return the crosslink committee at ``epoch`` for ``index``.
     """
+    epoch = compute_epoch_of_slot(slot)
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=index,
-        count=get_committee_count(state, epoch),
+        index=(slot % SLOTS_PER_EPOCH) * COMMITTEES_PER_SLOT + index,
+        count=COMMITTEES_PER_SLOT * SLOTS_PER_EPOCH,
     )
 ```
 
@@ -966,7 +967,7 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
-    committee = get_crosslink_committee(state, data.target.epoch, data.index)
+    committee = get_crosslink_committee(state, data.slot, data.index)
     return set(index for i, index in enumerate(committee) if bits[i])
 ```
 
@@ -1506,7 +1507,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
-    committee = get_crosslink_committee(state, data.target.epoch, data.index)
+    committee = get_crosslink_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
