@@ -53,6 +53,7 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
+| `Shard` | `uint64` | a shard number |
 | `ShardSlot` | `uint64` | a shard slot number |
 
 ## Configuration
@@ -101,6 +102,14 @@ This document describes the shard transition function (data layer only) and the 
 
 ## Containers
 
+### `Crosslink`
+
+```python
+class Crosslink(Container):
+    # STUB: placeholder data structure while reworking phase 0
+    shard: Shard
+```
+ 
 ### `ShardBlock`
 
 ```python

@@ -84,7 +84,6 @@
             - [`get_committee_count`](#get_committee_count)
             - [`get_crosslink_committee`](#get_crosslink_committee)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            - [`get_attestation_data_slot`](#get_attestation_data_slot)
             - [`get_total_balance`](#get_total_balance)
             - [`get_total_active_balance`](#get_total_active_balance)
             - [`get_domain`](#get_domain)
