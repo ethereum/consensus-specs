@@ -1,7 +1,6 @@
 
 process_calls = [
     'process_justification_and_finalization',
-    'process_crosslinks',
     'process_rewards_and_penalties',
     'process_registry_updates',
     'process_reveal_deadlines',

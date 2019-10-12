@@ -8,14 +8,6 @@ def run_process_just_and_fin(spec, state):
     yield from run_epoch_processing_with(spec, state, 'process_justification_and_finalization')
 
 
-def get_shards_for_slot(spec, state, slot):
-    epoch = spec.compute_epoch_of_slot(slot)
-    epoch_start_shard = spec.get_start_shard(state, epoch)
-    committees_per_slot = spec.get_committee_count(state, epoch) // spec.SLOTS_PER_EPOCH
-    shard = (epoch_start_shard + committees_per_slot * (slot % spec.SLOTS_PER_EPOCH)) % spec.SHARD_COUNT
-    return [shard + i for i in range(committees_per_slot)]
-
-
 def add_mock_attestations(spec, state, epoch, source, target, sufficient_support=False):
     # we must be at the end of the epoch
     assert (state.slot + 1) % spec.SLOTS_PER_EPOCH == 0
@@ -35,13 +27,13 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
 
     start_slot = spec.compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
-        for shard in get_shards_for_slot(spec, state, slot):
+        for index in range(spec.COMMITTEES_PER_SLOT):
             # Check if we already have had sufficient balance. (and undone if we don't want it).
             # If so, do not create more attestations. (we do not have empty pending attestations normally anyway)
             if remaining_balance < 0:
                 return
 
-            committee = spec.get_crosslink_committee(state, slot, shard)
+            committee = spec.get_crosslink_committee(state, slot, index)
             # Create a bitfield filled with the given count per attestation,
             #  exactly on the right-most part of the committee field.
 
@@ -60,10 +52,11 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
             attestations.append(spec.PendingAttestation(
                 aggregation_bits=aggregation_bits,
                 data=spec.AttestationData(
+                    slot=slot,
                     beacon_block_root=b'\xff' * 32,  # irrelevant to testing
                     source=source,
                     target=target,
-                    crosslink=spec.Crosslink(shard=shard)
+                    index=index,
                 ),
                 inclusion_delay=1,
             ))
