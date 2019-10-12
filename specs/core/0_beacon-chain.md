@@ -311,7 +311,7 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Index -- Maybe remove
+    # Committee Index
     index: uint64
 ```
 
@@ -865,14 +865,6 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
 def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of committees at ``epoch``.
-    """
-    # Consider not hard coding but just return committees per slot for now
-    """
-    committees_per_slot = max(1, min(
-        SHARD_COUNT // SLOTS_PER_EPOCH,
-        len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
-    ))
-    return committees_per_slot * SLOTS_PER_EPOCH
     """
     return COMMITTEES_PER_SLOT
 ```
