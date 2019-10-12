@@ -31,6 +31,7 @@
 
 | Name | Value | Unit | Duration
 | - | - | - | - |
+| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 | `MAX_SHARD_RECEIPT_PROOFS` | `2**0` (= 1) | - | - |
 | `PERIOD_COMMITTEE_ROOT_LENGTH` | `2**8` (= 256) | periods | ~9 months |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (=256) | - | - |
