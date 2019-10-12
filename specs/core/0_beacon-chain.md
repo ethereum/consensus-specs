@@ -210,7 +210,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | 9 days |
-| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
 
 ### State list lengths
