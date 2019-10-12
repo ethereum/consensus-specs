@@ -12,8 +12,13 @@
     - [Configuration](#configuration)
         - [Misc](#misc)
     - [Containers](#containers)
+    - [Helpers](#helpers)
     - [Beacon Chain Changes](#beacon-chain-changes)
         - [New state variables](#new-state-variables)
+        - [Attestation processing](#attestation-processing)
+        - [Epoch transition](#epoch-transition)
+        - [Fraud proofs](#fraud-proofs)
+    - [Honest persistent committee member behavior](#honest-persistent-committee-member-behavior)
 
 <!-- /TOC -->
 
@@ -30,7 +35,8 @@ This document describes the shard transition function (data layer only) and the 
 | `MAX_SHARDS` | `2**10` (= 1024) |
 | `ACTIVE_SHARDS` | `2**6` (= 64) |
 | `SHARD_ROOT_HISTORY_LENGTH` | `2**15` (= 32,768) |
-| `MAX_CATCHUP` | `2**3` (= 8) |
+| `MAX_CATCHUP` | `2**5` (= 32) |
+| `ONLINE_PERIOD` | `2**3` (= 8) |
 
 ## Containers
 
@@ -40,8 +46,6 @@ This document describes the shard transition function (data layer only) and the 
 class AttestationData(Container):
     # Slot
     slot: Slot
-    # Shard
-    shard: shard
     # LMD GHOST vote
     beacon_block_root: Hash
     # FFG vote
@@ -51,6 +55,8 @@ class AttestationData(Container):
     shard_data_roots: List[Hash, MAX_CATCHUP]
     # Intermediate state roots
     shard_state_roots: List[Hash, MAX_CATCHUP]
+    # Index
+    index: uint64
 ```
 
 ### `Attestation`
@@ -63,13 +69,31 @@ class Attestation(Container):
     signature: BLSSignature
 ```
 
+## Helpers
+
+### `get_online_validators`
+
+```python
+def get_online_indices(state: BeaconState) -> Set[ValidatorIndex]:
+    active_validators = get_active_validator_indices(state, get_current_epoch(state))
+    return set([i for i in active_validators if state.online_countdown[i] != 0])
+```
+
+### `get_shard_state_root`
+
+```python
+def get_shard_state_root(state: BeaconState, shard: Shard) -> Hash:
+    return state.shard_state_roots[shard][-1]
+```
+
 ## Beacon Chain Changes
 
 ### New state variables
 
 ```
-    shard_state_roots: Vector[Hash, MAX_SHARDS]
+    shard_state_roots: Vector[List[Hash, MAX_CATCHUP], MAX_SHARDS]
     shard_next_slot: Vector[Slot, MAX_SHARDS]
+    online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
 ```
 
 ### Attestation processing
@@ -77,38 +101,43 @@ class Attestation(Container):
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert shard < ACTIVE_SHARDS
+    assert data.index < ACTIVE_SHARDS
+    shard = (data.index + get_start_shard(state, data.slot)) % ACTIVE_SHARDS
 
     # Signature check
-    committee = get_crosslink_committee(state, get_current_epoch(state), data.shard)
+    committee = get_crosslink_committee(state, get_current_epoch(state), shard)
     for bits in attestation.custody_bits + [attestation.aggregation_bits]:
         assert bits == len(committee)
     # Check signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
+    # Get attesting indices
+    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
     
     # Type 1: on-time attestations
     if data.custody_bits != []:
         # Correct start slot
-        assert data.slot == state.shard_next_slot[data.shard]
+        assert data.slot == state.shard_next_slot[shard]
         # Correct data root count
         assert len(data.shard_data_roots) == len(attestation.custody_bits) == len(data.shard_state_roots) == min(state.slot - data.slot, MAX_CATCHUP)
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, state.slot - 1)
         # Apply
         online_indices = get_online_indices(state)
-        attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits).intersection(get_online_indices)
-        if get_total_balance(state, attesting_indices) * 3 >= get_total_balance(state, online_indices) * 2:
-            state.shard_state_roots[data.shard] = data.shard_state_roots[-1]
-            state.shard_next_slot[data.shard] += len(data.shard_data_roots)
+        if get_total_balance(state, online_indices.intersection(attesting_indices)) * 3 >= get_total_balance(state, online_indices) * 2:
+            state.shard_state_roots[shard] = data.shard_state_roots
+            state.shard_next_slot[shard] += len(data.shard_data_roots)
         
     # Type 2: delayed attestations
     else:
         assert slot_to_epoch(data.slot) in (get_current_epoch(state), get_previous_epoch(state))
         assert len(data.shard_data_roots) == len(data.intermediate_state_roots) == 0
 
+    for index in attesting_indices:
+        online_countdown[index] = ONLINE_PERIOD
+
     pending_attestation = PendingAttestation(
         slot=data.slot,
-        shard=data.shard,
+        shard=shard,
         aggregation_bits=attestation.aggregation_bits,
         inclusion_delay=state.slot - attestation_slot,
         proposer_index=get_beacon_proposer_index(state),
@@ -122,12 +151,20 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.previous_epoch_attestations.append(pending_attestation)
 ```
 
+### Epoch transition
+
+```python
+for index in range(len(state.validators)):
+    if state.online_countdown[index] != 0:
+        state.online_countdown[index] = state.online_countdown[index] - 1
+```
+
 ### Fraud proofs
 
 TODO. The intent is to have a single universal fraud proof type, which contains (i) an on-time attestation on shard `s` signing a set of `data_roots`, (ii) an index `i` of a particular data root to focus on, (iii) the full contents of the i'th data, (iii) a Merkle proof to the `shard_state_roots` in the parent block the attestation is referencing, and which then verifies that one of the two conditions is false:
 
 * `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
-* `execute_state_transition(slot, shard, attestation.shard_state_roots[i-1], parent.shard_state_roots, block_contents) != shard_state_roots[i]` (if `i=0` then instead use `parent.shard_state_roots[s]`)
+* `execute_state_transition(slot, shard, attestation.shard_state_roots[i-1], parent.shard_state_roots, block_contents) != shard_state_roots[i]` (if `i=0` then instead use `parent.shard_state_roots[s][-1]`)
 
 For phase 1, we will use a simple state transition function:
 
@@ -135,7 +172,7 @@ For phase 1, we will use a simple state transition function:
 * Check that `bls_verify(get_shard_proposer(state, slot, shard), hash_tree_root(data[-96:]), BLSSignature(data[-96:]), BLOCK_SIGNATURE_DOMAIN)`
 * Output the new state root: `hash_tree_root(prev_state_root, other_prev_state_roots, data)`
 
-### Honest persistent committee member behavior
+## Honest persistent committee member behavior
 
 Suppose you are a persistent committee member on shard `i` at slot `s`. Suppose `state.shard_next_slots[i] = s-1` ("the happy case"). In this case, you look for a valid proposal that satisfies the checks in the state transition function above, and if you see such a proposal `data` with post-state `post_state`, make an attestation with `shard_data_roots = [hash_tree_root(data)]` and `shard_state_roots = [post_state]`. If you do not find such a proposal, make an attestation using the "default empty proposal", `data = prev_state_root + b'\x00' * 96`.
 
