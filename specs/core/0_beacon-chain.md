@@ -81,7 +81,6 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`get_validator_churn_limit`](#get_validator_churn_limit)
             - [`get_seed`](#get_seed)
-            - [`get_committee_count`](#get_committee_count)
             - [`get_crosslink_committee`](#get_crosslink_committee)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_total_balance`](#get_total_balance)
@@ -857,16 +856,6 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
     return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
-```
-
-#### `get_committee_count`
-
-```python
-def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
-    """
-    Return the number of committees at ``epoch``.
-    """
-    return COMMITTEES_PER_SLOT
 ```
 
 #### `get_crosslink_committee`
