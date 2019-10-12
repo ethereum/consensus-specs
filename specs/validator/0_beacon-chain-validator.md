@@ -41,7 +41,6 @@
             - [Attestation data](#attestation-data)
                 - [LMD GHOST vote](#lmd-ghost-vote)
                 - [FFG vote](#ffg-vote)
-                - [Crosslink vote](#crosslink-vote)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bits](#aggregation-bits)
@@ -135,28 +134,25 @@ A validator can get committee assignments for a given epoch using the following 
 ```python
 def get_committee_assignment(state: BeaconState,
                              epoch: Epoch,
-                             validator_index: ValidatorIndex) -> Optional[Tuple[Sequence[ValidatorIndex], Shard, Slot]]:
+                             validator_index: ValidatorIndex
+                             ) -> Optional[Tuple[Sequence[ValidatorIndex], uint64, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
         * ``assignment[0]`` is the list of validators in the committee
-        * ``assignment[1]`` is the shard to which the committee is assigned
+        * ``assignment[1]`` is the index to which the committee is assigned
         * ``assignment[2]`` is the slot at which the committee is assigned
     Return None if no assignment.
     """
     next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
-    committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
     start_slot = compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
-        offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
-        slot_start_shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
-        for i in range(committees_per_slot):
-            shard = Shard((slot_start_shard + i) % SHARD_COUNT)
-            committee = get_crosslink_committee(state, epoch, shard)
+        for index in range(COMMITTEES_PER_SLOT):
+            committee = get_crosslink_committee(state, epoch, index)
             if validator_index in committee:
-                return committee, shard, Slot(slot)
+                return committee, index, Slot(slot)
     return None
 ```
 
@@ -176,7 +172,7 @@ def is_proposer(state: BeaconState,
 
 The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
 
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and also which shard they should begin syncing (in Phase 1+).
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest.
 
 Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 
@@ -278,7 +274,7 @@ Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](../core/0_beacon-chain.md#volunta
 
 ### Attestations
 
-A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `shard`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
+A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
 A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
 
@@ -303,16 +299,9 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 - Let `start_slot = compute_start_slot_of_epoch(get_current_epoch(head_state))`.
 - Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
 
-##### Crosslink vote
+##### Index
 
-Construct `attestation_data.crosslink` via the following.
-
-- Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
-- Let `parent_crosslink = head_state.current_crosslinks[shard]`.
-- Set `attestation_data.crosslink.start_epoch = parent_crosslink.end_epoch`.
-- Set `attestation_data.crosslink.end_epoch = min(attestation_data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
-- Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
-- Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
+Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
 
 #### Construct attestation
 

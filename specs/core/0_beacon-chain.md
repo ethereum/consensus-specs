@@ -25,7 +25,6 @@
             - [`Fork`](#fork)
             - [`Checkpoint`](#checkpoint)
             - [`Validator`](#validator)
-            - [`Crosslink`](#crosslink)
             - [`AttestationData`](#attestationdata)
             - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
@@ -84,8 +83,6 @@
             - [`get_seed`](#get_seed)
             - [`get_committee_count`](#get_committee_count)
             - [`get_crosslink_committee`](#get_crosslink_committee)
-            - [`get_start_shard`](#get_start_shard)
-            - [`get_shard_delta`](#get_shard_delta)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_attestation_data_slot`](#get_attestation_data_slot)
             - [`get_total_balance`](#get_total_balance)
@@ -105,7 +102,6 @@
         - [Epoch processing](#epoch-processing)
             - [Helper functions](#helper-functions-1)
             - [Justification and finalization](#justification-and-finalization)
-            - [Crosslinks](#crosslinks)
             - [Rewards and penalties](#rewards-and-penalties-1)
             - [Registry updates](#registry-updates)
             - [Slashings](#slashings)
@@ -174,6 +170,7 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
+| `COMMITTEES_PER_SLOT` | `2**5` (= 32) |
 | `SHARD_COUNT` | `2**10` (= 1,024) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `2**12` (= 4,096) |
@@ -305,29 +302,18 @@ class Validator(Container):
     withdrawable_epoch: Epoch  # When validator can withdraw or transfer funds
 ```
 
-#### `Crosslink`
-
-```python
-class Crosslink(Container):
-    shard: Shard
-    parent_root: Hash
-    # Crosslinking data
-    start_epoch: Epoch
-    end_epoch: Epoch
-    data_root: Hash
-```
-
 #### `AttestationData`
 
 ```python
 class AttestationData(Container):
+    slot: Slot
     # LMD GHOST vote
     beacon_block_root: Hash
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Crosslink vote
-    crosslink: Crosslink
+    # Index -- Maybe remove
+    index: uint64
 ```
 
 #### `AttestationDataAndCustodyBit`
@@ -507,16 +493,12 @@ class BeaconState(Container):
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Shuffling
-    start_shard: Shard
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
     previous_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
     current_epoch_attestations: List[PendingAttestation, MAX_ATTESTATIONS * SLOTS_PER_EPOCH]
-    # Crosslinks
-    previous_crosslinks: Vector[Crosslink, SHARD_COUNT]  # Previous epoch snapshot
-    current_crosslinks: Vector[Crosslink, SHARD_COUNT]
     # Finality
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
@@ -885,52 +867,30 @@ def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the number of committees at ``epoch``.
     """
+    # Consider not hard coding but just return committees per slot for now
+    """
     committees_per_slot = max(1, min(
         SHARD_COUNT // SLOTS_PER_EPOCH,
         len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
     ))
     return committees_per_slot * SLOTS_PER_EPOCH
+    """
+    return COMMITTEES_PER_SLOT
 ```
 
 #### `get_crosslink_committee`
 
 ```python
-def get_crosslink_committee(state: BeaconState, epoch: Epoch, shard: Shard) -> Sequence[ValidatorIndex]:
+def get_crosslink_committee(state: BeaconState, epoch: Epoch, index: uint64) -> Sequence[ValidatorIndex]:
     """
-    Return the crosslink committee at ``epoch`` for ``shard``.
+    Return the crosslink committee at ``epoch`` for ``index``.
     """
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=(shard + SHARD_COUNT - get_start_shard(state, epoch)) % SHARD_COUNT,
+        index=index,
         count=get_committee_count(state, epoch),
     )
-```
-
-#### `get_start_shard`
-
-```python
-def get_start_shard(state: BeaconState, epoch: Epoch) -> Shard:
-    """
-    Return the start shard of the 0th committee at ``epoch``.
-    """
-    assert epoch <= get_current_epoch(state) + 1
-    check_epoch = Epoch(get_current_epoch(state) + 1)
-    shard = Shard((state.start_shard + get_shard_delta(state, get_current_epoch(state))) % SHARD_COUNT)
-    while check_epoch > epoch:
-        check_epoch -= Epoch(1)
-        shard = Shard((shard + SHARD_COUNT - get_shard_delta(state, check_epoch)) % SHARD_COUNT)
-    return shard
-```
-
-#### `get_shard_delta`
-
-```python
-def get_shard_delta(state: BeaconState, epoch: Epoch) -> uint64:
-    """
-    Return the number of shards to increment ``state.start_shard`` at ``epoch``.
-    """
-    return min(get_committee_count(state, epoch), SHARD_COUNT - SHARD_COUNT // SLOTS_PER_EPOCH)
 ```
 
 #### `get_beacon_proposer_index`
@@ -944,18 +904,6 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=8))
     indices = get_active_validator_indices(state, epoch)
     return compute_proposer_index(state, indices, seed)
-```
-
-#### `get_attestation_data_slot`
-
-```python
-def get_attestation_data_slot(state: BeaconState, data: AttestationData) -> Slot:
-    """
-    Return the slot corresponding to the attestation ``data``.
-    """
-    committee_count = get_committee_count(state, data.target.epoch)
-    offset = (data.crosslink.shard + SHARD_COUNT - get_start_shard(state, data.target.epoch)) % SHARD_COUNT
-    return Slot(compute_start_slot_of_epoch(data.target.epoch) + offset // (committee_count // SLOTS_PER_EPOCH))
 ```
 
 #### `get_total_balance`
@@ -1019,7 +967,7 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
-    committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
+    committee = get_crosslink_committee(state, data.target.epoch, data.index)
     return set(index for i, index in enumerate(committee) if bits[i])
 ```
 
@@ -1199,7 +1147,6 @@ def process_slot(state: BeaconState) -> None:
 ```python
 def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)
-    process_crosslinks(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     # @process_reveal_deadlines
@@ -1230,7 +1177,7 @@ def get_matching_target_attestations(state: BeaconState, epoch: Epoch) -> Sequen
 def get_matching_head_attestations(state: BeaconState, epoch: Epoch) -> Sequence[PendingAttestation]:
     return [
         a for a in get_matching_source_attestations(state, epoch)
-        if a.data.beacon_block_root == get_block_root_at_slot(state, get_attestation_data_slot(state, a.data))
+        if a.data.beacon_block_root == get_block_root_at_slot(state, a.data.slot)
     ]
 ```
 
@@ -1246,23 +1193,6 @@ def get_unslashed_attesting_indices(state: BeaconState,
 ```python
 def get_attesting_balance(state: BeaconState, attestations: Sequence[PendingAttestation]) -> Gwei:
     return get_total_balance(state, get_unslashed_attesting_indices(state, attestations))
-```
-
-```python
-def get_winning_crosslink_and_attesting_indices(state: BeaconState,
-                                                epoch: Epoch,
-                                                shard: Shard) -> Tuple[Crosslink, Set[ValidatorIndex]]:
-    attestations = [a for a in get_matching_source_attestations(state, epoch) if a.data.crosslink.shard == shard]
-    crosslinks = filter(
-        lambda c: hash_tree_root(state.current_crosslinks[shard]) in (c.parent_root, hash_tree_root(c)),
-        [a.data.crosslink for a in attestations]
-    )
-    # Winning crosslink has the crosslink data root with the most balance voting for it (ties broken lexicographically)
-    winning_crosslink = max(crosslinks, key=lambda c: (
-        get_attesting_balance(state, [a for a in attestations if a.data.crosslink == c]), c.data_root
-    ), default=Crosslink())
-    winning_attestations = [a for a in attestations if a.data.crosslink == winning_crosslink]
-    return winning_crosslink, get_unslashed_attesting_indices(state, winning_attestations)
 ```
 
 #### Justification and finalization
@@ -1306,20 +1236,6 @@ def process_justification_and_finalization(state: BeaconState) -> None:
     # The 1st/2nd most recent epochs are justified, the 1st using the 2nd as source
     if all(bits[0:2]) and old_current_justified_checkpoint.epoch + 1 == current_epoch:
         state.finalized_checkpoint = old_current_justified_checkpoint
-```
-
-#### Crosslinks
-
-```python
-def process_crosslinks(state: BeaconState) -> None:
-    state.previous_crosslinks = [c for c in state.current_crosslinks]
-    for epoch in (get_previous_epoch(state), get_current_epoch(state)):
-        for offset in range(get_committee_count(state, epoch)):
-            shard = Shard((get_start_shard(state, epoch) + offset) % SHARD_COUNT)
-            crosslink_committee = set(get_crosslink_committee(state, epoch, shard))
-            winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
-            if 3 * get_total_balance(state, attesting_indices) >= 2 * get_total_balance(state, crosslink_committee):
-                state.current_crosslinks[shard] = winning_crosslink
 ```
 
 #### Rewards and penalties
@@ -1385,35 +1301,14 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
 ```
 
 ```python
-def get_crosslink_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence[Gwei]]:
-    rewards = [Gwei(0) for _ in range(len(state.validators))]
-    penalties = [Gwei(0) for _ in range(len(state.validators))]
-    epoch = get_previous_epoch(state)
-    for offset in range(get_committee_count(state, epoch)):
-        shard = Shard((get_start_shard(state, epoch) + offset) % SHARD_COUNT)
-        crosslink_committee = set(get_crosslink_committee(state, epoch, shard))
-        winning_crosslink, attesting_indices = get_winning_crosslink_and_attesting_indices(state, epoch, shard)
-        attesting_balance = get_total_balance(state, attesting_indices)
-        committee_balance = get_total_balance(state, crosslink_committee)
-        for index in crosslink_committee:
-            base_reward = get_base_reward(state, index)
-            if index in attesting_indices:
-                rewards[index] += base_reward * attesting_balance // committee_balance
-            else:
-                penalties[index] += base_reward
-    return rewards, penalties
-```
-
-```python
 def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
     rewards1, penalties1 = get_attestation_deltas(state)
-    rewards2, penalties2 = get_crosslink_deltas(state)
     for index in range(len(state.validators)):
-        increase_balance(state, ValidatorIndex(index), rewards1[index] + rewards2[index])
-        decrease_balance(state, ValidatorIndex(index), penalties1[index] + penalties2[index])
+        increase_balance(state, ValidatorIndex(index), rewards1[index])
+        decrease_balance(state, ValidatorIndex(index), penalties1[index])
 ```
 
 #### Registry updates
@@ -1481,8 +1376,6 @@ def process_final_updates(state: BeaconState) -> None:
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
-    # Update start shard
-    state.start_shard = Shard((state.start_shard + get_shard_delta(state, current_epoch)) % SHARD_COUNT)
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
@@ -1609,36 +1502,27 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.crosslink.shard < SHARD_COUNT
+    assert data.index < COMMITTEES_PER_SLOT
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
 
-    attestation_slot = get_attestation_data_slot(state, data)
-    assert attestation_slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= attestation_slot + SLOTS_PER_EPOCH
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
-    committee = get_crosslink_committee(state, data.target.epoch, data.crosslink.shard)
+    committee = get_crosslink_committee(state, data.target.epoch, data.index)
     assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
         data=data,
         aggregation_bits=attestation.aggregation_bits,
-        inclusion_delay=state.slot - attestation_slot,
+        inclusion_delay=state.slot - data.slot,
         proposer_index=get_beacon_proposer_index(state),
     )
 
     if data.target.epoch == get_current_epoch(state):
         assert data.source == state.current_justified_checkpoint
-        parent_crosslink = state.current_crosslinks[data.crosslink.shard]
         state.current_epoch_attestations.append(pending_attestation)
     else:
         assert data.source == state.previous_justified_checkpoint
-        parent_crosslink = state.previous_crosslinks[data.crosslink.shard]
         state.previous_epoch_attestations.append(pending_attestation)
-
-    # Check crosslink against expected parent crosslink
-    assert data.crosslink.parent_root == hash_tree_root(parent_crosslink)
-    assert data.crosslink.start_epoch == parent_crosslink.end_epoch
-    assert data.crosslink.end_epoch == min(data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)
-    assert data.crosslink.data_root == Bytes32()  # [to be removed in phase 1]
 
     # Check signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
