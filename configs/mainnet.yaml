@@ -6,7 +6,7 @@
 # Misc
 # ---------------------------------------------------------------
 # 2**5 (= 32)
-COMMITTEES_PER_SLOT: 32
+MAX_COMMITTEES_PER_SLOT: 32
 # 2**7 (= 128)
 TARGET_COMMITTEE_SIZE: 128
 # 2**12 (= 4,096)

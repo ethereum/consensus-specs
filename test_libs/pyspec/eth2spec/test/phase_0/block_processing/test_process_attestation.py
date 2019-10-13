@@ -124,13 +124,19 @@ def test_old_source_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_wrong_index(spec, state):
+    pass
+
+
+@with_all_phases
+@spec_state_test
 @never_bls
 def test_invalid_index(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     # off by one (with respect to valid range) on purpose
-    attestation.data.index = spec.COMMITTEES_PER_SLOT
+    attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT
 
     yield from run_attestation_processing(spec, state, attestation, False)
 

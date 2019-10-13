@@ -5,7 +5,7 @@
 # ---------------------------------------------------------------
 
 # [customized] Just 2 committees for slot for testing purposes
-COMMITTEES_PER_SLOT: 2
+MAX_COMMITTEES_PER_SLOT: 2
 # [customized] unsecure, but fast
 TARGET_COMMITTEE_SIZE: 4
 # 2**12 (= 4,096)
