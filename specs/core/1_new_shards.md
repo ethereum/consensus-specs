@@ -15,7 +15,9 @@
     - [Helpers](#helpers)
     - [Beacon Chain Changes](#beacon-chain-changes)
         - [New state variables](#new-state-variables)
+        - [New block data structures](#new-block-data-structures)
         - [Attestation processing](#attestation-processing)
+        - [Light client signature processing)(#light-client-signature-processing)
         - [Epoch transition](#epoch-transition)
         - [Fraud proofs](#fraud-proofs)
     - [Honest persistent committee member behavior](#honest-persistent-committee-member-behavior)
@@ -30,13 +32,15 @@ This document describes the shard transition function (data layer only) and the 
 
 ### Misc
 
-| Name | Value |
-| - | - |
+| Name | Value | Unit | Duration |
+| - | - | - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
 | `ACTIVE_SHARDS` | `2**6` (= 64) |
 | `SHARD_ROOT_HISTORY_LENGTH` | `2**15` (= 32,768) |
-| `MAX_CATCHUP` | `2**5` (= 32) |
-| `ONLINE_PERIOD` | `2**3` (= 8) |
+| `MAX_CATCHUP` | `2**5` (= 32) | slots | 3.2 min |
+| `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
+| `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
+| `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~29 hours |
 
 ## Containers
 
@@ -69,6 +73,14 @@ class Attestation(Container):
     signature: BLSSignature
 ```
 
+### `CompactCommittee`
+
+```python
+class CompactCommittee(Container):
+    pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
+    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
+```
+
 ## Helpers
 
 ### `get_online_validators`
@@ -86,6 +98,44 @@ def get_shard_state_root(state: BeaconState, shard: Shard) -> Hash:
     return state.shard_state_roots[shard][-1]
 ```
 
+### `pack_compact_validator`
+
+```python
+def pack_compact_validator(index: int, slashed: bool, balance_in_increments: int) -> int:
+    """
+    Creates a compact validator object representing index, slashed status, and compressed balance.
+    Takes as input balance-in-increments (// EFFECTIVE_BALANCE_INCREMENT) to preserve symmetry with
+    the unpacking function.
+    """
+    return (index << 16) + (slashed << 15) + balance_in_increments
+```
+
+### `unpack_compact_validator`
+
+```python
+def unpack_compact_validator(compact_validator: int) -> Tuple[int, bool, int]:
+    """
+    Returns validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
+    """
+    return compact_validator >> 16, bool((compact_validator >> 15) % 2), compact_validator & (2**15 - 1)
+```
+
+### `committee_to_compact_committee`
+
+```python
+def committee_to_compact_committee(state: BeaconState, committee: Sequence[ValidatorIndex]) -> CompactCommittee:
+    """
+    Given a state and a list of validator indices, outputs the CompactCommittee representing them.
+    """
+    validators = [state.validators[i] for i in committee]
+    compact_validators = [
+        pack_compact_validator(i, v.slashed, v.effective_balance // EFFECTIVE_BALANCE_INCREMENT)
+        for i, v in zip(committee, validators)
+    ]
+    pubkeys = [v.pubkey for v in validators]
+    return CompactCommittee(pubkeys=pubkeys, compact_validators=compact_validators)
+```
+
 ## Beacon Chain Changes
 
 ### New state variables
@@ -94,6 +144,15 @@ def get_shard_state_root(state: BeaconState, shard: Shard) -> Hash:
     shard_state_roots: Vector[List[Hash, MAX_CATCHUP], MAX_SHARDS]
     shard_next_slot: Vector[Slot, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
+    current_light_committee: CompactCommittee
+    next_light_committee: CompactCommittee
+```
+
+### New block data structures
+
+```
+    light_client_signature_bitfield: Bitlist[LIGHT_CLIENT_COMMITTEE_SIZE]
+    light_client_signature: BLSSignature
 ```
 
 ### Attestation processing
@@ -151,12 +210,40 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.previous_epoch_attestations.append(pending_attestation)
 ```
 
+### Light client processing
+
+```python
+signer_validators = []
+signer_keys = []
+for i, bit in enumerate(block.light_client_signature_bitfield):
+    if bit:
+        signer_keys.append(state.current_light_committee.pubkeys[i])
+        index, _, _ = unpack_compact_validator(state.current_light_committee.compact_validators[i])
+        signer_validators.append(index)
+
+assert bls_verify(
+    pubkey=bls_aggregate_pubkeys(signer_keys),
+    message_hash=get_block_root_at_slot(state, state.slot - 1),
+    signature=block.light_client_signature,
+    domain=DOMAIN_LIGHT_CLIENT
+)
+```
+
 ### Epoch transition
 
 ```python
+# Slowly remove validators from the "online" set if they do not show up
 for index in range(len(state.validators)):
     if state.online_countdown[index] != 0:
         state.online_countdown[index] = state.online_countdown[index] - 1
+
+# Update light client committees
+if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
+    state.current_light_committee = state.next_light_committee
+    seed = get_seed(state, get_current_epoch(state), DOMAIN_LIGHT_CLIENT)
+    active_indices = get_active_validator_indices(state, get_current_epoch(state))
+    committee = [active_indices[compute_shuffled_index(ValidatorIndex(i), len(active_indices), seed)] for i in range(LIGHT_CLIENT_COMMITTEE_SIZE)]
+    state.next_light_committee = committee_to_compact_committee(state, committee)
 ```
 
 ### Fraud proofs
