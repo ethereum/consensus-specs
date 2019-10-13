@@ -140,7 +140,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 
 ### New state variables
 
-```
+```python
     shard_state_roots: Vector[List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS], MAX_SHARDS]
     shard_next_slot: Vector[Slot, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
@@ -150,7 +150,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 
 ### New block data structures
 
-```
+```python
     light_client_signature_bitfield: Bitlist[LIGHT_CLIENT_COMMITTEE_SIZE]
     light_client_signature: BLSSignature
 ```
