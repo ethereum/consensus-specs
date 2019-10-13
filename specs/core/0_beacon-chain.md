@@ -858,19 +858,18 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
     return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
 ```
 
-
-#### `get_committee_count`
+#### `get_committees_per_slot`
 
 ```python
-def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
+def get_committees_per_slot(state: BeaconState, slot: Slot) -> uint64:
     """
-    Return the number of committees at ``epoch``.
+    Return the number of committees at ``slot``.
     """
-    committees_per_slot = max(1, min(
+    epoch = compute_epoch_of_slot(slot)
+    return max(1, min(
         MAX_COMMITTEES_PER_SLOT,
         len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
     ))
-    return committees_per_slot * SLOTS_PER_EPOCH
 ```
 
 #### `get_crosslink_committee`
@@ -878,20 +877,19 @@ def get_committee_count(state: BeaconState, epoch: Epoch) -> uint64:
 ```python
 def get_crosslink_committee(state: BeaconState, slot: Slot, index: uint64) -> Sequence[ValidatorIndex]:
     """
-    Return the crosslink committee at ``epoch`` for ``index``.
+    Return the crosslink committee at ``slot`` for ``index``.
     """
     epoch = compute_epoch_of_slot(slot)
-    committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
+    committees_per_slot = get_committees_per_slot(state, slot)
     slot_start_index = get_slot_start_index(state, slot)
     slot_offset = (index + MAX_COMMITTEES_PER_SLOT - slot_start_index) % MAX_COMMITTEES_PER_SLOT
     epoch_offset = slot_offset + (slot % SLOTS_PER_EPOCH) * committees_per_slot
-    print(epoch_offset)
 
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
         index=epoch_offset,
-        count=get_committee_count(state, epoch),
+        count=committees_per_slot * SLOTS_PER_EPOCH,
     )
 ```
 
@@ -903,8 +901,9 @@ def get_slot_start_index(state: BeaconState, slot: Slot) -> uint64:
     Return the start index of the 0th committee at ``slot``.
     """
     epoch = compute_epoch_of_slot(slot)
-    committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    slot_start_index = ((slot % SLOTS_PER_EPOCH) * committees_per_slot + get_start_index(state, epoch)) % MAX_COMMITTEES_PER_SLOT
+    committees_per_slot = get_committees_per_slot(state, slot)
+    start_index = get_start_index(state, epoch)
+    slot_start_index = ((slot % SLOTS_PER_EPOCH) * committees_per_slot + start_index) % MAX_COMMITTEES_PER_SLOT
     return slot_start_index
 ```
 
@@ -932,7 +931,7 @@ def get_index_delta(state: BeaconState, epoch: Epoch) -> uint64:
     """
     Return the amount to increase ``state.start_index`` at ``epoch``.
     """
-    return get_committee_count(state, epoch)
+    return get_committees_per_slot(state, compute_start_slot_of_epoch(epoch)) * SLOTS_PER_EPOCH
 ```
 
 #### `get_beacon_proposer_index`
@@ -1547,6 +1546,12 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < MAX_COMMITTEES_PER_SLOT
+    slot_start_index = get_slot_start_index(state, data.slot)
+    if data.index < slot_start_index:
+        test_index = data.index + MAX_COMMITTEES_PER_SLOT
+    else:
+        test_index = data.index
+    assert slot_start_index <= test_index < slot_start_index + get_committees_per_slot(state, data.slot)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
 
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH

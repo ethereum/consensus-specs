@@ -43,9 +43,6 @@ def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
         slot = state.slot
     if index is None:
         index = spec.get_slot_start_index(state, slot)
-    print(slot)
-    print(index)
-    print(spec.get_committee_count(state, spec.compute_epoch_of_slot(slot)))
 
     attestation_data = build_attestation_data(spec, state, slot, index)
 

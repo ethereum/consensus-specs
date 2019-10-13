@@ -124,8 +124,31 @@ def test_old_source_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_wrong_index(spec, state):
-    pass
+@always_bls
+def test_wrong_index_for_committee_signature(spec, state):
+    attestation = get_valid_attestation(spec, state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.data.index += 1
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+@never_bls
+def test_wrong_index_for_slot(spec, state):
+    committees_per_slot = spec.get_committees_per_slot(state, state.slot)
+    assert committees_per_slot < spec.MAX_COMMITTEES_PER_SLOT
+    slot_start_index = spec.get_slot_start_index(state, state.slot)
+    index = slot_start_index + committees_per_slot
+
+    attestation = get_valid_attestation(spec, state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.data.index = index
+
+    yield from run_attestation_processing(spec, state, attestation, False)
 
 
 @with_all_phases
