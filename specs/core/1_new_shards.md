@@ -37,7 +37,7 @@ This document describes the shard transition function (data layer only) and the 
 | `MAX_SHARDS` | `2**10` (= 1024) |
 | `ACTIVE_SHARDS` | `2**6` (= 64) |
 | `SHARD_ROOT_HISTORY_LENGTH` | `2**15` (= 32,768) |
-| `MAX_CATCHUP` | `2**5` (= 32) | slots | 3.2 min |
+| `MAX_CATCHUP_RATIO` | `2**2` (= 4) |
 | `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~29 hours |
@@ -56,9 +56,9 @@ class AttestationData(Container):
     source: Checkpoint
     target: Checkpoint
     # Shard data roots
-    shard_data_roots: List[Hash, MAX_CATCHUP]
+    shard_data_roots: List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS]
     # Intermediate state roots
-    shard_state_roots: List[Hash, MAX_CATCHUP]
+    shard_state_roots: List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS]
     # Index
     index: uint64
 ```
@@ -69,7 +69,7 @@ class AttestationData(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_CATCHUP]
+    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_CATCHUP_RATIO * MAX_SHARDS]
     signature: BLSSignature
 ```
 
@@ -141,7 +141,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 ### New state variables
 
 ```
-    shard_state_roots: Vector[List[Hash, MAX_CATCHUP], MAX_SHARDS]
+    shard_state_roots: Vector[List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS], MAX_SHARDS]
     shard_next_slot: Vector[Slot, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
@@ -177,7 +177,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Correct start slot
         assert data.slot == state.shard_next_slot[shard]
         # Correct data root count
-        assert len(data.shard_data_roots) == len(attestation.custody_bits) == len(data.shard_state_roots) == min(state.slot - data.slot, MAX_CATCHUP)
+        max_catchup = ACTIVE_SHARDS * MAX_CATCHUP_RATIO // get_committee_count(state, state.slot)
+        assert len(data.shard_data_roots) == len(attestation.custody_bits) == len(data.shard_state_roots) == min(state.slot - data.slot, max_catchup)
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, state.slot - 1)
         # Apply
@@ -263,7 +264,7 @@ For phase 1, we will use a simple state transition function:
 
 Suppose you are a persistent committee member on shard `i` at slot `s`. Suppose `state.shard_next_slots[i] = s-1` ("the happy case"). In this case, you look for a valid proposal that satisfies the checks in the state transition function above, and if you see such a proposal `data` with post-state `post_state`, make an attestation with `shard_data_roots = [hash_tree_root(data)]` and `shard_state_roots = [post_state]`. If you do not find such a proposal, make an attestation using the "default empty proposal", `data = prev_state_root + b'\x00' * 96`.
 
-Now suppose `state.shard_next_slots[i] = s-k` for `k>1`. Then, initialize `data = []`, `states = []`, `state = state.shard_state_roots[i]`. For `slot in (state.shard_next_slot, min(state.shard_next_slot + MAX_CATCHUP, s))`, do:
+Now suppose `state.shard_next_slots[i] = s-k` for `k>1`. Then, initialize `data = []`, `states = []`, `state = state.shard_state_roots[i]`. For `slot in (state.shard_next_slot, min(state.shard_next_slot + max_catchup, s))`, do:
 
 * Look for all valid proposals for `slot` whose first 32 bytes equal to `state`. If there are none, add a default empty proposal to `data`. If there is one such proposal `p`, add `p` to `data`. If there is more than one, select the one with the largest number of total attestations supporting it or its descendants, and add it to `data`.
 * Set `state` to the state after processing the proposal just added to `data`; append it to `states`
