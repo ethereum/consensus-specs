@@ -211,6 +211,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.previous_epoch_attestations.append(pending_attestation)
 ```
 
+Check the length of attestations using `len(block.attestations) <= 4 * get_committee_count(state, state.slot)`.
+
 ### Light client processing
 
 ```python
