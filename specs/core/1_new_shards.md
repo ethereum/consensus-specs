@@ -20,7 +20,8 @@
         - [Light client signature processing)(#light-client-signature-processing)
         - [Epoch transition](#epoch-transition)
         - [Fraud proofs](#fraud-proofs)
-    - [Honest persistent committee member behavior](#honest-persistent-committee-member-behavior)
+    - [Shard state transition function](#shard-state-transition-function)
+    - [Honest committee member behavior](#honest-committee-member-behavior)
 
 <!-- /TOC -->
 
@@ -36,7 +37,6 @@ This document describes the shard transition function (data layer only) and the 
 | - | - | - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
 | `ACTIVE_SHARDS` | `2**6` (= 64) |
-| `SHARD_ROOT_HISTORY_LENGTH` | `2**15` (= 32,768) |
 | `MAX_CATCHUP_RATIO` | `2**2` (= 4) |
 | `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
@@ -142,7 +142,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 
 ```python
     shard_state_roots: Vector[List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS], MAX_SHARDS]
-    shard_next_slot: Vector[Slot, MAX_SHARDS]
+    shard_next_slots: Vector[Slot, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
@@ -175,7 +175,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Type 1: on-time attestations
     if data.custody_bits != []:
         # Correct start slot
-        assert data.slot == state.shard_next_slot[shard]
+        assert data.slot == state.shard_next_slots[shard]
         # Correct data root count
         max_catchup = ACTIVE_SHARDS * MAX_CATCHUP_RATIO // get_committee_count(state, state.slot)
         assert len(data.shard_data_roots) == len(attestation.custody_bits) == len(data.shard_state_roots) == min(state.slot - data.slot, max_catchup)
@@ -185,7 +185,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         online_indices = get_online_indices(state)
         if get_total_balance(state, online_indices.intersection(attesting_indices)) * 3 >= get_total_balance(state, online_indices) * 2:
             state.shard_state_roots[shard] = data.shard_state_roots
-            state.shard_next_slot[shard] += len(data.shard_data_roots)
+            state.shard_next_slots[shard] += len(data.shard_data_roots)
         
     # Type 2: delayed attestations
     else:
@@ -254,7 +254,7 @@ if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
 TODO. The intent is to have a single universal fraud proof type, which contains (i) an on-time attestation on shard `s` signing a set of `data_roots`, (ii) an index `i` of a particular data root to focus on, (iii) the full contents of the i'th data, (iii) a Merkle proof to the `shard_state_roots` in the parent block the attestation is referencing, and which then verifies that one of the two conditions is false:
 
 * `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
-* `execute_state_transition(slot, shard, attestation.shard_state_roots[i-1], parent.shard_state_roots, block_contents) != shard_state_roots[i]` (if `i=0` then instead use `parent.shard_state_roots[s][-1]`)
+* `execute_state_transition(shard, slot, attestation.shard_state_roots[i-1], hash_tree_root(parent), get_shard_proposer(state, shard, slot), block_contents) != shard_state_roots[i]` (if `i=0` then instead use `parent.shard_state_roots[s][-1]`)
 
 For phase 1, we will use a simple state transition function:
 
@@ -262,13 +262,46 @@ For phase 1, we will use a simple state transition function:
 * Check that `bls_verify(get_shard_proposer(state, slot, shard), hash_tree_root(data[-96:]), BLSSignature(data[-96:]), BLOCK_SIGNATURE_DOMAIN)`
 * Output the new state root: `hash_tree_root(prev_state_root, other_prev_state_roots, data)`
 
-## Honest persistent committee member behavior
+## Shard state transition function
 
-Suppose you are a persistent committee member on shard `i` at slot `s`. Suppose `state.shard_next_slots[i] = s-1` ("the happy case"). In this case, you look for a valid proposal that satisfies the checks in the state transition function above, and if you see such a proposal `data` with post-state `post_state`, make an attestation with `shard_data_roots = [hash_tree_root(data)]` and `shard_state_roots = [post_state]`. If you do not find such a proposal, make an attestation using the "default empty proposal", `data = prev_state_root + b'\x00' * 96`.
+```python
+def shard_state_transition(shard: Shard, slot: Slot, pre_state: Hash, previous_beacon_root: Hash, proposer_pubkey: BLSPubkey, block_data: Bytes) -> Hash:
+    # Beginning of block data is the previous state root
+    assert block_data[:32] == pre_state
+    assert block_data[32:64] == int_to_bytes8(slot) + b'\x00' * 24
+    # Signature check (nonempty blocks only)
+    if len(block_data) == 64:
+        pass
+    else:
+        assert len(block_data) >= 160
+        assert bls_verify(
+            pubkey=proposer_pubkey,
+            message_hash=hash_tree_root(block_data[:-96]),
+            signature=block_data[-96:],
+            domain=DOMAIN_SHARD_PROPOSER
+        )
+    # We will add something more substantive in phase 2
+    return hash(pre_state + hash_tree_root(block_data))
+```
 
-Now suppose `state.shard_next_slots[i] = s-k` for `k>1`. Then, initialize `data = []`, `states = []`, `state = state.shard_state_roots[i]`. For `slot in (state.shard_next_slot, min(state.shard_next_slot + max_catchup, s))`, do:
+We also provide a method to generate an empty proposal:
 
-* Look for all valid proposals for `slot` whose first 32 bytes equal to `state`. If there are none, add a default empty proposal to `data`. If there is one such proposal `p`, add `p` to `data`. If there is more than one, select the one with the largest number of total attestations supporting it or its descendants, and add it to `data`.
-* Set `state` to the state after processing the proposal just added to `data`; append it to `states`
+```python
+def make_empty_proposal(pre_state: Hash, slot: Slot) -> Bytes[64]:
+    return pre_state + int_to_bytes8(slot) + b'\x00' * 24
+```
 
-Make an attestation using `shard_data_roots = data` and `shard_state_roots = states`.
+## Honest committee member behavior
+
+Suppose you are a committee member on shard `shard` at slot `current_slot`. Let `state` be the head beacon state you are building on. Three seconds into slot `slot`, run the following procedure:
+
+* Initialize `proposals = []`, `shard_states = []`, `shard_state = state.shard_state_roots[shard][-1]`.
+* Let `max_catchup = ACTIVE_SHARDS * MAX_CATCHUP_RATIO // get_committee_count(state, current_slot))`
+* For `slot in (state.shard_next_slots[shard], min(state.shard_next_slot + max_catchup, current_slot))`, do the following:
+    * Look for all valid proposals for `slot`; that is, a Bytes `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer(state, shard, slot), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
+    * If `len(choices) == 0`, do `proposals.append(make_empty_proposal(shard_state, slot))`
+    * If `len(choices) == 1`, do `proposals.append(choices[0])`
+    * If `len(choices) > 1`, let `winning_proposal` be the proposal with the largest number of total attestations from slots in `state.shard_next_slots[shard]....slot-1` supporting it or any of its descendants, breaking ties by choosing the first proposal locally seen. Do `proposals.append(winning_proposal)`.
+    * Set `shard_state = shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer(state, shard, slot), proposals[-1])` and do `shard_states.append(shard_state)`.
+
+Make an attestation using `shard_data_roots = [hash_tree_root(proposal) for proposal in proposals]` and `shard_state_roots = shard_states`.
