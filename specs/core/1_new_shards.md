@@ -91,13 +91,6 @@ def get_online_indices(state: BeaconState) -> Set[ValidatorIndex]:
     return set([i for i in active_validators if state.online_countdown[i] != 0])
 ```
 
-### `get_shard_state_root`
-
-```python
-def get_shard_state_root(state: BeaconState, shard: Shard) -> Hash:
-    return state.shard_state_roots[shard][-1]
-```
-
 ### `pack_compact_validator`
 
 ```python
@@ -141,7 +134,8 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 ### New state variables
 
 ```python
-    shard_state_roots: Vector[List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS], MAX_SHARDS]
+    shard_state_roots: Vector[Hash, MAX_SHARDS]
+    shard_trace_commitments: Vector[Hash, MAX_SHARDS]
     shard_next_slots: Vector[Slot, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
@@ -184,7 +178,13 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Apply
         online_indices = get_online_indices(state)
         if get_total_balance(state, online_indices.intersection(attesting_indices)) * 3 >= get_total_balance(state, online_indices) * 2:
-            state.shard_state_roots[shard] = data.shard_state_roots
+            # Save trace commitment (used for fraud proofs)
+            trace = List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS * 2 + 1]([state.shard_state_roots[shard]])
+            for data, state in zip(data.shard_data_roots, data.shard_state_roots):
+                trace.extend([data, state])
+            state.shard_trace_commitments[shard] = hash_tree_root(trace)
+            # Save state root and next slot
+            state.shard_state_roots[shard] = data.shard_state_roots[-1]
             state.shard_next_slots[shard] += len(data.shard_data_roots)
         
     # Type 2: delayed attestations
@@ -255,12 +255,6 @@ TODO. The intent is to have a single universal fraud proof type, which contains 
 
 * `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
 * `execute_state_transition(shard, slot, attestation.shard_state_roots[i-1], hash_tree_root(parent), get_shard_proposer(state, shard, slot), block_contents) != shard_state_roots[i]` (if `i=0` then instead use `parent.shard_state_roots[s][-1]`)
-
-For phase 1, we will use a simple state transition function:
-
-* Check that `data[:32] == prev_state_root`
-* Check that `bls_verify(get_shard_proposer(state, slot, shard), hash_tree_root(data[-96:]), BLSSignature(data[-96:]), BLOCK_SIGNATURE_DOMAIN)`
-* Output the new state root: `hash_tree_root(prev_state_root, other_prev_state_roots, data)`
 
 ## Shard state transition function
 
