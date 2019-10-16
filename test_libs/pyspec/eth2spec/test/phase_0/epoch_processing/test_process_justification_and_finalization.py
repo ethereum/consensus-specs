@@ -28,7 +28,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     start_slot = spec.compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
         committees_per_slot = spec.get_committees_per_slot(state, slot)
-        slot_start_index = spec.get_slot_start_index(state, slot)
+        slot_start_index = spec.get_start_index(state, slot)
         for i in range(committees_per_slot):
             index = (slot_start_index + i) % spec.MAX_COMMITTEES_PER_SLOT
             # Check if we already have had sufficient balance. (and undone if we don't want it).

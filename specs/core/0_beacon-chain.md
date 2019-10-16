@@ -82,6 +82,7 @@
             - [`get_validator_churn_limit`](#get_validator_churn_limit)
             - [`get_seed`](#get_seed)
             - [`get_crosslink_committee`](#get_crosslink_committee)
+            - [`get_start_index`](#get_start_index)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_total_balance`](#get_total_balance)
             - [`get_total_active_balance`](#get_total_active_balance)
@@ -881,7 +882,7 @@ def get_crosslink_committee(state: BeaconState, slot: Slot, index: uint64) -> Se
     """
     epoch = compute_epoch_of_slot(slot)
     committees_per_slot = get_committees_per_slot(state, slot)
-    slot_start_index = get_slot_start_index(state, slot)
+    slot_start_index = get_start_index(state, slot)
     slot_offset = (index + MAX_COMMITTEES_PER_SLOT - slot_start_index) % MAX_COMMITTEES_PER_SLOT
     epoch_offset = slot_offset + (slot % SLOTS_PER_EPOCH) * committees_per_slot
 
@@ -893,45 +894,37 @@ def get_crosslink_committee(state: BeaconState, slot: Slot, index: uint64) -> Se
     )
 ```
 
-#### `get_slot_start_index`
+#### `get_start_index`
 
 ```python
-def get_slot_start_index(state: BeaconState, slot: Slot) -> uint64:
+def get_start_index(state: BeaconState, slot: Slot) -> uint64:
     """
     Return the start index of the 0th committee at ``slot``.
     """
     epoch = compute_epoch_of_slot(slot)
-    committees_per_slot = get_committees_per_slot(state, slot)
-    start_index = get_start_index(state, epoch)
-    slot_start_index = ((slot % SLOTS_PER_EPOCH) * committees_per_slot + start_index) % MAX_COMMITTEES_PER_SLOT
-    return slot_start_index
-```
-
-#### `get_start_index`
-
-```python
-def get_start_index(state: BeaconState, epoch: Epoch) -> uint64:
-    """
-    Return the start index of the 0th committee at ``epoch``.
-    """
     assert epoch <= get_current_epoch(state) + 1
-    check_epoch = Epoch(get_current_epoch(state) + 1)
-    index = (state.start_index + get_index_delta(state, get_current_epoch(state))) % MAX_COMMITTEES_PER_SLOT
-    MAX_COMMITTEES_PER_EPOCH = MAX_COMMITTEES_PER_SLOT * SLOTS_PER_EPOCH
-    while check_epoch > epoch:
-        check_epoch -= Epoch(1)
-        index = (index + MAX_COMMITTEES_PER_EPOCH - get_index_delta(state, check_epoch)) % MAX_COMMITTEES_PER_SLOT
+
+    check_slot = state.slot
+    index = state.start_index
+    if slot > state.slot:
+        while check_slot < slot:
+            check_slot += Slot(1)
+            index = (index + get_index_delta(state, check_slot)) % MAX_COMMITTEES_PER_SLOT
+    elif slot < state.slot:
+        while check_slot > slot:
+            check_slot -= Slot(1)
+            index = (index + MAX_COMMITTEES_PER_SLOT - get_index_delta(state, check_slot)) % MAX_COMMITTEES_PER_SLOT
     return index
 ```
 
 #### `get_index_delta`
 
 ```python
-def get_index_delta(state: BeaconState, epoch: Epoch) -> uint64:
+def get_index_delta(state: BeaconState, slot: Slot) -> uint64:
     """
-    Return the amount to increase ``state.start_index`` at ``epoch``.
+    Return the amount to increase ``state.start_index`` at ``slot``.
     """
-    return get_committees_per_slot(state, compute_start_slot_of_epoch(epoch)) * SLOTS_PER_EPOCH
+    return get_committees_per_slot(state, slot)
 ```
 
 #### `get_beacon_proposer_index`
@@ -1165,6 +1158,8 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
         # Process epoch on the start slot of the next epoch
         if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
             process_epoch(state)
+        # Increment start shard and slot
+        state.start_index = (state.start_index + get_index_delta(state, state.slot)) % MAX_COMMITTEES_PER_SLOT
         state.slot += Slot(1)
 ```
 
@@ -1417,8 +1412,6 @@ def process_final_updates(state: BeaconState) -> None:
     if next_epoch % (SLOTS_PER_HISTORICAL_ROOT // SLOTS_PER_EPOCH) == 0:
         historical_batch = HistoricalBatch(block_roots=state.block_roots, state_roots=state.state_roots)
         state.historical_roots.append(hash_tree_root(historical_batch))
-    # Update start shard
-    state.start_index = (state.start_index + get_index_delta(state, current_epoch)) % MAX_COMMITTEES_PER_SLOT
     # Rotate current/previous epoch attestations
     state.previous_epoch_attestations = state.current_epoch_attestations
     state.current_epoch_attestations = []
@@ -1546,7 +1539,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < MAX_COMMITTEES_PER_SLOT
-    slot_start_index = get_slot_start_index(state, data.slot)
+    slot_start_index = get_start_index(state, data.slot)
     if data.index < slot_start_index:
         test_index = data.index + MAX_COMMITTEES_PER_SLOT
     else:

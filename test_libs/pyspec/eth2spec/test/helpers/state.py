@@ -7,6 +7,11 @@ def get_balance(state, index):
     return state.balances[index]
 
 
+def advance_to(spec, state, slot):
+    while state.slot < slot:
+        next_slot(spec, state)
+
+
 def next_slot(spec, state):
     """
     Transition to the next slot.
@@ -54,7 +59,7 @@ def next_epoch_with_attestations(spec,
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
             committees_per_slot = spec.get_committees_per_slot(state, slot_to_attest)
             if slot_to_attest >= spec.compute_start_slot_of_epoch(spec.get_current_epoch(post_state)):
-                slot_start_index = spec.get_slot_start_index(state, slot_to_attest)
+                slot_start_index = spec.get_start_index(state, slot_to_attest)
                 for i in range(committees_per_slot):
                     index = (slot_start_index + i) % spec.MAX_COMMITTEES_PER_SLOT
                     cur_attestation = get_valid_attestation(spec, post_state, slot_to_attest, index=index)
@@ -63,7 +68,7 @@ def next_epoch_with_attestations(spec,
         if fill_prev_epoch:
             slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
             committees_per_slot = spec.get_committees_per_slot(state, slot_to_attest)
-            slot_start_index = spec.get_slot_start_index(state, slot_to_attest)
+            slot_start_index = spec.get_start_index(state, slot_to_attest)
             for i in range(committees_per_slot):
                 index = (slot_start_index + i) % spec.MAX_COMMITTEES_PER_SLOT
                 prev_attestation = get_valid_attestation(spec, post_state, slot_to_attest, index=index)
