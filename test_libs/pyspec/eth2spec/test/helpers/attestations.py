@@ -42,7 +42,7 @@ def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
     if slot is None:
         slot = state.slot
     if index is None:
-        index = spec.get_slot_start_index(state, slot)
+        index = 0
 
     attestation_data = build_attestation_data(spec, state, slot, index)
 

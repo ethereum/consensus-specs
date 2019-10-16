@@ -54,18 +54,14 @@ def next_epoch_with_attestations(spec,
             slot_to_attest = post_state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
             committees_per_slot = spec.get_committees_per_slot(state, slot_to_attest)
             if slot_to_attest >= spec.compute_start_slot_of_epoch(spec.get_current_epoch(post_state)):
-                slot_start_index = spec.get_slot_start_index(state, slot_to_attest)
-                for i in range(committees_per_slot):
-                    index = (slot_start_index + i) % spec.MAX_COMMITTEES_PER_SLOT
+                for index in range(committees_per_slot):
                     cur_attestation = get_valid_attestation(spec, post_state, slot_to_attest, index=index)
                     block.body.attestations.append(cur_attestation)
 
         if fill_prev_epoch:
             slot_to_attest = post_state.slot - spec.SLOTS_PER_EPOCH + 1
             committees_per_slot = spec.get_committees_per_slot(state, slot_to_attest)
-            slot_start_index = spec.get_slot_start_index(state, slot_to_attest)
-            for i in range(committees_per_slot):
-                index = (slot_start_index + i) % spec.MAX_COMMITTEES_PER_SLOT
+            for index in range(committees_per_slot):
                 prev_attestation = get_valid_attestation(spec, post_state, slot_to_attest, index=index)
                 block.body.attestations.append(prev_attestation)
 

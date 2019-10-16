@@ -140,8 +140,7 @@ def test_wrong_index_for_committee_signature(spec, state):
 def test_wrong_index_for_slot(spec, state):
     committees_per_slot = spec.get_committees_per_slot(state, state.slot)
     assert committees_per_slot < spec.MAX_COMMITTEES_PER_SLOT
-    slot_start_index = spec.get_slot_start_index(state, state.slot)
-    index = slot_start_index + committees_per_slot
+    index = committees_per_slot
 
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
