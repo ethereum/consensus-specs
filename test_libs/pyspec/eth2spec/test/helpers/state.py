@@ -7,11 +7,6 @@ def get_balance(state, index):
     return state.balances[index]
 
 
-def advance_to(spec, state, slot):
-    while state.slot < slot:
-        next_slot(spec, state)
-
-
 def next_slot(spec, state):
     """
     Transition to the next slot.

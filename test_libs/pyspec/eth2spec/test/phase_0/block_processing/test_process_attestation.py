@@ -10,7 +10,6 @@ from eth2spec.test.helpers.attestations import (
     sign_attestation,
 )
 from eth2spec.test.helpers.state import (
-    advance_to,
     next_epoch,
 )
 from eth2spec.test.helpers.block import apply_empty_block
