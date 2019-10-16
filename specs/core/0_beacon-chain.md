@@ -909,22 +909,15 @@ def get_start_index(state: BeaconState, slot: Slot) -> uint64:
     if slot > state.slot:
         while check_slot < slot:
             check_slot += Slot(1)
-            index = (index + get_index_delta(state, check_slot)) % MAX_COMMITTEES_PER_SLOT
+            index = (index + get_committees_per_slot(state, check_slot)) % MAX_COMMITTEES_PER_SLOT
     elif slot < state.slot:
         while check_slot > slot:
             check_slot -= Slot(1)
-            index = (index + MAX_COMMITTEES_PER_SLOT - get_index_delta(state, check_slot)) % MAX_COMMITTEES_PER_SLOT
+            index = (
+                (index + MAX_COMMITTEES_PER_SLOT - get_committees_per_slot(state, check_slot))
+                % MAX_COMMITTEES_PER_SLOT
+            )
     return index
-```
-
-#### `get_index_delta`
-
-```python
-def get_index_delta(state: BeaconState, slot: Slot) -> uint64:
-    """
-    Return the amount to increase ``state.start_index`` at ``slot``.
-    """
-    return get_committees_per_slot(state, slot)
 ```
 
 #### `get_beacon_proposer_index`
@@ -1159,7 +1152,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
         if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
             process_epoch(state)
         # Increment start shard and slot
-        state.start_index = (state.start_index + get_index_delta(state, state.slot)) % MAX_COMMITTEES_PER_SLOT
+        state.start_index = (state.start_index + get_committees_per_slot(state, state.slot)) % MAX_COMMITTEES_PER_SLOT
         state.slot += Slot(1)
 ```
 
