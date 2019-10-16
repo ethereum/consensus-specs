@@ -135,7 +135,7 @@ A validator can get committee assignments for a given epoch using the following 
 def get_committee_assignment(state: BeaconState,
                              epoch: Epoch,
                              validator_index: ValidatorIndex
-                             ) -> Optional[Tuple[Sequence[ValidatorIndex], uint64, Slot]]:
+                             ) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
@@ -150,9 +150,9 @@ def get_committee_assignment(state: BeaconState,
     start_slot = compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
         for index in range(get_committees_per_slot(state, Slot(slot))):
-            committee = get_crosslink_committee(state, Slot(slot), index)
+            committee = get_crosslink_committee(state, Slot(slot), CommitteeIndex(index))
             if validator_index in committee:
-                return committee, index, Slot(slot)
+                return committee, CommitteeIndex(index), Slot(slot)
     return None
 ```
 

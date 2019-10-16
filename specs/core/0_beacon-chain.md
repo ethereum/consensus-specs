@@ -137,6 +137,7 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `Slot` | `uint64` | a slot number |
 | `Epoch` | `uint64` | an epoch number |
+| `CommitteeIndex` | `uint64` | an index for a committee within a slot |
 | `Shard` | `uint64` | a shard number |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
@@ -310,7 +311,7 @@ class AttestationData(Container):
     source: Checkpoint
     target: Checkpoint
     # Committee Index
-    index: uint64
+    index: CommitteeIndex
 ```
 
 #### `AttestationDataAndCustodyBit`
@@ -874,7 +875,7 @@ def get_committees_per_slot(state: BeaconState, slot: Slot) -> uint64:
 #### `get_crosslink_committee`
 
 ```python
-def get_crosslink_committee(state: BeaconState, slot: Slot, index: uint64) -> Sequence[ValidatorIndex]:
+def get_crosslink_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Sequence[ValidatorIndex]:
     """
     Return the crosslink committee at ``slot`` for ``index``.
     """
