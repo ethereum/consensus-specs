@@ -80,13 +80,13 @@ def bitlist_from_int(max_len, num_bits, n):
 
 
 def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False):
-    crosslink_committee = spec.get_crosslink_committee(
+    beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
         attestation.data.crosslink.shard,
     )
-    responder_index = crosslink_committee[0]
-    challenger_index = crosslink_committee[-1]
+    responder_index = beacon_committee[0]
+    challenger_index = beacon_committee[-1]
 
     epoch = spec.get_randao_epoch_for_custody_period(attestation.data.target.epoch,
                                                      responder_index)

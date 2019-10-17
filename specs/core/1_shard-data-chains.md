@@ -62,6 +62,7 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | Value |
 | - | - |
+| `SHARD_COUNT` | `2**10` (= 1,024) |
 | `MIN_BLOCK_BODY_PRICE` | `2**0` (= 1) |
 | `MAX_PERIOD_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `SHARD_HEADER_SIZE` | `2**10` (= 1024) |

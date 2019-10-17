@@ -81,7 +81,7 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`get_validator_churn_limit`](#get_validator_churn_limit)
             - [`get_seed`](#get_seed)
-            - [`get_crosslink_committee`](#get_crosslink_committee)
+            - [`get_beacon_committee`](#get_beacon_committee)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_total_balance`](#get_total_balance)
             - [`get_total_active_balance`](#get_total_active_balance)
@@ -872,10 +872,10 @@ def get_committees_per_slot(state: BeaconState, slot: Slot) -> uint64:
     ))
 ```
 
-#### `get_crosslink_committee`
+#### `get_beacon_committee`
 
 ```python
-def get_crosslink_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Sequence[ValidatorIndex]:
+def get_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Sequence[ValidatorIndex]:
     """
     Return the crosslink committee at ``slot`` for ``index``.
     """
@@ -965,7 +965,7 @@ def get_attesting_indices(state: BeaconState,
     """
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
-    committee = get_crosslink_committee(state, data.slot, data.index)
+    committee = get_beacon_committee(state, data.slot, data.index)
     return set(index for i, index in enumerate(committee) if bits[i])
 ```
 
@@ -1504,7 +1504,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
-    committee = get_crosslink_committee(state, data.slot, data.index)
+    committee = get_beacon_committee(state, data.slot, data.index)
     assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
 
     pending_attestation = PendingAttestation(

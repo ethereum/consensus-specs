@@ -46,13 +46,13 @@ def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
 
     attestation_data = build_attestation_data(spec, state, slot, index)
 
-    crosslink_committee = spec.get_crosslink_committee(
+    beacon_committee = spec.get_beacon_committee(
         state,
         attestation_data.slot,
         attestation_data.index,
     )
 
-    committee_size = len(crosslink_committee)
+    committee_size = len(beacon_committee)
     aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     custody_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     attestation = spec.Attestation(
@@ -115,12 +115,12 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
 
 
 def fill_aggregate_attestation(spec, state, attestation):
-    crosslink_committee = spec.get_crosslink_committee(
+    beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
         attestation.data.index,
     )
-    for i in range(len(crosslink_committee)):
+    for i in range(len(beacon_committee)):
         attestation.aggregation_bits[i] = True
 
 

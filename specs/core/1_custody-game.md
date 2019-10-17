@@ -624,7 +624,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
     assert chunk_count == len(challenge.chunk_bits)
     # Verify custody bit is incorrect
-    committee = get_crosslink_committee(state, epoch, shard)
+    committee = get_beacon_committee(state, epoch, shard)
     custody_bit = attestation.custody_bits[committee.index(challenge.responder_index)]
     assert custody_bit != get_chunk_bits_root(challenge.chunk_bits)
     # Add new bit challenge record

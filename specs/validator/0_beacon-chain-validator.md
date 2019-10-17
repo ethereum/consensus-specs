@@ -150,7 +150,7 @@ def get_committee_assignment(state: BeaconState,
     start_slot = compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
         for index in range(get_committees_per_slot(state, Slot(slot))):
-            committee = get_crosslink_committee(state, Slot(slot), CommitteeIndex(index))
+            committee = get_beacon_committee(state, Slot(slot), CommitteeIndex(index))
             if validator_index in committee:
                 return committee, CommitteeIndex(index), Slot(slot)
     return None
@@ -166,7 +166,7 @@ def is_proposer(state: BeaconState,
 
 *Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
 
-*Note*: `BeaconBlock` proposal is distinct from crosslink committee assignment, and in a given epoch each responsibility might occur at different a different slot.
+*Note*: `BeaconBlock` proposal is distinct from beacon committee assignment, and in a given epoch each responsibility might occur at different a different slot.
 
 ### Lookahead
 

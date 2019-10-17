@@ -34,7 +34,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
             if remaining_balance < 0:
                 return
 
-            committee = spec.get_crosslink_committee(state, slot, index)
+            committee = spec.get_beacon_committee(state, slot, index)
             # Create a bitfield filled with the given count per attestation,
             #  exactly on the right-most part of the committee field.
 
