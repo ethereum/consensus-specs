@@ -3,7 +3,6 @@ from typing import Iterable
 from eth2spec.phase0 import spec as spec_phase0
 from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.test.phase_0.epoch_processing import (
-    test_process_crosslinks,
     test_process_final_updates,
     test_process_justification_and_finalization,
     test_process_registry_updates,
@@ -35,8 +34,6 @@ def create_provider(handler_name: str, tests_src, config_name: str) -> gen_typin
 
 if __name__ == "__main__":
     gen_runner.run_generator("epoch_processing", [
-        create_provider('crosslinks', test_process_crosslinks, 'minimal'),
-        create_provider('crosslinks', test_process_crosslinks, 'mainnet'),
         create_provider('final_updates', test_process_final_updates, 'minimal'),
         create_provider('final_updates', test_process_final_updates, 'mainnet'),
         create_provider('justification_and_finalization', test_process_justification_and_finalization, 'minimal'),
