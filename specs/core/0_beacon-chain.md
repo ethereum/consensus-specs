@@ -123,7 +123,7 @@
 This document represents the specification for Phase 0 of Ethereum 2.0 -- The Beacon Chain.
 
 At the core of Ethereum 2.0 is a system chain called the "beacon chain". The beacon chain stores and manages the registry of validators. In the initial deployment phases of Ethereum 2.0, the only mechanism to become a validator is to make a one-way ETH transaction to a deposit contract on Ethereum 1.0. Activation as a validator happens when Ethereum 1.0 deposit receipts are processed by the beacon chain, the activation balance is reached, and a queuing process is completed. Exit is either voluntary or done forcibly as a penalty for misbehavior.
-The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block and proof-of-stake votes for a beacon block. A sufficient number of attestations for the same shard block create a "crosslink", confirming the shard segment up to that shard block into the beacon chain. Crosslinks also serve as infrastructure for asynchronous cross-shard communication.
+The primary source of load on the beacon chain is "attestations". Attestations are simultaneously availability votes for a shard block (Phase 1) and proof-of-stake votes for a beacon block (Phase 0).
 
 ## Notation
 
@@ -169,7 +169,6 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `SHARD_COUNT` | `2**10` (= 1,024) |
 | `MAX_COMMITTEES_PER_SLOT` | `2**5` (= 32) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `MAX_VALIDATORS_PER_COMMITTEE` | `2**12` (= 4,096) |
@@ -179,7 +178,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 
-- For the safety of crosslinks, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
 
@@ -319,7 +318,7 @@ class AttestationData(Container):
 ```python
 class AttestationDataAndCustodyBit(Container):
     data: AttestationData
-    custody_bit: bit  # Challengeable bit (SSZ-bool, 1 byte) for the custody of crosslink data
+    custody_bit: bit  # Challengeable bit (SSZ-bool, 1 byte) for the custody of shard data
 ```
 
 #### `IndexedAttestation`
@@ -877,7 +876,7 @@ def get_committees_per_slot(state: BeaconState, slot: Slot) -> uint64:
 ```python
 def get_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) -> Sequence[ValidatorIndex]:
     """
-    Return the crosslink committee at ``slot`` for ``index``.
+    Return the beacon committee at ``slot`` for ``index``.
     """
     epoch = compute_epoch_of_slot(slot)
     committees_per_slot = get_committees_per_slot(state, slot)
