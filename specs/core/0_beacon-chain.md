@@ -1365,9 +1365,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         rewards[attestation.proposer_index] += proposer_reward
         max_attester_reward = get_base_reward(state, index) - proposer_reward
         rewards[index] += Gwei(
-            max_attester_reward
-            * (SLOTS_PER_EPOCH + MIN_ATTESTATION_INCLUSION_DELAY - attestation.inclusion_delay)
-            // SLOTS_PER_EPOCH
+            max_attester_reward // attestation.inclusion_delay
         )
 
     # Inactivity penalty
