@@ -68,7 +68,7 @@
             - [`compute_shuffled_index`](#compute_shuffled_index)
             - [`compute_proposer_index`](#compute_proposer_index)
             - [`compute_committee`](#compute_committee)
-            - [`compute_epoch_of_slot`](#compute_epoch_of_slot)
+            - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
             - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
             - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
             - [`compute_domain`](#compute_domain)
@@ -137,8 +137,7 @@ We define the following Python custom types for type hinting and readability:
 | - | - | - |
 | `Slot` | `uint64` | a slot number |
 | `Epoch` | `uint64` | an epoch number |
-| `CommitteeIndex` | `uint64` | an index for a committee within a slot |
-| `Shard` | `uint64` | a shard number |
+| `CommitteeIndex` | `uint64` | a committee index at a slot |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Hash` | `Bytes32` | a hash |
@@ -169,9 +168,9 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `MAX_COMMITTEES_PER_SLOT` | `2**5` (= 32) |
+| `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_VALIDATORS_PER_COMMITTEE` | `2**12` (= 4,096) |
+| `MAX_VALIDATORS_PER_COMMITTEE` | `2**10` (= 1,024) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
@@ -304,13 +303,12 @@ class Validator(Container):
 ```python
 class AttestationData(Container):
     slot: Slot
+    index: CommitteeIndex
     # LMD GHOST vote
     beacon_block_root: Hash
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Committee Index
-    index: CommitteeIndex
 ```
 
 #### `AttestationDataAndCustodyBit`
@@ -489,7 +487,7 @@ class BeaconState(Container):
     # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Shuffling
+    # Randomness
     randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
@@ -731,12 +729,12 @@ def compute_committee(indices: Sequence[ValidatorIndex],
     return [indices[compute_shuffled_index(ValidatorIndex(i), len(indices), seed)] for i in range(start, end)]
 ```
 
-#### `compute_epoch_of_slot`
+#### `compute_epoch_at_slot`
 
 ```python
-def compute_epoch_of_slot(slot: Slot) -> Epoch:
+def compute_epoch_at_slot(slot: Slot) -> Epoch:
     """
-    Return the epoch number of ``slot``.
+    Return the epoch number at ``slot``.
     """
     return Epoch(slot // SLOTS_PER_EPOCH)
 ```
@@ -780,7 +778,7 @@ def get_current_epoch(state: BeaconState) -> Epoch:
     """
     Return the current epoch.
     """
-    return compute_epoch_of_slot(state.slot)
+    return compute_epoch_at_slot(state.slot)
 ```
 
 #### `get_previous_epoch`
@@ -857,14 +855,14 @@ def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
     return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
 ```
 
-#### `get_committees_per_slot`
+#### `get_committee_count_at_slot`
 
 ```python
-def get_committees_per_slot(state: BeaconState, slot: Slot) -> uint64:
+def get_committee_count_at_slot(state: BeaconState, slot: Slot) -> uint64:
     """
     Return the number of committees at ``slot``.
     """
-    epoch = compute_epoch_of_slot(slot)
+    epoch = compute_epoch_at_slot(slot)
     return max(1, min(
         MAX_COMMITTEES_PER_SLOT,
         len(get_active_validator_indices(state, epoch)) // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE,
@@ -878,8 +876,8 @@ def get_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) 
     """
     Return the beacon committee at ``slot`` for ``index``.
     """
-    epoch = compute_epoch_of_slot(slot)
-    committees_per_slot = get_committees_per_slot(state, slot)
+    epoch = compute_epoch_at_slot(slot)
+    committees_per_slot = get_committee_count_at_slot(state, slot)
     epoch_offset = index + (slot % SLOTS_PER_EPOCH) * committees_per_slot
 
     return compute_committee(
@@ -1468,7 +1466,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_of_slot(header.slot))
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
         assert bls_verify(proposer.pubkey, signing_root(header), header.signature, domain)
 
     slash_validator(state, proposer_slashing.proposer_index)
@@ -1499,7 +1497,7 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.index < get_committees_per_slot(state, data.slot)
+    assert data.index < get_committee_count_at_slot(state, data.slot)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 

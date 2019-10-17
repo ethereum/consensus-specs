@@ -149,7 +149,7 @@ def get_committee_assignment(state: BeaconState,
 
     start_slot = compute_start_slot_of_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
-        for index in range(get_committees_per_slot(state, Slot(slot))):
+        for index in range(get_committee_count_at_slot(state, Slot(slot))):
             committee = get_beacon_committee(state, Slot(slot), CommitteeIndex(index))
             if validator_index in committee:
                 return committee, CommitteeIndex(index), Slot(slot)
@@ -210,8 +210,8 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is obtained 
 
 ```python
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_of_slot(block.slot))
-    return bls_sign(privkey, hash_tree_root(compute_epoch_of_slot(block.slot)), domain)
+    domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
+    return bls_sign(privkey, hash_tree_root(compute_epoch_at_slot(block.slot)), domain)
 ```
 
 ##### Eth1 Data
@@ -244,7 +244,7 @@ Set `header.signature = block_signature` where `block_signature` is obtained fro
 
 ```python
 def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_of_slot(header.slot))
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
     return bls_sign(privkey, signing_root(header), domain)
 ```
 
@@ -352,7 +352,7 @@ To avoid "proposer slashings", a validator must not sign two conflicting [`Beaco
 
 Specifically, when signing a `BeaconBlock`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_of_slot(block.slot)`.
+1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_at_slot(block.slot)`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast block and can effectively avoid slashing.

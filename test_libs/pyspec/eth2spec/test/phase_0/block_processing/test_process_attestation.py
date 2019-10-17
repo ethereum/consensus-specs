@@ -138,7 +138,7 @@ def test_wrong_index_for_committee_signature(spec, state):
 @spec_state_test
 @never_bls
 def test_wrong_index_for_slot(spec, state):
-    committees_per_slot = spec.get_committees_per_slot(state, state.slot)
+    committees_per_slot = spec.get_committee_count_at_slot(state, state.slot)
     assert committees_per_slot < spec.MAX_COMMITTEES_PER_SLOT
     index = committees_per_slot
 

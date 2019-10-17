@@ -547,7 +547,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Verify the attestation
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge
-    assert (compute_epoch_of_slot(challenge.attestation.data.slot)
+    assert (compute_epoch_at_slot(challenge.attestation.data.slot)
             >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY)
     responder = state.validators[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY

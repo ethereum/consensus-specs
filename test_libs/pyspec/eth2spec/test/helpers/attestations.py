@@ -31,10 +31,10 @@ def build_attestation_data(spec, state, slot, index):
 
     return spec.AttestationData(
         slot=slot,
+        index=index,
         beacon_block_root=block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
-        target=spec.Checkpoint(epoch=spec.compute_epoch_of_slot(slot), root=epoch_boundary_root),
-        index=index,
+        target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
     )
 
 
