@@ -192,8 +192,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
-    attestation_slot = attestation.data.slot
-    assert store.time >= (attestation_slot + 1) * SECONDS_PER_SLOT
+    assert store.time >= (attestation.data.slot + 1) * SECONDS_PER_SLOT
 
     # Get state at the `target` to validate attestation and calculate the committees
     indexed_attestation = get_indexed_attestation(target_state, attestation)

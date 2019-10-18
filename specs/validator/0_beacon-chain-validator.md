@@ -285,6 +285,11 @@ First, the validator should construct `attestation_data`, an [`AttestationData`]
 - Let `head_block` be the result of running the fork choice during the assigned slot.
 - Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
 
+##### General
+
+* Set `attestation_data.slot = slot` where `slot` is the assigned slot.
+* Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
+
 ##### LMD GHOST vote
 
 Set `attestation_data.beacon_block_root = signing_root(head_block)`.
@@ -298,10 +303,6 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 - Let `start_slot = compute_start_slot_of_epoch(get_current_epoch(head_state))`.
 - Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
-
-##### Index
-
-Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
 
 #### Construct attestation
 
