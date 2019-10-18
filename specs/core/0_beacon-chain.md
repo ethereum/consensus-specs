@@ -878,12 +878,10 @@ def get_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) 
     """
     epoch = compute_epoch_at_slot(slot)
     committees_per_slot = get_committee_count_at_slot(state, slot)
-    epoch_offset = index + (slot % SLOTS_PER_EPOCH) * committees_per_slot
-
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
         seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=epoch_offset,
+        index=(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
         count=committees_per_slot * SLOTS_PER_EPOCH,
     )
 ```
@@ -1300,10 +1298,10 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
     if get_current_epoch(state) == GENESIS_EPOCH:
         return
 
-    rewards1, penalties1 = get_attestation_deltas(state)
+    rewards, penalties = get_attestation_deltas(state)
     for index in range(len(state.validators)):
-        increase_balance(state, ValidatorIndex(index), rewards1[index])
-        decrease_balance(state, ValidatorIndex(index), penalties1[index])
+        increase_balance(state, ValidatorIndex(index), rewards[index])
+        decrease_balance(state, ValidatorIndex(index), penalties[index])
 ```
 
 #### Registry updates
