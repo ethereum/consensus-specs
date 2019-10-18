@@ -283,9 +283,7 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
         all_helper_indices = all_helper_indices.union(set(get_branch_indices(index)))
         all_path_indices = all_path_indices.union(set(get_path_indices(index)))
 
-    return sorted([
-        x for x in all_helper_indices if x not in all_path_indices
-    ], reverse=True)
+    return sorted(all_helper_indices.difference(all_path_indices), reverse=True)
 ```
 
 Now we provide the Merkle proof verification functions. First, for single item proofs:
