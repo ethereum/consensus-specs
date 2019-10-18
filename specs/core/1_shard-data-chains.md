@@ -106,8 +106,8 @@ This document describes the shard transition function (data layer only) and the 
 ### `Crosslink`
 
 ```python
+# Crosslink is a placeholder to appease the build script until phase 1 is reworked
 class Crosslink(Container):
-    # STUB: placeholder data structure while reworking phase 0
     shard: Shard
 ```
  
