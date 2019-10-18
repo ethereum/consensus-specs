@@ -402,7 +402,6 @@ class AttesterSlashing(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     signature: BLSSignature
 ```
 
@@ -939,13 +938,9 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     Return the indexed attestation corresponding to ``attestation``.
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-    custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bits)
-    assert custody_bit_1_indices.issubset(attesting_indices)
-    custody_bit_0_indices = attesting_indices.difference(custody_bit_1_indices)
-
     return IndexedAttestation(
-        custody_bit_0_indices=sorted(custody_bit_0_indices),
-        custody_bit_1_indices=sorted(custody_bit_1_indices),
+        custody_bit_0_indices=sorted(attesting_indices),
+        custody_bit_1_indices=List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]([]),
         data=attestation.data,
         signature=attestation.signature,
     )
@@ -1500,7 +1495,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
     committee = get_beacon_committee(state, data.slot, data.index)
-    assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
+    assert len(attestation.aggregation_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
         data=data,
