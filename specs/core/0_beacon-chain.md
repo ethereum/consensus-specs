@@ -154,7 +154,7 @@ The following values are (non-configurable) constants used throughout the specif
 | Name | Value |
 | - | - |
 | `FAR_FUTURE_EPOCH` | `Epoch(2**64 - 1)` |
-| `BASE_REWARDS_PER_EPOCH` | `5` |
+| `BASE_REWARDS_PER_EPOCH` | `4` |
 | `DEPOSIT_CONTRACT_TREE_DEPTH` | `2**5` (= 32) |
 | `SECONDS_PER_DAY` | `86400` |
 | `JUSTIFICATION_BITS_LENGTH` | `4` |
@@ -170,7 +170,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `MAX_COMMITTEES_PER_SLOT` | `2**6` (= 64) |
 | `TARGET_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `MAX_VALIDATORS_PER_COMMITTEE` | `2**10` (= 1,024) |
+| `MAX_VALIDATORS_PER_COMMITTEE` | `2**11` (= 2,048) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
@@ -200,9 +200,9 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `SECONDS_PER_SLOT` | `6` | seconds | 6 seconds |
-| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 6 seconds |
-| `SLOTS_PER_EPOCH` | `2**6` (= 64) | slots | 6.4 minutes |
+| `SECONDS_PER_SLOT` | `12` | seconds | 12 seconds |
+| `MIN_ATTESTATION_INCLUSION_DELAY` | `2**0` (= 1) | slots | 12 seconds |
+| `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
 | `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |

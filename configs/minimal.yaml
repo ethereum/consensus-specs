@@ -8,8 +8,8 @@
 MAX_COMMITTEES_PER_SLOT: 4
 # [customized] unsecure, but fast
 TARGET_COMMITTEE_SIZE: 4
-# 2**10 (= 1,024)
-MAX_VALIDATORS_PER_COMMITTEE: 1024
+# 2**11 (= 2,048)
+MAX_VALIDATORS_PER_COMMITTEE: 2048
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
@@ -50,7 +50,7 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 
 # Time parameters
 # ---------------------------------------------------------------
-# 6 seconds 6 seconds
+# [customized] Faster for testing purposes
 SECONDS_PER_SLOT: 6
 # 2**0 (= 1) slots 6 seconds
 MIN_ATTESTATION_INCLUSION_DELAY: 1
