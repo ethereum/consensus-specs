@@ -37,7 +37,7 @@
                 - [Attestations](#attestations)
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
-        - [Attestations](#attestations-1)
+        - [Attesting](#attesting)
             - [Attestation data](#attestation-data)
                 - [LMD GHOST vote](#lmd-ghost-vote)
                 - [FFG vote](#ffg-vote)
@@ -46,6 +46,15 @@
                 - [Aggregation bits](#aggregation-bits)
                 - [Custody bits](#custody-bits)
                 - [Aggregate signature](#aggregate-signature)
+            - [Broadcast attestation](#broadcast-attestation)
+        - [Attestation aggregation](#attestation-aggregation)
+            - [Construct aggregate](#construct-aggregate)
+                - [Data](#data-1)
+                - [Aggregation bits](#aggregation-bits-1)
+                - [Custody bits](#custody-bits-1)
+                - [Aggregate signature](#aggregate-signature-1)
+            - [Broadcast aggregate](#broadcast-aggregate)
+
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -272,11 +281,11 @@ The `proof` for each deposit must be constructed against the deposit root contai
 
 Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](../core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](../core/0_beacon-chain.md#voluntary-exits).
 
-### Attestations
+### Attesting
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
+A validator should create and broadcast the `attestation` to the associated attestation subnet one-third of the way through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT / 3` seconds after the start of `slot`.
 
 #### Attestation data
 
@@ -314,7 +323,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregation bits
 
-- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
+- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
@@ -337,6 +346,69 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
 
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
+```
+
+#### Broadcast attestation
+
+Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` pubsub topic.
+
+## Attestation aggregation
+
+The validator is expected to locally aggregate attestations with a similar `attestation_data` to their constructed `attestation` for the assigned `slot`.
+
+The validator then _might_ broadcast their best aggregate to a global attestation channel two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+
+#### Construct aggregate
+
+Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator.
+
+The validator should create an `aggregate_attestation` with the following fields.
+
+##### Data
+
+Set `aggregate_attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object that is the same for each individual attestation being aggregated.
+
+##### Aggregation bits
+
+Let `aggregate_attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
+
+##### Custody bits
+
+- Let `aggregate_attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
+
+*Note*: This is a stub for Phase 0.
+
+##### Aggregate signature
+
+Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_signature` is obtained from:
+
+```python
+def get_aggregate_signature(attestations: Attestation) -> BLSSignature:
+    signatures = [attestation.signature for attestation in attestations]
+    aggregate_signature = bls_aggregate_signatures(signatures)
+    return aggregate_signature
+```
+
+#### Broadcast aggregate
+
+Starting two-thirds of the way into the slot, the validator begins running the following routine to decide if their best aggregate should be broadcast to the global attestation channel (`beacon_attestation`). `seen()` is defined as having seen an aggregate
+
+```python
+def should_broadcast_aggregate(aggregate_attestation: Attestation, index: ValidatorIndex) -> bool:
+    if seen(index):
+        return False
+    if random.randrange(SIDED_DIE) == 0:
+        return True
+    time.sleep(WAIT // 1000)
+```
+
+Define `seen_better(aggregate_attestation, attestations)` as your aggregate
+having more attestations included than any in the attestations you've seen on
+the network so far. Could also make it better by _some_ amount.
+
+```python
+def have_better_aggregate(aggregate_attestation, attestations):
+    
 ```
 
 ## How to avoid slashing

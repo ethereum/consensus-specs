@@ -164,9 +164,9 @@ Unaggregated and aggregated attestations from all shards are sent to the `beacon
 
 #### Mainnet
 
-Shards are grouped into their own subnets (defined by a shard topic). The number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard `shard_number % SHARD_SUBNET_COUNT` is assigned to the topic: `shard{shard_number % SHARD_SUBNET_COUNT}_beacon_attestation`. Unaggregated attestations are sent to the subnet topic. Aggregated attestations are sent to the `beacon_attestation` topic.
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The `CommitteeIndex`, `index`, is assigned to the topic: `index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
 
-TODO: [aggregation strategy](https://github.com/ethereum/eth2.0-specs/issues/1331)
+Unaggregated attestations are sent to the subnet topic, `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`. Aggregated attestations are sent to the `beacon_attestation` topic.
 
 ### Messages
 
