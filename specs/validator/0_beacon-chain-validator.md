@@ -54,7 +54,6 @@
                 - [Custody bits](#custody-bits-1)
                 - [Aggregate signature](#aggregate-signature-1)
             - [Broadcast aggregate](#broadcast-aggregate)
-
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -353,13 +352,13 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
 
 Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` pubsub topic.
 
-## Attestation aggregation
+### Attestation aggregation
 
 Some validators are selected to locally aggregate attestations with a similar `attestation_data` to their constructed `attestation` for the assigned `slot`.
 
-### Aggregation selection
+#### Aggregation selection
 
-A validator is selected to aggregate based upon the following
+A validator is selected to aggregate based upon the return value of `is_aggregator()`.
 
 ```python
 def slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
@@ -374,44 +373,43 @@ def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_si
     return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
 ```
 
-### Construct aggregate
+#### Construct aggregate
 
 If the validator is selected to aggregate (`is_aggregator()`), they construct an aggregate attestation via the following.
 
 Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator, and create an `aggregate_attestation` with the following fields.
 
-#### Data
+##### Data
 
 Set `aggregate_attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object that is the same for each individual attestation being aggregated.
 
-#### Aggregation bits
+##### Aggregation bits
 
 Let `aggregate_attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
 
-#### Custody bits
+##### Custody bits
 
 - Let `aggregate_attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
 
 *Note*: This is a stub for Phase 0.
 
-#### Aggregate signature
+##### Aggregate signature
 
 Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_signature` is obtained from:
 
 ```python
-def get_aggregate_signature(attestations: Attestation) -> BLSSignature:
+def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature:
     signatures = [attestation.signature for attestation in attestations]
-    aggregate_signature = bls_aggregate_signatures(signatures)
-    return aggregate_signature
+    return bls_aggregate_signatures(signatures)
 ```
 
-### Broadcast aggregate
+#### Broadcast aggregate
 
 If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
 
 Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to the gossip channel that the validator has been selected as an aggregator.
 
-### `AggregateAndProof`
+##### `AggregateAndProof`
 
 ```python
 class AggregateAndProof(Container):
