@@ -247,4 +247,5 @@ We similarly define "summary types" and "expansion types". For example, [`Beacon
 | Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/go-ssz](https://github.com/prysmaticlabs/go-ssz) |
 | Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |
 | C# | | Jordan Andrews | [https://github.com/codingupastorm/csharp-ssz](https://github.com/codingupastorm/csharp-ssz) |
+| C# | Cortex | Sly Gryphon | [https://www.nuget.org/packages/Cortex.SimpleSerialize](https://www.nuget.org/packages/Cortex.SimpleSerialize) |
 | C++ | | Jiyun Kim | [https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) |
