@@ -45,7 +45,8 @@ if __name__ == "__main__":
         create_provider('registry_updates', test_process_registry_updates, 'minimal'),
         create_provider('registry_updates', test_process_registry_updates, 'mainnet'),
         create_provider('rewards_and_penalties', test_process_rewards_and_penalties, 'minimal'),
-        create_provider('rewards_and_penalties', test_process_rewards_and_penalties, 'mainnet'),
+        # runs full epochs filled with data, with uncached ssz. Disabled for now.
+        # create_provider('rewards_and_penalties', test_process_rewards_and_penalties, 'mainnet'),
         create_provider('slashings', test_process_slashings, 'minimal'),
         create_provider('slashings', test_process_slashings, 'mainnet'),
     ])
