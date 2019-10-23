@@ -119,6 +119,7 @@ This section outlines constants that are used in this spec.
 | `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `4` | The maximum number of slots during which an attestation can be propagated. |
 
 ## The gossip domain: gossipsub
 
@@ -147,10 +148,27 @@ Topics are plain UTF-8 strings and are encoded on the wire as determined by prot
 
 Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded. (Further details can be found in [Messages](#Messages)).
 
-There are two main topics used to propagate attestations and beacon blocks to all nodes on the network. Their `TopicName`s are:
+There are two main topics used to propagate aggregate attestations and beacon blocks to all nodes on the network. Their `TopicName`s are:
 
 - `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
-- `beacon_attestation` - This topic is used to propagate aggregated attestations (in their entirety) to subscribing nodes (typically block proposers) to be included in future blocks. Clients MUST validate that the block being voted for passes validation before forwarding the attestation on the network (TODO: [additional validations](https://github.com/ethereum/eth2.0-specs/issues/1332)).
+- `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
+    - Clients MUST validate that the block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
+    - Clients MUST validate that `aggregate_and_proof.aggregate.data.slot` is
+      within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - Clients MUST validate that the validator index is within the aggregate's
+      committee -- i.e. `aggregate_and_proof.index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
+    - Clients MUST validate that `aggregate_and_proof.selection_proof` selects
+      the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+    - Clients MUST validate that the `aggregate_and_proof.selection_proof` is a
+      valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.index`.
+    - Clients MUST validate that the signature of `aggregate_and_proof.aggregate`.
+
+Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
+
+- `index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` - This topic is used to propagate unaggregated attestations to subsections of the network (typically beacon and persistent committees) to be aggregated before being passed to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the network.
+    - Clients MUST validate that the block being voted for (`attestation.data.beacon_block_root`) passes validation.
+    - Clients MUST validate that `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - Clients MUST validate the signature of `attestation`.
 
 Additional topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
 
@@ -160,13 +178,15 @@ Additional topics are used to propagate lower frequency validator messages. Thei
 
 #### Interop
 
-Unaggregated and aggregated attestations from all shards are sent to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
+Unaggregated and aggregated attestations from all shards are sent as `Attestation` to the `beacon_aggregate_and_proof` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
 
 #### Mainnet
 
 Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The `CommitteeIndex`, `index`, is assigned to the topic: `index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
 
-Unaggregated attestations are sent to the subnet topic, `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`. Aggregated attestations are sent to the `beacon_attestation` topic.
+Unaggregated attestations are sent to the subnet topic, `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
+
+Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
 ### Messages
 
@@ -180,7 +200,7 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 | Topic                        | Message Type      |
 |------------------------------|-------------------|
 | beacon_block                 | BeaconBlock       |
-| beacon_attestation           | Attestation       |
+| beacon_aggregate_and_proof   | Attestation       |
 | shard{N}\_beacon_attestation | Attestation       |
 | voluntary_exit               | VoluntaryExit     |
 | proposer_slashing            | ProposerSlashing  |
@@ -200,7 +220,7 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 
 #### Mainnet
 
-- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon attestation topic string is `/eth2/beacon_attestation/ssz_snappy`, and the data field of a gossipsub message is an `Attestation` that has been SSZ-encoded and then compressed with Snappy.
+- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon aggregate attestation topic string is `/eth2/beacon_aggregate_and_proof/ssz_snappy`, and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
 
 Implementations MUST use a single encoding. Changing an encoding will require coordination between participating implementations.
 

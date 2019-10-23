@@ -354,31 +354,46 @@ Finally, the validator broadcasts `attestation` to the associated attestation su
 
 ## Attestation aggregation
 
-The validator is expected to locally aggregate attestations with a similar `attestation_data` to their constructed `attestation` for the assigned `slot`.
+Some validators are selected to locally aggregate attestations with a similar `attestation_data` to their constructed `attestation` for the assigned `slot`.
 
-The validator then _might_ broadcast their best aggregate to a global attestation channel two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+### Aggregation selection
 
-#### Construct aggregate
+A validator is selected to aggregate based upon the following
 
-Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator.
+```python
+def slot_signature(slot: Slot, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_AGGREGATOR, attestation.data.slot)
+    return bls_sign(prvkey, hash_tree_root(slot), domain)
+```
 
-The validator should create an `aggregate_attestation` with the following fields.
+```python
+def is_aggregator(state: BeaconState, slot: Slot, committee_index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
+    committee = get_beacon_committee(state, slot, committee_index)
+    modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
+    return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
+```
 
-##### Data
+### Construct aggregate
+
+If the validator is selected to aggregate (`is_aggregator()`), they construct an aggregate attestation via the following.
+
+Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator, and create an `aggregate_attestation` with the following fields.
+
+#### Data
 
 Set `aggregate_attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object that is the same for each individual attestation being aggregated.
 
-##### Aggregation bits
+#### Aggregation bits
 
 Let `aggregate_attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
 
-##### Custody bits
+#### Custody bits
 
 - Let `aggregate_attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
 
 *Note*: This is a stub for Phase 0.
 
-##### Aggregate signature
+#### Aggregate signature
 
 Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_signature` is obtained from:
 
@@ -389,27 +404,23 @@ def get_aggregate_signature(attestations: Attestation) -> BLSSignature:
     return aggregate_signature
 ```
 
-#### Broadcast aggregate
+### Broadcast aggregate
 
-Starting two-thirds of the way into the slot, the validator begins running the following routine to decide if their best aggregate should be broadcast to the global attestation channel (`beacon_attestation`). `seen()` is defined as having seen an aggregate
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
 
-```python
-def should_broadcast_aggregate(aggregate_attestation: Attestation, index: ValidatorIndex) -> bool:
-    if seen(index):
-        return False
-    if random.randrange(SIDED_DIE) == 0:
-        return True
-    time.sleep(WAIT // 1000)
-```
-
-Define `seen_better(aggregate_attestation, attestations)` as your aggregate
-having more attestations included than any in the attestations you've seen on
-the network so far. Could also make it better by _some_ amount.
+Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to the gossip channel that the validator has been selected as an aggregator.
 
 ```python
-def have_better_aggregate(aggregate_attestation, attestations):
-    
+class AggregateAndProof(Container):
+    index: ValidatorIndex
+    selection_proof: BLSSignature
+    aggregate: Attestation
 ```
+
+Where
+* `index` is the validator's `validator_index`.
+* `selection_proof` is the signature of the slot (`slot_signature()`).
+* `aggregate` is the `aggregate_attestation` constructed in the previous section.
 
 ## How to avoid slashing
 
