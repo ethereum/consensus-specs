@@ -55,7 +55,7 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 SECONDS_PER_SLOT: 12
 # 2**0 (= 1) slots 6 seconds
 MIN_ATTESTATION_INCLUSION_DELAY: 1
-# 2**6 (= 32) slots 6.4 minutes
+# 2**5 (= 32) slots 6.4 minutes
 SLOTS_PER_EPOCH: 32
 # 2**0 (= 1) epochs 6.4 minutes
 MIN_SEED_LOOKAHEAD: 1
