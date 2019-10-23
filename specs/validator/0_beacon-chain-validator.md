@@ -78,6 +78,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
 
 ## Becoming a validator
 
@@ -361,14 +362,14 @@ Some validators are selected to locally aggregate attestations with a similar `a
 A validator is selected to aggregate based upon the following
 
 ```python
-def slot_signature(slot: Slot, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_AGGREGATOR, attestation.data.slot)
-    return bls_sign(prvkey, hash_tree_root(slot), domain)
+def slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
+    return bls_sign(privkey, hash_tree_root(slot), domain)
 ```
 
 ```python
-def is_aggregator(state: BeaconState, slot: Slot, committee_index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
-    committee = get_beacon_committee(state, slot, committee_index)
+def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
+    committee = get_beacon_committee(state, slot, index)
     modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
     return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
 ```
@@ -409,6 +410,8 @@ def get_aggregate_signature(attestations: Attestation) -> BLSSignature:
 If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
 
 Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to the gossip channel that the validator has been selected as an aggregator.
+
+### `AggregateAndProof`
 
 ```python
 class AggregateAndProof(Container):

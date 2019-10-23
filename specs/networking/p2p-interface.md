@@ -116,7 +116,7 @@ This section outlines constants that are used in this spec.
 | `REQ_RESP_MAX_SIZE` | `TODO` | The maximum size of uncompressed req/resp messages that clients will allow. |
 | `SSZ_MAX_LIST_SIZE` | `TODO` | The maximum size of SSZ-encoded variable lists. |
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum size of uncompressed gossip messages. |
-| `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
+| `ATTESTATION_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
 | `ATTESTATION_PROPAGATION_SLOT_RANGE` | `4` | The maximum number of slots during which an attestation can be propagated. |
@@ -200,8 +200,8 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 | Topic                        | Message Type      |
 |------------------------------|-------------------|
 | beacon_block                 | BeaconBlock       |
-| beacon_aggregate_and_proof   | Attestation       |
-| shard{N}\_beacon_attestation | Attestation       |
+| beacon_aggregate_and_proof   | AggregateAndProof |
+| index{N}\_beacon_attestation | Attestation       |
 | voluntary_exit               | VoluntaryExit     |
 | proposer_slashing            | ProposerSlashing  |
 | attester_slashing            | AttesterSlashing  |
@@ -648,7 +648,7 @@ No security or privacy guarantees are lost as a result of choosing plaintext top
 
 Furthermore, the Eth 2.0 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
-### Why are there `SHARD_SUBNET_COUNT` subnets, and why is this not defined?
+### Why are there `ATTESTATION_SUBNET_COUNT` subnets, and why is this not defined?
 
 Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet).
 
