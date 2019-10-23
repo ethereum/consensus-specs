@@ -81,6 +81,7 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`get_validator_churn_limit`](#get_validator_churn_limit)
             - [`get_seed`](#get_seed)
+            - [`get_committee_count_at_slot`](#get_committee_count_at_slot)
             - [`get_beacon_committee`](#get_beacon_committee)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_total_balance`](#get_total_balance)
