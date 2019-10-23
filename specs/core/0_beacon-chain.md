@@ -69,7 +69,7 @@
             - [`compute_proposer_index`](#compute_proposer_index)
             - [`compute_committee`](#compute_committee)
             - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
-            - [`compute_start_slot_of_epoch`](#compute_start_slot_of_epoch)
+            - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
             - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
             - [`compute_domain`](#compute_domain)
         - [Beacon state accessors](#beacon-state-accessors)
@@ -739,10 +739,10 @@ def compute_epoch_at_slot(slot: Slot) -> Epoch:
     return Epoch(slot // SLOTS_PER_EPOCH)
 ```
 
-#### `compute_start_slot_of_epoch`
+#### `compute_start_slot_at_epoch`
 
 ```python
-def compute_start_slot_of_epoch(epoch: Epoch) -> Slot:
+def compute_start_slot_at_epoch(epoch: Epoch) -> Slot:
     """
     Return the start slot of ``epoch``.
     """
@@ -799,7 +799,7 @@ def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
     """
     Return the block root at the start of a recent ``epoch``.
     """
-    return get_block_root_at_slot(state, compute_start_slot_of_epoch(epoch))
+    return get_block_root_at_slot(state, compute_start_slot_at_epoch(epoch))
 ```
 
 #### `get_block_root_at_slot`
