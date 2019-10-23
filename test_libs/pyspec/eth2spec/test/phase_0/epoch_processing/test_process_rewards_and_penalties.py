@@ -183,11 +183,11 @@ def test_attestations_some_slashed(spec, state):
             add_attestations_to_state(spec, state, [include_att], state.slot)
         next_slot(spec, state)
 
-    attesting_indices_before_slashings = spec.get_unslashed_attesting_indices(state, attestations)
+    attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
 
     # Slash maximum amount of validators allowed per epoch.
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
-        spec.slash_validator(state, list(attesting_indices_before_slashings)[i])
+        spec.slash_validator(state, attesting_indices_before_slashings[i])
 
     assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
     assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
