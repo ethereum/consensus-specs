@@ -329,7 +329,7 @@ def verify_merkle_multiproof(leaves: Sequence[Hash],
                              proof: Sequence[Hash],
                              indices: Sequence[GeneralizedIndex],
                              root: Hash) -> bool:
-    return calculate_multi_merkle_root(leaf, proof, index) == root
+    return calculate_multi_merkle_root(leaves, proof, indices) == root
 ```
 
 Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root` and `calculate_multi_merkle_root` can be used independently to compute the new Merkle root of a proof with leaves updated.
