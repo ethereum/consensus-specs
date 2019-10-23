@@ -14,7 +14,7 @@ def build_attestation_data(spec, state, slot, index):
     else:
         block_root = spec.get_block_root_at_slot(state, slot)
 
-    current_epoch_start_slot = spec.compute_start_slot_of_epoch(spec.get_current_epoch(state))
+    current_epoch_start_slot = spec.compute_start_slot_at_epoch(spec.get_current_epoch(state))
     if slot < current_epoch_start_slot:
         epoch_boundary_root = spec.get_block_root(state, spec.get_previous_epoch(state))
     elif slot == current_epoch_start_slot:

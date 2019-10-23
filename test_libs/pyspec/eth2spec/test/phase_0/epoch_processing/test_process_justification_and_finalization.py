@@ -25,7 +25,7 @@ def add_mock_attestations(spec, state, epoch, source, target, sufficient_support
     total_balance = spec.get_total_active_balance(state)
     remaining_balance = total_balance * 2 // 3
 
-    start_slot = spec.compute_start_slot_of_epoch(epoch)
+    start_slot = spec.compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
         committees_per_slot = spec.get_committee_count_at_slot(state, slot)
         for index in range(committees_per_slot):
@@ -74,7 +74,7 @@ def get_checkpoints(spec, epoch):
 
 def put_checkpoints_in_block_roots(spec, state, checkpoints):
     for c in checkpoints:
-        state.block_roots[spec.compute_start_slot_of_epoch(c.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c.root
+        state.block_roots[spec.compute_start_slot_at_epoch(c.epoch) % spec.SLOTS_PER_HISTORICAL_ROOT] = c.root
 
 
 def finalize_on_234(spec, state, epoch, sufficient_support):
