@@ -19,43 +19,7 @@ def build_mock_validator(spec, i: int, balance: int):
     )
 
 
-def create_genesis_state(spec, num_validators, validator_balance):
-    deposit_root = b'\x42' * 32
-
-    state = spec.BeaconState(
-        genesis_time=0,
-        eth1_deposit_index=num_validators,
-        eth1_data=spec.Eth1Data(
-            deposit_root=deposit_root,
-            deposit_count=num_validators,
-            block_hash=spec.Hash(),
-        ),
-        latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
-    )
-
-    # We "hack" in the initial validators,
-    #  as it is much faster than creating and processing genesis deposits for every single test case.
-    state.balances = [validator_balance] * num_validators
-    state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
-
-    # Process genesis activations
-    for validator in state.validators:
-        if validator.effective_balance >= validator_balance:
-            validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
-            validator.activation_epoch = spec.GENESIS_EPOCH
-
-    genesis_active_index_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
-        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
-    genesis_compact_committees_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
-        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
-    for index in range(spec.EPOCHS_PER_HISTORICAL_VECTOR):
-        state.active_index_roots[index] = genesis_active_index_root
-        state.compact_committees_roots[index] = genesis_compact_committees_root
-
-    return state
-
-
-def create_genesis_state_misc_balances(spec, validator_balances):
+def create_genesis_state(spec, validator_balances, activation_threshold):
     deposit_root = b'\x42' * 32
 
     state = spec.BeaconState(
@@ -76,7 +40,7 @@ def create_genesis_state_misc_balances(spec, validator_balances):
 
     # Process genesis activations
     for validator in state.validators:
-        if validator.effective_balance > spec.EJECTION_BALANCE:
+        if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 

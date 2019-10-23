@@ -1,6 +1,7 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, spec_state_misc_balances_test, with_all_phases
+from eth2spec.test.context import spec_state_test, with_all_phases, spec_test, \
+    misc_balances, with_custom_state, default_activation_threshold
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -55,9 +56,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         assert state.balances[index] == pre_state.balances[index]
 
 
-@with_all_phases
-@spec_state_test
-def test_full_attestations(spec, state):
+def prepare_state_with_full_attestations(spec, state):
     attestations = []
     for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
         # create an attestation for each slot in epoch
@@ -72,6 +71,14 @@ def test_full_attestations(spec, state):
 
     assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
     assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
+
+    return attestations
+
+
+@with_all_phases
+@spec_state_test
+def test_full_attestations(spec, state):
+    attestations = prepare_state_with_full_attestations(spec, state)
 
     pre_state = deepcopy(state)
 
@@ -87,22 +94,10 @@ def test_full_attestations(spec, state):
 
 
 @with_all_phases
-@spec_state_misc_balances_test
+@spec_test
+@with_custom_state(balances_fn=misc_balances, threshold_fn=default_activation_threshold)
 def test_full_attestations_misc_balances(spec, state):
-    attestations = []
-    for slot in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        # create an attestation for each slot in epoch
-        if slot < spec.SLOTS_PER_EPOCH:
-            attestation = get_valid_attestation(spec, state, signed=True)
-            attestations.append(attestation)
-        # fill each created slot in state after inclusion delay
-        if slot - spec.MIN_ATTESTATION_INCLUSION_DELAY >= 0:
-            include_att = attestations[slot - spec.MIN_ATTESTATION_INCLUSION_DELAY]
-            add_attestations_to_state(spec, state, [include_att], state.slot)
-        next_slot(spec, state)
-
-    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
-    assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
+    attestations = prepare_state_with_full_attestations(spec, state)
 
     pre_state = deepcopy(state)
 
