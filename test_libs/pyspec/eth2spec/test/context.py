@@ -6,15 +6,67 @@ from .helpers.genesis import create_genesis_state
 
 from .utils import vector_test, with_meta_tags
 
+from typing import Any, Callable, Sequence
 
-def with_state(fn):
-    def entry(*args, **kw):
-        try:
-            kw['state'] = create_genesis_state(spec=kw['spec'], num_validators=spec_phase0.SLOTS_PER_EPOCH * 8)
-        except KeyError:
-            raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
-        return fn(*args, **kw)
-    return entry
+
+def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
+                      threshold_fn: Callable[[Any], int]):
+    def deco(fn):
+        def entry(*args, **kw):
+            try:
+                spec = kw['spec']
+
+                balances = balances_fn(spec)
+                activation_threshold = threshold_fn(spec)
+
+                kw['state'] = create_genesis_state(spec=spec, validator_balances=balances,
+                                                   activation_threshold=activation_threshold)
+            except KeyError:
+                raise TypeError('Spec decorator must come within state decorator to inject spec into state.')
+            return fn(*args, **kw)
+        return entry
+    return deco
+
+
+def default_activation_threshold(spec):
+    """
+    Helper method to use the default balance activation threshold for state creation for tests.
+    Usage: `@with_custom_state(threshold_fn=default_activation_threshold, ...)`
+    """
+    return spec.MAX_EFFECTIVE_BALANCE
+
+
+def default_balances(spec):
+    """
+    Helper method to create a series of default balances.
+    Usage: `@with_custom_state(balances_fn=default_balances, ...)`
+    """
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
+
+
+with_state = with_custom_state(default_balances, default_activation_threshold)
+
+
+def low_balances(spec):
+    """
+    Helper method to create a series of low balances.
+    Usage: `@with_custom_state(balances_fn=low_balances, ...)`
+    """
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    # Technically the balances cannot be this low starting from genesis, but it is useful for testing
+    low_balance = 18 * 10 ** 9
+    return [low_balance] * num_validators
+
+
+def misc_balances(spec):
+    """
+    Helper method to create a series of balances that includes some misc. balances.
+    Usage: `@with_custom_state(balances_fn=misc_balances, ...)`
+    """
+    num_validators = spec.SLOTS_PER_EPOCH * 8
+    num_misc_validators = spec.SLOTS_PER_EPOCH
+    return [spec.MAX_EFFECTIVE_BALANCE] * num_validators + [spec.MIN_DEPOSIT_AMOUNT] * num_misc_validators
 
 
 # BLS is turned off by default *for performance purposes during TESTING*.
