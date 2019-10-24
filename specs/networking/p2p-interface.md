@@ -116,10 +116,10 @@ This section outlines constants that are used in this spec.
 | `REQ_RESP_MAX_SIZE` | `TODO` | The maximum size of uncompressed req/resp messages that clients will allow. |
 | `SSZ_MAX_LIST_SIZE` | `TODO` | The maximum size of SSZ-encoded variable lists. |
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum size of uncompressed gossip messages. |
-| `ATTESTATION_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
+| `ATTESTATION_SUBNET_COUNT` | `64` | The number of shard subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `4` | The maximum number of slots during which an attestation can be propagated. |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 
 ## The gossip domain: gossipsub
 
@@ -165,7 +165,7 @@ There are two main topics used to propagate aggregate attestations and beacon bl
 
 Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
 
-- `index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` - This topic is used to propagate unaggregated attestations to subsections of the network (typically beacon and persistent committees) to be aggregated before being passed to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the network.
+- `index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` - These topics are used to propagate unaggregated attestations to subsections of the network (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the network.
     - Clients MUST validate that the block being voted for (`attestation.data.beacon_block_root`) passes validation.
     - Clients MUST validate that `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
     - Clients MUST validate the signature of `attestation`.
@@ -648,9 +648,15 @@ No security or privacy guarantees are lost as a result of choosing plaintext top
 
 Furthermore, the Eth 2.0 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
-### Why are there `ATTESTATION_SUBNET_COUNT` subnets, and why is this not defined?
+### Why are there `ATTESTATION_SUBNET_COUNT` subnets?
 
-Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet).
+Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet). The value is currently set to to be equal `MAX_COMMITTEES_PER_SLOT` until network tests indicate otherwise.
+
+### Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?
+
+Attestations can only be included on chain within an epoch's worth of slots so this is the natural cutoff. There is no utility to the chain to broadcast attestations older than one epoch, and because validators have a chance to make a new attestation each epoch, there is minimal utility to the fork choice to relay old attestations as a new latest message can soon be created by each validator.
+
+In addition to this, relaying attestations requires validating the attestation in the context of the `state` during which it was created. Thus, validating arbitrarily old attestations would put additional requirements on which states need to be readily available to the node. This would result in a higher resource burden and could serve as a DoS vector.
 
 ### Why are we sending entire objects in the pubsub and not just hashes?
 
