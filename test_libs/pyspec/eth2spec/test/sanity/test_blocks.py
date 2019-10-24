@@ -378,40 +378,6 @@ def test_voluntary_exit(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-# @with_all_phases
-# @spec_state_test
-# def test_transfer(spec, state):
-    # overwrite default 0 to test
-    # spec.MAX_TRANSFERS = 1
-
-    # sender_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
-    # amount = get_balance(state, sender_index)
-
-    # transfer = get_valid_transfer(spec, state, state.slot + 1, sender_index, amount, signed=True)
-    # recipient_index = transfer.recipient
-    # pre_transfer_recipient_balance = get_balance(state, recipient_index)
-
-    # un-activate so validator can transfer
-    # state.validators[sender_index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
-
-    # yield 'pre', state
-
-    # Add to state via block transition
-    # block = build_empty_block_for_next_slot(spec, state)
-    # block.body.transfers.append(transfer)
-    # sign_block(spec, state, block)
-
-    # state_transition_and_sign_block(spec, state, block)
-
-    # yield 'blocks', [block]
-    # yield 'post', state
-
-    # sender_balance = get_balance(state, sender_index)
-    # recipient_balance = get_balance(state, recipient_index)
-    # assert sender_balance == 0
-    # assert recipient_balance == pre_transfer_recipient_balance + amount
-
-
 @with_all_phases
 @spec_state_test
 def test_balance_driven_status_transitions(spec, state):
