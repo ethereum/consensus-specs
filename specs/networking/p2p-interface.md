@@ -11,7 +11,7 @@ It consists of four main sections:
 
 ## Table of contents
 
-<!-- cmd: doctoc --maxlevel=2 p2p-interface.md -->
+<!-- cmd: doctoc maxlevel=2 p2p-interface.md -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -657,6 +657,10 @@ Depending on the number of validators, it may be more efficient to group shard s
 Attestations can only be included on chain within an epoch's worth of slots so this is the natural cutoff. There is no utility to the chain to broadcast attestations older than one epoch, and because validators have a chance to make a new attestation each epoch, there is minimal utility to the fork choice to relay old attestations as a new latest message can soon be created by each validator.
 
 In addition to this, relaying attestations requires validating the attestation in the context of the `state` during which it was created. Thus, validating arbitrarily old attestations would put additional requirements on which states need to be readily available to the node. This would result in a higher resource burden and could serve as a DoS vector.
+
+### Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?
+
+The dominant strategy for an individual validator is to always broadcast an aggregate containing their own attestation to the global channel to ensure that proposers see their attestation for inclusion. Using a private selection criteria and providing this proof of selection alongside the gossiped aggregate ensures that this dominant strategy will not flood the global channel.
 
 ### Why are we sending entire objects in the pubsub and not just hashes?
 
