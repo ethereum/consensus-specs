@@ -220,7 +220,8 @@ def finalize_on_12(spec, state, epoch, sufficient_support, messed_up_target):
                           epoch=epoch - 1,
                           source=c2,
                           target=c1,
-                          sufficient_support=sufficient_support, messed_up_target=messed_up_target)
+                          sufficient_support=sufficient_support,
+                          messed_up_target=messed_up_target)
 
     # process!
     yield from run_process_just_and_fin(spec, state)
