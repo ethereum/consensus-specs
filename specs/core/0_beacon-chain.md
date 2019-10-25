@@ -1113,6 +1113,9 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
     )
+    # Set the initial RANDAO mixes to hashes seeded by the Eth1 hash, to limit deposit ordering committee bias.
+    for i in range(MIN_SEED_LOOKAHEAD + 1):
+        state.randao_mixes[EPOCHS_PER_HISTORICAL_VECTOR - i - 1] = hash(eth1_block_hash + int_to_bytes(i, 8))
 
     # Process deposits
     leaves = list(map(lambda deposit: deposit.data, deposits))
