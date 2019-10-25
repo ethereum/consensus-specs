@@ -509,6 +509,8 @@ def test_eth1_data_votes_no_consensus(spec, state):
     if spec.SLOTS_PER_ETH1_VOTING_PERIOD > 16:
         return
 
+    pre_eth1_hash = state.eth1_data.block_hash
+
     offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
     sign_block(spec, state, offset_block)
     state_transition_and_sign_block(spec, state, offset_block)
@@ -528,7 +530,7 @@ def test_eth1_data_votes_no_consensus(spec, state):
         blocks.append(block)
 
     assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
-    assert state.eth1_data.block_hash == b'\x00' * 32
+    assert state.eth1_data.block_hash == pre_eth1_hash
 
     yield 'blocks', blocks
     yield 'post', state
