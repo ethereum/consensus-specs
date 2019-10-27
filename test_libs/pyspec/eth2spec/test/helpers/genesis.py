@@ -29,12 +29,8 @@ def create_genesis_state(spec, num_validators):
             block_hash=eth1_block_hash,
         ),
         latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+        randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
-
-    # Set the initial RANDAO mixes to hashes seeded by the Eth1 hash, to limit deposit ordering committee bias.
-    for i in range(spec.MIN_SEED_LOOKAHEAD + 1):
-        state.randao_mixes[spec.EPOCHS_PER_HISTORICAL_VECTOR - i - 1] = \
-            spec.hash(eth1_block_hash + spec.int_to_bytes(i, 8))
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
