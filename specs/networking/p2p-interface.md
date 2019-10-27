@@ -152,6 +152,7 @@ There are two main topics used to propagate aggregate attestations and beacon bl
 
 - `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
+    - Clients MUST validate that the aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
     - Clients MUST validate that the block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
     - Clients MUST validate that `aggregate_and_proof.aggregate.data.slot` is
       within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
