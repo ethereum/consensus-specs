@@ -11,7 +11,7 @@ It consists of four main sections:
 
 ## Table of contents
 
-<!-- cmd: doctoc maxlevel=2 p2p-interface.md -->
+<!-- cmd: doctoc --maxlevel=2 p2p-interface.md -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -650,7 +650,7 @@ No security or privacy guarantees are lost as a result of choosing plaintext top
 
 Furthermore, the Eth 2.0 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
-### Why are there `ATTESTATION_SUBNET_COUNT` subnets?
+### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
 Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet). The value is currently set to to be equal `MAX_COMMITTEES_PER_SLOT` until network tests indicate otherwise.
 
@@ -663,6 +663,8 @@ In addition to this, relaying attestations requires validating the attestation i
 ### Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?
 
 The dominant strategy for an individual validator is to always broadcast an aggregate containing their own attestation to the global channel to ensure that proposers see their attestation for inclusion. Using a private selection criteria and providing this proof of selection alongside the gossiped aggregate ensures that this dominant strategy will not flood the global channel.
+
+Also, an attacker can create any number of honest-looking aggregates and broadcast them to the global pubsub channel. Thus without some sort of proof of selection as an aggregator, the global channel can trivially be spammed.
 
 ### Why are we sending entire objects in the pubsub and not just hashes?
 
