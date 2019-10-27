@@ -41,27 +41,60 @@ This document describes the shard transition function (data layer only) and the 
 | `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~29 hours |
+| `SHARD_STATE_ROOT_LENGTH` | `2**7` (= 128) | bytes |
+| `MAX_SHARD_BLOCK
 
 ## Containers
+
+### Aliases
+
+| Name | Value |
+| - | - |
+| `SHARD_STATE_ROOT` | `BytesN[SHARD_STATE_ROOT_LENGTH]` |
+
 
 ### `AttestationData`
 
 ```python
 class AttestationData(Container):
-    # Slot
     slot: Slot
+    index: CommitteeIndex
     # LMD GHOST vote
     beacon_block_root: Hash
     # FFG vote
     source: Checkpoint
     target: Checkpoint
+    # Shard data
+    shard_data: AttestationShardData
+```
+
+### `AttestationShardData`
+
+```python
+class AttestationShardData(Container):
+    # Shard block lengths
+    shard_block_lengths: List[uint8, MAX_CATCHUP_RATIO * MAX_SHARDS]
     # Shard data roots
     shard_data_roots: List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS]
     # Intermediate state roots
-    shard_state_roots: List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS]
-    # Index
-    index: uint64
+    shard_state_roots: List[SHARD_STATE_ROOT, MAX_CATCHUP_RATIO * MAX_SHARDS]
 ```
+
+### `ReducedAttestationData`
+
+```python
+class ReducedAttestationData(Container):
+    slot: Slot
+    index: CommitteeIndex
+    # LMD GHOST vote
+    beacon_block_root: Hash
+    # FFG vote
+    source: Checkpoint
+    target: Checkpoint
+    # Shard data root
+    shard_data_root: Hash
+```
+
 
 ### `Attestation`
 
@@ -73,12 +106,41 @@ class Attestation(Container):
     signature: BLSSignature
 ```
 
+### `ReducedAttestation`
+
+```python
+class ReducedAttestation(Container):
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    data: ReducedAttestationData
+    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_CATCHUP_RATIO * MAX_SHARDS]
+    signature: BLSSignature
+```
+
+### `IndexedAttestation`
+
+```python
+class IndexedAttestation(Container):
+    participants: List[ValidatorIndex, MAX_COMMITTEE_SIZE]
+    data: ReducedAttestationData
+    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_CATCHUP_RATIO * MAX_SHARDS]
+    signature: BLSSignature
+```
+
 ### `CompactCommittee`
 
 ```python
 class CompactCommittee(Container):
     pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
     compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
+```
+
+### `AttestationCustodyBitWrapper`
+
+```
+class AttestationCustodyBitWrapper(Container):
+    attestation_root: Hash
+    index: uint64
+    bit: bool
 ```
 
 ## Helpers
@@ -103,16 +165,6 @@ def pack_compact_validator(index: int, slashed: bool, balance_in_increments: int
     return (index << 16) + (slashed << 15) + balance_in_increments
 ```
 
-### `unpack_compact_validator`
-
-```python
-def unpack_compact_validator(compact_validator: int) -> Tuple[int, bool, int]:
-    """
-    Returns validator index, slashed, balance // EFFECTIVE_BALANCE_INCREMENT
-    """
-    return compact_validator >> 16, bool((compact_validator >> 15) % 2), compact_validator & (2**15 - 1)
-```
-
 ### `committee_to_compact_committee`
 
 ```python
@@ -127,6 +179,52 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
     ]
     pubkeys = [v.pubkey for v in validators]
     return CompactCommittee(pubkeys=pubkeys, compact_validators=compact_validators)
+```
+
+### `get_light_client_committee`
+
+```python
+def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Sequence[ValidatorIndex]:
+    assert epoch % LIGHT_CLIENT_COMMITTEE_PERIOD == 0
+    active_validator_indices = get_active_validator_indices(beacon_state, epoch)
+    seed = get_seed(beacon_state, epoch, DOMAIN_SHARD_LIGHT_CLIENT)
+    return compute_committee(active_validator_indices, seed, 0, ACTIVE_SHARDS)[:TARGET_COMMITTEE_SIZE]
+```
+
+### `get_indexed_attestation`
+
+```python
+def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation) -> IndexedAttestation:
+    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
+    return IndexedAttestation(attesting_indices, data, custody_bits, signature)
+```
+
+### `is_valid_indexed_attestation`
+
+``python
+def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
+    """
+    Check if ``indexed_attestation`` has valid indices and signature.
+    """
+
+    # Verify indices are sorted
+    if indexed_attestation.participants != sorted(indexed_attestation.participants):
+        return False
+    
+    # Verify aggregate signature
+    all_pubkeys = []
+    all_message_hashes = []
+    for participant, custody_bits in zip(participants, indexed_attestation.custody_bits):
+        for i, bit in enumerate(custody_bits):
+            all_pubkeys.append(state.validators[participant].pubkey)
+            all_message_hashes.append(AttestationCustodyBitWrapper(hash_tree_root(indexed_attestation.data), i, bit))
+        
+    return bls_verify_multiple(
+        pubkeys=all_pubkeys,
+        message_hashes=all_message_hashes,
+        signature=indexed_attestation.signature,
+        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
+    )
 ```
 
 ## Beacon Chain Changes
@@ -216,37 +314,37 @@ Check the length of attestations using `len(block.attestations) <= 4 * get_commi
 ### Light client processing
 
 ```python
-signer_validators = []
-signer_keys = []
-for i, bit in enumerate(block.light_client_signature_bitfield):
-    if bit:
-        signer_keys.append(state.current_light_committee.pubkeys[i])
-        index, _, _ = unpack_compact_validator(state.current_light_committee.compact_validators[i])
-        signer_validators.append(index)
-
-assert bls_verify(
-    pubkey=bls_aggregate_pubkeys(signer_keys),
-    message_hash=get_block_root_at_slot(state, state.slot - 1),
-    signature=block.light_client_signature,
-    domain=DOMAIN_LIGHT_CLIENT
-)
+def verify_light_client_signatures(state: BeaconState, block: BeaconBlock):
+    period_start = get_current_epoch(state) - get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD
+    committee = get_light_client_committee(state, period_start - min(period_start, LIGHT_CLIENT_COMMITTEE_PERIOD))
+    signer_validators = []
+    signer_keys = []
+    for i, bit in enumerate(block.light_client_signature_bitfield):
+        if bit:
+            signer_keys.append(state.validators[committee[i]].pubkey)
+            signer_validators.append(committee[i])
+    
+    assert bls_verify(
+        pubkey=bls_aggregate_pubkeys(signer_keys),
+        message_hash=get_block_root_at_slot(state, state.slot - 1),
+        signature=block.light_client_signature,
+        domain=DOMAIN_LIGHT_CLIENT
+    )
 ```
 
 ### Epoch transition
 
 ```python
-# Slowly remove validators from the "online" set if they do not show up
-for index in range(len(state.validators)):
-    if state.online_countdown[index] != 0:
-        state.online_countdown[index] = state.online_countdown[index] - 1
-
-# Update light client committees
-if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
-    state.current_light_committee = state.next_light_committee
-    seed = get_seed(state, get_current_epoch(state), DOMAIN_LIGHT_CLIENT)
-    active_indices = get_active_validator_indices(state, get_current_epoch(state))
-    committee = [active_indices[compute_shuffled_index(ValidatorIndex(i), len(active_indices), seed)] for i in range(LIGHT_CLIENT_COMMITTEE_SIZE)]
-    state.next_light_committee = committee_to_compact_committee(state, committee)
+def phase_1_epoch_transition(state):
+    # Slowly remove validators from the "online" set if they do not show up
+    for index in range(len(state.validators)):
+        if state.online_countdown[index] != 0:
+            state.online_countdown[index] = state.online_countdown[index] - 1
+    
+    # Update light client committees
+    if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
+        state.current_light_committee = state.next_light_committee
+        state.next_light_committee = committee_to_compact_committee(state, get_light_client_committee(state, get_current_epoch(state)))
 ```
 
 ### Fraud proofs
