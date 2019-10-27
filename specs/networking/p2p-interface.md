@@ -152,22 +152,22 @@ There are two main topics used to propagate aggregate attestations and beacon bl
 
 - `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
-    - Clients MUST validate that the aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
-    - Clients MUST validate that the block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
-    - Clients MUST validate that `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
-    - Clients MUST validate that the validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
-    - Clients MUST validate that `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - Clients MUST validate that the `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.index`.
-    - Clients MUST validate that the signature of `aggregate_and_proof.aggregate`.
+    - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
+    - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
+    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
+    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+    - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.index`.
+    - The signature of `aggregate_and_proof.aggregate` is valid.
 
 Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
 
 - `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` - These topics are used to propagate unaggregated attestations to subsections of the network (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the network.
-    - Clients MUST validate that the attestation's committee index (`attestation.data.index`) is for the correct subnet.
-    - Clients MUST validate that the attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
-    - Clients MUST validate that the block being voted for (`attestation.data.beacon_block_root`) passes validation.
-    - Clients MUST validate that `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
-    - Clients MUST validate the signature of `attestation`.
+    - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
+    - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
+    - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - The signature of `attestation` is valid.
 
 Additional topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
 
