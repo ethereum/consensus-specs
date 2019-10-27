@@ -42,7 +42,7 @@ This document describes the shard transition function (data layer only) and the 
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~29 hours |
 | `SHARD_STATE_ROOT_LENGTH` | `2**7` (= 128) | bytes |
-| `MAX_SHARD_BLOCK
+| `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
 
 ## Containers
 
@@ -75,7 +75,7 @@ class AttestationShardData(Container):
     # Shard block lengths
     shard_block_lengths: List[uint8, MAX_CATCHUP_RATIO * MAX_SHARDS]
     # Shard data roots
-    shard_data_roots: List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS]
+    shard_data_roots: List[Hash, List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_CATCHUP_RATIO * MAX_SHARDS]
     # Intermediate state roots
     shard_state_roots: List[SHARD_STATE_ROOT, MAX_CATCHUP_RATIO * MAX_SHARDS]
 ```
@@ -232,7 +232,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 ### New state variables
 
 ```python
-    shard_state_roots: Vector[Hash, MAX_SHARDS]
+    shard_state_roots: Vector[SHARD_STATE_ROOT, MAX_SHARDS]
     shard_trace_commitments: Vector[Hash, MAX_SHARDS]
     shard_next_slots: Vector[Slot, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
