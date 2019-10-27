@@ -177,13 +177,13 @@ Additional topics are used to propagate lower frequency validator messages. Thei
 
 #### Interop
 
-Unaggregated and aggregated attestations from all shards are sent as `Attestation`s to the `beacon_aggregate_and_proof` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
+Unaggregated and aggregated attestations from all shards are sent as `Attestation`s to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
 
 #### Mainnet
 
-Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The `CommitteeIndex`, `index`, is assigned to the topic: `index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The `CommitteeIndex`, `index`, is assigned to the topic: `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
 
-Unaggregated attestations are sent to the subnet topic, `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
+Unaggregated attestations are sent to the subnet topic, `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
 
 Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
@@ -196,18 +196,21 @@ Clients MUST reject (fail validation) messages that are over this size limit. Li
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
 
-| Topic                        | Message Type      |
-|------------------------------|-------------------|
-| beacon_block                 | BeaconBlock       |
-| beacon_aggregate_and_proof   | AggregateAndProof |
-| index{N}\_beacon_attestation | Attestation       |
-| voluntary_exit               | VoluntaryExit     |
-| proposer_slashing            | ProposerSlashing  |
-| attester_slashing            | AttesterSlashing  |
+| Topic                                  | Message Type      |
+|----------------------------------------|-------------------|
+| beacon_block                           | BeaconBlock       |
+| beacon_aggregate_and_proof             | AggregateAndProof |
+| beacon_attestation\*                   | Attestation       |
+| committee_index{N}\_beacon_attestation | Attestation       |
+| voluntary_exit                         | VoluntaryExit     |
+| proposer_slashing                      | ProposerSlashing  |
+| attester_slashing                      | AttesterSlashing  |
 
 Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
 
 When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
+
+\* The `beacon_attestation` topic is only for interop and will be removed prior to mainnet.
 
 ### Encodings
 
