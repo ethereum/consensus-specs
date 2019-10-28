@@ -6,6 +6,7 @@ from eth2spec.test.phase_0.epoch_processing import (
     test_process_final_updates,
     test_process_justification_and_finalization,
     test_process_registry_updates,
+    test_process_rewards_and_penalties,
     test_process_slashings
 )
 from gen_base import gen_runner, gen_typing
@@ -40,6 +41,9 @@ if __name__ == "__main__":
         create_provider('justification_and_finalization', test_process_justification_and_finalization, 'mainnet'),
         create_provider('registry_updates', test_process_registry_updates, 'minimal'),
         create_provider('registry_updates', test_process_registry_updates, 'mainnet'),
+        create_provider('rewards_and_penalties', test_process_rewards_and_penalties, 'minimal'),
+        # runs full epochs filled with data, with uncached ssz. Disabled for now.
+        # create_provider('rewards_and_penalties', test_process_rewards_and_penalties, 'mainnet'),
         create_provider('slashings', test_process_slashings, 'minimal'),
         create_provider('slashings', test_process_slashings, 'mainnet'),
     ])

@@ -114,7 +114,8 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
     )
 
 
-def fill_aggregate_attestation(spec, state, attestation):
+def fill_aggregate_attestation(spec, state, attestation, signed=False):
+
     beacon_committee = spec.get_beacon_committee(
         state,
         attestation.data.slot,
@@ -123,11 +124,15 @@ def fill_aggregate_attestation(spec, state, attestation):
     for i in range(len(beacon_committee)):
         attestation.aggregation_bits[i] = True
 
+    if signed:
+        sign_attestation(spec, state, attestation)
 
-def add_attestation_to_state(spec, state, attestation, slot):
+
+def add_attestations_to_state(spec, state, attestations, slot):
     block = build_empty_block_for_next_slot(spec, state)
     block.slot = slot
-    block.body.attestations.append(attestation)
+    for attestation in attestations:
+        block.body.attestations.append(attestation)
     spec.process_slots(state, block.slot)
     sign_block(spec, state, block)
     spec.state_transition(state, block)

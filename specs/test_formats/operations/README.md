@@ -46,7 +46,6 @@ Operations:
 | `block_header`          | `Block`              | **`block`**          | `process_block_header(state, block)`                   |
 | `deposit`               | `Deposit`            | `deposit`            | `process_deposit(state, deposit)`                      |
 | `proposer_slashing`     | `ProposerSlashing`   | `proposer_slashing`  | `process_proposer_slashing(state, proposer_slashing)`  |
-| `transfer`              | `Transfer`           | `transfer`           | `process_transfer(state, transfer)`                    |
 | `voluntary_exit`        | `VoluntaryExit`      | `voluntary_exit`     | `process_voluntary_exit(state, voluntary_exit)`        |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`), but processed in the same manner, and hence included here.

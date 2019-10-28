@@ -336,7 +336,7 @@ def legendre_bit(a: int, q: int) -> int:
         return 0
 ```
 
-### ```custody_subchunkify```
+### `custody_subchunkify`
 
 Given one proof of custody chunk, returns the proof of custody subchunks of the correct sizes.
 

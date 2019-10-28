@@ -39,7 +39,6 @@
             - [`Attestation`](#attestation)
             - [`Deposit`](#deposit)
             - [`VoluntaryExit`](#voluntaryexit)
-            - [`Transfer`](#transfer)
         - [Beacon blocks](#beacon-blocks)
             - [`BeaconBlockBody`](#beaconblockbody)
             - [`BeaconBlock`](#beaconblock)
@@ -81,6 +80,7 @@
             - [`get_active_validator_indices`](#get_active_validator_indices)
             - [`get_validator_churn_limit`](#get_validator_churn_limit)
             - [`get_seed`](#get_seed)
+            - [`get_committee_count_at_slot`](#get_committee_count_at_slot)
             - [`get_beacon_committee`](#get_beacon_committee)
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_total_balance`](#get_total_balance)
@@ -114,7 +114,6 @@
                 - [Attestations](#attestations)
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
-                - [Transfers](#transfers)
 
 <!-- /TOC -->
 
@@ -241,7 +240,6 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_ATTESTATIONS` | `2**7` (= 128) |
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
-| `MAX_TRANSFERS` | `0` |
 
 ### Domain types
 
@@ -254,7 +252,6 @@ The following types are defined, mapping into `DomainType` (little endian):
 | `DOMAIN_RANDAO` | `2` |
 | `DOMAIN_DEPOSIT` | `3` |
 | `DOMAIN_VOLUNTARY_EXIT` | `4` |
-| `DOMAIN_TRANSFER` | `5` |
 
 ## Containers
 
@@ -288,14 +285,14 @@ class Checkpoint(Container):
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals and transfers
+    withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals
     effective_balance: Gwei  # Balance at stake
     slashed: boolean
     # Status epochs
     activation_eligibility_epoch: Epoch  # When criteria for activation were met
     activation_epoch: Epoch
     exit_epoch: Epoch
-    withdrawable_epoch: Epoch  # When validator can withdraw or transfer funds
+    withdrawable_epoch: Epoch  # When validator can withdraw funds
 ```
 
 #### `AttestationData`
@@ -423,19 +420,6 @@ class VoluntaryExit(Container):
     signature: BLSSignature
 ```
 
-#### `Transfer`
-
-```python
-class Transfer(Container):
-    sender: ValidatorIndex
-    recipient: ValidatorIndex
-    amount: Gwei
-    fee: Gwei
-    slot: Slot  # Slot at which transfer must be processed
-    pubkey: BLSPubkey  # Withdrawal pubkey
-    signature: BLSSignature  # Signature checked against withdrawal pubkey
-```
-
 ### Beacon blocks
 
 #### `BeaconBlockBody`
@@ -451,7 +435,6 @@ class BeaconBlockBody(Container):
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
-    transfers: List[Transfer, MAX_TRANSFERS]
 ```
 
 #### `BeaconBlock`
@@ -1053,6 +1036,7 @@ def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
         genesis_time=eth1_timestamp - eth1_timestamp % SECONDS_PER_DAY + 2 * SECONDS_PER_DAY,
         eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=len(deposits)),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
+        randao_mixes=[eth1_block_hash] * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
     )
 
     # Process deposits
@@ -1274,9 +1258,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         rewards[attestation.proposer_index] += proposer_reward
         max_attester_reward = get_base_reward(state, index) - proposer_reward
         rewards[index] += Gwei(
-            max_attester_reward
-            * (SLOTS_PER_EPOCH + MIN_ATTESTATION_INCLUSION_DELAY - attestation.inclusion_delay)
-            // SLOTS_PER_EPOCH
+            max_attester_reward // attestation.inclusion_delay
         )
 
     # Inactivity penalty
@@ -1435,8 +1417,6 @@ def process_eth1_data(state: BeaconState, body: BeaconBlockBody) -> None:
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
-    # Verify that there are no duplicate transfers
-    assert len(body.transfers) == len(set(body.transfers))
 
     for operations, function in (
         (body.proposer_slashings, process_proposer_slashing),
@@ -1444,7 +1424,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         (body.attestations, process_attestation),
         (body.deposits, process_deposit),
         (body.voluntary_exits, process_voluntary_exit),
-        (body.transfers, process_transfer),
         # @process_shard_receipt_proofs
     ):
         for operation in operations:
@@ -1582,34 +1561,4 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, domain)
     # Initiate exit
     initiate_validator_exit(state, exit.validator_index)
-```
-
-##### Transfers
-
-```python
-def process_transfer(state: BeaconState, transfer: Transfer) -> None:
-    # Verify the balance the covers amount and fee (with overflow protection)
-    assert state.balances[transfer.sender] >= max(transfer.amount + transfer.fee, transfer.amount, transfer.fee)
-    # A transfer is valid in only one slot
-    assert state.slot == transfer.slot
-    # Sender must satisfy at least one of the following:
-    assert (
-        # 1) Never have been eligible for activation
-        state.validators[transfer.sender].activation_eligibility_epoch == FAR_FUTURE_EPOCH or
-        # 2) Be withdrawable
-        get_current_epoch(state) >= state.validators[transfer.sender].withdrawable_epoch or
-        # 3) Have a balance of at least MAX_EFFECTIVE_BALANCE after the transfer
-        state.balances[transfer.sender] >= transfer.amount + transfer.fee + MAX_EFFECTIVE_BALANCE
-    )
-    # Verify that the pubkey is valid
-    assert state.validators[transfer.sender].withdrawal_credentials == BLS_WITHDRAWAL_PREFIX + hash(transfer.pubkey)[1:]
-    # Verify that the signature is valid
-    assert bls_verify(transfer.pubkey, signing_root(transfer), transfer.signature, get_domain(state, DOMAIN_TRANSFER))
-    # Process the transfer
-    decrease_balance(state, transfer.sender, transfer.amount + transfer.fee)
-    increase_balance(state, transfer.recipient, transfer.amount)
-    increase_balance(state, get_beacon_proposer_index(state), transfer.fee)
-    # Verify balances are not dust
-    assert not (0 < state.balances[transfer.sender] < MIN_DEPOSIT_AMOUNT)
-    assert not (0 < state.balances[transfer.recipient] < MIN_DEPOSIT_AMOUNT)
 ```

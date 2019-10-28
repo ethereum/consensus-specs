@@ -259,46 +259,57 @@ def get_branch_indices(tree_index: GeneralizedIndex) -> Sequence[GeneralizedInde
 ```
 
 ```python
+def get_path_indices(tree_index: GeneralizedIndex) -> Sequence[GeneralizedIndex]:
+    """
+    Get the generalized indices of the chunks along the path from the chunk with the
+    given tree index to the root.
+    """
+    o = [tree_index]
+    while o[-1] > 1:
+        o.append(generalized_index_parent(o[-1]))
+    return o[:-1]
+```
+
+```python
 def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[GeneralizedIndex]:
     """
     Get the generalized indices of all "extra" chunks in the tree needed to prove the chunks with the given
     generalized indices. Note that the decreasing order is chosen deliberately to ensure equivalence to the
     order of hashes in a regular single-item Merkle proof in the single-item case.
     """
-    all_indices: Set[GeneralizedIndex] = set()
+    all_helper_indices: Set[GeneralizedIndex] = set()
+    all_path_indices: Set[GeneralizedIndex] = set()
     for index in indices:
-        all_indices = all_indices.union(set(list(get_branch_indices(index)) + [index]))
+        all_helper_indices = all_helper_indices.union(set(get_branch_indices(index)))
+        all_path_indices = all_path_indices.union(set(get_path_indices(index)))
 
-    return sorted([
-        x for x in all_indices if (
-            not (
-                generalized_index_child(x, False) in all_indices and
-                generalized_index_child(x, True) in all_indices
-            ) and not (x in indices)
-        )
-    ], reverse=True)
+    return sorted(all_helper_indices.difference(all_path_indices), reverse=True)
 ```
 
 Now we provide the Merkle proof verification functions. First, for single item proofs:
 
 ```python
-def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+def calculate_merkle_root(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex) -> Hash:
     assert len(proof) == get_generalized_index_length(index)
     for i, h in enumerate(proof):
         if get_generalized_index_bit(index, i):
             leaf = hash(h + leaf)
         else:
             leaf = hash(leaf + h)
-    return leaf == root
+    return leaf
+```
+
+```python
+def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+    return calculate_merkle_root(leaf, proof, index) == root
 ```
 
 Now for multi-item proofs:
 
 ```python
-def verify_merkle_multiproof(leaves: Sequence[Hash],
-                             proof: Sequence[Hash],
-                             indices: Sequence[GeneralizedIndex],
-                             root: Hash) -> bool:
+def calculate_multi_merkle_root(leaves: Sequence[Hash],
+                                proof: Sequence[Hash],
+                                indices: Sequence[GeneralizedIndex]) -> Hash:
     assert len(leaves) == len(indices)
     helper_indices = get_helper_indices(indices)
     assert len(proof) == len(helper_indices)
@@ -317,7 +328,15 @@ def verify_merkle_multiproof(leaves: Sequence[Hash],
             )
             keys.append(GeneralizedIndex(k // 2))
         pos += 1
-    return objects[GeneralizedIndex(1)] == root
+    return objects[GeneralizedIndex(1)]
 ```
 
-Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`).
+```python
+def verify_merkle_multiproof(leaves: Sequence[Hash],
+                             proof: Sequence[Hash],
+                             indices: Sequence[GeneralizedIndex],
+                             root: Hash) -> bool:
+    return calculate_multi_merkle_root(leaves, proof, indices) == root
+```
+
+Note that the single-item proof is a special case of a multi-item proof; a valid single-item proof verifies correctly when put into the multi-item verification function (making the natural trivial changes to input arguments, `index -> [index]` and `leaf -> [leaf]`). Note also that `calculate_merkle_root` and `calculate_multi_merkle_root` can be used independently to compute the new Merkle root of a proof with leaves updated.

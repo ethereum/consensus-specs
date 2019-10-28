@@ -9,6 +9,7 @@
     - [Configuration](#configuration)
     - [Containers](#containers)
         - [`CompactCommittee`](#compactcommittee)
+        - [`ShardReceiptDelta`](#shardreceiptdelta)
         - [`ShardReceiptProof`](#shardreceiptproof)
     - [Helper functions](#helper-functions)
         - [`pack_compact_validator`](#pack_compact_validator)
