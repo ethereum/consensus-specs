@@ -11,6 +11,12 @@ from eth_utils import (
 from gen_base import gen_runner, gen_typing
 
 from py_ecc import bls
+from hashlib import sha256
+
+
+def hash(x):
+    return sha256(x).digest()
+
 
 F2Q_COEFF_LEN = 48
 G2_COMPRESSED_Z_LEN = 48
@@ -122,7 +128,8 @@ def case04_sign_messages():
         for message in MESSAGES:
             for domain in DOMAINS:
                 sig = bls.sign(message, privkey, domain)
-                yield f'sign_msg_{int_to_hex(privkey)}_{encode_hex(message)}_{encode_hex(domain)}', {
+                full_name = f'{int_to_hex(privkey)}_{encode_hex(message)}_{encode_hex(domain)}'
+                yield f'sign_msg_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
                     'input': {
                         'privkey': int_to_hex(privkey),
                         'message': encode_hex(message),

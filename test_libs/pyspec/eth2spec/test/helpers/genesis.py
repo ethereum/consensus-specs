@@ -1,3 +1,4 @@
+import copy
 from eth2spec.test.helpers.keys import pubkeys
 
 
@@ -16,16 +17,16 @@ def build_mock_validator(spec, i: int, balance: int):
     )
 
 
-def create_genesis_state(spec, num_validators):
+def create_genesis_state(spec, validator_balances, activation_threshold):
     deposit_root = b'\x42' * 32
 
     eth1_block_hash = b'\xda' * 32
     state = spec.BeaconState(
         genesis_time=0,
-        eth1_deposit_index=num_validators,
+        eth1_deposit_index=len(validator_balances),
         eth1_data=spec.Eth1Data(
             deposit_root=deposit_root,
-            deposit_count=num_validators,
+            deposit_count=len(validator_balances),
             block_hash=eth1_block_hash,
         ),
         latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
@@ -34,12 +35,12 @@ def create_genesis_state(spec, num_validators):
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
-    state.balances = [spec.MAX_EFFECTIVE_BALANCE] * num_validators
-    state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(num_validators)]
+    state.balances = copy.deepcopy(validator_balances)
+    state.validators = [build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))]
 
     # Process genesis activations
     for validator in state.validators:
-        if validator.effective_balance >= spec.MAX_EFFECTIVE_BALANCE:
+        if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
 
