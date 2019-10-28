@@ -158,7 +158,7 @@ def on_block(store: Store, block: BeaconBlock) -> None:
     # Check that block is later than the finalized epoch slot
     assert block.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     # Check the block is valid and compute the post-state
-    state = state_transition(pre_state, block)
+    state = state_transition(pre_state, block, True)
     # Add new state for this block to the store
     store.block_states[signing_root(block)] = state
 
