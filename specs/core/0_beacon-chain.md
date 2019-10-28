@@ -520,7 +520,7 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
 ```python
 def int_to_bytes(n: uint64, length: uint64) -> bytes:
     """
-    Return the ``length``-byte serialization of ``n``.
+    Return the ``length``-byte serialization of ``n`` in ``ENDIANNESS``-endian.
     """
     return n.to_bytes(length, ENDIANNESS)
 ```
@@ -530,7 +530,7 @@ def int_to_bytes(n: uint64, length: uint64) -> bytes:
 ```python
 def bytes_to_int(data: bytes) -> uint64:
     """
-    Return the integer deserialization of ``data``.
+    Return the integer deserialization of ``data`` intepreted as ``ENDIANNESS``-endian.
     """
     return int.from_bytes(data, ENDIANNESS)
 ```
