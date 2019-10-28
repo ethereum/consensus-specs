@@ -19,15 +19,17 @@ def build_mock_validator(spec, i: int, balance: int):
 def create_genesis_state(spec, num_validators):
     deposit_root = b'\x42' * 32
 
+    eth1_block_hash = b'\xda' * 32
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=num_validators,
         eth1_data=spec.Eth1Data(
             deposit_root=deposit_root,
             deposit_count=num_validators,
-            block_hash=spec.Hash(),
+            block_hash=eth1_block_hash,
         ),
         latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+        randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
 
     # We "hack" in the initial validators,
