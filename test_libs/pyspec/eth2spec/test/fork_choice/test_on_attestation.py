@@ -1,8 +1,10 @@
-from eth2spec.test.context import with_all_phases, with_state, bls_switch, with_phases
+
+from eth2spec.test.context import with_all_phases, spec_state_test, with_phases
+
 
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.attestations import get_valid_attestation
-from eth2spec.test.helpers.state import next_slot
+from eth2spec.test.helpers.state import state_transition_and_sign_block
 
 
 def run_on_attestation(spec, state, store, attestation, valid=True):
@@ -26,27 +28,24 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_on_attestation(spec, state):
     store = spec.get_genesis_store(state)
     time = 100
     spec.on_tick(store, time)
 
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
 
     # store block in store
     spec.on_block(store, block)
-
-    next_slot(spec, state)
 
     attestation = get_valid_attestation(spec, state, slot=block.slot)
     run_on_attestation(spec, state, store, attestation)
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_on_attestation_target_not_in_store(spec, state):
     store = spec.get_genesis_store(state)
     time = 100
@@ -55,28 +54,27 @@ def test_on_attestation_target_not_in_store(spec, state):
     # move to next epoch to make block new target
     state.slot += spec.SLOTS_PER_EPOCH
 
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
 
     # do not add block to store
 
-    next_slot(spec, state)
     attestation = get_valid_attestation(spec, state, slot=block.slot)
     run_on_attestation(spec, state, store, attestation, False)
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_on_attestation_future_epoch(spec, state):
     store = spec.get_genesis_store(state)
     time = 3 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
 
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
 
     # store block in store
     spec.on_block(store, block)
-    next_slot(spec, state)
 
     # move state forward but not store
     attestation_slot = block.slot + spec.SLOTS_PER_EPOCH
@@ -87,36 +85,34 @@ def test_on_attestation_future_epoch(spec, state):
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_on_attestation_same_slot(spec, state):
     store = spec.get_genesis_store(state)
     time = 1 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
 
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
 
     spec.on_block(store, block)
-    next_slot(spec, state)
 
     attestation = get_valid_attestation(spec, state, slot=block.slot)
     run_on_attestation(spec, state, store, attestation, False)
 
 
 @with_phases(['phase0'])
-@with_state
-@bls_switch
+@spec_state_test
 def test_on_attestation_invalid_attestation(spec, state):
     store = spec.get_genesis_store(state)
     time = 3 * spec.SECONDS_PER_SLOT
     spec.on_tick(store, time)
 
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
 
     spec.on_block(store, block)
-    next_slot(spec, state)
 
     attestation = get_valid_attestation(spec, state, slot=block.slot)
-    # make attestation invalid
-    attestation.custody_bits[0:8] = [0, 0, 0, 0, 1, 1, 1, 1]
+    # make attestation invalid by setting a phase1-only custody bit
+    attestation.custody_bits[0] = 1
     run_on_attestation(spec, state, store, attestation, False)
