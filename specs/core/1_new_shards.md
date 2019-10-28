@@ -6,18 +6,33 @@
 
 <!-- TOC -->
 
-- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
+- [Ethereum 2.0 Phase 1 -- Crosslinks and Shard Data](#ethereum-20-phase-1----crosslinks-and-shard-data)
     - [Table of contents](#table-of-contents)
     - [Introduction](#introduction)
     - [Configuration](#configuration)
         - [Misc](#misc)
     - [Containers](#containers)
+        - [Aliases](#aliases)
+        - [`AttestationData`](#attestationdata)
+        - [`AttestationShardData`](#attestationsharddata)
+        - [`ReducedAttestationData`](#reducedattestationdata)
+        - [`Attestation`](#attestation)
+        - [`ReducedAttestation`](#reducedattestation)
+        - [`IndexedAttestation`](#indexedattestation)
+        - [`CompactCommittee`](#compactcommittee)
+        - [`AttestationCustodyBitWrapper`](#attestationcustodybitwrapper)
     - [Helpers](#helpers)
+        - [`get_online_validators`](#get_online_validators)
+        - [`pack_compact_validator`](#pack_compact_validator)
+        - [`committee_to_compact_committee`](#committee_to_compact_committee)
+        - [`get_light_client_committee`](#get_light_client_committee)
+        - [`get_indexed_attestation`](#get_indexed_attestation)
+        - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
     - [Beacon Chain Changes](#beacon-chain-changes)
         - [New state variables](#new-state-variables)
         - [New block data structures](#new-block-data-structures)
         - [Attestation processing](#attestation-processing)
-        - [Light client signature processing)(#light-client-signature-processing)
+        - [Light client processing](#light-client-processing)
         - [Epoch transition](#epoch-transition)
         - [Fraud proofs](#fraud-proofs)
     - [Shard state transition function](#shard-state-transition-function)
@@ -118,7 +133,7 @@ class CompactCommittee(Container):
 
 ### `AttestationCustodyBitWrapper`
 
-```
+```python
 class AttestationCustodyBitWrapper(Container):
     attestation_root: Hash
     index: uint64
@@ -198,7 +213,7 @@ def update_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
 
 ### `is_valid_indexed_attestation`
 
-``python
+```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
     Check if ``indexed_attestation`` has valid indices and signature.
