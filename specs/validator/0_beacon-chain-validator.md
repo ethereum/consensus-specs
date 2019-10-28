@@ -39,6 +39,7 @@
                 - [Voluntary exits](#voluntary-exits)
         - [Attesting](#attesting)
             - [Attestation data](#attestation-data)
+                - [General](#general)
                 - [LMD GHOST vote](#lmd-ghost-vote)
                 - [FFG vote](#ffg-vote)
             - [Construct attestation](#construct-attestation)
