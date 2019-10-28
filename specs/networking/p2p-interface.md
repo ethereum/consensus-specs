@@ -11,7 +11,7 @@ It consists of four main sections:
 
 ## Table of contents
 
-<!-- cmd: doctoc maxlevel=2 p2p-interface.md -->
+<!-- cmd: doctoc --maxlevel=2 p2p-interface.md -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -173,7 +173,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
 - `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
     - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
     - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
-    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (`aggregate_and_proof.aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate_and_proof.aggregate.data.slot`).
     - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
     - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
     - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.index`.
@@ -193,7 +193,7 @@ Attestation subnets are used to propagate unaggregated attestations to subsectio
     - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
     - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
     - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
-    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (`attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`).
     - The signature of `attestation` is valid.
 
 #### Interop
