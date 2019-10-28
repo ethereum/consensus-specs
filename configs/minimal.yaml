@@ -4,12 +4,12 @@
 # Misc
 # ---------------------------------------------------------------
 
-# [customized] Just 8 shards for testing purposes
-SHARD_COUNT: 8
+# [customized] Just 4 committees for slot for testing purposes
+MAX_COMMITTEES_PER_SLOT: 4
 # [customized] unsecure, but fast
 TARGET_COMMITTEE_SIZE: 4
-# 2**12 (= 4,096)
-MAX_VALIDATORS_PER_COMMITTEE: 4096
+# 2**11 (= 2,048)
+MAX_VALIDATORS_PER_COMMITTEE: 2048
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
@@ -50,7 +50,7 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 
 # Time parameters
 # ---------------------------------------------------------------
-# 6 seconds 6 seconds
+# [customized] Faster for testing purposes
 SECONDS_PER_SLOT: 6
 # 2**0 (= 1) slots 6 seconds
 MIN_ATTESTATION_INCLUSION_DELAY: 1
@@ -59,7 +59,7 @@ SLOTS_PER_EPOCH: 8
 # 2**0 (= 1) epochs
 MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs
-ACTIVATION_EXIT_DELAY: 4
+MAX_SEED_LOOKAHEAD: 4
 # [customized] higher frequency new deposits from eth1 for testing
 SLOTS_PER_ETH1_VOTING_PERIOD: 16
 # [customized] smaller state
@@ -74,6 +74,10 @@ MAX_EPOCHS_PER_CROSSLINK: 4
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 # [customized] 2**12 (= 4,096) epochs
 EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 4096
+# 2**2 (= 4) epochs
+EPOCHS_PER_CUSTODY_PERIOD: 4
+# 2**2 (= 4) epochs
+CUSTODY_PERIOD_TO_RANDAO_PADDING: 4
 
 
 # State vector lengths
@@ -114,18 +118,25 @@ MAX_ATTESTATIONS: 128
 MAX_DEPOSITS: 16
 # 2**4 (= 16)
 MAX_VOLUNTARY_EXITS: 16
-# Originally 2**4 (= 16), disabled for now.
-MAX_TRANSFERS: 0
 
 
 # Signature domains
 # ---------------------------------------------------------------
 DOMAIN_BEACON_PROPOSER: 0x00000000
-DOMAIN_RANDAO: 0x01000000
-DOMAIN_ATTESTATION: 0x02000000
+DOMAIN_BEACON_ATTESTER: 0x01000000
+DOMAIN_RANDAO: 0x02000000
 DOMAIN_DEPOSIT: 0x03000000
 DOMAIN_VOLUNTARY_EXIT: 0x04000000
-DOMAIN_TRANSFER: 0x05000000
 DOMAIN_CUSTODY_BIT_CHALLENGE: 0x06000000
 DOMAIN_SHARD_PROPOSER: 0x80000000
 DOMAIN_SHARD_ATTESTER: 0x81000000
+
+
+# Phase 1
+# ---------------------------------------------------------------
+SHARD_SLOTS_PER_BEACON_SLOT: 2
+EPOCHS_PER_SHARD_PERIOD: 4
+# PHASE_1_FORK_EPOCH >= EPOCHS_PER_SHARD_PERIOD * 2
+PHASE_1_FORK_EPOCH: 8
+# PHASE_1_FORK_SLOT = PHASE_1_FORK_EPOCH * SLOTS_PER_EPOCH
+PHASE_1_FORK_SLOT: 64

@@ -1,4 +1,4 @@
-from eth2spec.test.context import with_all_phases, with_state, bls_switch
+from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.state import state_transition_and_sign_block
@@ -27,8 +27,7 @@ def add_attestation_to_store(spec, store, attestation):
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_genesis(spec, state):
     # Initialization
     store = spec.get_genesis_store(state)
@@ -37,8 +36,7 @@ def test_genesis(spec, state):
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_chain_no_attestations(spec, state):
     # Initialization
     store = spec.get_genesis_store(state)
@@ -59,8 +57,7 @@ def test_chain_no_attestations(spec, state):
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_split_tie_breaker_no_attestations(spec, state):
     genesis_state = state.copy()
 
@@ -88,8 +85,7 @@ def test_split_tie_breaker_no_attestations(spec, state):
 
 
 @with_all_phases
-@with_state
-@bls_switch
+@spec_state_test
 def test_shorter_chain_but_heavier_weight(spec, state):
     genesis_state = state.copy()
 

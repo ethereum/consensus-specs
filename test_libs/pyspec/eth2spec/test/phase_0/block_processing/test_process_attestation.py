@@ -1,5 +1,12 @@
-from eth2spec.test.context import spec_state_test, expect_assertion_error, always_bls, \
-    with_all_phases, with_phases, spec_test, low_balances, with_custom_state
+from eth2spec.test.context import (
+    spec_state_test,
+    expect_assertion_error,
+    always_bls, never_bls,
+    with_all_phases, with_phases,
+    spec_test,
+    low_balances,
+    with_custom_state,
+)
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
     sign_aggregate_attestation,
@@ -7,7 +14,6 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
-    next_slot,
 )
 from eth2spec.test.helpers.block import apply_empty_block
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -81,54 +87,6 @@ def test_success_previous_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_success_since_max_epochs_per_crosslink(spec, state):
-    # Do not run mainnet (64 epochs), that would mean the equivalent of ~7 hours chain simulation.
-    if spec.MAX_EPOCHS_PER_CROSSLINK > 4:
-        return
-    for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
-        next_epoch(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation = get_valid_attestation(spec, state, signed=True)
-    data = attestation.data
-    # test logic sanity check: make sure the attestation only includes MAX_EPOCHS_PER_CROSSLINK epochs
-    assert data.crosslink.end_epoch - data.crosslink.start_epoch == spec.MAX_EPOCHS_PER_CROSSLINK
-
-    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        next_slot(spec, state)
-    apply_empty_block(spec, state)
-
-    yield from run_attestation_processing(spec, state, attestation)
-
-
-@with_all_phases
-@spec_state_test
-def test_wrong_end_epoch_with_max_epochs_per_crosslink(spec, state):
-    # Do not run mainnet (64 epochs), that would mean the equivalent of ~7 hours chain simulation.
-    if spec.MAX_EPOCHS_PER_CROSSLINK > 4:
-        return
-    for _ in range(spec.MAX_EPOCHS_PER_CROSSLINK + 2):
-        next_epoch(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation = get_valid_attestation(spec, state)
-    data = attestation.data
-    # test logic sanity check: make sure the attestation only includes MAX_EPOCHS_PER_CROSSLINK epochs
-    assert data.crosslink.end_epoch - data.crosslink.start_epoch == spec.MAX_EPOCHS_PER_CROSSLINK
-    # Now change it to be different
-    data.crosslink.end_epoch += 1
-
-    sign_attestation(spec, state, attestation)
-
-    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        next_slot(spec, state)
-    apply_empty_block(spec, state)
-
-    yield from run_attestation_processing(spec, state, attestation, False)
-
-
-@with_all_phases
-@spec_state_test
 @always_bls
 def test_invalid_attestation_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
@@ -180,27 +138,41 @@ def test_old_source_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_wrong_shard(spec, state):
+@always_bls
+def test_wrong_index_for_committee_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    attestation.data.crosslink.shard += 1
-
-    sign_attestation(spec, state, attestation)
+    attestation.data.index += 1
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
 @with_all_phases
 @spec_state_test
-def test_invalid_shard(spec, state):
+@never_bls
+def test_wrong_index_for_slot(spec, state):
+    committees_per_slot = spec.get_committee_count_at_slot(state, state.slot)
+    assert committees_per_slot < spec.MAX_COMMITTEES_PER_SLOT
+    index = committees_per_slot
+
+    attestation = get_valid_attestation(spec, state)
+    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+    attestation.data.index = index
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+@never_bls
+def test_invalid_index(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
     # off by one (with respect to valid range) on purpose
-    attestation.data.crosslink.shard = spec.SHARD_COUNT
-
-    sign_attestation(spec, state, attestation)
+    attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT
 
     yield from run_attestation_processing(spec, state, attestation, False)
 
@@ -302,80 +274,13 @@ def test_bad_source_root(spec, state):
     yield from run_attestation_processing(spec, state, attestation, False)
 
 
-@with_phases(['phase0'])
-@spec_state_test
-def test_non_zero_crosslink_data_root(spec, state):
-    attestation = get_valid_attestation(spec, state)
-    state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
-
-    attestation.data.crosslink.data_root = b'\x42' * 32
-
-    sign_attestation(spec, state, attestation)
-
-    yield from run_attestation_processing(spec, state, attestation, False)
-
-
-@with_all_phases
-@spec_state_test
-def test_bad_parent_crosslink(spec, state):
-    state.slot = spec.SLOTS_PER_EPOCH - 1
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation = get_valid_attestation(spec, state, signed=False)
-    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        next_slot(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation.data.crosslink.parent_root = b'\x27' * 32
-    sign_attestation(spec, state, attestation)
-
-    yield from run_attestation_processing(spec, state, attestation, False)
-
-
-@with_all_phases
-@spec_state_test
-def test_bad_crosslink_start_epoch(spec, state):
-    state.slot = spec.SLOTS_PER_EPOCH - 1
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation = get_valid_attestation(spec, state, signed=False)
-    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        next_slot(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation.data.crosslink.start_epoch += 1
-    sign_attestation(spec, state, attestation)
-
-    yield from run_attestation_processing(spec, state, attestation, False)
-
-
-@with_all_phases
-@spec_state_test
-def test_bad_crosslink_end_epoch(spec, state):
-    state.slot = spec.SLOTS_PER_EPOCH - 1
-    next_epoch(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation = get_valid_attestation(spec, state, signed=False)
-    for _ in range(spec.MIN_ATTESTATION_INCLUSION_DELAY):
-        next_slot(spec, state)
-    apply_empty_block(spec, state)
-
-    attestation.data.crosslink.end_epoch += 1
-    sign_attestation(spec, state, attestation)
-
-    yield from run_attestation_processing(spec, state, attestation, False)
-
-
 @with_all_phases
 @spec_state_test
 def test_inconsistent_bits(spec, state):
     attestation = get_valid_attestation(spec, state)
     state.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-    custody_bits = attestation.aggregation_bits[:]
+    custody_bits = attestation.custody_bits[:]
     custody_bits.append(False)
 
     attestation.custody_bits = custody_bits

@@ -1,7 +1,5 @@
-from eth2spec.test.helpers.keys import pubkeys
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.utils.ssz.ssz_typing import List
 import copy
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def build_mock_validator(spec, i: int, balance: int):
@@ -22,15 +20,17 @@ def build_mock_validator(spec, i: int, balance: int):
 def create_genesis_state(spec, validator_balances, activation_threshold):
     deposit_root = b'\x42' * 32
 
+    eth1_block_hash = b'\xda' * 32
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=len(validator_balances),
         eth1_data=spec.Eth1Data(
             deposit_root=deposit_root,
             deposit_count=len(validator_balances),
-            block_hash=spec.Hash(),
+            block_hash=eth1_block_hash,
         ),
         latest_block_header=spec.BeaconBlockHeader(body_root=spec.hash_tree_root(spec.BeaconBlockBody())),
+        randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
 
     # We "hack" in the initial validators,
@@ -43,13 +43,5 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
-
-    genesis_active_index_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
-        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
-    genesis_compact_committees_root = hash_tree_root(List[spec.ValidatorIndex, spec.VALIDATOR_REGISTRY_LIMIT](
-        spec.get_active_validator_indices(state, spec.GENESIS_EPOCH)))
-    for index in range(spec.EPOCHS_PER_HISTORICAL_VECTOR):
-        state.active_index_roots[index] = genesis_active_index_root
-        state.compact_committees_roots[index] = genesis_compact_committees_root
 
     return state

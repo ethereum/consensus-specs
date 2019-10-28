@@ -1,6 +1,6 @@
 # General test format
 
-This document defines the YAML format and structure used for Eth 2.0 testing.
+This document defines the YAML format and structure used for Eth2 testing.
 
 ## Table of contents
 <!-- TOC -->

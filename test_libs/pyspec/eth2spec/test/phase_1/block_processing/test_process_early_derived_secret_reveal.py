@@ -98,25 +98,21 @@ def test_reveal_with_custody_padding_minus_one(spec, state):
 @spec_state_test
 @never_bls
 def test_double_reveal(spec, state):
+    epoch = spec.get_current_epoch(state) + spec.RANDAO_PENALTY_EPOCHS
     randao_key_reveal1 = get_valid_early_derived_secret_reveal(
         spec,
         state,
-        spec.get_current_epoch(state) + spec.RANDAO_PENALTY_EPOCHS + 1,
+        epoch,
     )
-    res = dict(run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal1))
-    pre_state = res['pre']
-    yield 'pre', pre_state
-    intermediate_state = res['post']
+    _, _, _ = dict(run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal1))
 
     randao_key_reveal2 = get_valid_early_derived_secret_reveal(
         spec,
-        intermediate_state,
-        spec.get_current_epoch(pre_state) + spec.RANDAO_PENALTY_EPOCHS + 1,
+        state,
+        epoch,
     )
-    res = dict(run_early_derived_secret_reveal_processing(spec, intermediate_state, randao_key_reveal2, False))
-    post_state = res['post']
-    yield 'randao_key_reveal', [randao_key_reveal1, randao_key_reveal2]
-    yield 'post', post_state
+
+    yield from run_early_derived_secret_reveal_processing(spec, state, randao_key_reveal2, False)
 
 
 @with_all_phases_except(['phase0'])

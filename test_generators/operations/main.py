@@ -6,7 +6,6 @@ from eth2spec.test.phase_0.block_processing import (
     test_process_block_header,
     test_process_deposit,
     test_process_proposer_slashing,
-    test_process_transfer,
     test_process_voluntary_exit,
 )
 
@@ -48,10 +47,6 @@ if __name__ == "__main__":
         create_provider('deposit', test_process_deposit, 'mainnet'),
         create_provider('proposer_slashing', test_process_proposer_slashing, 'minimal'),
         create_provider('proposer_slashing', test_process_proposer_slashing, 'mainnet'),
-        create_provider('transfer', test_process_transfer, 'minimal'),
-        # Disabled, due to the high amount of different transfer tests, this produces a shocking size of tests.
-        # Unnecessarily, as transfer are disabled currently, so not a priority.
-        # create_provider('transfer', test_process_transfer, 'mainnet'),
         create_provider('voluntary_exit', test_process_voluntary_exit, 'minimal'),
         create_provider('voluntary_exit', test_process_voluntary_exit, 'mainnet'),
     ])

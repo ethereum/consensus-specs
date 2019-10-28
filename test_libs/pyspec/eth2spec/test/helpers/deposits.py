@@ -47,7 +47,7 @@ def build_deposit(spec,
     deposit_data_list.append(deposit_data)
     root = hash_tree_root(List[spec.DepositData, 2**spec.DEPOSIT_CONTRACT_TREE_DEPTH](*deposit_data_list))
     tree = calc_merkle_tree_from_leaves(tuple([d.hash_tree_root() for d in deposit_data_list]))
-    proof = list(get_merkle_proof(tree, item_index=index)) + [(index + 1).to_bytes(32, 'little')]
+    proof = list(get_merkle_proof(tree, item_index=index, tree_len=32)) + [(index + 1).to_bytes(32, 'little')]
     leaf = deposit_data.hash_tree_root()
     assert spec.is_valid_merkle_branch(leaf, proof, spec.DEPOSIT_CONTRACT_TREE_DEPTH + 1, index, root)
     deposit = spec.Deposit(proof=proof, data=deposit_data)

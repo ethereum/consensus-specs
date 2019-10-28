@@ -5,9 +5,9 @@ This document contains the networking specification for Ethereum 2.0 clients.
 It consists of four main sections:
 
 1. A specification of the network fundamentals detailing the two network configurations: interoperability test network and mainnet launch.
-2. A specification of the three network interaction *domains* of Eth 2.0: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
+2. A specification of the three network interaction *domains* of Eth2: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
 3. The rationale and further explanation for the design choices made in the previous two sections.
-4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth 2.0 clients are being developed.
+4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.
 
 ## Table of contents
 
@@ -21,7 +21,7 @@ It consists of four main sections:
   - [Encryption and identification](#encryption-and-identification)
   - [Protocol negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
-- [Eth 2.0 network interaction domains](#eth-20-network-interaction-domains)
+- [Eth2 network interaction domains](#eth2-network-interaction-domains)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -83,7 +83,7 @@ The following SecIO parameters MUST be supported by all stacks:
 
 [Noise Framework](http://www.noiseprotocol.org/) handshakes will be used for mainnet. libp2p Noise support [is in the process of being standardized](https://github.com/libp2p/specs/issues/195) in the libp2p project.
 
-Noise support will presumably include IX, IK, and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue (Eth 2.0 implementers are welcome to comment and contribute to the discussion).
+Noise support will presumably include IX, IK, and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue (Eth2 implementers are welcome to comment and contribute to the discussion).
 
 ## Protocol Negotiation
 
@@ -105,7 +105,7 @@ Two multiplexers are commonplace in libp2p implementations: [mplex](https://gith
 
 Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). If both are supported by the client, yamux must take precedence during negotiation. See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
-# Eth 2.0 network interaction domains
+# Eth2 network interaction domains
 
 ## Configuration
 
@@ -115,9 +115,10 @@ This section outlines constants that are used in this spec.
 |---|---|---|
 | `GOSSIP_MAX_SIZE` | `2**20` (= 1048576, 1 MiB) | The maximum allowed size of uncompressed gossip messages. |
 | `MAX_CHUNK_SIZE` | `2**20` (1048576, 1 MiB) | The maximum allowed size of uncompressed req/resp chunked responses. |
-| `SHARD_SUBNET_COUNT` | `TODO` | The number of shard subnets used in the gossipsub protocol. |
+| `ATTESTATION_SUBNET_COUNT` | `64` | The number of attestation subnets used in the gossipsub protocol. |
 | `TTFB_TIMEOUT` | `5s` | The maximum time to wait for first byte of request response (time-to-first-byte). |
 | `RESP_TIMEOUT` | `10s` | The maximum time for complete response transfer. |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32` | The maximum number of slots during which an attestation can be propagated. |
 
 ## The gossip domain: gossipsub
 
@@ -140,54 +141,72 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 - `gossip_history` (number of heartbeat intervals to retain message IDs): 5
 - `heartbeat_interval` (frequency of heartbeat, seconds): 1
 
-### Topics
+### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages).
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
 
-Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded. (Further details can be found in [Messages](#Messages)).
+Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
-There are two main topics used to propagate attestations and beacon blocks to all nodes on the network. Their `TopicName`s are:
+The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
+
+| Topic                                  | Message Type      |
+|----------------------------------------|-------------------|
+| beacon_block                           | BeaconBlock       |
+| beacon_aggregate_and_proof             | AggregateAndProof |
+| beacon_attestation\*                   | Attestation       |
+| committee_index{subnet_id}\_beacon_attestation | Attestation       |
+| voluntary_exit                         | VoluntaryExit     |
+| proposer_slashing                      | ProposerSlashing  |
+| attester_slashing                      | AttesterSlashing  |
+
+Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
+
+When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
+
+\* The `beacon_attestation` topic is only for interop and will be removed prior to mainnet.
+
+#### Global topics
+
+There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
 
 - `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
-- `beacon_attestation` - This topic is used to propagate aggregated attestations (in their entirety) to subscribing nodes (typically block proposers) to be included in future blocks. Clients MUST validate that the block being voted for passes validation before forwarding the attestation on the network (TODO: [additional validations](https://github.com/ethereum/eth2.0-specs/issues/1332)).
+- `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
+    - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
+    - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
+    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (`aggregate_and_proof.aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate_and_proof.aggregate.data.slot`).
+    - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
+    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+    - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.index`.
+    - The signature of `aggregate_and_proof.aggregate` is valid.
 
-Additional topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
+Additional global topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
 
 - `voluntary_exit` - This topic is used solely for propagating voluntary validator exits to proposers on the network. Voluntary exits are sent in their entirety. Clients who receive a voluntary exit on this topic MUST validate the conditions within `process_voluntary_exit` before forwarding it across the network.
 - `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. Clients who receive a proposer slashing on this topic MUST validate the conditions within `process_proposer_slashing` before forwarding it across the network.
 - `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
 
+#### Attestation subnets
+
+Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
+
+- `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
+    - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
+    - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
+    - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (`attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`).
+    - The signature of `attestation` is valid.
+
 #### Interop
 
-Unaggregated and aggregated attestations from all shards are sent to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
+Unaggregated and aggregated attestations from all shards are sent as `Attestation`s to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
 
 #### Mainnet
 
-Shards are grouped into their own subnets (defined by a shard topic). The number of shard subnets is defined via `SHARD_SUBNET_COUNT` and the shard `shard_number % SHARD_SUBNET_COUNT` is assigned to the topic: `shard{shard_number % SHARD_SUBNET_COUNT}_beacon_attestation`. Unaggregated attestations are sent to the subnet topic. Aggregated attestations are sent to the `beacon_attestation` topic.
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. For the `committee_index{subnet_id}_beacon_attestation` topics, `subnet_id` is set to `index % ATTESTATION_SUBNET_COUNT`, where `index` is the `CommitteeIndex` of the given committee.
 
-TODO: [aggregation strategy](https://github.com/ethereum/eth2.0-specs/issues/1331)
+Unaggregated attestations are sent to the subnet topic, `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
 
-### Messages
-
-Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`.
-
-Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
-
-The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
-
-
-| Topic                        | Message Type      |
-|------------------------------|-------------------|
-| beacon_block                 | BeaconBlock       |
-| beacon_attestation           | Attestation       |
-| shard{N}\_beacon_attestation | Attestation       |
-| voluntary_exit               | VoluntaryExit     |
-| proposer_slashing            | ProposerSlashing  |
-| attester_slashing            | AttesterSlashing  |
-
-Clients MUST reject (fail validation) messages containing an incorrect type, or invalid payload.
-
-When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
+Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
 ### Encodings
 
@@ -199,7 +218,7 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 
 #### Mainnet
 
-- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon attestation topic string is `/eth2/beacon_attestation/ssz_snappy`, and the data field of a gossipsub message is an `Attestation` that has been SSZ-encoded and then compressed with Snappy.
+- `ssz_snappy` - All objects are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). Example: The beacon aggregate attestation topic string is `/eth2/beacon_aggregate_and_proof/ssz_snappy`, and the data field of a gossipsub message is an `AggregateAndProof` that has been SSZ-encoded and then compressed with Snappy.
 
 Implementations MUST use a single encoding. Changing an encoding will require coordination between participating implementations.
 
@@ -475,9 +494,9 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 
 #### Interop
 
-In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry Eth 2.0 capability information, as it would be superfluous.
+In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry Eth2 capability information, as it would be superfluous.
 
-Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an Eth 2.0 peer, in order to eschew connecting to Eth 1.0 peers.
+Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an Eth2 peer, in order to eschew connecting to Eth 1.0 peers.
 
 #### Mainnet
 
@@ -514,7 +533,7 @@ Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
 
 The libp2p QUIC transport inherently relies on TLS 1.3 per requirement in section 7 of the [QUIC protocol specification](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7) and the accompanying [QUIC-TLS document](https://tools.ietf.org/html/draft-ietf-quic-tls-22).
 
-The usage of one handshake procedure or the other shall be transparent to the Eth 2.0 application layer, once the libp2p Host/Node object has been configured appropriately.
+The usage of one handshake procedure or the other shall be transparent to the Eth2 application layer, once the libp2p Host/Node object has been configured appropriately.
 
 ### What are the advantages of using TCP/QUIC/Websockets?
 
@@ -524,7 +543,7 @@ QUIC is a new protocol that’s in the final stages of specification by the IETF
 
 QUIC is being adopted as the underlying protocol for HTTP/3. This has the potential to award us censorship resistance via deep packet inspection for free. Provided that we use the same port numbers and encryption mechanisms as HTTP/3, our traffic may be indistinguishable from standard web traffic, and we may only become subject to standard IP-based firewall filtering—something we can counteract via other mechanisms.
 
-WebSockets and/or WebRTC transports are necessary for interaction with browsers, and will become increasingly important as we incorporate browser-based light clients to the Eth 2.0 network.
+WebSockets and/or WebRTC transports are necessary for interaction with browsers, and will become increasingly important as we incorporate browser-based light clients to the Eth2 network.
 
 ### Why do we not just support a single transport?
 
@@ -652,11 +671,23 @@ Topic names have a hierarchical structure. In the future, gossipsub may support 
 
 No security or privacy guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway, and calculating a digest's preimage would be trivial.
 
-Furthermore, the Eth 2.0 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
+Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
-### Why are there `SHARD_SUBNET_COUNT` subnets, and why is this not defined?
+### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
-Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet).
+Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet). The value is currently set to to be equal `MAX_COMMITTEES_PER_SLOT` until network tests indicate otherwise.
+
+### Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?
+
+Attestations can only be included on chain within an epoch's worth of slots so this is the natural cutoff. There is no utility to the chain to broadcast attestations older than one epoch, and because validators have a chance to make a new attestation each epoch, there is minimal utility to the fork choice to relay old attestations as a new latest message can soon be created by each validator.
+
+In addition to this, relaying attestations requires validating the attestation in the context of the `state` during which it was created. Thus, validating arbitrarily old attestations would put additional requirements on which states need to be readily available to the node. This would result in a higher resource burden and could serve as a DoS vector.
+
+### Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?
+
+The dominant strategy for an individual validator is to always broadcast an aggregate containing their own attestation to the global channel to ensure that proposers see their attestation for inclusion. Using a private selection criteria and providing this proof of selection alongside the gossiped aggregate ensures that this dominant strategy will not flood the global channel.
+
+Also, an attacker can create any number of honest-looking aggregates and broadcast them to the global pubsub channel. Thus without some sort of proof of selection as an aggregator, the global channel can trivially be spammed.
 
 ### Why are we sending entire objects in the pubsub and not just hashes?
 
@@ -683,7 +714,7 @@ Requests are segregated by protocol ID to:
 3. Enable clients to select the individual requests/versions they support. It would no longer be a strict requirement to support all requests, and clients, in principle, could support a subset of requests and variety of versions.
 4. Enable flexibility and agility for clients adopting spec changes that impact the request, by signalling to peers exactly which subset of new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request granularity. Without this, clients would be forced to support entire versions of the coarser request protocol.
-6. Parallelise RFCs (or Eth 2.0 EIPs). By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently without relying on a synchronization point to version the general top-level protocol.
+6. Parallelise RFCs (or Eth2 EIPs). By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently without relying on a synchronization point to version the general top-level protocol.
   1. This has the benefit that clients can explicitly choose which RFCs to deploy without buying into all other RFCs that may be included in that top-level version.
   2. Affording this level of granularity with a top-level protocol would imply creating as many variants (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs inflight, O(n^2).
 7. Allow us to simplify the payload of requests. Request-id’s and method-ids no longer need to be sent. The encoding/request type and version can all be handled by the framework.
@@ -795,4 +826,4 @@ For specific ad-hoc testing scenarios, you can use the [plaintext/2.0.0 secure c
 
 # libp2p implementations matrix
 
-This section will soon contain a matrix showing the maturity/state of the libp2p features required by this spec across the languages in which Eth 2.0 clients are being developed.
+This section will soon contain a matrix showing the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.

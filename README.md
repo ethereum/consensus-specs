@@ -1,15 +1,15 @@
 # Ethereum 2.0 Specifications
 
-[![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://discord.gg/hpFs23p](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/hpFs23p) [![Join the chat at https://gitter.im/ethereum/sharding](https://badges.gitter.im/ethereum/sharding.svg)](https://gitter.im/ethereum/sharding?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 To learn more about sharding and Ethereum 2.0 (Serenity), see the [sharding FAQ](https://github.com/ethereum/wiki/wiki/Sharding-FAQ) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
 
-This repository hosts the current Eth 2.0 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
+This repository hosts the current Eth2 specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
 
 
 ## Specs
 
-Core specifications for Eth 2.0 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
+Core specifications for Eth2 client validation can be found in [specs/core](specs/core). These are divided into phases. Each subsequent phase depends upon the prior. The current phases specified are:
 
 ### Phase 0
 * [The Beacon Chain](specs/core/0_beacon-chain.md)
@@ -20,12 +20,13 @@ Core specifications for Eth 2.0 client validation can be found in [specs/core](s
 ### Phase 1
 * [Custody Game](specs/core/1_custody-game.md)
 * [Shard Data Chains](specs/core/1_shard-data-chains.md)
+* [Misc beacon chain updates](specs/core/1_beacon-chain-misc.md)
 
 ### Phase 2
 
 Phase 2 is still actively in R&D and does not yet have any formal specifications.
 
-See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for current progress, discussions, and definitions regarding this work.
+See the [Eth2 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) for current progress, discussions, and definitions regarding this work.
 
 ### Accompanying documents can be found in [specs](specs) and include:
 
@@ -34,8 +35,14 @@ See the [Eth 2.0 Phase 2 Wiki](https://hackmd.io/UzysWse1Th240HELswKqVA?view) fo
 * [General test format](specs/test_formats/README.md)
 * [Merkle proof formats](specs/light_client/merkle_proofs.md)
 * [Light client syncing protocol](specs/light_client/sync_protocol.md)
-* [Beacon node API for validator](specs/validator/0_beacon-node-validator-api.md)
 
+## Additional specifications for client implementers
+
+Additional specifications and standards outside of requisite client functionality can be found in the following repos:
+
+* [Eth2 APIs](https://github.com/ethereum/eth2.0-apis)
+* [Eth2 Metrics](https://github.com/ethereum/eth2.0-metrics/)
+* [Interop Standards in Eth2 PM](https://github.com/ethereum/eth2.0-pm/tree/master/interop)
 
 ## Design goals
 
@@ -47,7 +54,14 @@ The following are the broad design goals for Ethereum 2.0:
 * to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
 
 
+## Useful external resources
+
+* [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
+* [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+
+
 ## For spec contributors
+
 
 Documentation on the different components used during spec writing can be found here:
 * [YAML Test Generators](test_generators/README.md)

@@ -1,5 +1,5 @@
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.phase1 import spec as spec_phase1
+# from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
@@ -143,7 +143,9 @@ def bls_switch(fn):
     def entry(*args, **kw):
         old_state = bls.bls_active
         bls.bls_active = kw.pop('bls_active', DEFAULT_BLS_ACTIVE)
-        yield from fn(*args, **kw)
+        res = fn(*args, **kw)
+        if res is not None:
+            yield from res
         bls.bls_active = old_state
     return entry
 
@@ -153,7 +155,7 @@ all_phases = ['phase0', 'phase1']
 
 def with_all_phases(fn):
     """
-    A decorator for running a test wil every phase
+    A decorator for running a test with every phase
     """
     return with_phases(all_phases)(fn)
 
@@ -189,7 +191,9 @@ def with_phases(phases):
             if 'phase0' in run_phases:
                 ret = run_with_spec_version(spec_phase0, *args, **kw)
             if 'phase1' in run_phases:
-                ret = run_with_spec_version(spec_phase1, *args, **kw)
+                # temporarily disable phase 1 tests
+                return
+                # ret = run_with_spec_version(spec_phase1, *args, **kw)
             return ret
         return wrapper
     return decorator

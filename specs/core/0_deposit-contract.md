@@ -34,11 +34,11 @@ This document represents the specification for the beacon chain deposit contract
 
 ## Ethereum 1.0 deposit contract
 
-The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2 (i.e. when the EVM 2.0 is deployed and the shards have state).
+The initial deployment phases of Ethereum 2.0 are implemented without consensus changes to Ethereum 1.0. A deposit contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to Ethereum 1.0 for deposits of ETH to the beacon chain. Validator balances will be withdrawable to the shards in Phase 2.
 
 ### `deposit` function
 
-The deposit contract has a public `deposit` function to make deposits. It takes as arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96]` corresponding to a `DepositData` object.
+The deposit contract has a public `deposit` function to make deposits. It takes as arguments `pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96], deposit_data_root: bytes32`. The first three arguments populate a [`DepositData`](./0_beacon-chain.md#depositdata) object, and `deposit_data_root` is the expected `DepositData` root as a protection against malformatted calldata.
 
 #### Deposit amount
 

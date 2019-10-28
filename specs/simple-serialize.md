@@ -1,6 +1,6 @@
 # SimpleSerialize (SSZ)
 
-**Notice**: This document is a work-in-progress describing typing, serialization, and Merkleization of Eth 2.0 objects.
+**Notice**: This document is a work-in-progress describing typing, serialization, and Merkleization of Eth2 objects.
 
 ## Table of contents
 <!-- TOC -->
@@ -26,6 +26,7 @@
     - [Deserialization](#deserialization)
     - [Merkleization](#merkleization)
     - [Self-signed containers](#self-signed-containers)
+    - [Summaries and expansions](#summaries-and-expansions)
     - [Implementations](#implementations)
 
 <!-- /TOC -->
@@ -138,7 +139,7 @@ return bytes(array)
 
 ### `Bitlist[N]`
 
-Note that from the offset coding, the length (in bytes) of the bitlist is known. An additional leading `1` bit is added so that the length in bits will also be known.
+Note that from the offset coding, the length (in bytes) of the bitlist is known. An additional `1` bit is added to the end, at index `e` where `e` is the length of the bitlist (not the limit), so that the length in bits will also be known.
 
 ```python
 array = [0] * ((len(value) // 8) + 1)
@@ -180,13 +181,23 @@ return serialized_type_index + serialized_bytes
 
 ## Deserialization
 
-Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. Efficient algorithms for computing this object can be found in [the implementations](#implementations).
+Because serialization is an injective function (i.e. two distinct objects of the same type will serialize to different values) any bytestring has at most one object it could deserialize to. 
+
+Deserialization can be implemented using a recursive algorithm. The deserialization of basic objects is easy, and from there we can find a simple recursive algorithm for all fixed-size objects. For variable-size objects we have to do one of the following depending on what kind of object it is:
+
+* Vector/list of a variable-size object: The serialized data will start with offsets of all the serialized objects (`BYTES_PER_LENGTH_OFFSET` bytes each).
+  * Using the first offset, we can compute the length of the list (divide by `BYTES_PER_LENGTH_OFFSET`), as it gives us the total number of bytes in the offset data.
+  * The size of each object in the vector/list can be inferred from the difference of two offsets. To get the size of the last object, the total number of bytes has to be known (it is not generally possible to deserialize an SSZ object of unknown length)
+* Containers follow the same principles as vectors, with the difference that there may be fixed-size objects in a container as well. This means the `fixed_parts` data will contain offsets as well as fixed-size objects.
+* In the case of bitlists, the length in bits cannot be uniquely inferred from the number of bytes in the object. Because of this, they have a bit at the end that is always set. This bit has to be used to infer the size of the bitlist in bits.
 
 Note that deserialization requires hardening against invalid inputs. A non-exhaustive list:
 
 - Offsets: out of order, out of range, mismatching minimum element size.
 - Scope: Extra unused bytes, not aligned with element size.
 - More elements than a list limit allows. Part of enforcing consensus.
+
+Efficient algorithms for computing this object can be found in [the implementations](#implementations).
 
 ## Merkleization
 
@@ -227,6 +238,12 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 
 Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
+## Summaries and expansions
+
+Let `A` be an object derived from another object `B` by replacing some of the (possibly nested) values of `B` by their `hash_tree_root`. We say `A` is a "summary" of `B`, and that `B` is an "expansion" of `A`. Notice `hash_tree_root(A) == hash_tree_root(B)`.
+
+We similarly define "summary types" and "expansion types". For example, [`BeaconBlock`](./core/0_beacon-chain.md#beaconblock) is an expansion type of [`BeaconBlockHeader`](./core/0_beacon-chain.md#beaconblockheader). Notice that objects expand to at most one object of a given expansion type. For example, `BeaconBlockHeader` objects uniquely expand to `BeaconBlock` objects.
+
 ## Implementations
 
 | Language | Project | Maintainer | Implementation |
@@ -234,10 +251,11 @@ Let `value` be a self-signed container object. The convention is that the signat
 | Python | Ethereum 2.0 | Ethereum Foundation | [https://github.com/ethereum/py-ssz](https://github.com/ethereum/py-ssz) |
 | Rust | Lighthouse | Sigma Prime | [https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz](https://github.com/sigp/lighthouse/tree/master/eth2/utils/ssz) |
 | Nim | Nimbus | Status | [https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim](https://github.com/status-im/nim-beacon-chain/blob/master/beacon_chain/ssz.nim) |
-| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/util/ssz) |
+| Rust | Shasper | ParityTech | [https://github.com/paritytech/shasper/tree/master/utils/ssz](https://github.com/paritytech/shasper/tree/master/utils/ssz) |
 | TypeScript | Lodestar | ChainSafe Systems | [https://github.com/ChainSafe/ssz-js](https://github.com/ChainSafe/ssz-js) |
 | Java | Cava | ConsenSys | [https://www.github.com/ConsenSys/cava/tree/master/ssz](https://www.github.com/ConsenSys/cava/tree/master/ssz) |
 | Go | Prysm | Prysmatic Labs | [https://github.com/prysmaticlabs/go-ssz](https://github.com/prysmaticlabs/go-ssz) |
 | Swift | Yeeth | Dean Eigenmann | [https://github.com/yeeth/SimpleSerialize.swift](https://github.com/yeeth/SimpleSerialize.swift) |
 | C# | | Jordan Andrews | [https://github.com/codingupastorm/csharp-ssz](https://github.com/codingupastorm/csharp-ssz) |
+| C# | Cortex | Sly Gryphon | [https://www.nuget.org/packages/Cortex.SimpleSerialize](https://www.nuget.org/packages/Cortex.SimpleSerialize) |
 | C++ | | Jiyun Kim | [https://github.com/NAKsir-melody/cpp_ssz](https://github.com/NAKsir-melody/cpp_ssz) |

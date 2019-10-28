@@ -37,16 +37,26 @@
                 - [Attestations](#attestations)
                 - [Deposits](#deposits)
                 - [Voluntary exits](#voluntary-exits)
-        - [Attestations](#attestations-1)
+        - [Attesting](#attesting)
             - [Attestation data](#attestation-data)
+                - [General](#general)
                 - [LMD GHOST vote](#lmd-ghost-vote)
                 - [FFG vote](#ffg-vote)
-                - [Crosslink vote](#crosslink-vote)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bits](#aggregation-bits)
                 - [Custody bits](#custody-bits)
                 - [Aggregate signature](#aggregate-signature)
+            - [Broadcast attestation](#broadcast-attestation)
+        - [Attestation aggregation](#attestation-aggregation)
+            - [Aggregation selection](#aggregation-selection)
+            - [Construct aggregate](#construct-aggregate)
+                - [Data](#data-1)
+                - [Aggregation bits](#aggregation-bits-1)
+                - [Custody bits](#custody-bits-1)
+                - [Aggregate signature](#aggregate-signature-1)
+            - [Broadcast aggregate](#broadcast-aggregate)
+                - [`AggregateAndProof`](#aggregateandproof)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -70,6 +80,7 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
 | `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
+| `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
 
 ## Becoming a validator
 
@@ -97,16 +108,17 @@ In Phase 0, all incoming validator deposits originate from the Ethereum 1.0 proo
 To submit a deposit:
 
 - Pack the validator's [initialization parameters](#initialization) into `deposit_data`, a [`DepositData`](../core/0_beacon-chain.md#depositdata) SSZ object.
-- Let `amount` be the amount in Gwei to be deposited by the validator where `MIN_DEPOSIT_AMOUNT <= amount <= MAX_EFFECTIVE_BALANCE`.
+- Let `amount` be the amount in Gwei to be deposited by the validator where `amount >= MIN_DEPOSIT_AMOUNT`.
 - Set `deposit_data.amount = amount`.
 - Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `compute_domain` will default to zeroes there).
-- Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96])` along with a deposit of `amount` Gwei.
+- Let `deposit_data_root` be `hash_tree_root(deposit_data)`.
+- Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96], deposit_data_root: bytes32)` along with a deposit of `amount` Gwei.
 
 *Note*: Deposits made for the same `pubkey` are treated as for the same validator. A singular `Validator` will be added to `state.validators` with each additional deposit amount added to the validator's balance. A validator can only be activated when total deposits for the validator pubkey meet or exceed `MAX_EFFECTIVE_BALANCE`.
 
 ### Process deposit
 
-Deposits cannot be processed into the beacon chain until the Eth 1.0 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth 1.0 blocks (~4 hours) plus `ETH1_DATA_VOTING_PERIOD` epochs (~1.7 hours). Once the requisite Eth 1.0 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
+Deposits cannot be processed into the beacon chain until the Eth1 block in which they were deposited or any of its descendants is added to the beacon chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1 blocks (~4 hours) plus `ETH1_DATA_VOTING_PERIOD` epochs (~1.7 hours). Once the requisite Eth1 data is added, the deposit will normally be added to a beacon chain block and processed into the `state.validators` within an epoch or two. The validator is then in a queue to be activated.
 
 ### Validator index
 
@@ -114,7 +126,7 @@ Once a validator has been processed and added to the beacon state's `validators`
 
 ### Activation
 
-In normal operation, the validator is quickly activated, at which point the validator is added to the shuffling and begins validation after an additional `ACTIVATION_EXIT_DELAY` epochs (25.6 minutes).
+In normal operation, the validator is quickly activated, at which point the validator is added to the shuffling and begins validation after an additional `MAX_SEED_LOOKAHEAD` epochs (25.6 minutes).
 
 The function [`is_active_validator`](../core/0_beacon-chain.md#is_active_validator) can be used to check if a validator is active during a given epoch. Usage is as follows:
 
@@ -135,32 +147,29 @@ A validator can get committee assignments for a given epoch using the following 
 ```python
 def get_committee_assignment(state: BeaconState,
                              epoch: Epoch,
-                             validator_index: ValidatorIndex) -> Optional[Tuple[Sequence[ValidatorIndex], Shard, Slot]]:
+                             validator_index: ValidatorIndex
+                             ) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
         * ``assignment[0]`` is the list of validators in the committee
-        * ``assignment[1]`` is the shard to which the committee is assigned
+        * ``assignment[1]`` is the index to which the committee is assigned
         * ``assignment[2]`` is the slot at which the committee is assigned
     Return None if no assignment.
     """
     next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
-    committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    start_slot = compute_start_slot_of_epoch(epoch)
+    start_slot = compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
-        offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
-        slot_start_shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
-        for i in range(committees_per_slot):
-            shard = Shard((slot_start_shard + i) % SHARD_COUNT)
-            committee = get_crosslink_committee(state, epoch, shard)
+        for index in range(get_committee_count_at_slot(state, Slot(slot))):
+            committee = get_beacon_committee(state, Slot(slot), CommitteeIndex(index))
             if validator_index in committee:
-                return committee, shard, Slot(slot)
+                return committee, CommitteeIndex(index), Slot(slot)
     return None
 ```
 
-A validator can use the following function to see if they are supposed to propose during their assigned committee slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
+A validator can use the following function to see if they are supposed to propose during a slot. This function can only be run with a `state` of the slot in question. Proposer selection is only stable within the context of the current epoch.
 
 ```python
 def is_proposer(state: BeaconState,
@@ -170,11 +179,13 @@ def is_proposer(state: BeaconState,
 
 *Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
 
+*Note*: `BeaconBlock` proposal is distinct from beacon committee assignment, and in a given epoch each responsibility might occur at different a different slot.
+
 ### Lookahead
 
 The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
 
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and also which shard they should begin syncing (in Phase 1+).
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest.
 
 Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 
@@ -212,15 +223,15 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is obtained 
 
 ```python
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_of_slot(block.slot))
-    return bls_sign(privkey, hash_tree_root(compute_epoch_of_slot(block.slot)), domain)
+    domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
+    return bls_sign(privkey, hash_tree_root(compute_epoch_at_slot(block.slot)), domain)
 ```
 
 ##### Eth1 Data
 
-The `block.eth1_data` field is for block proposers to vote on recent Eth 1.0 data. This recent data contains an Eth 1.0 block hash as well as the associated deposit root (as calculated by the `get_hash_tree_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth 1.0 block. If over half of the block proposers in the current Eth 1.0 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
+The `block.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth 1.0 data at distance `distance` relative to the Eth 1.0 head at the start of the current Eth 1.0 voting period. Let `previous_eth1_distance` be the distance relative to the Eth 1.0 block corresponding to `state.eth1_data.block_hash` at the start of the current Eth 1.0 voting period. An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
+Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `state.eth1_data.block_hash` at the start of the current Eth1 voting period. An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
 
 ```python
 def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
@@ -246,7 +257,7 @@ Set `header.signature = block_signature` where `block_signature` is obtained fro
 
 ```python
 def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_of_slot(header.slot))
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
     return bls_sign(privkey, signing_root(header), domain)
 ```
 
@@ -266,7 +277,7 @@ Up to `MAX_ATTESTATIONS`, aggregate attestations can be included in the `block`.
 
 ##### Deposits
 
-If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth 1.0 deposit contract](../core/0_deposit-contract) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
+If there are any unprocessed deposits for the existing `state.eth1_data` (i.e. `state.eth1_data.deposit_count > state.eth1_deposit_index`), then pending deposits _must_ be added to the block. The expected number of deposits is exactly `min(MAX_DEPOSITS, eth1_data.deposit_count - state.eth1_deposit_index)`.  These [`deposits`](../core/0_beacon-chain.md#deposit) are constructed from the `Deposit` logs from the [Eth1 deposit contract](../core/0_deposit-contract.md) and must be processed in sequential order. The deposits included in the `block` must satisfy the verification conditions found in [deposits processing](../core/0_beacon-chain.md#deposits).
 
 The `proof` for each deposit must be constructed against the deposit root contained in `state.eth1_data` rather than the deposit root at the time the deposit was initially logged from the 1.0 chain. This entails storing a full deposit merkle tree locally and computing updated proofs against the `eth1_data.deposit_root` as needed. See [`minimal_merkle.py`](https://github.com/ethereum/research/blob/master/spec_pythonizer/utils/merkle_minimal.py) for a sample implementation.
 
@@ -274,11 +285,11 @@ The `proof` for each deposit must be constructed against the deposit root contai
 
 Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](../core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](../core/0_beacon-chain.md#voluntary-exits).
 
-### Attestations
+### Attesting
 
-A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `shard`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
+A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
-A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
+A validator should create and broadcast the `attestation` to the associated attestation subnet one-third of the way through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT / 3` seconds after the start of `slot`.
 
 #### Attestation data
 
@@ -286,6 +297,11 @@ First, the validator should construct `attestation_data`, an [`AttestationData`]
 
 - Let `head_block` be the result of running the fork choice during the assigned slot.
 - Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
+
+##### General
+
+* Set `attestation_data.slot = slot` where `slot` is the assigned slot.
+* Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
 
 ##### LMD GHOST vote
 
@@ -298,19 +314,8 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
 
-- Let `start_slot = compute_start_slot_of_epoch(get_current_epoch(head_state))`.
+- Let `start_slot = compute_start_slot_at_epoch(get_current_epoch(head_state))`.
 - Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
-
-##### Crosslink vote
-
-Construct `attestation_data.crosslink` via the following.
-
-- Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
-- Let `parent_crosslink = head_state.current_crosslinks[shard]`.
-- Set `attestation_data.crosslink.start_epoch = parent_crosslink.end_epoch`.
-- Set `attestation_data.crosslink.end_epoch = min(attestation_data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
-- Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
-- Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
 
 #### Construct attestation
 
@@ -322,7 +327,7 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 ##### Aggregation bits
 
-- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` where the bits at the index in the aggregated validator's `committee` is set to `0b1`.
+- Let `attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where the bit of the index of the validator in the `committee` is set to `0b1`.
 
 *Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
@@ -343,9 +348,84 @@ def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestat
         custody_bit=0b0,
     )
 
-    domain = get_domain(state, DOMAIN_ATTESTATION, attestation.data.target.epoch)
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
 ```
+
+#### Broadcast attestation
+
+Finally, the validator broadcasts `attestation` to the associated attestation subnet -- the `index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` pubsub topic.
+
+### Attestation aggregation
+
+Some validators are selected to locally aggregate attestations with a similar `attestation_data` to their constructed `attestation` for the assigned `slot`.
+
+#### Aggregation selection
+
+A validator is selected to aggregate based upon the return value of `is_aggregator()`.
+
+```python
+def slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
+    return bls_sign(privkey, hash_tree_root(slot), domain)
+```
+
+```python
+def is_aggregator(state: BeaconState, slot: Slot, index: CommitteeIndex, slot_signature: BLSSignature) -> bool:
+    committee = get_beacon_committee(state, slot, index)
+    modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE)
+    return bytes_to_int(hash(slot_signature)[0:8]) % modulo == 0
+```
+
+#### Construct aggregate
+
+If the validator is selected to aggregate (`is_aggregator()`), they construct an aggregate attestation via the following.
+
+Collect `attestations` seen via gossip during the `slot` that have an equivalent `attestation_data` to that constructed by the validator, and create an `aggregate_attestation: Attestation` with the following fields.
+
+##### Data
+
+Set `aggregate_attestation.data = attestation_data` where `attestation_data` is the `AttestationData` object that is the same for each individual attestation being aggregated.
+
+##### Aggregation bits
+
+Let `aggregate_attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
+
+##### Custody bits
+
+- Let `aggregate_attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
+
+*Note*: This is a stub for Phase 0.
+
+##### Aggregate signature
+
+Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_signature` is obtained from:
+
+```python
+def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature:
+    signatures = [attestation.signature for attestation in attestations]
+    return bls_aggregate_signatures(signatures)
+```
+
+#### Broadcast aggregate
+
+If the validator is selected to aggregate (`is_aggregator`), then they broadcast their best aggregate to the global aggregate channel (`beacon_aggregate_and_proof`) two-thirds of the way through the `slot`-that is, `SECONDS_PER_SLOT * 2 / 3` seconds after the start of `slot`.
+
+Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to the gossip channel that the validator has been selected as an aggregator.
+
+##### `AggregateAndProof`
+
+```python
+class AggregateAndProof(Container):
+    index: ValidatorIndex
+    selection_proof: BLSSignature
+    aggregate: Attestation
+```
+
+Where
+* `index` is the validator's `validator_index`.
+* `selection_proof` is the signature of the slot (`slot_signature()`).
+* `aggregate` is the `aggregate_attestation` constructed in the previous section.
 
 ## How to avoid slashing
 
@@ -361,7 +441,7 @@ To avoid "proposer slashings", a validator must not sign two conflicting [`Beaco
 
 Specifically, when signing a `BeaconBlock`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_of_slot(block.slot)`.
+1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_at_slot(block.slot)`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast block and can effectively avoid slashing.

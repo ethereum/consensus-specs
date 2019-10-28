@@ -22,7 +22,7 @@ def run_process_rewards_and_penalties(spec, state):
 def test_genesis_epoch_no_attestations_no_penalties(spec, state):
     pre_state = deepcopy(state)
 
-    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH
+    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH
 
     yield from run_process_rewards_and_penalties(spec, state)
 
@@ -46,7 +46,7 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
         next_slot(spec, state)
 
     # ensure has not cross the epoch boundary
-    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH
+    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH
 
     pre_state = deepcopy(state)
 
@@ -69,7 +69,7 @@ def prepare_state_with_full_attestations(spec, state):
             add_attestations_to_state(spec, state, [include_att], state.slot)
         next_slot(spec, state)
 
-    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
+    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
     assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
 
     return attestations
@@ -109,7 +109,7 @@ def test_full_attestations_misc_balances(spec, state):
     for index in range(len(pre_state.validators)):
         if index in attesting_indices:
             assert state.balances[index] > pre_state.balances[index]
-        elif spec.is_active_validator(pre_state.validators[index], spec.compute_epoch_of_slot(state.slot)):
+        elif spec.is_active_validator(pre_state.validators[index], spec.compute_epoch_at_slot(state.slot)):
             assert state.balances[index] < pre_state.balances[index]
         else:
             assert state.balances[index] == pre_state.balances[index]
@@ -121,7 +121,7 @@ def test_no_attestations_all_penalties(spec, state):
     next_epoch(spec, state)
     pre_state = deepcopy(state)
 
-    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
+    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
 
     yield from run_process_rewards_and_penalties(spec, state)
 
@@ -189,7 +189,7 @@ def test_attestations_some_slashed(spec, state):
     for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
-    assert spec.compute_epoch_of_slot(state.slot) == spec.GENESIS_EPOCH + 1
+    assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
     assert len(state.previous_epoch_attestations) == spec.SLOTS_PER_EPOCH
 
     pre_state = deepcopy(state)
