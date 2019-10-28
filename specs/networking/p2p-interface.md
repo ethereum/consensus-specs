@@ -154,7 +154,7 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 | beacon_block                           | BeaconBlock       |
 | beacon_aggregate_and_proof             | AggregateAndProof |
 | beacon_attestation\*                   | Attestation       |
-| committee_index{N}\_beacon_attestation | Attestation       |
+| committee_index{subnet_id}\_beacon_attestation | Attestation       |
 | voluntary_exit                         | VoluntaryExit     |
 | proposer_slashing                      | ProposerSlashing  |
 | attester_slashing                      | AttesterSlashing  |
@@ -189,7 +189,7 @@ Additional global topics are used to propagate lower frequency validator message
 
 Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
 
-- `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` - These topics are used to propagate unaggregated attestations to subsections of the network (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the network.
+- `committee_index{subnet_id}_beacon_attestation` - These topics are used to propagate unaggregated attestations to the subnet `subnet_id` (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the subnet.
     - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
     - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
     - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
@@ -202,7 +202,7 @@ Unaggregated and aggregated attestations from all shards are sent as `Attestatio
 
 #### Mainnet
 
-Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The `CommitteeIndex`, `index`, is assigned to the topic: `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. For the `committee_index{subnet_id}_beacon_attestation` topics, `subnet_id` is set to `index % ATTESTATION_SUBNET_COUNT`, where `index` is the `CommitteeIndex` of the given committee.
 
 Unaggregated attestations are sent to the subnet topic, `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
 
