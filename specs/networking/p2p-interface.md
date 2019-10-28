@@ -11,7 +11,7 @@ It consists of four main sections:
 
 ## Table of contents
 
-<!-- cmd: doctoc --maxlevel=2 p2p-interface.md -->
+<!-- cmd: doctoc maxlevel=2 p2p-interface.md -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -141,59 +141,13 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 - `gossip_history` (number of heartbeat intervals to retain message IDs): 5
 - `heartbeat_interval` (frequency of heartbeat, seconds): 1
 
-### Topics
+### Topics and messages
 
-Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages).
+Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
 
-Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded. (Further details can be found in [Messages](#Messages)).
-
-There are two main topics used to propagate aggregate attestations and beacon blocks to all nodes on the network. Their `TopicName`s are:
-
-- `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
-- `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
-    - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
-    - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
-    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
-    - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
-    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
-    - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.index`.
-    - The signature of `aggregate_and_proof.aggregate` is valid.
-
-Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
-
-- `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` - These topics are used to propagate unaggregated attestations to subsections of the network (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the network.
-    - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
-    - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
-    - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
-    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
-    - The signature of `attestation` is valid.
-
-Additional topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
-
-- `voluntary_exit` - This topic is used solely for propagating voluntary validator exits to proposers on the network. Voluntary exits are sent in their entirety. Clients who receive a voluntary exit on this topic MUST validate the conditions within `process_voluntary_exit` before forwarding it across the network.
-- `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. Clients who receive a proposer slashing on this topic MUST validate the conditions within `process_proposer_slashing` before forwarding it across the network.
-- `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
-
-#### Interop
-
-Unaggregated and aggregated attestations from all shards are sent as `Attestation`s to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
-
-#### Mainnet
-
-Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The `CommitteeIndex`, `index`, is assigned to the topic: `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
-
-Unaggregated attestations are sent to the subnet topic, `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
-
-Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
-
-### Messages
-
-Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`.
-
-Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
+Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
-
 
 | Topic                                  | Message Type      |
 |----------------------------------------|-------------------|
@@ -210,6 +164,49 @@ Clients MUST reject (fail validation) messages containing an incorrect type, or 
 When processing incoming gossip, clients MAY descore or disconnect peers who fail to observe these constraints.
 
 \* The `beacon_attestation` topic is only for interop and will be removed prior to mainnet.
+
+#### Global topics
+
+There are two primary global topics used to propagate beacon blocks and aggregate attestations to all nodes on the network. Their `TopicName`s are:
+
+- `beacon_block` - This topic is used solely for propagating new beacon blocks to all nodes on the networks. Blocks are sent in their entirety. Clients MUST validate the block proposer signature before forwarding it across the network.
+- `beacon_aggregate_and_proof` - This topic is used to propagate aggregated attestations (as `AggregateAndProof`s) to subscribing nodes (typically validators) to be included in future blocks. The following validations MUST pass before forwarding the `aggregate_and_proof` on the network.
+    - The aggregate attestation defined by `hash_tree_root(aggregate_and_proof.aggregate)` has _not_ already been seen (via aggregate gossip, within a block, or through the creation of an equivalent aggregate locally).
+    - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
+    - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
+    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+    - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.index`.
+    - The signature of `aggregate_and_proof.aggregate` is valid.
+
+Additional global topics are used to propagate lower frequency validator messages. Their `TopicName`s are:
+
+- `voluntary_exit` - This topic is used solely for propagating voluntary validator exits to proposers on the network. Voluntary exits are sent in their entirety. Clients who receive a voluntary exit on this topic MUST validate the conditions within `process_voluntary_exit` before forwarding it across the network.
+- `proposer_slashing` - This topic is used solely for propagating proposer slashings to proposers on the network. Proposer slashings are sent in their entirety. Clients who receive a proposer slashing on this topic MUST validate the conditions within `process_proposer_slashing` before forwarding it across the network.
+- `attester_slashing` - This topic is used solely for propagating attester slashings to proposers on the network. Attester slashings are sent in their entirety. Clients who receive an attester slashing on this topic MUST validate the conditions within `process_attester_slashing` before forwarding it across the network.
+
+#### Attestation subnets
+
+Attestation subnets are used to propagate unaggregated attestations to subsections of the network. Their `TopicName`s are:
+
+- `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` - These topics are used to propagate unaggregated attestations to subsections of the network (typically beacon and persistent committees) to be aggregated before being gossiped to `beacon_aggregate_and_proof`. The following validations MUST pass before forwarding the `attestation` on the network.
+    - The attestation's committee index (`attestation.data.index`) is for the correct subnet.
+    - The attestation is unaggregated -- that is, it has exactly one participating validator (`len([bit for bit in attestation.aggregation_bits if bit == 0b1]) == 1`).
+    - The block being voted for (`attestation.data.beacon_block_root`) passes validation.
+    - `attestation.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots.
+    - The signature of `attestation` is valid.
+
+#### Interop
+
+Unaggregated and aggregated attestations from all shards are sent as `Attestation`s to the `beacon_attestation` topic. Clients are not required to publish aggregate attestations but must be able to process them. All validating clients SHOULD try to perform local attestation aggregation to prepare for block proposing.
+
+#### Mainnet
+
+Attestation broadcasting is grouped into subnets defined by a topic. The number of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The `CommitteeIndex`, `index`, is assigned to the topic: `committee_index{index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
+
+Unaggregated attestations are sent to the subnet topic, `committee_index{attestation.data.index % ATTESTATION_SUBNET_COUNT}_beacon_attestation` as `Attestation`s.
+
+Aggregated attestations are sent to the `beacon_aggregate_and_proof` topic as `AggregateAndProof`s.
 
 ### Encodings
 
