@@ -1,6 +1,6 @@
-# Eth 2.0 Executable Python Spec (PySpec)
+# Eth2 Executable Python Spec (PySpec)
 
-The executable Python spec is built from the Eth 2.0 specification, 
+The executable Python spec is built from the Eth2 specification, 
  complemented with the necessary helper functions for hashing, BLS, and more.
 
 With this executable spec,

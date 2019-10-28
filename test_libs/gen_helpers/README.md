@@ -1,4 +1,4 @@
-# ETH 2.0 test generator helpers
+# Eth2 test generator helpers
 
 ## `gen_base`
 

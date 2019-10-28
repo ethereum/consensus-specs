@@ -1,6 +1,6 @@
-# Eth 2.0 Test Generators
+# Eth2 test generators
 
-This directory contains all the generators for tests, consumed by Eth 2.0 client implementations.
+This directory contains all the generators for tests, consumed by Eth2 client implementations.
 
 Any issues with the generators and/or generated tests should be filed in the repository that hosts the generator outputs,
  here: [ethereum/eth2.0-spec-tests](https://github.com/ethereum/eth2.0-spec-tests).

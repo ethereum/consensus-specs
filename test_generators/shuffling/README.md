@@ -1,6 +1,6 @@
 # Shuffling Tests
 
-Tests for the swap-or-not shuffling in ETH 2.0.
+Tests for the swap-or-not shuffling in Eth2.
 
 Tips for initial shuffling write:
 - run with `round_count = 1` first, do the same with pyspec.

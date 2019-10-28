@@ -5,9 +5,9 @@ This document contains the networking specification for Ethereum 2.0 clients.
 It consists of four main sections:
 
 1. A specification of the network fundamentals detailing the two network configurations: interoperability test network and mainnet launch.
-2. A specification of the three network interaction *domains* of Eth 2.0: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
+2. A specification of the three network interaction *domains* of Eth2: (a) the gossip domain, (b) the discovery domain, and (c) the Req/Resp domain.
 3. The rationale and further explanation for the design choices made in the previous two sections.
-4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth 2.0 clients are being developed.
+4. An analysis of the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.
 
 ## Table of contents
 
@@ -21,7 +21,7 @@ It consists of four main sections:
   - [Encryption and identification](#encryption-and-identification)
   - [Protocol negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
-- [Eth 2.0 network interaction domains](#eth-20-network-interaction-domains)
+- [Eth2 network interaction domains](#eth2-network-interaction-domains)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -83,7 +83,7 @@ The following SecIO parameters MUST be supported by all stacks:
 
 [Noise Framework](http://www.noiseprotocol.org/) handshakes will be used for mainnet. libp2p Noise support [is in the process of being standardized](https://github.com/libp2p/specs/issues/195) in the libp2p project.
 
-Noise support will presumably include IX, IK, and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue (Eth 2.0 implementers are welcome to comment and contribute to the discussion).
+Noise support will presumably include IX, IK, and XX handshake patterns, and may rely on Curve25519 keys, ChaCha20 and Poly1305 ciphers, and SHA-256 as a hash function. These aspects are being actively debated in the referenced issue (Eth2 implementers are welcome to comment and contribute to the discussion).
 
 ## Protocol Negotiation
 
@@ -105,7 +105,7 @@ Two multiplexers are commonplace in libp2p implementations: [mplex](https://gith
 
 Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support [yamux](https://github.com/hashicorp/yamux/blob/master/spec.md). If both are supported by the client, yamux must take precedence during negotiation. See the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
-# Eth 2.0 network interaction domains
+# Eth2 network interaction domains
 
 ## Configuration
 
@@ -475,9 +475,9 @@ Specifications of these parameters can be found in the [ENR Specification](http:
 
 #### Interop
 
-In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry Eth 2.0 capability information, as it would be superfluous.
+In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry Eth2 capability information, as it would be superfluous.
 
-Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an Eth 2.0 peer, in order to eschew connecting to Eth 1.0 peers.
+Nonetheless, ENRs MUST carry a generic `eth2` key with nil value, denoting that the peer is indeed an Eth2 peer, in order to eschew connecting to Eth 1.0 peers.
 
 #### Mainnet
 
@@ -514,7 +514,7 @@ Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
 
 The libp2p QUIC transport inherently relies on TLS 1.3 per requirement in section 7 of the [QUIC protocol specification](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7) and the accompanying [QUIC-TLS document](https://tools.ietf.org/html/draft-ietf-quic-tls-22).
 
-The usage of one handshake procedure or the other shall be transparent to the Eth 2.0 application layer, once the libp2p Host/Node object has been configured appropriately.
+The usage of one handshake procedure or the other shall be transparent to the Eth2 application layer, once the libp2p Host/Node object has been configured appropriately.
 
 ### What are the advantages of using TCP/QUIC/Websockets?
 
@@ -524,7 +524,7 @@ QUIC is a new protocol that’s in the final stages of specification by the IETF
 
 QUIC is being adopted as the underlying protocol for HTTP/3. This has the potential to award us censorship resistance via deep packet inspection for free. Provided that we use the same port numbers and encryption mechanisms as HTTP/3, our traffic may be indistinguishable from standard web traffic, and we may only become subject to standard IP-based firewall filtering—something we can counteract via other mechanisms.
 
-WebSockets and/or WebRTC transports are necessary for interaction with browsers, and will become increasingly important as we incorporate browser-based light clients to the Eth 2.0 network.
+WebSockets and/or WebRTC transports are necessary for interaction with browsers, and will become increasingly important as we incorporate browser-based light clients to the Eth2 network.
 
 ### Why do we not just support a single transport?
 
@@ -652,7 +652,7 @@ Topic names have a hierarchical structure. In the future, gossipsub may support 
 
 No security or privacy guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway, and calculating a digest's preimage would be trivial.
 
-Furthermore, the Eth 2.0 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
+Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
 ### Why are there `SHARD_SUBNET_COUNT` subnets, and why is this not defined?
 
@@ -683,7 +683,7 @@ Requests are segregated by protocol ID to:
 3. Enable clients to select the individual requests/versions they support. It would no longer be a strict requirement to support all requests, and clients, in principle, could support a subset of requests and variety of versions.
 4. Enable flexibility and agility for clients adopting spec changes that impact the request, by signalling to peers exactly which subset of new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request granularity. Without this, clients would be forced to support entire versions of the coarser request protocol.
-6. Parallelise RFCs (or Eth 2.0 EIPs). By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently without relying on a synchronization point to version the general top-level protocol.
+6. Parallelise RFCs (or Eth2 EIPs). By decoupling requests from one another, each RFC that affects the request protocol can be deployed/tested/debated independently without relying on a synchronization point to version the general top-level protocol.
   1. This has the benefit that clients can explicitly choose which RFCs to deploy without buying into all other RFCs that may be included in that top-level version.
   2. Affording this level of granularity with a top-level protocol would imply creating as many variants (e.g. /protocol/43-{a,b,c,d,...}) as the cartesian product of RFCs inflight, O(n^2).
 7. Allow us to simplify the payload of requests. Request-id’s and method-ids no longer need to be sent. The encoding/request type and version can all be handled by the framework.
@@ -795,4 +795,4 @@ For specific ad-hoc testing scenarios, you can use the [plaintext/2.0.0 secure c
 
 # libp2p implementations matrix
 
-This section will soon contain a matrix showing the maturity/state of the libp2p features required by this spec across the languages in which Eth 2.0 clients are being developed.
+This section will soon contain a matrix showing the maturity/state of the libp2p features required by this spec across the languages in which Eth2 clients are being developed.

@@ -1,4 +1,4 @@
-# ETH 2.0 config helpers
+# Eth2 config helpers
 
 `preset_loader`: A util to load constants-presets with.
 See [Constants-presets documentation](../../configs/constants_presets/README.md).
