@@ -84,7 +84,7 @@ def get_persistent_committee_pubkeys_and_balances(memory: LightClientMemory,
     """
     Return pubkeys and balances for the persistent committee at ``epoch``.
     """
-    current_period = compute_epoch_of_slot(memory.header.slot) // EPOCHS_PER_SHARD_PERIOD
+    current_period = compute_epoch_at_slot(memory.header.slot) // EPOCHS_PER_SHARD_PERIOD
     next_period = epoch // EPOCHS_PER_SHARD_PERIOD
     assert next_period in (current_period, current_period + 1)
     if next_period == current_period:
@@ -114,7 +114,7 @@ The state of a light client is stored in a `memory` object of type `LightClientM
 ```python
 def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
     # Verify the update does not skip a period
-    current_period = compute_epoch_of_slot(memory.header.slot) // EPOCHS_PER_SHARD_PERIOD
+    current_period = compute_epoch_at_slot(memory.header.slot) // EPOCHS_PER_SHARD_PERIOD
     next_epoch = compute_epoch_of_shard_slot(update.header.slot)
     next_period = next_epoch // EPOCHS_PER_SHARD_PERIOD
     assert next_period in (current_period, current_period + 1)  

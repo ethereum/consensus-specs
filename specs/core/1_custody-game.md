@@ -81,6 +81,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - |
 | `BLS12_381_Q` | `4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787` |
 | `MINOR_REWARD_QUOTIENT` | `2**8` (= 256) |
+| `MAX_EPOCHS_PER_CROSSLINK` | `2**6` (= 64) | epochs | ~7 hours |
 
 ### Custody game parameters
 
@@ -335,7 +336,7 @@ def legendre_bit(a: int, q: int) -> int:
         return 0
 ```
 
-### ```custody_subchunkify```
+### `custody_subchunkify`
 
 Given one proof of custody chunk, returns the proof of custody subchunks of the correct sizes.
 
@@ -546,7 +547,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
     # Verify the attestation
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, challenge.attestation))
     # Verify it is not too late to challenge
-    assert (compute_epoch_of_slot(challenge.attestation.data.slot)
+    assert (compute_epoch_at_slot(challenge.attestation.data.slot)
             >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY)
     responder = state.validators[challenge.responder_index]
     assert responder.exit_epoch >= get_current_epoch(state) - MAX_CHUNK_CHALLENGE_DELAY
@@ -623,7 +624,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
     assert chunk_count == len(challenge.chunk_bits)
     # Verify custody bit is incorrect
-    committee = get_crosslink_committee(state, epoch, shard)
+    committee = get_beacon_committee(state, epoch, shard)
     custody_bit = attestation.custody_bits[committee.index(challenge.responder_index)]
     assert custody_bit != get_chunk_bits_root(challenge.chunk_bits)
     # Add new bit challenge record

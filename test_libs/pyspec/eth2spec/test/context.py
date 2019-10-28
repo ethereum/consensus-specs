@@ -1,5 +1,5 @@
 from eth2spec.phase0 import spec as spec_phase0
-from eth2spec.phase1 import spec as spec_phase1
+# from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
@@ -137,7 +137,9 @@ def with_phases(phases):
             if 'phase0' in run_phases:
                 ret = run_with_spec_version(spec_phase0, *args, **kw)
             if 'phase1' in run_phases:
-                ret = run_with_spec_version(spec_phase1, *args, **kw)
+                # temporarily disable phase 1 tests
+                return
+                # ret = run_with_spec_version(spec_phase1, *args, **kw)
             return ret
         return wrapper
     return decorator

@@ -18,10 +18,11 @@
         - [Rewards and penalties](#rewards-and-penalties)
         - [Signature domain types](#signature-domain-types)
     - [Containers](#containers)
+        - [`Crosslink`](#crosslink)
         - [`ShardBlock`](#shardblock)
         - [`ShardBlockHeader`](#shardblockheader)
         - [`ShardState`](#shardstate)
-        - [`ShardAttestationData`](#ShardAttestationData)
+        - [`ShardAttestationData`](#shardattestationdata)
     - [Helper functions](#helper-functions)
         - [Misc](#misc-1)
             - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
@@ -53,6 +54,7 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
+| `Shard` | `uint64` | a shard number |
 | `ShardSlot` | `uint64` | a shard slot number |
 
 ## Configuration
@@ -61,6 +63,7 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | Value |
 | - | - |
+| `SHARD_COUNT` | `2**10` (= 1,024) |
 | `MIN_BLOCK_BODY_PRICE` | `2**0` (= 1) |
 | `MAX_PERIOD_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `SHARD_HEADER_SIZE` | `2**10` (= 1024) |
@@ -101,6 +104,14 @@ This document describes the shard transition function (data layer only) and the 
 
 ## Containers
 
+### `Crosslink`
+
+```python
+# Crosslink is a placeholder to appease the build script until phase 1 is reworked
+class Crosslink(Container):
+    shard: Shard
+```
+ 
 ### `ShardBlock`
 
 ```python

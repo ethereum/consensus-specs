@@ -5,12 +5,12 @@
 
 # Misc
 # ---------------------------------------------------------------
-# 2**10 (= 1,024)
-SHARD_COUNT: 1024
+# 2**6 (= 64)
+MAX_COMMITTEES_PER_SLOT: 64
 # 2**7 (= 128)
 TARGET_COMMITTEE_SIZE: 128
-# 2**12 (= 4,096)
-MAX_VALIDATORS_PER_COMMITTEE: 4096
+# 2**11 (= 2,048)
+MAX_VALIDATORS_PER_COMMITTEE: 2048
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # 2**16 (= 65,536)
@@ -51,12 +51,12 @@ BLS_WITHDRAWAL_PREFIX: 0x00
 
 # Time parameters
 # ---------------------------------------------------------------
-# 6 seconds 6 seconds
-SECONDS_PER_SLOT: 6
+# 12 seconds
+SECONDS_PER_SLOT: 12
 # 2**0 (= 1) slots 6 seconds
 MIN_ATTESTATION_INCLUSION_DELAY: 1
-# 2**6 (= 64) slots 6.4 minutes
-SLOTS_PER_EPOCH: 64
+# 2**5 (= 32) slots 6.4 minutes
+SLOTS_PER_EPOCH: 32
 # 2**0 (= 1) epochs 6.4 minutes
 MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs 25.6 minutes

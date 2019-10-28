@@ -3,11 +3,10 @@ from typing import List
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
-def build_attestation_data(spec, state, slot, shard):
+def build_attestation_data(spec, state, slot, index):
     assert state.slot >= slot
 
     if slot == state.slot:
@@ -15,7 +14,7 @@ def build_attestation_data(spec, state, slot, shard):
     else:
         block_root = spec.get_block_root_at_slot(state, slot)
 
-    current_epoch_start_slot = spec.compute_start_slot_of_epoch(spec.get_current_epoch(state))
+    current_epoch_start_slot = spec.compute_start_slot_at_epoch(spec.get_current_epoch(state))
     if slot < current_epoch_start_slot:
         epoch_boundary_root = spec.get_block_root(state, spec.get_previous_epoch(state))
     elif slot == current_epoch_start_slot:
@@ -30,43 +29,30 @@ def build_attestation_data(spec, state, slot, shard):
         source_epoch = state.current_justified_checkpoint.epoch
         source_root = state.current_justified_checkpoint.root
 
-    if spec.compute_epoch_of_slot(slot) == spec.get_current_epoch(state):
-        parent_crosslink = state.current_crosslinks[shard]
-    else:
-        parent_crosslink = state.previous_crosslinks[shard]
-
     return spec.AttestationData(
+        slot=slot,
+        index=index,
         beacon_block_root=block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
-        target=spec.Checkpoint(epoch=spec.compute_epoch_of_slot(slot), root=epoch_boundary_root),
-        crosslink=spec.Crosslink(
-            shard=shard,
-            start_epoch=parent_crosslink.end_epoch,
-            end_epoch=min(spec.compute_epoch_of_slot(slot), parent_crosslink.end_epoch + spec.MAX_EPOCHS_PER_CROSSLINK),
-            data_root=spec.Hash(),
-            parent_root=hash_tree_root(parent_crosslink),
-        ),
+        target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
     )
 
 
-def get_valid_attestation(spec, state, slot=None, signed=False):
+def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
     if slot is None:
         slot = state.slot
+    if index is None:
+        index = 0
 
-    epoch = spec.compute_epoch_of_slot(slot)
-    epoch_start_shard = spec.get_start_shard(state, epoch)
-    committees_per_slot = spec.get_committee_count(state, epoch) // spec.SLOTS_PER_EPOCH
-    shard = (epoch_start_shard + committees_per_slot * (slot % spec.SLOTS_PER_EPOCH)) % spec.SHARD_COUNT
+    attestation_data = build_attestation_data(spec, state, slot, index)
 
-    attestation_data = build_attestation_data(spec, state, slot, shard)
-
-    crosslink_committee = spec.get_crosslink_committee(
+    beacon_committee = spec.get_beacon_committee(
         state,
-        attestation_data.target.epoch,
-        attestation_data.crosslink.shard,
+        attestation_data.slot,
+        attestation_data.index,
     )
 
-    committee_size = len(crosslink_committee)
+    committee_size = len(beacon_committee)
     aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     custody_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     attestation = spec.Attestation(
@@ -129,12 +115,12 @@ def get_attestation_signature(spec, state, attestation_data, privkey, custody_bi
 
 
 def fill_aggregate_attestation(spec, state, attestation):
-    crosslink_committee = spec.get_crosslink_committee(
+    beacon_committee = spec.get_beacon_committee(
         state,
-        attestation.data.target.epoch,
-        attestation.data.crosslink.shard,
+        attestation.data.slot,
+        attestation.data.index,
     )
-    for i in range(len(crosslink_committee)):
+    for i in range(len(beacon_committee)):
         attestation.aggregation_bits[i] = True
 
 

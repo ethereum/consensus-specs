@@ -41,7 +41,6 @@
             - [Attestation data](#attestation-data)
                 - [LMD GHOST vote](#lmd-ghost-vote)
                 - [FFG vote](#ffg-vote)
-                - [Crosslink vote](#crosslink-vote)
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bits](#aggregation-bits)
@@ -136,28 +135,25 @@ A validator can get committee assignments for a given epoch using the following 
 ```python
 def get_committee_assignment(state: BeaconState,
                              epoch: Epoch,
-                             validator_index: ValidatorIndex) -> Optional[Tuple[Sequence[ValidatorIndex], Shard, Slot]]:
+                             validator_index: ValidatorIndex
+                             ) -> Optional[Tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot]]:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
     ``assignment`` returned is a tuple of the following form:
         * ``assignment[0]`` is the list of validators in the committee
-        * ``assignment[1]`` is the shard to which the committee is assigned
+        * ``assignment[1]`` is the index to which the committee is assigned
         * ``assignment[2]`` is the slot at which the committee is assigned
     Return None if no assignment.
     """
     next_epoch = get_current_epoch(state) + 1
     assert epoch <= next_epoch
 
-    committees_per_slot = get_committee_count(state, epoch) // SLOTS_PER_EPOCH
-    start_slot = compute_start_slot_of_epoch(epoch)
+    start_slot = compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
-        offset = committees_per_slot * (slot % SLOTS_PER_EPOCH)
-        slot_start_shard = (get_start_shard(state, epoch) + offset) % SHARD_COUNT
-        for i in range(committees_per_slot):
-            shard = Shard((slot_start_shard + i) % SHARD_COUNT)
-            committee = get_crosslink_committee(state, epoch, shard)
+        for index in range(get_committee_count_at_slot(state, Slot(slot))):
+            committee = get_beacon_committee(state, Slot(slot), CommitteeIndex(index))
             if validator_index in committee:
-                return committee, shard, Slot(slot)
+                return committee, CommitteeIndex(index), Slot(slot)
     return None
 ```
 
@@ -171,13 +167,13 @@ def is_proposer(state: BeaconState,
 
 *Note*: To see if a validator is assigned to propose during the slot, the beacon state must be in the epoch in question. At the epoch boundaries, the validator must run an epoch transition into the epoch to successfully check the proposal assignment of the first slot.
 
-*Note*: `BeaconBlock` proposal is distinct from crosslink committee assignment, and in a given epoch each responsibility might occur at different a different slot.
+*Note*: `BeaconBlock` proposal is distinct from beacon committee assignment, and in a given epoch each responsibility might occur at different a different slot.
 
 ### Lookahead
 
 The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
 
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and also which shard they should begin syncing (in Phase 1+).
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest.
 
 Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 
@@ -215,8 +211,8 @@ Set `block.randao_reveal = epoch_signature` where `epoch_signature` is obtained 
 
 ```python
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_of_slot(block.slot))
-    return bls_sign(privkey, hash_tree_root(compute_epoch_of_slot(block.slot)), domain)
+    domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
+    return bls_sign(privkey, hash_tree_root(compute_epoch_at_slot(block.slot)), domain)
 ```
 
 ##### Eth1 Data
@@ -249,7 +245,7 @@ Set `header.signature = block_signature` where `block_signature` is obtained fro
 
 ```python
 def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_of_slot(header.slot))
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
     return bls_sign(privkey, signing_root(header), domain)
 ```
 
@@ -279,7 +275,7 @@ Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](../core/0_beacon-chain.md#volunta
 
 ### Attestations
 
-A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `shard`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
+A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
 
 A validator should create and broadcast the attestation halfway through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT * 0.5` seconds after the start of `slot`.
 
@@ -289,6 +285,11 @@ First, the validator should construct `attestation_data`, an [`AttestationData`]
 
 - Let `head_block` be the result of running the fork choice during the assigned slot.
 - Let `head_state` be the state of `head_block` processed through any empty slots up to the assigned slot using `process_slots(state, slot)`.
+
+##### General
+
+* Set `attestation_data.slot = slot` where `slot` is the assigned slot.
+* Set `attestation_data.index = index` where `index` is the index associated with the validator's committee.
 
 ##### LMD GHOST vote
 
@@ -301,19 +302,8 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
 
-- Let `start_slot = compute_start_slot_of_epoch(get_current_epoch(head_state))`.
+- Let `start_slot = compute_start_slot_at_epoch(get_current_epoch(head_state))`.
 - Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
-
-##### Crosslink vote
-
-Construct `attestation_data.crosslink` via the following.
-
-- Set `attestation_data.crosslink.shard = shard` where `shard` is the shard associated with the validator's committee.
-- Let `parent_crosslink = head_state.current_crosslinks[shard]`.
-- Set `attestation_data.crosslink.start_epoch = parent_crosslink.end_epoch`.
-- Set `attestation_data.crosslink.end_epoch = min(attestation_data.target.epoch, parent_crosslink.end_epoch + MAX_EPOCHS_PER_CROSSLINK)`.
-- Set `attestation_data.crosslink.parent_root = hash_tree_root(head_state.current_crosslinks[shard])`.
-- Set `attestation_data.crosslink.data_root = ZERO_HASH`. *Note*: This is a stub for Phase 0.
 
 #### Construct attestation
 
@@ -364,7 +354,7 @@ To avoid "proposer slashings", a validator must not sign two conflicting [`Beaco
 
 Specifically, when signing a `BeaconBlock`, a validator should perform the following steps in the following order:
 
-1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_of_slot(block.slot)`.
+1. Save a record to hard disk that a beacon block has been signed for the `epoch=compute_epoch_at_slot(block.slot)`.
 2. Generate and broadcast the block.
 
 If the software crashes at some point within this routine, then when the validator comes back online, the hard disk has the record of the *potentially* signed/broadcast block and can effectively avoid slashing.
