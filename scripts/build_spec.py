@@ -28,6 +28,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
+    bls_aggregate_signatures,
     bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
