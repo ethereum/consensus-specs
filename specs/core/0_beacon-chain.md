@@ -569,7 +569,7 @@ def int_to_bytes(n: uint64, length: uint64) -> bytes:
 ```python
 def bytes_to_int(data: bytes) -> uint64:
     """
-    Return the integer deserialization of ``data`` intepretted as ``ENDIANNESS``-endian.
+    Return the integer deserialization of ``data`` intepreted as ``ENDIANNESS``-endian.
     """
     return int.from_bytes(data, ENDIANNESS)
 ```
