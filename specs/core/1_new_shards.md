@@ -60,6 +60,7 @@ This document describes the shard transition function (data layer only) and the 
 | `BLOCK_SIZE_TARGET` | `3 * 2**16` (= 196,608) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
+| `EMPTY_CHUNK_ROOT` | `hash_tree_root(BytesN[SHARD_BLOCK_CHUNK_SIZE]())` | |
 | `MAX_SHARD_GASPRICE` | `2**14` (= 16,384) | Gwei | |
 | `SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 
@@ -72,6 +73,7 @@ class ShardState(Container):
     slot: Slot
     gasprice: Gwei
     root: Hash
+    latest_block_hash: Hash
 ```
 
 ### `AttestationData`
@@ -312,7 +314,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
             for i in range(len(offset_slots)):
                 assert transition.shard_states[i].gasprice == update_gasprice(prev_gasprice, transition.shard_block_lengths[i])
                 assert transition.shard_states[i].slot == offset_slots[i]
-                assetrt len(transition.shard_data_roots[i]) == transition.shard_block_lengths[i] // SHARD_BLOCK_CHUNK_SIZE
+                assert len(transition.shard_data_roots[i]) == transition.shard_block_lengths[i] // SHARD_BLOCK_CHUNK_SIZE
+                filled_roots = transition.shard_data_roots + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(transition.shard_data_roots))
+                assert transition.shard_states[i].latest_block_hash == hash_tree_root(filled_roots)
                 prev_gasprice = transition.shard_states[i].gasprice
 
             # Save updated state
@@ -401,39 +405,30 @@ TODO. The intent is to have a single universal fraud proof type, which contains 
 ## Shard state transition function
 
 ```python
-def shard_state_transition(shard: Shard, slot: Slot, pre_state: Hash, previous_beacon_root: Hash, proposer_pubkey: BLSPubkey, block_data: Bytes) -> Hash:
-    # Beginning of block data is the previous state root
-    assert block_data[:32] == pre_state
+def shard_state_transition(shard: Shard, slot: Slot, pre_state: Hash, previous_beacon_root: Hash, proposer_pubkey: BLSPubkey, block_data: BytesN[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]) -> Hash:
+    # Beginning of block data is the previous block hash
+    assert block_data[:32] == pre_state.latest_block_hash
     assert block_data[32:64] == int_to_bytes8(slot) + b'\x00' * 24
-    # Signature check (nonempty blocks only)
-    if len(block_data) == 64:
-        pass
-    else:
-        assert len(block_data) >= 160
-        assert bls_verify(
-            pubkey=proposer_pubkey,
-            message_hash=hash_tree_root(block_data[:-96]),
-            signature=block_data[-96:],
-            domain=DOMAIN_SHARD_PROPOSER
-        )
+    # Signature check
+    assert len(block_data) >= 160
+    assert bls_verify(
+        pubkey=proposer_pubkey,
+        message_hash=hash_tree_root(block_data[:-96]),
+        signature=block_data[-96:],
+        domain=DOMAIN_SHARD_PROPOSER
+    )
     # We will add something more substantive in phase 2
-    return hash(pre_state + hash_tree_root(block_data))
-```
-
-We also provide a method to generate an empty proposal:
-
-```python
-def make_empty_proposal(pre_state: Hash, slot: Slot) -> Bytes[64]:
-    return pre_state + int_to_bytes8(slot) + b'\x00' * 24
+    length = len(block.data.rstrip(b'\x00'))
+    return ShardState(slot=slot, root=hash(pre_state + hash_tree_root(block_data)), gasprice=update_gasprice(pre_state, length), latest_block_hash = hash(block_data))
 ```
 
 ## Honest committee member behavior
 
 Suppose you are a committee member on shard `shard` at slot `current_slot`. Let `state` be the head beacon state you are building on. Three seconds into slot `slot`, run the following procedure:
 
-* Initialize `proposals = []`, `shard_states = []`, `shard_state = state.shard_state_roots[shard][-1]`.
-* Let `max_catchup = ACTIVE_SHARDS * MAX_CATCHUP_RATIO // get_committee_count(state, current_slot))`
-* For `slot in (state.shard_next_slots[shard], min(state.shard_next_slot + max_catchup, current_slot))`, do the following:
+* Initialize `proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`.
+* Let `offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]`
+* For `slot in offset_slots`, do the following:
     * Look for all valid proposals for `slot`; that is, a Bytes `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer(state, shard, slot), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
     * If `len(choices) == 0`, do `proposals.append(make_empty_proposal(shard_state, slot))`
     * If `len(choices) == 1`, do `proposals.append(choices[0])`
