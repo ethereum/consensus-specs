@@ -94,7 +94,7 @@ class AttestationData(Container):
 ### `ShardTransition`
 
 ```python
-class AttestationShardData(Container):
+class ShardTransition(Container):
     # Starting from slot
     start_slot: Slot
     # Shard block lengths
@@ -247,7 +247,6 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 ### New state variables
 
 ```python
-    shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     shard_states: Vector[ShardState, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
@@ -257,6 +256,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 ### New block data structures
 
 ```python
+    shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     light_client_signature_bitfield: Bitlist[LIGHT_CLIENT_COMMITTEE_SIZE]
     light_client_signature: BLSSignature
 ```
@@ -312,21 +312,23 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
             # Verify correct calculation of gas prices and slots and chunk roots
             prev_gasprice = state.shard_states[shard].gasprice
             for i in range(len(offset_slots)):
-                assert transition.shard_states[i].gasprice == update_gasprice(prev_gasprice, transition.shard_block_lengths[i])
-                assert transition.shard_states[i].slot == offset_slots[i]
-                assert len(transition.shard_data_roots[i]) == transition.shard_block_lengths[i] // SHARD_BLOCK_CHUNK_SIZE
-                filled_roots = transition.shard_data_roots + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(transition.shard_data_roots))
-                assert transition.shard_states[i].latest_block_hash == hash_tree_root(filled_roots)
-                prev_gasprice = transition.shard_states[i].gasprice
+                shard_state, block_length, chunks = transition.shard_states[i], transition.shard_block_lengths[i], transition.shard_data_roots[i]
+                block_length = transition.shard
+                assert shard_state.gasprice == update_gasprice(prev_gasprice, block_length)
+                assert shard_state.slot == offset_slots[i]
+                assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
+                filled_roots = chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
+                assert shard_state.latest_block_hash == hash_tree_root(filled_roots)
+                prev_gasprice = shard_state.gasprice
 
             # Save updated state
-            state.shard_states[shard] = data.shard_states[-1]
+            state.shard_states[shard] = transition.shard_states[-1]
             state.shard_states[shard].slot = state.slot - 1
 
             # Save success (for end-of-epoch rewarding)
             pending_attestation.crosslink_success = True
 
-            # Reward and cost proposer
+            # Apply proposer reward and cost
             estimated_attester_reward = sum([get_base_reward(state, attester) for attester in attesting_indices])
             increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
             for state, length in zip(transition.shard_states, transition.shard_block_lengths):
@@ -335,6 +337,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Type 2: delayed attestations
     else:
         assert slot_to_epoch(data.slot) in (get_current_epoch(state), get_previous_epoch(state))
+        assert data.shard_transition_hash == Hash()
         assert len(attestation.custody_bits) == 0
 
     for index in attesting_indices:
@@ -365,12 +368,11 @@ def misc_block_post_process(state: BeaconState, block: BeaconBlock):
 def verify_light_client_signatures(state: BeaconState, block: BeaconBlock):
     period_start = get_current_epoch(state) - get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD
     committee = get_light_client_committee(state, period_start - min(period_start, LIGHT_CLIENT_COMMITTEE_PERIOD))
-    signer_validators = []
     signer_keys = []
     for i, bit in enumerate(block.light_client_signature_bitfield):
         if bit:
             signer_keys.append(state.validators[committee[i]].pubkey)
-            signer_validators.append(committee[i])
+            increase_balance(state, committee[i], get_base_reward(state, committee[i]))
     
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(signer_keys),
