@@ -61,8 +61,8 @@ This document describes the shard transition function (data layer only) and the 
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
 | `EMPTY_CHUNK_ROOT` | `hash_tree_root(BytesN[SHARD_BLOCK_CHUNK_SIZE]())` | |
-| `MAX_SHARD_GASPRICE` | `2**14` (= 16,384) | Gwei | |
-| `SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
+| `MAX_GASPRICE` | `2**14` (= 16,384) | Gwei | |
+| `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 
 ## Containers
 
@@ -203,12 +203,12 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
 ```python
 def update_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
     if length > BLOCK_SIZE_TARGET:
-        delta = prev_gasprice * (length - BLOCK_SIZE_TARGET) // BLOCK_SIZE_TARGET // SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT
-        return min(prev_gasprice + delta, MAX_SHARD_GASPRICE)
+        delta = prev_gasprice * (length - BLOCK_SIZE_TARGET) // BLOCK_SIZE_TARGET // GASPRICE_ADJUSTMENT_COEFFICIENT
+        return min(prev_gasprice + delta, MAX_GASPRICE)
     else:
-        delta = prev_gasprice * (BLOCK_SIZE_TARGET - length) // BLOCK_SIZE_TARGET // SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT
-        if delta > prev_gasprice - SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT:
-            return SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT
+        delta = prev_gasprice * (BLOCK_SIZE_TARGET - length) // BLOCK_SIZE_TARGET // GASPRICE_ADJUSTMENT_COEFFICIENT
+        if delta > prev_gasprice - GASPRICE_ADJUSTMENT_COEFFICIENT:
+            return GASPRICE_ADJUSTMENT_COEFFICIENT
         else:
             return prev_gasprice - delta
 ```
