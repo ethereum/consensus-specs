@@ -1,6 +1,6 @@
 # BLS signature verification
 
-**Notice**: This document is a placeholder to facilitate the emergence of cross-client testnets. Substantive changes are postponed until [BLS standardisation](https://github.com/pairingwg/bls_standard) is finalized.
+**Notice**: This document is a placeholder to facilitate the emergence of cross-client testnets. Substantive changes are postponed until [BLS standardisation](https://github.com/cfrg/draft-irtf-cfrg-bls-signature) is finalized.
 
 **Warning**: The constructions in this document should not be considered secure. In particular, the `hash_to_G2` function is known to be unsecure.
 
