@@ -37,21 +37,27 @@ This document describes the shard transition function (data layer only) and the 
 | - | - | - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
 | `ACTIVE_SHARDS` | `2**6` (= 64) |
-| `MAX_CATCHUP_RATIO` | `2**2` (= 4) |
 | `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~29 hours |
-| `SHARD_STATE_ROOT_LENGTH` | `2**7` (= 128) | bytes |
+| `SHARD_BLOCK_CHUNK_SIZE` | `2**18` (= 262,144) | |
 | `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
+| `BLOCK_SIZE_TARGET` | `3 * 2**16` (= 196,608) | |
+| `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
+| `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
+| `MAX_SHARD_GASPRICE` | `2**14` (= 16,384) | Gwei | |
+| `SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 
 ## Containers
 
-### Aliases
+### `ShardState`
 
-| Name | Value |
-| - | - |
-| `SHARD_STATE_ROOT` | `BytesN[SHARD_STATE_ROOT_LENGTH]` |
-
+```python
+class ShardState(Container):
+    slot: Slot
+    gasprice: Gwei
+    root: Hash
+```
 
 ### `AttestationData`
 
@@ -64,37 +70,23 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-    # Shard data
-    shard_data: AttestationShardData
+    # Shard transition hash
+    shard_transition_hash: Hash
 ```
 
-### `AttestationShardData`
+### `ShardTransition`
 
 ```python
 class AttestationShardData(Container):
+    # Starting from slot
+    start_slot: Slot
     # Shard block lengths
-    shard_block_lengths: List[uint8, MAX_CATCHUP_RATIO * MAX_SHARDS]
+    shard_block_lengths: List[uint8, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
-    shard_data_roots: List[Hash, List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_CATCHUP_RATIO * MAX_SHARDS]
+    shard_data_roots: List[Hash, List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate state roots
-    shard_state_roots: List[SHARD_STATE_ROOT, MAX_CATCHUP_RATIO * MAX_SHARDS]
+    shard_state_roots: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
 ```
-
-### `ReducedAttestationData`
-
-```python
-class ReducedAttestationData(Container):
-    slot: Slot
-    index: CommitteeIndex
-    # LMD GHOST vote
-    beacon_block_root: Hash
-    # FFG vote
-    source: Checkpoint
-    target: Checkpoint
-    # Shard data root
-    shard_data_root: Hash
-```
-
 
 ### `Attestation`
 
@@ -102,17 +94,7 @@ class ReducedAttestationData(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_CATCHUP_RATIO * MAX_SHARDS]
-    signature: BLSSignature
-```
-
-### `ReducedAttestation`
-
-```python
-class ReducedAttestation(Container):
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
-    data: ReducedAttestationData
-    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_CATCHUP_RATIO * MAX_SHARDS]
+    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -121,8 +103,8 @@ class ReducedAttestation(Container):
 ```python
 class IndexedAttestation(Container):
     participants: List[ValidatorIndex, MAX_COMMITTEE_SIZE]
-    data: ReducedAttestationData
-    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_CATCHUP_RATIO * MAX_SHARDS]
+    data: AttestationData
+    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     signature: BLSSignature
 ```
 
@@ -199,6 +181,21 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
     return IndexedAttestation(attesting_indices, data, custody_bits, signature)
 ```
 
+### `update_gasprice`
+
+```python
+def update_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
+    if length > BLOCK_SIZE_TARGET:
+        delta = prev_gasprice * (length - BLOCK_SIZE_TARGET) // BLOCK_SIZE_TARGET // SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT
+        return min(prev_gasprice + delta, MAX_SHARD_GASPRICE)
+    else:
+        delta = prev_gasprice * (BLOCK_SIZE_TARGET - length) // BLOCK_SIZE_TARGET // SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT
+        if delta > prev_gasprice - SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT:
+            return SHARD_GASPRICE_ADJUSTMENT_COEFFICIENT
+        else:
+            return prev_gasprice - delta
+```
+
 ### `is_valid_indexed_attestation`
 
 ``python
@@ -217,6 +214,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     for participant, custody_bits in zip(participants, indexed_attestation.custody_bits):
         for i, bit in enumerate(custody_bits):
             all_pubkeys.append(state.validators[participant].pubkey)
+            # Note: only 2N distinct message hashes
             all_message_hashes.append(AttestationCustodyBitWrapper(hash_tree_root(indexed_attestation.data), i, bit))
         
     return bls_verify_multiple(
@@ -232,9 +230,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 ### New state variables
 
 ```python
-    shard_state_roots: Vector[SHARD_STATE_ROOT, MAX_SHARDS]
-    shard_trace_commitments: Vector[Hash, MAX_SHARDS]
-    shard_next_slots: Vector[Slot, MAX_SHARDS]
+    shard_transitions: Vector[ShardTransition, MAX_SHARDS]
+    shard_states: Vector[ShardState, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
@@ -254,52 +251,76 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < ACTIVE_SHARDS
     shard = (data.index + get_start_shard(state, data.slot)) % ACTIVE_SHARDS
+    proposer_index=get_beacon_proposer_index(state)
 
     # Signature check
     committee = get_crosslink_committee(state, get_current_epoch(state), shard)
     for bits in attestation.custody_bits + [attestation.aggregation_bits]:
-        assert bits == len(committee)
+        assert len(bits) == len(committee)
     # Check signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
     # Get attesting indices
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
+
+    # Prepare pending attestation object
+    pending_attestation = PendingAttestation(
+        slot=data.slot,
+        shard=shard,
+        aggregation_bits=attestation.aggregation_bits,
+        inclusion_delay=state.slot - data.slot,
+        crosslink_success=False,
+        proposer_index=proposer_index
+    )
     
     # Type 1: on-time attestations
     if data.custody_bits != []:
-        # Correct start slot
-        assert data.slot == state.shard_next_slots[shard]
+        # Correct slot
+        assert data.slot == state.slot
+        # Slot the attestation starts counting from
+        start_slot = state.shard_next_slots[shard]
         # Correct data root count
-        max_catchup = ACTIVE_SHARDS * MAX_CATCHUP_RATIO // get_committee_count(state, state.slot)
-        assert len(data.shard_data_roots) == len(attestation.custody_bits) == len(data.shard_state_roots) == min(state.slot - data.slot, max_catchup)
+        offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
+        assert len(attestation.custody_bits) == len(offset_slots)
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, state.slot - 1)
         # Apply
         online_indices = get_online_indices(state)
         if get_total_balance(state, online_indices.intersection(attesting_indices)) * 3 >= get_total_balance(state, online_indices) * 2:
-            # Save trace commitment (used for fraud proofs)
-            trace = List[Hash, MAX_CATCHUP_RATIO * MAX_SHARDS * 2 + 1]([state.shard_state_roots[shard]])
-            for data, state in zip(data.shard_data_roots, data.shard_state_roots):
-                trace.extend([data, state])
-            state.shard_trace_commitments[shard] = hash_tree_root(trace)
-            # Save state root and next slot
-            state.shard_state_roots[shard] = data.shard_state_roots[-1]
-            state.shard_next_slots[shard] += len(data.shard_data_roots)
-        
+            # Check correct formatting of shard transition data
+            transition = block.shard_transitions[shard]
+            assert data.shard_transition_hash == hash_tree_root(transition)
+            assert len(transition.shard_data_roots) == len(transition.shard_states) == len(transition.shard_block_lengths) == len(offset_slots)
+            assert transition.start_slot == start_slot
+
+            # Verify correct calculation of gas prices and slots and chunk roots
+            prev_gasprice = state.shard_states[shard].gasprice
+            for i in range(len(offset_slots)):
+                assert transition.shard_states[i].gasprice == update_gasprice(prev_gasprice, transition.shard_block_lengths[i])
+                assert transition.shard_states[i].slot == offset_slots[i]
+                assetrt len(transition.shard_data_roots[i]) == transition.shard_block_lengths[i] // SHARD_BLOCK_CHUNK_SIZE
+                prev_gasprice = transition.shard_states[i].gasprice
+
+            # Save updated state
+            state.shard_states[shard] = data.shard_states[-1]
+            state.shard_states[shard].slot = state.slot - 1
+
+            # Save success (for end-of-epoch rewarding)
+            pending_attestation.crosslink_success = True
+
+            # Reward and cost proposer
+            estimated_attester_reward = sum([get_base_reward(state, attester) for attester in attesting_indices])
+            increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
+            for state, length in zip(transition.shard_states, transition.shard_block_lengths):
+                decrease_balance(state, proposer, state.gasprice * length)
+            
     # Type 2: delayed attestations
     else:
         assert slot_to_epoch(data.slot) in (get_current_epoch(state), get_previous_epoch(state))
-        assert len(data.shard_data_roots) == len(data.intermediate_state_roots) == 0
+        assert len(attestation.custody_bits) == 0
 
     for index in attesting_indices:
         online_countdown[index] = ONLINE_PERIOD
 
-    pending_attestation = PendingAttestation(
-        slot=data.slot,
-        shard=shard,
-        aggregation_bits=attestation.aggregation_bits,
-        inclusion_delay=state.slot - attestation_slot,
-        proposer_index=get_beacon_proposer_index(state),
-    )
 
     if data.target.epoch == get_current_epoch(state):
         assert data.source == state.current_justified_checkpoint
@@ -309,7 +330,15 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.previous_epoch_attestations.append(pending_attestation)
 ```
 
-Check the length of attestations using `len(block.attestations) <= 4 * get_committee_count(state, state.slot)`.
+### Misc block post-processing
+
+```python
+def misc_block_post_process(state: BeaconState, block: BeaconBlock):
+    # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
+    for shard in range(MAX_SHARDS):
+        if state.shard_states[shard].slot != state.slot - 1:
+            assert block.shard_transition[shard] == ShardTransition()
+```
 
 ### Light client processing
 
