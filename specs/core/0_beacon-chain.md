@@ -1026,7 +1026,7 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 
 - `eth1_block_hash` is the hash of the Ethereum 1.0 block
 - `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
-- `deposits` is the sequence of all deposits, ordered chronologically, up to the block with hash `eth1_block_hash`
+- `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
