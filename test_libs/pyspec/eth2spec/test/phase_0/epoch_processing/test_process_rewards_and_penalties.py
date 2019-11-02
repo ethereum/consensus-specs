@@ -141,7 +141,7 @@ def test_duplicate_attestation(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 
     indexed_attestation = spec.get_indexed_attestation(state, attestation)
-    participants = indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices
+    participants = indexed_attestation.attesting_indices
 
     assert len(participants) > 0
 

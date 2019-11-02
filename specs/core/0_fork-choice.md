@@ -199,7 +199,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     assert is_valid_indexed_attestation(target_state, indexed_attestation)
 
     # Update latest messages
-    for i in indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices:
+    for i in indexed_attestation.attesting_indices:
         if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
             store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=attestation.data.beacon_block_root)
 ```

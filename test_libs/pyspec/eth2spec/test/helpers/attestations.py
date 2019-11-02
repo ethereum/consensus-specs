@@ -54,11 +54,9 @@ def get_valid_attestation(spec, state, slot=None, index=None, signed=False):
 
     committee_size = len(beacon_committee)
     aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
-    custody_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*([0] * committee_size))
     attestation = spec.Attestation(
         aggregation_bits=aggregation_bits,
         data=attestation_data,
-        custody_bits=custody_bits,
     )
     fill_aggregate_attestation(spec, state, attestation)
     if signed:
@@ -83,7 +81,7 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):
-    participants = indexed_attestation.custody_bit_0_indices + indexed_attestation.custody_bit_1_indices
+    participants = indexed_attestation.attesting_indices
     indexed_attestation.signature = sign_aggregate_attestation(spec, state, indexed_attestation.data, participants)
 
 

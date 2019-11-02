@@ -320,8 +320,7 @@ class AttestationDataAndCustodyBit(Container):
 
 ```python
 class IndexedAttestation(Container):
-    custody_bit_0_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]  # Indices with custody bit equal to 0
-    custody_bit_1_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]  # Indices with custody bit equal to 1
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     signature: BLSSignature
 ```
@@ -399,7 +398,6 @@ class AttesterSlashing(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     signature: BLSSignature
 ```
 
@@ -605,30 +603,21 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     """
     Check if ``indexed_attestation`` has valid indices and signature.
     """
-    bit_0_indices = indexed_attestation.custody_bit_0_indices
-    bit_1_indices = indexed_attestation.custody_bit_1_indices
+    indices = indexed_attestation.attesting_indices
 
-    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
-    if not len(bit_1_indices) == 0:  # [to be removed in phase 1]
-        return False                 # [to be removed in phase 1]
     # Verify max number of indices
-    if not len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE:
-        return False
-    # Verify index sets are disjoint
-    if not len(set(bit_0_indices).intersection(bit_1_indices)) == 0:
+    if not len(indices) <= MAX_VALIDATORS_PER_COMMITTEE:
         return False
     # Verify indices are sorted
-    if not (bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)):
+    if not indices == sorted(indices):
         return False
     # Verify aggregate signature
     if not bls_verify_multiple(
         pubkeys=[
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
+            bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
         ],
         message_hashes=[
             hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
         ],
         signature=indexed_attestation.signature,
         domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
@@ -922,13 +911,9 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     Return the indexed attestation corresponding to ``attestation``.
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-    custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bits)
-    assert custody_bit_1_indices.issubset(attesting_indices)
-    custody_bit_0_indices = attesting_indices.difference(custody_bit_1_indices)
 
     return IndexedAttestation(
-        custody_bit_0_indices=sorted(custody_bit_0_indices),
-        custody_bit_1_indices=sorted(custody_bit_1_indices),
+        attesting_indices=sorted(attesting_indices),
         data=attestation.data,
         signature=attestation.signature,
     )
@@ -1460,8 +1445,8 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     assert is_valid_indexed_attestation(state, attestation_2)
 
     slashed_any = False
-    attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
-    attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
+    attesting_indices_1 = attestation_1.attesting_indices
+    attesting_indices_2 = attestation_2.attesting_indices
     for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
         if is_slashable_validator(state.validators[index], get_current_epoch(state)):
             slash_validator(state, index)
@@ -1479,7 +1464,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
     committee = get_beacon_committee(state, data.slot, data.index)
-    assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
+    assert len(attestation.aggregation_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
         data=data,
