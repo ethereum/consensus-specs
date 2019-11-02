@@ -26,7 +26,6 @@
             - [`Checkpoint`](#checkpoint)
             - [`Validator`](#validator)
             - [`AttestationData`](#attestationdata)
-            - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
             - [`PendingAttestation`](#pendingattestation)
             - [`Eth1Data`](#eth1data)
@@ -306,14 +305,6 @@ class AttestationData(Container):
     # FFG vote
     source: Checkpoint
     target: Checkpoint
-```
-
-#### `AttestationDataAndCustodyBit`
-
-```python
-class AttestationDataAndCustodyBit(Container):
-    data: AttestationData
-    custody_bit: bit  # Challengeable bit (SSZ-bool, 1 byte) for the custody of shard data
 ```
 
 #### `IndexedAttestation`
@@ -612,13 +603,9 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     if not indices == sorted(indices):
         return False
     # Verify aggregate signature
-    if not bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
-        ],
-        message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-        ],
+    if not bls_verify(
+        pubkey=bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
+        message_hash=hash_tree_root(indexed_attestation.data),
         signature=indexed_attestation.signature,
         domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
     ):

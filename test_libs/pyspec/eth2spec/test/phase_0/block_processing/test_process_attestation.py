@@ -2,7 +2,7 @@ from eth2spec.test.context import (
     spec_state_test,
     expect_assertion_error,
     always_bls, never_bls,
-    with_all_phases, with_phases,
+    with_all_phases,
     spec_test,
     low_balances,
     with_custom_state,

@@ -45,7 +45,6 @@
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bits](#aggregation-bits)
-                - [Custody bits](#custody-bits)
                 - [Aggregate signature](#aggregate-signature)
             - [Broadcast attestation](#broadcast-attestation)
         - [Attestation aggregation](#attestation-aggregation)
@@ -53,7 +52,6 @@
             - [Construct aggregate](#construct-aggregate)
                 - [Data](#data-1)
                 - [Aggregation bits](#aggregation-bits-1)
-                - [Custody bits](#custody-bits-1)
                 - [Aggregate signature](#aggregate-signature-1)
             - [Broadcast aggregate](#broadcast-aggregate)
                 - [`AggregateAndProof`](#aggregateandproof)
@@ -331,25 +329,14 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 *Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
-##### Custody bits
-
-- Let `attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
-
-*Note*: This is a stub for Phase 0.
-
 ##### Aggregate signature
 
 Set `attestation.signature = signed_attestation_data` where `signed_attestation_data` is obtained from:
 
 ```python
 def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestation, privkey: int) -> BLSSignature:
-    attestation_data_and_custody_bit = AttestationDataAndCustodyBit(
-        data=attestation.data,
-        custody_bit=0b0,
-    )
-
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
+    return bls_sign(privkey, hash_tree_root(attestation.data), domain)
 ```
 
 #### Broadcast attestation
@@ -390,12 +377,6 @@ Set `aggregate_attestation.data = attestation_data` where `attestation_data` is 
 ##### Aggregation bits
 
 Let `aggregate_attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-
-##### Custody bits
-
-- Let `aggregate_attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
-
-*Note*: This is a stub for Phase 0.
 
 ##### Aggregate signature
 

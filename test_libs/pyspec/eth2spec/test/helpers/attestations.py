@@ -95,14 +95,9 @@ def sign_attestation(spec, state, attestation):
     attestation.signature = sign_aggregate_attestation(spec, state, attestation.data, participants)
 
 
-def get_attestation_signature(spec, state, attestation_data, privkey, custody_bit=0b0):
-    message_hash = spec.AttestationDataAndCustodyBit(
-        data=attestation_data,
-        custody_bit=custody_bit,
-    ).hash_tree_root()
-
+def get_attestation_signature(spec, state, attestation_data, privkey):
     return bls_sign(
-        message_hash=message_hash,
+        message_hash=attestation_data.hash_tree_root(),
         privkey=privkey,
         domain=spec.get_domain(
             state=state,
