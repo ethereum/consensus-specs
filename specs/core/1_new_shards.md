@@ -64,8 +64,30 @@ This document describes the shard transition function (data layer only) and the 
 | `MAX_GASPRICE` | `2**14` (= 16,384) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 | `DOMAIN_SHARD_LIGHT_CLIENT` | `192` | |
+| `DOMAIN_SHARD_PROPOSAL` | `193` | |
 
 ## Containers
+
+### `ShardBlockWrapper`
+
+```python
+class ShardBlockWrapper(Container):
+    shard_parent_root: Hash
+    beacon_parent_root: Hash
+    slot: Slot
+    body: BytesN[SHARD_BLOCK_CHUNK_SIZE]
+    signature: BLSSignature
+```
+
+### `ShardSignedHeader`
+
+```python
+class ShardSignedHeader(Container):
+    shard_parent_root: Hash
+    beacon_parent_root: Hash
+    slot: Slot
+    body_root: Hash
+```
 
 ### `ShardState`
 
@@ -104,6 +126,8 @@ class ShardTransition(Container):
     shard_data_roots: List[List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate state roots
     shard_state_roots: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    # Proposer signature aggregate
+    proposer_signature_aggregate: BLSSignature
 ```
 
 ### `Attestation`
@@ -322,22 +346,46 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> bool:
 def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
     # Slot the attestation starts counting from
     start_slot = state.shard_next_slots[shard]
+
     # Correct data root count
     offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
     assert len(transition.shard_data_roots) == len(transition.shard_states) == len(transition.shard_block_lengths) == len(offset_slots)
     assert transition.start_slot == start_slot
 
+    def chunks_to_body_root(chunks):
+        return hash_tree_root(chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks)))
+
+    # Reonstruct shard headers
+    headers = []
+    proposers = []
+    shard_parent_root = state.shard_states[shard].latest_block_hash
+    for i in range(len(offset_slots)):
+        if any(transition.shard_data_roots):
+            headers.append(ShardSignedHeader(
+                shard_parent_root=shard_parent_root
+                parent_hash=get_block_root_at_slot(state, state.slot-1),
+                slot=offset_slots[i],
+                body_root=chunks_to_body_root(transition.shard_data_roots[i])
+            ))
+            proposers.append(get_shard_proposer(state, shard, offset_slots[i]))
+            shard_parent_root = hash_tree_root(headers[-1])
+
     # Verify correct calculation of gas prices and slots and chunk roots
     prev_gasprice = state.shard_states[shard].gasprice
     for i in range(len(offset_slots)):
         shard_state, block_length, chunks = transition.shard_states[i], transition.shard_block_lengths[i], transition.shard_data_roots[i]
-        block_length = transition.shard
         assert shard_state.gasprice == update_gasprice(prev_gasprice, block_length)
         assert shard_state.slot == offset_slots[i]
         assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
-        filled_roots = chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
-        assert shard_state.latest_block_hash == hash_tree_root(filled_roots)
         prev_gasprice = shard_state.gasprice
+
+    # Verify combined signature
+    assert bls_verify_multiple(
+        pubkeys=[state.validators[proposer].pubkey for proposer in proposers],
+        message_hashes=[hash_tree_root(header) for header in headers],
+        signature=proposer.proposer_signature_aggregate,
+        domain=DOMAIN_SHARD_PROPOSAL
+    )
 
     # Save updated state
     state.shard_states[shard] = transition.shard_states[-1]
@@ -450,29 +498,25 @@ def phase_1_epoch_transition(state):
 
 ### Fraud proofs
 
-TODO. The intent is to have a single universal fraud proof type, which contains (i) an on-time attestation on shard `s` signing a set of `data_roots`, (ii) an index `i` of a particular data root to focus on, (iii) the full contents of the i'th data, (iii) a Merkle proof to the `shard_state_roots` in the parent block the attestation is referencing, and which then verifies that one of the two conditions is false:
+TODO. The intent is to have a single universal fraud proof type, which contains the following parts:
 
-* `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
-* `execute_state_transition(shard, slot, attestation.shard_state_roots[i-1], hash_tree_root(parent), get_shard_proposer(state, shard, slot), block_contents) != shard_state_roots[i]` (if `i=0` then instead use `parent.shard_state_roots[s][-1]`)
+1. An on-time attestation on some `shard` signing a `ShardTransition`
+2. An index `i` of a particular position to focus on
+3. The `ShardTransition` itself
+4. The full body of the block
+5. A Merkle proof to the `shard_states` in the parent block the attestation is referencing
+
+The proof verifies that one of the two conditions is false:
+
+1. `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
+2. `execute_state_transition(shard, slot, transition.shard_states[i-1].root, hash_tree_root(parent), get_shard_proposer(state, shard, slot), block_contents) != transition.shard_states[i].root` (if `i=0` then instead use `parent.shard_states[shard][-1].root`)
 
 ## Shard state transition function
 
 ```python
 def shard_state_transition(shard: Shard, slot: Slot, pre_state: Hash, previous_beacon_root: Hash, proposer_pubkey: BLSPubkey, block_data: BytesN[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]) -> Hash:
-    # Beginning of block data is the previous block hash
-    assert block_data[:32] == pre_state.latest_block_hash
-    assert block_data[32:64] == int_to_bytes8(slot) + b'\x00' * 24
-    # Signature check
-    assert len(block_data) >= 160
-    assert bls_verify(
-        pubkey=proposer_pubkey,
-        message_hash=hash_tree_root(block_data[:-96]),
-        signature=block_data[-96:],
-        domain=DOMAIN_SHARD_PROPOSER
-    )
     # We will add something more substantive in phase 2
-    length = len(block_data.rstrip(b'\x00'))
-    return ShardState(slot=slot, root=hash(pre_state + hash_tree_root(block_data)), gasprice=update_gasprice(pre_state, length), latest_block_hash = hash(block_data))
+    return hash(pre_state + hash_tree_root(previous_beacon_root) + hash_tree_root(block_data))
 ```
 
 ## Honest committee member behavior
