@@ -404,6 +404,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
     online_indices = get_online_indices(state)
     winners = set()
     for shard in range(ACTIVE_SHARDS):
+        success = False
         # All attestations in the block for this shard
         this_shard_attestations = [attestation for attestation in attestations if get_shard(state, attestation) == shard and attestation.data.slot == state.slot]
         # The committee for this shard
@@ -428,8 +429,9 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
                 for shard_state, slot, length in zip(transition.shard_states, offset_slots, block.shard_transition.shard_block_lengths):
                     decrease_balance(state, get_shard_proposer(state, shard, slot), shard_state.gasprice * length)
                 winners.add((shard, shard_transition_root))
-            for index in all_participants:
-                online_countdown[index] = ONLINE_PERIOD
+                success = True
+        if not success:
+            assert block.shard_transition == ShardTransition()
     for attestation in attestations:
         pending_attestation = PendingAttestation(
             aggregation_bits=attestation.aggregation_bits,
@@ -454,6 +456,9 @@ def misc_block_post_process(state: BeaconState, block: BeaconBlock):
     for shard in range(MAX_SHARDS):
         if state.shard_states[shard].slot != state.slot - 1:
             assert block.shard_transition[shard] == ShardTransition()
+    for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
+        for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
+            online_countdown[index] = ONLINE_PERIOD
 ```
 
 ### Light client processing
