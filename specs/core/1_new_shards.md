@@ -256,6 +256,13 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     )
 ```
 
+### `get_attestation_shard`
+
+```python
+def get_shard(state: BeaconState, attestation: Attestation):
+    return (attestation.data.index + get_start_shard(state, data.slot)) % ACTIVE_SHARDS
+```
+
 ## Beacon Chain Changes
 
 ### New beacon state fields
@@ -275,32 +282,22 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     light_client_signature: BLSSignature
 ```
 
-### Attestation processing
+## Attestation processing
+
+### `validate_attestation`
 
 ```python
-def process_attestation(state: BeaconState, attestation: Attestation) -> None:
+def validate_attestation(state: BeaconState, attestation: Attestation) -> bool:
     data = attestation.data
     assert data.index < ACTIVE_SHARDS
-    shard = (data.index + get_start_shard(state, data.slot)) % ACTIVE_SHARDS
+    shard = get_shard(state, attestation)
     proposer_index = get_beacon_proposer_index(state)
 
     # Signature check
     committee = get_beacon_committee(state, get_current_epoch(state), shard)
     for bits in attestation.custody_bits + [attestation.aggregation_bits]:
         assert len(bits) == len(committee)
-    # Check signature
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
-    # Get attesting indices
-    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-
-    # Prepare pending attestation object
-    pending_attestation = PendingAttestation(
-        aggregation_bits=attestation.aggregation_bits,
-        inclusion_delay=state.slot - data.slot,
-        crosslink_success=False,
-        proposer_index=proposer_index
-    )
-    
     # Type 1: on-time attestations
     if data.custody_bits != []:
         # Correct slot
@@ -312,56 +309,93 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert len(attestation.custody_bits) == len(offset_slots)
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, state.slot - 1)
-        # Apply
-        online_indices = get_online_indices(state)
-        if get_total_balance(state, online_indices.intersection(attesting_indices)) * 3 >= get_total_balance(state, online_indices) * 2:
-            # Check correct formatting of shard transition data
-            transition = block.shard_transitions[shard]
-            assert data.shard_transition_root == hash_tree_root(transition)
-            assert len(transition.shard_data_roots) == len(transition.shard_states) == len(transition.shard_block_lengths) == len(offset_slots)
-            assert transition.start_slot == start_slot
-
-            # Verify correct calculation of gas prices and slots and chunk roots
-            prev_gasprice = state.shard_states[shard].gasprice
-            for i in range(len(offset_slots)):
-                shard_state, block_length, chunks = transition.shard_states[i], transition.shard_block_lengths[i], transition.shard_data_roots[i]
-                block_length = transition.shard
-                assert shard_state.gasprice == update_gasprice(prev_gasprice, block_length)
-                assert shard_state.slot == offset_slots[i]
-                assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
-                filled_roots = chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
-                assert shard_state.latest_block_hash == hash_tree_root(filled_roots)
-                prev_gasprice = shard_state.gasprice
-
-            # Save updated state
-            state.shard_states[shard] = transition.shard_states[-1]
-            state.shard_states[shard].slot = state.slot - 1
-
-            # Save success (for end-of-epoch rewarding)
-            pending_attestation.crosslink_success = True
-
-            # Apply proposer reward and cost
-            estimated_attester_reward = sum([get_base_reward(state, attester) for attester in attesting_indices])
-            increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
-            for shard_state, slot, length in zip(transition.shard_states, offset_slots, transition.shard_block_lengths):
-                decrease_balance(state, get_shard_proposer(state, shard, slot), shard_state.gasprice * length)
-            
     # Type 2: delayed attestations
     else:
         assert state.slot - slot_to_epoch(data.slot) < EPOCH_LENGTH
         assert data.shard_transition_root == Hash()
         assert len(attestation.custody_bits) == 0
+```
 
-    for index in attesting_indices:
-        online_countdown[index] = ONLINE_PERIOD
+### `apply_shard_transition`
 
+```python
+def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
+    # Slot the attestation starts counting from
+    start_slot = state.shard_next_slots[shard]
+    # Correct data root count
+    offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
+    assert len(transition.shard_data_roots) == len(transition.shard_states) == len(transition.shard_block_lengths) == len(offset_slots)
+    assert transition.start_slot == start_slot
 
-    if data.target.epoch == get_current_epoch(state):
-        assert data.source == state.current_justified_checkpoint
-        state.current_epoch_attestations.append(pending_attestation)
-    else:
-        assert data.source == state.previous_justified_checkpoint
-        state.previous_epoch_attestations.append(pending_attestation)
+    # Verify correct calculation of gas prices and slots and chunk roots
+    prev_gasprice = state.shard_states[shard].gasprice
+    for i in range(len(offset_slots)):
+        shard_state, block_length, chunks = transition.shard_states[i], transition.shard_block_lengths[i], transition.shard_data_roots[i]
+        block_length = transition.shard
+        assert shard_state.gasprice == update_gasprice(prev_gasprice, block_length)
+        assert shard_state.slot == offset_slots[i]
+        assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
+        filled_roots = chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
+        assert shard_state.latest_block_hash == hash_tree_root(filled_roots)
+        prev_gasprice = shard_state.gasprice
+
+    # Save updated state
+    state.shard_states[shard] = transition.shard_states[-1]
+    state.shard_states[shard].slot = state.slot - 1
+```
+
+### `process_attestations`
+
+```python
+def process_attestations(state: BeaconState, block: BeaconBlock, attestations: Sequence[Attestation]) -> None:
+    pending_attestations = []
+    # Basic validation
+    for attestation in attestations:
+        assert validate_attestation(state, attestation)
+    # Process crosslinks
+    online_indices = get_online_indices(state)
+    winners = set()
+    for shard in range(ACTIVE_SHARDS):
+        # All attestations in the block for this shard
+        this_shard_attestations = [attestation for attestation in attestations if get_shard(state, attestation) == shard and attestation.data.slot == state.slot]
+        # The committee for this shard
+        this_shard_committee = get_beacon_committee(state, get_current_epoch(state), shard)
+        # Loop over all shard transition roots
+        for shard_transition_root in sorted(set([attestation.data.shard_transition_root for attestation in this_shard_attestations])):
+            all_participants = set()
+            participating_attestations = []
+            for attestation in this_shard_attestations:
+                participating_attestations.append(attestation)
+                if attestation.data.shard_transition_root == shard_transition_root:
+                    all_participants = all_participants.union(get_attesting_indices(state, attestation.data, attestation.aggregation_bits))
+            if (
+                get_total_balance(state, online_indices.intersection(all_participants)) * 3 >=
+                get_total_balance(state, online_indices.intersection(this_shard_committee)) * 2
+            ):
+                assert shard_transition_root == hash_tree_root(block.shard_transition)
+                process_crosslink(state, shard, block.shard_transition)
+                # Apply proposer reward and cost
+                estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
+                increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
+                for shard_state, slot, length in zip(transition.shard_states, offset_slots, block.shard_transition.shard_block_lengths):
+                    decrease_balance(state, get_shard_proposer(state, shard, slot), shard_state.gasprice * length)
+                winners.add((shard, shard_transition_root))
+            for index in all_participants:
+                online_countdown[index] = ONLINE_PERIOD
+    for attestation in attestations:
+        pending_attestation = PendingAttestation(
+            aggregation_bits=attestation.aggregation_bits,
+            data=attestation.data,
+            inclusion_delay=state.slot - data.slot,
+            crosslink_success=(attestation.shard, attestation.shard_transition_root) in winners and attestation.data.slot == state.slot,
+            proposer_index=proposer_index
+        )
+        if attestation.data.target.epoch == get_current_epoch(state):
+            assert attestation.data.source == state.current_justified_checkpoint
+            state.current_epoch_attestations.append(pending_attestation)
+        else:
+            assert attestation.data.source == state.previous_justified_checkpoint
+            state.previous_epoch_attestations.append(pending_attestation)
 ```
 
 ### Misc block post-processing
