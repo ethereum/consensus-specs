@@ -144,10 +144,8 @@ class Attestation(Container):
 
 ```python
 class IndexedAttestation(Container):
-    participants: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
-    data: AttestationData
-    custody_bits: List[Bitlist[MAX_VALIDATORS_PER_COMMITTEE], MAX_SHARD_BLOCKS_PER_ATTESTATION]
-    signature: BLSSignature
+    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    attestation: Attestation
 ```
 
 ### `CompactCommittee`
@@ -232,8 +230,8 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
 
 ```python
 def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation) -> IndexedAttestation:
-    attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-    return IndexedAttestation(attesting_indices, attestation.data, attestation.custody_bits, attestation.signature)
+    committee = get_beacon_committee(beacon_state, attestation.data.slot, attestation.data.index)
+    return IndexedAttestation(committee, attestation)
 ```
 
 ### `update_gasprice`
@@ -259,18 +257,20 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     Check if ``indexed_attestation`` has valid indices and signature.
     """
 
-    # Verify indices are sorted
-    if indexed_attestation.participants != sorted(indexed_attestation.participants):
-        return False
-    
     # Verify aggregate signature
     all_pubkeys = []
     all_message_hashes = []
-    for i, custody_bits in enumerate(indexed_attestation.custody_bits):
-        for participant, bit in zip(participants, custody_bits):
-            all_pubkeys.append(state.validators[participant].pubkey)
-            # Note: only 2N distinct message hashes
-            all_message_hashes.append(AttestationCustodyBitWrapper(hash_tree_root(indexed_attestation.data), i, bit))
+    aggregation_bits = indexed_attestation.attestation.aggregation_bits
+    assert len(aggregation_bits) == len(indexed_attestation.committee)
+    for i, custody_bits in enumerate(indexed_attestation.attestation.custody_bits):
+        assert len(custody_bits) == len(indexed_attestation.committee)
+        for participant, abit, cbit in zip(indexed_attestation.committee, aggregation_bits, custody_bits):
+            if abit:
+                all_pubkeys.append(state.validators[participant].pubkey)
+                # Note: only 2N distinct message hashes
+                all_message_hashes.append(AttestationCustodyBitWrapper(hash_tree_root(indexed_attestation.data), i, cbit))
+            else:
+                assert cbit == False
         
     return bls_verify_multiple(
         pubkeys=all_pubkeys,
@@ -318,17 +318,13 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> bool:
     proposer_index = get_beacon_proposer_index(state)
 
     # Signature check
-    committee = get_beacon_committee(state, get_current_epoch(state), shard)
-    for bits in attestation.custody_bits + [attestation.aggregation_bits]:
-        assert len(bits) == len(committee)
     assert is_valid_indexed_attestation(state, get_indexed_attestation(state, attestation))
     # Type 1: on-time attestations
     if data.custody_bits != []:
         # Correct slot
         assert data.slot == state.slot
-        # Slot the attestation starts counting from
-        start_slot = state.shard_next_slots[shard]
         # Correct data root count
+        start_slot = state.shard_next_slots[shard]
         offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
         assert len(attestation.custody_bits) == len(offset_slots)
         # Correct parent block root
@@ -379,7 +375,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
         prev_gasprice = shard_state.gasprice
 
-    # Verify combined signature
+    # Verify combined proposer signature
     assert bls_verify_multiple(
         pubkeys=[state.validators[proposer].pubkey for proposer in proposers],
         message_hashes=[hash_tree_root(header) for header in headers],
@@ -420,6 +416,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
             if (
                 get_total_balance(state, online_indices.intersection(all_participants)) * 3 >=
                 get_total_balance(state, online_indices.intersection(this_shard_committee)) * 2
+                and success is False
             ):
                 assert shard_transition_root == hash_tree_root(block.shard_transition)
                 process_crosslink(state, shard, block.shard_transition)
