@@ -25,10 +25,7 @@ def run_attester_slashing_processing(spec, state, attester_slashing, valid=True)
         yield 'post', None
         return
 
-    slashed_indices = (
-        attester_slashing.attestation_1.custody_bit_0_indices
-        + attester_slashing.attestation_1.custody_bit_1_indices
-    )
+    slashed_indices = attester_slashing.attestation_1.attesting_indices
 
     proposer_index = spec.get_beacon_proposer_index(state)
     pre_proposer_balance = get_balance(state, proposer_index)
@@ -112,10 +109,7 @@ def test_success_surround(spec, state):
 @always_bls
 def test_success_already_exited_recent(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    slashed_indices = (
-        attester_slashing.attestation_1.custody_bit_0_indices
-        + attester_slashing.attestation_1.custody_bit_1_indices
-    )
+    slashed_indices = attester_slashing.attestation_1.attesting_indices
     for index in slashed_indices:
         spec.initiate_validator_exit(state, index)
 
@@ -127,10 +121,7 @@ def test_success_already_exited_recent(spec, state):
 @always_bls
 def test_success_already_exited_long_ago(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
-    slashed_indices = (
-        attester_slashing.attestation_1.custody_bit_0_indices
-        + attester_slashing.attestation_1.custody_bit_1_indices
-    )
+    slashed_indices = attester_slashing.attestation_1.attesting_indices
     for index in slashed_indices:
         spec.initiate_validator_exit(state, index)
         state.validators[index].withdrawable_epoch = spec.get_current_epoch(state) + 2
@@ -190,24 +181,9 @@ def test_participants_already_slashed(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
     # set all indices to slashed
-    attestation_1 = attester_slashing.attestation_1
-    validator_indices = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
+    validator_indices = attester_slashing.attestation_1.attesting_indices
     for index in validator_indices:
         state.validators[index].slashed = True
-
-    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
-
-
-@with_all_phases
-@spec_state_test
-def test_custody_bit_0_and_1_intersect(spec, state):
-    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
-
-    attester_slashing.attestation_1.custody_bit_1_indices.append(
-        attester_slashing.attestation_1.custody_bit_0_indices[0]
-    )
-
-    sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
@@ -218,10 +194,10 @@ def test_custody_bit_0_and_1_intersect(spec, state):
 def test_att1_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
-    indices = attester_slashing.attestation_1.custody_bit_0_indices
+    indices = attester_slashing.attestation_1.attesting_indices
     options = list(set(range(len(state.validators))) - set(indices))
     indices.append(options[len(options) // 2])  # add random index, not previously in attestation.
-    attester_slashing.attestation_1.custody_bit_0_indices = sorted(indices)
+    attester_slashing.attestation_1.attesting_indices = sorted(indices)
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad extra index is spotted, and slashing is aborted.
 
@@ -234,10 +210,10 @@ def test_att1_bad_extra_index(spec, state):
 def test_att1_bad_replaced_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
-    indices = attester_slashing.attestation_1.custody_bit_0_indices
+    indices = attester_slashing.attestation_1.attesting_indices
     options = list(set(range(len(state.validators))) - set(indices))
     indices[3] = options[len(options) // 2]  # replace with random index, not previously in attestation.
-    attester_slashing.attestation_1.custody_bit_0_indices = sorted(indices)
+    attester_slashing.attestation_1.attesting_indices = sorted(indices)
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad replaced index is spotted, and slashing is aborted.
 
@@ -250,10 +226,10 @@ def test_att1_bad_replaced_index(spec, state):
 def test_att2_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
-    indices = attester_slashing.attestation_2.custody_bit_0_indices
+    indices = attester_slashing.attestation_2.attesting_indices
     options = list(set(range(len(state.validators))) - set(indices))
     indices.append(options[len(options) // 2])  # add random index, not previously in attestation.
-    attester_slashing.attestation_2.custody_bit_0_indices = sorted(indices)
+    attester_slashing.attestation_2.attesting_indices = sorted(indices)
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad extra index is spotted, and slashing is aborted.
 
@@ -266,10 +242,10 @@ def test_att2_bad_extra_index(spec, state):
 def test_att2_bad_replaced_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
-    indices = attester_slashing.attestation_2.custody_bit_0_indices
+    indices = attester_slashing.attestation_2.attesting_indices
     options = list(set(range(len(state.validators))) - set(indices))
     indices[3] = options[len(options) // 2]  # replace with random index, not previously in attestation.
-    attester_slashing.attestation_2.custody_bit_0_indices = sorted(indices)
+    attester_slashing.attestation_2.attesting_indices = sorted(indices)
     # Do not sign the modified attestation (it's ok to slash if attester signed, not if they did not),
     # see if the bad replaced index is spotted, and slashing is aborted.
 
@@ -278,10 +254,10 @@ def test_att2_bad_replaced_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_unsorted_att_1_bit0(spec, state):
+def test_unsorted_att_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
-    indices = attester_slashing.attestation_1.custody_bit_0_indices
+    indices = attester_slashing.attestation_1.attesting_indices
     assert len(indices) >= 3
     indices[1], indices[2] = indices[2], indices[1]  # unsort second and third index
     sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
@@ -291,15 +267,12 @@ def test_unsorted_att_1_bit0(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_unsorted_att_2_bit0(spec, state):
+def test_unsorted_att_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
-    indices = attester_slashing.attestation_2.custody_bit_0_indices
+    indices = attester_slashing.attestation_2.attesting_indices
     assert len(indices) >= 3
     indices[1], indices[2] = indices[2], indices[1]  # unsort second and third index
     sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
-
-
-# note: unsorted indices for custody bit 0 are to be introduced in phase 1 testing.
