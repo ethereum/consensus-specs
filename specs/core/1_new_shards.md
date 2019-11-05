@@ -464,7 +464,7 @@ def misc_block_post_process(state: BeaconState, block: BeaconBlock) -> None:
             assert block.shard_transition[shard] == ShardTransition()
     for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
         for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
-            online_countdown[index] = ONLINE_PERIOD
+            state.online_countdown[index] = ONLINE_PERIOD
 ```
 
 ### Light client processing
