@@ -320,7 +320,7 @@ def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
 #### `validate_attestation`
 
 ```python
-def validate_attestation(state: BeaconState, attestation: Attestation) -> bool:
+def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < ACTIVE_SHARDS
     shard = get_shard(state, attestation)
