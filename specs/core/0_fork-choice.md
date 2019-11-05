@@ -47,7 +47,7 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `9` | slots | 108 seconds |
+| `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3 (= 8)` | slots | 96 seconds |
 
 ### Helpers
 
@@ -174,14 +174,15 @@ def on_tick(store: Store, time: uint64) -> None:
     store.time = time
 
     current_slot = get_current_slot(store)
-    # not a new epoch, return
+    # Not a new epoch, return
     if not (current_slot > previous_slot and current_slot % SLOTS_PER_EPOCH == 0):
         return
-    # if new epoch and there are queued_justified_checkpoints, update if any is better than the best in store
+    # If new epoch and there are queued_justified_checkpoints, update if any is better than the best in store
     if any(store.queued_justified_checkpoints):
         best_justified_checkpoint = max(store.queued_justified_checkpoints, key=lambda checkpoint: checkpoint.epoch)
         if best_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
             store.justified_checkpoint = best_justified_checkpoint
+    store.queued_justified_checkpoints = []
 ```
 
 #### `on_block`
