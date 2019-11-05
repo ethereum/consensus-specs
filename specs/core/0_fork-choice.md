@@ -224,6 +224,9 @@ def on_block(store: Store, block: BeaconBlock) -> None:
 def on_attestation(store: Store, attestation: Attestation) -> None:
     target = attestation.data.target
 
+    # Attestations must be from the current or previous epoch
+    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+    assert target.epoch in [current_epoch, current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH]
     # Cannot calculate the current shuffling if have not seen the target
     assert target.root in store.blocks
 
