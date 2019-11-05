@@ -293,7 +293,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 
 ```python
 def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
-    return (attestation.data.index + get_start_shard(state, data.slot)) % ACTIVE_SHARDS
+    return Shard((attestation.data.index + get_start_shard(state, data.slot)) % ACTIVE_SHARDS)
 ```
 
 ## Beacon Chain Changes
