@@ -494,7 +494,7 @@ def process_light_client_signatures(state: BeaconState, block: BeaconBlock) -> N
 ### Epoch transition
 
 ```python
-def phase_1_epoch_transition(state):
+def phase_1_epoch_transition(state: BeaconState) -> None:
     # Slowly remove validators from the "online" set if they do not show up
     for index in range(len(state.validators)):
         if state.online_countdown[index] != 0:
