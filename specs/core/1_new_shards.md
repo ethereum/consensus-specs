@@ -367,7 +367,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     for i in range(len(offset_slots)):
         if any(transition.shard_data_roots):
             headers.append(ShardSignedHeader(
-                shard_parent_root=shard_parent_root
+                shard_parent_root=shard_parent_root,
                 parent_hash=get_block_root_at_slot(state, state.slot-1),
                 slot=offset_slots[i],
                 body_root=chunks_to_body_root(transition.shard_data_roots[i])
