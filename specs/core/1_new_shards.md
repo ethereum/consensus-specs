@@ -428,7 +428,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
                 and success is False
             ):
                 assert shard_transition_root == hash_tree_root(block.shard_transition)
-                process_crosslink(state, shard, block.shard_transition)
+                apply_shard_transition(state, shard, block.shard_transition)
                 # Apply proposer reward and cost
                 estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
                 increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
