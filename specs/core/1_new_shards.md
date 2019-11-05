@@ -479,7 +479,7 @@ def process_light_client_signatures(state: BeaconState, block: BeaconBlock) -> N
         if bit:
             signer_keys.append(state.validators[committee[i]].pubkey)
             increase_balance(state, committee[i], get_base_reward(state, committee[i]))
-            tot_reward += get_base_reward(state, committee[i])
+            total_reward += get_base_reward(state, committee[i])
 
     increase_balance(state, get_beacon_proposer_index(state), tot_reward // PROPOSER_REWARD_COEFFICIENT)
     
