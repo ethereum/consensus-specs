@@ -404,7 +404,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
     pending_attestations = []
     # Basic validation
     for attestation in attestations:
-        assert validate_attestation(state, attestation)
+       validate_attestation(state, attestation)
     # Process crosslinks
     online_indices = get_online_indices(state)
     winners = set()
