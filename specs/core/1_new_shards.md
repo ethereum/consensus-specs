@@ -61,7 +61,7 @@ This document describes the shard transition function (data layer only) and the 
 | `ACTIVE_SHARDS` | `2**6` (= 64) |
 | `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~29 hours |
+| `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 | `SHARD_BLOCK_CHUNK_SIZE` | `2**18` (= 262,144) | |
 | `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
 | `BLOCK_SIZE_TARGET` | `3 * 2**16` (= 196,608) | |
