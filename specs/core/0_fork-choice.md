@@ -43,6 +43,12 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
 5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
 
+### Configuration
+
+| Name | Value | Unit | Duration |
+| - | - | :-: | :-: |
+| `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `9` | slots | 108 seconds |
+
 ### Helpers
 
 #### `LatestMessage`
@@ -60,8 +66,10 @@ class LatestMessage(object):
 @dataclass
 class Store(object):
     time: uint64
+    genesis_time: uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
+    queued_justified_checkpoints: List[Checkpoint, 2**40] = field(default_factory=list)
     blocks: Dict[Hash, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Hash, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
@@ -78,12 +86,18 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
     finalized_checkpoint = Checkpoint(epoch=GENESIS_EPOCH, root=root)
     return Store(
         time=genesis_state.genesis_time,
+        genesis_time=genesis_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         blocks={root: genesis_block},
         block_states={root: genesis_state.copy()},
         checkpoint_states={justified_checkpoint: genesis_state.copy()},
     )
+```
+
+```python
+def get_current_slot(store: Store) -> Slot:
+    return Slot((store.time - store.genesis_time) // SECONDS_PER_SLOT)
 ```
 
 #### `get_ancestor`
@@ -130,13 +144,44 @@ def get_head(store: Store) -> Hash:
         head = max(children, key=lambda root: (get_latest_attesting_balance(store, root), root))
 ```
 
+#### `should_update_justified_checkpoint`
+
+```python
+def should_update_justified_checkpoint(store: Store, justified_checkpoint: Checkpoint) -> bool:
+    current_epoch = compute_epoch_at_slot(get_current_slot(store))
+
+    if get_current_slot(store) - compute_start_slot_at_epoch(current_epoch) < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
+        return True
+
+    justified_block = store.blocks[justified_checkpoint.root]
+    if justified_block.slot <= compute_start_slot_at_epoch(store.justified_checkpoint.epoch):
+        return False
+    if not get_ancestor(store, justified_checkpoint.root, store.blocks[justified_checkpoint.root].slot):
+        return False
+
+    return True
+```
+
 ### Handlers
 
 #### `on_tick`
 
 ```python
 def on_tick(store: Store, time: uint64) -> None:
+    previous_slot = get_current_slot(store)
+
+    # update store time
     store.time = time
+
+    current_slot = get_current_slot(store)
+    # not a new epoch, return
+    if not (current_slot > previous_slot and current_slot % SLOTS_PER_EPOCH == 0):
+        return
+    # if new epoch and there are queued_justified_checkpoints, update if any is better than the best in store
+    if any(store.queued_justified_checkpoints):
+        best_justified_checkpoint = max(store.queued_justified_checkpoints, key=lambda checkpoint: checkpoint.epoch)
+        if best_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
+            store.justified_checkpoint = best_justified_checkpoint
 ```
 
 #### `on_block`
@@ -164,7 +209,10 @@ def on_block(store: Store, block: BeaconBlock) -> None:
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-        store.justified_checkpoint = state.current_justified_checkpoint
+        if should_update_justified_checkpoint(store, state.current_justified_checkpoint):
+            store.justified_checkpoint = state.current_justified_checkpoint
+        else:
+            store.queued_justified_checkpoints.append(state.current_justified_checkpoint)
 
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
