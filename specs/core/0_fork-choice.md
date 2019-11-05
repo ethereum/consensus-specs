@@ -150,7 +150,7 @@ def get_head(store: Store) -> Hash:
 def should_update_justified_checkpoint(store: Store, justified_checkpoint: Checkpoint) -> bool:
     current_epoch = compute_epoch_at_slot(get_current_slot(store))
 
-    if get_current_slot(store) - compute_start_slot_at_epoch(current_epoch) < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
+    if get_current_slot(store) % SLOTS_PER_EPOCH < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
         return True
 
     justified_block = store.blocks[justified_checkpoint.root]

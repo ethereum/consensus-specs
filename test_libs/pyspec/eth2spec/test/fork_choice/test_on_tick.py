@@ -32,7 +32,6 @@ def test_update_justified_single(spec, state):
         epoch=store.justified_checkpoint.epoch + 1,
         root=b'\x55' * 32,
     )
-
     store.queued_justified_checkpoints.append(new_justified)
 
     run_on_tick(spec, store, store.time + seconds_per_epoch, new_justified)
@@ -57,7 +56,7 @@ def test_update_justified_multiple(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_no_update_(spec, state):
+def test_no_update_same_slot_at_epoch_boundary(spec, state):
     store = spec.get_genesis_store(state)
     seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
 
@@ -65,8 +64,63 @@ def test_no_update_(spec, state):
         epoch=store.justified_checkpoint.epoch + 1,
         root=b'\x55' * 32,
     )
-
     store.queued_justified_checkpoints.append(new_justified)
 
-    run_on_tick(spec, store, store.time + seconds_per_epoch, new_justified)
+    # set store time to already be at epoch boundary
+    store.time = seconds_per_epoch
 
+    run_on_tick(spec, store, store.time + 1)
+
+
+@with_all_phases
+@spec_state_test
+def test_no_update_not_epoch_boundary(spec, state):
+    store = spec.get_genesis_store(state)
+
+    new_justified = spec.Checkpoint(
+        epoch=store.justified_checkpoint.epoch + 1,
+        root=b'\x55' * 32,
+    )
+    store.queued_justified_checkpoints.append(new_justified)
+
+    run_on_tick(spec, store, store.time + spec.SECONDS_PER_SLOT)
+
+
+@with_all_phases
+@spec_state_test
+def test_no_update_new_justified_equal_epoch(spec, state):
+    store = spec.get_genesis_store(state)
+    seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+
+    new_justified = spec.Checkpoint(
+        epoch=store.justified_checkpoint.epoch + 1,
+        root=b'\x55' * 32,
+    )
+    store.queued_justified_checkpoints.append(new_justified)
+
+    store.justified_checkpoint = spec.Checkpoint(
+        epoch=new_justified.epoch,
+        root=b'\44' * 32,
+    )
+
+    run_on_tick(spec, store, store.time + seconds_per_epoch)
+
+
+@with_all_phases
+@spec_state_test
+def test_no_update_new_justified_later_epoch(spec, state):
+    store = spec.get_genesis_store(state)
+    seconds_per_epoch = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+
+    new_justified = spec.Checkpoint(
+        epoch=store.justified_checkpoint.epoch + 1,
+        root=b'\x55' * 32,
+    )
+    store.queued_justified_checkpoints.append(new_justified)
+
+    store.justified_checkpoint = spec.Checkpoint(
+        epoch=new_justified.epoch + 1,
+        root=b'\44' * 32,
+    )
+
+    run_on_tick(spec, store, store.time + seconds_per_epoch)
