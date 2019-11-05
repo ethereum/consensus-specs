@@ -432,7 +432,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
                 # Apply proposer reward and cost
                 estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
                 increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
-                for shard_state, slot, length in zip(transition.shard_states, offset_slots, block.shard_transition.shard_block_lengths):
+                for shard_state, slot, length in zip(block.shard_transition.shard_states, offset_slots, block.shard_transition.shard_block_lengths):
                     decrease_balance(state, get_shard_proposer(state, shard, slot), shard_state.gasprice * length)
                 winners.add((shard, shard_transition_root))
                 success = True
