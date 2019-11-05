@@ -12,29 +12,36 @@
     - [Configuration](#configuration)
         - [Misc](#misc)
     - [Containers](#containers)
-        - [Aliases](#aliases)
+        - [`ShardBlockWrapper`](#shardblockwrapper)
+        - [`ShardSignedHeader`](#shardsignedheader)
+        - [`ShardState`](#shardstate)
         - [`AttestationData`](#attestationdata)
-        - [`AttestationShardData`](#attestationsharddata)
-        - [`ReducedAttestationData`](#reducedattestationdata)
+        - [`ShardTransition`](#shardtransition)
         - [`Attestation`](#attestation)
-        - [`ReducedAttestation`](#reducedattestation)
         - [`IndexedAttestation`](#indexedattestation)
         - [`CompactCommittee`](#compactcommittee)
         - [`AttestationCustodyBitWrapper`](#attestationcustodybitwrapper)
+        - [`PendingAttestation`](#pendingattestation)
     - [Helpers](#helpers)
         - [`get_online_validators`](#get_online_validators)
         - [`pack_compact_validator`](#pack_compact_validator)
         - [`committee_to_compact_committee`](#committee_to_compact_committee)
         - [`get_light_client_committee`](#get_light_client_committee)
         - [`get_indexed_attestation`](#get_indexed_attestation)
+        - [`update_gasprice`](#update_gasprice)
         - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
+        - [`get_attestation_shard`](#get_attestation_shard)
     - [Beacon Chain Changes](#beacon-chain-changes)
         - [New beacon state fields](#new-beacon-state-fields)
         - [New beacon block data fields](#new-beacon-block-data-fields)
         - [Attestation processing](#attestation-processing)
+            - [`validate_attestation`](#validate_attestation)
+            - [`apply_shard_transition`](#apply_shard_transition)
+            - [`process_attestations`](#process_attestations)
+        - [Misc block post-processing](#misc-block-post-processing)
         - [Light client processing](#light-client-processing)
         - [Epoch transition](#epoch-transition)
-        - [Fraud proofs](#fraud-proofs)
+    - [Fraud proofs](#fraud-proofs)
     - [Shard state transition function](#shard-state-transition-function)
     - [Honest committee member behavior](#honest-committee-member-behavior)
 
@@ -306,9 +313,9 @@ def get_shard(state: BeaconState, attestation: Attestation):
     light_client_signature: BLSSignature
 ```
 
-## Attestation processing
+### Attestation processing
 
-### `validate_attestation`
+#### `validate_attestation`
 
 ```python
 def validate_attestation(state: BeaconState, attestation: Attestation) -> bool:
@@ -336,7 +343,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> bool:
         assert len(attestation.custody_bits) == 0
 ```
 
-### `apply_shard_transition`
+#### `apply_shard_transition`
 
 ```python
 def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTransition) -> None:
@@ -388,7 +395,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     state.shard_states[shard].slot = state.slot - 1
 ```
 
-### `process_attestations`
+#### `process_attestations`
 
 ```python
 def process_attestations(state: BeaconState, block: BeaconBlock, attestations: Sequence[Attestation]) -> None:
@@ -498,7 +505,7 @@ def phase_1_epoch_transition(state):
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
 ```
 
-### Fraud proofs
+## Fraud proofs
 
 TODO. The intent is to have a single universal fraud proof type, which contains the following parts:
 
