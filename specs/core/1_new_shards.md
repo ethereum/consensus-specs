@@ -473,7 +473,7 @@ def misc_block_post_process(state: BeaconState, block: BeaconBlock) -> None:
 def process_light_client_signatures(state: BeaconState, block: BeaconBlock) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
     assert len(block.light_client_signature_bitfield) == len(committee)
-    tot_reward = 0
+    total_reward = Gwei(0)
     signer_keys = []
     for i, bit in enumerate(block.light_client_signature_bitfield):
         if bit:
