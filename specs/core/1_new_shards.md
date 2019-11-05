@@ -470,7 +470,7 @@ def misc_block_post_process(state: BeaconState, block: BeaconBlock) -> None:
 ### Light client processing
 
 ```python
-def process_light_client_signatures(state: BeaconState, block: BeaconBlock):
+def process_light_client_signatures(state: BeaconState, block: BeaconBlock) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
     assert len(block.light_client_signature_bitfield) == len(committee)
     tot_reward = 0
