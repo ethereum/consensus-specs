@@ -275,7 +275,9 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
             if abit:
                 all_pubkeys.append(state.validators[participant].pubkey)
                 # Note: only 2N distinct message hashes
-                all_message_hashes.append(AttestationCustodyBitWrapper(hash_tree_root(indexed_attestation.data), i, cbit))
+                all_message_hashes.append(hash_tree_root(
+                    AttestationCustodyBitWrapper(hash_tree_root(indexed_attestation.data), i, cbit)
+                ))
             else:
                 assert cbit == False
         
