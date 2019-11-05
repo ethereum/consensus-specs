@@ -148,8 +148,6 @@ def get_head(store: Store) -> Hash:
 
 ```python
 def should_update_justified_checkpoint(store: Store, justified_checkpoint: Checkpoint) -> bool:
-    current_epoch = compute_epoch_at_slot(get_current_slot(store))
-
     if get_current_slot(store) % SLOTS_PER_EPOCH < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
         return True
 
