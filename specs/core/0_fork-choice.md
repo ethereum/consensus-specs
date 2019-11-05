@@ -47,7 +47,7 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 
 | Name | Value | Unit | Duration |
 | - | - | :-: | :-: |
-| `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3 (= 8)` | slots | 96 seconds |
+| `SAFE_SLOTS_TO_UPDATE_JUSTIFIED` | `2**3` (= 8) | slots | 96 seconds |
 
 ### Helpers
 
