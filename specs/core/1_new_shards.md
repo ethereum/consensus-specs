@@ -443,7 +443,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
             aggregation_bits=attestation.aggregation_bits,
             data=attestation.data,
             inclusion_delay=state.slot - data.slot,
-            crosslink_success=(attestation.shard, attestation.shard_transition_root) in winners and attestation.data.slot == state.slot,
+            crosslink_success=(get_shard(state, attestation), attestation.shard_transition_root) in winners and attestation.data.slot == state.slot,
             proposer_index=proposer_index
         )
         if attestation.data.target.epoch == get_current_epoch(state):
