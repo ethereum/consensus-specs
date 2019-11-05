@@ -481,7 +481,7 @@ def process_light_client_signatures(state: BeaconState, block: BeaconBlock) -> N
             increase_balance(state, committee[i], get_base_reward(state, committee[i]))
             total_reward += get_base_reward(state, committee[i])
 
-    increase_balance(state, get_beacon_proposer_index(state), tot_reward // PROPOSER_REWARD_COEFFICIENT)
+    increase_balance(state, get_beacon_proposer_index(state), total_reward // PROPOSER_REWARD_COEFFICIENT)
     
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(signer_keys),
