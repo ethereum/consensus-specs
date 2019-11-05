@@ -54,7 +54,6 @@
             - [`hash_tree_root`](#hash_tree_root)
             - [`signing_root`](#signing_root)
             - [`bls_verify`](#bls_verify)
-            - [`bls_verify_multiple`](#bls_verify_multiple)
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [Predicates](#predicates)
             - [`is_active_validator`](#is_active_validator)
@@ -541,10 +540,6 @@ def bytes_to_int(data: bytes) -> uint64:
 #### `bls_verify`
 
 `bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
-
-#### `bls_verify_multiple`
-
-`bls_verify_multiple` is a function for verifying a BLS signature constructed from multiple messages, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify_multiple).
 
 #### `bls_aggregate_pubkeys`
 
@@ -1432,9 +1427,8 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     assert is_valid_indexed_attestation(state, attestation_2)
 
     slashed_any = False
-    attesting_indices_1 = attestation_1.attesting_indices
-    attesting_indices_2 = attestation_2.attesting_indices
-    for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
+    indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)
+    for index in sorted(indices):
         if is_slashable_validator(state.validators[index], get_current_epoch(state)):
             slash_validator(state, index)
             slashed_any = True
