@@ -457,7 +457,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
 ### Misc block post-processing
 
 ```python
-def misc_block_post_process(state: BeaconState, block: BeaconBlock):
+def misc_block_post_process(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
     for shard in range(MAX_SHARDS):
         if state.shard_states[shard].slot != state.slot - 1:
