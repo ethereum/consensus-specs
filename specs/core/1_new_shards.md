@@ -132,7 +132,7 @@ class ShardTransition(Container):
     # Shard data roots
     shard_data_roots: List[List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate state roots
-    shard_state_roots: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
     proposer_signature_aggregate: BLSSignature
 ```
