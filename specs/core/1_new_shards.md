@@ -13,7 +13,7 @@
         - [Misc](#misc)
     - [Containers](#containers)
         - [`ShardBlockWrapper`](#shardblockwrapper)
-        - [`ShardSignedHeader`](#shardsignedheader)
+        - [`ShardSignableHeader`](#shardsignedheader)
         - [`ShardState`](#shardstate)
         - [`AttestationData`](#attestationdata)
         - [`ShardTransition`](#shardtransition)
@@ -28,7 +28,7 @@
         - [`committee_to_compact_committee`](#committee_to_compact_committee)
         - [`get_light_client_committee`](#get_light_client_committee)
         - [`get_indexed_attestation`](#get_indexed_attestation)
-        - [`update_gasprice`](#update_gasprice)
+        - [`get_updated_gasprice`](#get_updated_gasprice)
         - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
         - [`get_attestation_shard`](#get_attestation_shard)
     - [Beacon Chain Changes](#beacon-chain-changes)
@@ -77,6 +77,8 @@ This document describes the shard transition function (data layer only) and the 
 
 ### `ShardBlockWrapper`
 
+_Wrapper for being broadcasted over the network._
+
 ```python
 class ShardBlockWrapper(Container):
     shard_parent_root: Hash
@@ -86,10 +88,10 @@ class ShardBlockWrapper(Container):
     signature: BLSSignature
 ```
 
-### `ShardSignedHeader`
+### `ShardSignableHeader`
 
 ```python
-class ShardSignedHeader(Container):
+class ShardSignableHeader(Container):
     shard_parent_root: Hash
     beacon_parent_root: Hash
     slot: Slot
@@ -102,7 +104,7 @@ class ShardSignedHeader(Container):
 class ShardState(Container):
     slot: Slot
     gasprice: Gwei
-    root: Hash
+    data: Hash
     latest_block_hash: Hash
 ```
 
@@ -131,7 +133,7 @@ class ShardTransition(Container):
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
     shard_data_roots: List[List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
-    # Intermediate state roots
+    # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
     proposer_signature_aggregate: BLSSignature
@@ -241,10 +243,10 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
     return IndexedAttestation(committee, attestation)
 ```
 
-### `update_gasprice`
+### `get_updated_gasprice`
 
 ```python
-def update_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
+def get_updated_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
     if length > BLOCK_SIZE_TARGET:
         delta = prev_gasprice * (length - BLOCK_SIZE_TARGET) // BLOCK_SIZE_TARGET // GASPRICE_ADJUSTMENT_COEFFICIENT
         return min(prev_gasprice + delta, MAX_GASPRICE)
@@ -289,11 +291,18 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     )
 ```
 
-### `get_attestation_shard`
+### `get_shard`
 
 ```python
 def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
     return Shard((attestation.data.index + get_start_shard(state, data.slot)) % ACTIVE_SHARDS)
+```
+
+### `get_offset_slots`
+
+```python
+def get_offset_slots(state: BeaconState, start_slot: Slot) -> Sequence[Slot]:
+    return [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
 ```
 
 ## Beacon Chain Changes
@@ -333,16 +342,13 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Correct slot
         assert data.slot == state.slot
         # Correct data root count
-        start_slot = state.shard_next_slots[shard]
-        offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
-        assert len(attestation.custody_bits) == len(offset_slots)
+        assert len(attestation.custody_bits) == len(get_offset_slots(state, state.shard_next_slots[shard]))
         # Correct parent block root
         assert data.beacon_block_root == get_block_root_at_slot(state, state.slot - 1)
     # Type 2: delayed attestations
     else:
         assert state.slot < data.slot + SLOTS_PER_EPOCH
         assert data.shard_transition_root == Hash()
-        assert len(attestation.custody_bits) == 0
 ```
 
 #### `apply_shard_transition`
@@ -353,7 +359,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     start_slot = state.shard_next_slots[shard]
 
     # Correct data root count
-    offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
+    offset_slots = get_offset_slots(state, start_slot)
     assert len(transition.shard_data_roots) == len(transition.shard_states) == len(transition.shard_block_lengths) == len(offset_slots)
     assert transition.start_slot == start_slot
 
@@ -366,7 +372,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     shard_parent_root = state.shard_states[shard].latest_block_hash
     for i in range(len(offset_slots)):
         if any(transition.shard_data_roots):
-            headers.append(ShardSignedHeader(
+            headers.append(ShardSignableHeader(
                 shard_parent_root=shard_parent_root,
                 parent_hash=get_block_root_at_slot(state, state.slot-1),
                 slot=offset_slots[i],
@@ -379,7 +385,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     prev_gasprice = state.shard_states[shard].gasprice
     for i in range(len(offset_slots)):
         shard_state, block_length, chunks = transition.shard_states[i], transition.shard_block_lengths[i], transition.shard_data_roots[i]
-        assert shard_state.gasprice == update_gasprice(prev_gasprice, block_length)
+        assert shard_state.gasprice == get_updated_gasprice(prev_gasprice, block_length)
         assert shard_state.slot == offset_slots[i]
         assert len(chunks) == block_length // SHARD_BLOCK_CHUNK_SIZE
         prev_gasprice = shard_state.gasprice
@@ -462,9 +468,6 @@ def misc_block_post_process(state: BeaconState, block: BeaconBlock) -> None:
     for shard in range(MAX_SHARDS):
         if state.shard_states[shard].slot != state.slot - 1:
             assert block.shard_transition[shard] == ShardTransition()
-    for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
-        for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
-            state.online_countdown[index] = ONLINE_PERIOD
 ```
 
 ### Light client processing
@@ -505,6 +508,11 @@ def phase_1_epoch_transition(state: BeaconState) -> None:
         state.current_light_committee = state.next_light_committee
         new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
         state.next_light_committee = committee_to_compact_committee(state, new_committee)
+
+    # Process pending attestations
+    for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
+        for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
+            state.online_countdown[index] = ONLINE_PERIOD
 ```
 
 ## Fraud proofs
@@ -520,7 +528,7 @@ TODO. The intent is to have a single universal fraud proof type, which contains 
 The proof verifies that one of the two conditions is false:
 
 1. `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
-2. `execute_state_transition(shard, slot, transition.shard_states[i-1].root, hash_tree_root(parent), get_shard_proposer(state, shard, slot), block_contents) != transition.shard_states[i].root` (if `i=0` then instead use `parent.shard_states[shard][-1].root`)
+2. `execute_state_transition(shard, slot, transition.shard_states[i-1].data, hash_tree_root(parent), get_shard_proposer(state, shard, slot), block_contents) != transition.shard_states[i].data` (if `i=0` then instead use `parent.shard_states[shard][-1].data`)
 
 ## Shard state transition function
 
@@ -535,8 +543,7 @@ def shard_state_transition(shard: Shard, slot: Slot, pre_state: Hash, previous_b
 Suppose you are a committee member on shard `shard` at slot `current_slot`. Let `state` be the head beacon state you are building on. Three seconds into slot `slot`, run the following procedure:
 
 * Initialize `proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`.
-* Let `offset_slots = [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]`
-* For `slot in offset_slots`, do the following:
+* For `slot in get_offset_slots(state, start_slot)`, do the following:
     * Look for all valid proposals for `slot`; that is, a Bytes `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer(state, shard, slot), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
     * If `len(choices) == 0`, do `proposals.append(make_empty_proposal(shard_state, slot))`
     * If `len(choices) == 1`, do `proposals.append(choices[0])`
