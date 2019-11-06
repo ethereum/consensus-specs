@@ -437,7 +437,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
                 winners.add((shard, shard_transition_root))
                 success = True
         if not success:
-            assert block.shard_transition == ShardTransition()
+            assert block.shard_transitions[shard] == ShardTransition()
     for attestation in attestations:
         pending_attestation = PendingAttestation(
             aggregation_bits=attestation.aggregation_bits,
