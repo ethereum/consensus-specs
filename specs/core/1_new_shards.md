@@ -388,7 +388,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
     assert bls_verify_multiple(
         pubkeys=[state.validators[proposer].pubkey for proposer in proposers],
         message_hashes=[hash_tree_root(header) for header in headers],
-        signature=proposer.proposer_signature_aggregate,
+        signature=transition.proposer_signature_aggregate,
         domain=DOMAIN_SHARD_PROPOSAL
     )
 
