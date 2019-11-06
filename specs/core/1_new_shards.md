@@ -340,7 +340,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         assert data.beacon_block_root == get_block_root_at_slot(state, state.slot - 1)
     # Type 2: delayed attestations
     else:
-        assert state.slot - slot_to_epoch(data.slot) < EPOCH_LENGTH
+        assert state.slot < data.slot + SLOTS_PER_EPOCH
         assert data.shard_transition_root == Hash()
         assert len(attestation.custody_bits) == 0
 ```
