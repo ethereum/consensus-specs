@@ -289,6 +289,8 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 
 A validator should create and broadcast the `attestation` to the associated attestation subnet one-third of the way through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT / 3` seconds after the start of `slot`.
 
+*Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded fork, and should be made.
+
 #### Attestation data
 
 First, the validator should construct `attestation_data`, an [`AttestationData`](../core/0_beacon-chain.md#attestationdata) object based upon the state at the assigned slot.
