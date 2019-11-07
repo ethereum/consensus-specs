@@ -96,9 +96,18 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
     )
 ```
 
+#### `get_current_slot`
+
 ```python
 def get_current_slot(store: Store) -> Slot:
     return Slot((store.time - store.genesis_time) // SECONDS_PER_SLOT)
+```
+
+#### `compute_slots_since_epoch_start`
+
+```python
+def compute_slots_since_epoch_start(slot: Slot) -> int:
+    return slot - compute_start_slot_at_epoch(compute_epoch_at_slot(slot))
 ```
 
 #### `get_ancestor`
@@ -149,7 +158,7 @@ def get_head(store: Store) -> Hash:
 
 ```python
 def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: Checkpoint) -> bool:
-    if get_current_slot(store) % SLOTS_PER_EPOCH < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
+    if compute_slots_since_epoch_start(get_current_slot(store)) < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
         return True
 
     new_justified_block = store.blocks[new_justified_checkpoint.root]
