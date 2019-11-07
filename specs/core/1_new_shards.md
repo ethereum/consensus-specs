@@ -69,6 +69,7 @@ This document describes the shard transition function (data layer only) and the 
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
 | `EMPTY_CHUNK_ROOT` | `hash_tree_root(BytesN[SHARD_BLOCK_CHUNK_SIZE]())` | |
 | `MAX_GASPRICE` | `2**14` (= 16,384) | Gwei | |
+| `MIN_GASPRICE` | `2**5` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 | `DOMAIN_SHARD_LIGHT_CLIENT` | `192` | |
 | `DOMAIN_SHARD_PROPOSAL` | `193` | |
@@ -252,10 +253,7 @@ def get_updated_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
         return min(prev_gasprice + delta, MAX_GASPRICE)
     else:
         delta = prev_gasprice * (BLOCK_SIZE_TARGET - length) // BLOCK_SIZE_TARGET // GASPRICE_ADJUSTMENT_COEFFICIENT
-        if delta > prev_gasprice - GASPRICE_ADJUSTMENT_COEFFICIENT:
-            return GASPRICE_ADJUSTMENT_COEFFICIENT
-        else:
-            return prev_gasprice - delta
+        return max(prev_gasprice, MIN_GASPRICE + delta) - delta
 ```
 
 ### `is_valid_indexed_attestation`
