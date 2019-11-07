@@ -229,7 +229,9 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 The `block.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `state.eth1_data.block_hash` at the start of the current Eth1 voting period. An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
+Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `eth1_data.block_hash` found in the state at the _start_ of the current Eth1 voting period. Note that `eth1_data` can be updated in the middle of a voting period and thus the starting `eth1_data.block_hash` must be stored separately.
+
+An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
 
 ```python
 def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
