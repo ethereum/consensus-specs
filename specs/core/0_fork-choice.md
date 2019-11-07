@@ -158,6 +158,13 @@ def get_head(store: Store) -> Hash:
 
 ```python
 def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: Checkpoint) -> bool:
+    """
+    To address the bouncing attack, only update conflicting justified
+    checkpoints in the fork choice if in the early slots of the epoch.
+    Otherwise, delay incorporation of new justified checkpoint until next epoch boundary.
+
+    See https://ethresear.ch/t/prevention-of-bouncing-attack-on-ffg/6114 for more detailed analysis and discussion.
+    """
     if compute_slots_since_epoch_start(get_current_slot(store)) < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
         return True
 
@@ -186,9 +193,9 @@ def on_tick(store: Store, time: uint64) -> None:
 
     current_slot = get_current_slot(store)
     # Not a new epoch, return
-    if not (current_slot > previous_slot and current_slot % SLOTS_PER_EPOCH == 0):
+    if not (current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0):
         return
-    # Update store.justified_checkpoint if a better checkpoint is know
+    # Update store.justified_checkpoint if a better checkpoint is known
     if store.best_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
         store.justified_checkpoint = store.best_justified_checkpoint
 ```
