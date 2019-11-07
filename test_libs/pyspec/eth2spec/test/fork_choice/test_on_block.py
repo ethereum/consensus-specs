@@ -202,4 +202,4 @@ def test_on_block_outside_safe_slots_and_old_block(spec, state):
     run_on_block(spec, store, block)
 
     assert store.justified_checkpoint != new_justified
-    assert store.queued_justified_checkpoints[0] == new_justified
+    assert store.best_justified_checkpoint == new_justified

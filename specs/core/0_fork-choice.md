@@ -69,7 +69,7 @@ class Store(object):
     genesis_time: uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    queued_justified_checkpoints: List[Checkpoint, 2**40] = field(default_factory=list)
+    best_justified_checkpoint: Checkpoint
     blocks: Dict[Hash, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Hash, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
@@ -89,6 +89,7 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
         genesis_time=genesis_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
+        best_justified_checkpoint=justified_checkpoint,
         blocks={root: genesis_block},
         block_states={root: genesis_state.copy()},
         checkpoint_states={justified_checkpoint: genesis_state.copy()},
@@ -147,14 +148,17 @@ def get_head(store: Store) -> Hash:
 #### `should_update_justified_checkpoint`
 
 ```python
-def should_update_justified_checkpoint(store: Store, justified_checkpoint: Checkpoint) -> bool:
+def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: Checkpoint) -> bool:
     if get_current_slot(store) % SLOTS_PER_EPOCH < SAFE_SLOTS_TO_UPDATE_JUSTIFIED:
         return True
 
-    justified_block = store.blocks[justified_checkpoint.root]
-    if justified_block.slot <= compute_start_slot_at_epoch(store.justified_checkpoint.epoch):
+    new_justified_block = store.blocks[new_justified_checkpoint.root]
+    if new_justified_block.slot <= compute_start_slot_at_epoch(store.justified_checkpoint.epoch):
         return False
-    if not get_ancestor(store, justified_checkpoint.root, store.blocks[justified_checkpoint.root].slot):
+    if not (
+        get_ancestor(store, new_justified_checkpoint.root, store.blocks[store.justified_checkpoint.root].slot) ==
+        store.justified_checkpoint.root
+    ):
         return False
 
     return True
@@ -175,12 +179,9 @@ def on_tick(store: Store, time: uint64) -> None:
     # Not a new epoch, return
     if not (current_slot > previous_slot and current_slot % SLOTS_PER_EPOCH == 0):
         return
-    # If new epoch and there are queued_justified_checkpoints, update if any is better than the best in store
-    if any(store.queued_justified_checkpoints):
-        best_justified_checkpoint = max(store.queued_justified_checkpoints, key=lambda checkpoint: checkpoint.epoch)
-        if best_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-            store.justified_checkpoint = best_justified_checkpoint
-    store.queued_justified_checkpoints = []
+    # Update store.justified_checkpoint if a better checkpoint is know
+    if store.best_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
+        store.justified_checkpoint = store.best_justified_checkpoint
 ```
 
 #### `on_block`
@@ -208,10 +209,9 @@ def on_block(store: Store, block: BeaconBlock) -> None:
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
+        store.best_justified_checkpoint = state.current_justified_checkpoint
         if should_update_justified_checkpoint(store, state.current_justified_checkpoint):
             store.justified_checkpoint = state.current_justified_checkpoint
-        else:
-            store.queued_justified_checkpoints.append(state.current_justified_checkpoint)
 
     # Update finalized checkpoint
     if state.finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
