@@ -320,7 +320,7 @@ Here, `result` represents the 1-byte response code.
 
 The token of the negotiated protocol ID specifies the type of encoding to be used for the req/resp interaction. Two values are possible at this time:
 
--  `ssz`: the contents are [SSZ-encoded](../simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `HashTreeRoots`'s.
+-  `ssz`: the contents are [SSZ-encoded](../simple-serialize.md). This encoding type MUST be supported by all clients. For objects containing a single field, only the field is SSZ-encoded not a container with a single field. For example, the `BeaconBlocksByRoot` request is an SSZ-encoded list of `Bytes32`'s.
 -  `ssz_snappy`: The contents are SSZ-encoded and then compressed with [Snappy](https://github.com/google/snappy). MAY be supported in the interoperability testnet; MUST be supported in mainnet.
 
 #### SSZ-encoding strategy (with or without Snappy)
@@ -344,20 +344,20 @@ constituents individually as `response_chunk`s. For example, the
 Request, Response Content:
 ```
 (
-  head_fork_version: bytes4
-  finalized_root: bytes32
+  head_fork_version: Bytes4
+  finalized_root: Bytes32
   finalized_epoch: uint64
-  head_root: bytes32
+  head_root: Bytes32
   head_slot: uint64
 )
 ```
-The fields are:
+The fields are, as seen by the client at the time of sending the message:
 
 - `head_fork_version`: The beacon_state `Fork` version.
-- `finalized_root`: The latest finalized root the node knows about.
-- `finalized_epoch`: The latest finalized epoch the node knows about.
-- `head_root`: The block hash tree root corresponding to the head of the chain as seen by the sending node.
-- `head_slot`: The slot corresponding to the `head_root`.
+- `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block.
+- `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
+- `head_root`: The signing root of the current head block.
+- `head_slot`: The slot of the block corresponding to the `head_root`.
 
 The dialing client MUST send a `Status` request upon connection.
 
@@ -403,7 +403,7 @@ The response MUST consist of a single `response_chunk`.
 Request Content:
 ```
 (
-  head_block_root: HashTreeRoot
+  head_block_root: Bytes32
   start_slot: uint64
   count: uint64
   step: uint64
@@ -417,7 +417,7 @@ Response Content:
 )
 ```
 
-Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root`. The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root` (= `signing_root(BeaconBlock)`). The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
 
 The request MUST be encoded as an SSZ-container.
 
@@ -441,7 +441,7 @@ Request Content:
 
 ```
 (
-  []HashTreeRoot
+  []Bytes32
 )
 ```
 
@@ -453,7 +453,7 @@ Response Content:
 )
 ```
 
-Requests blocks by their block roots. The response is a list of `BeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
+Requests blocks by block root (= `signing_root(BeaconBlock)`). The response is a list of `BeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
 

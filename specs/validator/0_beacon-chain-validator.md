@@ -45,7 +45,6 @@
             - [Construct attestation](#construct-attestation)
                 - [Data](#data)
                 - [Aggregation bits](#aggregation-bits)
-                - [Custody bits](#custody-bits)
                 - [Aggregate signature](#aggregate-signature)
             - [Broadcast attestation](#broadcast-attestation)
         - [Attestation aggregation](#attestation-aggregation)
@@ -53,7 +52,6 @@
             - [Construct aggregate](#construct-aggregate)
                 - [Data](#data-1)
                 - [Aggregation bits](#aggregation-bits-1)
-                - [Custody bits](#custody-bits-1)
                 - [Aggregate signature](#aggregate-signature-1)
             - [Broadcast aggregate](#broadcast-aggregate)
                 - [`AggregateAndProof`](#aggregateandproof)
@@ -197,7 +195,7 @@ A validator has two primary responsibilities to the beacon chain: [proposing blo
 
 A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator creates, signs, and broadcasts a `block` that is a child of `parent` that satisfies a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
-There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~3 weeks).
+There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
 
 #### Block header
 
@@ -231,18 +229,22 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 The `block.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
-Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `state.eth1_data.block_hash` at the start of the current Eth1 voting period. An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
+Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `eth1_data.block_hash` found in the state at the _start_ of the current Eth1 voting period. Note that `eth1_data` can be updated in the middle of a voting period and thus the starting `eth1_data.block_hash` must be stored separately.
+
+An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
 
 ```python
 def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
     new_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, 2 * ETH1_FOLLOW_DISTANCE)]
     all_eth1_data = [get_eth1_data(distance) for distance in range(ETH1_FOLLOW_DISTANCE, previous_eth1_distance)]
 
-    valid_votes = []
-    for slot, vote in enumerate(state.eth1_data_votes):
-        period_tail = slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_squareroot(SLOTS_PER_ETH1_VOTING_PERIOD)
-        if vote in new_eth1_data or (period_tail and vote in all_eth1_data):
-            valid_votes.append(vote)
+    period_tail = state.slot % SLOTS_PER_ETH1_VOTING_PERIOD >= integer_squareroot(SLOTS_PER_ETH1_VOTING_PERIOD)
+    if period_tail:
+        votes_to_consider = all_eth1_data
+    else:
+        votes_to_consider = new_eth1_data
+
+    valid_votes = [vote for vote in state.eth1_data_votes if vote in votes_to_consider]
 
     return max(
         valid_votes,
@@ -291,6 +293,8 @@ A validator is expected to create, sign, and broadcast an attestation during eac
 
 A validator should create and broadcast the `attestation` to the associated attestation subnet one-third of the way through the `slot` during which the validator is assigned―that is, `SECONDS_PER_SLOT / 3` seconds after the start of `slot`.
 
+*Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG finality, these initial attestations do give weight to the fork choice, are rewarded fork, and should be made.
+
 #### Attestation data
 
 First, the validator should construct `attestation_data`, an [`AttestationData`](../core/0_beacon-chain.md#attestationdata) object based upon the state at the assigned slot.
@@ -331,25 +335,14 @@ Set `attestation.data = attestation_data` where `attestation_data` is the `Attes
 
 *Note*: Calling `get_attesting_indices(state, attestation.data, attestation.aggregation_bits)` should return a list of length equal to 1, containing `validator_index`.
 
-##### Custody bits
-
-- Let `attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
-
-*Note*: This is a stub for Phase 0.
-
 ##### Aggregate signature
 
 Set `attestation.signature = signed_attestation_data` where `signed_attestation_data` is obtained from:
 
 ```python
 def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestation, privkey: int) -> BLSSignature:
-    attestation_data_and_custody_bit = AttestationDataAndCustodyBit(
-        data=attestation.data,
-        custody_bit=0b0,
-    )
-
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
-    return bls_sign(privkey, hash_tree_root(attestation_data_and_custody_bit), domain)
+    return bls_sign(privkey, hash_tree_root(attestation.data), domain)
 ```
 
 #### Broadcast attestation
@@ -390,12 +383,6 @@ Set `aggregate_attestation.data = attestation_data` where `attestation_data` is 
 ##### Aggregation bits
 
 Let `aggregate_attestation.aggregation_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` of length `len(committee)`, where each bit set from each individual attestation is set to `0b1`.
-
-##### Custody bits
-
-- Let `aggregate_attestation.custody_bits` be a `Bitlist[MAX_VALIDATORS_PER_COMMITTEE]` filled with zeros of length `len(committee)`.
-
-*Note*: This is a stub for Phase 0.
 
 ##### Aggregate signature
 

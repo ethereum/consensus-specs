@@ -26,7 +26,6 @@
             - [`Checkpoint`](#checkpoint)
             - [`Validator`](#validator)
             - [`AttestationData`](#attestationdata)
-            - [`AttestationDataAndCustodyBit`](#attestationdataandcustodybit)
             - [`IndexedAttestation`](#indexedattestation)
             - [`PendingAttestation`](#pendingattestation)
             - [`Eth1Data`](#eth1data)
@@ -55,7 +54,6 @@
             - [`hash_tree_root`](#hash_tree_root)
             - [`signing_root`](#signing_root)
             - [`bls_verify`](#bls_verify)
-            - [`bls_verify_multiple`](#bls_verify_multiple)
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [Predicates](#predicates)
             - [`is_active_validator`](#is_active_validator)
@@ -204,8 +202,8 @@ The following values are (non-configurable) constants used throughout the specif
 | `SLOTS_PER_EPOCH` | `2**5` (= 32) | slots | 6.4 minutes |
 | `MIN_SEED_LOOKAHEAD` | `2**0` (= 1) | epochs | 6.4 minutes |
 | `MAX_SEED_LOOKAHEAD` | `2**2` (= 4) | epochs | 25.6 minutes |
-| `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~1.7 hours |
-| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~13 hours |
+| `SLOTS_PER_ETH1_VOTING_PERIOD` | `2**10` (= 1,024) | slots | ~3.4 hours |
+| `SLOTS_PER_HISTORICAL_ROOT` | `2**13` (= 8,192) | slots | ~27 hours |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `2**8` (= 256) | epochs | ~27 hours |
 | `PERSISTENT_COMMITTEE_PERIOD` | `2**11` (= 2,048) | epochs | 9 days |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `2**2` (= 4) | epochs | 25.6 minutes |
@@ -308,20 +306,11 @@ class AttestationData(Container):
     target: Checkpoint
 ```
 
-#### `AttestationDataAndCustodyBit`
-
-```python
-class AttestationDataAndCustodyBit(Container):
-    data: AttestationData
-    custody_bit: bit  # Challengeable bit (SSZ-bool, 1 byte) for the custody of shard data
-```
-
 #### `IndexedAttestation`
 
 ```python
 class IndexedAttestation(Container):
-    custody_bit_0_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]  # Indices with custody bit equal to 0
-    custody_bit_1_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]  # Indices with custody bit equal to 1
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     signature: BLSSignature
 ```
@@ -399,7 +388,6 @@ class AttesterSlashing(Container):
 class Attestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
-    custody_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     signature: BLSSignature
 ```
 
@@ -553,10 +541,6 @@ def bytes_to_int(data: bytes) -> uint64:
 
 `bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
 
-#### `bls_verify_multiple`
-
-`bls_verify_multiple` is a function for verifying a BLS signature constructed from multiple messages, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify_multiple).
-
 #### `bls_aggregate_pubkeys`
 
 `bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, as defined in the [BLS Signature spec](../bls_signature.md#bls_aggregate_pubkeys).
@@ -605,31 +589,18 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     """
     Check if ``indexed_attestation`` has valid indices and signature.
     """
-    bit_0_indices = indexed_attestation.custody_bit_0_indices
-    bit_1_indices = indexed_attestation.custody_bit_1_indices
+    indices = indexed_attestation.attesting_indices
 
-    # Verify no index has custody bit equal to 1 [to be removed in phase 1]
-    if not len(bit_1_indices) == 0:  # [to be removed in phase 1]
-        return False                 # [to be removed in phase 1]
     # Verify max number of indices
-    if not len(bit_0_indices) + len(bit_1_indices) <= MAX_VALIDATORS_PER_COMMITTEE:
-        return False
-    # Verify index sets are disjoint
-    if not len(set(bit_0_indices).intersection(bit_1_indices)) == 0:
+    if not len(indices) <= MAX_VALIDATORS_PER_COMMITTEE:
         return False
     # Verify indices are sorted
-    if not (bit_0_indices == sorted(bit_0_indices) and bit_1_indices == sorted(bit_1_indices)):
+    if not indices == sorted(indices):
         return False
     # Verify aggregate signature
-    if not bls_verify_multiple(
-        pubkeys=[
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_0_indices]),
-            bls_aggregate_pubkeys([state.validators[i].pubkey for i in bit_1_indices]),
-        ],
-        message_hashes=[
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b0)),
-            hash_tree_root(AttestationDataAndCustodyBit(data=indexed_attestation.data, custody_bit=0b1)),
-        ],
+    if not bls_verify(
+        pubkey=bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
+        message_hash=hash_tree_root(indexed_attestation.data),
         signature=indexed_attestation.signature,
         domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
     ):
@@ -922,13 +893,9 @@ def get_indexed_attestation(state: BeaconState, attestation: Attestation) -> Ind
     Return the indexed attestation corresponding to ``attestation``.
     """
     attesting_indices = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
-    custody_bit_1_indices = get_attesting_indices(state, attestation.data, attestation.custody_bits)
-    assert custody_bit_1_indices.issubset(attesting_indices)
-    custody_bit_0_indices = attesting_indices.difference(custody_bit_1_indices)
 
     return IndexedAttestation(
-        custody_bit_0_indices=sorted(custody_bit_0_indices),
-        custody_bit_1_indices=sorted(custody_bit_1_indices),
+        attesting_indices=sorted(attesting_indices),
         data=attestation.data,
         signature=attestation.signature,
     )
@@ -1026,7 +993,7 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 
 - `eth1_block_hash` is the hash of the Ethereum 1.0 block
 - `eth1_timestamp` is the Unix timestamp corresponding to `eth1_block_hash`
-- `deposits` is the sequence of all deposits, ordered chronologically, up to the block with hash `eth1_block_hash`
+- `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
 
 ```python
 def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
@@ -1460,9 +1427,8 @@ def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSla
     assert is_valid_indexed_attestation(state, attestation_2)
 
     slashed_any = False
-    attesting_indices_1 = attestation_1.custody_bit_0_indices + attestation_1.custody_bit_1_indices
-    attesting_indices_2 = attestation_2.custody_bit_0_indices + attestation_2.custody_bit_1_indices
-    for index in sorted(set(attesting_indices_1).intersection(attesting_indices_2)):
+    indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)
+    for index in sorted(indices):
         if is_slashable_validator(state.validators[index], get_current_epoch(state)):
             slash_validator(state, index)
             slashed_any = True
@@ -1479,7 +1445,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
     committee = get_beacon_committee(state, data.slot, data.index)
-    assert len(attestation.aggregation_bits) == len(attestation.custody_bits) == len(committee)
+    assert len(attestation.aggregation_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
         data=data,

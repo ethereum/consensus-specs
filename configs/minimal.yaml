@@ -21,6 +21,12 @@ MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 64
 # Jan 3, 2020
 MIN_GENESIS_TIME: 1578009600
 
+#
+#
+# Fork Choice
+# ---------------------------------------------------------------
+# 2**1 (= 1)
+SAFE_SLOTS_TO_UPDATE_JUSTIFIED: 2
 
 
 # Deposit contract
