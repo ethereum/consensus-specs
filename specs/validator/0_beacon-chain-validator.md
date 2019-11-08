@@ -195,7 +195,7 @@ A validator has two primary responsibilities to the beacon chain: [proposing blo
 
 A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator creates, signs, and broadcasts a `block` that is a child of `parent` that satisfies a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
-There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~3 weeks).
+There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
 
 #### Block header
 
