@@ -55,6 +55,7 @@
                 - [Aggregate signature](#aggregate-signature-1)
             - [Broadcast aggregate](#broadcast-aggregate)
                 - [`AggregateAndProof`](#aggregateandproof)
+    - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -79,6 +80,8 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | - | - | :-: | :-: |
 | `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
+| `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
+| `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 
 ## Becoming a validator
 
@@ -417,6 +420,10 @@ Where
 * `index` is the validator's `validator_index`.
 * `selection_proof` is the signature of the slot (`slot_signature()`).
 * `aggregate` is the `aggregate_attestation` constructed in the previous section.
+
+## Phase 0 attestation subnet stability
+
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets. The lifetime of each random subscription must be _at least_ `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION`.
 
 ## How to avoid slashing
 
