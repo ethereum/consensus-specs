@@ -183,9 +183,13 @@ def is_proposer(state: BeaconState,
 
 The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
 
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest.
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and joining the committee index attestation subnet related to their committee assignment.
 
-Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+Specifically a validator should:
+* Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+* Join the pubsub topic -- `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
+    * If any current peers are subscribed to the topic, the validator simply sends `subscribe` messages for the new topic.
+    * If no current peers are subscribed to the topic, the validator must discover new peers on this topic. If "topic discovery" is available, use topic discovery to find peers that advertise subscription to the topic. If not, "guess and check" by connecting with a number of random new peers, persisting connections with peers subscribed to the topic and (potentially) dropping the new peers otherwise.
 
 ## Beacon chain responsibilities
 
