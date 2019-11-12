@@ -59,9 +59,9 @@ In a binary Merkle tree, we define a "generalized index" of a node as `2**depth 
 Note that the generalized index has the convenient property that the two children of node `k` are `2k` and `2k+1`, and also that it equals the position of a node in the linear representation of the Merkle tree that's computed by this function:
 
 ```python
-def merkle_tree(leaves: Sequence[Hash]) -> Sequence[Hash]:
+def merkle_tree(leaves: Sequence[Bytes32]) -> Sequence[Bytes32]:
     padded_length = get_next_power_of_two(len(leaves))
-    o = [Hash()] * padded_length + list(leaves) + [Hash()] * (padded_length - len(leaves))
+    o = [Bytes32()] * padded_length + list(leaves) + [Bytes32()] * (padded_length - len(leaves))
     for i in range(padded_length - 1, 0, -1):
         o[i] = hash(o[i * 2] + o[i * 2 + 1])
     return o
@@ -289,7 +289,7 @@ def get_helper_indices(indices: Sequence[GeneralizedIndex]) -> Sequence[Generali
 Now we provide the Merkle proof verification functions. First, for single item proofs:
 
 ```python
-def calculate_merkle_root(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex) -> Hash:
+def calculate_merkle_root(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex) -> Root:
     assert len(proof) == get_generalized_index_length(index)
     for i, h in enumerate(proof):
         if get_generalized_index_bit(index, i):
@@ -300,16 +300,16 @@ def calculate_merkle_root(leaf: Hash, proof: Sequence[Hash], index: GeneralizedI
 ```
 
 ```python
-def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+def verify_merkle_proof(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex, root: Root) -> bool:
     return calculate_merkle_root(leaf, proof, index) == root
 ```
 
 Now for multi-item proofs:
 
 ```python
-def calculate_multi_merkle_root(leaves: Sequence[Hash],
-                                proof: Sequence[Hash],
-                                indices: Sequence[GeneralizedIndex]) -> Hash:
+def calculate_multi_merkle_root(leaves: Sequence[Bytes32],
+                                proof: Sequence[Bytes32],
+                                indices: Sequence[GeneralizedIndex]) -> Root:
     assert len(leaves) == len(indices)
     helper_indices = get_helper_indices(indices)
     assert len(proof) == len(helper_indices)
@@ -332,10 +332,10 @@ def calculate_multi_merkle_root(leaves: Sequence[Hash],
 ```
 
 ```python
-def verify_merkle_multiproof(leaves: Sequence[Hash],
-                             proof: Sequence[Hash],
+def verify_merkle_multiproof(leaves: Sequence[Bytes32],
+                             proof: Sequence[Bytes32],
                              indices: Sequence[GeneralizedIndex],
-                             root: Hash) -> bool:
+                             root: Root) -> bool:
     return calculate_multi_merkle_root(leaves, proof, indices) == root
 ```
 

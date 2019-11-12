@@ -118,9 +118,9 @@ class Crosslink(Container):
 class ShardBlock(Container):
     shard: Shard
     slot: ShardSlot
-    beacon_block_root: Hash
-    parent_root: Hash
-    state_root: Hash
+    beacon_block_root: Root
+    parent_root: Root
+    state_root: Root
     body: List[byte, MAX_SHARD_BLOCK_SIZE - SHARD_HEADER_SIZE]
     block_size_sum: uint64
     aggregation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
@@ -134,10 +134,10 @@ class ShardBlock(Container):
 class ShardBlockHeader(Container):
     shard: Shard
     slot: ShardSlot
-    beacon_block_root: Hash
-    parent_root: Hash
-    state_root: Hash
-    body_root: Hash
+    beacon_block_root: Root
+    parent_root: Root
+    state_root: Root
+    body_root: Root
     block_size_sum: uint64
     aggregation_bits: Bitvector[2 * MAX_PERIOD_COMMITTEE_SIZE]
     attestations: BLSSignature
@@ -150,7 +150,7 @@ class ShardBlockHeader(Container):
 class ShardState(Container):
     shard: Shard
     slot: ShardSlot
-    history_accumulator: Vector[Hash, HISTORY_ACCUMULATOR_DEPTH]
+    history_accumulator: Vector[Bytes32, HISTORY_ACCUMULATOR_DEPTH]
     latest_block_header: ShardBlockHeader
     block_size_sum: uint64
     # Fees and rewards
@@ -166,7 +166,7 @@ class ShardState(Container):
 ```python
 class ShardAttestationData(Container):
     slot: ShardSlot
-    parent_root: Hash
+    parent_root: Root
 ```
 
 ## Helper functions

@@ -137,7 +137,7 @@ We define the following Python custom types for type hinting and readability:
 | `CommitteeIndex` | `uint64` | a committee index at a slot |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Hash` | `Bytes32` | a hash |
+| `Root` | `Bytes32` | a Merkle root |
 | `Version` | `Bytes4` | a fork version number |
 | `DomainType` | `Bytes4` | a domain type |
 | `Domain` | `Bytes8` | a signature domain |
@@ -275,7 +275,7 @@ class Fork(Container):
 ```python
 class Checkpoint(Container):
     epoch: Epoch
-    root: Hash
+    root: Root
 ```
 
 #### `Validator`
@@ -283,7 +283,7 @@ class Checkpoint(Container):
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals
+    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
     effective_balance: Gwei  # Balance at stake
     slashed: boolean
     # Status epochs
@@ -300,7 +300,7 @@ class AttestationData(Container):
     slot: Slot
     index: CommitteeIndex
     # LMD GHOST vote
-    beacon_block_root: Hash
+    beacon_block_root: Root
     # FFG vote
     source: Checkpoint
     target: Checkpoint
@@ -329,17 +329,17 @@ class PendingAttestation(Container):
 
 ```python
 class Eth1Data(Container):
-    deposit_root: Hash
+    deposit_root: Root
     deposit_count: uint64
-    block_hash: Hash
+    block_hash: Bytes32
 ```
 
 #### `HistoricalBatch`
 
 ```python
 class HistoricalBatch(Container):
-    block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
 ```
 
 #### `DepositData`
@@ -347,7 +347,7 @@ class HistoricalBatch(Container):
 ```python
 class DepositData(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Hash
+    withdrawal_credentials: Bytes32
     amount: Gwei
     signature: BLSSignature
 ```
@@ -357,9 +357,9 @@ class DepositData(Container):
 ```python
 class BeaconBlockHeader(Container):
     slot: Slot
-    parent_root: Hash
-    state_root: Hash
-    body_root: Hash
+    parent_root: Root
+    state_root: Root
+    body_root: Root
     signature: BLSSignature
 ```
 
@@ -395,7 +395,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit data list root
+    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit data list root
     data: DepositData
 ```
 
@@ -430,8 +430,8 @@ class BeaconBlockBody(Container):
 ```python
 class BeaconBlock(Container):
     slot: Slot
-    parent_root: Hash
-    state_root: Hash
+    parent_root: Root
+    state_root: Root
     body: BeaconBlockBody
     signature: BLSSignature
 ```
@@ -448,9 +448,9 @@ class BeaconState(Container):
     fork: Fork
     # History
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Hash, HISTORICAL_ROOTS_LIMIT]
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
@@ -459,7 +459,7 @@ class BeaconState(Container):
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
-    randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
@@ -527,15 +527,15 @@ def bytes_to_int(data: bytes) -> uint64:
 
 #### `hash`
 
-`def hash(data: bytes) -> Hash` is SHA256.
+`def hash(data: bytes) -> Bytes32` is SHA256.
 
 #### `hash_tree_root`
 
-`def hash_tree_root(object: SSZSerializable) -> Hash` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../simple-serialize.md#merkleization).
+`def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../simple-serialize.md#merkleization).
 
 #### `signing_root`
 
-`def signing_root(object: Container) -> Hash` is a function for computing signing messages, as defined in the [SSZ spec](../simple-serialize.md#self-signed-containers).
+`def signing_root(object: Container) -> Root` is a function for computing signing messages, as defined in the [SSZ spec](../simple-serialize.md#self-signed-containers).
 
 #### `bls_verify`
 
@@ -611,7 +611,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 #### `is_valid_merkle_branch`
 
 ```python
-def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: uint64, index: uint64, root: Hash) -> bool:
+def is_valid_merkle_branch(leaf: Bytes32, branch: Sequence[Bytes32], depth: uint64, index: uint64, root: Root) -> bool:
     """
     Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
     """
@@ -629,7 +629,7 @@ def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: uint64, in
 #### `compute_shuffled_index`
 
 ```python
-def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Hash) -> ValidatorIndex:
+def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Bytes32) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -652,7 +652,7 @@ def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Has
 #### `compute_proposer_index`
 
 ```python
-def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Hash) -> ValidatorIndex:
+def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
     """
     Return from ``indices`` a random index sampled by effective balance.
     """
@@ -672,7 +672,7 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
 
 ```python
 def compute_committee(indices: Sequence[ValidatorIndex],
-                      seed: Hash,
+                      seed: Bytes32,
                       index: uint64,
                       count: uint64) -> Sequence[ValidatorIndex]:
     """
@@ -749,7 +749,7 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
 #### `get_block_root`
 
 ```python
-def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
+def get_block_root(state: BeaconState, epoch: Epoch) -> Root:
     """
     Return the block root at the start of a recent ``epoch``.
     """
@@ -759,7 +759,7 @@ def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
 #### `get_block_root_at_slot`
 
 ```python
-def get_block_root_at_slot(state: BeaconState, slot: Slot) -> Hash:
+def get_block_root_at_slot(state: BeaconState, slot: Slot) -> Root:
     """
     Return the block root at a recent ``slot``.
     """
@@ -770,7 +770,7 @@ def get_block_root_at_slot(state: BeaconState, slot: Slot) -> Hash:
 #### `get_randao_mix`
 
 ```python
-def get_randao_mix(state: BeaconState, epoch: Epoch) -> Hash:
+def get_randao_mix(state: BeaconState, epoch: Epoch) -> Bytes32:
     """
     Return the randao mix at a recent ``epoch``.
     """
@@ -801,7 +801,7 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
 #### `get_seed`
 
 ```python
-def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
+def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
     """
     Return the seed at ``epoch``.
     """
@@ -996,7 +996,7 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 - `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
 
 ```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
+def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
