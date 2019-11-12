@@ -62,6 +62,7 @@ This document describes the shard transition function (data layer only) and the 
 | `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
+| `SHARD_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 | `SHARD_BLOCK_CHUNK_SIZE` | `2**18` (= 262,144) | |
 | `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
 | `BLOCK_SIZE_TARGET` | `3 * 2**16` (= 196,608) | |
@@ -72,6 +73,7 @@ This document describes the shard transition function (data layer only) and the 
 | `MIN_GASPRICE` | `2**5` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 | `DOMAIN_SHARD_LIGHT_CLIENT` | `192` | |
+| `DOMAIN_SHARD_COMMITTEE` | `192` | |
 | `DOMAIN_SHARD_PROPOSAL` | `193` | |
 
 ## Containers
@@ -224,6 +226,27 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
     ]
     pubkeys = [v.pubkey for v in validators]
     return CompactCommittee(pubkeys=pubkeys, compact_validators=compact_validators)
+```
+
+### `get_shard_committee`
+
+```python
+def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -> Sequence[ValidatorIndex]:
+    source_epoch = epoch - epoch % SHARD_COMMITTEE_PERIOD 
+    if source_epoch > 0:
+        source_epoch -= SHARD_COMMITTEE_PERIOD
+    active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
+    seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
+    return compute_committee(active_validator_indices, seed, 0, ACTIVE_SHARDS)
+```
+
+### `get_shard_proposer_index`
+
+```python
+def get_shard_proposer_index(beacon_state: BeaconState, slot: Slot, shard: Shard) -> ValidatorIndex:
+    committee = get_shard_committee(beacon_state, slot_to_epoch(slot), shard)
+    r = bytes_to_int(get_seed(beacon_state, get_current_epoch(state), DOMAIN_SHARD_COMMITTEE)[:8])
+    return committee[r % len(committee)]
 ```
 
 ### `get_light_client_committee`
@@ -382,7 +405,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
                 slot=offset_slots[i],
                 body_root=chunks_to_body_root(transition.shard_data_roots[i])
             ))
-            proposers.append(get_shard_proposer(state, shard, offset_slots[i]))
+            proposers.append(get_shard_proposer_index(state, shard, offset_slots[i]))
             shard_parent_root = hash_tree_root(headers[-1])
 
     # Verify correct calculation of gas prices and slots and chunk roots
@@ -446,7 +469,7 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
                 estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
                 increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
                 for shard_state, slot, length in zip(block.shard_transition.shard_states, offset_slots, block.shard_transition.shard_block_lengths):
-                    decrease_balance(state, get_shard_proposer(state, shard, slot), shard_state.gasprice * length)
+                    decrease_balance(state, get_shard_proposer_index(state, shard, slot), shard_state.gasprice * length)
                 winners.add((shard, shard_transition_root))
                 success = True
         if not success:
@@ -535,7 +558,7 @@ TODO. The intent is to have a single universal fraud proof type, which contains 
 The proof verifies that one of the two conditions is false:
 
 1. `custody_bits[i][j] != generate_custody_bit(subkey, block_contents)` for any `j`
-2. `execute_state_transition(shard, slot, transition.shard_states[i-1].data, hash_tree_root(parent), get_shard_proposer(state, shard, slot), block_contents) != transition.shard_states[i].data` (if `i=0` then instead use `parent.shard_states[shard][-1].data`)
+2. `execute_state_transition(shard, slot, transition.shard_states[i-1].data, hash_tree_root(parent), get_shard_proposer_index(state, shard, slot), block_contents) != transition.shard_states[i].data` (if `i=0` then instead use `parent.shard_states[shard][-1].data`)
 
 ## Shard state transition function
 
@@ -551,10 +574,10 @@ Suppose you are a committee member on shard `shard` at slot `current_slot`. Let 
 
 * Initialize `proposals = []`, `shard_states = []`, `shard_state = state.shard_states[shard][-1]`, `start_slot = shard_state.slot`.
 * For `slot in get_offset_slots(state, start_slot)`, do the following:
-    * Look for all valid proposals for `slot`; that is, a Bytes `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer(state, shard, slot), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
+    * Look for all valid proposals for `slot`; that is, a Bytes `proposal` where `shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, shard, slot), proposal)` returns a result and does not throw an exception. Let `choices` be the set of non-empty valid proposals you discover.
     * If `len(choices) == 0`, do `proposals.append(make_empty_proposal(shard_state, slot))`
     * If `len(choices) == 1`, do `proposals.append(choices[0])`
     * If `len(choices) > 1`, let `winning_proposal` be the proposal with the largest number of total attestations from slots in `state.shard_next_slots[shard]....slot-1` supporting it or any of its descendants, breaking ties by choosing the first proposal locally seen. Do `proposals.append(winning_proposal)`.
-    * If `proposals[-1]` is NOT an empty proposal, set `shard_state = shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer(state, shard, slot), proposals[-1])` and do `shard_states.append(shard_state)`. If it is an empty proposal, leave `shard_state` unchanged.
+    * If `proposals[-1]` is NOT an empty proposal, set `shard_state = shard_state_transition(shard, slot, shard_state, get_block_root_at_slot(state, state.slot - 1), get_shard_proposer_index(state, shard, slot), proposals[-1])` and do `shard_states.append(shard_state)`. If it is an empty proposal, leave `shard_state` unchanged.
 
 Make an attestation using `shard_data_roots = [hash_tree_root(proposal) for proposal in proposals]` and `shard_state_roots = shard_states`.
