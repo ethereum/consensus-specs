@@ -79,26 +79,26 @@ def ceillog2(x: uint64) -> int:
 SUNDRY_FUNCTIONS = '''
 # Monkey patch hash cache
 _hash = hash
-hash_cache: Dict[bytes, Hash] = {}
+hash_cache: Dict[bytes, Bytes32] = {}
 
 
-def get_eth1_data(distance: uint64) -> Hash:
+def get_eth1_data(distance: uint64) -> Bytes32:
     return hash(distance)
 
 
-def hash(x: bytes) -> Hash:
+def hash(x: bytes) -> Bytes32:
     if x not in hash_cache:
-        hash_cache[x] = Hash(_hash(x))
+        hash_cache[x] = Bytes32(_hash(x))
     return hash_cache[x]
 
 
 # Monkey patch validator compute committee code
 _compute_committee = compute_committee
-committee_cache: Dict[Tuple[Hash, Hash, int, int], Sequence[ValidatorIndex]] = {}
+committee_cache: Dict[Tuple[Bytes32, Bytes32, int, int], Sequence[ValidatorIndex]] = {}
 
 
 def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
-                      seed: Hash,
+                      seed: Bytes32,
                       index: int,
                       count: int) -> Sequence[ValidatorIndex]:
     param_hash = (hash(b''.join(index.to_bytes(length=4, byteorder='little') for index in indices)), seed, index, count)
@@ -210,7 +210,7 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
 
 
 ignored_dependencies = [
-    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'Root', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
     'bytes', 'byte', 'BytesN'  # to be removed after updating spec doc

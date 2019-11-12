@@ -170,7 +170,7 @@ class CustodyChunkChallengeRecord(Container):
     challenger_index: ValidatorIndex
     responder_index: ValidatorIndex
     inclusion_epoch: Epoch
-    data_root: Hash
+    data_root: Root
     depth: uint64
     chunk_index: uint64
 ```
@@ -183,9 +183,9 @@ class CustodyBitChallengeRecord(Container):
     challenger_index: ValidatorIndex
     responder_index: ValidatorIndex
     inclusion_epoch: Epoch
-    data_root: Hash
+    data_root: Root
     chunk_count: uint64
-    chunk_bits_merkle_root: Hash
+    chunk_bits_merkle_root: Root
     responder_key: BLSSignature
 ```
 
@@ -196,8 +196,8 @@ class CustodyResponse(Container):
     challenge_index: uint64
     chunk_index: uint64
     chunk: BytesN[BYTES_PER_CUSTODY_CHUNK]
-    data_branch: List[Hash, CUSTODY_DATA_DEPTH]
-    chunk_bits_branch: List[Hash, CUSTODY_CHUNK_BIT_DEPTH]
+    data_branch: List[Bytes32, CUSTODY_DATA_DEPTH]
+    chunk_bits_branch: List[Bytes32, CUSTODY_CHUNK_BIT_DEPTH]
     chunk_bits_leaf: Bitvector[256]
 ```
 
@@ -228,7 +228,7 @@ class EarlyDerivedSecretReveal(Container):
     # Index of the validator who revealed (whistleblower)
     masker_index: ValidatorIndex
     # Mask used to hide the actual reveal signature (prevent reveal from being stolen)
-    mask: Hash
+    mask: Bytes32
 ```
 
 ### Phase 0 container updates
@@ -283,11 +283,11 @@ def ceillog2(x: uint64) -> int:
 ### `is_valid_merkle_branch_with_mixin`
 
 ```python
-def is_valid_merkle_branch_with_mixin(leaf: Hash,
-                                      branch: Sequence[Hash],
+def is_valid_merkle_branch_with_mixin(leaf: Bytes32,
+                                      branch: Sequence[Bytes32],
                                       depth: uint64,
                                       index: uint64,
-                                      root: Hash,
+                                      root: Root,
                                       mixin: uint64) -> bool:
     value = leaf
     for i in range(depth):
@@ -672,7 +672,7 @@ def process_chunk_challenge_response(state: BeaconState,
     # Verify chunk index
     assert response.chunk_index == challenge.chunk_index
     # Verify bit challenge data is null
-    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Hash()
+    assert response.chunk_bits_branch == [] and response.chunk_bits_leaf == Bytes32()
     # Verify minimum delay
     assert get_current_epoch(state) >= challenge.inclusion_epoch + MAX_SEED_LOOKAHEAD
     # Verify the chunk matches the crosslink data root
