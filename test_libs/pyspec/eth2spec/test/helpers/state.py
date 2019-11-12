@@ -14,6 +14,16 @@ def next_slot(spec, state):
     spec.process_slots(state, state.slot + 1)
 
 
+def transition_to(spec, state, slot):
+    """
+    Transition to ``slot``.
+    """
+    assert state.slot <= slot
+    for _ in range(slot - state.slot):
+        next_slot(spec, state)
+    assert state.slot == slot
+
+
 def next_epoch(spec, state):
     """
     Transition to the start slot of the next epoch
