@@ -238,6 +238,12 @@ def on_block(store: Store, block: BeaconBlock) -> None:
 
 ```python
 def on_attestation(store: Store, attestation: Attestation) -> None:
+    """
+    Run ``on_attestation`` upon receiving a new ``attestation`` from either within a block or directly on the wire.
+
+    An ``attestation`` that is asserted as invalid may be valid at a later time,
+    consider scheduling it for later processing in such case.
+    """
     target = attestation.data.target
 
     # Attestations must be from the current or previous epoch 
