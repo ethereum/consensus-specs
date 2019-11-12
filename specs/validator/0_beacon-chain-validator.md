@@ -55,6 +55,7 @@
                 - [Aggregate signature](#aggregate-signature-1)
             - [Broadcast aggregate](#broadcast-aggregate)
                 - [`AggregateAndProof`](#aggregateandproof)
+    - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
     - [How to avoid slashing](#how-to-avoid-slashing)
         - [Proposer slashing](#proposer-slashing)
         - [Attester slashing](#attester-slashing)
@@ -79,6 +80,8 @@ All terminology, constants, functions, and protocol mechanics defined in the [Ph
 | - | - | :-: | :-: |
 | `ETH1_FOLLOW_DISTANCE` | `2**10` (= 1,024) | blocks | ~4 hours |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators | |
+| `RANDOM_SUBNETS_PER_VALIDATOR` | `2**0` (= 1) | subnets | |
+| `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` | `2**8` (= 256) | epochs | ~27 hours |
 
 ## Becoming a validator
 
@@ -183,9 +186,13 @@ def is_proposer(state: BeaconState,
 
 The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahead on the validator's upcoming committee assignments for attesting dictated by the shuffling and slot. Note that this lookahead does not apply to proposing, which must be checked during the epoch in question.
 
-`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest.
+`get_committee_assignment` should be called at the start of each epoch to get the assignment for the next epoch (`current_epoch + 1`). A validator should plan for future assignments by noting at which future slot they will have to attest and joining the committee index attestation subnet related to their committee assignment.
 
-Specifically, a validator should call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+Specifically a validator should:
+* Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
+* Join the pubsub topic -- `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
+    * If any current peers are subscribed to the topic, the validator simply sends `subscribe` messages for the new topic.
+    * If no current peers are subscribed to the topic, the validator must discover new peers on this topic. If "topic discovery" is available, use topic discovery to find peers that advertise subscription to the topic. If not, "guess and check" by connecting with a number of random new peers, persisting connections with peers subscribed to the topic and (potentially) dropping the new peers otherwise.
 
 ## Beacon chain responsibilities
 
@@ -413,6 +420,10 @@ Where
 * `index` is the validator's `validator_index`.
 * `selection_proof` is the signature of the slot (`slot_signature()`).
 * `aggregate` is the `aggregate_attestation` constructed in the previous section.
+
+## Phase 0 attestation subnet stability
+
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets. The lifetime of each random subscription should be a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`.
 
 ## How to avoid slashing
 

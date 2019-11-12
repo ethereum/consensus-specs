@@ -29,6 +29,18 @@ MIN_GENESIS_TIME: 1578009600
 SAFE_SLOTS_TO_UPDATE_JUSTIFIED: 8
 
 
+# Validator
+# ---------------------------------------------------------------
+# 2**10 (= 1,024)
+ETH1_FOLLOW_DISTANCE: 1024
+# 2**4 (= 16)
+TARGET_AGGREGATORS_PER_COMMITTEE: 16
+# 2**0 (= 1)
+RANDOM_SUBNETS_PER_VALIDATOR: 1
+# 2**8 (= 256)
+EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION: 256
+
+
 # Deposit contract
 # ---------------------------------------------------------------
 # **TBD**
