@@ -1,4 +1,4 @@
-# Ethereum 2.0 Phase 1 -- Crosslinks and Shard Data
+# Ethereum 2.0 Phase 1 -- Shard Transition and Fraud Proofs
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
 
@@ -12,7 +12,7 @@
 
 ## Introduction
 
-This document describes the shard transition function (data layer only) and the shard fork choice rule as part of Phase 1 of Ethereum 2.0.
+This document describes the shard transition function and fraud proofs as part of Phase 1 of Ethereum 2.0.
 
 ## Fraud proofs
 
