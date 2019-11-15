@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bits, boolean, Container, List, ByteList,
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bits, boolean, Container, List, ByteList, Vector,
     Bitlist, Bitvector, uint,
 )
 
@@ -102,10 +102,42 @@ def pack(values: Series):
     return b''.join([serialize_basic(value) for value in values])
 
 
-def chunkify(bytez):
+def basic_to_chunk(value: BasicValue) -> bytes:
+    b = serialize_basic(value)
+    b += b'\x00' * (32 - len(b))
+    return b
+
+
+def bytes_to_chunks(bytez) -> list:
+    if len(bytez) == 32:  # common case
+        return [bytez]
+
     # pad `bytez` to nearest 32-byte multiple
     bytez += b'\x00' * (-len(bytez) % 32)
     return [bytez[i:i + 32] for i in range(0, len(bytez), 32)]
+
+
+def chunkify(values) -> (list, int):
+    if isinstance(values, bytes):  # ByteList and ByteVector are already packed
+        return bytes_to_chunks(values), 0
+    elif isinstance(values, Bits):
+        # packs the bits in bytes, left-aligned.
+        # Exclusive length delimiting bits for bitlists.
+        return bytes_to_chunks(values.as_bytes()), 0
+    elif isinstance(values, Vector) and values.is_caching():
+        cache_layer = values._cache_partitions_
+        partition_size = values._partition_size_
+        for i in range(len(cache_layer)):
+            if cache_layer[i] is None:
+                partition = Vector[values.type().elem_type, partition_size](
+                    values[i * partition_size:(i + 1) * partition_size])
+                partition._is_caching_ = False
+                cache_layer[i] = hash_tree_root(partition)
+        return cache_layer, partition_size.bit_length()
+    elif is_bottom_layer_kind(values.type()):
+        return bytes_to_chunks(pack(values)), 0
+    else:
+        return [hash_tree_root(value) for value in values], 0
 
 
 def mix_in_length(root, length):
@@ -142,23 +174,21 @@ def chunk_count(typ: SSZType) -> int:
 
 def hash_tree_root(obj: SSZValue):
     if isinstance(obj, Series):
-        if is_bottom_layer_kind(obj.type()):
-            leaves = chunkify(pack(obj))
+        chunks, depth = chunkify(obj)
+
+        if isinstance(obj, (List, ByteList, Bitlist)):
+            return mix_in_length(merkleize_chunks(chunks, limit=chunk_count(obj.type()) >> depth), len(obj))
         else:
-            leaves = [hash_tree_root(value) for value in obj]
+            return merkleize_chunks(chunks)
+
     elif isinstance(obj, BasicValue):
-        leaves = chunkify(serialize_basic(obj))
+        return basic_to_chunk(obj)
     else:
         raise Exception(f"Type not supported: {type(obj)}")
-
-    if isinstance(obj, (List, ByteList, Bitlist)):
-        return mix_in_length(merkleize_chunks(leaves, limit=chunk_count(obj.type())), len(obj))
-    else:
-        return merkleize_chunks(leaves)
 
 
 def signing_root(obj: Container):
     # ignore last field
     fields = [field for field in obj][:-1]
     leaves = [hash_tree_root(f) for f in fields]
-    return merkleize_chunks(chunkify(b''.join(leaves)))
+    return merkleize_chunks(leaves)

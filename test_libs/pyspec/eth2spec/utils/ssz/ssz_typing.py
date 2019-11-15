@@ -13,6 +13,11 @@ class SSZType(DefaultingTypeMeta):
     def is_fixed_size(cls):
         raise Exception("Not implemented")
 
+    def is_immutable(cls):
+        # Used to determine if a collection of elements of this type can cache element hashes.
+        # False by default.
+        return False
+
 
 class SSZValue(object, metaclass=SSZType):
 
@@ -24,6 +29,9 @@ class BasicType(SSZType):
     byte_len = 0
 
     def is_fixed_size(cls):
+        return True
+
+    def is_immutable(cls):
         return True
 
 
@@ -414,6 +422,19 @@ class List(BaseList):
 
 class Vector(BaseList):
 
+    def __init__(self, *args):
+        super().__init__(*args)
+        count = self.type().length
+        self._is_caching_ = False
+        if count > 32 and self.type().elem_type.is_immutable():
+            partition_size = 32
+            partition_count = count // partition_size
+            if partition_size * partition_count != count:
+                return  # not a power of 2 long vector, don't bother.
+            self._is_caching_ = True
+            self._partition_size_ = partition_size
+            self._cache_partitions_ = [None] * partition_count
+
     @classmethod
     def value_check(cls, value):
         # check length limit strictly
@@ -426,6 +447,30 @@ class Vector(BaseList):
     @classmethod
     def is_fixed_size(cls):
         return cls.elem_type.is_fixed_size()
+
+    def is_caching(self):
+        return self._is_caching_
+
+    def _mark_modified_(self, i):
+        if self._is_caching_:
+            self._cache_partitions_[i // self._partition_size_] = None
+
+    def __setitem__(self, k, v):
+        if type(k) == slice:
+            if (k.start is not None and k.start < 0) or (k.stop is not None and k.stop > len(self)):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds slice {k} (to {v}, bound: {len(self)})")
+            for i in range(0 if k.start is None else k.start, len(self) if k.stop is None else k.stop):
+                self._mark_modified_(i)
+            super().__setitem__(k, v)
+        else:
+            if k < 0:
+                raise IndexError(f"cannot set item in type {self.__class__} at negative index {k} (to {v})")
+            if k > len(self):
+                raise IndexError(f"cannot set item in type {self.__class__}"
+                                 f" at out of bounds index {k} (to {v}, bound: {len(self)})")
+            self._mark_modified_(k)
+            super().__setitem__(k, coerce_type_maybe(v, self.__class__.elem_type, strict=True))
 
     def append(self, v):
         # Deep-copy and other utils like to change the internals during work.
@@ -442,6 +487,10 @@ class Vector(BaseList):
 class BytesType(ElementsType):
     elem_type: SSZType = byte
     length: int
+
+    def is_immutable(cls):
+        # although not strictly in SSZ, the Python bytes that is wrapped is. Cache the big vectors of roots!
+        return True
 
 
 class BaseBytes(bytes, Elements, metaclass=BytesType):
