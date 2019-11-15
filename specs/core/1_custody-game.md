@@ -231,45 +231,6 @@ class EarlyDerivedSecretReveal(Container):
     mask: Bytes32
 ```
 
-### Phase 0 container updates
-
-Add the following fields to the end of the specified container objects. Fields with underlying type `uint64` are initialized to `0` and list fields are initialized to `[]`.
-
-#### `Validator`
-
-```python
-class Validator(Container):
-    # next_custody_secret_to_reveal is initialised to the custody period
-    # (of the particular validator) in which the validator is activated
-    # = get_custody_period_for_validator(...)
-    next_custody_secret_to_reveal: uint64
-    max_reveal_lateness: Epoch
-```
-
-#### `BeaconState`
-
-```python
-class BeaconState(Container):
-    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, PLACEHOLDER]
-    custody_bit_challenge_records: List[CustodyBitChallengeRecord, PLACEHOLDER]
-    custody_challenge_index: uint64
-
-    # Future derived secrets already exposed; contains the indices of the exposed validator
-    # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    exposed_derived_secrets: Vector[List[ValidatorIndex, PLACEHOLDER],
-                                    EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
-```
-
-#### `BeaconBlockBody`
-
-```python
-class BeaconBlockBody(Container):
-    custody_chunk_challenges: List[CustodyChunkChallenge, PLACEHOLDER]
-    custody_bit_challenges: List[CustodyBitChallenge, PLACEHOLDER]
-    custody_responses: List[CustodyResponse, PLACEHOLDER]
-    custody_key_reveals: List[CustodyKeyReveal, PLACEHOLDER]
-    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, PLACEHOLDER]
-```
 
 ## Helpers
 
@@ -732,12 +693,9 @@ def process_bit_challenge_response(state: BeaconState,
 
 ### Handling of custody-related deadlines
 
-Run `process_reveal_deadlines(state)` immediately after `process_registry_updates(state)`:
+Run `process_reveal_deadlines(state)` after `process_registry_updates(state)`:
 
 ```python
-# begin insert @process_reveal_deadlines
-    process_reveal_deadlines(state)
-# end insert @process_reveal_deadlines
 def process_reveal_deadlines(state: BeaconState) -> None:
     for index, validator in enumerate(state.validators):
         deadline = validator.next_custody_secret_to_reveal + (CUSTODY_RESPONSE_DEADLINE // EPOCHS_PER_CUSTODY_PERIOD)
@@ -748,9 +706,6 @@ def process_reveal_deadlines(state: BeaconState) -> None:
 Run `process_challenge_deadlines(state)` immediately after `process_reveal_deadlines(state)`:
 
 ```python
-# begin insert @process_challenge_deadlines
-    process_challenge_deadlines(state)
-# end insert @process_challenge_deadlines
 def process_challenge_deadlines(state: BeaconState) -> None:
     for custody_chunk_challenge in state.custody_chunk_challenge_records:
         if get_current_epoch(state) > custody_chunk_challenge.inclusion_epoch + CUSTODY_RESPONSE_DEADLINE:
@@ -765,13 +720,10 @@ def process_challenge_deadlines(state: BeaconState) -> None:
             records[records.index(custody_bit_challenge)] = CustodyBitChallengeRecord()
 ```
 
-Append this to `process_final_updates(state)`:
+After `process_final_updates(state)`, additional updates are made for the custody game:
 
 ```python
-# begin insert @after_process_final_updates
-    after_process_final_updates(state)
-# end insert @after_process_final_updates
-def after_process_final_updates(state: BeaconState) -> None:
+def process_custody_final_updates(state: BeaconState) -> None:
     current_epoch = get_current_epoch(state)
     # Clean up exposed RANDAO key reveals
     state.exposed_derived_secrets[current_epoch % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS] = []
