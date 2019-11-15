@@ -377,7 +377,7 @@ def get_offset_slots(state: BeaconState, start_slot: Slot) -> Sequence[Slot]:
 
 ### Predicates
 
-#### `is_valid_indexed_attestation`
+#### New `is_valid_indexed_attestation`
 
 ```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: AttestationAndCommittee) -> bool:
