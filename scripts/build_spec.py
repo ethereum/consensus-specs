@@ -56,7 +56,7 @@ from eth2spec.utils.ssz.ssz_impl import (
 )
 from eth2spec.utils.ssz.ssz_typing import (
     BasicValue, Elements, BaseBytes, BaseList, SSZType,
-    Container, List, Vector, Bytes, BytesN, Bitlist, Bitvector, Bits,
+    Container, List, Vector, ByteList, ByteVector, Bitlist, Bitvector, Bits,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
     uint64, bit, boolean, byte,
 )
@@ -211,10 +211,10 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
 
 
 ignored_dependencies = [
-    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'Bytes', 'BytesN'
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'ByteList', 'ByteVector'
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
-    'bytes', 'byte', 'BytesN'  # to be removed after updating spec doc
+    'bytes', 'byte', 'ByteVector'  # to be removed after updating spec doc
 ]
 
 

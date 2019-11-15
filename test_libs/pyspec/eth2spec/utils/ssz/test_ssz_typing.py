@@ -1,6 +1,6 @@
 from .ssz_typing import (
     SSZValue, SSZType, BasicValue, BasicType, Series, ElementsType,
-    Elements, bit, boolean, Container, List, Vector, Bytes, BytesN,
+    Elements, bit, boolean, Container, List, Vector, ByteList, ByteVector,
     byte, uint, uint8, uint16, uint32, uint64, uint128, uint256,
     Bytes32, Bytes48
 )
@@ -25,14 +25,14 @@ def test_subclasses():
     assert issubclass(boolean, BasicValue)
     assert isinstance(boolean, BasicType)
 
-    for c in [Container, List, Vector, Bytes, BytesN]:
+    for c in [Container, List, Vector, ByteList, ByteVector]:
         assert issubclass(c, Series)
         assert issubclass(c, SSZValue)
         assert isinstance(c, SSZType)
         assert not issubclass(c, BasicValue)
         assert not isinstance(c, BasicType)
 
-    for c in [List, Vector, Bytes, BytesN]:
+    for c in [List, Vector, ByteList, ByteVector]:
         assert issubclass(c, Elements)
         assert isinstance(c, ElementsType)
 
@@ -203,10 +203,10 @@ def test_list():
 
 
 def test_bytesn_subclass():
-    assert isinstance(BytesN[32](b'\xab' * 32), Bytes32)
-    assert not isinstance(BytesN[32](b'\xab' * 32), Bytes48)
-    assert issubclass(BytesN[32](b'\xab' * 32).type(), Bytes32)
-    assert issubclass(BytesN[32], Bytes32)
+    assert isinstance(ByteVector[32](b'\xab' * 32), Bytes32)
+    assert not isinstance(ByteVector[32](b'\xab' * 32), Bytes48)
+    assert issubclass(ByteVector[32](b'\xab' * 32).type(), Bytes32)
+    assert issubclass(ByteVector[32], Bytes32)
 
     class Hash(Bytes32):
         pass

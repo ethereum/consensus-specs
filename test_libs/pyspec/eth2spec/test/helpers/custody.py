@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
 from eth2spec.utils.hash_function import hash
-from eth2spec.utils.ssz.ssz_typing import Bitlist, BytesN, Bitvector
+from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, Bitvector
 from eth2spec.utils.ssz.ssz_impl import chunkify, pack, hash_tree_root
 from eth2spec.utils.merkle_minimal import get_merkle_tree, get_merkle_proof
 
@@ -136,9 +136,9 @@ def get_valid_custody_response(spec, state, bit_challenge, custody_data, challen
         chunk_index -= 1
         chunk_bit = spec.get_custody_chunk_bit(bit_challenge.responder_key, chunks[chunk_index])
 
-    chunks_hash_tree_roots = [hash_tree_root(BytesN[spec.BYTES_PER_CUSTODY_CHUNK](chunk)) for chunk in chunks]
+    chunks_hash_tree_roots = [hash_tree_root(ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](chunk)) for chunk in chunks]
     chunks_hash_tree_roots += [
-        hash_tree_root(BytesN[spec.BYTES_PER_CUSTODY_CHUNK](b"\0" * spec.BYTES_PER_CUSTODY_CHUNK))
+        hash_tree_root(ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](b"\0" * spec.BYTES_PER_CUSTODY_CHUNK))
         for i in range(2 ** spec.ceillog2(len(chunks)) - len(chunks))]
     data_tree = get_merkle_tree(chunks_hash_tree_roots)
 
@@ -158,7 +158,7 @@ def get_valid_custody_response(spec, state, bit_challenge, custody_data, challen
     return spec.CustodyResponse(
         challenge_index=challenge_index,
         chunk_index=chunk_index,
-        chunk=BytesN[spec.BYTES_PER_CUSTODY_CHUNK](chunks[chunk_index]),
+        chunk=ByteVector[spec.BYTES_PER_CUSTODY_CHUNK](chunks[chunk_index]),
         data_branch=data_branch,
         chunk_bits_branch=bitlist_chunk_branch,
         chunk_bits_leaf=chunk_bits_leaf,

@@ -11,9 +11,9 @@ def translate_typ(typ) -> ssz.BaseSedes:
     if issubclass(typ, spec_ssz.Container):
         return ssz.Container(
             [translate_typ(field_typ) for field_name, field_typ in typ.get_fields().items()])
-    elif issubclass(typ, spec_ssz.BytesN):
+    elif issubclass(typ, spec_ssz.ByteVector):
         return ssz.ByteVector(typ.length)
-    elif issubclass(typ, spec_ssz.Bytes):
+    elif issubclass(typ, spec_ssz.ByteList):
         return ssz.ByteList()
     elif issubclass(typ, spec_ssz.Vector):
         return ssz.Vector(translate_typ(typ.elem_type), typ.length)
@@ -76,9 +76,9 @@ def translate_value(value, typ):
         return typ(value)
     elif issubclass(typ, spec_ssz.Bitvector):
         return typ(value)
-    elif issubclass(typ, spec_ssz.BytesN):
+    elif issubclass(typ, spec_ssz.ByteVector):
         return typ(value)
-    elif issubclass(typ, spec_ssz.Bytes):
+    elif issubclass(typ, spec_ssz.ByteList):
         return value
     if issubclass(typ, spec_ssz.Container):
         return typ(**{f_name: translate_value(f_val, f_typ) for (f_val, (f_name, f_typ))
