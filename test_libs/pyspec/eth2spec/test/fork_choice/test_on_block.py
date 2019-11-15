@@ -132,3 +132,74 @@ def test_on_block_before_finalized(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     state_transition_and_sign_block(spec, state, block)
     run_on_block(spec, store, block, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
+    # Initialization
+    store = spec.get_genesis_store(state)
+    time = 100
+    spec.on_tick(store, time)
+
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    state, store, last_block = apply_next_epoch_with_attestations(spec, state, store)
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    last_block_root = signing_root(last_block)
+
+    # Mock the justified checkpoint
+    just_state = store.block_states[last_block_root]
+    new_justified = spec.Checkpoint(
+        epoch=just_state.current_justified_checkpoint.epoch + 1,
+        root=b'\x77' * 32,
+    )
+    just_state.current_justified_checkpoint = new_justified
+
+    block = build_empty_block_for_next_slot(spec, just_state)
+    state_transition_and_sign_block(spec, deepcopy(just_state), block)
+    assert spec.get_current_slot(store) % spec.SLOTS_PER_EPOCH < spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
+    run_on_block(spec, store, block)
+
+    assert store.justified_checkpoint == new_justified
+
+
+@with_all_phases
+@spec_state_test
+def test_on_block_outside_safe_slots_and_old_block(spec, state):
+    # Initialization
+    store = spec.get_genesis_store(state)
+    time = 100
+    spec.on_tick(store, time)
+
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    state, store, last_block = apply_next_epoch_with_attestations(spec, state, store)
+    next_epoch(spec, state)
+    spec.on_tick(store, store.time + state.slot * spec.SECONDS_PER_SLOT)
+    last_block_root = signing_root(last_block)
+
+    # Mock justified block in store
+    just_block = build_empty_block_for_next_slot(spec, state)
+    # Slot is same as justified checkpoint so does not trigger an override in the store
+    just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
+    store.blocks[just_block.hash_tree_root()] = just_block
+
+    # Mock the justified checkpoint
+    just_state = store.block_states[last_block_root]
+    new_justified = spec.Checkpoint(
+        epoch=just_state.current_justified_checkpoint.epoch + 1,
+        root=just_block.hash_tree_root(),
+    )
+    just_state.current_justified_checkpoint = new_justified
+
+    block = build_empty_block_for_next_slot(spec, just_state)
+    state_transition_and_sign_block(spec, deepcopy(just_state), block)
+
+    spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.SECONDS_PER_SLOT)
+    assert spec.get_current_slot(store) % spec.SLOTS_PER_EPOCH >= spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
+    run_on_block(spec, store, block)
+
+    assert store.justified_checkpoint != new_justified
+    assert store.best_justified_checkpoint == new_justified
