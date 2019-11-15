@@ -644,13 +644,16 @@ def process_epoch(state: BeaconState) -> None:
     process_rewards_and_penalties(state)
     process_registry_updates(state)
     process_reveal_deadlines(state)
-    process_challenge_deadlines(state)
     process_slashings(state)
     process_final_updates(state)
     process_custody_final_updates(state)
     process_online_tracking(state)
     process_light_client_committee_updates(state)
 ```
+
+#### Custody game updates
+
+`process_reveal_deadlines` and `process_custody_final_updates` are defined in [the Custody Game spec](./1_custody-game.md), 
 
 #### Online-tracking
 
