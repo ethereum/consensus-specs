@@ -180,6 +180,32 @@ class Validator(Container):
     max_reveal_lateness: Epoch
 ```
 
+### New extended `BeaconBlockBody`
+
+```python
+class BeaconBlockBody(phase0.BeaconBlockBody):
+    randao_reveal: BLSSignature
+    eth1_data: Eth1Data  # Eth1 data vote
+    graffiti: Bytes32  # Arbitrary data
+    # Slashings
+    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
+    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
+    # Attesting
+    attestations: List[Attestation, MAX_ATTESTATIONS]
+    # Enty & exit
+    deposits: List[Deposit, MAX_DEPOSITS]
+    voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
+    # Custody game
+    custody_chunk_challenges: List[CustodyChunkChallenge, PLACEHOLDER]
+    custody_bit_challenges: List[CustodyBitChallenge, PLACEHOLDER]
+    custody_key_reveals: List[CustodyKeyReveal, PLACEHOLDER]
+    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, PLACEHOLDER]
+    # Shards
+    shard_transitions: Vector[ShardTransition, MAX_SHARDS]
+    # Light clients
+    light_client_signature_bitfield: Bitlist[LIGHT_CLIENT_COMMITTEE_SIZE]
+    light_client_signature: BLSSignature
+```
 
 ### New extended `BeaconBlock`
 
@@ -189,17 +215,6 @@ class BeaconBlock(phase0.BeaconBlock):
     parent_root: Hash
     state_root: Hash
     body: BeaconBlockBody
-    shard_transitions: Vector[ShardTransition, MAX_SHARDS]
-    light_client_signature_bitfield: Bitlist[LIGHT_CLIENT_COMMITTEE_SIZE]
-    light_client_signature: BLSSignature
-
-    # TODO: older pre-proposal custody field additions, keep this?
-    custody_chunk_challenges: List[CustodyChunkChallenge, PLACEHOLDER]
-    custody_bit_challenges: List[CustodyBitChallenge, PLACEHOLDER]
-    custody_responses: List[CustodyResponse, PLACEHOLDER]
-    custody_key_reveals: List[CustodyKeyReveal, PLACEHOLDER]
-    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, PLACEHOLDER]
-
     signature: BLSSignature
 ```
 
@@ -240,10 +255,8 @@ class BeaconState(phase0.BeaconState):
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
-
-    # TODO older pre-proposal custody field additions, keep this?
-    custody_chunk_challenge_records: List[CustodyChunkChallengeRecord, PLACEHOLDER]
-    custody_bit_challenge_records: List[CustodyBitChallengeRecord, PLACEHOLDER]
+    
+    # TODO: custody game refactor, no challenge-records, immediate processing.
     custody_challenge_index: uint64
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
@@ -439,10 +452,13 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     process_operations(body.attester_slashings, process_attester_slashing)
 
     # New attestation processing
-    process_attestations(state, block, body.attestations)
+    process_attestations(state, body, body.attestations)
 
     process_operations(body.deposits, process_deposit)
     process_operations(body.voluntary_exits, process_voluntary_exit)
+
+    # See custody game spec.
+    process_custody_game_operations(state, body)
 
     # TODO process_operations(body.shard_receipt_proofs, process_shard_receipt_proofs)
 ```
@@ -526,7 +542,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
 ###### `process_attestations`
 
 ```python
-def process_attestations(state: BeaconState, block: BeaconBlock, attestations: Sequence[Attestation]) -> None:
+def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attestations: Sequence[Attestation]) -> None:
     pending_attestations = []
     # Basic validation
     for attestation in attestations:
@@ -548,25 +564,25 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
                 participating_attestations.append(attestation)
                 if attestation.data.shard_transition_root == shard_transition_root:
                     all_participants = all_participants.union(get_attesting_indices(state, attestation.data, attestation.aggregation_bits))
-            if (
-                get_total_balance(state, online_indices.intersection(all_participants)) * 3 >=
-                get_total_balance(state, online_indices.intersection(this_shard_committee)) * 2
-                and success is False
-            ):
-                # Attestation <-> shard transition consistency
-                assert shard_transition_root == hash_tree_root(block.shard_transition)
-                assert attestation.data.head_shard_root == chunks_to_body_root(block.shard_transition.shard_data_roots[-1])
-                # Apply transition
-                apply_shard_transition(state, shard, block.shard_transition)
-                # Apply proposer reward and cost
-                estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
-                increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
-                for shard_state, slot, length in zip(block.shard_transition.shard_states, offset_slots, block.shard_transition.shard_block_lengths):
-                    decrease_balance(state, get_shard_proposer_index(state, shard, slot), shard_state.gasprice * length)
-                winners.add((shard, shard_transition_root))
-                success = True
+                if (
+                    get_total_balance(state, online_indices.intersection(all_participants)) * 3 >=
+                    get_total_balance(state, online_indices.intersection(this_shard_committee)) * 2
+                    and success is False
+                ):
+                    # Attestation <-> shard transition consistency
+                    assert shard_transition_root == hash_tree_root(block_body.shard_transition)
+                    assert attestation.data.head_shard_root == chunks_to_body_root(block_body.shard_transition.shard_data_roots[-1])
+                    # Apply transition
+                    apply_shard_transition(state, shard, block_body.shard_transition)
+                    # Apply proposer reward and cost
+                    estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
+                    increase_balance(state, proposer, estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT)
+                    for shard_state, slot, length in zip(block_body.shard_transition.shard_states, offset_slots, block_body.shard_transition.shard_block_lengths):
+                        decrease_balance(state, get_shard_proposer_index(state, shard, slot), shard_state.gasprice * length)
+                    winners.add((shard, shard_transition_root))
+                    success = True
         if not success:
-            assert block.shard_transitions[shard] == ShardTransition()
+            assert block_body.shard_transitions[shard] == ShardTransition()
     for attestation in attestations:
         pending_attestation = PendingAttestation(
             aggregation_bits=attestation.aggregation_bits,
@@ -586,22 +602,22 @@ def process_attestations(state: BeaconState, block: BeaconBlock, attestations: S
 #### Shard transition false positives
 
 ```python
-def verify_shard_transition_false_positives(state: BeaconState, block: BeaconBlock) -> None:
+def verify_shard_transition_false_positives(state: BeaconState, block_body: BeaconBlockBody) -> None:
     # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
     for shard in range(MAX_SHARDS):
         if state.shard_states[shard].slot != state.slot - 1:
-            assert block.shard_transition[shard] == ShardTransition()
+            assert block_body.shard_transition[shard] == ShardTransition()
 ```
 
 #### Light client processing
 
 ```python
-def process_light_client_signatures(state: BeaconState, block: BeaconBlock) -> None:
+def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockBody) -> None:
     committee = get_light_client_committee(state, get_current_epoch(state))
-    assert len(block.light_client_signature_bitfield) == len(committee)
+    assert len(block_body.light_client_signature_bitfield) == len(committee)
     total_reward = Gwei(0)
     signer_keys = []
-    for i, bit in enumerate(block.light_client_signature_bitfield):
+    for i, bit in enumerate(block_body.light_client_signature_bitfield):
         if bit:
             signer_keys.append(state.validators[committee[i]].pubkey)
             increase_balance(state, committee[i], get_base_reward(state, committee[i]))
@@ -612,7 +628,7 @@ def process_light_client_signatures(state: BeaconState, block: BeaconBlock) -> N
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(signer_keys),
         message_hash=get_block_root_at_slot(state, state.slot - 1),
-        signature=block.light_client_signature,
+        signature=block_body.light_client_signature,
         domain=DOMAIN_LIGHT_CLIENT
     )
 ```
@@ -627,26 +643,38 @@ def process_epoch(state: BeaconState) -> None:
     process_justification_and_finalization(state)
     process_rewards_and_penalties(state)
     process_registry_updates(state)
-    # TODO process_reveal_deadlines
-    # TODO process_challenge_deadlines
+    process_reveal_deadlines(state)
+    process_challenge_deadlines(state)
     process_slashings(state)
-    # TODO update_period_committee
     process_final_updates(state)
-    # TODO process_custody_final_updates
+    process_custody_final_updates(state)
+    process_online_tracking(state)
+    process_light_client_committee_updates(state)
+```
 
+#### Online-tracking
+
+```python
+def process_online_tracking(state: BeaconState) -> None:
     # Slowly remove validators from the "online" set if they do not show up
     for index in range(len(state.validators)):
         if state.online_countdown[index] != 0:
             state.online_countdown[index] = state.online_countdown[index] - 1
-    
-    # Update light client committees
-    if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
-        state.current_light_committee = state.next_light_committee
-        new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
-        state.next_light_committee = committee_to_compact_committee(state, new_committee)
 
     # Process pending attestations
     for pending_attestation in state.current_epoch_attestations + state.previous_epoch_attestations:
         for index in get_attesting_indices(state, pending_attestation.data, pending_attestation.aggregation_bits):
             state.online_countdown[index] = ONLINE_PERIOD
 ```
+
+#### Light client committee updates
+
+```python
+def process_light_client_committee_updates(state: BeaconState) -> None:
+    # Update light client committees
+    if get_current_epoch(state) % LIGHT_CLIENT_COMMITTEE_PERIOD == 0:
+        state.current_light_committee = state.next_light_committee
+        new_committee = get_light_client_committee(state, get_current_epoch(state) + LIGHT_CLIENT_COMMITTEE_PERIOD)
+        state.next_light_committee = committee_to_compact_committee(state, new_committee)
+```
+
