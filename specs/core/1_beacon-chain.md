@@ -190,7 +190,7 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     # Attesting
     attestations: List[Attestation, MAX_ATTESTATIONS]
-    # Enty & exit
+    # Entry & exit
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
