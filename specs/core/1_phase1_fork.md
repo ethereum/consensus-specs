@@ -35,13 +35,14 @@ After `process_slots` of Phase 0 finishes, but before the first Phase 1 block is
 
 ```python
 def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
+    epoch = get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.current_version,
             current_version=PHASE_1_FORK_VERSION,
-            epoch=get_current_epoch(pre),
+            epoch=epoch,
         ),
         # History
         latest_block_header=pre.latest_block_header,
@@ -58,14 +59,14 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
                 pubkey=phase0_validator.pubkey,
                 withdrawal_credentials=phase0_validator.withdrawal_credentials,
                 effective_balance=phase0_validator.effective_balance,
-                slashed=phase0.slashed,
+                slashed=phase0_validator.slashed,
                 activation_eligibility_epoch=phase0_validator.activation_eligibility_epoch,
                 activation_epoch=phase0_validator.activation_eligibility_epoch,
                 exit_epoch=phase0_validator.exit_epoch,
                 withdrawable_epoch=phase0_validator.withdrawable_epoch,
-                next_custody_secret_to_reveal=,
-                max_reveal_lateness=,
-            ) for phase0_validator in pre.validators
+                next_custody_secret_to_reveal=get_custody_period_for_validator(validator_index, epoch),
+                max_reveal_lateness=0,  # TODO custody refactor. Outdated? 
+            ) for validator_index, phase0_validator in enumerate(pre.validators)
         ),
         balances=pre.balances,
         # Randomness
