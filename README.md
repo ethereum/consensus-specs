@@ -18,6 +18,7 @@ Core specifications for Eth2 client validation can be found in [specs/core](spec
 * [Honest Validator](specs/validator/0_beacon-chain-validator.md)
 
 ### Phase 1
+* [From Phase 0 to Phase 1](specs/core/1_phase1_fork.md)
 * [The Beacon Chain for Shards](specs/core/1_beacon-chain.md)
 * [Custody Game](specs/core/1_custody-game.md)
 * [Shard Transition and Fraud Proofs](specs/core/1_fraud_proofs.md)
