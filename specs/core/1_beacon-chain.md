@@ -253,11 +253,11 @@ class BeaconState(phase0.BeaconState):
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     # Phase 1
-    shard_states: Vector[ShardState, MAX_SHARDS]
+    shard_states: List[ShardState, MAX_SHARDS]
     online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
-    
+    # Custody game
     # TODO: custody game refactor, no challenge-records, immediate processing.
     custody_challenge_index: uint64
     # Future derived secrets already exposed; contains the indices of the exposed validator
@@ -607,7 +607,7 @@ def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attest
 ```python
 def verify_shard_transition_false_positives(state: BeaconState, block_body: BeaconBlockBody) -> None:
     # Verify that a `shard_transition` in a block is empty if an attestation was not processed for it
-    for shard in range(MAX_SHARDS):
+    for shard in range(ACTIVE_SHARDS):
         if state.shard_states[shard].slot != state.slot - 1:
             assert block_body.shard_transition[shard] == ShardTransition()
 ```
