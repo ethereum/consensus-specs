@@ -320,11 +320,11 @@ def get_randao_epoch_for_custody_period(period: uint64, validator_index: Validat
 ### `get_custody_period_for_validator`
 
 ```python
-def get_custody_period_for_validator(state: BeaconState, validator_index: ValidatorIndex, epoch: Epoch=None) -> int:
+def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epoch=None) -> int:
     '''
     Return the reveal period for a given validator.
     '''
-    epoch = get_current_epoch(state) if epoch is None else epoch
+    epoch =  if epoch is None else epoch
     return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
 ```
 
@@ -367,7 +367,7 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     revealer = state.validators[reveal.revealer_index]
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
 
-    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(state, reveal.revealer_index)
+    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(reveal.revealer_index, get_current_epoch(state))
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
@@ -566,7 +566,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify attestation is eligible for challenging
     responder = state.validators[challenge.responder_index]
     assert get_current_epoch(state) <= get_randao_epoch_for_custody_period(
-        get_custody_period_for_validator(state, challenge.responder_index, epoch),
+        get_custody_period_for_validator(challenge.responder_index, epoch),
         challenge.responder_index
     ) + 2 * EPOCHS_PER_CUSTODY_PERIOD + responder.max_reveal_lateness
 
@@ -578,7 +578,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
         assert record.challenger_index != challenge.challenger_index
     # Verify the responder custody key
     epoch_to_sign = get_randao_epoch_for_custody_period(
-        get_custody_period_for_validator(state, challenge.responder_index, epoch),
+        get_custody_period_for_validator(challenge.responder_index, epoch),
         challenge.responder_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
