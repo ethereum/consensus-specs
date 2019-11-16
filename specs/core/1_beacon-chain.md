@@ -146,10 +146,10 @@ class AttestationCustodyBitWrapper(Container):
     bit: bool
 ```
 
-### New `PendingAttestation`
+### New extended `PendingAttestation`
 
 ```python
-class PendingAttestation(Container):
+class PendingAttestation(phase0.PendingAttestation):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     inclusion_delay: Slot
@@ -160,7 +160,7 @@ class PendingAttestation(Container):
 ### New extended `Validator`
 
 ```python
-class Validator(Container):
+class Validator(phase0.Validator):
     pubkey: BLSPubkey
     withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals
     effective_balance: Gwei  # Balance at stake
@@ -170,9 +170,7 @@ class Validator(Container):
     activation_epoch: Epoch
     exit_epoch: Epoch
     withdrawable_epoch: Epoch  # When validator can withdraw funds
-
-    # TODO: older pre-proposal custody field additions, keep this?
-    #
+    # Custody game
     # next_custody_secret_to_reveal is initialised to the custody period
     # (of the particular validator) in which the validator is activated
     # = get_custody_period_for_validator(...)
@@ -196,10 +194,10 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
-    custody_chunk_challenges: List[CustodyChunkChallenge, PLACEHOLDER]
-    custody_bit_challenges: List[CustodyBitChallenge, PLACEHOLDER]
-    custody_key_reveals: List[CustodyKeyReveal, PLACEHOLDER]
-    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, PLACEHOLDER]
+    custody_chunk_challenges: List[CustodyChunkChallenge, MAX_CUSTODY_CHUNK_CHALLENGES]
+    custody_bit_challenges: List[CustodyBitChallenge, MAX_CUSTODY_BIT_CHALLENGES]
+    custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
+    early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
     # Shards
     shard_transitions: Vector[ShardTransition, MAX_SHARDS]
     # Light clients
@@ -208,6 +206,8 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 ```
 
 ### New extended `BeaconBlock`
+
+Note that the `body` has a new `BeaconBlockBody` definition.
 
 ```python
 class BeaconBlock(phase0.BeaconBlock):
@@ -219,6 +219,8 @@ class BeaconBlock(phase0.BeaconBlock):
 ```
 
 ### New extended `BeaconState`
+
+Note that aside from the new additions, `Validator` and `PendingAttestation` have new definitions.
 
 ```python
 class BeaconState(phase0.BeaconState):
@@ -312,10 +314,10 @@ def chunks_to_body_root(chunks):
 
 ### Beacon state accessors
 
-#### `get_online_validators`
+#### `get_online_validator_indices`
 
 ```python
-def get_online_indices(state: BeaconState) -> Set[ValidatorIndex]:
+def get_online_validator_indices(state: BeaconState) -> Set[ValidatorIndex]:
     active_validators = get_active_validator_indices(state, get_current_epoch(state))
     return set([i for i in active_validators if state.online_countdown[i] != 0])
 ```
@@ -390,7 +392,9 @@ def get_offset_slots(state: BeaconState, start_slot: Slot) -> Sequence[Slot]:
 
 ### Predicates
 
-#### New `is_valid_indexed_attestation`
+#### Updated `is_valid_indexed_attestation`
+
+Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
 
 ```python
 def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: AttestationAndCommittee) -> bool:
@@ -444,18 +448,18 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
     
-    def process_operations(operations, fn):
+    def for_ops(operations, fn):
         for operation in operations:
             fn(state, operation)
     
-    process_operations(body.proposer_slashings, process_proposer_slashing)
-    process_operations(body.attester_slashings, process_attester_slashing)
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
 
     # New attestation processing
     process_attestations(state, body, body.attestations)
 
-    process_operations(body.deposits, process_deposit)
-    process_operations(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
 
     # See custody game spec.
     process_custody_game_operations(state, body)
@@ -543,12 +547,11 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
 
 ```python
 def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attestations: Sequence[Attestation]) -> None:
-    pending_attestations = []
     # Basic validation
     for attestation in attestations:
        validate_attestation(state, attestation)
     # Process crosslinks
-    online_indices = get_online_indices(state)
+    online_indices = get_online_validator_indices(state)
     winners = set()
     for shard in range(ACTIVE_SHARDS):
         success = False

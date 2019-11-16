@@ -346,19 +346,14 @@ def replace_empty_or_append(list: MutableSequence[Any], new_element: Any) -> int
 
 ```python
 def process_custody_game_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    assert len(block.body.custody_key_reveals) <= MAX_CUSTODY_KEY_REVEALS
-    assert len(block.body.early_derived_secret_reveals) <= MAX_EARLY_DERIVED_SECRET_REVEALS
-    assert len(block.body.custody_bit_challenges) <= MAX_CUSTODY_BIT_CHALLENGES
-    assert len(block.body.custody_chunk_challenges) <= MAX_CUSTODY_CHUNK_CHALLENGES
-
-    def process_operations(operations, fn):
+    def for_ops(operations, fn):
         for operation in operations:
             fn(state, operation)
 
-    process_operations(body.custody_key_reveals, process_custody_key_reveal)
-    process_operations(body.early_derived_secret_reveals, process_early_derived_secret_reveal)
-    process_operations(body.custody_chunk_challenges, process_chunk_challenge)
-    process_operations(body.custody_bit_challenges, process_bit_challenge)
+    for_ops(body.custody_key_reveals, process_custody_key_reveal)
+    for_ops(body.early_derived_secret_reveals, process_early_derived_secret_reveal)
+    for_ops(body.custody_chunk_challenges, process_chunk_challenge)
+    for_ops(body.custody_bit_challenges, process_bit_challenge)
 ```
 
 #### Custody key reveals

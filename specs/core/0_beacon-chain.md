@@ -1419,11 +1419,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
 
-    process_operations(body.proposer_slashings, process_proposer_slashing)
-    process_operations(body.attester_slashings, process_attester_slashing)
-    process_operations(body.attestations, process_attestations)
-    process_operations(body.deposits, process_deposit)
-    process_operations(body.voluntary_exits, process_voluntary_exit)
+    def for_ops(operations, fn):
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestations)
+    for_ops(body.deposits, process_deposit)
+    for_ops(body.voluntary_exits, process_voluntary_exit)
 ```
 
 ##### Proposer slashings
