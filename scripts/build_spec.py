@@ -53,7 +53,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     BasicValue, Elements, BaseBytes, BaseList, SSZType,
     Container, List, Vector, ByteList, ByteVector, Bitlist, Bitvector, Bits,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
-    uint64, bit, boolean, byte,
+    uint64, uint8, bit, boolean,
 )
 from eth2spec.utils.bls import (
     bls_aggregate_pubkeys,
@@ -245,6 +245,8 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
         if key in old_objects:
             # add proper spacing
             old_objects[key] = old_objects[key] + "\n\n"
+            lines = value.split("\n")
+            value = "\n".join([lines[0] + "  # noqa: F811"] + lines[1:])
         old_objects[key] = old_objects.get(key, '') + value
     dependency_order_ssz_objects(old_objects, custom_types)
     return old_objects

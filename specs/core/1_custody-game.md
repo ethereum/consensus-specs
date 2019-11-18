@@ -132,6 +132,21 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 ### Custody objects
 
+#### `Crosslink`
+
+*Note*: Crosslinks have been removed in the phase 1 redesign. This is a placeholder until the custody game is revamped.
+
+```python
+class Crosslink(Container):
+    shard: uint64
+    parent_root: Hash
+    # Crosslinking data
+    start_epoch: Epoch
+    end_epoch: Epoch
+    data_root: Hash
+```
+
+
 #### `CustodyChunkChallenge`
 
 ```python
@@ -178,6 +193,18 @@ class CustodyBitChallengeRecord(Container):
     chunk_count: uint64
     chunk_bits_merkle_root: Root
     responder_key: BLSSignature
+```
+
+#### `CustodyResponse`
+
+```python
+class CustodyResponse(Container):
+    challenge_index: uint64
+    chunk_index: uint64
+    chunk: Vector[Bytes[PLACEHOLDER], BYTES_PER_CUSTODY_CHUNK]
+    data_branch: List[Bytes32, PLACEHOLDER]
+    chunk_bits_branch: List[Bytes32, PLACEHOLDER]
+    chunk_bits_leaf: Bytes32
 ```
 
 ### New Beacon Chain operations
