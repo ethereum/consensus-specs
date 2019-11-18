@@ -171,7 +171,7 @@ def objects_to_spec(functions: Dict[str, str],
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
     ssz_objects_reinitialization_spec = (
         'def init_SSZ_types() -> None:\n    global_vars = globals()\n\n    '
-        + '\n\n    '.join([strip_comments(re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1]))
+        + '\n\n    '.join([strip_comments(re.sub(r'\n\n', r'\n', re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1])))
                            for value in ssz_objects.values()])
         + '\n\n'
         + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
@@ -243,10 +243,8 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
     """
     for key, value in new_objects.items():
         if key in old_objects:
-            # remove trailing newline
-            old_objects[key] = old_objects[key]
-            # remove leading variable name
-            value = re.sub(r'^class [\w]*\(Container\):\n', '', value)
+            # add proper spacing
+            old_objects[key] = old_objects[key] + "\n\n"
         old_objects[key] = old_objects.get(key, '') + value
     dependency_order_ssz_objects(old_objects, custom_types)
     return old_objects

@@ -320,11 +320,10 @@ def get_randao_epoch_for_custody_period(period: uint64, validator_index: Validat
 ### `get_custody_period_for_validator`
 
 ```python
-def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epoch=None) -> int:
+def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epoch) -> int:
     '''
     Return the reveal period for a given validator.
     '''
-    epoch =  if epoch is None else epoch
     return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
 ```
 
@@ -367,7 +366,8 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     revealer = state.validators[reveal.revealer_index]
     epoch_to_sign = get_randao_epoch_for_custody_period(revealer.next_custody_secret_to_reveal, reveal.revealer_index)
 
-    assert revealer.next_custody_secret_to_reveal < get_custody_period_for_validator(reveal.revealer_index, get_current_epoch(state))
+    custody_reveal_period = get_custody_period_for_validator(reveal.revealer_index, get_current_epoch(state))
+    assert revealer.next_custody_secret_to_reveal < custody_reveal_period
 
     # Revealed validator is active or exited, but not withdrawn
     assert is_slashable_validator(revealer, get_current_epoch(state))
