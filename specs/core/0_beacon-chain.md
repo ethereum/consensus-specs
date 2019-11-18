@@ -1185,8 +1185,7 @@ def process_justification_and_finalization(state: BeaconState) -> None:
 #### Rewards and penalties
 
 ```python
-def get_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
-    total_balance = get_total_active_balance(state)
+def get_base_reward(state: BeaconState, index: ValidatorIndex, total_balance: Gwei) -> Gwei:
     effective_balance = state.validators[index].effective_balance
     return Gwei(effective_balance * BASE_REWARD_FACTOR // integer_squareroot(total_balance) // BASE_REWARDS_PER_EPOCH)
 ```
@@ -1211,9 +1210,9 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
         attesting_balance = get_total_balance(state, unslashed_attesting_indices)
         for index in eligible_validator_indices:
             if index in unslashed_attesting_indices:
-                rewards[index] += get_base_reward(state, index) * attesting_balance // total_balance
+                rewards[index] += get_base_reward(state, index, total_balance) * attesting_balance // total_balance
             else:
-                penalties[index] += get_base_reward(state, index)
+                penalties[index] += get_base_reward(state, index, total_balance)
 
     # Proposer and inclusion delay micro-rewards
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
@@ -1221,9 +1220,9 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
             a for a in matching_source_attestations
             if index in get_attesting_indices(state, a.data, a.aggregation_bits)
         ], key=lambda a: a.inclusion_delay)
-        proposer_reward = Gwei(get_base_reward(state, index) // PROPOSER_REWARD_QUOTIENT)
+        proposer_reward = Gwei(get_base_reward(state, index, total_balance) // PROPOSER_REWARD_QUOTIENT)
         rewards[attestation.proposer_index] += proposer_reward
-        max_attester_reward = get_base_reward(state, index) - proposer_reward
+        max_attester_reward = get_base_reward(state, index, total_balance) - proposer_reward
         rewards[index] += Gwei(
             max_attester_reward // attestation.inclusion_delay
         )
@@ -1233,7 +1232,7 @@ def get_attestation_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], Sequence
     if finality_delay > MIN_EPOCHS_TO_INACTIVITY_PENALTY:
         matching_target_attesting_indices = get_unslashed_attesting_indices(state, matching_target_attestations)
         for index in eligible_validator_indices:
-            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index))
+            penalties[index] += Gwei(BASE_REWARDS_PER_EPOCH * get_base_reward(state, index, total_balance))
             if index not in matching_target_attesting_indices:
                 penalties[index] += Gwei(
                     state.validators[index].effective_balance * finality_delay // INACTIVITY_PENALTY_QUOTIENT
