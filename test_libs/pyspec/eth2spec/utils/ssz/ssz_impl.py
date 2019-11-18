@@ -1,7 +1,7 @@
 from ..merkle_minimal import merkleize_chunks
 from ..hash_function import hash
 from .ssz_typing import (
-    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bits, boolean, Container, List, Bytes,
+    SSZValue, SSZType, BasicValue, BasicType, Series, Elements, Bits, boolean, Container, List, ByteList,
     Bitlist, Bitvector, uint,
 )
 
@@ -56,7 +56,7 @@ def serialize(obj: SSZValue):
 
 
 def encode_series(values: Series):
-    if isinstance(values, bytes):  # Bytes and BytesN are already like serialized output
+    if isinstance(values, bytes):  # ByteList and ByteVector are already like serialized output
         return values
 
     # Recursively serialize
@@ -93,7 +93,7 @@ def encode_series(values: Series):
 
 
 def pack(values: Series):
-    if isinstance(values, bytes):  # Bytes and BytesN are already packed
+    if isinstance(values, bytes):  # ByteList and ByteVector are already packed
         return values
     elif isinstance(values, Bits):
         # packs the bits in bytes, left-aligned.
@@ -151,7 +151,7 @@ def hash_tree_root(obj: SSZValue):
     else:
         raise Exception(f"Type not supported: {type(obj)}")
 
-    if isinstance(obj, (List, Bytes, Bitlist)):
+    if isinstance(obj, (List, ByteList, Bitlist)):
         return mix_in_length(merkleize_chunks(leaves, limit=chunk_count(obj.type())), len(obj))
     else:
         return merkleize_chunks(leaves)

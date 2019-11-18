@@ -162,11 +162,11 @@ def get_generalized_index(typ: SSZType, path: Sequence[Union[int, SSZVariableNam
         assert not issubclass(typ, BasicValue)  # If we descend to a basic type, the path cannot continue further
         if p == '__len__':
             typ = uint64
-            assert issubclass(typ, (List, Bytes))
+            assert issubclass(typ, (List, ByteList))
             root = GeneralizedIndex(root * 2 + 1)
         else:
             pos, _, _ = get_item_position(typ, p)
-            base_index = (GeneralizedIndex(2) if issubclass(typ, (List, Bytes)) else GeneralizedIndex(1))
+            base_index = (GeneralizedIndex(2) if issubclass(typ, (List, ByteList)) else GeneralizedIndex(1))
             root = GeneralizedIndex(root * base_index * get_next_power_of_two(chunk_count(typ)) + pos)
             typ = get_elem_type(typ, p)
     return root

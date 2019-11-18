@@ -17,7 +17,7 @@ def encode(value, include_hash_tree_roots=False):
         return '0x' + serialize(value).hex()
     elif isinstance(value, list):  # normal python lists, ssz-List, Vector
         return [encode(element, include_hash_tree_roots) for element in value]
-    elif isinstance(value, bytes):  # both bytes and BytesN
+    elif isinstance(value, bytes):  # both bytes and ByteVector
         return '0x' + value.hex()
     elif isinstance(value, Container):
         ret = {}

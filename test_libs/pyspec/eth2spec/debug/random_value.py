@@ -2,8 +2,8 @@ from random import Random
 from enum import Enum
 
 from eth2spec.utils.ssz.ssz_typing import (
-    SSZType, SSZValue, BasicValue, BasicType, uint, Container, Bytes, List, boolean,
-    Vector, BytesN, Bitlist, Bitvector
+    SSZType, SSZValue, BasicValue, BasicType, uint, Container, ByteList, List, boolean,
+    Vector, ByteVector, Bitlist, Bitvector
 )
 
 # in bytes
@@ -51,8 +51,8 @@ def get_random_ssz_object(rng: Random,
     """
     if chaos:
         mode = rng.choice(list(RandomizationMode))
-    if issubclass(typ, Bytes):
-        # Bytes array
+    if issubclass(typ, ByteList):
+        # ByteList array
         if mode == RandomizationMode.mode_nil_count:
             return typ(b'')
         elif mode == RandomizationMode.mode_max_count:
@@ -65,7 +65,7 @@ def get_random_ssz_object(rng: Random,
             return typ(b'\xff' * min(1, typ.length))
         else:
             return typ(get_random_bytes_list(rng, rng.randint(0, min(max_bytes_length, typ.length))))
-    elif issubclass(typ, BytesN):
+    elif issubclass(typ, ByteVector):
         # Sanity, don't generate absurdly big random values
         # If a client is aiming to performance-test, they should create a benchmark suite.
         assert typ.length <= max_bytes_length

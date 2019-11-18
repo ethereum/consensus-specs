@@ -195,7 +195,7 @@ class CustodyBitChallengeRecord(Container):
 class CustodyResponse(Container):
     challenge_index: uint64
     chunk_index: uint64
-    chunk: BytesN[BYTES_PER_CUSTODY_CHUNK]
+    chunk: ByteVector[BYTES_PER_CUSTODY_CHUNK]
     data_branch: List[Hash, CUSTODY_DATA_DEPTH]
     chunk_bits_branch: List[Hash, CUSTODY_CHUNK_BIT_DEPTH]
     chunk_bits_leaf: Bitvector[256]
