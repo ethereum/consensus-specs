@@ -365,7 +365,7 @@ Some validators are selected to locally aggregate attestations with a similar `a
 A validator is selected to aggregate based upon the return value of `is_aggregator()`.
 
 ```python
-def slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
+def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
     return bls_sign(privkey, hash_tree_root(slot), domain)
 ```
@@ -411,15 +411,15 @@ Aggregate attestations are broadcast as `AggregateAndProof` objects to prove to 
 
 ```python
 class AggregateAndProof(Container):
-    index: ValidatorIndex
-    selection_proof: BLSSignature
+    aggregator_index: ValidatorIndex
     aggregate: Attestation
+    selection_proof: BLSSignature
 ```
 
 Where
-* `index` is the validator's `validator_index`.
-* `selection_proof` is the signature of the slot (`slot_signature()`).
+* `aggregator_index` is the validator's `ValidatorIndex`.
 * `aggregate` is the `aggregate_attestation` constructed in the previous section.
+* `selection_proof` is the signature of the slot (`get_slot_signature()`).
 
 ## Phase 0 attestation subnet stability
 
