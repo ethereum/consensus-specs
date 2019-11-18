@@ -93,14 +93,14 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
             ) for i in range(ACTIVE_SHARDS)
         ),
         online_countdown=Bytes[VALIDATOR_REGISTRY_LIMIT](
-            ONLINE_PERIOD for i in range(len(pre.validators))            
+            ONLINE_PERIOD for i in range(len(pre.validators))
         ),
         current_light_committee=CompactCommittee(),  # computed after state creation
         next_light_committee=CompactCommittee(),
         # Custody game
         custody_challenge_index=0,
         exposed_derived_secrets=Vector[List[ValidatorIndex, PLACEHOLDER],
-                                        EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]()
+                                       EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]()
     )
     post.current_light_committee = get_light_client_committee(post, post.epoch)
     post.next_light_committee = get_light_client_committee(post, post.epoch + 1)
