@@ -137,6 +137,7 @@ We define the following Python custom types for type hinting and readability:
 | `CommitteeIndex` | `uint64` | a committee index at a slot |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
+| `Root` | `Bytes32` | the root of an SSZ object |
 | `Hash` | `Bytes32` | a hash |
 | `Version` | `Bytes4` | a fork version number |
 | `DomainType` | `Bytes4` | a domain type |
