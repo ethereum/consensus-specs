@@ -1425,7 +1425,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestations)
+    for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
 ```
