@@ -143,7 +143,7 @@ class CompactCommittee(Container):
 class AttestationCustodyBitWrapper(Container):
     attestation_root: Hash
     block_index: uint64
-    bit: bool
+    bit: boolean
 ```
 
 ### New extended `PendingAttestation`
@@ -154,7 +154,7 @@ class PendingAttestation(phase0.PendingAttestation):
     data: AttestationData
     inclusion_delay: Slot
     proposer_index: ValidatorIndex
-    crosslink_success: bool
+    crosslink_success: boolean
 ```
 
 ### New extended `Validator`

@@ -289,16 +289,18 @@ def build_phase1_spec(phase0_beacon_sourcefile: str,
                       phase0_fork_choice_sourcefile: str,
                       merkle_proofs_sourcefile: str,
                       phase1_custody_sourcefile: str,
-                      phase1_shard_sourcefile: str,
-                      phase1_beacon_misc_sourcefile: str,
+                      phase1_beacon_sourcefile: str,
+                      phase1_fraud_sourcefile: str,
+                      phase1_fork_sourcefile: str,
                       outfile: str=None) -> Optional[str]:
     all_sourcefiles = (
         phase0_beacon_sourcefile,
         phase0_fork_choice_sourcefile,
         merkle_proofs_sourcefile,
         phase1_custody_sourcefile,
-        phase1_shard_sourcefile,
-        phase1_beacon_misc_sourcefile,
+        phase1_beacon_sourcefile,
+        phase1_fraud_sourcefile,
+        phase1_fork_sourcefile,
     )
     all_spescs = [get_spec(spec) for spec in all_sourcefiles]
     for spec in all_spescs:
@@ -327,9 +329,10 @@ If building phase 1:
     2nd argument is input /core/0_fork-choice.md
     3rd argument is input /light_client/merkle_proofs.md
     4th argument is input /core/1_custody-game.md
-    5th argument is input /core/1_shard-data-chains.md
-    6th argument is input /core/1_beacon-chain-misc.md
-    7th argument is output spec.py
+    5th argument is input /core/1_beacon-chain.md
+    6th argument is input /core/1_fraud-proofs.md
+    7th argument is input /core/1_phase1-fork.md
+    8th argument is output spec.py
 '''
     parser = ArgumentParser(description=description)
     parser.add_argument("-p", "--phase", dest="phase", type=int, default=0, help="Build for phase #")
@@ -342,14 +345,14 @@ If building phase 1:
         else:
             print(" Phase 0 requires spec, forkchoice, and v-guide inputs as well as an output file.")
     elif args.phase == 1:
-        if len(args.files) == 7:
+        if len(args.files) == 8:
             build_phase1_spec(*args.files)
         else:
             print(
                 " Phase 1 requires input files as well as an output file:\n"
                 "\t core/phase_0: (0_beacon-chain.md, 0_fork-choice.md)\n"
                 "\t light_client: (merkle_proofs.md)\n"
-                "\t core/phase_1: (1_custody-game.md, 1_shard-data-chains.md, 1_beacon-chain-misc.md)\n"
+                "\t core/phase_1: (1_custody-game.md, 1_beacon-chain.md, 1_fraud-proofs.md, 1_phase1-fork.md)\n"
                 "\t and output.py"
             )
     else:
