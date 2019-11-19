@@ -34,14 +34,12 @@
     - [Helpers](#helpers)
         - [`ceillog2`](#ceillog2)
         - [`is_valid_merkle_branch_with_mixin`](#is_valid_merkle_branch_with_mixin)
-        - [`get_crosslink_chunk_count`](#get_crosslink_chunk_count)
         - [`legendre_bit`](#legendre_bit)
         - [`custody_subchunkify`](#custody_subchunkify)
         - [`get_custody_chunk_bit`](#get_custody_chunk_bit)
         - [`get_chunk_bits_root`](#get_chunk_bits_root)
         - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
         - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
-        - [`replace_empty_or_append`](#replace_empty_or_append)
     - [Per-block processing](#per-block-processing)
         - [Operations](#operations)
             - [Custody key reveals](#custody-key-reveals)
@@ -168,45 +166,6 @@ class CustodyBitChallenge(Container):
     signature: BLSSignature
 ```
 
-#### `CustodyChunkChallengeRecord`
-
-```python
-class CustodyChunkChallengeRecord(Container):
-    challenge_index: uint64
-    challenger_index: ValidatorIndex
-    responder_index: ValidatorIndex
-    inclusion_epoch: Epoch
-    data_root: Root
-    depth: uint64
-    chunk_index: uint64
-```
-
-#### `CustodyBitChallengeRecord`
-
-```python
-class CustodyBitChallengeRecord(Container):
-    challenge_index: uint64
-    challenger_index: ValidatorIndex
-    responder_index: ValidatorIndex
-    inclusion_epoch: Epoch
-    data_root: Root
-    chunk_count: uint64
-    chunk_bits_merkle_root: Root
-    responder_key: BLSSignature
-```
-
-#### `CustodyResponse`
-
-```python
-class CustodyResponse(Container):
-    challenge_index: uint64
-    chunk_index: uint64
-    chunk: Vector[Bytes[PLACEHOLDER], BYTES_PER_CUSTODY_CHUNK]
-    data_branch: List[Bytes32, PLACEHOLDER]
-    chunk_bits_branch: List[Bytes32, PLACEHOLDER]
-    chunk_bits_leaf: Bytes32
-```
-
 ### New Beacon Chain operations
 
 #### `CustodyKeyReveal`
@@ -266,13 +225,6 @@ def is_valid_merkle_branch_with_mixin(leaf: Bytes32,
     return value == root
 ```
 
-### `get_crosslink_chunk_count`
-
-```python
-def get_custody_chunk_count(crosslink: Crosslink) -> int:
-    crosslink_length = min(MAX_EPOCHS_PER_CROSSLINK, crosslink.end_epoch - crosslink.start_epoch)
-    return crosslink_length * CHUNKS_PER_EPOCH
-```
 
 ### `legendre_bit`
 
@@ -354,17 +306,6 @@ def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epo
     return (epoch + validator_index % EPOCHS_PER_CUSTODY_PERIOD) // EPOCHS_PER_CUSTODY_PERIOD
 ```
 
-### `replace_empty_or_append`
-
-```python
-def replace_empty_or_append(list: MutableSequence[Any], new_element: Any) -> int:
-    for i in range(len(list)):
-        if is_zero(list[i]):
-            list[i] = new_element
-            return i
-    list.append(new_element)
-    return len(list) - 1
-```
 
 ## Per-block processing
 
@@ -526,7 +467,7 @@ def process_chunk_challenge(state: BeaconState, challenge: CustodyChunkChallenge
             record.chunk_index != challenge.chunk_index
         )
     # Verify depth
-    depth = ceillog2(get_custody_chunk_count(challenge.attestation.data.crosslink))
+    depth = 123  # TODO
     assert challenge.chunk_index < 2**depth
     # Add new chunk challenge record
     new_record = CustodyChunkChallengeRecord(
@@ -611,24 +552,13 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     assert bls_verify(responder.pubkey, hash_tree_root(epoch_to_sign), challenge.responder_key, domain)
     # Verify the chunk count
-    chunk_count = get_custody_chunk_count(attestation.data.crosslink)
+    chunk_count = 123  # TODO
     assert chunk_count == len(challenge.chunk_bits)
     # Verify custody bit is incorrect
     committee = get_beacon_committee(state, epoch, shard)
     custody_bit = attestation.custody_bits[committee.index(challenge.responder_index)]
     assert custody_bit != get_chunk_bits_root(challenge.chunk_bits)
-    # Add new bit challenge record
-    new_record = CustodyBitChallengeRecord(
-        challenge_index=state.custody_challenge_index,
-        challenger_index=challenge.challenger_index,
-        responder_index=challenge.responder_index,
-        inclusion_epoch=get_current_epoch(state),
-        data_root=attestation.data.crosslink.data_root,
-        chunk_count=chunk_count,
-        chunk_bits_merkle_root=hash_tree_root(challenge.chunk_bits),
-        responder_key=challenge.responder_key,
-    )
-    replace_empty_or_append(state.custody_bit_challenge_records, new_record)
+    # TODO: immediate processing of challenge?
     state.custody_challenge_index += 1
     # Postpone responder withdrawability
     responder.withdrawable_epoch = FAR_FUTURE_EPOCH

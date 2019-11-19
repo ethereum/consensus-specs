@@ -1,5 +1,5 @@
 from eth2spec.phase0 import spec as spec_phase0
-# from eth2spec.phase1 import spec as spec_phase1
+from eth2spec.phase1 import spec as spec_phase1
 from eth2spec.utils import bls
 
 from .helpers.genesis import create_genesis_state
@@ -7,6 +7,11 @@ from .helpers.genesis import create_genesis_state
 from .utils import vector_test, with_meta_tags
 
 from typing import Any, Callable, Sequence
+
+from importlib import reload
+
+reload(spec_phase0)
+reload(spec_phase1)
 
 
 def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
@@ -191,9 +196,7 @@ def with_phases(phases):
             if 'phase0' in run_phases:
                 ret = run_with_spec_version(spec_phase0, *args, **kw)
             if 'phase1' in run_phases:
-                # temporarily disable phase 1 tests
-                return
-                # ret = run_with_spec_version(spec_phase1, *args, **kw)
+                ret = run_with_spec_version(spec_phase1, *args, **kw)
             return ret
         return wrapper
     return decorator

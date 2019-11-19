@@ -157,7 +157,7 @@ class AttestationCustodyBitWrapper(Container):
 ### New extended `PendingAttestation`
 
 ```python
-class PendingAttestation(phase0.PendingAttestation):
+class PendingAttestation(Container):
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     data: AttestationData
     inclusion_delay: Slot
@@ -168,7 +168,7 @@ class PendingAttestation(phase0.PendingAttestation):
 ### New extended `Validator`
 
 ```python
-class Validator(phase0.Validator):
+class Validator(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals
     effective_balance: Gwei  # Balance at stake
@@ -189,7 +189,7 @@ class Validator(phase0.Validator):
 ### New extended `BeaconBlockBody`
 
 ```python
-class BeaconBlockBody(phase0.BeaconBlockBody):
+class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data  # Eth1 data vote
     graffiti: Bytes32  # Arbitrary data
@@ -218,7 +218,7 @@ class BeaconBlockBody(phase0.BeaconBlockBody):
 Note that the `body` has a new `BeaconBlockBody` definition.
 
 ```python
-class BeaconBlock(phase0.BeaconBlock):
+class BeaconBlock(Container):
     slot: Slot
     parent_root: Hash
     state_root: Hash
@@ -231,7 +231,7 @@ class BeaconBlock(phase0.BeaconBlock):
 Note that aside from the new additions, `Validator` and `PendingAttestation` have new definitions.
 
 ```python
-class BeaconState(phase0.BeaconState):
+class BeaconState(Container):
     # Versioning
     genesis_time: uint64
     slot: Slot
@@ -270,7 +270,7 @@ class BeaconState(phase0.BeaconState):
     custody_challenge_index: uint64
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
-    exposed_derived_secrets: Vector[List[ValidatorIndex, PLACEHOLDER],
+    exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
                                     EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
 ```
 
@@ -610,7 +610,7 @@ def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attest
                     # Apply proposer reward and cost
                     beacon_proposer_index = get_beacon_proposer_index(state)
                     estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
-                    proposer_reward = estimated_attester_reward // PROPOSER_REWARD_COEFFICIENT
+                    proposer_reward = estimated_attester_reward // PROPOSER_REWARD_QUOTIENT
                     increase_balance(state, beacon_proposer_index, proposer_reward)
                     states_slots_lengths = zip(
                         block_body.shard_transition.shard_states,
@@ -659,19 +659,19 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
     assert len(block_body.light_client_signature_bitfield) == len(committee)
     total_reward = Gwei(0)
     signer_keys = []
-    for i, bit in enumerate(block_body.light_client_signature_bitfield):
-        if bit:
+    for i, participant_bit in enumerate(block_body.light_client_signature_bitfield):
+        if participant_bit:
             signer_keys.append(state.validators[committee[i]].pubkey)
             increase_balance(state, committee[i], get_base_reward(state, committee[i]))
             total_reward += get_base_reward(state, committee[i])
 
-    increase_balance(state, get_beacon_proposer_index(state), total_reward // PROPOSER_REWARD_COEFFICIENT)
+    increase_balance(state, get_beacon_proposer_index(state), total_reward // PROPOSER_REWARD_QUOTIENT)
     
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(signer_keys),
         message_hash=get_block_root_at_slot(state, state.slot - 1),
         signature=block_body.light_client_signature,
-        domain=DOMAIN_LIGHT_CLIENT,
+        domain=DOMAIN_LIGHT_CLIENT
     )
 ```
 

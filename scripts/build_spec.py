@@ -9,9 +9,13 @@ from typing import (
     Optional,
 )
 
+CONFIG_LOADER = '''
+apply_constants_preset(globals())
+'''
 
-PHASE0_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, Tuple, Optional
+PHASE0_IMPORTS = '''from eth2spec.config.apply_config import apply_constants_preset
+from typing import (
+    Dict, Set, Sequence, Tuple, Optional
 )
 
 from dataclasses import (
@@ -33,8 +37,10 @@ from eth2spec.utils.bls import (
 
 from eth2spec.utils.hash_function import hash
 '''
-PHASE1_IMPORTS = '''from typing import (
-    Any, Dict, Set, Sequence, MutableSequence, NewType, Tuple, Union,
+PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
+from eth2spec.config.apply_config import apply_constants_preset
+from typing import (
+    Dict, Set, Sequence, NewType, Tuple, Union,
 )
 from math import (
     log2,
@@ -101,24 +107,7 @@ def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
 
     if param_hash not in committee_cache:
         committee_cache[param_hash] = _compute_committee(indices, seed, index, count)
-    return committee_cache[param_hash]
-
-
-# Access to overwrite spec constants based on configuration
-def apply_constants_preset(preset: Dict[str, Any]) -> None:
-    global_vars = globals()
-    for k, v in preset.items():
-        if k.startswith('DOMAIN_'):
-            global_vars[k] = DomainType(v)  # domain types are defined as bytes in the configs
-        else:
-            global_vars[k] = v
-
-    # Deal with derived constants
-    global_vars['GENESIS_EPOCH'] = compute_epoch_at_slot(GENESIS_SLOT)
-
-    # Initialize SSZ types again, to account for changed lengths
-    init_SSZ_types()
-'''
+    return committee_cache[param_hash]'''
 
 
 def remove_for_phase1(functions: Dict[str, str]):
@@ -128,23 +117,10 @@ def remove_for_phase1(functions: Dict[str, str]):
         functions[key] = "\n".join(lines)
 
 
-def strip_comments(raw: str) -> str:
-    comment_line_regex = re.compile(r'^\s+# ')
-    lines = raw.split('\n')
-    out = []
-    for line in lines:
-        if not comment_line_regex.match(line):
-            if '  #' in line:
-                line = line[:line.index('  #')]
-            out.append(line)
-    return '\n'.join(out)
-
-
 def objects_to_spec(functions: Dict[str, str],
                     custom_types: Dict[str, str],
                     constants: Dict[str, str],
                     ssz_objects: Dict[str, str],
-                    inserts: Dict[str, str],
                     imports: Dict[str, str],
                     ) -> str:
     """
@@ -169,27 +145,17 @@ def objects_to_spec(functions: Dict[str, str],
             constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
     ssz_objects_instantiation_spec = '\n\n'.join(ssz_objects.values())
-    ssz_objects_reinitialization_spec = (
-        'def init_SSZ_types() -> None:\n    global_vars = globals()\n\n    '
-        + '\n\n    '.join([strip_comments(re.sub(r'\n\n', r'\n', re.sub(r'(?!\n\n)\n', r'\n    ', value[:-1])))
-                           for value in ssz_objects.values()])
-        + '\n\n'
-        + '\n'.join(map(lambda x: '    global_vars[\'%s\'] = %s' % (x, x), ssz_objects.keys()))
-    )
     spec = (
         imports
         + '\n\n' + new_type_definitions
         + '\n' + SUNDRY_CONSTANTS_FUNCTIONS
         + '\n\n' + constants_spec
-        + '\n\n\n' + ssz_objects_instantiation_spec
+        + '\n\n' + CONFIG_LOADER
+        + '\n\n' + ssz_objects_instantiation_spec
         + '\n\n' + functions_spec
         + '\n' + SUNDRY_FUNCTIONS
-        + '\n\n' + ssz_objects_reinitialization_spec
         + '\n'
     )
-    # Handle @inserts
-    for key, value in inserts.items():
-        spec = re.sub('[ ]*# %s\\n' % key, value, spec)
     return spec
 
 
@@ -242,32 +208,22 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
     and returns the newer versions of the objects in dependency order.
     """
     for key, value in new_objects.items():
-        if key in old_objects:
-            # add proper spacing
-            old_objects[key] = old_objects[key] + "\n\n"
-            lines = value.split("\n")
-            value = "\n".join([lines[0] + "  # noqa: F811"] + lines[1:])
-        old_objects[key] = old_objects.get(key, '') + value
+        old_objects[key] = value
     dependency_order_ssz_objects(old_objects, custom_types)
     return old_objects
-
-
-# inserts are handeled the same way as functions
-combine_inserts = combine_functions
 
 
 def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     """
     Takes in two spec variants (as tuples of their objects) and combines them using the appropriate combiner function.
     """
-    functions0, custom_types0, constants0, ssz_objects0, inserts0 = spec0
-    functions1, custom_types1, constants1, ssz_objects1, inserts1 = spec1
+    functions0, custom_types0, constants0, ssz_objects0 = spec0
+    functions1, custom_types1, constants1, ssz_objects1 = spec1
     functions = combine_functions(functions0, functions1)
     custom_types = combine_constants(custom_types0, custom_types1)
     constants = combine_constants(constants0, constants1)
     ssz_objects = combine_ssz_objects(ssz_objects0, ssz_objects1, custom_types)
-    inserts = combine_inserts(inserts0, inserts1)
-    return functions, custom_types, constants, ssz_objects, inserts
+    return functions, custom_types, constants, ssz_objects
 
 
 def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
