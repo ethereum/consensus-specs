@@ -99,7 +99,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         next_light_committee=CompactCommittee(),
         # Custody game
         custody_challenge_index=0,
-        exposed_derived_secrets=Vector[List[ValidatorIndex, PLACEHOLDER],
+        exposed_derived_secrets=Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
                                        EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]()
     )
     post.current_light_committee = get_light_client_committee(post, post.epoch)

@@ -3,8 +3,6 @@ from typing import Dict, Tuple, NewType
 
 
 FUNCTION_REGEX = r'^def [\w_]*'
-BEGIN_INSERT_REGEX = r'# begin insert '
-END_INSERT_REGEX = r'# end insert'
 
 SpecObject = NewType('SpecObjects', Tuple[Dict[str, str], Dict[str, str], Dict[str, str], Dict[str, str]])
 
@@ -15,22 +13,18 @@ def get_spec(file_name: str) -> SpecObject:
     functions = {function_name: function_code}
     constants= {constant_name: constant_code}
     ssz_objects= {object_name: object}
-    inserts= {insert_tag: code to be inserted}
 
     Note: This function makes heavy use of the inherent ordering of dicts,
     if this is not supported by your python version, it will not work.
     """
     pulling_from = None  # line number of start of latest object
     current_name = None  # most recent section title
-    insert_name = None  # stores the label of the current insert object
-    functions = {}
-    constants = {}
-    ssz_objects = {}
-    inserts = {}
+    functions: Dict[str, str] = {}
+    constants: Dict[str, str] = {}
+    ssz_objects: Dict[str, str] = {}
     function_matcher = re.compile(FUNCTION_REGEX)
-    inserts_matcher = re.compile(BEGIN_INSERT_REGEX)
     is_ssz = False
-    custom_types = {}
+    custom_types: Dict[str, str] = {}
     for linenum, line in enumerate(open(file_name).readlines()):
         line = line.rstrip()
         if pulling_from is None and len(line) > 0 and line[0] == '#' and line[-1] == '`':
@@ -40,15 +34,6 @@ def get_spec(file_name: str) -> SpecObject:
             pulling_from = linenum + 1
         elif line[:3] == '```':
             pulling_from = None
-        elif inserts_matcher.match(line) is not None:
-            # Find @insert names
-            insert_name = re.search(r'@[\w]*', line).group(0)
-        elif insert_name is not None:
-            # In insert mode, either the next line is more code, or the end of the insert
-            if re.match(END_INSERT_REGEX, line) is not None:
-                insert_name = None
-            else:
-                inserts[insert_name] = inserts.get(insert_name, '') + line + '\n'
         else:
             # Handle function definitions & ssz_objects
             if pulling_from is not None:
@@ -84,4 +69,4 @@ def get_spec(file_name: str) -> SpecObject:
                         constants[row[0]] = row[1].replace('**TBD**', '2**32')
                     elif row[1].startswith('uint') or row[1].startswith('Bytes'):
                         custom_types[row[0]] = row[1]
-    return functions, custom_types, constants, ssz_objects, inserts
+    return SpecObject((functions, custom_types, constants, ssz_objects))
