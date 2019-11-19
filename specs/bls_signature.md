@@ -2,8 +2,6 @@
 
 **Notice**: This document is a placeholder to facilitate the emergence of cross-client testnets. Substantive changes are postponed until [BLS standardisation](https://github.com/pairingwg/bls_standard) is finalized.
 
-**Warning**: The constructions in this document should not be considered secure. In particular, the `hash_to_G2` function is known to be unsecure.
-
 ## Table of contents
 <!-- TOC -->
 
@@ -81,13 +79,13 @@ We require:
 `hash_to_g2` is equivaent `hash_to_curve` found in the [BLS standard](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-3) with this interpretation reflecting draft version 5. We use the hash to curve ciphersuite `BLS12381G2-SHA256-SSWU-RO` found in section 8.9.2. It consists of three parts:
 
 * `hash_to_base` - Converting a message from bytes to a field point found in [section 5.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-5.3). The required constant parameters are:
- * Field Degree: `m = 2`
- * Length of HKDF: `L = 64`,
- * Hash Function: `H = SHA256`,
- * Domain Separation Tag: `DST = BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_`.
+  * Field Degree: `m = 2`
+  * Length of HKDF: `L = 64`,
+  * Hash Function: `H = SHA256`,
+  * Domain Separation Tag: `DST = BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_`.
 * `map_to_curve` - Converting a field point to a point on the elliptic curve (G2 Point) in two steps:
- * First apply a [Simplified SWU Map](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-6.6.3) to the [3-Isogney curve](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) `E'`.
- * Second map the `E'` point to G2 using the `iso_map` detailed [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#appendix-C.3).
+  * First apply a [Simplified SWU Map](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-6.6.3) to the [3-Isogney curve](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) `E'`.
+  * Second map the `E'` point to G2 using the `iso_map` detailed [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#appendix-C.3).
 * `clear_cofactor` - Ensure the point is in the correct subfield by multiplying by the curve co-efficient `h_eff` as found [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2).
 
 Details of the `hash_to_curve` function are shown below.
