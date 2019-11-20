@@ -378,13 +378,21 @@ def process_custody_slashing(state: BeaconState, custody_slashing: CustodySlashi
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
     assert custody_slashing.malefactor_index in attesters
     
+    # Verify the malefactor custody key
+    epoch_to_sign = get_randao_epoch_for_custody_period(
+        get_custody_period_for_validator(state, custody_slashing.malefactor_index, attestation.data.target.epoch),
+        custody_slashing.malefactor_index,
+    )
+    domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
+    assert bls_verify(malefactor.pubkey, hash_tree_root(epoch_to_sign), custody_slashing.malefactor_key, domain)
+
     # Get the custody bit
     custody_bits = attestation.custody_bits[custody_slashing.data_index]
     committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
     claimed_custody_bit = custody_bits[committee.index(custody_slashing.malefactor_index)]
     
     # Compute the custody bit
-    computed_custody_bit = compute_custody_bit(custody_slashing.data)
+    computed_custody_bit = compute_custody_bit(custody_slashing.malefactor_key, custody_slashing.data)
     
     # Verify the claim
     if claimed_custody_bit != computed_custody_bit:
