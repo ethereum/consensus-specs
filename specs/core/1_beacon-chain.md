@@ -34,18 +34,18 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | - | - | - | - | 
 | `MAX_SHARDS` | `2**10` (= 1024) |
 | `ACTIVE_SHARDS` | `2**6` (= 64) |
-| `ONLINE_PERIOD` | `2**3` (= 8) | epochs | ~51 min |
+| `ONLINE_PERIOD` | `Epoch(2**3)` (= 8) | epochs | ~51 min |
 | `LIGHT_CLIENT_COMMITTEE_SIZE` | `2**7` (= 128) |
-| `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
-| `SHARD_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
+| `LIGHT_CLIENT_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
+| `SHARD_COMMITTEE_PERIOD` | `Epoch(2**8)` (= 256) | epochs | ~27 hours |
 | `SHARD_BLOCK_CHUNK_SIZE` | `2**18` (= 262,144) | |
 | `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
 | `TARGET_SHARD_BLOCK_SIZE` | `3 * 2**16` (= 196,608) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
 | `EMPTY_CHUNK_ROOT` | `hash_tree_root(BytesN[SHARD_BLOCK_CHUNK_SIZE]())` | |
-| `MAX_GASPRICE` | `2**14` (= 16,384) | Gwei | |
-| `MIN_GASPRICE` | `2**5` (= 32) | Gwei | |
+| `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
+| `MIN_GASPRICE` | `Gwei(2**5)` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
 | `DOMAIN_LIGHT_CLIENT` | `192` | |
 | `DOMAIN_SHARD_COMMITTEE` | `192` | |
@@ -313,13 +313,23 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 #### `chunks_to_body_root`
 
 ```python
-def chunks_to_body_root(chunks):
+def chunks_to_body_root(chunks: List[Hash, MAX_SHARD_BLOCK_CHUNKS]) -> Hash:
     return hash_tree_root(Vector[Hash, MAX_SHARD_BLOCK_CHUNKS](
         chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
     ))
 ```
 
 ### Beacon state accessors
+
+#### `get_previous_slot`
+
+```python
+def get_previous_slot(state: BeaconState) -> Slot:
+    if state.slot > 0:
+        return Slot(state.slot - 1)
+    else:
+        return Slot(0)
+```
 
 #### `get_online_validator_indices`
 
@@ -403,7 +413,7 @@ def get_shard(state: BeaconState, attestation: Attestation) -> Shard:
 
 ```python
 def get_offset_slots(state: BeaconState, start_slot: Slot) -> Sequence[Slot]:
-    return [start_slot + x for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
+    return [Slot(start_slot + x) for x in SHARD_BLOCK_OFFSETS if start_slot + x < state.slot]
 ```
 
 
@@ -503,7 +513,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
         # Correct data root count
         assert len(attestation.custody_bits) == len(get_offset_slots(state, state.shard_next_slots[shard]))
         # Correct parent block root
-        assert data.beacon_block_root == get_block_root_at_slot(state, state.slot - 1)
+        assert data.beacon_block_root == get_block_root_at_slot(state, get_previous_slot(state))
     # Type 2: delayed attestations
     else:
         assert state.slot - compute_start_slot_at_epoch(compute_epoch_at_slot(data.slot)) < SLOTS_PER_EPOCH
@@ -535,7 +545,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
         if any(transition.shard_data_roots):
             headers.append(ShardSignableHeader(
                 shard_parent_root=shard_parent_root,
-                parent_hash=get_block_root_at_slot(state, state.slot - 1),
+                parent_hash=get_block_root_at_slot(state, get_previous_slot(state)),
                 slot=offset_slots[i],
                 body_root=chunks_to_body_root(transition.shard_data_roots[i])
             ))
@@ -576,7 +586,7 @@ def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attest
     # Process crosslinks
     online_indices = get_online_validator_indices(state)
     winners = set()
-    for shard in range(ACTIVE_SHARDS):
+    for shard in map(Shard, range(ACTIVE_SHARDS)):
         success = False
         # All attestations in the block for this shard
         this_shard_attestations = [
@@ -588,7 +598,7 @@ def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attest
         # Loop over all shard transition roots
         shard_transition_roots = set([a.data.shard_transition_root for a in this_shard_attestations])
         for shard_transition_root in sorted(shard_transition_roots):
-            all_participants = set()
+            all_participants: Set[ValidatorIndex] = set()
             participating_attestations = []
             for attestation in this_shard_attestations:
                 participating_attestations.append(attestation)
@@ -611,11 +621,11 @@ def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attest
                     # Apply proposer reward and cost
                     beacon_proposer_index = get_beacon_proposer_index(state)
                     estimated_attester_reward = sum([get_base_reward(state, attester) for attester in all_participants])
-                    proposer_reward = estimated_attester_reward // PROPOSER_REWARD_QUOTIENT
+                    proposer_reward = Gwei(estimated_attester_reward // PROPOSER_REWARD_QUOTIENT)
                     increase_balance(state, beacon_proposer_index, proposer_reward)
                     states_slots_lengths = zip(
                         block_body.shard_transition.shard_states,
-                        get_offset_slots(state, state.shard_next_slots[get_shard(attestation)]),
+                        get_offset_slots(state, state.shard_next_slots[get_shard(state, attestation)]),
                         block_body.shard_transition.shard_block_lengths
                     )
                     for shard_state, slot, length in states_slots_lengths:
@@ -666,11 +676,11 @@ def process_light_client_signatures(state: BeaconState, block_body: BeaconBlockB
             increase_balance(state, committee[i], get_base_reward(state, committee[i]))
             total_reward += get_base_reward(state, committee[i])
 
-    increase_balance(state, get_beacon_proposer_index(state), total_reward // PROPOSER_REWARD_QUOTIENT)
+    increase_balance(state, get_beacon_proposer_index(state), Gwei(total_reward // PROPOSER_REWARD_QUOTIENT))
     
     assert bls_verify(
         pubkey=bls_aggregate_pubkeys(signer_keys),
-        message_hash=get_block_root_at_slot(state, state.slot - 1),
+        message_hash=get_block_root_at_slot(state, get_previous_slot(state)),
         signature=block_body.light_client_signature,
         domain=DOMAIN_LIGHT_CLIENT
     )
