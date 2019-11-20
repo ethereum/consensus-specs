@@ -100,7 +100,7 @@ class CustodySlashing(Container):
     whistleblower_index: ValidatorIndex
     shard_transition: ShardTransition
     attestation: Attestation
-    data: ByteList[MAX_SHARD_BLOCK_SIZE]
+    data: Bytes[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
     signature: BLSSignature
 ```
 
@@ -178,13 +178,13 @@ def get_custody_atoms(bytez: bytes) -> Sequence[bytes]:
 ### `compute_custody_bit`
 
 ```python
-def compute_custody_bit(key: BLSSignature, data: bytes) -> bool:
+def compute_custody_bit(key: BLSSignature, data: bytes) -> bit:
     full_G2_element = bls_signature_to_G2(key)
     s = full_G2_element[0].coeffs
     bits = [legendre_bit((i + 1) * s[i % 2] + int.from_bytes(atom, "little"), BLS12_381_Q)
             for i, atom in enumerate(get_custody_atoms(data))]
     # XOR all atom bits
-    return bool(sum(bits) % 2)
+    return bit(sum(bits) % 2)
 ```
 
 ### `get_randao_epoch_for_custody_period`
@@ -212,7 +212,7 @@ def get_custody_period_for_validator(validator_index: ValidatorIndex, epoch: Epo
 
 ```python
 def process_custody_game_operations(state: BeaconState, body: BeaconBlockBody) -> None:
-    def for_ops(operations, fn):
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
             fn(state, operation)
 
@@ -374,13 +374,14 @@ def process_custody_slashing(state: BeaconState, custody_slashing: CustodySlashi
     shard_chunk_roots = shard_transition.shard_data_roots[custody_slashing.data_index]
     assert hash_tree_root(custody_slashing.data) == chunks_to_body_root(shard_chunk_roots)
 
-    # Verify existence of claimed malefactor
+    # Verify existence and participation of claimed malefactor
     attesters = get_attesting_indices(state, attestation.data, attestation.aggregation_bits)
     assert custody_slashing.malefactor_index in attesters
     
     # Get the custody bit
     custody_bits = attestation.custody_bits[custody_slashing.data_index]
-    claimed_custody_bit = custody_bits[attesters.index(custody_slashing.malefactor_index)]
+    committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    claimed_custody_bit = custody_bits[committee.index(custody_slashing.malefactor_index)]
     
     # Compute the custody bit
     computed_custody_bit = compute_custody_bit(custody_slashing.data)

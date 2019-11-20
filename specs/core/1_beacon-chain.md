@@ -39,11 +39,11 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 | `SHARD_BLOCK_CHUNK_SIZE` | `2**18` (= 262,144) | |
-| `SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
+| `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
 | `TARGET_SHARD_BLOCK_SIZE` | `3 * 2**16` (= 196,608) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
-| `EMPTY_CHUNK_ROOT` | `hash_tree_root(ByteVector[SHARD_BLOCK_CHUNK_SIZE]())` | |
+| `EMPTY_CHUNK_ROOT` | `hash_tree_root(BytesN[SHARD_BLOCK_CHUNK_SIZE]())` | |
 | `MAX_GASPRICE` | `2**14` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `2**5` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
@@ -62,7 +62,7 @@ class ShardBlockWrapper(Container):
     shard_parent_root: Hash
     beacon_parent_root: Hash
     slot: Slot
-    body: ByteVector[MAX_SHARD_BLOCK_SIZE]
+    body: BytesN[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
     signature: BLSSignature
 ```
 
@@ -315,7 +315,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 ```python
 def chunks_to_body_root(chunks):
     return hash_tree_root(Vector[Hash, MAX_SHARD_BLOCK_CHUNKS](
-            chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
+        chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
     ))
 ```
 
@@ -376,11 +376,11 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
 def get_updated_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
     if length > TARGET_SHARD_BLOCK_SIZE:
         delta = (prev_gasprice * (length - TARGET_SHARD_BLOCK_SIZE) 
-                    // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
+                 // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
         return min(prev_gasprice + delta, MAX_GASPRICE)
     else:
         delta = (prev_gasprice * (TARGET_SHARD_BLOCK_SIZE - length)
-                    // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
+                 // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
         return max(prev_gasprice, MIN_GASPRICE + delta) - delta
 ```
 
@@ -465,7 +465,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Verify that outstanding deposits are processed up to the maximum number of deposits
     assert len(body.deposits) == min(MAX_DEPOSITS, state.eth1_data.deposit_count - state.eth1_deposit_index)
     
-    def for_ops(operations, fn):
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
             fn(state, operation)
     

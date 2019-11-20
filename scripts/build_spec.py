@@ -15,7 +15,7 @@ apply_constants_preset(globals())
 
 PHASE0_IMPORTS = '''from eth2spec.config.apply_config import apply_constants_preset
 from typing import (
-    Dict, Set, Sequence, Tuple, Optional
+    Any, Callable, Dict, Set, Sequence, Tuple, Optional
 )
 
 from dataclasses import (
@@ -40,7 +40,7 @@ from eth2spec.utils.hash_function import hash
 PHASE1_IMPORTS = '''from eth2spec.phase0 import spec as phase0
 from eth2spec.config.apply_config import apply_constants_preset
 from typing import (
-    Dict, Set, Sequence, NewType, Tuple, Union,
+    Any, Callable, Dict, Set, Sequence, NewType, Tuple, Union,
 )
 from math import (
     log2,
@@ -110,13 +110,6 @@ def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
     return committee_cache[param_hash]'''
 
 
-def remove_for_phase1(functions: Dict[str, str]):
-    for key, value in functions.items():
-        lines = value.split("\n")
-        lines = filter(lambda s: "[to be removed in phase 1]" not in s, lines)
-        functions[key] = "\n".join(lines)
-
-
 def objects_to_spec(functions: Dict[str, str],
                     custom_types: Dict[str, str],
                     constants: Dict[str, str],
@@ -172,10 +165,10 @@ def combine_constants(old_constants: Dict[str, str], new_constants: Dict[str, st
 
 
 ignored_dependencies = [
-    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature', 'ByteList', 'ByteVector'
+    'bit', 'boolean', 'Vector', 'List', 'Container', 'Hash', 'BLSPubkey', 'BLSSignature',
     'Bytes1', 'Bytes4', 'Bytes32', 'Bytes48', 'Bytes96', 'Bitlist', 'Bitvector',
     'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
-    'bytes', 'byte', 'ByteVector'  # to be removed after updating spec doc
+    'bytes', 'byte', 'Bytes', 'BytesN'  # to be removed after updating spec doc
 ]
 
 
@@ -209,7 +202,6 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
     """
     for key, value in new_objects.items():
         old_objects[key] = value
-    dependency_order_ssz_objects(old_objects, custom_types)
     return old_objects
 
 
@@ -226,6 +218,11 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     return functions, custom_types, constants, ssz_objects
 
 
+def dependency_order_spec(objs: SpecObject):
+    functions, custom_types, constants, ssz_objects = objs
+    dependency_order_ssz_objects(ssz_objects, custom_types)
+
+
 def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
                       v_guide_sourcefile: str, outfile: str=None) -> Optional[str]:
     phase0_spec = get_spec(phase0_sourcefile)
@@ -234,6 +231,7 @@ def build_phase0_spec(phase0_sourcefile: str, fork_choice_sourcefile: str,
     spec_objects = phase0_spec
     for value in [fork_choice_spec, v_guide]:
         spec_objects = combine_spec_objects(spec_objects, value)
+    dependency_order_spec(spec_objects)
     spec = objects_to_spec(*spec_objects, PHASE0_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
@@ -259,11 +257,10 @@ def build_phase1_spec(phase0_beacon_sourcefile: str,
         phase1_fork_sourcefile,
     )
     all_spescs = [get_spec(spec) for spec in all_sourcefiles]
-    for spec in all_spescs:
-        remove_for_phase1(spec[0])
     spec_objects = all_spescs[0]
     for value in all_spescs[1:]:
         spec_objects = combine_spec_objects(spec_objects, value)
+    dependency_order_spec(spec_objects)
     spec = objects_to_spec(*spec_objects, PHASE1_IMPORTS)
     if outfile is not None:
         with open(outfile, 'w') as out:
