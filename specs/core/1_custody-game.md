@@ -380,7 +380,7 @@ def process_custody_slashing(state: BeaconState, custody_slashing: CustodySlashi
     
     # Verify the malefactor custody key
     epoch_to_sign = get_randao_epoch_for_custody_period(
-        get_custody_period_for_validator(state, custody_slashing.malefactor_index, attestation.data.target.epoch),
+        get_custody_period_for_validator(custody_slashing.malefactor_index, attestation.data.target.epoch),
         custody_slashing.malefactor_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
@@ -398,7 +398,8 @@ def process_custody_slashing(state: BeaconState, custody_slashing: CustodySlashi
     if claimed_custody_bit != computed_custody_bit:
         # Slash the malefactor, reward the other committee members
         slash_validator(state, custody_slashing.malefactor_index)
-        whistleblower_reward = Gwei(malefactor.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT) // len(attesters - 1)
+        others_count = len(committee) - 1
+        whistleblower_reward = Gwei(malefactor.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT // others_count)
         for attester_index in attesters:
             if attester_index != custody_slashing.malefactor_index:
                 increase_balance(state, attester_index, whistleblower_reward)
@@ -417,8 +418,9 @@ Run `process_reveal_deadlines(state)` after `process_registry_updates(state)`:
 
 ```python
 def process_reveal_deadlines(state: BeaconState) -> None:
+    epoch = get_current_epoch(state)
     for index, validator in enumerate(state.validators):
-        if get_custody_period_for_validator(state, ValidatorIndex(index)) > validator.next_custody_secret_to_reveal:
+        if get_custody_period_for_validator(ValidatorIndex(index), epoch) > validator.next_custody_secret_to_reveal:
             slash_validator(state, ValidatorIndex(index))
 ```
 
