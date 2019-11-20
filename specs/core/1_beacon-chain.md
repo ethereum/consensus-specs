@@ -39,11 +39,11 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `LIGHT_CLIENT_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 | `SHARD_COMMITTEE_PERIOD` | `2**8` (= 256) | epochs | ~27 hours |
 | `SHARD_BLOCK_CHUNK_SIZE` | `2**18` (= 262,144) | |
-| `MAX_SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
-| `BLOCK_SIZE_TARGET` | `3 * 2**16` (= 196,608) | |
+| `SHARD_BLOCK_CHUNKS` | `2**2` (= 4) | |
+| `TARGET_SHARD_BLOCK_SIZE` | `3 * 2**16` (= 196,608) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
-| `EMPTY_CHUNK_ROOT` | `hash_tree_root(BytesN[SHARD_BLOCK_CHUNK_SIZE]())` | |
+| `EMPTY_CHUNK_ROOT` | `hash_tree_root(ByteVector[SHARD_BLOCK_CHUNK_SIZE]())` | |
 | `MAX_GASPRICE` | `2**14` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `2**5` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
@@ -62,7 +62,7 @@ class ShardBlockWrapper(Container):
     shard_parent_root: Hash
     beacon_parent_root: Hash
     slot: Slot
-    body: BytesN[SHARD_BLOCK_CHUNK_SIZE]
+    body: ByteVector[MAX_SHARD_BLOCK_SIZE]
     signature: BLSSignature
 ```
 
@@ -202,8 +202,7 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
-    custody_chunk_challenges: List[CustodyChunkChallenge, MAX_CUSTODY_CHUNK_CHALLENGES]
-    custody_bit_challenges: List[CustodyBitChallenge, MAX_CUSTODY_BIT_CHALLENGES]
+    custody_slashings: List[CustodySlashing, MAX_CUSTODY_SLASHINGS]
     custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
     early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
     # Shards
@@ -266,8 +265,6 @@ class BeaconState(Container):
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
     # Custody game
-    # TODO: custody game refactor, no challenge-records, immediate processing.
-    custody_challenge_index: uint64
     # Future derived secrets already exposed; contains the indices of the exposed validator
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
@@ -317,7 +314,9 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 
 ```python
 def chunks_to_body_root(chunks):
-    return hash_tree_root(chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks)))
+    return hash_tree_root(Vector[Hash, MAX_SHARD_BLOCK_CHUNKS](
+            chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
+    ))
 ```
 
 ### Beacon state accessors
@@ -375,11 +374,13 @@ def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation)
 
 ```python
 def get_updated_gasprice(prev_gasprice: Gwei, length: uint8) -> Gwei:
-    if length > BLOCK_SIZE_TARGET:
-        delta = prev_gasprice * (length - BLOCK_SIZE_TARGET) // BLOCK_SIZE_TARGET // GASPRICE_ADJUSTMENT_COEFFICIENT
+    if length > TARGET_SHARD_BLOCK_SIZE:
+        delta = (prev_gasprice * (length - TARGET_SHARD_BLOCK_SIZE) 
+                    // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
         return min(prev_gasprice + delta, MAX_GASPRICE)
     else:
-        delta = prev_gasprice * (BLOCK_SIZE_TARGET - length) // BLOCK_SIZE_TARGET // GASPRICE_ADJUSTMENT_COEFFICIENT
+        delta = (prev_gasprice * (TARGET_SHARD_BLOCK_SIZE - length)
+                    // TARGET_SHARD_BLOCK_SIZE // GASPRICE_ADJUSTMENT_COEFFICIENT)
         return max(prev_gasprice, MIN_GASPRICE + delta) - delta
 ```
 
