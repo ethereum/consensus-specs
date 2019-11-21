@@ -49,16 +49,16 @@ We define the following Python custom types for type hinting and readability:
 ```python
 class LightClientUpdate(container):
     # Shard block root (and authenticating signature data)
-    shard_block_root: Hash
+    shard_block_root: Root
     fork_version: Version
     aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
     signature: BLSSignature
     # Updated beacon header (and authenticating branch)
     header: BeaconBlockHeader
-    header_branch: Vector[Hash, BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH]
+    header_branch: Vector[Bytes32, BEACON_CHAIN_ROOT_IN_SHARD_BLOCK_HEADER_DEPTH]
     # Updated period committee (and authenticating branch)
     committee: CompactCommittee
-    committee_branch: Vector[Hash, PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
+    committee_branch: Vector[Bytes32, PERIOD_COMMITTEE_ROOT_IN_BEACON_STATE_DEPTH + log_2(SHARD_COUNT)]
 ```
 
 ## Helpers

@@ -1,8 +1,7 @@
-
 from eth2spec.test.context import with_all_phases, spec_state_test
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.attestations import get_valid_attestation
-from eth2spec.test.helpers.state import state_transition_and_sign_block
+from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
+from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block
 
 
 def run_on_attestation(spec, state, store, attestation, valid=True):
@@ -89,18 +88,48 @@ def test_on_attestation_past_epoch(spec, state):
 @spec_state_test
 def test_on_attestation_target_not_in_store(spec, state):
     store = spec.get_genesis_store(state)
-    time = 100
+    time = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
     spec.on_tick(store, time)
 
-    # move to next epoch to make block new target
-    state.slot += spec.SLOTS_PER_EPOCH
+    # move to immediately before next epoch to make block new target
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH - 1)
 
-    block = build_empty_block_for_next_slot(spec, state)
-    state_transition_and_sign_block(spec, state, block)
+    target_block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, target_block)
 
-    # do not add block to store
+    # do not add target block to store
 
-    attestation = get_valid_attestation(spec, state, slot=block.slot)
+    attestation = get_valid_attestation(spec, state, slot=target_block.slot)
+    assert attestation.data.target.root == target_block.signing_root()
+
+    run_on_attestation(spec, state, store, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_on_attestation_beacon_block_not_in_store(spec, state):
+    store = spec.get_genesis_store(state)
+    time = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
+    spec.on_tick(store, time)
+
+    # move to immediately before next epoch to make block new target
+    transition_to(spec, state, state.slot + spec.SLOTS_PER_EPOCH - 1)
+
+    target_block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, target_block)
+
+    # store target in store
+    spec.on_block(store, target_block)
+
+    head_block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, head_block)
+
+    # do not add head block to store
+
+    attestation = get_valid_attestation(spec, state, slot=head_block.slot)
+    assert attestation.data.target.root == target_block.signing_root()
+    assert attestation.data.beacon_block_root == head_block.signing_root()
+
     run_on_attestation(spec, state, store, attestation, False)
 
 
@@ -121,6 +150,26 @@ def test_on_attestation_future_epoch(spec, state):
     state.slot = block.slot + spec.SLOTS_PER_EPOCH
 
     attestation = get_valid_attestation(spec, state, slot=state.slot)
+    run_on_attestation(spec, state, store, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
+def test_on_attestation_future_block(spec, state):
+    store = spec.get_genesis_store(state)
+    time = spec.SECONDS_PER_SLOT * 5
+    spec.on_tick(store, time)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
+
+    spec.on_block(store, block)
+
+    # attestation for slot immediately prior to the block being attested to
+    attestation = get_valid_attestation(spec, state, slot=block.slot - 1, signed=False)
+    attestation.data.beacon_block_root = block.signing_root()
+    sign_attestation(spec, state, attestation)
+
     run_on_attestation(spec, state, store, attestation, False)
 
 

@@ -57,7 +57,7 @@ The head block root associated with a `store` is defined as `get_head(store)`. A
 @dataclass(eq=True, frozen=True)
 class LatestMessage(object):
     epoch: Epoch
-    root: Hash
+    root: Root
 ```
 
 #### `Store`
@@ -70,8 +70,8 @@ class Store(object):
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     best_justified_checkpoint: Checkpoint
-    blocks: Dict[Hash, BeaconBlock] = field(default_factory=dict)
-    block_states: Dict[Hash, BeaconState] = field(default_factory=dict)
+    blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
+    block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
 ```
@@ -113,7 +113,7 @@ def compute_slots_since_epoch_start(slot: Slot) -> int:
 #### `get_ancestor`
 
 ```python
-def get_ancestor(store: Store, root: Hash, slot: Slot) -> Hash:
+def get_ancestor(store: Store, root: Root, slot: Slot) -> Root:
     block = store.blocks[root]
     if block.slot > slot:
         return get_ancestor(store, block.parent_root, slot)
@@ -126,7 +126,7 @@ def get_ancestor(store: Store, root: Hash, slot: Slot) -> Hash:
 #### `get_latest_attesting_balance`
 
 ```python
-def get_latest_attesting_balance(store: Store, root: Hash) -> Gwei:
+def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     active_indices = get_active_validator_indices(state, get_current_epoch(state))
     return Gwei(sum(
@@ -139,7 +139,7 @@ def get_latest_attesting_balance(store: Store, root: Hash) -> Gwei:
 #### `get_head`
 
 ```python
-def get_head(store: Store) -> Hash:
+def get_head(store: Store) -> Root:
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     justified_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
@@ -238,6 +238,12 @@ def on_block(store: Store, block: BeaconBlock) -> None:
 
 ```python
 def on_attestation(store: Store, attestation: Attestation) -> None:
+    """
+    Run ``on_attestation`` upon receiving a new ``attestation`` from either within a block or directly on the wire.
+
+    An ``attestation`` that is asserted as invalid may be valid at a later time,
+    consider scheduling it for later processing in such case.
+    """
     target = attestation.data.target
 
     # Attestations must be from the current or previous epoch 
@@ -248,9 +254,16 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     # Cannot calculate the current shuffling if have not seen the target
     assert target.root in store.blocks
 
+    # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
+    assert target.root in store.blocks
     # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
     base_state = store.block_states[target.root].copy()
     assert store.time >= base_state.genesis_time + compute_start_slot_at_epoch(target.epoch) * SECONDS_PER_SLOT
+
+    # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
+    assert attestation.data.beacon_block_root in store.blocks
+    # Attestations must not be for blocks in the future. If not, the attestation should not be considered
+    assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
 
     # Store target checkpoint state if not yet seen
     if target not in store.checkpoint_states:

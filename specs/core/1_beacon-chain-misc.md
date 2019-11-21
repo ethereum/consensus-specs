@@ -62,7 +62,7 @@ class ShardReceiptDelta(Container):
 ```python
 class ShardReceiptProof(Container):
     shard: Shard
-    proof: List[Hash, PLACEHOLDER]
+    proof: List[Bytes32, PLACEHOLDER]
     receipt: List[ShardReceiptDelta, PLACEHOLDER]
 ```
 
@@ -109,7 +109,7 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 #### `verify_merkle_proof`
 
 ```python
-def verify_merkle_proof(leaf: Hash, proof: Sequence[Hash], index: GeneralizedIndex, root: Hash) -> bool:
+def verify_merkle_proof(leaf: Bytes32, proof: Sequence[Bytes32], index: GeneralizedIndex, root: Root) -> bool:
     assert len(proof) == get_generalized_index_length(index)
     for i, h in enumerate(proof):
         if get_generalized_index_bit(index, i):
@@ -199,7 +199,7 @@ Add the following fields to the end of the specified container objects.
 ```python
 class BeaconState(Container):
     # Period committees
-    period_committee_roots: Vector[Hash, PERIOD_COMMITTEE_ROOT_LENGTH]
+    period_committee_roots: Vector[Root, PERIOD_COMMITTEE_ROOT_LENGTH]
     next_shard_receipt_period: Vector[uint64, SHARD_COUNT]
 ```
 
