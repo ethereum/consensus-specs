@@ -595,7 +595,8 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     # Verify challenge signature
     challenger = state.validators[challenge.challenger_index]
     domain = get_domain(state, DOMAIN_CUSTODY_BIT_CHALLENGE, get_current_epoch(state))
-    assert bls_verify(challenger.pubkey, signing_root(challenge), challenge.signature, domain)
+    # TODO incorrect hash-tree-root, but this changes with phase 1 PR #1483
+    assert bls_verify(challenger.pubkey, hash_tree_root(challenge), challenge.signature, domain)
     # Verify challenger is slashable
     assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify attestation

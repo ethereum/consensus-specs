@@ -42,7 +42,6 @@ The expected roots are encoded into the metadata yaml:
 
 ```yaml
 root: Bytes32             -- Hash-tree-root of the object
-signing_root: Bytes32     -- Signing-root of the object 
 ```
 
 The `Bytes32` is encoded as a string, hexadecimal encoding, prefixed with `0x`.

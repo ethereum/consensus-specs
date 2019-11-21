@@ -155,10 +155,3 @@ def hash_tree_root(obj: SSZValue):
         return mix_in_length(merkleize_chunks(leaves, limit=chunk_count(obj.type())), len(obj))
     else:
         return merkleize_chunks(leaves)
-
-
-def signing_root(obj: Container):
-    # ignore last field
-    fields = [field for field in obj][:-1]
-    leaves = [hash_tree_root(f) for f in fields]
-    return merkleize_chunks(chunkify(b''.join(leaves)))
