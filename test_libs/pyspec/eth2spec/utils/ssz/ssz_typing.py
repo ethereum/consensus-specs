@@ -115,7 +115,7 @@ def coerce_type_maybe(v, typ: SSZType, strict: bool = False):
             return typ(v)
     elif isinstance(v, (list, tuple)):
         return typ(*v)
-    elif isinstance(v, (bytes, BytesN, Bytes)):
+    elif isinstance(v, (bytes, ByteVector, ByteList)):
         return typ(v)
     elif isinstance(v, GeneratorType):
         return typ(v)
@@ -472,7 +472,7 @@ class BaseBytes(bytes, Elements, metaclass=BytesType):
         return f"{cls.__name__}[{cls.length}]: {self.hex()}"
 
 
-class Bytes(BaseBytes):
+class ByteList(BaseBytes):
 
     @classmethod
     def default(cls):
@@ -483,7 +483,7 @@ class Bytes(BaseBytes):
         return False
 
 
-class BytesN(BaseBytes):
+class ByteVector(BaseBytes):
 
     @classmethod
     def extract_args(cls, *args):
@@ -506,10 +506,10 @@ class BytesN(BaseBytes):
         return True
 
 
-# Helpers for common BytesN types
-Bytes1: BytesType = BytesN[1]
-Bytes4: BytesType = BytesN[4]
-Bytes8: BytesType = BytesN[8]
-Bytes32: BytesType = BytesN[32]
-Bytes48: BytesType = BytesN[48]
-Bytes96: BytesType = BytesN[96]
+# Helpers for common ByteVector types
+Bytes1: BytesType = ByteVector[1]
+Bytes4: BytesType = ByteVector[4]
+Bytes8: BytesType = ByteVector[8]
+Bytes32: BytesType = ByteVector[32]
+Bytes48: BytesType = ByteVector[48]
+Bytes96: BytesType = ByteVector[96]
