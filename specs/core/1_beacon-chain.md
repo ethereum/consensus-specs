@@ -354,7 +354,7 @@ def get_shard_committee(beacon_state: BeaconState, epoch: Epoch, shard: Shard) -
         source_epoch -= SHARD_COMMITTEE_PERIOD
     active_validator_indices = get_active_validator_indices(beacon_state, source_epoch)
     seed = get_seed(beacon_state, source_epoch, DOMAIN_SHARD_COMMITTEE)
-    return compute_committee(active_validator_indices, seed, 0, ACTIVE_SHARDS)
+    return compute_committee(active_validator_indices, seed, shard, ACTIVE_SHARDS)
 ```
 
 #### `get_shard_proposer_index`
