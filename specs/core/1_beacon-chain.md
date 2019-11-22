@@ -51,45 +51,14 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `DOMAIN_SHARD_COMMITTEE` | `192` | |
 | `DOMAIN_SHARD_PROPOSAL` | `193` | |
 
-## Containers
+## Updated containers
 
-### `ShardBlockWrapper`
+The following containers have updated definitions in Phase 1.
 
-_Wrapper for being broadcasted over the network._
-
-```python
-class ShardBlockWrapper(Container):
-    shard_parent_root: Hash
-    beacon_parent_root: Hash
-    slot: Slot
-    body: BytesN[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
-    signature: BLSSignature
-```
-
-### `ShardSignableHeader`
+### Extended `AttestationData`
 
 ```python
-class ShardSignableHeader(Container):
-    shard_parent_root: Hash
-    beacon_parent_root: Hash
-    slot: Slot
-    body_root: Hash
-```
-
-### `ShardState`
-
-```python
-class ShardState(Container):
-    slot: Slot
-    gasprice: Gwei
-    data: Hash
-    latest_block_root: Hash
-```
-
-### New `AttestationData`
-
-```python
-class AttestationData(phase0.AttestationData):
+class AttestationData(Container):
     slot: Slot
     index: CommitteeIndex
     # LMD GHOST vote
@@ -103,23 +72,7 @@ class AttestationData(phase0.AttestationData):
     shard_transition_root: Hash
 ```
 
-### `ShardTransition`
-
-```python
-class ShardTransition(Container):
-    # Starting from slot
-    start_slot: Slot
-    # Shard block lengths
-    shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
-    # Shard data roots
-    shard_data_roots: List[List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
-    # Intermediate shard states
-    shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
-    # Proposer signature aggregate
-    proposer_signature_aggregate: BLSSignature
-```
-
-### New `Attestation`
+### Extended `Attestation`
 
 ```python
 class Attestation(Container):
@@ -129,32 +82,7 @@ class Attestation(Container):
     signature: BLSSignature
 ```
 
-### `AttestationAndCommittee`
-
-```python
-class AttestationAndCommittee(Container):
-    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
-    attestation: Attestation
-```
-
-### `CompactCommittee`
-
-```python
-class CompactCommittee(Container):
-    pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
-    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
-```
-
-### `AttestationCustodyBitWrapper`
-
-```python
-class AttestationCustodyBitWrapper(Container):
-    attestation_root: Hash
-    block_index: uint64
-    bit: boolean
-```
-
-### New extended `PendingAttestation`
+### Extended `PendingAttestation`
 
 ```python
 class PendingAttestation(Container):
@@ -165,7 +93,7 @@ class PendingAttestation(Container):
     crosslink_success: boolean
 ```
 
-### New extended `Validator`
+### Extended `Validator`
 
 ```python
 class Validator(Container):
@@ -186,7 +114,7 @@ class Validator(Container):
     max_reveal_lateness: Epoch
 ```
 
-### New extended `BeaconBlockBody`
+### Extended `BeaconBlockBody`
 
 ```python
 class BeaconBlockBody(Container):
@@ -212,7 +140,7 @@ class BeaconBlockBody(Container):
     light_client_signature: BLSSignature
 ```
 
-### New extended `BeaconBlock`
+### Extended `BeaconBlock`
 
 Note that the `body` has a new `BeaconBlockBody` definition.
 
@@ -225,7 +153,7 @@ class BeaconBlock(Container):
     signature: BLSSignature
 ```
 
-### New extended `BeaconState`
+### Extended `BeaconState`
 
 Note that aside from the new additions, `Validator` and `PendingAttestation` have new definitions.
 
@@ -269,6 +197,84 @@ class BeaconState(Container):
     # at RANDAO reveal period % EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS
     exposed_derived_secrets: Vector[List[ValidatorIndex, MAX_EARLY_DERIVED_SECRET_REVEALS * SLOTS_PER_EPOCH],
                                     EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS]
+```
+
+## New containers
+
+The following containers are new in Phase 1.
+
+### `ShardBlockWrapper`
+
+_Wrapper for being broadcasted over the network._
+
+```python
+class ShardBlockWrapper(Container):
+    shard_parent_root: Hash
+    beacon_parent_root: Hash
+    slot: Slot
+    body: BytesN[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
+    signature: BLSSignature
+```
+
+### `ShardSignableHeader`
+
+```python
+class ShardSignableHeader(Container):
+    shard_parent_root: Hash
+    beacon_parent_root: Hash
+    slot: Slot
+    body_root: Hash
+```
+
+### `ShardState`
+
+```python
+class ShardState(Container):
+    slot: Slot
+    gasprice: Gwei
+    data: Hash
+    latest_block_root: Hash
+```
+
+### `ShardTransition`
+
+```python
+class ShardTransition(Container):
+    # Starting from slot
+    start_slot: Slot
+    # Shard block lengths
+    shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    # Shard data roots
+    shard_data_roots: List[List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    # Intermediate shard states
+    shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    # Proposer signature aggregate
+    proposer_signature_aggregate: BLSSignature
+```
+
+### `AttestationAndCommittee`
+
+```python
+class AttestationAndCommittee(Container):
+    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    attestation: Attestation
+```
+
+### `CompactCommittee`
+
+```python
+class CompactCommittee(Container):
+    pubkeys: List[BLSPubkey, MAX_VALIDATORS_PER_COMMITTEE]
+    compact_validators: List[uint64, MAX_VALIDATORS_PER_COMMITTEE]
+```
+
+### `AttestationCustodyBitWrapper`
+
+```python
+class AttestationCustodyBitWrapper(Container):
+    attestation_root: Hash
+    block_index: uint64
+    bit: boolean
 ```
 
 ## Helper functions
