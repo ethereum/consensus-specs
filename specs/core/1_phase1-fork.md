@@ -86,7 +86,7 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
         # Phase 1
         shard_states=List[ShardState, MAX_SHARDS](
             ShardState(
-                slot=0,
+                slot=pre.slot,
                 gasprice=INITIAL_GASPRICE,
                 data=Root(),
                 latest_block_root=Hash(),
