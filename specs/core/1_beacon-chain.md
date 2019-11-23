@@ -272,7 +272,7 @@ class CompactCommittee(Container):
 
 ```python
 class AttestationCustodyBitWrapper(Container):
-    attestation_root: Hash
+    attestation_data_root: Hash
     block_index: uint64
     bit: boolean
 ```
@@ -441,20 +441,20 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Attest
     """
     Check if ``indexed_attestation`` has valid indices and signature.
     """
-
     # Verify aggregate signature
     all_pubkeys = []
     all_message_hashes = []
-    aggregation_bits = indexed_attestation.attestation.aggregation_bits
+    attestation = indexed_attestation.attestation
+    aggregation_bits = attestation.aggregation_bits
     assert len(aggregation_bits) == len(indexed_attestation.committee)
-    for i, custody_bits in enumerate(indexed_attestation.attestation.custody_bits):
+    for i, custody_bits in enumerate(attestation.custody_bits):
         assert len(custody_bits) == len(indexed_attestation.committee)
         for participant, abit, cbit in zip(indexed_attestation.committee, aggregation_bits, custody_bits):
             if abit:
                 all_pubkeys.append(state.validators[participant].pubkey)
                 # Note: only 2N distinct message hashes
                 all_message_hashes.append(hash_tree_root(
-                    AttestationCustodyBitWrapper(hash_tree_root(indexed_attestation.data), i, cbit)
+                    AttestationCustodyBitWrapper(hash_tree_root(attestation.data), i, cbit)
                 ))
             else:
                 assert not cbit
@@ -462,8 +462,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Attest
     return bls_verify_multiple(
         pubkeys=all_pubkeys,
         message_hashes=all_message_hashes,
-        signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
+        signature=attestation.signature,
+        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch),
     )
 ```
 
