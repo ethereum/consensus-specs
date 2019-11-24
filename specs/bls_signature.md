@@ -8,6 +8,7 @@
 - [BLS signature verification](#bls-signature-verification)
     - [Table of contents](#table-of-contents)
     - [Curve parameters](#curve-parameters)
+    - [Ciphersuite](#ciphersuite)
     - [Point representations](#point-representations)
         - [G1 points](#g1-points)
         - [G2 points](#g2-points)
