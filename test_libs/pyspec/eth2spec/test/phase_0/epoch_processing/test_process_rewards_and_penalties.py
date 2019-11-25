@@ -186,7 +186,7 @@ def test_attestations_some_slashed(spec, state):
     attesting_indices_before_slashings = list(spec.get_unslashed_attesting_indices(state, attestations))
 
     # Slash maximum amount of validators allowed per epoch.
-    for i in range(spec.MIN_PER_EPOCH_CHURN_LIMIT):
+    for i in range(spec.PER_EPOCH_CHURN_LIMIT):
         spec.slash_validator(state, attesting_indices_before_slashings[i])
 
     assert spec.compute_epoch_at_slot(state.slot) == spec.GENESIS_EPOCH + 1
@@ -198,7 +198,7 @@ def test_attestations_some_slashed(spec, state):
 
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
     assert len(attesting_indices) > 0
-    assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.MIN_PER_EPOCH_CHURN_LIMIT
+    assert len(attesting_indices_before_slashings) - len(attesting_indices) == spec.PER_EPOCH_CHURN_LIMIT
     for index in range(len(pre_state.validators)):
         if index in attesting_indices:
             assert state.balances[index] > pre_state.balances[index]

@@ -45,8 +45,7 @@ def test_activation_queue_sorting(spec, state):
     state.validators[mock_activations - 1].activation_eligibility_epoch = epoch
 
     # make sure we are hitting the churn
-    churn_limit = spec.get_validator_churn_limit(state)
-    assert mock_activations > churn_limit
+    assert mock_activations > spec.PER_EPOCH_CHURN_LIMIT
 
     yield from run_process_registry_updates(spec, state)
 
@@ -58,9 +57,9 @@ def test_activation_queue_sorting(spec, state):
     #  hence is not assigned an activation_epoch yet.
     assert state.validators[mock_activations - 2].activation_epoch == spec.FAR_FUTURE_EPOCH
     # the one at churn_limit - 1 did not make it, it was out-prioritized
-    assert state.validators[churn_limit - 1].activation_epoch == spec.FAR_FUTURE_EPOCH
+    assert state.validators[spec.PER_EPOCH_CHURN_LIMIT - 1].activation_epoch == spec.FAR_FUTURE_EPOCH
     # but the the one in front of the above did
-    assert state.validators[churn_limit - 2].activation_epoch != spec.FAR_FUTURE_EPOCH
+    assert state.validators[spec.PER_EPOCH_CHURN_LIMIT - 2].activation_epoch != spec.FAR_FUTURE_EPOCH
 
 
 @with_all_phases
