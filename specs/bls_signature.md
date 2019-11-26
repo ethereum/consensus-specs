@@ -33,15 +33,15 @@ We represent points in the groups G1 and G2 following [zkcrypto/pairing](https:/
 
 ## Ciphersuite
 
-We use the following Ciphersuite `BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_`.
+We use the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite where:
 
-Where:
-* `POP` refers to proof of possession.
-* `G2` refers to signatures on G2.
-* `SHA256` is the hash function used.
-* `SSWU` refers to the Simplified SWU Map from a finite field element to an elliptic curve point.
-* `RO` refers to `hash-to-curve` function rather than `encode-to-curve`.
-*  `BLS12381G2-SHA256-SSWU-RO` refers to the [hash to curve version 5](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) ciphersuite.
+* `BLS_SIG_` refers to BLS signatures
+* `BLS12381G2-SHA256-SSWU-RO-` is the hash to curve ciphersuite (see spec [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2):
+    * `BLS12381G2-` refers to the use of the BLS12-381 curve with signatures on G2
+    * `SHA256-` refers to the use of SHA256 as the internal `hash_to_base` function
+    * `SSWU-` refers to use of the simplified SWU mapping finite field elements to elliptic curve points
+    * `RO-` refers to the hash to curve outputs being indifferentiable from a random oracle
+* `_POP_` refers to the use proofs of possession to prevent rogue key attacks
 
 ### G1 points
 
