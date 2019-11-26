@@ -10,14 +10,13 @@
         - [G1 points](#g1-points)
         - [G2 points](#g2-points)
     - [Ciphersuite](#ciphersuite)
-    - [Helpers](#helpers)
-        - [`hash_to_G2`](#hash_to_g2)
-    - [Aggregation operations](#aggregation-operations)
-        - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
-        - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
+    - [Hash to G2](#hash_to_g2)
     - [Signature verification](#signature-verification)
         - [`bls_verify`](#bls_verify)
         - [`bls_verify_multiple`](#bls_verify_multiple)
+    - [Aggregation](#aggregation)
+        - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+        - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
 
 <!-- /TOC -->
 
@@ -77,9 +76,7 @@ We use the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite where:
     * `RO-` refers to the hash to curve outputs being indifferentiable from a random oracle
 * `_POP_` refers to the use proofs of possession to prevent rogue key attacks (see [bls-signature-00#section-4.2.3](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00#section-4.2.3))
 
-## Helpers
-
-### `hash_to_G2`
+## Hash to G2
 
 `hash_to_G2` is equivalent to `hash_to_curve` found in [hash-to-curve-05#section-3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-3). It is defined as
 
@@ -105,16 +102,6 @@ def hash_to_G2(alpha: Bytes) -> Tuple[uint384, uint384]:
 * `clear_cofactor` ensures the point is in the correct subfield by multiplying by the curve coefficient `h_eff` (see [hash-to-curve-05#section-8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2)).
 
 An implementation of `hash_to_curve` can be found [here](https://github.com/kwantam/bls_sigs_ref/blob/93b58f3e9f9ef55085f9ad78c708fa5ad9b894df/python-impl/opt_swu_g2.py#L131).
-
-## Aggregation operations
-
-### `bls_aggregate_pubkeys`
-
-Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys) - 1]`, where `+` is the elliptic curve addition operation over the G1 curve. (When `len(pubkeys) == 0` the empty sum is the G1 point at infinity.)
-
-### `bls_aggregate_signatures`
-
-Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures) - 1]`, where `+` is the elliptic curve addition operation over the G2 curve. (When `len(signatures) == 0` the empty sum is the G2 point at infinity.)
 
 ## Signature verification
 
@@ -142,3 +129,13 @@ Let `bls_verify_multiple(pubkeys: List[Bytes48], message_hashes: List[Bytes32], 
 * Verify that `signature` is a valid G2 point.
 * Verify that `len(pubkeys)` equals `len(message_hashes)` and denote the length `L`.
 * Verify that `e(pubkeys[0], hash_to_G2(message_hashes[0], domain)) * ... * e(pubkeys[L - 1], hash_to_G2(message_hashes[L - 1], domain)) == e(g, signature)`.
+
+## Aggregation
+
+### `bls_aggregate_pubkeys`
+
+Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys) - 1]`, where `+` is the elliptic curve addition operation over the G1 curve. (When `len(pubkeys) == 0` the empty sum is the G1 point at infinity.)
+
+### `bls_aggregate_signatures`
+
+Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures) - 1]`, where `+` is the elliptic curve addition operation over the G2 curve. (When `len(signatures) == 0` the empty sum is the G2 point at infinity.)
