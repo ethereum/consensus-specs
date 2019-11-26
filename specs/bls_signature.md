@@ -1,13 +1,11 @@
 # BLS signatures
 
-**Notice**: This document is a placeholder to facilitate the emergence of cross-client testnets. Substantive changes are postponed until [BLS standardisation](https://github.com/pairingwg/bls_standard) is finalized.
-
 ## Table of contents
 <!-- TOC -->
 
 - [BLS signatures](#bls-signatures)
     - [Table of contents](#table-of-contents)
-    - [Draft standards](#draft-standards)
+    - [Standards drafts](#standards-drafts)
     - [Point representations](#point-representations)
         - [G1 points](#g1-points)
         - [G2 points](#g2-points)
@@ -23,7 +21,7 @@
 
 <!-- /TOC -->
 
-## Draft standards
+## Standards drafts
 
 This specification follows three Internet Research Task Force (IRTF) Crypto Forum Research Group (CFRG) drafts:
 
@@ -31,11 +29,11 @@ This specification follows three Internet Research Task Force (IRTF) Crypto Foru
 * [`hash-to-curve-05`](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05) (published November 2, 2019)
 * [`bls-signature-00`](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00) (published August 8, 2019)
 
-Note that the above drafts are not ratified as Internet Engineering Task Force (IEFT) standards. Despite the lack of official IEFT standardisation, various blockchain projects have agreed to use the specific drafts above as de facto "blockchain BLS standard" to encourage interoperability.
+Note that the above standards drafts are not ratified as Internet Engineering Task Force (IEFT) standards. Despite the lack of  IEFT standardization various blockchain projects are using the above drafts as the "de facto BLS standard for blockchains" to facilitate interoperability.
 
 ## Point representations
 
-We represent points in the groups G1 and G2 following [zkcrypto/pairing](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381). We denote by `q` the field modulus and by `i` the imaginary unit.
+We represent points in the G1 and G2 groups following [zkcrypto/pairing](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381). We denote by `q` the field modulus and by `i` the imaginary unit.
 
 ### G1 points
 
@@ -102,7 +100,7 @@ def hash_to_G2(alpha: Bytes) -> Tuple[uint384, uint384]:
     * field degree—`m = 2`
     * length of HKDF—`L = 64`
 * `map_to_curve` converts a field point to a G2 point in two steps:
-    1) it applies a simplified SWU map (see [hash-to-curve-05#section-6.6.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-6.6.3)) to the 3-Isogney curve  `E'` (see [hash-to-curve-05#section-8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2))
+    1) it applies a simplified SWU map (see [hash-to-curve-05#section-6.6.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-6.6.3)) to the 3-isogeny curve  `E'` (see [hash-to-curve-05#section-8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2))
     2) it maps the point on `E'` to a G2 point using `iso_map` (see [hash-to-curve-05#appendix-C.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#appendix-C.3))
 * `clear_cofactor` ensures the point is in the correct subfield by multiplying by the curve coefficient `h_eff` (see [hash-to-curve-05#section-8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2)).
 
