@@ -13,7 +13,7 @@
         - [G1 points](#g1-points)
         - [G2 points](#g2-points)
     - [Helpers](#helpers)
-        - [`hash_to_G2`](#hash_to_G2)
+        - [`hash_to_G2`](#hash_to_g2)
     - [Aggregation operations](#aggregation-operations)
         - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
@@ -36,7 +36,7 @@ We represent points in the groups G1 and G2 following [zkcrypto/pairing](https:/
 We use the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite where:
 
 * `BLS_SIG_` refers to BLS signatures
-* `BLS12381G2-SHA256-SSWU-RO-` is the hash to curve ciphersuite (see spec [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2):
+* `BLS12381G2-SHA256-SSWU-RO-` is the hash to curve ciphersuite (see spec [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2)):
     * `BLS12381G2-` refers to the use of the BLS12-381 curve with signatures on G2
     * `SHA256-` refers to the use of SHA256 as the internal `hash_to_base` function
     * `SSWU-` refers to use of the simplified SWU mapping finite field elements to elliptic curve points
@@ -45,7 +45,7 @@ We use the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite where:
 
 ### G1 points
 
-A point in G1 is represented as a 384-bit integer `z` decomposed as a 381-bit integer `x` and three 1-bit flags in the top bits:
+A G1 point is represented as a 384-bit integer `z` decomposed as a 381-bit integer `x` and three 1-bit flags in the top bits:
 
 * `x = z % 2**381`
 * `a_flag = (z % 2**382) // 2**381`
@@ -77,17 +77,17 @@ We require:
 
 ### `hash_to_G2`
 
-`hash_to_g2` is equivaent `hash_to_curve` found in the [BLS standard](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-3) with this interpretation reflecting draft version 5. We use the hash to curve ciphersuite `BLS12381G2-SHA256-SSWU-RO` found in section 8.9.2. It consists of three parts:
+`hash_to_G2` is equivalent to `hash_to_curve` found in the [BLS standard](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-3). We use the hash to curve ciphersuite `BLS12381G2-SHA256-SSWU-RO-` found in section 8.9.2. It consists of three parts:
 
-* `hash_to_base` - Converting a message from bytes to a field point found in [section 5.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-5.3). The required constant parameters are:
-  * Field Degree: `m = 2`
-  * Length of HKDF: `L = 64`,
-  * Hash Function: `H = SHA256`,
-  * Domain Separation Tag: `DST = BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_`.
-* `map_to_curve` - Converting a field point to a point on the elliptic curve (G2 Point) in two steps:
+* `hash_to_base`—Converts a message from bytes to a field point. See [section 5.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-5.3). The required parameters are:
+  * field degree—`m = 2`
+  * length of HKDF—`L = 64`
+  * hash function—`H = SHA256`
+  * domain separation tag—`DST = BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_`
+* `map_to_curve`—Converting a field point to a point on the elliptic curve (G2 Point) in two steps:
   * First apply a [Simplified SWU Map](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-6.6.3) to the [3-Isogney curve](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) `E'`.
   * Second map the `E'` point to G2 using the `iso_map` detailed [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#appendix-C.3).
-* `clear_cofactor` - Ensure the point is in the correct subfield by multiplying by the curve co-efficient `h_eff` as found [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2).
+* `clear_cofactor`—Ensure the point is in the correct subfield by multiplying by the curve co-efficient `h_eff` as found [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2).
 
 Details of the `hash_to_curve` function are shown below.
 
@@ -97,22 +97,22 @@ def hash_to_G2(alpha: Bytes) -> Tuple[uint384, uint384]:
    u1 = hash_to_base(alpha, 1)
    Q0 = map_to_curve(u0)
    Q1 = map_to_curve(u1)
-   R = Q0 + Q1 # Point Addition
+   R = Q0 + Q1 # point addition
    P = clear_cofactor(R)
    return P
  ```
 
- An implementation of `hash_to_curve` can be found [here](https://github.com/kwantam/bls_sigs_ref/blob/93b58f3e9f9ef55085f9ad78c708fa5ad9b894df/python-impl/opt_swu_g2.py#L131).
+An implementation of `hash_to_curve` can be found [here](https://github.com/kwantam/bls_sigs_ref/blob/93b58f3e9f9ef55085f9ad78c708fa5ad9b894df/python-impl/opt_swu_g2.py#L131).
 
 ## Aggregation operations
 
 ### `bls_aggregate_pubkeys`
 
-Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys)-1]`, where `+` is the elliptic curve addition operation over the G1 curve. (When `len(pubkeys) == 0` the empty sum is the G1 point at infinity.)
+Let `bls_aggregate_pubkeys(pubkeys: List[Bytes48]) -> Bytes48` return `pubkeys[0] + .... + pubkeys[len(pubkeys) - 1]`, where `+` is the elliptic curve addition operation over the G1 curve. (When `len(pubkeys) == 0` the empty sum is the G1 point at infinity.)
 
 ### `bls_aggregate_signatures`
 
-Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures)-1]`, where `+` is the elliptic curve addition operation over the G2 curve. (When `len(signatures) == 0` the empty sum is the G2 point at infinity.)
+Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `signatures[0] + .... + signatures[len(signatures) - 1]`, where `+` is the elliptic curve addition operation over the G2 curve. (When `len(signatures) == 0` the empty sum is the G2 point at infinity.)
 
 ## Signature verification
 
@@ -139,4 +139,4 @@ Let `bls_verify_multiple(pubkeys: List[Bytes48], message_hashes: List[Bytes32], 
 * Verify that each `pubkey` in `pubkeys` is a valid G1 point.
 * Verify that `signature` is a valid G2 point.
 * Verify that `len(pubkeys)` equals `len(message_hashes)` and denote the length `L`.
-* Verify that `e(pubkeys[0], hash_to_G2(message_hashes[0], domain)) * ... * e(pubkeys[L-1], hash_to_G2(message_hashes[L-1], domain)) == e(g, signature)`.
+* Verify that `e(pubkeys[0], hash_to_G2(message_hashes[0], domain)) * ... * e(pubkeys[L - 1], hash_to_G2(message_hashes[L - 1], domain)) == e(g, signature)`.
