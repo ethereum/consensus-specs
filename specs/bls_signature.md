@@ -7,7 +7,7 @@
 
 - [BLS signature verification](#bls-signature-verification)
     - [Table of contents](#table-of-contents)
-    - [Curve parameters](#curve-parameters)
+    - [Draft standards](#draft-standards)
     - [Ciphersuite](#ciphersuite)
     - [Point representations](#point-representations)
         - [G1 points](#g1-points)
@@ -23,9 +23,18 @@
 
 <!-- /TOC -->
 
-## Curve parameters
+## Draft standards
 
-The BLS12-381 curve parameters are defined [here](https://z.cash/blog/new-snark-curve).
+This specification follows three Internet Research Task Force (IRTF) Crypto Forum Research Group (CFRG) drafts:
+
+* [`pairing-friendly-curves-00`](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-00) (published November 1, 2019)
+    * [Section 4.2.2](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-00#section-4.2.2) defines the BLS12-381 curve parameters, including G1 and G2 generators.
+* [`hash-to-curve-05`](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05) (published November 2, 2019)
+    * [Section 8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) defines the hash-to-curve ciphersuite for BLS12-381 G2.
+* [`bls-signature-00`](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00) (published August 8, 2019)
+    * [Section 4.2.3](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00#section-4.2.3) defines the proof of possession ciphersuite for BLS12-381.
+
+Note that the above drafts are not ratified as Internet Engineering Task Force (IEFT) standards. Despite the lack of official IEFT standardisation, various blockchain projects have agreed to use the specific drafts above as de facto "blockchain BLS standard" to encourage interoperability.
 
 ## Point representations
 
@@ -36,7 +45,7 @@ We represent points in the groups G1 and G2 following [zkcrypto/pairing](https:/
 We use the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite where:
 
 * `BLS_SIG_` refers to BLS signatures
-* `BLS12381G2-SHA256-SSWU-RO-` is the hash to curve ciphersuite (see spec [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2)):
+* `BLS12381G2-SHA256-SSWU-RO-` is the hash to curve ciphersuite (see [hash-to-curve-05#section-8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2)):
     * `BLS12381G2-` refers to the use of the BLS12-381 curve with signatures on G2
     * `SHA256-` refers to the use of SHA256 as the internal `hash_to_base` function
     * `SSWU-` refers to use of the simplified SWU mapping finite field elements to elliptic curve points
