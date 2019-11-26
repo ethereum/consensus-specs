@@ -28,11 +28,8 @@
 This specification follows three Internet Research Task Force (IRTF) Crypto Forum Research Group (CFRG) drafts:
 
 * [`pairing-friendly-curves-00`](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-00) (published November 1, 2019)
-    * [Section 4.2.2](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-00#section-4.2.2) defines the BLS12-381 curve parameters, including G1 and G2 generators.
 * [`hash-to-curve-05`](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05) (published November 2, 2019)
-    * [Section 8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) defines the hash-to-curve ciphersuite for BLS12-381 G2.
 * [`bls-signature-00`](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00) (published August 8, 2019)
-    * [Section 4.2.3](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00#section-4.2.3) defines the proof of possession ciphersuite for BLS12-381.
 
 Note that the above drafts are not ratified as Internet Engineering Task Force (IEFT) standards. Despite the lack of official IEFT standardisation, various blockchain projects have agreed to use the specific drafts above as de facto "blockchain BLS standard" to encourage interoperability.
 
@@ -50,7 +47,7 @@ We use the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite where:
     * `SHA256-` refers to the use of SHA256 as the internal `hash_to_base` function
     * `SSWU-` refers to use of the simplified SWU mapping finite field elements to elliptic curve points
     * `RO-` refers to the hash to curve outputs being indifferentiable from a random oracle
-* `_POP_` refers to the use proofs of possession to prevent rogue key attacks
+* `_POP_` refers to the use proofs of possession to prevent rogue key attacks (see [bls-signature-00#section-4.2.3](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00#section-4.2.3))
 
 ### G1 points
 
@@ -88,15 +85,15 @@ We require:
 
 `hash_to_G2` is equivalent to `hash_to_curve` found in the [BLS standard](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-3). We use the hash to curve ciphersuite `BLS12381G2-SHA256-SSWU-RO-` found in section 8.9.2. It consists of three parts:
 
-* `hash_to_base`—Converts a message from bytes to a field point. See [section 5.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-5.3). The required parameters are:
+* `hash_to_base`—Converts a message from bytes to a field point. See [hash-to-curve-05#section-5.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-5.3). The required parameters are:
   * field degree—`m = 2`
   * length of HKDF—`L = 64`
   * hash function—`H = SHA256`
   * domain separation tag—`DST = BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_`
-* `map_to_curve`—Converting a field point to a point on the elliptic curve (G2 Point) in two steps:
-  * First apply a [Simplified SWU Map](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-6.6.3) to the [3-Isogney curve](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) `E'`.
-  * Second map the `E'` point to G2 using the `iso_map` detailed [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#appendix-C.3).
-* `clear_cofactor`—Ensure the point is in the correct subfield by multiplying by the curve co-efficient `h_eff` as found [here](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2).
+* `map_to_curve`—Converts a field point to a point on the elliptic curve (G2 Point) in two steps:
+  1) applies a [simplified SWU Map](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-6.6.3) to the [3-Isogney curve](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2) `E'`
+  2) maps the `E'` point to G2 using the `iso_map` detailed in [hash-to-curve-05#appendix-C.3](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#appendix-C.3).
+* `clear_cofactor`—Ensures the point is in the correct subfield by multiplying by the curve coefficient `h_eff` as found in [hash-to-curve-05#section-8.9.2](https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9.2).
 
 Details of the `hash_to_curve` function are shown below.
 
@@ -125,11 +122,11 @@ Let `bls_aggregate_signatures(signatures: List[Bytes96]) -> Bytes96` return `sig
 
 ## Signature verification
 
-In the following, `e` is the pairing function and `g` is the G1 generator with the following coordinates (see [here](https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#g1)):
+In the following, `e` is the pairing function and `g` is the G1 generator with the following coordinates (see `x` and `y` in [pairing-friendly-curves-00#section-4.2.2](https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-00#section-4.2.2)):
 
 ```python
-g_x = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507
-g_y = 1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569
+g_x = 0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb
+g_y = 0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1
 g = Fq2([g_x, g_y])
 ```
 
