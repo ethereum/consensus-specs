@@ -149,7 +149,7 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
     # If any children branches contain expected finalized/justified checkpoints,
     # add to filtered block-tree and signal viability to parent.
     if any(children):
-        if any(filter_block_tree(store, child, blocks) for child in children):
+        if True in [filter_block_tree(store, child, blocks) for child in children]:
             blocks[block_root] = block
             return True
         return False
