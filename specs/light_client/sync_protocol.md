@@ -134,8 +134,8 @@ def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
 
     # Verify shard attestations
     pubkey = bls_aggregate_pubkeys(filter(lambda i: update.aggregation_bits[i], pubkeys))
-    domain = compute_domain(DOMAIN_SHARD_ATTESTER, update.fork_version)
-    assert bls_verify(pubkey, update.shard_block_root, update.signature, domain)
+    tag = compute_tag(TAG_SHARD_ATTESTER, update.fork_version)
+    assert bls_verify(pubkey, update.shard_block_root, update.signature, tag)
 
     # Update period committees if entering a new period
     if next_period == current_period + 1:

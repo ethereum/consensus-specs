@@ -19,7 +19,7 @@
         - [State list lengths](#state-list-lengths)
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
-        - [Domain types](#domain-types)
+        - [Tag types](#tag-types)
     - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
@@ -68,7 +68,7 @@
             - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
             - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
             - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
-            - [`compute_domain`](#compute_domain)
+            - [`compute_tag`](#compute_tag)
         - [Beacon state accessors](#beacon-state-accessors)
             - [`get_current_epoch`](#get_current_epoch)
             - [`get_previous_epoch`](#get_previous_epoch)
@@ -83,7 +83,7 @@
             - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
             - [`get_total_balance`](#get_total_balance)
             - [`get_total_active_balance`](#get_total_active_balance)
-            - [`get_domain`](#get_domain)
+            - [`get_tag`](#get_tag)
             - [`get_indexed_attestation`](#get_indexed_attestation)
             - [`get_attesting_indices`](#get_attesting_indices)
         - [Beacon state mutators](#beacon-state-mutators)
@@ -139,8 +139,8 @@ We define the following Python custom types for type hinting and readability:
 | `Gwei` | `uint64` | an amount in Gwei |
 | `Hash` | `Bytes32` | a hash |
 | `Version` | `Bytes4` | a fork version number |
-| `DomainType` | `Bytes4` | a domain type |
-| `Domain` | `Bytes8` | a signature domain |
+| `TagType` | `Bytes4` | a Tag type |
+| `Tag` | `Bytes8` | a signature tag |
 | `BLSPubkey` | `Bytes48` | a BLS12-381 public key |
 | `BLSSignature` | `Bytes96` | a BLS12-381 signature |
 
@@ -239,17 +239,17 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 
-### Domain types
+### Tag types
 
-The following types are defined, mapping into `DomainType` (little endian):
+The following types are defined, mapping into `TagType` (little endian):
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `0` |
-| `DOMAIN_BEACON_ATTESTER` | `1` |
-| `DOMAIN_RANDAO` | `2` |
-| `DOMAIN_DEPOSIT` | `3` |
-| `DOMAIN_VOLUNTARY_EXIT` | `4` |
+| `TAG_BEACON_PROPOSER` | `0` |
+| `TAG_BEACON_ATTESTER` | `1` |
+| `TAG_RANDAO` | `2` |
+| `TAG_DEPOSIT` | `3` |
+| `TAG_VOLUNTARY_EXIT` | `4` |
 
 ## Containers
 
@@ -602,7 +602,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
         pubkey=bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
         message_hash=hash_tree_root(indexed_attestation.data),
         signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
+        tag=get_tag(state, TAG_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
     ):
         return False
     return True
@@ -713,14 +713,14 @@ def compute_activation_exit_epoch(epoch: Epoch) -> Epoch:
     return Epoch(epoch + 1 + MAX_SEED_LOOKAHEAD)
 ```
 
-#### `compute_domain`
+#### `tag`
 
 ```python
-def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> Domain:
+def compute_tag(tag_type: TagType, fork_version: Version=Version()) -> Tag:
     """
-    Return the domain for the ``domain_type`` and ``fork_version``.
+    Return the tag for the ``tag_type`` and ``fork_version``.
     """
-    return Domain(domain_type + fork_version)
+    return Tag(tag_type + fork_version)
 ```
 
 ### Beacon state accessors
@@ -801,12 +801,12 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
 #### `get_seed`
 
 ```python
-def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Hash:
+def get_seed(state: BeaconState, epoch: Epoch, tag_type: TagType) -> Hash:
     """
     Return the seed at ``epoch``.
     """
     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-    return hash(domain_type + int_to_bytes(epoch, length=8) + mix)
+    return hash(tag_type + int_to_bytes(epoch, length=8) + mix)
 ```
 
 #### `get_committee_count_at_slot`
@@ -834,7 +834,7 @@ def get_beacon_committee(state: BeaconState, slot: Slot, index: CommitteeIndex) 
     committees_per_slot = get_committee_count_at_slot(state, slot)
     return compute_committee(
         indices=get_active_validator_indices(state, epoch),
-        seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
+        seed=get_seed(state, epoch, TAG_BEACON_ATTESTER),
         index=(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
         count=committees_per_slot * SLOTS_PER_EPOCH,
     )
@@ -848,7 +848,7 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     Return the beacon proposer index at the current slot.
     """
     epoch = get_current_epoch(state)
-    seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + int_to_bytes(state.slot, length=8))
+    seed = hash(get_seed(state, epoch, TAG_BEACON_PROPOSER) + int_to_bytes(state.slot, length=8))
     indices = get_active_validator_indices(state, epoch)
     return compute_proposer_index(state, indices, seed)
 ```
@@ -873,16 +873,16 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
     return get_total_balance(state, set(get_active_validator_indices(state, get_current_epoch(state))))
 ```
 
-#### `get_domain`
+#### `get_tag`
 
 ```python
-def get_domain(state: BeaconState, domain_type: DomainType, message_epoch: Epoch=None) -> Domain:
+def get_tag(state: BeaconState, tag_type: TagType, message_epoch: Epoch=None) -> Tag:
     """
-    Return the signature domain (fork version concatenated with domain type) of a message.
+    Return the signature tag (fork version concatenated with tag type) of a message.
     """
     epoch = get_current_epoch(state) if message_epoch is None else message_epoch
     fork_version = state.fork.previous_version if epoch < state.fork.epoch else state.fork.current_version
-    return compute_domain(domain_type, fork_version)
+    return compute_tag(tag_type, fork_version)
 ```
 
 #### `get_indexed_attestation`
@@ -1353,7 +1353,7 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     proposer = state.validators[get_beacon_proposer_index(state)]
     assert not proposer.slashed
     # Verify proposer signature
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_tag(state, TAG_BEACON_PROPOSER))
 ```
 
 #### RANDAO
@@ -1363,7 +1363,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
-    assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_tag(state, TAG_RANDAO))
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -1410,8 +1410,8 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-        assert bls_verify(proposer.pubkey, signing_root(header), header.signature, domain)
+        tag = get_tag(state, TAG_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
+        assert bls_verify(proposer.pubkey, signing_root(header), header.signature, tag)
 
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -1487,9 +1487,9 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) for new validators.
         # Note: The deposit contract does not check signatures.
-        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
-        domain = compute_domain(DOMAIN_DEPOSIT)
-        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, domain):
+        # Note: Deposits are valid across forks, thus the deposit tag is retrieved directly from `compute_tag`.
+        tag = compute_tag(TAG_DEPOSIT)
+        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, tag):
             return
 
         # Add validator and balance entries
@@ -1523,8 +1523,8 @@ def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
     # Verify the validator has been active long enough
     assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
-    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch)
-    assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, domain)
+    tag = get_tag(state, TAG_VOLUNTARY_EXIT, exit.epoch)
+    assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, tag)
     # Initiate exit
     initiate_validator_exit(state, exit.validator_index)
 ```

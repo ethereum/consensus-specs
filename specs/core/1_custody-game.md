@@ -16,7 +16,7 @@
         - [Time parameters](#time-parameters)
         - [Max operations per block](#max-operations-per-block)
         - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Signature domain types](#signature-domain-types)
+        - [Signature tag types](#signature-tag-types)
         - [TODO PLACEHOLDER](#todo-placeholder)
     - [Data structures](#data-structures)
         - [Custody objects](#custody-objects)
@@ -123,13 +123,13 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 | - | - |
 | `EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE` | `2**1` (= 2) |
 
-### Signature domain types
+### Signature tag types
 
-The following types are defined, mapping into `DomainType` (little endian):
+The following types are defined, mapping into `TagType` (little endian):
 
 | Name | Value |
 | - | - |
-| `DOMAIN_CUSTODY_BIT_CHALLENGE` | `6` |
+| `TAG_CUSTODY_BIT_CHALLENGE` | `6` |
 
 ### TODO PLACEHOLDER
 
@@ -215,7 +215,7 @@ class CustodyKeyReveal(Container):
 
 #### `EarlyDerivedSecretReveal`
 
-Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both are part of the same domain).
+Represents an early (punishable) reveal of one of the derived secrets, where derived secrets are RANDAO reveals and custody reveals (both use the same tag).
 
 ```python
 class EarlyDerivedSecretReveal(Container):
@@ -431,9 +431,9 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
         pubkey=revealer.pubkey,
         message_hash=hash_tree_root(epoch_to_sign),
         signature=reveal.reveal,
-        domain=get_domain(
+        tag=get_tag(
             state=state,
-            domain_type=DOMAIN_RANDAO,
+            tag_type=TAG_RANDAO,
             message_epoch=epoch_to_sign,
         ),
     )
@@ -494,9 +494,9 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
         pubkeys=pubkeys,
         message_hashes=message_hashes,
         signature=reveal.reveal,
-        domain=get_domain(
+        tag=get_tag(
             state=state,
-            domain_type=DOMAIN_RANDAO,
+            tag_type=TAG_RANDAO,
             message_epoch=reveal.epoch,
         ),
     )
@@ -594,8 +594,8 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
 
     # Verify challenge signature
     challenger = state.validators[challenge.challenger_index]
-    domain = get_domain(state, DOMAIN_CUSTODY_BIT_CHALLENGE, get_current_epoch(state))
-    assert bls_verify(challenger.pubkey, signing_root(challenge), challenge.signature, domain)
+    tag = get_tag(state, TAG_CUSTODY_BIT_CHALLENGE, get_current_epoch(state))
+    assert bls_verify(challenger.pubkey, signing_root(challenge), challenge.signature, tag)
     # Verify challenger is slashable
     assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify attestation
@@ -618,8 +618,8 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
         get_custody_period_for_validator(state, challenge.responder_index, epoch),
         challenge.responder_index,
     )
-    domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    assert bls_verify(responder.pubkey, hash_tree_root(epoch_to_sign), challenge.responder_key, domain)
+    tag = get_tag(state, TAG_RANDAO, epoch_to_sign)
+    assert bls_verify(responder.pubkey, hash_tree_root(epoch_to_sign), challenge.responder_key, tag)
     # Verify the chunk count
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
     assert chunk_count == len(challenge.chunk_bits)

@@ -16,7 +16,7 @@
         - [Time parameters](#time-parameters)
         - [State list lengths](#state-list-lengths)
         - [Rewards and penalties](#rewards-and-penalties)
-        - [Signature domain types](#signature-domain-types)
+        - [Signature tag types](#signature-tag-types)
     - [Containers](#containers)
         - [`Crosslink`](#crosslink)
         - [`ShardBlock`](#shardblock)
@@ -95,12 +95,12 @@ This document describes the shard transition function (data layer only) and the 
 | - | - |
 | `BLOCK_BODY_PRICE_QUOTIENT` | `2**3` (= 8) |
 
-### Signature domain types
+### Signature tag types
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_PROPOSER` | `128` |
-| `DOMAIN_SHARD_ATTESTER` | `129` |
+| `TAG_SHARD_PROPOSER` | `128` |
+| `TAG_SHARD_ATTESTER` | `129` |
 
 ## Containers
 
@@ -194,7 +194,7 @@ def compute_shard_period_start_epoch(epoch: Epoch, lookback: uint64) -> Epoch:
 ```python
 def get_period_committee(beacon_state: BeaconState, shard: Shard, epoch: Epoch) -> Sequence[ValidatorIndex]:
     active_validator_indices = get_active_validator_indices(beacon_state, epoch)
-    seed = get_seed(beacon_state, epoch, DOMAIN_SHARD_ATTESTER)
+    seed = get_seed(beacon_state, epoch, TAG_SHARD_ATTESTER)
     return compute_committee(active_validator_indices, seed, shard, SHARD_COUNT)[:MAX_PERIOD_COMMITTEE_SIZE]
 ```
 
@@ -219,7 +219,7 @@ def get_shard_proposer_index(beacon_state: BeaconState, shard: Shard, slot: Shar
     active_indices = [i for i in shard_committee if is_active_validator(beacon_state.validators[i], epoch)]
     assert any(active_indices)
 
-    epoch_seed = get_seed(beacon_state, epoch, DOMAIN_SHARD_PROPOSER)
+    epoch_seed = get_seed(beacon_state, epoch, TAG_SHARD_PROPOSER)
     seed = hash(epoch_seed + int_to_bytes(slot, length=8) + int_to_bytes(shard, length=8))
     return compute_proposer_index(beacon_state, active_indices, seed)
 ```
@@ -383,8 +383,8 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     proposer = beacon_state.validators[proposer_index]
     assert not proposer.slashed
     # Verify proposer signature
-    domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, domain)
+    tag = get_tag(beacon_state, TAG_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
+    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, tag)
 ```
 
 #### Attestations
@@ -403,9 +403,9 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
     for i in range(len(shard_committee), 2 * MAX_PERIOD_COMMITTEE_SIZE):
         assert block.aggregation_bits[i] == 0b0
     # Verify attester aggregate signature
-    domain = get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(block.slot))
+    tag = get_tag(beacon_state, TAG_SHARD_ATTESTER, compute_epoch_of_shard_slot(block.slot))
     message = hash_tree_root(ShardAttestationData(slot=shard_state.slot, parent_root=block.parent_root))
-    assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestations, domain)
+    assert bls_verify(bls_aggregate_pubkeys(pubkeys), message, block.attestations, tag)
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
     reward = attestation_count * get_base_reward(beacon_state, proposer_index) // PROPOSER_REWARD_QUOTIENT
