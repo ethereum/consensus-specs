@@ -30,7 +30,7 @@ def bls_verify(pubkey, message_hash, signature, tag):
 
 @only_with_bls(alt_return=True)
 def bls_verify_multiple(pubkeys, message_hash, signature, tag):
-    return bls.verify_multiple(pubkeys=pubkeys, message_hashes=[message_hash]*len(pubkeys),
+    return bls.verify_multiple(pubkeys=pubkeys, message_hashes=[message_hash] * len(pubkeys),
                                signature=signature, domain=tag)
 
 

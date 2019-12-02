@@ -391,7 +391,7 @@ Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_sig
 ```python
 def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature:
     signatures = [attestation.signature for attestation in attestations]
-    return (signatures)
+    return bls_aggregate_signatures(signatures)
 ```
 
 #### Broadcast aggregate

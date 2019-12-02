@@ -10,10 +10,12 @@
 - [IETF function interfaces](#ietf-function-interfaces)
     - [`VALID` and `INVALID`](#valid-and-invalid)
     - [`Sign`](#sign)
+    - [`Aggregate`](#aggregate)
     - [`Verify`](#verify)
     - [`FastAggregateVerify`](#fastaggregateverify)
 - [Eth2 BLS functions](#eth2-bls-functions)
     - [`bls_sign`](#bls-sign)
+    - [`bls_aggregate_signatures`](#bls-aggregate-signatures)
     - [`bls_verify`](#bls-verify)
     - [`bls_verify_multiple`](#bls-verify-multiple)
 
@@ -41,6 +43,12 @@ The values `VALID` and `INVALID` used by the  IETF BLS specification are mapped 
 Sign(SK: int, message: Bytes) -> BLSSignature
 ```
 
+### `Aggregate`
+
+```python
+Aggregate(signature_1: BLSSignature, ..., signature_n:BLSSignature) -> BLSSignature
+```
+
 ### `Verify`
 
 ```python
@@ -52,7 +60,7 @@ Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool
 Eth2 only aggregates signatures with the same `message` and therefore, `FastAggregateVerify` can be used.
 
 ```python
-FastAggregateVerify(PK_1, ..., PK_n, message, signature) -> bool
+FastAggregateVerify(PK_1: BLSSignature, ..., PK_n: BLSSignature, message: Bytes, signature: BLSSignature) -> bool
 ```
 
 ## Eth2 BLS functions
@@ -64,6 +72,13 @@ This section specifies the functions that are exposed to, and used by the rest o
 ```python
 def bls_sign(privkey: int, message_hash: Hash, tag: Tag) -> BLSSignature:
     return Sign(privkey, message_hash + tag)
+```
+
+### `bls_aggregate_signatures`
+
+```python
+def bls_aggregate_signatures(signatures: List[BLSSignature]) -> BLSSignature:
+    return Aggregate(*signatures)
 ```
 
 ### `bls_verify`
