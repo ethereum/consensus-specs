@@ -32,9 +32,9 @@ def get_attestation_signature(spec, beacon_state, shard_state, message_hash, blo
     return bls_sign(
         message_hash=message_hash,
         privkey=privkey,
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state=beacon_state,
-            domain_type=spec.DOMAIN_SHARD_ATTESTER,
+            tag_type=spec.TAG_SHARD_ATTESTER,
             message_epoch=block_epoch,
         )
     )

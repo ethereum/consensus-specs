@@ -99,9 +99,9 @@ def get_attestation_signature(spec, state, attestation_data, privkey):
     return bls_sign(
         message_hash=attestation_data.hash_tree_root(),
         privkey=privkey,
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state=state,
-            domain_type=spec.DOMAIN_BEACON_ATTESTER,
+            tag_type=spec.TAG_BEACON_ATTESTER,
             message_epoch=attestation_data.target.epoch,
         )
     )

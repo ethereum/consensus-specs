@@ -23,15 +23,15 @@ def only_with_bls(alt_return=None):
 
 
 @only_with_bls(alt_return=True)
-def bls_verify(pubkey, message_hash, signature, domain):
+def bls_verify(pubkey, message_hash, signature, tag):
     return bls.verify(message_hash=message_hash, pubkey=pubkey,
-                      signature=signature, domain=domain)
+                      signature=signature, domain=tag)
 
 
 @only_with_bls(alt_return=True)
-def bls_verify_multiple(pubkeys, message_hashes, signature, domain):
-    return bls.verify_multiple(pubkeys=pubkeys, message_hashes=message_hashes,
-                               signature=signature, domain=domain)
+def bls_verify_multiple(pubkeys, message_hash, signature, tag):
+    return bls.verify_multiple(pubkeys=pubkeys, message_hashes=[message_hash]*len(pubkeys),
+                               signature=signature, domain=tag)
 
 
 @only_with_bls(alt_return=STUB_PUBKEY)
@@ -45,9 +45,9 @@ def bls_aggregate_signatures(signatures):
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
-def bls_sign(message_hash, privkey, domain):
+def bls_sign(message_hash, privkey, tag):
     return bls.sign(message_hash=message_hash, privkey=privkey,
-                    domain=domain)
+                    domain=tag)
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)

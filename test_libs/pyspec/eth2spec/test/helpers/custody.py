@@ -20,9 +20,9 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     reveal = bls_sign(
         message_hash=hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[revealed_index],
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state=state,
-            domain_type=spec.DOMAIN_RANDAO,
+            tag_type=spec.TAG_RANDAO,
             message_epoch=epoch,
         ),
     )
@@ -32,9 +32,9 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     masker_signature = bls_sign(
         message_hash=mask,
         privkey=privkeys[masker_index],
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state=state,
-            domain_type=spec.DOMAIN_RANDAO,
+            tag_type=spec.TAG_RANDAO,
             message_epoch=epoch,
         ),
     )
@@ -63,9 +63,9 @@ def get_valid_custody_key_reveal(spec, state, period=None):
     reveal = bls_sign(
         message_hash=hash_tree_root(spec.Epoch(epoch_to_sign)),
         privkey=privkeys[revealer_index],
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state=state,
-            domain_type=spec.DOMAIN_RANDAO,
+            tag_type=spec.TAG_RANDAO,
             message_epoch=epoch_to_sign,
         ),
     )
@@ -95,9 +95,9 @@ def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False)
     responder_key = bls_sign(
         message_hash=hash_tree_root(spec.Epoch(epoch)),
         privkey=privkeys[responder_index],
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state=state,
-            domain_type=spec.DOMAIN_RANDAO,
+            tag_type=spec.TAG_RANDAO,
             message_epoch=epoch,
         ),
     )

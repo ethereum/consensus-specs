@@ -351,9 +351,9 @@ def test_voluntary_exit(spec, state):
     voluntary_exit.signature = bls_sign(
         message_hash=signing_root(voluntary_exit),
         privkey=privkeys[validator_index],
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state=state,
-            domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+            tag_type=spec.TAG_VOLUNTARY_EXIT,
         )
     )
 

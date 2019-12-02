@@ -28,10 +28,8 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
-    bls_aggregate_signatures,
-    bls_aggregate_pubkeys,
     bls_verify,
-    bls_sign,
+    bls_verify_multiple,
 )
 
 from eth2spec.utils.hash_function import hash
@@ -60,7 +58,6 @@ from eth2spec.utils.ssz.ssz_typing import (
     uint64, bit, boolean, byte,
 )
 from eth2spec.utils.bls import (
-    bls_aggregate_pubkeys,
     bls_verify,
     bls_verify_multiple,
     bls_signature_to_G2,
@@ -112,8 +109,8 @@ def compute_committee(indices: Sequence[ValidatorIndex],  # type: ignore
 def apply_constants_preset(preset: Dict[str, Any]) -> None:
     global_vars = globals()
     for k, v in preset.items():
-        if k.startswith('DOMAIN_'):
-            global_vars[k] = DomainType(v)  # domain types are defined as bytes in the configs
+        if k.startswith('TAG_'):
+            global_vars[k] = TagType(v)  # tag types are defined as bytes in the configs
         else:
             global_vars[k] = v
 
@@ -167,8 +164,8 @@ def objects_to_spec(functions: Dict[str, str],
             del functions[k]
     functions_spec = '\n\n'.join(functions.values())
     for k in list(constants.keys()):
-        if k.startswith('DOMAIN_'):
-            constants[k] = f"DomainType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
+        if k.startswith('TAG_'):
+            constants[k] = f"TagType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
         if k == "BLS12_381_Q":
             constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))

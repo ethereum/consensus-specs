@@ -33,7 +33,7 @@ def hex_to_int(x: str) -> int:
     return int(x, 16)
 
 
-DOMAINS = [
+TAGS = [
     b'\x00\x00\x00\x00\x00\x00\x00\x00',
     b'\x00\x00\x00\x00\x00\x00\x00\x01',
     b'\x01\x00\x00\x00\x00\x00\x00\x00',
@@ -91,7 +91,7 @@ def hash_message_compressed(msg: bytes, domain: bytes) -> Tuple[str, str]:
 
 def case01_message_hash_G2_uncompressed():
     for msg in MESSAGES:
-        for domain in DOMAINS:
+        for domain in TAGS:
             yield f'uncom_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
                 'input': {
                     'message': encode_hex(msg),
@@ -103,7 +103,7 @@ def case01_message_hash_G2_uncompressed():
 
 def case02_message_hash_G2_compressed():
     for msg in MESSAGES:
-        for domain in DOMAINS:
+        for domain in TAGS:
             yield f'com_g2_hash_{encode_hex(msg)}_{encode_hex(domain)}', {
                 'input': {
                     'message': encode_hex(msg),
@@ -126,7 +126,7 @@ def case03_private_to_public_key():
 def case04_sign_messages():
     for privkey in PRIVKEYS:
         for message in MESSAGES:
-            for domain in DOMAINS:
+            for domain in TAGS:
                 sig = bls.sign(message, privkey, domain)
                 full_name = f'{int_to_hex(privkey)}_{encode_hex(message)}_{encode_hex(domain)}'
                 yield f'sign_msg_case_{(hash(bytes(full_name, "utf-8"))[:8]).hex()}', {
@@ -144,7 +144,7 @@ def case04_sign_messages():
 
 
 def case06_aggregate_sigs():
-    for domain in DOMAINS:
+    for domain in TAGS:
         for message in MESSAGES:
             sigs = [bls.sign(message, privkey, domain) for privkey in PRIVKEYS]
             yield f'agg_sigs_{encode_hex(message)}_{encode_hex(domain)}', {

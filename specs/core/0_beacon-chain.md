@@ -54,7 +54,7 @@
             - [`hash_tree_root`](#hash_tree_root)
             - [`signing_root`](#signing_root)
             - [`bls_verify`](#bls_verify)
-            - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+            - [`bls_verify_multiple`](#bls_verify_multiple)
         - [Predicates](#predicates)
             - [`is_active_validator`](#is_active_validator)
             - [`is_slashable_validator`](#is_slashable_validator)
@@ -541,9 +541,9 @@ def bytes_to_int(data: bytes) -> uint64:
 
 `bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
 
-#### `bls_aggregate_pubkeys`
+#### `bls_verify_multiple`
 
-`bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, as defined in the [BLS Signature spec](../bls_signature.md#bls_aggregate_pubkeys).
+`bls_verify_multiple` is a function for verifying an aggregate signature for multiple BLS public keys, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify_multiple).
 
 ### Predicates
 
@@ -598,8 +598,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     if not indices == sorted(indices):
         return False
     # Verify aggregate signature
-    if not bls_verify(
-        pubkey=bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
+    if not bls_verify_multiple(
+        pubkeys=[state.validators[i].pubkey for i in indices],
         message_hash=hash_tree_root(indexed_attestation.data),
         signature=indexed_attestation.signature,
         tag=get_tag(state, TAG_BEACON_ATTESTER, indexed_attestation.data.target.epoch),

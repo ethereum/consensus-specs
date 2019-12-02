@@ -27,18 +27,18 @@ def sign_block(spec, state, block, proposer_index=None):
     block.body.randao_reveal = bls_sign(
         privkey=privkey,
         message_hash=hash_tree_root(spec.compute_epoch_at_slot(block.slot)),
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state,
             message_epoch=spec.compute_epoch_at_slot(block.slot),
-            domain_type=spec.DOMAIN_RANDAO,
+            tag_type=spec.TAG_RANDAO,
         )
     )
     block.signature = bls_sign(
         message_hash=signing_root(block),
         privkey=privkey,
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             state,
-            spec.DOMAIN_BEACON_PROPOSER,
+            spec.TAG_BEACON_PROPOSER,
             spec.compute_epoch_at_slot(block.slot)))
 
 

@@ -24,9 +24,9 @@ def sign_shard_block(spec, beacon_state, shard_state, block, proposer_index=None
     block.signature = bls_sign(
         message_hash=signing_root(block),
         privkey=privkey,
-        domain=spec.get_domain(
+        tag=spec.get_tag(
             beacon_state,
-            spec.DOMAIN_SHARD_PROPOSER,
+            spec.TAG_SHARD_PROPOSER,
             spec.compute_epoch_of_shard_slot(block.slot),
         )
     )

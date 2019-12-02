@@ -19,17 +19,17 @@ def build_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials, st
 def sign_deposit_data(spec, deposit_data, privkey, state=None):
     if state is None:
         # Genesis
-        domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
+        tag = spec.compute_tag(spec.TAG_DEPOSIT)
     else:
-        domain = spec.get_domain(
+        tag = spec.get_tag(
             state,
-            spec.DOMAIN_DEPOSIT,
+            spec.TAG_DEPOSIT,
         )
 
     signature = bls_sign(
         message_hash=signing_root(deposit_data),
         privkey=privkey,
-        domain=domain,
+        tag=tag,
     )
     deposit_data.signature = signature
 
