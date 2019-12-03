@@ -33,20 +33,21 @@
             - [`DepositMessage`](#depositmessage)
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
-            - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
         - [Beacon operations](#beacon-operations)
             - [`ProposerSlashing`](#proposerslashing)
             - [`AttesterSlashing`](#attesterslashing)
             - [`Attestation`](#attestation)
             - [`Deposit`](#deposit)
             - [`VoluntaryExit`](#voluntaryexit)
-            - [`SignedVoluntaryExit`](#signedvoluntaryexit)
         - [Beacon blocks](#beacon-blocks)
             - [`BeaconBlockBody`](#beaconblockbody)
             - [`BeaconBlock`](#beaconblock)
-            - [`SignedBeaconBlock`](#signedbeaconblock)
         - [Beacon state](#beacon-state)
             - [`BeaconState`](#beaconstate)
+        - [Signed envelopes](#signed-envelopes)
+            - [`SignedVoluntaryExit`](#signedvoluntaryexit)
+            - [`SignedBeaconBlock`](#signedbeaconblock)
+            - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
     - [Helper functions](#helper-functions)
         - [Math](#math)
             - [`integer_squareroot`](#integer_squareroot)
@@ -374,14 +375,6 @@ class BeaconBlockHeader(Container):
     body_root: Root
 ```
 
-#### `SignedBeaconBlockHeader`
-
-```python
-class SignedBeaconBlockHeader(Container):
-    message: BeaconBlockHeader
-    signature: BLSSignature
-```
-
 ### Beacon operations
 
 #### `ProposerSlashing`
@@ -426,14 +419,6 @@ class VoluntaryExit(Container):
     validator_index: ValidatorIndex
 ```
 
-#### `SignedVoluntaryExit`
-
-```python
-class SignedVoluntaryExit(Container):
-    message: VoluntaryExit
-    signature: BLSSignature
-```
-
 ### Beacon blocks
 
 #### `BeaconBlockBody`
@@ -459,14 +444,6 @@ class BeaconBlock(Container):
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody
-```
-
-#### `SignedBeaconBlock`
-
-```python
-class SignedBeaconBlock(Container):
-    message: BeaconBlock
-    signature: BLSSignature
 ```
 
 ### Beacon state
@@ -503,6 +480,34 @@ class BeaconState(Container):
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
+```
+
+### Signed envelopes
+
+Some messages in the protocol are wrapped in an envelop to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
+
+#### `SignedVoluntaryExit`
+
+```python
+class SignedVoluntaryExit(Container):
+    message: VoluntaryExit
+    signature: BLSSignature
+```
+
+#### `SignedBeaconBlock`
+
+```python
+class SignedBeaconBlock(Container):
+    message: BeaconBlock
+    signature: BLSSignature
+```
+
+#### `SignedBeaconBlockHeader`
+
+```python
+class SignedBeaconBlockHeader(Container):
+    message: BeaconBlockHeader
+    signature: BLSSignature
 ```
 
 ## Helper functions
