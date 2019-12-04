@@ -155,22 +155,22 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
         return False
 
     # If leaf block, check finalized/justified checkpoints as matching latest.
-    # If matching, add to viable block-tree and signal viability to parent.
     head_state = store.block_states[block_root]
 
-    # Handle base case where justified hasn't updated yet
-    if head_state.current_justified_checkpoint.epoch == GENESIS_EPOCH:
-        is_viable_branch = True
-    else:
-        is_viable_branch = (
-            head_state.finalized_checkpoint == store.finalized_checkpoint
-            and head_state.current_justified_checkpoint == store.justified_checkpoint
-        )
-    if is_viable_branch:
+    correct_justified = (
+        store.justified_checkpoint.epoch == GENESIS_EPOCH
+        or head_state.current_justified_checkpoint == store.justified_checkpoint
+    )
+    correct_finalized = (
+        store.finalized_checkpoint.epoch == GENESIS_EPOCH
+        or head_state.finalized_checkpoint == store.finalized_checkpoint
+    )
+    # If expected finalized/justified, add to viable block-tree and signal viability to parent.
+    if correct_justified and correct_finalized:
         blocks[block_root] = block
         return True
 
-    # Otherwise, not viable
+    # Otherwise, branch not viable
     return False
 ```
 
@@ -178,9 +178,13 @@ def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconB
 
 ```python
 def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
-    head = store.justified_checkpoint.root
+    """
+    Retrieve a filtered block true from ``store``, only returning branches
+    whose leaf state's justified/finalized info agrees with that in ``store``.
+    """
+    base = store.justified_checkpoint.root
     blocks: Dict[Root, BeaconBlock] = {}
-    filter_block_tree(store, head, blocks)
+    filter_block_tree(store, base, blocks)
     return blocks
 ```
 
@@ -188,10 +192,8 @@ def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
 
 ```python
 def get_head(store: Store) -> Root:
-    # Get filtered block tree that includes viable branches
+    # Get filtered block tree that only includes viable branches
     blocks = get_filtered_block_tree(store)
-    print(len(blocks))
-    print(len(store.blocks))
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     justified_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
@@ -224,8 +226,8 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
     if new_justified_block.slot <= compute_start_slot_at_epoch(store.justified_checkpoint.epoch):
         return False
     if not (
-        get_ancestor(store, new_justified_checkpoint.root, store.blocks[store.justified_checkpoint.root].slot) ==
-        store.justified_checkpoint.root
+        get_ancestor(store, new_justified_checkpoint.root, store.blocks[store.justified_checkpoint.root].slot)
+        == store.justified_checkpoint.root
     ):
         return False
 
