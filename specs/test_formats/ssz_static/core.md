@@ -24,8 +24,6 @@ The output parts are: `roots.yaml`, `serialized.ssz`, `value.yaml`
 
 ```yaml
 root: bytes32         -- string, hash-tree-root of the value, hex encoded, with prefix 0x
-signing_root: bytes32 -- string, signing-root of the value, hex encoded, with prefix 0x. 
-                           *Optional*, present if type is a container and ends with a ``signature`` field.
 ```
 
 ### `serialized.ssz`
@@ -47,11 +45,9 @@ A test-runner can implement the following assertions:
     - Serialization in 2 steps: deserialize `serialized`, then serialize the result, 
        and verify if the bytes match the original `serialized`.
 - Hash-tree-root: After parsing the `value` (or deserializing `serialized`), Hash-tree-root it: the output should match `root`
-    - Optionally also check `signing_root`, if present.
 
 
 ## References
 
 **`serialized`**—[SSZ serialization](../../simple-serialize.md#serialization)   
 **`root`**—[hash_tree_root](../../simple-serialize.md#merkleization) function  
-**`signing_root`**—[signing_root](../../simple-serialize.md#self-signed-containers) function

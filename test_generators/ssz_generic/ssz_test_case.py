@@ -1,4 +1,4 @@
-from eth2spec.utils.ssz.ssz_impl import serialize, hash_tree_root, signing_root
+from eth2spec.utils.ssz.ssz_impl import serialize, hash_tree_root
 from eth2spec.debug.encode import encode
 from eth2spec.utils.ssz.ssz_typing import SSZValue, Container
 from typing import Callable
@@ -10,8 +10,6 @@ def valid_test_case(value_fn: Callable[[], SSZValue]):
         yield "value", "data", encode(value)
         yield "serialized", "ssz", serialize(value)
         yield "root", "meta", '0x' + hash_tree_root(value).hex()
-        if isinstance(value, Container):
-            yield "signing_root", "meta", '0x' + signing_root(value).hex()
     return case_fn
 
 

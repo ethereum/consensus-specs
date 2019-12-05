@@ -6,7 +6,7 @@ from eth2spec.utils.bls import (
     only_with_bls,
 )
 from eth2spec.utils.ssz.ssz_impl import (
-    signing_root,
+    hash_tree_root,
 )
 
 from .attestations import (
@@ -22,7 +22,7 @@ def sign_shard_block(spec, beacon_state, shard_state, block, proposer_index=None
     privkey = privkeys[proposer_index]
 
     block.signature = bls_sign(
-        message_hash=signing_root(block),
+        message_hash=hash_tree_root(block),
         privkey=privkey,
         domain=spec.get_domain(
             beacon_state,
@@ -44,12 +44,12 @@ def build_empty_shard_block(spec,
     previous_beacon_header = deepcopy(beacon_state.latest_block_header)
     if previous_beacon_header.state_root == spec.Bytes32():
         previous_beacon_header.state_root = beacon_state.hash_tree_root()
-    beacon_block_root = spec.signing_root(previous_beacon_header)
+    beacon_block_root = hash_tree_root(previous_beacon_header)
 
     previous_block_header = deepcopy(shard_state.latest_block_header)
     if previous_block_header.state_root == spec.Bytes32():
         previous_block_header.state_root = shard_state.hash_tree_root()
-    parent_root = signing_root(previous_block_header)
+    parent_root = hash_tree_root(previous_block_header)
 
     block = spec.ShardBlock(
         shard=shard_state.shard,
