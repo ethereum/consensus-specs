@@ -101,8 +101,16 @@ class CustodySlashing(Container):
     shard_transition: ShardTransition
     attestation: Attestation
     data: ByteList[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
+```
+
+#### `SignedCustodySlashing`
+
+```python
+class SignedCustodySlashing(Container):
+    message: CustodySlashing
     signature: BLSSignature
 ```
+
 
 #### `CustodyKeyReveal`
 
@@ -347,7 +355,8 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
 #### Custody Slashings
 
 ```python
-def process_custody_slashing(state: BeaconState, custody_slashing: CustodySlashing) -> None:
+def process_custody_slashing(state: BeaconState, signed_custody_slashing: SignedCustodySlashing) -> None:
+    custody_slashing = signed_custody_slashing.message
     attestation = custody_slashing.attestation
 
     # Any signed custody-slashing should result in at least one slashing.
@@ -355,7 +364,7 @@ def process_custody_slashing(state: BeaconState, custody_slashing: CustodySlashi
     malefactor = state.validators[custody_slashing.malefactor_index] 
     whistleblower = state.validators[custody_slashing.whistleblower_index]
     domain = get_domain(state, DOMAIN_CUSTODY_BIT_SLASHING, get_current_epoch(state))
-    assert bls_verify(whistleblower.pubkey, signing_root(custody_slashing), custody_slashing.signature, domain)
+    assert bls_verify(whistleblower.pubkey, hash_tree_root(custody_slashing), signed_custody_slashing.signature, domain)
     # Verify that the whistleblower is slashable
     assert is_slashable_validator(whistleblower, get_current_epoch(state))
     # Verify that the claimed malefactor is slashable

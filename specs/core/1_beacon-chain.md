@@ -128,9 +128,9 @@ class BeaconBlockBody(Container):
     attestations: List[Attestation, MAX_ATTESTATIONS]
     # Entry & exit
     deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     # Custody game
-    custody_slashings: List[CustodySlashing, MAX_CUSTODY_SLASHINGS]
+    custody_slashings: List[SignedCustodySlashing, MAX_CUSTODY_SLASHINGS]
     custody_key_reveals: List[CustodyKeyReveal, MAX_CUSTODY_KEY_REVEALS]
     early_derived_secret_reveals: List[EarlyDerivedSecretReveal, MAX_EARLY_DERIVED_SECRET_REVEALS]
     # Shards
@@ -150,6 +150,15 @@ class BeaconBlock(Container):
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody
+```
+
+#### Extended `SignedBeaconBlock`
+
+Note that the `message` has a new `BeaconBlock` definition.
+
+```python
+class SignedBeaconBlock(Container):
+    message: BeaconBlock
     signature: BLSSignature
 ```
 
