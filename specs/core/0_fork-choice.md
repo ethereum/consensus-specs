@@ -32,7 +32,7 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_genesis_store(genesis_state)` and update `store` by running:
 
 - `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
-- `on_block(block)` whenever a block `block` is received
+- `on_block(block)` whenever a block `block: SignedBeaconBlock` is received
 - `on_attestation(attestation)` whenever an attestation `attestation` is received
 
 *Notes*:
@@ -81,7 +81,7 @@ class Store(object):
 ```python
 def get_genesis_store(genesis_state: BeaconState) -> Store:
     genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
-    root = signing_root(genesis_block)
+    root = hash_tree_root(genesis_block)
     justified_checkpoint = Checkpoint(epoch=GENESIS_EPOCH, root=root)
     finalized_checkpoint = Checkpoint(epoch=GENESIS_EPOCH, root=root)
     return Store(
@@ -203,25 +203,26 @@ def on_tick(store: Store, time: uint64) -> None:
 #### `on_block`
 
 ```python
-def on_block(store: Store, block: BeaconBlock) -> None:
+def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    block = signed_block.message
     # Make a copy of the state to avoid mutability issues
     assert block.parent_root in store.block_states
     pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
     assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
     # Add new block to the store
-    store.blocks[signing_root(block)] = block
+    store.blocks[hash_tree_root(block)] = block
     # Check block is a descendant of the finalized block
     assert (
-        get_ancestor(store, signing_root(block), store.blocks[store.finalized_checkpoint.root].slot) ==
+        get_ancestor(store, hash_tree_root(block), store.blocks[store.finalized_checkpoint.root].slot) ==
         store.finalized_checkpoint.root
     )
     # Check that block is later than the finalized epoch slot
     assert block.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     # Check the block is valid and compute the post-state
-    state = state_transition(pre_state, block, True)
+    state = state_transition(pre_state, signed_block, True)
     # Add new state for this block to the store
-    store.block_states[signing_root(block)] = state
+    store.block_states[hash_tree_root(block)] = state
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
@@ -251,8 +252,6 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
     assert target.epoch in [current_epoch, previous_epoch]
-    # Cannot calculate the current shuffling if have not seen the target
-    assert target.root in store.blocks
 
     # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
     assert target.root in store.blocks

@@ -1,4 +1,4 @@
-# Vyper target 0.1.0b12
+# Vyper target 0.1.0b13
 MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1
@@ -75,7 +75,7 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
     deposit_amount: uint256 = msg.value / as_wei_value(1, "gwei")
     assert deposit_amount >= MIN_DEPOSIT_AMOUNT
 
-    # Length checks to facilitate formal verification (see https://github.com/ethereum/eth2.0-specs/pull/1362/files#r320361859)
+    # Length checks for safety
     assert len(pubkey) == PUBKEY_LENGTH
     assert len(withdrawal_credentials) == WITHDRAWAL_CREDENTIALS_LENGTH
     assert len(signature) == SIGNATURE_LENGTH

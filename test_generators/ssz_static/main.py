@@ -7,7 +7,6 @@ from eth2spec.phase0 import spec
 from eth2spec.utils.ssz.ssz_typing import Container
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
-    signing_root,
     serialize,
 )
 from gen_base import gen_runner, gen_typing
@@ -24,8 +23,6 @@ def create_test_case(rng: Random, typ, mode: random_value.RandomizationMode, cha
     roots_data = {
         "root": '0x' + hash_tree_root(value).hex()
     }
-    if isinstance(value, Container) and hasattr(value, "signature"):
-        roots_data["signing_root"] = '0x' + signing_root(value).hex()
     yield "roots", "data", roots_data
 
 
