@@ -151,7 +151,7 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 
 | Topic                                  | Message Type      |
 |----------------------------------------|-------------------|
-| beacon_block                           | BeaconBlock       |
+| beacon_block                           | SignedBeaconBlock |
 | beacon_aggregate_and_proof             | AggregateAndProof |
 | beacon_attestation\*                   | Attestation       |
 | committee_index{subnet_id}\_beacon_attestation | Attestation       |
@@ -214,7 +214,7 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 
 #### Interop
 
-- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/eth2/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `BeaconBlock`.
+- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/eth2/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `SignedBeaconBlock`.
 
 #### Mainnet
 
@@ -331,9 +331,9 @@ The [SimpleSerialize (SSZ) specification](../simple-serialize.md) outlines how o
 
 All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `[]BeaconBlocks`) send their
+Responses that are SSZ-lists (for example `[]SignedBeaconBlock`) send their
 constituents individually as `response_chunk`s. For example, the
-`[]BeaconBlocks` response type sends one or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `BeaconBlock` payload.
+`[]SignedBeaconBlock` response type sends one or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 ### Messages
 
@@ -413,15 +413,15 @@ Request Content:
 Response Content:
 ```
 (
-  []BeaconBlock
+  []SignedBeaconBlock
 )
 ```
 
-Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root` (= `signing_root(BeaconBlock)`). The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root` (= `hash_tree_root(SignedBeaconBlock.message)`). The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
 
 The request MUST be encoded as an SSZ-container.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `BeaconBlock` payload.
+The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
@@ -449,17 +449,17 @@ Response Content:
 
 ```
 (
-  []BeaconBlock
+  []SignedBeaconBlock
 )
 ```
 
-Requests blocks by block root (= `signing_root(BeaconBlock)`). The response is a list of `BeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
+Requests blocks by block root (= `hash_tree_root(SignedBeaconBlock.message)`). The response is a list of `SignedBeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
 
 The request MUST be encoded as an SSZ-field.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `BeaconBlock` payload.
+The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST support requesting blocks since the latest finalized epoch.
 

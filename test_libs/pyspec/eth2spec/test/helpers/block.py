@@ -2,26 +2,30 @@ from copy import deepcopy
 
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, only_with_bls
-from eth2spec.utils.ssz.ssz_impl import signing_root, hash_tree_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
-# Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.
-@only_with_bls()
-def sign_block(spec, state, block, proposer_index=None):
-    assert state.slot <= block.slot
-
+def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
     if proposer_index is None:
-        if block.slot == state.slot:
+        assert state.slot <= slot
+        if slot == state.slot:
             proposer_index = spec.get_beacon_proposer_index(state)
         else:
-            if spec.compute_epoch_at_slot(state.slot) + 1 > spec.compute_epoch_at_slot(block.slot):
+            if spec.compute_epoch_at_slot(state.slot) + 1 > spec.compute_epoch_at_slot(slot):
                 print("warning: block slot far away, and no proposer index manually given."
                       " Signing block is slow due to transition for proposer index calculation.")
             # use stub state to get proposer index of future slot
             stub_state = deepcopy(state)
-            spec.process_slots(stub_state, block.slot)
+            spec.process_slots(stub_state, slot)
             proposer_index = spec.get_beacon_proposer_index(stub_state)
+    return proposer_index
 
+
+@only_with_bls()
+def apply_randao_reveal(spec, state, block, proposer_index=None):
+    assert state.slot <= block.slot
+
+    proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
     privkey = privkeys[proposer_index]
 
     block.body.randao_reveal = bls_sign(
@@ -33,8 +37,18 @@ def sign_block(spec, state, block, proposer_index=None):
             domain_type=spec.DOMAIN_RANDAO,
         )
     )
-    block.signature = bls_sign(
-        message_hash=signing_root(block),
+
+
+# Fully ignore the function if BLS is off, beacon-proposer index calculation is slow.
+@only_with_bls()
+def apply_sig(spec, state, signed_block, proposer_index=None):
+    block = signed_block.message
+
+    proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
+    privkey = privkeys[proposer_index]
+
+    signed_block.signature = bls_sign(
+        message_hash=hash_tree_root(block),
         privkey=privkey,
         domain=spec.get_domain(
             state,
@@ -42,17 +56,26 @@ def sign_block(spec, state, block, proposer_index=None):
             spec.compute_epoch_at_slot(block.slot)))
 
 
+def sign_block(spec, state, block, proposer_index=None):
+    signed_block = spec.SignedBeaconBlock(message=block)
+    apply_sig(spec, state, signed_block, proposer_index)
+    return signed_block
+
+
+def transition_unsigned_block(spec, state, block):
+    spec.process_slots(state, block.slot)
+    spec.process_block(state, block)
+
+
 def apply_empty_block(spec, state):
     """
     Transition via an empty block (on current slot, assuming no block has been applied yet).
-    :return: the empty block that triggered the transition.
     """
-    block = build_empty_block(spec, state, signed=True)
-    spec.state_transition(state, block)
-    return block
+    block = build_empty_block(spec, state)
+    transition_unsigned_block(spec, state, block)
 
 
-def build_empty_block(spec, state, slot=None, signed=False):
+def build_empty_block(spec, state, slot=None):
     if slot is None:
         slot = state.slot
     empty_block = spec.BeaconBlock()
@@ -61,13 +84,10 @@ def build_empty_block(spec, state, slot=None, signed=False):
     previous_block_header = deepcopy(state.latest_block_header)
     if previous_block_header.state_root == spec.Root():
         previous_block_header.state_root = state.hash_tree_root()
-    empty_block.parent_root = signing_root(previous_block_header)
-
-    if signed:
-        sign_block(spec, state, empty_block)
-
+    empty_block.parent_root = hash_tree_root(previous_block_header)
+    apply_randao_reveal(spec, state, empty_block)
     return empty_block
 
 
-def build_empty_block_for_next_slot(spec, state, signed=False):
-    return build_empty_block(spec, state, state.slot + 1, signed=signed)
+def build_empty_block_for_next_slot(spec, state):
+    return build_empty_block(spec, state, state.slot + 1)

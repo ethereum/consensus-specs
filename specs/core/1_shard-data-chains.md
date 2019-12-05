@@ -359,9 +359,9 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     )
     if beacon_block_header.state_root == Bytes32():
         beacon_block_header.state_root = hash_tree_root(beacon_state)
-    assert block.beacon_block_root == signing_root(beacon_block_header)
+    assert block.beacon_block_root == hash_tree_root(beacon_block_header)
     # Verify the parent root
-    assert block.parent_root == signing_root(shard_state.latest_block_header)
+    assert block.parent_root == hash_tree_root(shard_state.latest_block_header)
     # Save current block as the new latest block
     shard_state.latest_block_header = ShardBlockHeader(
         shard=block.shard,
@@ -384,7 +384,7 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     assert not proposer.slashed
     # Verify proposer signature
     domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, domain)
+    assert bls_verify(proposer.pubkey, hash_tree_root(block), block.signature, domain)
 ```
 
 #### Attestations
