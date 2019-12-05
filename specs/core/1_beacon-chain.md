@@ -93,6 +93,24 @@ class PendingAttestation(Container):
     crosslink_success: boolean
 ```
 
+### `IndexedAttestation`
+
+```python
+class IndexedAttestation(Container):
+    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    attestation: Attestation
+```
+
+#### Extended `AttesterSlashing`
+
+Note that the `attestation_1` and `attestation_2` have a new `IndexedAttestation` definition.
+
+```python
+class AttesterSlashing(Container):
+    attestation_1: IndexedAttestation
+    attestation_2: IndexedAttestation
+```
+
 ### Extended `Validator`
 
 ```python
@@ -261,14 +279,6 @@ class ShardTransition(Container):
     proposer_signature_aggregate: BLSSignature
 ```
 
-### `AttestationAndCommittee`
-
-```python
-class AttestationAndCommittee(Container):
-    committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
-    attestation: Attestation
-```
-
 ### `CompactCommittee`
 
 ```python
@@ -390,9 +400,12 @@ def get_light_client_committee(beacon_state: BeaconState, epoch: Epoch) -> Seque
 #### `get_indexed_attestation`
 
 ```python
-def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation) -> AttestationAndCommittee:
+def get_indexed_attestation(beacon_state: BeaconState, attestation: Attestation) -> IndexedAttestation:
     committee = get_beacon_committee(beacon_state, attestation.data.slot, attestation.data.index)
-    return AttestationAndCommittee(committee, attestation)
+    return IndexedAttestation(
+        committee=committee,
+        attestation=attestation,
+    )
 ```
 
 #### `get_updated_gasprice`
@@ -446,7 +459,7 @@ def get_offset_slots(state: BeaconState, start_slot: Slot) -> Sequence[Slot]:
 Note that this replaces the Phase 0 `is_valid_indexed_attestation`.
 
 ```python
-def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: AttestationAndCommittee) -> bool:
+def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: IndexedAttestation) -> bool:
     """
     Check if ``indexed_attestation`` has valid indices and signature.
     """
@@ -467,7 +480,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Attest
                 ))
             else:
                 assert not cbit
-        
+
     return bls_verify_multiple(
         pubkeys=all_pubkeys,
         message_hashes=all_message_hashes,
@@ -714,6 +727,47 @@ def process_attestations(state: BeaconState, block_body: BeaconBlockBody, attest
             state.current_epoch_attestations.append(pending_attestation)
         else:
             state.previous_epoch_attestations.append(pending_attestation)
+```
+
+##### New Attester slashing processing
+
+```python
+def get_indices_from_committee(
+        committee: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE],
+        bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]) -> List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]:
+    assert len(bits) == len(committee)
+    return List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE](
+        [validator_index for i, validator_index in enumerate(committee) if bits[i]]
+    )
+```
+
+```python
+def process_attester_slashing(state: BeaconState, attester_slashing: AttesterSlashing) -> None:
+    indexed_attestation_1 = attester_slashing.attestation_1
+    indexed_attestation_2 = attester_slashing.attestation_2
+    assert is_slashable_attestation_data(
+        indexed_attestation_1.attestation.data,
+        indexed_attestation_2.attestation.data,
+    )
+    assert is_valid_indexed_attestation(state, indexed_attestation_1)
+    assert is_valid_indexed_attestation(state, indexed_attestation_2)
+
+    indices_1 = get_indices_from_committee(
+        indexed_attestation_1.committee,
+        indexed_attestation_1.attestation.aggregation_bits,
+    )
+    indices_2 = get_indices_from_committee(
+        indexed_attestation_2.committee,
+        indexed_attestation_2.attestation.aggregation_bits,
+    )
+
+    slashed_any = False
+    indices = set(indices_1).intersection(indices_2)
+    for index in sorted(indices):
+        if is_slashable_validator(state.validators[index], get_current_epoch(state)):
+            slash_validator(state, index)
+            slashed_any = True
+    assert slashed_any
 ```
 
 #### Shard transition false positives
