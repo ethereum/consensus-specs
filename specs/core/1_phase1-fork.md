@@ -89,10 +89,10 @@ def upgrade_to_phase1(pre: phase0.BeaconState) -> BeaconState:
                 slot=pre.slot,
                 gasprice=INITIAL_GASPRICE,
                 data=Root(),
-                latest_block_root=Hash(),
+                latest_block_root=Root(),
             ) for i in range(ACTIVE_SHARDS)
         ),
-        online_countdown=Bytes[VALIDATOR_REGISTRY_LIMIT](
+        online_countdown=ByteList[VALIDATOR_REGISTRY_LIMIT](
             ONLINE_PERIOD for i in range(len(pre.validators))
         ),
         current_light_committee=CompactCommittee(),  # computed after state creation

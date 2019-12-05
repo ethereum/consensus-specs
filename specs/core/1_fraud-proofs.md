@@ -34,10 +34,10 @@ The proof verifies that one of the two conditions is false:
 ```python
 def shard_state_transition(shard: Shard,
                            slot: Slot,
-                           pre_state: Hash,
-                           previous_beacon_root: Hash,
+                           pre_state: Root,
+                           previous_beacon_root: Root,
                            proposer_pubkey: BLSPubkey,
-                           block_data: BytesN[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]) -> Hash:
+                           block_data: ByteVector[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]) -> Root:
     # We will add something more substantive in phase 2
     return hash(pre_state + hash_tree_root(previous_beacon_root) + hash_tree_root(block_data))
 ```

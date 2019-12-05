@@ -100,7 +100,7 @@ class CustodySlashing(Container):
     whistleblower_index: ValidatorIndex
     shard_transition: ShardTransition
     attestation: Attestation
-    data: Bytes[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
+    data: ByteList[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
     signature: BLSSignature
 ```
 

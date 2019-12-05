@@ -43,7 +43,7 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `TARGET_SHARD_BLOCK_SIZE` | `3 * 2**16` (= 196,608) | |
 | `SHARD_BLOCK_OFFSETS` | `[1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]` | |
 | `MAX_SHARD_BLOCKS_PER_ATTESTATION` | `len(SHARD_BLOCK_OFFSETS)` | |
-| `EMPTY_CHUNK_ROOT` | `hash_tree_root(BytesN[SHARD_BLOCK_CHUNK_SIZE]())` | |
+| `EMPTY_CHUNK_ROOT` | `hash_tree_root(ByteList[SHARD_BLOCK_CHUNK_SIZE]())` | |
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `Gwei(2**5)` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
@@ -62,14 +62,14 @@ class AttestationData(Container):
     slot: Slot
     index: CommitteeIndex
     # LMD GHOST vote
-    beacon_block_root: Hash
+    beacon_block_root: Root
     # FFG vote
     source: Checkpoint
     target: Checkpoint
     # Current-slot shard block root
-    head_shard_root: Hash
+    head_shard_root: Root
     # Shard transition root
-    shard_transition_root: Hash
+    shard_transition_root: Root
 ```
 
 ### Extended `Attestation`
@@ -98,7 +98,7 @@ class PendingAttestation(Container):
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals
+    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
     effective_balance: Gwei  # Balance at stake
     slashed: boolean
     # Status epochs
@@ -147,8 +147,8 @@ Note that the `body` has a new `BeaconBlockBody` definition.
 ```python
 class BeaconBlock(Container):
     slot: Slot
-    parent_root: Hash
-    state_root: Hash
+    parent_root: Root
+    state_root: Root
     body: BeaconBlockBody
     signature: BLSSignature
 ```
@@ -165,9 +165,9 @@ class BeaconState(Container):
     fork: Fork
     # History
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Hash, HISTORICAL_ROOTS_LIMIT]
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
@@ -176,7 +176,7 @@ class BeaconState(Container):
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
-    randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
+    randao_mixes: Vector[Root, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
@@ -189,7 +189,7 @@ class BeaconState(Container):
     finalized_checkpoint: Checkpoint
     # Phase 1
     shard_states: List[ShardState, MAX_SHARDS]
-    online_countdown: Bytes[VALIDATOR_REGISTRY_LIMIT]
+    online_countdown: ByteList[VALIDATOR_REGISTRY_LIMIT]
     current_light_committee: CompactCommittee
     next_light_committee: CompactCommittee
     # Custody game
@@ -209,10 +209,10 @@ _Wrapper for being broadcasted over the network._
 
 ```python
 class ShardBlockWrapper(Container):
-    shard_parent_root: Hash
-    beacon_parent_root: Hash
+    shard_parent_root: Root
+    beacon_parent_root: Root
     slot: Slot
-    body: BytesN[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
+    body: ByteList[MAX_SHARD_BLOCK_CHUNKS * SHARD_BLOCK_CHUNK_SIZE]
     signature: BLSSignature
 ```
 
@@ -220,10 +220,10 @@ class ShardBlockWrapper(Container):
 
 ```python
 class ShardSignableHeader(Container):
-    shard_parent_root: Hash
-    beacon_parent_root: Hash
+    shard_parent_root: Root
+    beacon_parent_root: Root
     slot: Slot
-    body_root: Hash
+    body_root: Root
 ```
 
 ### `ShardState`
@@ -232,8 +232,8 @@ class ShardSignableHeader(Container):
 class ShardState(Container):
     slot: Slot
     gasprice: Gwei
-    data: Hash
-    latest_block_root: Hash
+    data: Bytes32
+    latest_block_root: Root
 ```
 
 ### `ShardTransition`
@@ -245,7 +245,7 @@ class ShardTransition(Container):
     # Shard block lengths
     shard_block_lengths: List[uint64, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Shard data roots
-    shard_data_roots: List[List[Hash, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
+    shard_data_roots: List[List[Bytes32, MAX_SHARD_BLOCK_CHUNKS], MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Intermediate shard states
     shard_states: List[ShardState, MAX_SHARD_BLOCKS_PER_ATTESTATION]
     # Proposer signature aggregate
@@ -272,7 +272,7 @@ class CompactCommittee(Container):
 
 ```python
 class AttestationCustodyBitWrapper(Container):
-    attestation_data_root: Hash
+    attestation_data_root: Root
     block_index: uint64
     bit: boolean
 ```
@@ -319,8 +319,8 @@ def committee_to_compact_committee(state: BeaconState, committee: Sequence[Valid
 #### `chunks_to_body_root`
 
 ```python
-def chunks_to_body_root(chunks: List[Hash, MAX_SHARD_BLOCK_CHUNKS]) -> Hash:
-    return hash_tree_root(Vector[Hash, MAX_SHARD_BLOCK_CHUNKS](
+def chunks_to_body_root(chunks: List[Bytes32, MAX_SHARD_BLOCK_CHUNKS]) -> Root:
+    return hash_tree_root(Vector[Bytes32, MAX_SHARD_BLOCK_CHUNKS](
         chunks + [EMPTY_CHUNK_ROOT] * (MAX_SHARD_BLOCK_CHUNKS - len(chunks))
     ))
 ```
@@ -543,7 +543,7 @@ def validate_attestation(state: BeaconState, attestation: Attestation) -> None:
     # Type 2: delayed attestations
     else:
         assert state.slot - compute_start_slot_at_epoch(compute_epoch_at_slot(data.slot)) < SLOTS_PER_EPOCH
-        assert data.shard_transition_root == Hash()
+        assert data.shard_transition_root == Root()
 ```
 
 ###### `apply_shard_transition`
@@ -608,7 +608,7 @@ def apply_shard_transition(state: BeaconState, shard: Shard, transition: ShardTr
 def process_crosslink_for_shard(state: BeaconState,
                                 shard: Shard,
                                 shard_transition: ShardTransition,
-                                attestations: Sequence[Attestation]) -> Hash:
+                                attestations: Sequence[Attestation]) -> Root:
     committee = get_beacon_committee(state, get_current_epoch(state), shard)
     online_indices = get_online_validator_indices(state)
 
@@ -657,7 +657,7 @@ def process_crosslink_for_shard(state: BeaconState,
 
     # No winning transition root, ensure empty and return empty root
     assert shard_transition == ShardTransition()
-    return Hash()
+    return Root()
 ```
 
 ###### `process_crosslinks`
@@ -665,8 +665,8 @@ def process_crosslink_for_shard(state: BeaconState,
 ```python
 def process_crosslinks(state: BeaconState,
                        block_body: BeaconBlockBody,
-                       attestations: Sequence[Attestation]) -> Set[Tuple[Shard, Hash]]:
-    winners: Set[Tuple[Shard, Hash]] = set()
+                       attestations: Sequence[Attestation]) -> Set[Tuple[Shard, Root]]:
+    winners: Set[Tuple[Shard, Root]] = set()
     for shard in map(Shard, range(ACTIVE_SHARDS)):
         # All attestations in the block for this shard
         shard_attestations = [
@@ -675,7 +675,7 @@ def process_crosslinks(state: BeaconState,
         ]
         shard_transition = block_body.shard_transitions[shard]
         winning_root = process_crosslink_for_shard(state, shard, shard_transition, shard_attestations)
-        if winning_root != Hash():
+        if winning_root != Root():
             winners.add((shard, winning_root))
     return winners
 ```
