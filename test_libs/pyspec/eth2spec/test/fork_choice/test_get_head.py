@@ -122,15 +122,15 @@ def test_shorter_chain_but_heavier_weight(spec, state):
 @with_all_phases
 @spec_state_test
 def test_filtered_block_tree(spec, state):
-    genesis_state = state.copy()
+    # Initialization
+    genesis_state_root = state.hash_tree_root()
+    store = spec.get_genesis_store(state)
+    genesis_block = spec.BeaconBlock(state_root=genesis_state_root)
 
     # transition state past initial couple of epochs
     next_epoch(spec, state)
     next_epoch(spec, state)
 
-    # Initialization
-    store = spec.get_genesis_store(genesis_state)
-    genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
     assert spec.get_head(store) == spec.signing_root(genesis_block)
 
     # fill in attestations for entire epoch, justifying the recent epoch
