@@ -18,6 +18,8 @@ DepositEvent: event({
 branch: bytes32[DEPOSIT_CONTRACT_TREE_DEPTH]
 deposit_count: uint256
 
+validators: map(bytes[48], bytes[32])
+
 # Compute hashes in empty sparse Merkle tree
 zero_hashes: bytes32[DEPOSIT_CONTRACT_TREE_DEPTH]
 @public
@@ -70,6 +72,13 @@ def deposit(pubkey: bytes[PUBKEY_LENGTH],
             deposit_data_root: bytes32):
     # Avoid overflowing the Merkle tree (and prevent edge case in computing `self.branch`)
     assert self.deposit_count < MAX_DEPOSIT_COUNT
+
+    # If we have already deposited to this pubkey ensure the withdrawal credentials match
+    zero: bytes[32] = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+    if self.validators[pubkey] == zero:
+        self.validators[pubkey] = withdrawal_credentials
+    else:
+        assert self.validators[pubkey] == withdrawal_credentials
 
     # Check deposit amount
     deposit_amount: uint256 = msg.value / as_wei_value(1, "gwei")

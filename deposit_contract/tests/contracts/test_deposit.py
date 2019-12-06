@@ -125,6 +125,43 @@ def test_deposit_inputs(registration_contract,
         )
 
 
+def test_deposit_front_run(registration_contract, w3, assert_tx_failed):
+    # Front-run with one set of withdrawal credentials
+    FRONTRUN_WITHDRAWAL_CREDENTIALS = b'\x23' * 32
+    FRONTRUN_VALID_SIGNATURE = b'\x34' * 96
+    call = registration_contract.functions.deposit(
+        SAMPLE_PUBKEY,
+        FRONTRUN_WITHDRAWAL_CREDENTIALS,
+        FRONTRUN_VALID_SIGNATURE,
+        hash_tree_root(
+            DepositData(
+                pubkey=SAMPLE_PUBKEY,
+                withdrawal_credentials=FRONTRUN_WITHDRAWAL_CREDENTIALS,
+                amount=MIN_DEPOSIT_AMOUNT,
+                signature=FRONTRUN_VALID_SIGNATURE,
+            ),
+        )
+    )
+    assert call.transact({"value": MIN_DEPOSIT_AMOUNT * eth_utils.denoms.gwei})
+
+    # Send actual deposit; should fail as withdrawal credentials are different
+    call = registration_contract.functions.deposit(
+        SAMPLE_PUBKEY,
+        SAMPLE_WITHDRAWAL_CREDENTIALS,
+        SAMPLE_VALID_SIGNATURE,
+        hash_tree_root(
+            DepositData(
+                pubkey=SAMPLE_PUBKEY,
+                withdrawal_credentials=SAMPLE_WITHDRAWAL_CREDENTIALS,
+                amount=FULL_DEPOSIT_AMOUNT,
+                signature=SAMPLE_VALID_SIGNATURE,
+            ),
+        )
+    )
+    assert_tx_failed(
+        lambda: call.transact({"value": FULL_DEPOSIT_AMOUNT * eth_utils.denoms.gwei})
+    )
+
 def test_deposit_event_log(registration_contract, a0, w3):
     log_filter = registration_contract.events.DepositEvent.createFilter(
         fromBlock='latest',
