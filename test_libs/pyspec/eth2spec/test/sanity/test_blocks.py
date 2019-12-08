@@ -1,17 +1,18 @@
 from copy import deepcopy
 
-from eth2spec.utils.ssz.ssz_impl import signing_root
+from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.bls import bls_sign
 
 from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
+    transition_unsigned_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.attester_slashings import get_valid_attester_slashing
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.attestations import get_valid_attestation
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 
-from eth2spec.test.context import spec_state_test, with_all_phases, expect_assertion_error
+from eth2spec.test.context import spec_state_test, with_all_phases, expect_assertion_error, always_bls
 
 
 @with_all_phases
@@ -20,13 +21,18 @@ def test_prev_slot_block_transition(spec, state):
     # Go to clean slot
     spec.process_slots(state, state.slot + 1)
     # Make a block for it
-    block = build_empty_block(spec, state, slot=state.slot, signed=True)
+    block = build_empty_block(spec, state, slot=state.slot)
+    proposer_index = spec.get_beacon_proposer_index(state)
     # Transition to next slot, above block will not be invalid on top of new state.
     spec.process_slots(state, state.slot + 1)
 
     yield 'pre', state
-    expect_assertion_error(lambda: state_transition_and_sign_block(spec, state, block))
-    yield 'blocks', [block]
+    # State is beyond block slot, but the block can still be realistic when invalid.
+    # Try the transition, and update the state root to where it is halted. Then sign with the supposed proposer.
+    expect_assertion_error(lambda: transition_unsigned_block(spec, state, block))
+    block.state_root = state.hash_tree_root()
+    signed_block = sign_block(spec, state, block, proposer_index=proposer_index)
+    yield 'blocks', [signed_block]
     yield 'post', None
 
 
@@ -36,13 +42,13 @@ def test_same_slot_block_transition(spec, state):
     # Same slot on top of pre-state, but move out of slot 0 first.
     spec.process_slots(state, state.slot + 1)
 
-    block = build_empty_block(spec, state, slot=state.slot, signed=True)
+    block = build_empty_block(spec, state, slot=state.slot)
 
     yield 'pre', state
 
-    state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
 
@@ -54,15 +60,15 @@ def test_empty_block_transition(spec, state):
 
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
+    block = build_empty_block_for_next_slot(spec, state)
 
-    state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert len(state.eth1_data_votes) == pre_eth1_votes + 1
-    assert spec.get_block_root_at_slot(state, pre_slot) == block.parent_root
+    assert spec.get_block_root_at_slot(state, pre_slot) == signed_block.message.parent_root
     assert spec.get_randao_mix(state, spec.get_current_epoch(state)) != spec.Bytes32()
 
 
@@ -73,12 +79,44 @@ def test_invalid_state_root(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     block.state_root = b"\xaa" * 32
-    sign_block(spec, state, block)
+    signed_block = sign_block(spec, state, block)
 
-    expect_assertion_error(
-        lambda: spec.state_transition(state, block, validate_state_root=True))
+    expect_assertion_error(lambda: spec.state_transition(state, signed_block))
 
     yield 'blocks', [block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_zero_block_sig(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    invalid_signed_block = spec.SignedBeaconBlock(message=block)
+    expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
+
+    yield 'blocks', [invalid_signed_block]
+    yield 'post', None
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_invalid_block_sig(spec, state):
+    block = build_empty_block_for_next_slot(spec, state)
+    invalid_signed_block = spec.SignedBeaconBlock(
+        message=block,
+        signature=bls_sign(
+            message_hash=hash_tree_root(block),
+            privkey=123456,
+            domain=spec.get_domain(
+                state,
+                spec.DOMAIN_BEACON_PROPOSER,
+                spec.compute_epoch_at_slot(block.slot)))
+    )
+    expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
+
+    yield 'blocks', [invalid_signed_block]
     yield 'post', None
 
 
@@ -88,13 +126,11 @@ def test_skipped_slots(spec, state):
     pre_slot = state.slot
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(spec, state)
-    block.slot += 3
-    sign_block(spec, state, block)
+    block = build_empty_block(spec, state, state.slot + 4)
 
-    state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert state.slot == block.slot
@@ -109,13 +145,11 @@ def test_empty_epoch_transition(spec, state):
     pre_slot = state.slot
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(spec, state)
-    block.slot += spec.SLOTS_PER_EPOCH
-    sign_block(spec, state, block)
+    block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
 
-    state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert state.slot == block.slot
@@ -136,10 +170,10 @@ def test_empty_epoch_transition_not_finalizing(spec, state):
     yield 'pre', state
 
     spec.process_slots(state, state.slot + (spec.SLOTS_PER_EPOCH * 5))
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
-    state_transition_and_sign_block(spec, state, block)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert state.slot == block.slot
@@ -165,11 +199,10 @@ def test_proposer_slashing(spec, state):
     #
     block = build_empty_block_for_next_slot(spec, state)
     block.body.proposer_slashings.append(proposer_slashing)
-    sign_block(spec, state, block)
 
-    state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     # check if slashed
@@ -199,11 +232,10 @@ def test_attester_slashing(spec, state):
     #
     block = build_empty_block_for_next_slot(spec, state)
     block.body.attester_slashings.append(attester_slashing)
-    sign_block(spec, state, block)
 
-    state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     slashed_validator = state.validators[validator_index]
@@ -229,17 +261,9 @@ def test_expected_deposit_in_block(spec, state):
     yield 'pre', state
 
     block = build_empty_block_for_next_slot(spec, state)
-    sign_block(spec, state, block)
-    bad = False
-    try:
-        state_transition_and_sign_block(spec, state, block)
-        bad = True
-    except AssertionError:
-        pass
-    if bad:
-        raise AssertionError("expected deposit was not enforced")
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', None
 
 
@@ -257,11 +281,9 @@ def test_deposit_in_block(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.deposits.append(deposit)
-    sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    state_transition_and_sign_block(spec, state, block)
-
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert len(state.validators) == initial_registry_len + 1
@@ -285,11 +307,10 @@ def test_deposit_top_up(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.deposits.append(deposit)
-    sign_block(spec, state, block)
 
-    state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert len(state.validators) == initial_registry_len
@@ -308,23 +329,19 @@ def test_attestation(spec, state):
 
     # Add to state via block transition
     pre_current_attestations_len = len(state.current_epoch_attestations)
-    attestation_block = build_empty_block_for_next_slot(spec, state)
-    attestation_block.slot += spec.MIN_ATTESTATION_INCLUSION_DELAY
+    attestation_block = build_empty_block(spec, state, state.slot + 1 + spec.MIN_ATTESTATION_INCLUSION_DELAY)
     attestation_block.body.attestations.append(attestation)
-    sign_block(spec, state, attestation_block)
-    state_transition_and_sign_block(spec, state, attestation_block)
+    signed_attestation_block = state_transition_and_sign_block(spec, state, attestation_block)
 
     assert len(state.current_epoch_attestations) == pre_current_attestations_len + 1
 
     # Epoch transition should move to previous_epoch_attestations
     pre_current_attestations_root = spec.hash_tree_root(state.current_epoch_attestations)
 
-    epoch_block = build_empty_block_for_next_slot(spec, state)
-    epoch_block.slot += spec.SLOTS_PER_EPOCH
-    sign_block(spec, state, epoch_block)
-    state_transition_and_sign_block(spec, state, epoch_block)
+    epoch_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
+    signed_epoch_block = state_transition_and_sign_block(spec, state, epoch_block)
 
-    yield 'blocks', [attestation_block, epoch_block]
+    yield 'blocks', [signed_attestation_block, signed_epoch_block]
     yield 'post', state
 
     assert len(state.current_epoch_attestations) == 0
@@ -348,30 +365,30 @@ def test_voluntary_exit(spec, state):
         epoch=spec.get_current_epoch(state),
         validator_index=validator_index,
     )
-    voluntary_exit.signature = bls_sign(
-        message_hash=signing_root(voluntary_exit),
-        privkey=privkeys[validator_index],
-        domain=spec.get_domain(
-            state=state,
-            domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+    signed_voluntary_exit = spec.SignedVoluntaryExit(
+        message=voluntary_exit,
+        signature=bls_sign(
+            message_hash=hash_tree_root(voluntary_exit),
+            privkey=privkeys[validator_index],
+            domain=spec.get_domain(
+                state=state,
+                domain_type=spec.DOMAIN_VOLUNTARY_EXIT,
+            )
         )
     )
 
     # Add to state via block transition
     initiate_exit_block = build_empty_block_for_next_slot(spec, state)
-    initiate_exit_block.body.voluntary_exits.append(voluntary_exit)
-    sign_block(spec, state, initiate_exit_block)
-    state_transition_and_sign_block(spec, state, initiate_exit_block)
+    initiate_exit_block.body.voluntary_exits.append(signed_voluntary_exit)
+    signed_initiate_exit_block = state_transition_and_sign_block(spec, state, initiate_exit_block)
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
     # Process within epoch transition
-    exit_block = build_empty_block_for_next_slot(spec, state)
-    exit_block.slot += spec.SLOTS_PER_EPOCH
-    sign_block(spec, state, exit_block)
-    state_transition_and_sign_block(spec, state, exit_block)
+    exit_block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
+    signed_exit_block = state_transition_and_sign_block(spec, state, exit_block)
 
-    yield 'blocks', [initiate_exit_block, exit_block]
+    yield 'blocks', [signed_initiate_exit_block, signed_exit_block]
     yield 'post', state
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
@@ -391,12 +408,10 @@ def test_balance_driven_status_transitions(spec, state):
     yield 'pre', state
 
     # trigger epoch transition
-    block = build_empty_block_for_next_slot(spec, state)
-    block.slot += spec.SLOTS_PER_EPOCH
-    sign_block(spec, state, block)
-    state_transition_and_sign_block(spec, state, block)
+    block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
@@ -410,11 +425,10 @@ def test_historical_batch(spec, state):
 
     yield 'pre', state
 
-    block = build_empty_block_for_next_slot(spec, state, signed=True)
-    sign_block(spec, state, block)
-    state_transition_and_sign_block(spec, state, block)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', state
 
     assert state.slot == block.slot
@@ -430,7 +444,6 @@ def test_eth1_data_votes_consensus(spec, state):
         return
 
     offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
-    sign_block(spec, state, offset_block)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -444,9 +457,8 @@ def test_eth1_data_votes_consensus(spec, state):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for over 50% for A, then start voting B
         block.body.eth1_data.block_hash = b if i * 2 > spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
-        sign_block(spec, state, block)
-        state_transition_and_sign_block(spec, state, block)
-        blocks.append(block)
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        blocks.append(signed_block)
 
     assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
     assert state.eth1_data.block_hash == a
@@ -454,9 +466,8 @@ def test_eth1_data_votes_consensus(spec, state):
     # transition to next eth1 voting period
     block = build_empty_block_for_next_slot(spec, state)
     block.body.eth1_data.block_hash = c
-    sign_block(spec, state, block)
-    state_transition_and_sign_block(spec, state, block)
-    blocks.append(block)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    blocks.append(signed_block)
 
     yield 'blocks', blocks
     yield 'post', state
@@ -477,7 +488,6 @@ def test_eth1_data_votes_no_consensus(spec, state):
     pre_eth1_hash = state.eth1_data.block_hash
 
     offset_block = build_empty_block(spec, state, slot=spec.SLOTS_PER_ETH1_VOTING_PERIOD - 1)
-    sign_block(spec, state, offset_block)
     state_transition_and_sign_block(spec, state, offset_block)
     yield 'pre', state
 
@@ -490,9 +500,8 @@ def test_eth1_data_votes_no_consensus(spec, state):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for precisely 50% for A, then start voting B for other 50%
         block.body.eth1_data.block_hash = b if i * 2 >= spec.SLOTS_PER_ETH1_VOTING_PERIOD else a
-        sign_block(spec, state, block)
-        state_transition_and_sign_block(spec, state, block)
-        blocks.append(block)
+        signed_block = state_transition_and_sign_block(spec, state, block)
+        blocks.append(signed_block)
 
     assert len(state.eth1_data_votes) == spec.SLOTS_PER_ETH1_VOTING_PERIOD
     assert state.eth1_data.block_hash == pre_eth1_hash

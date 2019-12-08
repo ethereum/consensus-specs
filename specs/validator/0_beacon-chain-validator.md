@@ -110,8 +110,11 @@ To submit a deposit:
 
 - Pack the validator's [initialization parameters](#initialization) into `deposit_data`, a [`DepositData`](../core/0_beacon-chain.md#depositdata) SSZ object.
 - Let `amount` be the amount in Gwei to be deposited by the validator where `amount >= MIN_DEPOSIT_AMOUNT`.
-- Set `deposit_data.amount = amount`.
-- Let `signature` be the result of `bls_sign` of the `signing_root(deposit_data)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `compute_domain` will default to zeroes there).
+- Set `deposit_data.pubkey` to validator's `pubkey`.
+- Set `deposit_data.withdrawal_credentials` to `withdrawal_credentials`.
+- Set `deposit_data.amount` to `amount`.
+- Let `deposit_message` be a `DepositMessage` with all the `DepositData` contents except the `signature`.
+- Let `signature` be the result of `bls_sign` of the `hash_tree_root(deposit_message)` with `domain=compute_domain(DOMAIN_DEPOSIT)`. (Deposits are valid regardless of fork version, `compute_domain` will default to zeroes there).
 - Let `deposit_data_root` be `hash_tree_root(deposit_data)`.
 - Send a transaction on the Ethereum 1.0 chain to `DEPOSIT_CONTRACT_ADDRESS` executing `def deposit(pubkey: bytes[48], withdrawal_credentials: bytes[32], signature: bytes[96], deposit_data_root: bytes32)` along with a deposit of `amount` Gwei.
 
@@ -200,11 +203,13 @@ A validator has two primary responsibilities to the beacon chain: [proposing blo
 
 ### Block proposal
 
-A validator is expected to propose a [`BeaconBlock`](../core/0_beacon-chain.md#beaconblock) at the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator creates, signs, and broadcasts a `block` that is a child of `parent` that satisfies a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
+A validator is expected to propose a [`SignedBeaconBlock`](../core/0_beacon-chain.md#signedbeaconblock) at the beginning of any slot during which `is_proposer(state, validator_index)` returns `True`. To propose, the validator selects the `BeaconBlock`, `parent`, that in their view of the fork choice is the head of the chain during `slot - 1`. The validator creates, signs, and broadcasts a `block` that is a child of `parent` that satisfies a valid [beacon chain state transition](../core/0_beacon-chain.md#beacon-chain-state-transition-function).
 
 There is one proposer per slot, so if there are N active validators any individual validator will on average be assigned to propose once per N slots (e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
 
-#### Block header
+#### Preparing for a `BeaconBlock`
+
+To construct a `BeaconBlockBody`, a `block` (`BeaconBlock`) is defined with the necessary context for a block proposal:
 
 ##### Slot
 
@@ -214,17 +219,14 @@ Set `block.slot = slot` where `slot` is the current slot at which the validator 
 
 ##### Parent root
 
-Set `block.parent_root = signing_root(parent)`.
+Set `block.parent_root = hash_tree_root(parent)`.
 
-##### State root
 
-Set `block.state_root = hash_tree_root(state)` of the resulting `state` of the `parent -> block` state transition.
-
-*Note*: To calculate `state_root`, the validator should first run the state transition function on an unsigned `block` containing a stub for the `state_root`. It is useful to be able to run a state transition function that does _not_ validate signatures or state root for this purpose.
+#### Constructing the `BeaconBlockBody`
 
 ##### Randao reveal
 
-Set `block.randao_reveal = epoch_signature` where `epoch_signature` is obtained from:
+Set `block.body.randao_reveal = epoch_signature` where `epoch_signature` is obtained from:
 
 ```python
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
@@ -234,11 +236,11 @@ def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) ->
 
 ##### Eth1 Data
 
-The `block.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
+The `block.body.eth1_data` field is for block proposers to vote on recent Eth1 data. This recent data contains an Eth1 block hash as well as the associated deposit root (as calculated by the `get_deposit_root()` method of the deposit contract) and deposit count after execution of the corresponding Eth1 block. If over half of the block proposers in the current Eth1 voting period vote for the same `eth1_data` then `state.eth1_data` updates at the end of the voting period. Each deposit in `block.body.deposits` must verify against `state.eth1_data.eth1_deposit_root`.
 
 Let `get_eth1_data(distance: uint64) -> Eth1Data` be the (subjective) function that returns the Eth1 data at distance `distance` relative to the Eth1 head at the start of the current Eth1 voting period. Let `previous_eth1_distance` be the distance relative to the Eth1 block corresponding to `eth1_data.block_hash` found in the state at the _start_ of the current Eth1 voting period. Note that `eth1_data` can be updated in the middle of a voting period and thus the starting `eth1_data.block_hash` must be stored separately.
 
-An honest block proposer sets `block.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
+An honest block proposer sets `block.body.eth1_data = get_eth1_vote(state, previous_eth1_distance)` where:
 
 ```python
 def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Data:
@@ -259,18 +261,6 @@ def get_eth1_vote(state: BeaconState, previous_eth1_distance: uint64) -> Eth1Dat
         default=get_eth1_data(ETH1_FOLLOW_DISTANCE),
     )
 ```
-
-##### Signature
-
-Set `header.signature = block_signature` where `block_signature` is obtained from:
-
-```python
-def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-    return bls_sign(privkey, signing_root(header), domain)
-```
-
-#### Block body
 
 ##### Proposer slashings
 
@@ -294,6 +284,33 @@ The `proof` for each deposit must be constructed against the deposit root contai
 
 Up to `MAX_VOLUNTARY_EXITS`, [`VoluntaryExit`](../core/0_beacon-chain.md#voluntaryexit) objects can be included in the `block`. The exits must satisfy the verification conditions found in [exits processing](../core/0_beacon-chain.md#voluntary-exits).
 
+
+#### Packaging into a `SignedBeaconBlock`
+
+##### State root
+
+Set `block.state_root = hash_tree_root(state)` of the resulting `state` of the `parent -> block` state transition.
+
+*Note*: To calculate `state_root`, the validator should first run the state transition function on an unsigned `block` containing a stub for the `state_root`.
+It is useful to be able to run a state transition function (working on a copy of the state) that does _not_ validate signatures or state root for this purpose:
+
+```python
+def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
+    process_slots(state, block.slot)
+    process_block(state, block)
+    return hash_tree_root(state)
+```
+
+##### Signature
+
+`signed_block = SignedBeaconBlock(message=block, signature=block_signature)`, where `block_signature` is obtained from:
+
+```python
+def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
+    return bls_sign(privkey, hash_tree_root(header), domain)
+```
+
 ### Attesting
 
 A validator is expected to create, sign, and broadcast an attestation during each epoch. The `committee`, assigned `index`, and assigned `slot` for which the validator performs this role during an epoch are defined by `get_committee_assignment(state, epoch, validator_index)`.
@@ -316,7 +333,7 @@ First, the validator should construct `attestation_data`, an [`AttestationData`]
 
 ##### LMD GHOST vote
 
-Set `attestation_data.beacon_block_root = signing_root(head_block)`.
+Set `attestation_data.beacon_block_root = hash_tree_root(head_block)`.
 
 ##### FFG vote
 
@@ -326,7 +343,7 @@ Set `attestation_data.beacon_block_root = signing_root(head_block)`.
 *Note*: `epoch_boundary_block_root` can be looked up in the state using:
 
 - Let `start_slot = compute_start_slot_at_epoch(get_current_epoch(head_state))`.
-- Let `epoch_boundary_block_root = signing_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
+- Let `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(state, start_slot)`.
 
 #### Construct attestation
 
