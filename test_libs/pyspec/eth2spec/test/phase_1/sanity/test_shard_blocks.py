@@ -140,7 +140,7 @@ def test_skipped_slots(spec, state):
     assert shard_state.slot == block.slot
     latest_block_header = deepcopy(shard_state.latest_block_header)
     latest_block_header.state_root = shard_state.hash_tree_root()
-    assert latest_block_header.signing_root() == block.signing_root()
+    assert latest_block_header.hash_tree_root() == block.hash_tree_root()
 
 
 @with_all_phases_except(['phase0'])

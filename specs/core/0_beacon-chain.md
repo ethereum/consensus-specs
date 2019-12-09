@@ -30,6 +30,7 @@
             - [`PendingAttestation`](#pendingattestation)
             - [`Eth1Data`](#eth1data)
             - [`HistoricalBatch`](#historicalbatch)
+            - [`DepositMessage`](#depositmessage)
             - [`DepositData`](#depositdata)
             - [`BeaconBlockHeader`](#beaconblockheader)
         - [Beacon operations](#beacon-operations)
@@ -43,6 +44,10 @@
             - [`BeaconBlock`](#beaconblock)
         - [Beacon state](#beacon-state)
             - [`BeaconState`](#beaconstate)
+        - [Signed envelopes](#signed-envelopes)
+            - [`SignedVoluntaryExit`](#signedvoluntaryexit)
+            - [`SignedBeaconBlock`](#signedbeaconblock)
+            - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
     - [Helper functions](#helper-functions)
         - [Math](#math)
             - [`integer_squareroot`](#integer_squareroot)
@@ -52,7 +57,6 @@
         - [Crypto](#crypto)
             - [`hash`](#hash)
             - [`hash_tree_root`](#hash_tree_root)
-            - [`signing_root`](#signing_root)
             - [`bls_verify`](#bls_verify)
             - [`bls_verify_multiple`](#bls_verify_multiple)
         - [Predicates](#predicates)
@@ -137,7 +141,7 @@ We define the following Python custom types for type hinting and readability:
 | `CommitteeIndex` | `uint64` | a committee index at a slot |
 | `ValidatorIndex` | `uint64` | a validator registry index |
 | `Gwei` | `uint64` | an amount in Gwei |
-| `Hash` | `Bytes32` | a hash |
+| `Root` | `Bytes32` | a Merkle root |
 | `Version` | `Bytes4` | a fork version number |
 | `TagType` | `Bytes4` | a Tag type |
 | `Tag` | `Bytes8` | a signature tag |
@@ -171,7 +175,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `2**2` (= 4) |
 | `CHURN_LIMIT_QUOTIENT` | `2**16` (= 65,536) |
 | `SHUFFLE_ROUND_COUNT` | `90` |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**16` (= 65,536) |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 
 - For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
@@ -275,7 +279,7 @@ class Fork(Container):
 ```python
 class Checkpoint(Container):
     epoch: Epoch
-    root: Hash
+    root: Root
 ```
 
 #### `Validator`
@@ -283,7 +287,7 @@ class Checkpoint(Container):
 ```python
 class Validator(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Hash  # Commitment to pubkey for withdrawals
+    withdrawal_credentials: Bytes32  # Commitment to pubkey for withdrawals
     effective_balance: Gwei  # Balance at stake
     slashed: boolean
     # Status epochs
@@ -300,7 +304,7 @@ class AttestationData(Container):
     slot: Slot
     index: CommitteeIndex
     # LMD GHOST vote
-    beacon_block_root: Hash
+    beacon_block_root: Root
     # FFG vote
     source: Checkpoint
     target: Checkpoint
@@ -329,17 +333,26 @@ class PendingAttestation(Container):
 
 ```python
 class Eth1Data(Container):
-    deposit_root: Hash
+    deposit_root: Root
     deposit_count: uint64
-    block_hash: Hash
+    block_hash: Bytes32
 ```
 
 #### `HistoricalBatch`
 
 ```python
 class HistoricalBatch(Container):
-    block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+```
+
+#### `DepositMessage`
+
+```python
+class DepositMessage(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: Gwei
 ```
 
 #### `DepositData`
@@ -347,9 +360,9 @@ class HistoricalBatch(Container):
 ```python
 class DepositData(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Hash
+    withdrawal_credentials: Bytes32
     amount: Gwei
-    signature: BLSSignature
+    signature: BLSSignature  # signing over DepositMessage
 ```
 
 #### `BeaconBlockHeader`
@@ -357,10 +370,9 @@ class DepositData(Container):
 ```python
 class BeaconBlockHeader(Container):
     slot: Slot
-    parent_root: Hash
-    state_root: Hash
-    body_root: Hash
-    signature: BLSSignature
+    parent_root: Root
+    state_root: Root
+    body_root: Root
 ```
 
 ### Beacon operations
@@ -370,8 +382,8 @@ class BeaconBlockHeader(Container):
 ```python
 class ProposerSlashing(Container):
     proposer_index: ValidatorIndex
-    header_1: BeaconBlockHeader
-    header_2: BeaconBlockHeader
+    signed_header_1: SignedBeaconBlockHeader
+    signed_header_2: SignedBeaconBlockHeader
 ```
 
 #### `AttesterSlashing`
@@ -395,7 +407,7 @@ class Attestation(Container):
 
 ```python
 class Deposit(Container):
-    proof: Vector[Hash, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit data list root
+    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit data list root
     data: DepositData
 ```
 
@@ -405,7 +417,6 @@ class Deposit(Container):
 class VoluntaryExit(Container):
     epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
-    signature: BLSSignature
 ```
 
 ### Beacon blocks
@@ -422,7 +433,7 @@ class BeaconBlockBody(Container):
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
 ```
 
 #### `BeaconBlock`
@@ -430,10 +441,9 @@ class BeaconBlockBody(Container):
 ```python
 class BeaconBlock(Container):
     slot: Slot
-    parent_root: Hash
-    state_root: Hash
+    parent_root: Root
+    state_root: Root
     body: BeaconBlockBody
-    signature: BLSSignature
 ```
 
 ### Beacon state
@@ -448,9 +458,9 @@ class BeaconState(Container):
     fork: Fork
     # History
     latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Hash, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Hash, HISTORICAL_ROOTS_LIMIT]
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     # Eth1
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, SLOTS_PER_ETH1_VOTING_PERIOD]
@@ -459,7 +469,7 @@ class BeaconState(Container):
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
     # Randomness
-    randao_mixes: Vector[Hash, EPOCHS_PER_HISTORICAL_VECTOR]
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     # Slashings
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
     # Attestations
@@ -470,6 +480,34 @@ class BeaconState(Container):
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
+```
+
+### Signed envelopes
+
+Some messages in the protocol are wrapped in an envelop to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
+
+#### `SignedVoluntaryExit`
+
+```python
+class SignedVoluntaryExit(Container):
+    message: VoluntaryExit
+    signature: BLSSignature
+```
+
+#### `SignedBeaconBlock`
+
+```python
+class SignedBeaconBlock(Container):
+    message: BeaconBlock
+    signature: BLSSignature
+```
+
+#### `SignedBeaconBlockHeader`
+
+```python
+class SignedBeaconBlockHeader(Container):
+    message: BeaconBlockHeader
+    signature: BLSSignature
 ```
 
 ## Helper functions
@@ -527,15 +565,11 @@ def bytes_to_int(data: bytes) -> uint64:
 
 #### `hash`
 
-`def hash(data: bytes) -> Hash` is SHA256.
+`def hash(data: bytes) -> Bytes32` is SHA256.
 
 #### `hash_tree_root`
 
-`def hash_tree_root(object: SSZSerializable) -> Hash` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../simple-serialize.md#merkleization).
-
-#### `signing_root`
-
-`def signing_root(object: Container) -> Hash` is a function for computing signing messages, as defined in the [SSZ spec](../simple-serialize.md#self-signed-containers).
+`def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../simple-serialize.md#merkleization).
 
 #### `bls_verify`
 
@@ -611,7 +645,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
 #### `is_valid_merkle_branch`
 
 ```python
-def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: uint64, index: uint64, root: Hash) -> bool:
+def is_valid_merkle_branch(leaf: Bytes32, branch: Sequence[Bytes32], depth: uint64, index: uint64, root: Root) -> bool:
     """
     Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
     """
@@ -629,7 +663,7 @@ def is_valid_merkle_branch(leaf: Hash, branch: Sequence[Hash], depth: uint64, in
 #### `compute_shuffled_index`
 
 ```python
-def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Hash) -> ValidatorIndex:
+def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Bytes32) -> ValidatorIndex:
     """
     Return the shuffled validator index corresponding to ``seed`` (and ``index_count``).
     """
@@ -652,7 +686,7 @@ def compute_shuffled_index(index: ValidatorIndex, index_count: uint64, seed: Has
 #### `compute_proposer_index`
 
 ```python
-def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Hash) -> ValidatorIndex:
+def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
     """
     Return from ``indices`` a random index sampled by effective balance.
     """
@@ -672,7 +706,7 @@ def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex]
 
 ```python
 def compute_committee(indices: Sequence[ValidatorIndex],
-                      seed: Hash,
+                      seed: Bytes32,
                       index: uint64,
                       count: uint64) -> Sequence[ValidatorIndex]:
     """
@@ -749,7 +783,7 @@ def get_previous_epoch(state: BeaconState) -> Epoch:
 #### `get_block_root`
 
 ```python
-def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
+def get_block_root(state: BeaconState, epoch: Epoch) -> Root:
     """
     Return the block root at the start of a recent ``epoch``.
     """
@@ -759,7 +793,7 @@ def get_block_root(state: BeaconState, epoch: Epoch) -> Hash:
 #### `get_block_root_at_slot`
 
 ```python
-def get_block_root_at_slot(state: BeaconState, slot: Slot) -> Hash:
+def get_block_root_at_slot(state: BeaconState, slot: Slot) -> Root:
     """
     Return the block root at a recent ``slot``.
     """
@@ -770,7 +804,7 @@ def get_block_root_at_slot(state: BeaconState, slot: Slot) -> Hash:
 #### `get_randao_mix`
 
 ```python
-def get_randao_mix(state: BeaconState, epoch: Epoch) -> Hash:
+def get_randao_mix(state: BeaconState, epoch: Epoch) -> Bytes32:
     """
     Return the randao mix at a recent ``epoch``.
     """
@@ -801,7 +835,7 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
 #### `get_seed`
 
 ```python
-def get_seed(state: BeaconState, epoch: Epoch, tag_type: TagType) -> Hash:
+def get_seed(state: BeaconState, epoch: Epoch, tag_type: TagType) -> Bytes32:
     """
     Return the seed at ``epoch``.
     """
@@ -996,7 +1030,7 @@ Before the Ethereum 2.0 genesis has been triggered, and for every Ethereum 1.0 b
 - `deposits` is the sequence of all deposits, ordered chronologically, up to (and including) the block with hash `eth1_block_hash`
 
 ```python
-def initialize_beacon_state_from_eth1(eth1_block_hash: Hash,
+def initialize_beacon_state_from_eth1(eth1_block_hash: Bytes32,
                                       eth1_timestamp: uint64,
                                       deposits: Sequence[Deposit]) -> BeaconState:
     state = BeaconState(
@@ -1048,16 +1082,25 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
-def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root: bool=False) -> BeaconState:
+def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> BeaconState:
     # Process slots (including those with no blocks) since block
-    process_slots(state, block.slot)
+    process_slots(state, signed_block.message.slot)
+    # Verify signature
+    if validate_result:
+        assert verify_block_signature(state, signed_block)
     # Process block
-    process_block(state, block)
-    # Validate state root (`validate_state_root == True` in production)
-    if validate_state_root:
-        assert block.state_root == hash_tree_root(state)
+    process_block(state, signed_block.message)
+    if validate_result:
+        assert signed_block.message.state_root == hash_tree_root(state)  # Validate state root
     # Return post-state
     return state
+```
+
+```python
+def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
+    proposer = state.validators[get_beacon_proposer_index(state)]
+    tag = get_tag(state, TAG_BEACON_PROPOSER)
+    return bls_verify(proposer.pubkey, hash_tree_root(signed_block.message), signed_block.signature, tag)
 ```
 
 ```python
@@ -1080,7 +1123,7 @@ def process_slot(state: BeaconState) -> None:
     if state.latest_block_header.state_root == Bytes32():
         state.latest_block_header.state_root = previous_state_root
     # Cache block root
-    previous_block_root = signing_root(state.latest_block_header)
+    previous_block_root = hash_tree_root(state.latest_block_header)
     state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
 ```
 
@@ -1340,20 +1383,17 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
     # Verify that the parent matches
-    assert block.parent_root == signing_root(state.latest_block_header)
+    assert block.parent_root == hash_tree_root(state.latest_block_header)
     # Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
         # `state_root` is zeroed and overwritten in the next `process_slot` call
         body_root=hash_tree_root(block.body),
-        # `signature` is zeroed
     )
     # Verify proposer is not slashed
     proposer = state.validators[get_beacon_proposer_index(state)]
     assert not proposer.slashed
-    # Verify proposer signature
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_tag(state, TAG_BEACON_PROPOSER))
 ```
 
 #### RANDAO
@@ -1403,15 +1443,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     proposer = state.validators[proposer_slashing.proposer_index]
     # Verify slots match
-    assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
+    assert proposer_slashing.signed_header_1.message.slot == proposer_slashing.signed_header_2.message.slot
     # But the headers are different
-    assert proposer_slashing.header_1 != proposer_slashing.header_2
+    assert proposer_slashing.signed_header_1.message != proposer_slashing.signed_header_2.message
     # Check proposer is slashable
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
-    for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        tag = get_tag(state, TAG_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-        assert bls_verify(proposer.pubkey, signing_root(header), header.signature, tag)
+    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+        tag = get_tag(state, TAG_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
+        assert bls_verify(proposer.pubkey, hash_tree_root(signed_header.message), signed_header.signature, tag)
 
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -1487,9 +1527,13 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) for new validators.
         # Note: The deposit contract does not check signatures.
-        # Note: Deposits are valid across forks, thus the deposit tag is retrieved directly from `compute_tag`.
+        # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_tag`.
         tag = compute_tag(TAG_DEPOSIT)
-        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, tag):
+        deposit_message = DepositMessage(
+            pubkey=deposit.data.pubkey,
+            withdrawal_credentials=deposit.data.withdrawal_credentials,
+            amount=deposit.data.amount)
+        if not bls_verify(pubkey, hash_tree_root(deposit_message), deposit.data.signature, tag):
             return
 
         # Add validator and balance entries
@@ -1512,19 +1556,20 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 ##### Voluntary exits
 
 ```python
-def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
-    validator = state.validators[exit.validator_index]
+def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
+    voluntary_exit = signed_voluntary_exit.message
+    validator = state.validators[voluntary_exit.validator_index]
     # Verify the validator is active
     assert is_active_validator(validator, get_current_epoch(state))
     # Verify the validator has not yet exited
     assert validator.exit_epoch == FAR_FUTURE_EPOCH
     # Exits must specify an epoch when they become valid; they are not valid before then
-    assert get_current_epoch(state) >= exit.epoch
+    assert get_current_epoch(state) >= voluntary_exit.epoch
     # Verify the validator has been active long enough
     assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
-    tag = get_tag(state, TAG_VOLUNTARY_EXIT, exit.epoch)
-    assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, tag)
+    tag = get_tag(state, TAG_VOLUNTARY_EXIT, voluntary_exit.epoch)
+    assert bls_verify(validator.pubkey, hash_tree_root(voluntary_exit), signed_voluntary_exit.signature, tag)
     # Initiate exit
-    initiate_validator_exit(state, exit.validator_index)
+    initiate_validator_exit(state, voluntary_exit.validator_index)
 ```

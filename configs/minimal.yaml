@@ -28,6 +28,18 @@ MIN_GENESIS_TIME: 1578009600
 # 2**1 (= 1)
 SAFE_SLOTS_TO_UPDATE_JUSTIFIED: 2
 
+#
+# Validator
+# ---------------------------------------------------------------
+# [customized] process deposits more quickly, but insecure
+ETH1_FOLLOW_DISTANCE: 16
+# 2**4 (= 16)
+TARGET_AGGREGATORS_PER_COMMITTEE: 16
+# 2**0 (= 1)
+RANDOM_SUBNETS_PER_VALIDATOR: 1
+# 2**8 (= 256)
+EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION: 256
+
 
 # Deposit contract
 # ---------------------------------------------------------------

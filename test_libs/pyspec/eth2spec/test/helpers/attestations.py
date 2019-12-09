@@ -1,6 +1,7 @@
 from typing import List
 
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot, transition_unsigned_block, \
+    build_empty_block
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
 from eth2spec.utils.ssz.ssz_typing import Bitlist
@@ -122,10 +123,8 @@ def fill_aggregate_attestation(spec, state, attestation, signed=False):
 
 
 def add_attestations_to_state(spec, state, attestations, slot):
-    block = build_empty_block_for_next_slot(spec, state)
-    block.slot = slot
+    block = build_empty_block(spec, state, slot)
     for attestation in attestations:
         block.body.attestations.append(attestation)
     spec.process_slots(state, block.slot)
-    sign_block(spec, state, block)
-    spec.state_transition(state, block)
+    transition_unsigned_block(spec, state, block)

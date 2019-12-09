@@ -208,13 +208,13 @@ def test_bytesn_subclass():
     assert issubclass(ByteVector[32](b'\xab' * 32).type(), Bytes32)
     assert issubclass(ByteVector[32], Bytes32)
 
-    class Hash(Bytes32):
+    class Root(Bytes32):
         pass
 
-    assert isinstance(Hash(b'\xab' * 32), Bytes32)
-    assert not isinstance(Hash(b'\xab' * 32), Bytes48)
-    assert issubclass(Hash(b'\xab' * 32).type(), Bytes32)
-    assert issubclass(Hash, Bytes32)
+    assert isinstance(Root(b'\xab' * 32), Bytes32)
+    assert not isinstance(Root(b'\xab' * 32), Bytes48)
+    assert issubclass(Root(b'\xab' * 32).type(), Bytes32)
+    assert issubclass(Root, Bytes32)
 
     assert not issubclass(Bytes48, Bytes32)
 
