@@ -281,7 +281,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-        store.best_justified_checkpoint = state.current_justified_checkpoint
+        if state.current_justified_checkpoint.epoch > store.best_justified_checkpoint.epoch:
+            store.best_justified_checkpoint = state.current_justified_checkpoint
         if should_update_justified_checkpoint(store, state.current_justified_checkpoint):
             store.justified_checkpoint = state.current_justified_checkpoint
 
