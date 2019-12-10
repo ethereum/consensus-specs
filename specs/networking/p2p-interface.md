@@ -19,7 +19,7 @@ It consists of four main sections:
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
-  - [Protocol negotiation](#protocol-negotiation)
+  - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Eth2 network interaction domains](#eth2-network-interaction-domains)
   - [Configuration](#configuration)
@@ -29,7 +29,7 @@ It consists of four main sections:
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
   - [Multiplexing](#multiplexing-1)
-  - [Protocol negotiation](#protocol-negotiation-1)
+  - [Protocol Negotiation](#protocol-negotiation-1)
   - [Encryption](#encryption)
   - [Gossipsub](#gossipsub)
   - [Req/Resp](#reqresp)
@@ -567,7 +567,7 @@ Conscious of that, the libp2p community conceptualized [mplex](https://github.co
 
 Overlay multiplexers are not necessary with QUIC since the protocol provides native multiplexing, but they need to be layered atop TCP, WebSockets, and other transports that lack such support.
 
-## Protocol negotiation
+## Protocol Negotiation
 
 ### When is multiselect 2.0 due and why are we using it for mainnet?
 
