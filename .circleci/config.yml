@@ -110,7 +110,7 @@ jobs:
     steps:
       - run:
           name: Check table of contents
-          command: npm install -g doctoc && make check_toc
+          command: sudo npm install -g doctoc && make check_toc
   lint:
     docker:
       - image: circleci/python:3.6
