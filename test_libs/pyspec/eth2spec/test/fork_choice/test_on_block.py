@@ -168,7 +168,7 @@ def test_on_block_update_justified_checkpoint_within_safe_slots(spec, state):
 
 @with_all_phases
 @spec_state_test
-def test_on_block_outside_safe_slots_and_old_block(spec, state):
+def test_on_block_outside_safe_slots_and_multiple_better_justified(spec, state):
     # Initialization
     store = spec.get_genesis_store(state)
     time = 100
@@ -187,20 +187,30 @@ def test_on_block_outside_safe_slots_and_old_block(spec, state):
     just_block.slot = spec.compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     store.blocks[just_block.hash_tree_root()] = just_block
 
-    # Mock the justified checkpoint
-    just_state = store.block_states[last_block_root]
-    new_justified = spec.Checkpoint(
-        epoch=just_state.current_justified_checkpoint.epoch + 1,
-        root=just_block.hash_tree_root(),
-    )
-    just_state.current_justified_checkpoint = new_justified
-
-    block = build_empty_block_for_next_slot(spec, just_state)
-    signed_block = state_transition_and_sign_block(spec, deepcopy(just_state), block)
-
+    # Step time past safe slots
     spec.on_tick(store, store.time + spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED * spec.SECONDS_PER_SLOT)
     assert spec.get_current_slot(store) % spec.SLOTS_PER_EPOCH >= spec.SAFE_SLOTS_TO_UPDATE_JUSTIFIED
-    run_on_block(spec, store, signed_block)
 
-    assert store.justified_checkpoint != new_justified
-    assert store.best_justified_checkpoint == new_justified
+    previously_justified = store.justified_checkpoint
+
+    # Add a series of new blocks with "better" justifications
+    best_justified_checkpoint = spec.Checkpoint(epoch=0)
+    for i in range(3, 0, -1):
+        just_state = store.block_states[last_block_root]
+        new_justified = spec.Checkpoint(
+            epoch=previously_justified.epoch + i,
+            root=just_block.hash_tree_root(),
+        )
+        if new_justified.epoch > best_justified_checkpoint.epoch:
+            best_justified_checkpoint = new_justified
+
+        just_state.current_justified_checkpoint = new_justified
+
+        block = build_empty_block_for_next_slot(spec, just_state)
+        signed_block = state_transition_and_sign_block(spec, deepcopy(just_state), block)
+
+        run_on_block(spec, store, signed_block)
+
+    assert store.justified_checkpoint == previously_justified
+    # ensure the best from the series was stored
+    assert store.best_justified_checkpoint == best_justified_checkpoint
