@@ -1311,17 +1311,16 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))
 
-    # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
+    # Queue validators eligible for activation and not yet dequeued for activation prior
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
         if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
-        and validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
     ], key=lambda index: state.validators[index].activation_eligibility_epoch)
-    # Dequeued validators for activation up to churn limit (without resetting activation epoch)
+    # Dequeued validators for activation up to churn limit
     for index in activation_queue[:get_validator_churn_limit(state)]:
         validator = state.validators[index]
-        if validator.activation_epoch == FAR_FUTURE_EPOCH:
-            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
