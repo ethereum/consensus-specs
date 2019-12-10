@@ -35,7 +35,7 @@ Eth2 treats all the functions defined by [`draft-irtf-cfrg-bls-signature-00`](ht
 
 ### `VALID` and `INVALID`
 
-The values `VALID` and `INVALID` used by the  IETF BLS specification are mapped to `True` and `False` respectively. This is done for notational convenience here, but may not be the case for all BLS implementations.
+The values `VALID` and `INVALID` used by the IETF BLS specification are mapped to `True` and `False` respectively. This is done for notational convenience here, but may not be the case for all BLS implementations.
 
 ### `Sign`
 
