@@ -13,9 +13,15 @@
             - [`LatestMessage`](#latestmessage)
             - [`Store`](#store)
             - [`get_genesis_store`](#get_genesis_store)
+            - [`get_slots_since_genesis`](#get_slots_since_genesis)
+            - [`get_current_slot`](#get_current_slot)
+            - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
             - [`get_ancestor`](#get_ancestor)
             - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
+            - [`filter_block_tree`](#filter_block_tree)
+            - [`get_filtered_block_tree`](#get_filtered_block_tree)
             - [`get_head`](#get_head)
+            - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
         - [Handlers](#handlers)
             - [`on_tick`](#on_tick)
             - [`on_block`](#on_block)
@@ -96,11 +102,18 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
     )
 ```
 
+#### `get_slots_since_genesis`
+
+```python
+def get_slots_since_genesis(store: Store) -> Slot:
+    return Slot((store.time - store.genesis_time) // SECONDS_PER_SLOT)
+```
+
 #### `get_current_slot`
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return Slot((store.time - store.genesis_time) // SECONDS_PER_SLOT)
+    return GENESIS_SLOT + get_slots_since_genesis(store)
 ```
 
 #### `compute_slots_since_epoch_start`
@@ -327,7 +340,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
-    assert store.time >= (attestation.data.slot + 1) * SECONDS_PER_SLOT
+    assert get_current_slot(store) >= attestation.data.slot + 1
 
     # Get state at the `target` to validate attestation and calculate the committees
     indexed_attestation = get_indexed_attestation(target_state, attestation)
