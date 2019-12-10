@@ -156,7 +156,9 @@ workflows:
       - test:
           requires:
             - install_pyspec_test
-      - table_of_contents
+      - table_of_contents:
+          requires:
+            - checkout_specs
       - lint:
           requires:
             - test
