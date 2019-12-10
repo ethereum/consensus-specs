@@ -46,7 +46,7 @@ Sign(SK: int, message: Bytes) -> BLSSignature
 ### `Aggregate`
 
 ```python
-Aggregate(signature_1: BLSSignature, ..., signature_n:BLSSignature) -> BLSSignature
+Aggregate(signature_1: BLSSignature, ..., signature_n: BLSSignature) -> BLSSignature
 ```
 
 ### `Verify`
@@ -70,7 +70,7 @@ This section specifies the functions that are exposed to, and used by the rest o
 ### `bls_sign`
 
 ```python
-def bls_sign(privkey: int, message_hash: Hash, tag: Tag) -> BLSSignature:
+def bls_sign(privkey: int, message_hash: Bytes32, tag: Tag) -> BLSSignature:
     return Sign(privkey, message_hash + tag)
 ```
 
@@ -84,13 +84,13 @@ def bls_aggregate_signatures(signatures: List[BLSSignature]) -> BLSSignature:
 ### `bls_verify`
 
 ```python
-def bls_verify(pubkey: BLSPubkey, message_hash: Hash, signature: BLSSignature, tag: Tag) -> bool:
+def bls_verify(pubkey: BLSPubkey, message_hash: Bytes32, signature: BLSSignature, tag: Tag) -> bool:
     return Verify(pubkey, message_hash + tag, signature)
 ```
 
 ### `bls_verify_multiple`
 
 ```python
-def bls_verify_multiple(pubkeys: List[BLSPubkey],  message_hash: Hash, signature: BLSSignature, tag: Tag) -> bool:
+def bls_verify_multiple(pubkeys: List[BLSPubkey], message_hash: Hash, signature: BLSSignature, tag: Tag) -> bool:
     return FastAggregateVerify(*pubkeys, message_hash + tag, signature)
 ```
