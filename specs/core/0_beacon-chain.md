@@ -484,7 +484,7 @@ class BeaconState(Container):
 
 ### Signed envelopes
 
-Some messages in the protocol are wrapped in an envelop to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
+Some messages in the protocol are wrapped in an envelope to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
 
 #### `SignedVoluntaryExit`
 
