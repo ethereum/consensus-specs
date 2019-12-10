@@ -65,6 +65,34 @@ def test_activation_queue_sorting(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_activation_queue_efficiency(spec, state):
+    churn_limit = spec.get_validator_churn_limit(state)
+    mock_activations = churn_limit * 2
+
+    epoch = spec.get_current_epoch(state)
+    for i in range(mock_activations):
+        mock_deposit(spec, state, i)
+        state.validators[i].activation_eligibility_epoch = epoch + 1
+
+    # Run first registry update. Do not yield test vectors
+    for _ in run_process_registry_updates(spec, state):
+        pass
+
+    # Half should churn in first run of registry update
+    for i in range(mock_activations):
+        if i < mock_activations // 2:
+            assert state.validators[i].activation_epoch < spec.FAR_FUTURE_EPOCH
+        else:
+            assert state.validators[i].activation_epoch == spec.FAR_FUTURE_EPOCH
+
+    # Second half should churn in second run of registry update
+    yield from run_process_registry_updates(spec, state)
+    for i in range(mock_activations):
+        assert state.validators[i].activation_epoch < spec.FAR_FUTURE_EPOCH
+
+
+@with_all_phases
+@spec_state_test
 def test_ejection(spec, state):
     index = 0
     assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))

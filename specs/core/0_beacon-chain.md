@@ -1311,7 +1311,7 @@ def process_registry_updates(state: BeaconState) -> None:
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))
 
-    # Queue validators eligible for activation and not yet dequeued for activation prior
+    # Queue validators eligible for activation and not yet dequeued for activation
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
         if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
