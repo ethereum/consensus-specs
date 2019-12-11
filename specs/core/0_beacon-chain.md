@@ -601,6 +601,21 @@ def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
     return (not validator.slashed) and (validator.activation_epoch <= epoch < validator.withdrawable_epoch)
 ```
 
+#### `is_eligible_for_activation`
+
+```python
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible for activation.
+    """
+    return (
+        # Was placed in activation queue prior to most recent finalized epoch
+        validator.activation_eligibility_epoch < state.finalized_checkpoint.epoch
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
+    )
+```
+
 #### `is_slashable_attestation_data`
 
 ```python
@@ -1314,8 +1329,7 @@ def process_registry_updates(state: BeaconState) -> None:
     # Queue validators eligible for activation and not yet dequeued for activation
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
-        if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
-        and validator.activation_epoch == FAR_FUTURE_EPOCH
+        if is_eligible_for_activation(state, validator)
     ], key=lambda index: state.validators[index].activation_eligibility_epoch)
     # Dequeued validators for activation up to churn limit
     for index in activation_queue[:get_validator_churn_limit(state)]:
