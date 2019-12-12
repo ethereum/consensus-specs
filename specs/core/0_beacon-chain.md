@@ -61,6 +61,8 @@
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [Predicates](#predicates)
             - [`is_active_validator`](#is_active_validator)
+            - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
+            - [`is_eligible_for_activation`](#is_eligible_for_activation)
             - [`is_slashable_validator`](#is_slashable_validator)
             - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
             - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
@@ -591,16 +593,6 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     return validator.activation_epoch <= epoch < validator.exit_epoch
 ```
 
-#### `is_slashable_validator`
-
-```python
-def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
-    """
-    Check if ``validator`` is slashable.
-    """
-    return (not validator.slashed) and (validator.activation_epoch <= epoch < validator.withdrawable_epoch)
-```
-
 #### `is_eligible_for_activation_queue`
 
 ```python
@@ -613,7 +605,6 @@ def is_eligible_for_activation_queue(validator: Validator) -> bool:
         and validator.effective_balance == MAX_EFFECTIVE_BALANCE
     )
 ```
-
 
 #### `is_eligible_for_activation`
 
@@ -628,6 +619,16 @@ def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool
         # Has not yet been activated
         and validator.activation_epoch == FAR_FUTURE_EPOCH
     )
+```
+
+#### `is_slashable_validator`
+
+```python
+def is_slashable_validator(validator: Validator, epoch: Epoch) -> bool:
+    """
+    Check if ``validator`` is slashable.
+    """
+    return (not validator.slashed) and (validator.activation_epoch <= epoch < validator.withdrawable_epoch)
 ```
 
 #### `is_slashable_attestation_data`
