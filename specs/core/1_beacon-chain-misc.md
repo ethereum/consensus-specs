@@ -3,29 +3,31 @@
 ## Table of contents
 
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Phase 1 miscellaneous beacon chain changes](#phase-1-miscellaneous-beacon-chain-changes)
-    - [Table of contents](#table-of-contents)
-    - [Configuration](#configuration)
-    - [Containers](#containers)
-        - [`CompactCommittee`](#compactcommittee)
-        - [`ShardReceiptDelta`](#shardreceiptdelta)
-        - [`ShardReceiptProof`](#shardreceiptproof)
-    - [Helper functions](#helper-functions)
-        - [`pack_compact_validator`](#pack_compact_validator)
-        - [`unpack_compact_validator`](#unpack_compact_validator)
-        - [`committee_to_compact_committee`](#committee_to_compact_committee)
-        - [`verify_merkle_proof`](#verify_merkle_proof)
-        - [`compute_historical_state_generalized_index`](#compute_historical_state_generalized_index)
-        - [`get_generalized_index_of_crosslink_header`](#get_generalized_index_of_crosslink_header)
-        - [`process_shard_receipt_proof`](#process_shard_receipt_proof)
-    - [Changes](#changes)
-        - [Phase 0 container updates](#phase-0-container-updates)
-            - [`BeaconState`](#beaconstate)
-            - [`BeaconBlockBody`](#beaconblockbody)
-        - [Persistent committees](#persistent-committees)
-        - [Shard receipt processing](#shard-receipt-processing)
 
+- [Configuration](#configuration)
+- [Containers](#containers)
+    - [`CompactCommittee`](#compactcommittee)
+    - [`ShardReceiptDelta`](#shardreceiptdelta)
+    - [`ShardReceiptProof`](#shardreceiptproof)
+- [Helper functions](#helper-functions)
+    - [`pack_compact_validator`](#pack_compact_validator)
+    - [`unpack_compact_validator`](#unpack_compact_validator)
+    - [`committee_to_compact_committee`](#committee_to_compact_committee)
+    - [`verify_merkle_proof`](#verify_merkle_proof)
+    - [`compute_historical_state_generalized_index`](#compute_historical_state_generalized_index)
+    - [`get_generalized_index_of_crosslink_header`](#get_generalized_index_of_crosslink_header)
+    - [`process_shard_receipt_proof`](#process_shard_receipt_proof)
+- [Changes](#changes)
+  - [Phase 0 container updates](#phase-0-container-updates)
+    - [`BeaconState`](#beaconstate)
+    - [`BeaconBlockBody`](#beaconblockbody)
+  - [Persistent committees](#persistent-committees)
+  - [Shard receipt processing](#shard-receipt-processing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Configuration

@@ -4,30 +4,32 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [SimpleSerialize (SSZ)](#simpleserialize-ssz)
-    - [Table of contents](#table-of-contents)
-    - [Constants](#constants)
-    - [Typing](#typing)
-        - [Basic types](#basic-types)
-        - [Composite types](#composite-types)
-        - [Variable-size and fixed-size](#variable-size-and-fixed-size)
-        - [Aliases](#aliases)
-        - [Default values](#default-values)
-            - [`is_zero`](#is_zero)
-        - [Illegal types](#illegal-types)
-    - [Serialization](#serialization)
-        - [`uintN`](#uintn)
-        - [`boolean`](#boolean)
-        - [`null`](#null)
-        - [`Bitvector[N]`](#bitvectorn)
-        - [`Bitlist[N]`](#bitlistn)
-        - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
-    - [Deserialization](#deserialization)
-    - [Merkleization](#merkleization)
-    - [Summaries and expansions](#summaries-and-expansions)
-    - [Implementations](#implementations)
 
+- [Constants](#constants)
+- [Typing](#typing)
+  - [Basic types](#basic-types)
+  - [Composite types](#composite-types)
+  - [Variable-size and fixed-size](#variable-size-and-fixed-size)
+  - [Aliases](#aliases)
+  - [Default values](#default-values)
+    - [`is_zero`](#is_zero)
+  - [Illegal types](#illegal-types)
+- [Serialization](#serialization)
+  - [`uintN`](#uintn)
+  - [`boolean`](#boolean)
+  - [`null`](#null)
+  - [`Bitvector[N]`](#bitvectorn)
+  - [`Bitlist[N]`](#bitlistn)
+  - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
+- [Deserialization](#deserialization)
+- [Merkleization](#merkleization)
+- [Summaries and expansions](#summaries-and-expansions)
+- [Implementations](#implementations)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Constants

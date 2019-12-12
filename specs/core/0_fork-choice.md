@@ -4,29 +4,31 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice](#ethereum-20-phase-0----beacon-chain-fork-choice)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Fork choice](#fork-choice)
-        - [Helpers](#helpers)
-            - [`LatestMessage`](#latestmessage)
-            - [`Store`](#store)
-            - [`get_genesis_store`](#get_genesis_store)
-            - [`get_slots_since_genesis`](#get_slots_since_genesis)
-            - [`get_current_slot`](#get_current_slot)
-            - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
-            - [`get_ancestor`](#get_ancestor)
-            - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
-            - [`filter_block_tree`](#filter_block_tree)
-            - [`get_filtered_block_tree`](#get_filtered_block_tree)
-            - [`get_head`](#get_head)
-            - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
-        - [Handlers](#handlers)
-            - [`on_tick`](#on_tick)
-            - [`on_block`](#on_block)
-            - [`on_attestation`](#on_attestation)
 
+- [Introduction](#introduction)
+- [Fork choice](#fork-choice)
+  - [Configuration](#configuration)
+  - [Helpers](#helpers)
+    - [`LatestMessage`](#latestmessage)
+    - [`Store`](#store)
+    - [`get_genesis_store`](#get_genesis_store)
+    - [`get_current_slot`](#get_current_slot)
+    - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
+    - [`get_ancestor`](#get_ancestor)
+    - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
+    - [`filter_block_tree`](#filter_block_tree)
+    - [`get_filtered_block_tree`](#get_filtered_block_tree)
+    - [`get_head`](#get_head)
+    - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
+  - [Handlers](#handlers)
+    - [`on_tick`](#on_tick)
+    - [`on_block`](#on_block)
+    - [`on_attestation`](#on_attestation)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
