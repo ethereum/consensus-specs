@@ -62,6 +62,8 @@
     - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
   - [Predicates](#predicates)
     - [`is_active_validator`](#is_active_validator)
+    - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
+    - [`is_eligible_for_activation`](#is_eligible_for_activation)
     - [`is_slashable_validator`](#is_slashable_validator)
     - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
     - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)

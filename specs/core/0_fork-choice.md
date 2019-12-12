@@ -15,6 +15,7 @@
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
     - [`get_genesis_store`](#get_genesis_store)
+    - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
     - [`get_ancestor`](#get_ancestor)
