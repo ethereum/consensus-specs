@@ -43,9 +43,9 @@ def test_activation_queue_to_activated_if_finalized(spec, state):
     index = 0
     mock_deposit(spec, state, index)
 
-    # mock validator as having been in queue since before latest finalized
+    # mock validator as having been in queue since latest finalized
     state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
-    state.validators[index].activation_eligibility_epoch = state.finalized_checkpoint.epoch - 1
+    state.validators[index].activation_eligibility_epoch = state.finalized_checkpoint.epoch
 
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
@@ -71,9 +71,9 @@ def test_activation_queue_no_activation_no_finality(spec, state):
     index = 0
     mock_deposit(spec, state, index)
 
-    # mock validator as having been in queue only since latest finalized (not before)
+    # mock validator as having been in queue only after latest finalized
     state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
-    state.validators[index].activation_eligibility_epoch = state.finalized_checkpoint.epoch
+    state.validators[index].activation_eligibility_epoch = state.finalized_checkpoint.epoch + 1
 
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
 
@@ -102,7 +102,7 @@ def test_activation_queue_sorting(spec, state):
 
     # move state forward and finalize to allow for activations
     state.slot += spec.SLOTS_PER_EPOCH * 3
-    state.finalized_checkpoint.epoch = epoch + 2
+    state.finalized_checkpoint.epoch = epoch + 1
 
     yield from run_process_registry_updates(spec, state)
 
@@ -132,7 +132,7 @@ def test_activation_queue_efficiency(spec, state):
 
     # move state forward and finalize to allow for activations
     state.slot += spec.SLOTS_PER_EPOCH * 3
-    state.finalized_checkpoint.epoch = epoch + 2
+    state.finalized_checkpoint.epoch = epoch + 1
 
     # Run first registry update. Do not yield test vectors
     for _ in run_process_registry_updates(spec, state):
@@ -213,7 +213,7 @@ def test_activation_queue_activation_and_ejection(spec, state):
     activation_index = 1
     mock_deposit(spec, state, activation_index)
     state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
-    state.validators[activation_index].activation_eligibility_epoch = state.finalized_checkpoint.epoch - 1
+    state.validators[activation_index].activation_eligibility_epoch = state.finalized_checkpoint.epoch
 
     # ready for ejection
     ejection_index = 2
