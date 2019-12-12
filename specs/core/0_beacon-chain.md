@@ -623,8 +623,8 @@ def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool
     Check if ``validator`` is eligible for activation.
     """
     return (
-        # Was placed in activation queue prior to most recent finalized epoch
-        validator.activation_eligibility_epoch < state.finalized_checkpoint.epoch
+        # Placement in queue is finalized
+        validator.activation_eligibility_epoch <= state.finalized_checkpoint.epoch
         # Has not yet been activated
         and validator.activation_epoch == FAR_FUTURE_EPOCH
     )
@@ -1332,7 +1332,7 @@ def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
         if is_eligible_for_activation_queue(validator):
-            validator.activation_eligibility_epoch = get_current_epoch(state)
+            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))
@@ -1341,7 +1341,7 @@ def process_registry_updates(state: BeaconState) -> None:
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
         if is_eligible_for_activation(state, validator)
-    # Order by the sequence of activation_eligibility_epoch setting and then index.
+        # Order by the sequence of activation_eligibility_epoch setting and then index
     ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
     # Dequeued validators for activation up to churn limit
     for index in activation_queue[:get_validator_churn_limit(state)]:
