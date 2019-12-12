@@ -262,8 +262,11 @@ def test_proposer_after_inactive_index(spec, state):
 
     # skip forward, get brand new proposers
     state.slot = spec.SLOTS_PER_EPOCH * 2
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
 
     while True:
+        next_slot(spec, state)
         proposer_index = spec.get_beacon_proposer_index(state)
         if proposer_index > inactive_index:
             # found a proposer that has a higher index than a disabled validator
@@ -273,8 +276,6 @@ def test_proposer_after_inactive_index(spec, state):
             yield 'blocks', [signed_block]
             yield 'post', state
             break
-        else:
-            next_slot(spec, state)
 
 
 @with_all_phases
@@ -287,9 +288,12 @@ def test_high_proposer_index(spec, state):
 
     # skip forward, get brand new proposers
     state.slot = spec.SLOTS_PER_EPOCH * 2
+    block = build_empty_block_for_next_slot(spec, state)
+    state_transition_and_sign_block(spec, state, block)
 
     active_count = len(spec.get_active_validator_indices(state, current_epoch))
     while True:
+        next_slot(spec, state)
         proposer_index = spec.get_beacon_proposer_index(state)
         if proposer_index >= active_count:
             # found a proposer that has a higher index than the active validator count
@@ -299,8 +303,6 @@ def test_high_proposer_index(spec, state):
             yield 'blocks', [signed_block]
             yield 'post', state
             break
-        else:
-            next_slot(spec, state)
 
 
 @with_all_phases
