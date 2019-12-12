@@ -1341,7 +1341,8 @@ def process_registry_updates(state: BeaconState) -> None:
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
         if is_eligible_for_activation(state, validator)
-    ], key=lambda index: state.validators[index].activation_eligibility_epoch)
+    # Order by the sequence of activation_eligibility_epoch setting and then index.
+    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
     # Dequeued validators for activation up to churn limit
     for index in activation_queue[:get_validator_churn_limit(state)]:
         validator = state.validators[index]
