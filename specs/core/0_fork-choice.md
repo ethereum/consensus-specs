@@ -4,23 +4,32 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice](#ethereum-20-phase-0----beacon-chain-fork-choice)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Fork choice](#fork-choice)
-        - [Helpers](#helpers)
-            - [`LatestMessage`](#latestmessage)
-            - [`Store`](#store)
-            - [`get_genesis_store`](#get_genesis_store)
-            - [`get_ancestor`](#get_ancestor)
-            - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
-            - [`get_head`](#get_head)
-        - [Handlers](#handlers)
-            - [`on_tick`](#on_tick)
-            - [`on_block`](#on_block)
-            - [`on_attestation`](#on_attestation)
 
+- [Introduction](#introduction)
+- [Fork choice](#fork-choice)
+  - [Configuration](#configuration)
+  - [Helpers](#helpers)
+    - [`LatestMessage`](#latestmessage)
+    - [`Store`](#store)
+    - [`get_genesis_store`](#get_genesis_store)
+    - [`get_slots_since_genesis`](#get_slots_since_genesis)
+    - [`get_current_slot`](#get_current_slot)
+    - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
+    - [`get_ancestor`](#get_ancestor)
+    - [`get_latest_attesting_balance`](#get_latest_attesting_balance)
+    - [`filter_block_tree`](#filter_block_tree)
+    - [`get_filtered_block_tree`](#get_filtered_block_tree)
+    - [`get_head`](#get_head)
+    - [`should_update_justified_checkpoint`](#should_update_justified_checkpoint)
+  - [Handlers](#handlers)
+    - [`on_tick`](#on_tick)
+    - [`on_block`](#on_block)
+    - [`on_attestation`](#on_attestation)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
@@ -32,7 +41,7 @@ This document is the beacon chain fork choice spec, part of Ethereum 2.0 Phase 0
 The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_genesis_store(genesis_state)` and update `store` by running:
 
 - `on_tick(time)` whenever `time > store.time` where `time` is the current Unix time
-- `on_block(block)` whenever a block `block` is received
+- `on_block(block)` whenever a block `block: SignedBeaconBlock` is received
 - `on_attestation(attestation)` whenever an attestation `attestation` is received
 
 *Notes*:
@@ -81,7 +90,7 @@ class Store(object):
 ```python
 def get_genesis_store(genesis_state: BeaconState) -> Store:
     genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))
-    root = signing_root(genesis_block)
+    root = hash_tree_root(genesis_block)
     justified_checkpoint = Checkpoint(epoch=GENESIS_EPOCH, root=root)
     finalized_checkpoint = Checkpoint(epoch=GENESIS_EPOCH, root=root)
     return Store(
@@ -96,11 +105,18 @@ def get_genesis_store(genesis_state: BeaconState) -> Store:
     )
 ```
 
+#### `get_slots_since_genesis`
+
+```python
+def get_slots_since_genesis(store: Store) -> int:
+    return (store.time - store.genesis_time) // SECONDS_PER_SLOT
+```
+
 #### `get_current_slot`
 
 ```python
 def get_current_slot(store: Store) -> Slot:
-    return Slot((store.time - store.genesis_time) // SECONDS_PER_SLOT)
+    return Slot(GENESIS_SLOT + get_slots_since_genesis(store))
 ```
 
 #### `compute_slots_since_epoch_start`
@@ -136,17 +152,72 @@ def get_latest_attesting_balance(store: Store, root: Root) -> Gwei:
     ))
 ```
 
+#### `filter_block_tree`
+
+```python
+def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
+    block = store.blocks[block_root]
+    children = [
+        root for root in store.blocks.keys()
+        if store.blocks[root].parent_root == block_root
+    ]
+
+    # If any children branches contain expected finalized/justified checkpoints,
+    # add to filtered block-tree and signal viability to parent.
+    if any(children):
+        filter_block_tree_result = [filter_block_tree(store, child, blocks) for child in children]
+        if any(filter_block_tree_result):
+            blocks[block_root] = block
+            return True
+        return False
+
+    # If leaf block, check finalized/justified checkpoints as matching latest.
+    head_state = store.block_states[block_root]
+
+    correct_justified = (
+        store.justified_checkpoint.epoch == GENESIS_EPOCH
+        or head_state.current_justified_checkpoint == store.justified_checkpoint
+    )
+    correct_finalized = (
+        store.finalized_checkpoint.epoch == GENESIS_EPOCH
+        or head_state.finalized_checkpoint == store.finalized_checkpoint
+    )
+    # If expected finalized/justified, add to viable block-tree and signal viability to parent.
+    if correct_justified and correct_finalized:
+        blocks[block_root] = block
+        return True
+
+    # Otherwise, branch not viable
+    return False
+```
+
+#### `get_filtered_block_tree`
+
+```python
+def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
+    """
+    Retrieve a filtered block true from ``store``, only returning branches
+    whose leaf state's justified/finalized info agrees with that in ``store``.
+    """
+    base = store.justified_checkpoint.root
+    blocks: Dict[Root, BeaconBlock] = {}
+    filter_block_tree(store, base, blocks)
+    return blocks
+```
+
 #### `get_head`
 
 ```python
 def get_head(store: Store) -> Root:
+    # Get filtered block tree that only includes viable branches
+    blocks = get_filtered_block_tree(store)
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     justified_slot = compute_start_slot_at_epoch(store.justified_checkpoint.epoch)
     while True:
         children = [
-            root for root in store.blocks.keys()
-            if store.blocks[root].parent_root == head and store.blocks[root].slot > justified_slot
+            root for root in blocks.keys()
+            if blocks[root].parent_root == head and blocks[root].slot > justified_slot
         ]
         if len(children) == 0:
             return head
@@ -172,8 +243,8 @@ def should_update_justified_checkpoint(store: Store, new_justified_checkpoint: C
     if new_justified_block.slot <= compute_start_slot_at_epoch(store.justified_checkpoint.epoch):
         return False
     if not (
-        get_ancestor(store, new_justified_checkpoint.root, store.blocks[store.justified_checkpoint.root].slot) ==
-        store.justified_checkpoint.root
+        get_ancestor(store, new_justified_checkpoint.root, store.blocks[store.justified_checkpoint.root].slot)
+        == store.justified_checkpoint.root
     ):
         return False
 
@@ -203,29 +274,31 @@ def on_tick(store: Store, time: uint64) -> None:
 #### `on_block`
 
 ```python
-def on_block(store: Store, block: BeaconBlock) -> None:
+def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    block = signed_block.message
     # Make a copy of the state to avoid mutability issues
     assert block.parent_root in store.block_states
     pre_state = store.block_states[block.parent_root].copy()
     # Blocks cannot be in the future. If they are, their consideration must be delayed until the are in the past.
-    assert store.time >= pre_state.genesis_time + block.slot * SECONDS_PER_SLOT
+    assert get_current_slot(store) >= block.slot
     # Add new block to the store
-    store.blocks[signing_root(block)] = block
+    store.blocks[hash_tree_root(block)] = block
     # Check block is a descendant of the finalized block
     assert (
-        get_ancestor(store, signing_root(block), store.blocks[store.finalized_checkpoint.root].slot) ==
+        get_ancestor(store, hash_tree_root(block), store.blocks[store.finalized_checkpoint.root].slot) ==
         store.finalized_checkpoint.root
     )
     # Check that block is later than the finalized epoch slot
     assert block.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     # Check the block is valid and compute the post-state
-    state = state_transition(pre_state, block, True)
+    state = state_transition(pre_state, signed_block, True)
     # Add new state for this block to the store
-    store.block_states[signing_root(block)] = state
+    store.block_states[hash_tree_root(block)] = state
 
     # Update justified checkpoint
     if state.current_justified_checkpoint.epoch > store.justified_checkpoint.epoch:
-        store.best_justified_checkpoint = state.current_justified_checkpoint
+        if state.current_justified_checkpoint.epoch > store.best_justified_checkpoint.epoch:
+            store.best_justified_checkpoint = state.current_justified_checkpoint
         if should_update_justified_checkpoint(store, state.current_justified_checkpoint):
             store.justified_checkpoint = state.current_justified_checkpoint
 
@@ -251,14 +324,13 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
     # Use GENESIS_EPOCH for previous when genesis to avoid underflow
     previous_epoch = current_epoch - 1 if current_epoch > GENESIS_EPOCH else GENESIS_EPOCH
     assert target.epoch in [current_epoch, previous_epoch]
-    # Cannot calculate the current shuffling if have not seen the target
-    assert target.root in store.blocks
+    assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
 
     # Attestations target be for a known block. If target block is unknown, delay consideration until the block is found
     assert target.root in store.blocks
     # Attestations cannot be from future epochs. If they are, delay consideration until the epoch arrives
     base_state = store.block_states[target.root].copy()
-    assert store.time >= base_state.genesis_time + compute_start_slot_at_epoch(target.epoch) * SECONDS_PER_SLOT
+    assert get_current_slot(store) >= compute_start_slot_at_epoch(target.epoch)
 
     # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
     assert attestation.data.beacon_block_root in store.blocks
@@ -273,7 +345,7 @@ def on_attestation(store: Store, attestation: Attestation) -> None:
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
-    assert store.time >= (attestation.data.slot + 1) * SECONDS_PER_SLOT
+    assert get_current_slot(store) >= attestation.data.slot + 1
 
     # Get state at the `target` to validate attestation and calculate the committees
     indexed_attestation = get_indexed_attestation(target_state, attestation)

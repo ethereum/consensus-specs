@@ -156,10 +156,6 @@ class Container(Series, metaclass=SSZType):
         from .ssz_impl import hash_tree_root
         return hash_tree_root(self)
 
-    def signing_root(self):
-        from .ssz_impl import signing_root
-        return signing_root(self)
-
     def __setattr__(self, name, value):
         if name not in self.__class__.__annotations__:
             raise AttributeError("Cannot change non-existing SSZ-container attribute")

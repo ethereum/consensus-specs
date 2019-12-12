@@ -5,45 +5,47 @@
 ## Table of contents
 
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Custom types](#custom-types)
-    - [Configuration](#configuration)
-        - [Misc](#misc)
-        - [Initial values](#initial-values)
-        - [Time parameters](#time-parameters)
-        - [State list lengths](#state-list-lengths)
-        - [Rewards and penalties](#rewards-and-penalties)
-        - [Signature domain types](#signature-domain-types)
-    - [Containers](#containers)
-        - [`Crosslink`](#crosslink)
-        - [`ShardBlock`](#shardblock)
-        - [`ShardBlockHeader`](#shardblockheader)
-        - [`ShardState`](#shardstate)
-        - [`ShardAttestationData`](#shardattestationdata)
-    - [Helper functions](#helper-functions)
-        - [Misc](#misc-1)
-            - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
-            - [`compute_shard_period_start_epoch`](#compute_shard_period_start_epoch)
-        - [Beacon state accessors](#beacon-state-accessors)
-            - [`get_period_committee`](#get_period_committee)
-            - [`get_shard_committee`](#get_shard_committee)
-            - [`get_shard_proposer_index`](#get_shard_proposer_index)
-        - [Shard state mutators](#shard-state-mutators)
-            - [`process_delta`](#process_delta)
-    - [Genesis](#genesis)
-        - [`get_genesis_shard_state`](#get_genesis_shard_state)
-        - [`get_genesis_shard_block`](#get_genesis_shard_block)
-    - [Shard state transition function](#shard-state-transition-function)
-        - [Period processing](#period-processing)
-        - [Block processing](#block-processing)
-            - [Block header](#block-header)
-            - [Attestations](#attestations)
-            - [Block body](#block-body)
-    - [Shard fork choice rule](#shard-fork-choice-rule)
 
+- [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Configuration](#configuration)
+  - [Misc](#misc)
+  - [Initial values](#initial-values)
+  - [Time parameters](#time-parameters)
+  - [State list lengths](#state-list-lengths)
+  - [Rewards and penalties](#rewards-and-penalties)
+  - [Signature domain types](#signature-domain-types)
+- [Containers](#containers)
+  - [`Crosslink`](#crosslink)
+  - [`ShardBlock`](#shardblock)
+  - [`ShardBlockHeader`](#shardblockheader)
+  - [`ShardState`](#shardstate)
+  - [`ShardAttestationData`](#shardattestationdata)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc-1)
+    - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
+    - [`compute_shard_period_start_epoch`](#compute_shard_period_start_epoch)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [`get_period_committee`](#get_period_committee)
+    - [`get_shard_committee`](#get_shard_committee)
+    - [`get_shard_proposer_index`](#get_shard_proposer_index)
+  - [Shard state mutators](#shard-state-mutators)
+    - [`process_delta`](#process_delta)
+- [Genesis](#genesis)
+  - [`get_genesis_shard_state`](#get_genesis_shard_state)
+  - [`get_genesis_shard_block`](#get_genesis_shard_block)
+- [Shard state transition function](#shard-state-transition-function)
+  - [Period processing](#period-processing)
+  - [Block processing](#block-processing)
+    - [Block header](#block-header)
+    - [Attestations](#attestations)
+    - [Block body](#block-body)
+- [Shard fork choice rule](#shard-fork-choice-rule)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
@@ -359,9 +361,9 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     )
     if beacon_block_header.state_root == Bytes32():
         beacon_block_header.state_root = hash_tree_root(beacon_state)
-    assert block.beacon_block_root == signing_root(beacon_block_header)
+    assert block.beacon_block_root == hash_tree_root(beacon_block_header)
     # Verify the parent root
-    assert block.parent_root == signing_root(shard_state.latest_block_header)
+    assert block.parent_root == hash_tree_root(shard_state.latest_block_header)
     # Save current block as the new latest block
     shard_state.latest_block_header = ShardBlockHeader(
         shard=block.shard,
@@ -384,7 +386,7 @@ def process_shard_block_header(beacon_state: BeaconState, shard_state: ShardStat
     assert not proposer.slashed
     # Verify proposer signature
     domain = get_domain(beacon_state, DOMAIN_SHARD_PROPOSER, compute_epoch_of_shard_slot(block.slot))
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, domain)
+    assert bls_verify(proposer.pubkey, hash_tree_root(block), block.signature, domain)
 ```
 
 #### Attestations

@@ -88,8 +88,10 @@ def test_epochs_are_different(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
 
     # set slots to be in different epochs
-    proposer_slashing.header_2.slot += spec.SLOTS_PER_EPOCH
-    sign_block_header(spec, state, proposer_slashing.header_2, privkeys[proposer_slashing.proposer_index])
+    header_2 = proposer_slashing.signed_header_2.message
+    header_2.slot += spec.SLOTS_PER_EPOCH
+    proposer_slashing.signed_header_2 = sign_block_header(
+        spec, state, header_2, privkeys[proposer_slashing.proposer_index])
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 
@@ -100,7 +102,7 @@ def test_headers_are_same(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
 
     # set headers to be the same
-    proposer_slashing.header_2 = proposer_slashing.header_1
+    proposer_slashing.signed_header_2 = proposer_slashing.signed_header_1
 
     yield from run_proposer_slashing_processing(spec, state, proposer_slashing, False)
 

@@ -18,23 +18,88 @@ It consists of four main sections:
 
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
+      - [Interop](#interop)
+      - [Mainnet](#mainnet)
   - [Encryption and identification](#encryption-and-identification)
-  - [Protocol negotiation](#protocol-negotiation)
+      - [Interop](#interop-1)
+      - [Mainnet](#mainnet-1)
+  - [Protocol Negotiation](#protocol-negotiation)
+      - [Interop](#interop-2)
+      - [Mainnet](#mainnet-2)
   - [Multiplexing](#multiplexing)
 - [Eth2 network interaction domains](#eth2-network-interaction-domains)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+    - [Topics and messages](#topics-and-messages)
+      - [Global topics](#global-topics)
+      - [Attestation subnets](#attestation-subnets)
+      - [Interop](#interop-3)
+      - [Mainnet](#mainnet-3)
+    - [Encodings](#encodings)
+      - [Interop](#interop-4)
+      - [Mainnet](#mainnet-4)
   - [The Req/Resp domain](#the-reqresp-domain)
+    - [Protocol identification](#protocol-identification)
+    - [Req/Resp interaction](#reqresp-interaction)
+      - [Requesting side](#requesting-side)
+      - [Responding side](#responding-side)
+    - [Encoding strategies](#encoding-strategies)
+      - [SSZ-encoding strategy (with or without Snappy)](#ssz-encoding-strategy-with-or-without-snappy)
+    - [Messages](#messages)
+      - [Status](#status)
+      - [Goodbye](#goodbye)
+      - [BeaconBlocksByRange](#beaconblocksbyrange)
+      - [BeaconBlocksByRoot](#beaconblocksbyroot)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
+    - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
+    - [ENR structure](#enr-structure)
+      - [Interop](#interop-5)
+      - [Mainnet](#mainnet-5)
+    - [Topic advertisement](#topic-advertisement)
+      - [Interop](#interop-6)
+      - [Mainnet](#mainnet-6)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
+    - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
+    - [Can clients support other transports/handshakes than the ones mandated by the spec?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-spec)
+    - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
+    - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
+    - [Why are we not using QUIC for mainnet from the start?](#why-are-we-not-using-quic-for-mainnet-from-the-start)
   - [Multiplexing](#multiplexing-1)
-  - [Protocol negotiation](#protocol-negotiation-1)
+    - [Why are we using mplex/yamux?](#why-are-we-using-mplexyamux)
+  - [Protocol Negotiation](#protocol-negotiation-1)
+    - [When is multiselect 2.0 due and why are we using it for mainnet?](#when-is-multiselect-20-due-and-why-are-we-using-it-for-mainnet)
+    - [What is the difference between connection-level and stream-level protocol negotiation?](#what-is-the-difference-between-connection-level-and-stream-level-protocol-negotiation)
   - [Encryption](#encryption)
+    - [Why are we using SecIO for interop? Why not for mainnet?](#why-are-we-using-secio-for-interop-why-not-for-mainnet)
+    - [Why are we using Noise/TLS 1.3 for mainnet?](#why-are-we-using-noisetls-13-for-mainnet)
+    - [Why are we using encryption at all?](#why-are-we-using-encryption-at-all)
+    - [Will mainnnet networking be untested when it launches?](#will-mainnnet-networking-be-untested-when-it-launches)
   - [Gossipsub](#gossipsub)
+    - [Why are we using a pub/sub algorithm for block and attestation propagation?](#why-are-we-using-a-pubsub-algorithm-for-block-and-attestation-propagation)
+    - [Why are we using topics to segregate encodings, yet only support one encoding?](#why-are-we-using-topics-to-segregate-encodings-yet-only-support-one-encoding)
+    - [How do we upgrade gossip channels (e.g. changes in encoding, compression)?](#how-do-we-upgrade-gossip-channels-eg-changes-in-encoding-compression)
+    - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
+    - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
+    - [Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?](#why-are-there-attestation_subnet_count-attestation-subnets)
+    - [Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?](#why-are-attestations-limited-to-be-broadcast-on-gossip-channels-within-slots_per_epoch-slots)
+    - [Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?](#why-are-aggregate-attestations-broadcast-to-the-global-topic-as-aggregateandproofs-rather-than-just-as-attestations)
+    - [Why are we sending entire objects in the pubsub and not just hashes?](#why-are-we-sending-entire-objects-in-the-pubsub-and-not-just-hashes)
+    - [Should clients gossip blocks if they *cannot* validate the proposer signature due to not yet being synced, not knowing the head block, etc?](#should-clients-gossip-blocks-if-they-cannot-validate-the-proposer-signature-due-to-not-yet-being-synced-not-knowing-the-head-block-etc)
+    - [How are we going to discover peers in a gossipsub topic?](#how-are-we-going-to-discover-peers-in-a-gossipsub-topic)
   - [Req/Resp](#reqresp)
+    - [Why segregate requests into dedicated protocol IDs?](#why-segregate-requests-into-dedicated-protocol-ids)
+    - [Why are messages length-prefixed with a protobuf varint in the SSZ-encoding?](#why-are-messages-length-prefixed-with-a-protobuf-varint-in-the-ssz-encoding)
+    - [Why do we version protocol strings with ordinals instead of semver?](#why-do-we-version-protocol-strings-with-ordinals-instead-of-semver)
+    - [Why is it called Req/Resp and not RPC?](#why-is-it-called-reqresp-and-not-rpc)
   - [Discovery](#discovery)
+    - [Why are we using discv5 and not libp2p Kademlia DHT?](#why-are-we-using-discv5-and-not-libp2p-kademlia-dht)
+    - [What is the difference between an ENR and a multiaddr, and why are we using ENRs?](#what-is-the-difference-between-an-enr-and-a-multiaddr-and-why-are-we-using-enrs)
   - [Compression/Encoding](#compressionencoding)
+    - [Why are we using SSZ for encoding?](#why-are-we-using-ssz-for-encoding)
+    - [Why are we compressing, and at which layers?](#why-are-we-compressing-and-at-which-layers)
+    - [Why are using Snappy for compression?](#why-are-using-snappy-for-compression)
+    - [Can I get access to unencrypted bytes on the wire for debugging purposes?](#can-i-get-access-to-unencrypted-bytes-on-the-wire-for-debugging-purposes)
 - [libp2p implementations matrix](#libp2p-implementations-matrix)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -151,7 +216,7 @@ The payload is carried in the `data` field of a gossipsub message, and varies de
 
 | Topic                                  | Message Type      |
 |----------------------------------------|-------------------|
-| beacon_block                           | BeaconBlock       |
+| beacon_block                           | SignedBeaconBlock |
 | beacon_aggregate_and_proof             | AggregateAndProof |
 | beacon_attestation\*                   | Attestation       |
 | committee_index{subnet_id}\_beacon_attestation | Attestation       |
@@ -175,7 +240,7 @@ There are two primary global topics used to propagate beacon blocks and aggregat
     - The block being voted for (`aggregate_and_proof.aggregate.data.beacon_block_root`) passes validation.
     - `aggregate_and_proof.aggregate.data.slot` is within the last `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (`aggregate_and_proof.aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate_and_proof.aggregate.data.slot`).
     - The validator index is within the aggregate's committee -- i.e. `aggregate_and_proof.aggregator_index in get_attesting_indices(state, aggregate_and_proof.aggregate.data, aggregate_and_proof.aggregate.aggregation_bits)`.
-    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
+    - `aggregate_and_proof.selection_proof` selects the validator as an aggregator for the slot -- i.e. `is_aggregator(state, aggregate_and_proof.aggregate.data.slot, aggregate_and_proof.aggregate.data.index, aggregate_and_proof.selection_proof)` returns `True`.
     - The `aggregate_and_proof.selection_proof` is a valid signature of the `aggregate_and_proof.aggregate.data.slot` by the validator with index `aggregate_and_proof.aggregator_index`.
     - The signature of `aggregate_and_proof.aggregate` is valid.
 
@@ -214,7 +279,7 @@ Topics are post-fixed with an encoding. Encodings define how the payload of a go
 
 #### Interop
 
-- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/eth2/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `BeaconBlock`.
+- `ssz` - All objects are [SSZ-encoded](#ssz-encoding). Example: The beacon block topic string is `/eth2/beacon_block/ssz`, and the data field of a gossipsub message is an ssz-encoded `SignedBeaconBlock`.
 
 #### Mainnet
 
@@ -331,9 +396,9 @@ The [SimpleSerialize (SSZ) specification](../simple-serialize.md) outlines how o
 
 All messages that contain only a single field MUST be encoded directly as the type of that field and MUST NOT be encoded as an SSZ container.
 
-Responses that are SSZ-lists (for example `[]BeaconBlocks`) send their
+Responses that are SSZ-lists (for example `[]SignedBeaconBlock`) send their
 constituents individually as `response_chunk`s. For example, the
-`[]BeaconBlocks` response type sends one or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `BeaconBlock` payload.
+`[]SignedBeaconBlock` response type sends one or more `response_chunk`s. Each _successful_ `response_chunk` contains a single `SignedBeaconBlock` payload.
 
 ### Messages
 
@@ -356,7 +421,7 @@ The fields are, as seen by the client at the time of sending the message:
 - `head_fork_version`: The beacon_state `Fork` version.
 - `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block.
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
-- `head_root`: The signing root of the current head block.
+- `head_root`: The hash_tree_root root of the current head block.
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
 The dialing client MUST send a `Status` request upon connection.
@@ -413,15 +478,15 @@ Request Content:
 Response Content:
 ```
 (
-  []BeaconBlock
+  []SignedBeaconBlock
 )
 ```
 
-Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root` (= `signing_root(BeaconBlock)`). The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
+Requests count beacon blocks from the peer starting from `start_slot` on the chain defined by `head_block_root` (= `hash_tree_root(SignedBeaconBlock.message)`). The response MUST contain no more than count blocks. `step` defines the slot increment between blocks. For example, requesting blocks starting at `start_slot` 2 with a step value of 2 would return the blocks at [2, 4, 6, …]. In cases where a slot is empty for a given slot number, no block is returned. For example, if slot 4 were empty in the previous example, the returned array would contain [2, 6, …]. A step value of 1 returns all blocks on the range `[start_slot, start_slot + count)`.
 
 The request MUST be encoded as an SSZ-container.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `BeaconBlock` payload.
+The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 `BeaconBlocksByRange` is primarily used to sync historical blocks.
 
@@ -449,17 +514,17 @@ Response Content:
 
 ```
 (
-  []BeaconBlock
+  []SignedBeaconBlock
 )
 ```
 
-Requests blocks by block root (= `signing_root(BeaconBlock)`). The response is a list of `BeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
+Requests blocks by block root (= `hash_tree_root(SignedBeaconBlock.message)`). The response is a list of `SignedBeaconBlock` whose length is less than or equal to the number of requested blocks. It may be less in the case that the responding peer is missing blocks.
 
 `BeaconBlocksByRoot` is primarily used to recover recent blocks (e.g. when receiving a block or attestation whose parent is unknown).
 
 The request MUST be encoded as an SSZ-field.
 
-The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `BeaconBlock` payload.
+The response MUST consist of at least one `response_chunk` and MAY consist of many. Each _successful_ `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST support requesting blocks since the latest finalized epoch.
 
@@ -567,7 +632,7 @@ Conscious of that, the libp2p community conceptualized [mplex](https://github.co
 
 Overlay multiplexers are not necessary with QUIC since the protocol provides native multiplexing, but they need to be layered atop TCP, WebSockets, and other transports that lack such support.
 
-## Protocol negotiation
+## Protocol Negotiation
 
 ### When is multiselect 2.0 due and why are we using it for mainnet?
 

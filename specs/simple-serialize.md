@@ -4,31 +4,32 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [SimpleSerialize (SSZ)](#simpleserialize-ssz)
-    - [Table of contents](#table-of-contents)
-    - [Constants](#constants)
-    - [Typing](#typing)
-        - [Basic types](#basic-types)
-        - [Composite types](#composite-types)
-        - [Variable-size and fixed-size](#variable-size-and-fixed-size)
-        - [Aliases](#aliases)
-        - [Default values](#default-values)
-            - [`is_zero`](#is_zero)
-        - [Illegal types](#illegal-types)
-    - [Serialization](#serialization)
-        - [`uintN`](#uintn)
-        - [`boolean`](#boolean)
-        - [`null`](#null)
-        - [`Bitvector[N]`](#bitvectorn)
-        - [`Bitlist[N]`](#bitlistn)
-        - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
-    - [Deserialization](#deserialization)
-    - [Merkleization](#merkleization)
-    - [Self-signed containers](#self-signed-containers)
-    - [Summaries and expansions](#summaries-and-expansions)
-    - [Implementations](#implementations)
 
+- [Constants](#constants)
+- [Typing](#typing)
+  - [Basic types](#basic-types)
+  - [Composite types](#composite-types)
+  - [Variable-size and fixed-size](#variable-size-and-fixed-size)
+  - [Aliases](#aliases)
+  - [Default values](#default-values)
+    - [`is_zero`](#is_zero)
+  - [Illegal types](#illegal-types)
+- [Serialization](#serialization)
+  - [`uintN`](#uintn)
+  - [`boolean`](#boolean)
+  - [`null`](#null)
+  - [`Bitvector[N]`](#bitvectorn)
+  - [`Bitlist[N]`](#bitlistn)
+  - [Vectors, containers, lists, unions](#vectors-containers-lists-unions)
+- [Deserialization](#deserialization)
+- [Merkleization](#merkleization)
+- [Summaries and expansions](#summaries-and-expansions)
+- [Implementations](#implementations)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Constants
@@ -106,7 +107,7 @@ An SSZ object is called zeroed (and thus, `is_zero(object)` returns true) if it 
 
 We recursively define the `serialize` function which consumes an object `value` (of the type specified) and returns a bytestring of type `bytes`.
 
-*Note*: In the function definitions below (`serialize`, `hash_tree_root`, `signing_root`, `is_variable_size`, etc.) objects implicitly carry their type.
+*Note*: In the function definitions below (`serialize`, `hash_tree_root`, `is_variable_size`, etc.) objects implicitly carry their type.
 
 ### `uintN`
 
@@ -233,10 +234,6 @@ We now define Merkleization `hash_tree_root(value)` of an object `value` recursi
 * `merkleize([hash_tree_root(element) for element in value])` if `value` is a vector of composite objects or a container.
 * `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))` if `value` is a list of composite objects.
 * `mix_in_type(merkleize(value.value), value.type_index)` if `value` is of union type.
-
-## Self-signed containers
-
-Let `value` be a self-signed container object. The convention is that the signature (e.g. a `"bytes96"` BLS12-381 signature) be the last field of `value`. Further, the signed message for `value` is `signing_root(value) = hash_tree_root(truncate_last(value))` where `truncate_last` truncates the last element of `value`.
 
 ## Summaries and expansions
 

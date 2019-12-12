@@ -4,115 +4,123 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Notation](#notation)
-    - [Custom types](#custom-types)
-    - [Constants](#constants)
-    - [Configuration](#configuration)
-        - [Misc](#misc)
-        - [Gwei values](#gwei-values)
-        - [Initial values](#initial-values)
-        - [Time parameters](#time-parameters)
-        - [State list lengths](#state-list-lengths)
-        - [Rewards and penalties](#rewards-and-penalties)
-        - [Max operations per block](#max-operations-per-block)
-        - [Domain types](#domain-types)
-    - [Containers](#containers)
-        - [Misc dependencies](#misc-dependencies)
-            - [`Fork`](#fork)
-            - [`Checkpoint`](#checkpoint)
-            - [`Validator`](#validator)
-            - [`AttestationData`](#attestationdata)
-            - [`IndexedAttestation`](#indexedattestation)
-            - [`PendingAttestation`](#pendingattestation)
-            - [`Eth1Data`](#eth1data)
-            - [`HistoricalBatch`](#historicalbatch)
-            - [`DepositData`](#depositdata)
-            - [`BeaconBlockHeader`](#beaconblockheader)
-        - [Beacon operations](#beacon-operations)
-            - [`ProposerSlashing`](#proposerslashing)
-            - [`AttesterSlashing`](#attesterslashing)
-            - [`Attestation`](#attestation)
-            - [`Deposit`](#deposit)
-            - [`VoluntaryExit`](#voluntaryexit)
-        - [Beacon blocks](#beacon-blocks)
-            - [`BeaconBlockBody`](#beaconblockbody)
-            - [`BeaconBlock`](#beaconblock)
-        - [Beacon state](#beacon-state)
-            - [`BeaconState`](#beaconstate)
-    - [Helper functions](#helper-functions)
-        - [Math](#math)
-            - [`integer_squareroot`](#integer_squareroot)
-            - [`xor`](#xor)
-            - [`int_to_bytes`](#int_to_bytes)
-            - [`bytes_to_int`](#bytes_to_int)
-        - [Crypto](#crypto)
-            - [`hash`](#hash)
-            - [`hash_tree_root`](#hash_tree_root)
-            - [`signing_root`](#signing_root)
-            - [`bls_verify`](#bls_verify)
-            - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
-        - [Predicates](#predicates)
-            - [`is_active_validator`](#is_active_validator)
-            - [`is_slashable_validator`](#is_slashable_validator)
-            - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
-            - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
-            - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
-        - [Misc](#misc-1)
-            - [`compute_shuffled_index`](#compute_shuffled_index)
-            - [`compute_proposer_index`](#compute_proposer_index)
-            - [`compute_committee`](#compute_committee)
-            - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
-            - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
-            - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
-            - [`compute_domain`](#compute_domain)
-        - [Beacon state accessors](#beacon-state-accessors)
-            - [`get_current_epoch`](#get_current_epoch)
-            - [`get_previous_epoch`](#get_previous_epoch)
-            - [`get_block_root`](#get_block_root)
-            - [`get_block_root_at_slot`](#get_block_root_at_slot)
-            - [`get_randao_mix`](#get_randao_mix)
-            - [`get_active_validator_indices`](#get_active_validator_indices)
-            - [`get_validator_churn_limit`](#get_validator_churn_limit)
-            - [`get_seed`](#get_seed)
-            - [`get_committee_count_at_slot`](#get_committee_count_at_slot)
-            - [`get_beacon_committee`](#get_beacon_committee)
-            - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            - [`get_total_balance`](#get_total_balance)
-            - [`get_total_active_balance`](#get_total_active_balance)
-            - [`get_domain`](#get_domain)
-            - [`get_indexed_attestation`](#get_indexed_attestation)
-            - [`get_attesting_indices`](#get_attesting_indices)
-        - [Beacon state mutators](#beacon-state-mutators)
-            - [`increase_balance`](#increase_balance)
-            - [`decrease_balance`](#decrease_balance)
-            - [`initiate_validator_exit`](#initiate_validator_exit)
-            - [`slash_validator`](#slash_validator)
-    - [Genesis](#genesis)
-        - [Genesis state](#genesis-state)
-        - [Genesis block](#genesis-block)
-    - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-        - [Epoch processing](#epoch-processing)
-            - [Helper functions](#helper-functions-1)
-            - [Justification and finalization](#justification-and-finalization)
-            - [Rewards and penalties](#rewards-and-penalties-1)
-            - [Registry updates](#registry-updates)
-            - [Slashings](#slashings)
-            - [Final updates](#final-updates)
-        - [Block processing](#block-processing)
-            - [Block header](#block-header)
-            - [RANDAO](#randao)
-            - [Eth1 data](#eth1-data)
-            - [Operations](#operations)
-                - [Proposer slashings](#proposer-slashings)
-                - [Attester slashings](#attester-slashings)
-                - [Attestations](#attestations)
-                - [Deposits](#deposits)
-                - [Voluntary exits](#voluntary-exits)
 
+- [Introduction](#introduction)
+- [Notation](#notation)
+- [Custom types](#custom-types)
+- [Constants](#constants)
+- [Configuration](#configuration)
+  - [Misc](#misc)
+  - [Gwei values](#gwei-values)
+  - [Initial values](#initial-values)
+  - [Time parameters](#time-parameters)
+  - [State list lengths](#state-list-lengths)
+  - [Rewards and penalties](#rewards-and-penalties)
+  - [Max operations per block](#max-operations-per-block)
+  - [Domain types](#domain-types)
+- [Containers](#containers)
+  - [Misc dependencies](#misc-dependencies)
+    - [`Fork`](#fork)
+    - [`Checkpoint`](#checkpoint)
+    - [`Validator`](#validator)
+    - [`AttestationData`](#attestationdata)
+    - [`IndexedAttestation`](#indexedattestation)
+    - [`PendingAttestation`](#pendingattestation)
+    - [`Eth1Data`](#eth1data)
+    - [`HistoricalBatch`](#historicalbatch)
+    - [`DepositMessage`](#depositmessage)
+    - [`DepositData`](#depositdata)
+    - [`BeaconBlockHeader`](#beaconblockheader)
+  - [Beacon operations](#beacon-operations)
+    - [`ProposerSlashing`](#proposerslashing)
+    - [`AttesterSlashing`](#attesterslashing)
+    - [`Attestation`](#attestation)
+    - [`Deposit`](#deposit)
+    - [`VoluntaryExit`](#voluntaryexit)
+  - [Beacon blocks](#beacon-blocks)
+    - [`BeaconBlockBody`](#beaconblockbody)
+    - [`BeaconBlock`](#beaconblock)
+  - [Beacon state](#beacon-state)
+    - [`BeaconState`](#beaconstate)
+  - [Signed envelopes](#signed-envelopes)
+    - [`SignedVoluntaryExit`](#signedvoluntaryexit)
+    - [`SignedBeaconBlock`](#signedbeaconblock)
+    - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
+- [Helper functions](#helper-functions)
+  - [Math](#math)
+    - [`integer_squareroot`](#integer_squareroot)
+    - [`xor`](#xor)
+    - [`int_to_bytes`](#int_to_bytes)
+    - [`bytes_to_int`](#bytes_to_int)
+  - [Crypto](#crypto)
+    - [`hash`](#hash)
+    - [`hash_tree_root`](#hash_tree_root)
+    - [`bls_verify`](#bls_verify)
+    - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+  - [Predicates](#predicates)
+    - [`is_active_validator`](#is_active_validator)
+    - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
+    - [`is_eligible_for_activation`](#is_eligible_for_activation)
+    - [`is_slashable_validator`](#is_slashable_validator)
+    - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
+    - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
+    - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
+  - [Misc](#misc-1)
+    - [`compute_shuffled_index`](#compute_shuffled_index)
+    - [`compute_proposer_index`](#compute_proposer_index)
+    - [`compute_committee`](#compute_committee)
+    - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
+    - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
+    - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
+    - [`compute_domain`](#compute_domain)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [`get_current_epoch`](#get_current_epoch)
+    - [`get_previous_epoch`](#get_previous_epoch)
+    - [`get_block_root`](#get_block_root)
+    - [`get_block_root_at_slot`](#get_block_root_at_slot)
+    - [`get_randao_mix`](#get_randao_mix)
+    - [`get_active_validator_indices`](#get_active_validator_indices)
+    - [`get_validator_churn_limit`](#get_validator_churn_limit)
+    - [`get_seed`](#get_seed)
+    - [`get_committee_count_at_slot`](#get_committee_count_at_slot)
+    - [`get_beacon_committee`](#get_beacon_committee)
+    - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+    - [`get_total_balance`](#get_total_balance)
+    - [`get_total_active_balance`](#get_total_active_balance)
+    - [`get_domain`](#get_domain)
+    - [`get_indexed_attestation`](#get_indexed_attestation)
+    - [`get_attesting_indices`](#get_attesting_indices)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [`increase_balance`](#increase_balance)
+    - [`decrease_balance`](#decrease_balance)
+    - [`initiate_validator_exit`](#initiate_validator_exit)
+    - [`slash_validator`](#slash_validator)
+- [Genesis](#genesis)
+  - [Genesis state](#genesis-state)
+  - [Genesis block](#genesis-block)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Helper functions](#helper-functions-1)
+    - [Justification and finalization](#justification-and-finalization)
+    - [Rewards and penalties](#rewards-and-penalties-1)
+    - [Registry updates](#registry-updates)
+    - [Slashings](#slashings)
+    - [Final updates](#final-updates)
+  - [Block processing](#block-processing)
+    - [Block header](#block-header)
+    - [RANDAO](#randao)
+    - [Eth1 data](#eth1-data)
+    - [Operations](#operations)
+      - [Proposer slashings](#proposer-slashings)
+      - [Attester slashings](#attester-slashings)
+      - [Attestations](#attestations)
+      - [Deposits](#deposits)
+      - [Voluntary exits](#voluntary-exits)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
@@ -342,6 +350,15 @@ class HistoricalBatch(Container):
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
 ```
 
+#### `DepositMessage`
+
+```python
+class DepositMessage(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: Gwei
+```
+
 #### `DepositData`
 
 ```python
@@ -349,7 +366,7 @@ class DepositData(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     amount: Gwei
-    signature: BLSSignature
+    signature: BLSSignature  # signing over DepositMessage
 ```
 
 #### `BeaconBlockHeader`
@@ -360,7 +377,6 @@ class BeaconBlockHeader(Container):
     parent_root: Root
     state_root: Root
     body_root: Root
-    signature: BLSSignature
 ```
 
 ### Beacon operations
@@ -370,8 +386,8 @@ class BeaconBlockHeader(Container):
 ```python
 class ProposerSlashing(Container):
     proposer_index: ValidatorIndex
-    header_1: BeaconBlockHeader
-    header_2: BeaconBlockHeader
+    signed_header_1: SignedBeaconBlockHeader
+    signed_header_2: SignedBeaconBlockHeader
 ```
 
 #### `AttesterSlashing`
@@ -405,7 +421,6 @@ class Deposit(Container):
 class VoluntaryExit(Container):
     epoch: Epoch  # Earliest epoch when voluntary exit can be processed
     validator_index: ValidatorIndex
-    signature: BLSSignature
 ```
 
 ### Beacon blocks
@@ -422,7 +437,7 @@ class BeaconBlockBody(Container):
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[VoluntaryExit, MAX_VOLUNTARY_EXITS]
+    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
 ```
 
 #### `BeaconBlock`
@@ -433,7 +448,6 @@ class BeaconBlock(Container):
     parent_root: Root
     state_root: Root
     body: BeaconBlockBody
-    signature: BLSSignature
 ```
 
 ### Beacon state
@@ -470,6 +484,34 @@ class BeaconState(Container):
     previous_justified_checkpoint: Checkpoint  # Previous epoch snapshot
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
+```
+
+### Signed envelopes
+
+Some messages in the protocol are wrapped in an envelope to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
+
+#### `SignedVoluntaryExit`
+
+```python
+class SignedVoluntaryExit(Container):
+    message: VoluntaryExit
+    signature: BLSSignature
+```
+
+#### `SignedBeaconBlock`
+
+```python
+class SignedBeaconBlock(Container):
+    message: BeaconBlock
+    signature: BLSSignature
+```
+
+#### `SignedBeaconBlockHeader`
+
+```python
+class SignedBeaconBlockHeader(Container):
+    message: BeaconBlockHeader
+    signature: BLSSignature
 ```
 
 ## Helper functions
@@ -533,10 +575,6 @@ def bytes_to_int(data: bytes) -> uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../simple-serialize.md#merkleization).
 
-#### `signing_root`
-
-`def signing_root(object: Container) -> Root` is a function for computing signing messages, as defined in the [SSZ spec](../simple-serialize.md#self-signed-containers).
-
 #### `bls_verify`
 
 `bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
@@ -555,6 +593,34 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     Check if ``validator`` is active.
     """
     return validator.activation_epoch <= epoch < validator.exit_epoch
+```
+
+#### `is_eligible_for_activation_queue`
+
+```python
+def is_eligible_for_activation_queue(validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible to be placed into the activation queue.
+    """
+    return (
+        validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+        and validator.effective_balance == MAX_EFFECTIVE_BALANCE
+    )
+```
+
+#### `is_eligible_for_activation`
+
+```python
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible for activation.
+    """
+    return (
+        # Placement in queue is finalized
+        validator.activation_eligibility_epoch <= state.finalized_checkpoint.epoch
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
+    )
 ```
 
 #### `is_slashable_validator`
@@ -594,8 +660,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     # Verify max number of indices
     if not len(indices) <= MAX_VALIDATORS_PER_COMMITTEE:
         return False
-    # Verify indices are sorted
-    if not indices == sorted(indices):
+    # Verify indices are sorted and unique
+    if not indices == sorted(set(indices)):
         return False
     # Verify aggregate signature
     if not bls_verify(
@@ -1048,16 +1114,25 @@ Let `genesis_block = BeaconBlock(state_root=hash_tree_root(genesis_state))`.
 The post-state corresponding to a pre-state `state` and a block `block` is defined as `state_transition(state, block)`. State transitions that trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 
 ```python
-def state_transition(state: BeaconState, block: BeaconBlock, validate_state_root: bool=False) -> BeaconState:
+def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, validate_result: bool=True) -> BeaconState:
     # Process slots (including those with no blocks) since block
-    process_slots(state, block.slot)
+    process_slots(state, signed_block.message.slot)
+    # Verify signature
+    if validate_result:
+        assert verify_block_signature(state, signed_block)
     # Process block
-    process_block(state, block)
-    # Validate state root (`validate_state_root == True` in production)
-    if validate_state_root:
-        assert block.state_root == hash_tree_root(state)
+    process_block(state, signed_block.message)
+    if validate_result:
+        assert signed_block.message.state_root == hash_tree_root(state)  # Validate state root
     # Return post-state
     return state
+```
+
+```python
+def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
+    proposer = state.validators[get_beacon_proposer_index(state)]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
+    return bls_verify(proposer.pubkey, hash_tree_root(signed_block.message), signed_block.signature, domain)
 ```
 
 ```python
@@ -1080,7 +1155,7 @@ def process_slot(state: BeaconState) -> None:
     if state.latest_block_header.state_root == Bytes32():
         state.latest_block_header.state_root = previous_state_root
     # Cache block root
-    previous_block_root = signing_root(state.latest_block_header)
+    previous_block_root = hash_tree_root(state.latest_block_header)
     state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
 ```
 
@@ -1259,26 +1334,22 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
-        if (
-            validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
-            and validator.effective_balance == MAX_EFFECTIVE_BALANCE
-        ):
-            validator.activation_eligibility_epoch = get_current_epoch(state)
+        if is_eligible_for_activation_queue(validator):
+            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))
 
-    # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
+    # Queue validators eligible for activation and not yet dequeued for activation
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
-        if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
-        and validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
-    ], key=lambda index: state.validators[index].activation_eligibility_epoch)
-    # Dequeued validators for activation up to churn limit (without resetting activation epoch)
+        if is_eligible_for_activation(state, validator)
+        # Order by the sequence of activation_eligibility_epoch setting and then index
+    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
+    # Dequeued validators for activation up to churn limit
     for index in activation_queue[:get_validator_churn_limit(state)]:
         validator = state.validators[index]
-        if validator.activation_epoch == FAR_FUTURE_EPOCH:
-            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
@@ -1340,20 +1411,17 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify that the slots match
     assert block.slot == state.slot
     # Verify that the parent matches
-    assert block.parent_root == signing_root(state.latest_block_header)
+    assert block.parent_root == hash_tree_root(state.latest_block_header)
     # Save current block as the new latest block
     state.latest_block_header = BeaconBlockHeader(
         slot=block.slot,
         parent_root=block.parent_root,
         # `state_root` is zeroed and overwritten in the next `process_slot` call
         body_root=hash_tree_root(block.body),
-        # `signature` is zeroed
     )
     # Verify proposer is not slashed
     proposer = state.validators[get_beacon_proposer_index(state)]
     assert not proposer.slashed
-    # Verify proposer signature
-    assert bls_verify(proposer.pubkey, signing_root(block), block.signature, get_domain(state, DOMAIN_BEACON_PROPOSER))
 ```
 
 #### RANDAO
@@ -1403,15 +1471,15 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
     proposer = state.validators[proposer_slashing.proposer_index]
     # Verify slots match
-    assert proposer_slashing.header_1.slot == proposer_slashing.header_2.slot
+    assert proposer_slashing.signed_header_1.message.slot == proposer_slashing.signed_header_2.message.slot
     # But the headers are different
-    assert proposer_slashing.header_1 != proposer_slashing.header_2
+    assert proposer_slashing.signed_header_1.message != proposer_slashing.signed_header_2.message
     # Check proposer is slashable
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
-    for header in (proposer_slashing.header_1, proposer_slashing.header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-        assert bls_verify(proposer.pubkey, signing_root(header), header.signature, domain)
+    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
+        assert bls_verify(proposer.pubkey, hash_tree_root(signed_header.message), signed_header.signature, domain)
 
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -1442,6 +1510,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < get_committee_count_at_slot(state, data.slot)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
     committee = get_beacon_committee(state, data.slot, data.index)
@@ -1489,7 +1558,11 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Note: The deposit contract does not check signatures.
         # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
         domain = compute_domain(DOMAIN_DEPOSIT)
-        if not bls_verify(pubkey, signing_root(deposit.data), deposit.data.signature, domain):
+        deposit_message = DepositMessage(
+            pubkey=deposit.data.pubkey,
+            withdrawal_credentials=deposit.data.withdrawal_credentials,
+            amount=deposit.data.amount)
+        if not bls_verify(pubkey, hash_tree_root(deposit_message), deposit.data.signature, domain):
             return
 
         # Add validator and balance entries
@@ -1512,19 +1585,20 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
 ##### Voluntary exits
 
 ```python
-def process_voluntary_exit(state: BeaconState, exit: VoluntaryExit) -> None:
-    validator = state.validators[exit.validator_index]
+def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
+    voluntary_exit = signed_voluntary_exit.message
+    validator = state.validators[voluntary_exit.validator_index]
     # Verify the validator is active
     assert is_active_validator(validator, get_current_epoch(state))
     # Verify the validator has not yet exited
     assert validator.exit_epoch == FAR_FUTURE_EPOCH
     # Exits must specify an epoch when they become valid; they are not valid before then
-    assert get_current_epoch(state) >= exit.epoch
+    assert get_current_epoch(state) >= voluntary_exit.epoch
     # Verify the validator has been active long enough
     assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
-    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, exit.epoch)
-    assert bls_verify(validator.pubkey, signing_root(exit), exit.signature, domain)
+    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
+    assert bls_verify(validator.pubkey, hash_tree_root(voluntary_exit), signed_voluntary_exit.signature, domain)
     # Initiate exit
-    initiate_validator_exit(state, exit.validator_index)
+    initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
