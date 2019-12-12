@@ -1,7 +1,4 @@
-from eth2spec.test.helpers.state import (
-    next_epoch,
-    next_epoch_with_attestations,
-)
+from eth2spec.test.helpers.state import next_epoch
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.phase_0.epoch_processing.run_epoch_process_base import run_epoch_processing_with
 
@@ -90,7 +87,10 @@ def test_activation_queue_no_activation_no_finality(spec, state):
 @with_all_phases
 @spec_state_test
 def test_activation_queue_sorting(spec, state):
-    mock_activations = 10
+    churn_limit = spec.get_validator_churn_limit(state)
+
+    # try to activate more than the per-epoch churn linmit
+    mock_activations = churn_limit * 2
 
     epoch = spec.get_current_epoch(state)
     for i in range(mock_activations):
@@ -103,10 +103,6 @@ def test_activation_queue_sorting(spec, state):
     # move state forward and finalize to allow for activations
     state.slot += spec.SLOTS_PER_EPOCH * 3
     state.finalized_checkpoint.epoch = epoch + 2
-
-    # make sure we are hitting the churn
-    churn_limit = spec.get_validator_churn_limit(state)
-    assert mock_activations > churn_limit
 
     yield from run_process_registry_updates(spec, state)
 
@@ -173,3 +169,30 @@ def test_ejection(spec, state):
         state.validators[index],
         spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     )
+
+
+@with_all_phases
+@spec_state_test
+def test_ejection_past_churn_limit(spec, state):
+    churn_limit = spec.get_validator_churn_limit(state)
+
+    # try to eject more than per-epoch churn limit
+    mock_ejections = churn_limit * 3
+
+    for i in range(mock_ejections):
+        state.validators[i].effective_balance = spec.EJECTION_BALANCE
+
+    expected_ejection_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+
+    yield from run_process_registry_updates(spec, state)
+
+    for i in range(mock_ejections):
+        # first third ejected in normal speed
+        if i < mock_ejections // 3:
+            assert state.validators[i].exit_epoch == expected_ejection_epoch
+        # second thirdgets delayed by 1 epoch
+        elif mock_ejections // 3 <= i < mock_ejections * 2 // 3:
+            assert state.validators[i].exit_epoch == expected_ejection_epoch + 1
+        # second thirdgets delayed by 2 epochs
+        else:
+            assert state.validators[i].exit_epoch == expected_ejection_epoch + 2
