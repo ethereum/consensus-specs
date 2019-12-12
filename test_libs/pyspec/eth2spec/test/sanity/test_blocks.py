@@ -3,7 +3,7 @@ from copy import deepcopy
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.bls import bls_sign
 
-from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block
+from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, build_empty_block, sign_block, \
     transition_unsigned_block
 from eth2spec.test.helpers.keys import privkeys, pubkeys
@@ -251,6 +251,56 @@ def test_attester_slashing(spec, state):
         get_balance(state, proposer_index) >
         get_balance(pre_state, proposer_index)
     )
+
+
+@with_all_phases
+@spec_state_test
+def test_proposer_after_inactive_index(spec, state):
+    # disable some low validator index to check after for
+    inactive_index = 10
+    state.validators[inactive_index].exit_epoch = spec.get_current_epoch(state)
+
+    # skip forward, get brand new proposers
+    state.slot = spec.SLOTS_PER_EPOCH * 2
+
+    while True:
+        proposer_index = spec.get_beacon_proposer_index(state)
+        if proposer_index > inactive_index:
+            # found a proposer that has a higher index than a disabled validator
+            yield 'pre', state
+            # test if the proposer can be recognized correctly after the inactive validator
+            signed_block = sign_block(spec, state, build_empty_block(spec, state), proposer_index=proposer_index)
+            yield 'blocks', [signed_block]
+            yield 'post', state
+            break
+        else:
+            next_slot(spec, state)
+
+
+@with_all_phases
+@spec_state_test
+def test_high_proposer_index(spec, state):
+    # disable a good amount of validators to make the active count lower, for a faster test
+    current_epoch = spec.get_current_epoch(state)
+    for i in range(len(state.validators) // 3):
+        state.validators[i].exit_epoch = current_epoch
+
+    # skip forward, get brand new proposers
+    state.slot = spec.SLOTS_PER_EPOCH * 2
+
+    active_count = len(spec.get_active_validator_indices(state, current_epoch))
+    while True:
+        proposer_index = spec.get_beacon_proposer_index(state)
+        if proposer_index >= active_count:
+            # found a proposer that has a higher index than the active validator count
+            yield 'pre', state
+            # test if the proposer can be recognized correctly, even while it has a high index.
+            signed_block = sign_block(spec, state, build_empty_block(spec, state), proposer_index=proposer_index)
+            yield 'blocks', [signed_block]
+            yield 'post', state
+            break
+        else:
+            next_slot(spec, state)
 
 
 @with_all_phases
