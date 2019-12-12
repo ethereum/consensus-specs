@@ -260,9 +260,14 @@ def test_att1_duplicate_index_normal_signed(spec, state):
 
     indices = attester_slashing.attestation_1.attesting_indices
     indices.pop(1)  # remove an index, make room for the additional duplicate index.
+    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+
+    # sign it, the signature will be valid for a single occurence. If the transition accidentally ignores the duplicate.
+    sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
+
     indices.append(indices[0])  # add one of the indices a second time
     attester_slashing.attestation_1.attesting_indices = sorted(indices)
-    sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
+
     # it will just appear normal, unless the double index is spotted
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
@@ -275,9 +280,14 @@ def test_att2_duplicate_index_normal_signed(spec, state):
 
     indices = attester_slashing.attestation_2.attesting_indices
     indices.pop(2)  # remove an index, make room for the additional duplicate index.
+    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+
+    # sign it, the signature will be valid for a single occurence. If the transition accidentally ignores the duplicate.
+    sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
+
     indices.append(indices[1])  # add one of the indices a second time
     attester_slashing.attestation_2.attesting_indices = sorted(indices)
-    sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
+
     # it will just appear normal, unless the double index is spotted
     yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
 
