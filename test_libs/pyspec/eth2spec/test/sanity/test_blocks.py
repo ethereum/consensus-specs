@@ -269,7 +269,7 @@ def test_proposer_after_inactive_index(spec, state):
             # found a proposer that has a higher index than a disabled validator
             yield 'pre', state
             # test if the proposer can be recognized correctly after the inactive validator
-            signed_block = sign_block(spec, state, build_empty_block(spec, state), proposer_index=proposer_index)
+            signed_block = state_transition_and_sign_block(spec, state, build_empty_block(spec, state))
             yield 'blocks', [signed_block]
             yield 'post', state
             break
@@ -295,7 +295,7 @@ def test_high_proposer_index(spec, state):
             # found a proposer that has a higher index than the active validator count
             yield 'pre', state
             # test if the proposer can be recognized correctly, even while it has a high index.
-            signed_block = sign_block(spec, state, build_empty_block(spec, state), proposer_index=proposer_index)
+            signed_block = state_transition_and_sign_block(spec, state, build_empty_block(spec, state))
             yield 'blocks', [signed_block]
             yield 'post', state
             break
