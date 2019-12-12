@@ -61,6 +61,8 @@
             - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
         - [Predicates](#predicates)
             - [`is_active_validator`](#is_active_validator)
+            - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
+            - [`is_eligible_for_activation`](#is_eligible_for_activation)
             - [`is_slashable_validator`](#is_slashable_validator)
             - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
             - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
@@ -589,6 +591,34 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     Check if ``validator`` is active.
     """
     return validator.activation_epoch <= epoch < validator.exit_epoch
+```
+
+#### `is_eligible_for_activation_queue`
+
+```python
+def is_eligible_for_activation_queue(validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible to be placed into the activation queue.
+    """
+    return (
+        validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+        and validator.effective_balance == MAX_EFFECTIVE_BALANCE
+    )
+```
+
+#### `is_eligible_for_activation`
+
+```python
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible for activation.
+    """
+    return (
+        # Placement in queue is finalized
+        validator.activation_eligibility_epoch <= state.finalized_checkpoint.epoch
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
+    )
 ```
 
 #### `is_slashable_validator`
@@ -1302,26 +1332,22 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
-        if (
-            validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
-            and validator.effective_balance == MAX_EFFECTIVE_BALANCE
-        ):
-            validator.activation_eligibility_epoch = get_current_epoch(state)
+        if is_eligible_for_activation_queue(validator):
+            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))
 
-    # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
+    # Queue validators eligible for activation and not yet dequeued for activation
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
-        if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
-        and validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
-    ], key=lambda index: state.validators[index].activation_eligibility_epoch)
-    # Dequeued validators for activation up to churn limit (without resetting activation epoch)
+        if is_eligible_for_activation(state, validator)
+        # Order by the sequence of activation_eligibility_epoch setting and then index
+    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
+    # Dequeued validators for activation up to churn limit
     for index in activation_queue[:get_validator_churn_limit(state)]:
         validator = state.validators[index]
-        if validator.activation_epoch == FAR_FUTURE_EPOCH:
-            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
