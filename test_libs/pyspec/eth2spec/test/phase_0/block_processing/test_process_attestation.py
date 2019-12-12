@@ -179,6 +179,20 @@ def test_invalid_index(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_mismatched_target_and_slot(spec, state):
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+
+    attestation = get_valid_attestation(spec, state)
+    attestation.data.slot = attestation.data.slot - spec.SLOTS_PER_EPOCH
+
+    sign_attestation(spec, state, attestation)
+
+    yield from run_attestation_processing(spec, state, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
 def test_old_target_epoch(spec, state):
     assert spec.MIN_ATTESTATION_INCLUSION_DELAY < spec.SLOTS_PER_EPOCH * 2
 
