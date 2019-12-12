@@ -658,8 +658,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     # Verify max number of indices
     if not len(indices) <= MAX_VALIDATORS_PER_COMMITTEE:
         return False
-    # Verify indices are sorted
-    if not indices == sorted(indices):
+    # Verify indices are sorted and unique
+    if not indices == sorted(set(indices)):
         return False
     # Verify aggregate signature
     if not bls_verify(

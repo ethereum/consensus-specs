@@ -254,6 +254,76 @@ def test_att2_bad_replaced_index(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
+def test_att1_duplicate_index_normal_signed(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
+
+    indices = attester_slashing.attestation_1.attesting_indices
+    indices.pop(1)  # remove an index, make room for the additional duplicate index.
+    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+
+    # sign it, the signature will be valid for a single occurence. If the transition accidentally ignores the duplicate.
+    sign_indexed_attestation(spec, state, attester_slashing.attestation_1)
+
+    indices.append(indices[0])  # add one of the indices a second time
+    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+
+    # it will just appear normal, unless the double index is spotted
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_att2_duplicate_index_normal_signed(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
+
+    indices = attester_slashing.attestation_2.attesting_indices
+    indices.pop(2)  # remove an index, make room for the additional duplicate index.
+    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+
+    # sign it, the signature will be valid for a single occurence. If the transition accidentally ignores the duplicate.
+    sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
+
+    indices.append(indices[1])  # add one of the indices a second time
+    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+
+    # it will just appear normal, unless the double index is spotted
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_att1_duplicate_index_double_signed(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
+
+    indices = attester_slashing.attestation_1.attesting_indices
+    indices.pop(1)  # remove an index, make room for the additional duplicate index.
+    indices.append(indices[2])  # add one of the indices a second time
+    attester_slashing.attestation_1.attesting_indices = sorted(indices)
+    sign_indexed_attestation(spec, state, attester_slashing.attestation_1)  # will have one attester signing it double
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
+@always_bls
+def test_att2_duplicate_index_double_signed(spec, state):
+    attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
+
+    indices = attester_slashing.attestation_2.attesting_indices
+    indices.pop(1)  # remove an index, make room for the additional duplicate index.
+    indices.append(indices[2])  # add one of the indices a second time
+    attester_slashing.attestation_2.attesting_indices = sorted(indices)
+    sign_indexed_attestation(spec, state, attester_slashing.attestation_2)  # will have one attester signing it double
+
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, False)
+
+
+@with_all_phases
+@spec_state_test
 def test_unsorted_att_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
