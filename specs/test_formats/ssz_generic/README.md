@@ -37,7 +37,7 @@ Valid has 3 parts: `meta.yaml`, `serialized.ssz`, `value.yaml`
 
 ### `meta.yaml`
 
-Valid ssz objects can have a hash-tree-root, and for some types also a signing-root.
+Valid ssz objects can have a hash-tree-root.
 The expected roots are encoded into the metadata yaml:
 
 ```yaml
@@ -61,7 +61,6 @@ The conditions are the same for each type:
 - Encoding: After encoding the given `value` object, the output should match `serialized`.
 - Decoding: After decoding the given `serialized` bytes, it should match the `value` object. 
 - Hash-tree-root: the root should match the root declared in the metadata.
-- Signing-root: if present in metadata, the signing root of the object should match the container.
 
 ## `invalid`
 

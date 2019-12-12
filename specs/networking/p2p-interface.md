@@ -421,7 +421,7 @@ The fields are, as seen by the client at the time of sending the message:
 - `head_fork_version`: The beacon_state `Fork` version.
 - `finalized_root`: `state.finalized_checkpoint.root` for the state corresponding to the head block.
 - `finalized_epoch`: `state.finalized_checkpoint.epoch` for the state corresponding to the head block.
-- `head_root`: The signing root of the current head block.
+- `head_root`: The hash_tree_root root of the current head block.
 - `head_slot`: The slot of the block corresponding to the `head_root`.
 
 The dialing client MUST send a `Status` request upon connection.
