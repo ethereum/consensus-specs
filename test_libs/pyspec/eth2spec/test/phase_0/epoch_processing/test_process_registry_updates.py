@@ -196,3 +196,52 @@ def test_ejection_past_churn_limit(spec, state):
         # second thirdgets delayed by 2 epochs
         else:
             assert state.validators[i].exit_epoch == expected_ejection_epoch + 2
+
+
+@with_all_phases
+@spec_state_test
+def test_activation_queue_activation_and_ejection(spec, state):
+    # move past first two irregular epochs wrt finality
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+
+    # ready for entrance into activation queue
+    activation_queue_index = 0
+    mock_deposit(spec, state, activation_queue_index)
+
+    # ready for activation
+    activation_index = 1
+    mock_deposit(spec, state, activation_index)
+    state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
+    state.validators[activation_index].activation_eligibility_epoch = state.finalized_checkpoint.epoch - 1
+
+    # ready for ejection
+    ejection_index = 2
+    state.validators[ejection_index].effective_balance = spec.EJECTION_BALANCE
+
+    yield from run_process_registry_updates(spec, state)
+
+    # validator moved into activation queue
+    validator = state.validators[activation_queue_index]
+    assert validator.activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
+    assert validator.activation_epoch == spec.FAR_FUTURE_EPOCH
+    assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
+
+    # validator activated for future epoch
+    validator = state.validators[activation_index]
+    assert validator.activation_eligibility_epoch != spec.FAR_FUTURE_EPOCH
+    assert validator.activation_epoch != spec.FAR_FUTURE_EPOCH
+    assert not spec.is_active_validator(validator, spec.get_current_epoch(state))
+    assert spec.is_active_validator(
+        validator,
+        spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+    )
+
+    # validator ejected for future epoch
+    validator = state.validators[ejection_index]
+    assert validator.exit_epoch != spec.FAR_FUTURE_EPOCH
+    assert spec.is_active_validator(validator, spec.get_current_epoch(state))
+    assert not spec.is_active_validator(
+        validator,
+        spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+    )
