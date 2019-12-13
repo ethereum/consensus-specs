@@ -19,7 +19,7 @@
         - [State list lengths](#state-list-lengths)
         - [Rewards and penalties](#rewards-and-penalties)
         - [Max operations per block](#max-operations-per-block)
-        - [Tag types](#tag-types)
+        - [Signature tag types](#tag-types)
     - [Containers](#containers)
         - [Misc dependencies](#misc-dependencies)
             - [`Fork`](#fork)
@@ -243,9 +243,9 @@ The following values are (non-configurable) constants used throughout the specif
 | `MAX_DEPOSITS` | `2**4` (= 16) |
 | `MAX_VOLUNTARY_EXITS` | `2**4` (= 16) |
 
-### Tag types
+### Signature tag types
 
-The following types are defined:
+The following tag types are defined to help ensure BLS messages are distinct:
 
 | Name | Value |
 | - | - |

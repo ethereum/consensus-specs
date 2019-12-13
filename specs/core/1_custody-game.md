@@ -125,7 +125,7 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ### Signature tag types
 
-The following types are defined:
+The following tag types are defined to help ensure BLS messages are distinct:
 
 | Name | Value |
 | - | - |

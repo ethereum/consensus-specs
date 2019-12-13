@@ -97,6 +97,8 @@ This document describes the shard transition function (data layer only) and the 
 
 ### Signature tag types
 
+The following tag types are defined to help ensure BLS messages are distinct:
+
 | Name | Value |
 | - | - |
 | `TAG_SHARD_PROPOSER` | `0x80000000` |
