@@ -4,19 +4,21 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 0 -- Deposit Contract](#ethereum-20-phase-0----deposit-contract)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Constants](#constants)
-        - [Contract](#contract)
-    - [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
-        - [`deposit` function](#deposit-function)
-            - [Deposit amount](#deposit-amount)
-            - [Withdrawal credentials](#withdrawal-credentials)
-            - [`DepositEvent` log](#depositevent-log)
-    - [Vyper code](#vyper-code)
 
+- [Introduction](#introduction)
+- [Constants](#constants)
+  - [Contract](#contract)
+- [Ethereum 1.0 deposit contract](#ethereum-10-deposit-contract)
+  - [`deposit` function](#deposit-function)
+    - [Deposit amount](#deposit-amount)
+    - [Withdrawal credentials](#withdrawal-credentials)
+    - [`DepositEvent` log](#depositevent-log)
+- [Vyper code](#vyper-code)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
