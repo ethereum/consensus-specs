@@ -125,11 +125,11 @@ This document details the beacon chain additions and changes in Phase 1 of Ether
 
 ### Signature tag types
 
-The following types are defined, mapping into `TagType` (little endian):
+The following types are defined:
 
 | Name | Value |
 | - | - |
-| `TAG_CUSTODY_BIT_CHALLENGE` | `6` |
+| `TAG_CUSTODY_BIT_CHALLENGE` | `0x06000000` |
 
 ### TODO PLACEHOLDER
 

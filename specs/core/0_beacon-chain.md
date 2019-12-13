@@ -245,15 +245,15 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Tag types
 
-The following types are defined, mapping into `TagType` (little endian):
+The following types are defined:
 
 | Name | Value |
 | - | - |
-| `TAG_BEACON_PROPOSER` | `0` |
-| `TAG_BEACON_ATTESTER` | `1` |
-| `TAG_RANDAO` | `2` |
-| `TAG_DEPOSIT` | `3` |
-| `TAG_VOLUNTARY_EXIT` | `4` |
+| `TAG_BEACON_PROPOSER` | `0x00000000` |
+| `TAG_BEACON_ATTESTER` | `0x01000000` |
+| `TAG_RANDAO` | `0x02000000` |
+| `TAG_DEPOSIT` | `0x03000000` |
+| `TAG_VOLUNTARY_EXIT` | `0x04000000` |
 
 ## Containers
 

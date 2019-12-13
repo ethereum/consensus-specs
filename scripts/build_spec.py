@@ -163,7 +163,7 @@ def objects_to_spec(functions: Dict[str, str],
     functions_spec = '\n\n'.join(functions.values())
     for k in list(constants.keys()):
         if k.startswith('TAG_'):
-            constants[k] = f"TagType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
+            constants[k] = f"TagType(bytes.fromhex('{constants[k]}'[2:]))"
         if k == "BLS12_381_Q":
             constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))

@@ -99,8 +99,8 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | Value |
 | - | - |
-| `TAG_SHARD_PROPOSER` | `128` |
-| `TAG_SHARD_ATTESTER` | `129` |
+| `TAG_SHARD_PROPOSER` | `0x80000000` |
+| `TAG_SHARD_ATTESTER` | `0x81000000` |
 
 ## Containers
 
