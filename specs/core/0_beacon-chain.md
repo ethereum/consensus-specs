@@ -199,6 +199,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
+| `BLS_WITHDRAWAL_PREFIX` | `Bytes1(b'\x00')` |
 
 ### Time parameters
 
