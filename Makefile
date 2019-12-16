@@ -77,6 +77,9 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 	diff -q $* $*.tmp && \
 	rm $*.tmp
 
+codespell:
+	! codespell . --skip ./.git | grep -v 'disabled'
+
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \
 	flake8  --ignore=E252,W504,W503 --max-line-length=120 ./eth2spec \
