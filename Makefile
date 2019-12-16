@@ -78,6 +78,7 @@ check_toc: $(MARKDOWN_FILES:=.toc)
 	rm $*.tmp
 
 codespell:
+  # Check codespell for errors, but disregard entries in .codespell-whitelist
 	! codespell . --skip ./.git | grep -v 'disabled'
 
 lint: $(PY_SPEC_ALL_TARGETS)
