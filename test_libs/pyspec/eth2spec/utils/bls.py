@@ -40,7 +40,7 @@ def FastAggregateVerify(PKs, message, signature):
 
 @only_with_bls(alt_return=STUB_PUBKEY)
 def bls_aggregate_pubkeys(PKs):
-    return bls.aggregate_pubkeys(pubkeys)
+    return bls.aggregate_pubkeys(PKs)
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)

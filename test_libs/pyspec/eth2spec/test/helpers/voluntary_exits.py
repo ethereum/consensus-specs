@@ -1,5 +1,4 @@
 from eth2spec.utils.bls import Sign
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
 def sign_voluntary_exit(spec, state, voluntary_exit, privkey):

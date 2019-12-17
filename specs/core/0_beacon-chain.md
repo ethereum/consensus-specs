@@ -1499,7 +1499,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         message = compute_domain_wrapper_root(
             object=signed_header.message,
             domain=get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)),
-            )
+        )
         assert Verify(proposer.pubkey, message, signed_header.signature)
 
     slash_validator(state, proposer_slashing.proposer_index)

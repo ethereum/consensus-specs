@@ -25,11 +25,10 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
 from eth2spec.utils.bls import (
-    Verify,
     Sign,
+    Verify,
     Aggregate,
     FastAggregateVerify,
-    bls_aggregate_pubkeys,
 )
 
 from eth2spec.utils.hash_function import hash

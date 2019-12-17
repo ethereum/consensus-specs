@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.bls import Sign
 
 from eth2spec.test.helpers.state import get_balance, state_transition_and_sign_block, next_slot

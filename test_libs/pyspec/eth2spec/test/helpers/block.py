@@ -41,7 +41,7 @@ def apply_sig(spec, state, signed_block, proposer_index=None):
     proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
     privkey = privkeys[proposer_index]
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
-    message = compute_domain_wrapper_root(block, domain)
+    message = spec.compute_domain_wrapper_root(block, domain)
 
     signed_block.signature = Sign(privkey, message)
 
