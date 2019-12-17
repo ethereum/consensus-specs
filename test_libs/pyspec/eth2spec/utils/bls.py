@@ -27,9 +27,9 @@ def Verify(PK, message, signature):
     return bls.verify(message_hash=message, pubkey=PK, signature=signature, domain=b'')
 
 
-# @only_with_bls(alt_return=True)
-# def AggregateVerify(PKs, messages, signature):
-#     return bls.verify_multiple(pubkeys=pubkeys, message_hashes=messages, signature=signature, domain=b'')
+@only_with_bls(alt_return=True)
+def AggregateVerify(PKs, messages, signature):
+    return bls.verify_multiple(pubkeys=PKs, message_hashes=messages, signature=signature, domain=b'')
 
 
 @only_with_bls(alt_return=True)
@@ -38,9 +38,9 @@ def FastAggregateVerify(PKs, message, signature):
     return bls.verify(pubkey=aggregate_pubkey, message_hash=message, signature=signature, domain=b'')
 
 
-@only_with_bls(alt_return=STUB_PUBKEY)
-def bls_aggregate_pubkeys(PKs):
-    return bls.aggregate_pubkeys(PKs)
+# @only_with_bls(alt_return=STUB_PUBKEY)
+# def bls_aggregate_pubkeys(PKs):
+#     return bls.aggregate_pubkeys(PKs)
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
