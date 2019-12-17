@@ -53,6 +53,7 @@ It consists of four main sections:
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
+      - [Shard bitfield](#shard-bitfield)
       - [Interop](#interop-5)
       - [Mainnet](#mainnet-5)
     - [Topic advertisement](#topic-advertisement)
@@ -556,6 +557,14 @@ The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the follo
 -  A UDP port (`udp` field) representing the local discv5 listening port.
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
+
+#### Shard bitfield
+
+The ENR MAY contain an entry signifying the shard subnet bitfield with the following form to more easily discover peers participating in particular shard gossip subnets.
+
+| Key          | Value                                            |
+|:-------------|:-------------------------------------------------|
+| `shards`     | SSZ `Bitvector[MAX_COMMITTEES_PER_SLOT]`         |
 
 #### Interop
 
