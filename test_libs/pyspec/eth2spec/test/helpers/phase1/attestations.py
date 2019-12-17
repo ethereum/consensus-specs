@@ -1,7 +1,7 @@
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.bls import (
-    bls_aggregate_signatures,
-    bls_sign,
+    Aggregate,
+    Sign,
 )
 
 
@@ -25,16 +25,10 @@ def sign_shard_attestation(spec, beacon_state, shard_state, block, participants)
             )
         )
 
-    return bls_aggregate_signatures(signatures)
+    return Aggregate(signatures)
 
 
 def get_attestation_signature(spec, beacon_state, shard_state, message_hash, block_epoch, privkey):
-    return bls_sign(
-        message_hash=message_hash,
-        privkey=privkey,
-        domain=spec.get_domain(
-            state=beacon_state,
-            domain_type=spec.DOMAIN_SHARD_ATTESTER,
-            message_epoch=block_epoch,
-        )
-    )
+    domain=spec.get_domain(beacon_state, spec.DOMAIN_SHARD_ATTESTER, block_epoch)
+    message = spec.compute_domain_wrapper(message_hash, domain)
+    return Sign(privkey, message)

@@ -23,31 +23,35 @@ def only_with_bls(alt_return=None):
 
 
 @only_with_bls(alt_return=True)
-def bls_verify(pubkey, message_hash, signature, domain):
-    return bls.verify(message_hash=message_hash, pubkey=pubkey,
-                      signature=signature, domain=domain)
+def Verify(PK, message, signature):
+    return bls.verify(message_hash=message, pubkey=PK, signature=signature, domain=b'')
+
+
+# @only_with_bls(alt_return=True)
+# def AggregateVerify(PKs, messages, signature):
+#     return bls.verify_multiple(pubkeys=pubkeys, message_hashes=messages, signature=signature, domain=b'')
 
 
 @only_with_bls(alt_return=True)
-def bls_verify_multiple(pubkeys, message_hashes, signature, domain):
-    return bls.verify_multiple(pubkeys=pubkeys, message_hashes=message_hashes,
-                               signature=signature, domain=domain)
+def FastAggregateVerify(PKs, message, signature):
+    aggregate_pubkey = bls.aggregate_pubkeys(PKs)
+    return bls.verify(pubkey=aggregate_pubkey, message_hash=message, signature=signature, domain=b'')
 
 
 @only_with_bls(alt_return=STUB_PUBKEY)
-def bls_aggregate_pubkeys(pubkeys):
+def bls_aggregate_pubkeys(PKs):
     return bls.aggregate_pubkeys(pubkeys)
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
-def bls_aggregate_signatures(signatures):
+def Aggregate(signatures):
     return bls.aggregate_signatures(signatures)
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
-def bls_sign(message_hash, privkey, domain):
-    return bls.sign(message_hash=message_hash, privkey=privkey,
-                    domain=domain)
+def Sign(SK, message):
+    return bls.sign(message_hash=message, privkey=SK,
+                    domain=b'')
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)

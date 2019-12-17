@@ -379,6 +379,14 @@ class BeaconBlockHeader(Container):
     body_root: Root
 ```
 
+#### `DomainWrapper`
+
+```python
+class DomainWrapper(Container):
+    root: Root
+    domain: Domain
+```
+
 ### Beacon operations
 
 #### `ProposerSlashing`
@@ -575,13 +583,17 @@ def bytes_to_int(data: bytes) -> uint64:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing objects into a single root by utilizing a hash tree structure, as defined in the [SSZ spec](../simple-serialize.md#merkleization).
 
-#### `bls_verify`
+#### BLS Signatures
 
-`bls_verify` is a function for verifying a BLS signature, as defined in the [BLS Signature spec](../bls_signature.md#bls_verify).
+Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00).
 
-#### `bls_aggregate_pubkeys`
+Specifically, eth2 uses the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite where it makes use of the following functions:
 
-`bls_aggregate_pubkeys` is a function for aggregating multiple BLS public keys into a single aggregate key, as defined in the [BLS Signature spec](../bls_signature.md#bls_aggregate_pubkeys).
+* `def Sign(SK: int, message: Bytes) -> BLSSignature`
+* `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
+* `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
+* `def bls_aggregate_pubkeys(PKs: Sequence[BLSPubkey]) -> BLSPubkey`
+* `def FastAggregateVerify(PKs: Sequence[BLSSignature], message: Bytes, signature: BLSSignature) -> bool`
 
 ### Predicates
 
@@ -664,14 +676,10 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     if not indices == sorted(set(indices)):
         return False
     # Verify aggregate signature
-    if not bls_verify(
-        pubkey=bls_aggregate_pubkeys([state.validators[i].pubkey for i in indices]),
-        message_hash=hash_tree_root(indexed_attestation.data),
-        signature=indexed_attestation.signature,
-        domain=get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch),
-    ):
-        return False
-    return True
+    pubkeys = [state.validators[i].pubkey for i in indices]
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
+    message = compute_domain_wrapper_root(indexed_attestation.data, domain)
+    return FastAggregateVerify(pubkeys, message, indexed_attestation.signature)
 ```
 
 #### `is_valid_merkle_branch`
@@ -787,6 +795,17 @@ def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> 
     Return the domain for the ``domain_type`` and ``fork_version``.
     """
     return Domain(domain_type + fork_version)
+```
+
+### `compute_domain_wrapper_root`
+
+```python
+def compute_domain_wrapper_root(object: SSZObject, domain: Domain) -> Root:
+    domain_wrapped_object = DomainWrapper(
+        root=hash_tree_root(object),
+        domain=domain,
+    )
+    return hash_tree_root(domain_wrapped_object)
 ```
 
 ### Beacon state accessors
@@ -1131,8 +1150,8 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[get_beacon_proposer_index(state)]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER)
-    return bls_verify(proposer.pubkey, hash_tree_root(signed_block.message), signed_block.signature, domain)
+    message = compute_domain_wrapper_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    return Verify(proposer.pubkey, message, signed_block.signature)
 ```
 
 ```python
@@ -1431,7 +1450,8 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
-    assert bls_verify(proposer.pubkey, hash_tree_root(epoch), body.randao_reveal, get_domain(state, DOMAIN_RANDAO))
+    message = compute_domain_wrapper_root(epoch, get_domain(state, DOMAIN_RANDAO))
+    assert Verify(proposer.pubkey, message, body.randao_reveal)
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
     state.randao_mixes[epoch % EPOCHS_PER_HISTORICAL_VECTOR] = mix
@@ -1478,8 +1498,11 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
-        assert bls_verify(proposer.pubkey, hash_tree_root(signed_header.message), signed_header.signature, domain)
+        message = compute_domain_wrapper_root(
+            object=signed_header.message,
+            domain=get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)),
+            )
+        assert Verify(proposer.pubkey, message, signed_header.signature)
 
     slash_validator(state, proposer_slashing.proposer_index)
 ```
@@ -1557,12 +1580,12 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
         # Verify the deposit signature (proof of possession) for new validators.
         # Note: The deposit contract does not check signatures.
         # Note: Deposits are valid across forks, thus the deposit domain is retrieved directly from `compute_domain`.
-        domain = compute_domain(DOMAIN_DEPOSIT)
         deposit_message = DepositMessage(
             pubkey=deposit.data.pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
             amount=deposit.data.amount)
-        if not bls_verify(pubkey, hash_tree_root(deposit_message), deposit.data.signature, domain):
+        message = compute_domain_wrapper_root(deposit_message, compute_domain(DOMAIN_DEPOSIT))
+        if not Verify(pubkey, message, deposit.data.signature):
             return
 
         # Add validator and balance entries
@@ -1598,7 +1621,8 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
-    assert bls_verify(validator.pubkey, hash_tree_root(voluntary_exit), signed_voluntary_exit.signature, domain)
+    message = compute_domain_wrapper_root(voluntary_exit, domain)
+    assert Verify(validator.pubkey, message, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```

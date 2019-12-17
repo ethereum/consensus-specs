@@ -3,7 +3,7 @@ from typing import List
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, transition_unsigned_block, \
     build_empty_block
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.bls import bls_sign, bls_aggregate_signatures
+from eth2spec.utils.bls import Sign, Aggregate
 from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
@@ -77,8 +77,7 @@ def sign_aggregate_attestation(spec, state, attestation_data, participants: List
                 privkey
             )
         )
-
-    return bls_aggregate_signatures(signatures)
+    return Aggregate(signatures)
 
 
 def sign_indexed_attestation(spec, state, indexed_attestation):
@@ -97,15 +96,9 @@ def sign_attestation(spec, state, attestation):
 
 
 def get_attestation_signature(spec, state, attestation_data, privkey):
-    return bls_sign(
-        message_hash=attestation_data.hash_tree_root(),
-        privkey=privkey,
-        domain=spec.get_domain(
-            state=state,
-            domain_type=spec.DOMAIN_BEACON_ATTESTER,
-            message_epoch=attestation_data.target.epoch,
-        )
-    )
+    domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
+    message = spec.compute_domain_wrapper_root(attestation_data, domain)
+    return Sign(privkey, message)
 
 
 def fill_aggregate_attestation(spec, state, attestation, signed=False):
