@@ -131,7 +131,7 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
-| `DOMAIN_CUSTODY_BIT_CHALLENGE` | `6` |
+| `DOMAIN_CUSTODY_BIT_CHALLENGE` | `0x05000000` |
 
 ### TODO PLACEHOLDER
 
