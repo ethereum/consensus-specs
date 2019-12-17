@@ -85,7 +85,7 @@ def get_eth1_data(distance: uint64) -> Bytes32:
     return hash(distance)
 
 
-def hash(x: bytes) -> Bytes32:
+def hash(x: bytes) -> Bytes32:  # type: ignore
     if x not in hash_cache:
         hash_cache[x] = Bytes32(_hash(x))
     return hash_cache[x]
