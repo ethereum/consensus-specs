@@ -53,11 +53,10 @@ It consists of four main sections:
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
-      - [Shard bitfield](#shard-bitfield)
+      - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [Interop](#interop-5)
       - [Mainnet](#mainnet-5)
     - [Topic advertisement](#topic-advertisement)
-      - [Interop](#interop-6)
       - [Mainnet](#mainnet-6)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
@@ -558,13 +557,13 @@ The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the follo
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
 
-#### Shard bitfield
+#### Attestation subnet bitfield
 
-The ENR MAY contain an entry signifying the shard subnet bitfield with the following form to more easily discover peers participating in particular shard gossip subnets.
+The ENR MAY contain an entry (`attnets`) signifying the attestation subnet bitfield with the following form to more easily discover peers participating in particular attestation gossip subnets.
 
 | Key          | Value                                            |
 |:-------------|:-------------------------------------------------|
-| `shards`     | SSZ `Bitvector[MAX_COMMITTEES_PER_SLOT]`         |
+| `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
 
 #### Interop
 
@@ -578,13 +577,11 @@ On mainnet, ENRs MUST include a structure enumerating the capabilities offered b
 
 ### Topic advertisement
 
-#### Interop
-
-This feature will not be used in the interoperability testnet.
-
 #### Mainnet
 
-In mainnet, we plan to use discv5’s topic advertisement feature as a rendezvous facility for peers on shards (thus subscribing to the relevant gossipsub topics).
+discv5's topic advertisement feature is not expected to be ready for mainnet launch of Phase 0.
+
+Once this feature is built out and stable, we expect to use topic advertisement as a rendezvous facility for peers on shards. Until then, the ENR [attestation subnet bitfield](#attestation-subnet-bitfield) will be used for discovery of peers on particular subnets.
 
 # Design decision rationale
 
@@ -773,9 +770,9 @@ The prohibition of unverified-block-gossiping extends to nodes that cannot verif
 
 ### How are we going to discover peers in a gossipsub topic?
 
-Via discv5 topics. ENRs should not be used for this purpose, as they store identity, location, and capability information, not volatile [advertisements](#topic-advertisement).
+In Phase 0, peers for attestation subnets will be found using the `attnets` entry in the ENR.
 
-In the interoperability testnet, all peers will be subscribed to all global beacon chain topics, so discovering peers in specific shard topics will be unnecessary.
+Although this method will be sufficient for early phases of Eth2, we aim to use the more appropriate discv5 topics for this and other similar tasks in the future. ENRs should ultimately not be used for this purpose. They are best suited to store identity, location, and capability information, rather than more volatile advertisements.
 
 ## Req/Resp
 
