@@ -81,6 +81,7 @@ It consists of four main sections:
     - [How do we upgrade gossip channels (e.g. changes in encoding, compression)?](#how-do-we-upgrade-gossip-channels-eg-changes-in-encoding-compression)
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
+  - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
     - [Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?](#why-are-there-attestation_subnet_count-attestation-subnets)
     - [Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?](#why-are-attestations-limited-to-be-broadcast-on-gossip-channels-within-slots_per_epoch-slots)
     - [Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?](#why-are-aggregate-attestations-broadcast-to-the-global-topic-as-aggregateandproofs-rather-than-just-as-attestations)
@@ -212,7 +213,7 @@ Topics are plain UTF-8 strings and are encoded on the wire as determined by prot
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
 
-The message-id of a gossipsub message MUST be:
+The `message-id` of a gossipsub message MUST be:
 
 ```python
    message-id: base64(SHA256(message.data))
@@ -750,6 +751,16 @@ Topic names have a hierarchical structure. In the future, gossipsub may support 
 No security or privacy guarantees are lost as a result of choosing plaintext topic names, since the domain is finite anyway, and calculating a digest's preimage would be trivial.
 
 Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
+
+## Why are we overriding the default libp2p pubsub `message-id`?
+
+For our current purposes, there is no need to address messages based on source peer, and it seems likely we might even override the message `from` to obfuscate the peer. By overriding the default `message-id` to use content-addressing we can filter unnecessary duplicates before hitting the application layer.
+
+Some examples of where messages could be duplicated:
+
+* A validator client connected to multiple beacon nodes publishing duplicate gossip messages
+* Attestation aggregation strategies where clients partially aggregate attestations and propagate them. Partial aggregates could be duplicated
+* Clients re-publishing seen messages
 
 ### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
