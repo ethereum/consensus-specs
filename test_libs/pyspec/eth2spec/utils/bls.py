@@ -38,11 +38,6 @@ def FastAggregateVerify(PKs, message, signature):
     return bls.verify(pubkey=aggregate_pubkey, message_hash=message, signature=signature, domain=b'')
 
 
-# @only_with_bls(alt_return=STUB_PUBKEY)
-# def bls_aggregate_pubkeys(PKs):
-#     return bls.aggregate_pubkeys(PKs)
-
-
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Aggregate(signatures):
     return bls.aggregate_signatures(signatures)
@@ -50,8 +45,7 @@ def Aggregate(signatures):
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Sign(SK, message):
-    return bls.sign(message_hash=message, privkey=SK,
-                    domain=b'')
+    return bls.sign(message_hash=message, privkey=SK, domain=b'')
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)

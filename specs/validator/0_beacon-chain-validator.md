@@ -312,7 +312,7 @@ def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
 ```python
 def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
-    message = compute_domain_wrapper_root(compute_epoch_at_slot(header), domain)
+    message = compute_domain_wrapper_root(header, domain)
     return Sign(privkey, message)
 ```
 

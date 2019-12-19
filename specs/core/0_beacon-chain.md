@@ -591,7 +591,6 @@ Specifically, eth2 uses the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuit
 * `def Sign(SK: int, message: Bytes) -> BLSSignature`
 * `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
 * `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-* `def bls_aggregate_pubkeys(PKs: Sequence[BLSPubkey]) -> BLSPubkey`
 * `def FastAggregateVerify(PKs: Sequence[BLSSignature], message: Bytes, signature: BLSSignature) -> bool`
 
 ### Predicates
@@ -799,9 +798,9 @@ def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> 
 ### `compute_domain_wrapper_root`
 
 ```python
-def compute_domain_wrapper_root(object: SSZObject, domain: Domain) -> Root:
+def compute_domain_wrapper_root(ssz_object: SSZObject, domain: Domain) -> Root:
     domain_wrapped_object = DomainWrapper(
-        root=hash_tree_root(object),
+        root=hash_tree_root(ssz_object),
         domain=domain,
     )
     return hash_tree_root(domain_wrapped_object)
@@ -1497,10 +1496,8 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     assert is_slashable_validator(proposer, get_current_epoch(state))
     # Signatures are valid
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
-        message = compute_domain_wrapper_root(
-            object=signed_header.message,
-            domain=get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)),
-        )
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
+        message = compute_domain_wrapper_root(signed_header.message, domain)
         assert Verify(proposer.pubkey, message, signed_header.signature)
 
     slash_validator(state, proposer_slashing.proposer_index)
