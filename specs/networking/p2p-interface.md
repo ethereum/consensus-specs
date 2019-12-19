@@ -437,6 +437,8 @@ Clients SHOULD immediately disconnect from one another following the handshake a
 
 Once the handshake completes, the client with the lower `finalized_epoch` or `head_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange` request.
 
+*Note*: Under bad network condition or after some rounds of `BeaconBlocksByRange` requests, the client might need to send `Status` request again to learn if the peer has a higher head. Implementers are free to implement such behavior in their own way.
+
 #### Goodbye
 
 **Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
