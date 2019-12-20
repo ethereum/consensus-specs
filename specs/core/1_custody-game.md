@@ -353,7 +353,7 @@ def custody_subchunkify(bytez: bytes) -> Sequence[bytes]:
 
 ```python
 def get_custody_chunk_bit(key: BLSSignature, chunk: bytes) -> bool:
-    full_G2_element = bls_signature_to_G2(key)
+    full_G2_element = bls.signature_to_G2(key)
     s = full_G2_element[0].coeffs
     bits = [legendre_bit((i + 1) * s[i % 2] + int.from_bytes(subchunk, "little"), BLS12_381_Q)
             for i, subchunk in enumerate(custody_subchunkify(chunk))]
@@ -431,7 +431,7 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
     # Verify signature
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
     message = compute_domain_wrapper_root(epoch_to_sign, domain)
-    assert Verify(revealer.pubkey, message, reveal.reveal)
+    assert bls.Verify(revealer.pubkey, message, reveal.reveal)
 
     # Decrement max reveal lateness if response is timely
     if epoch_to_sign + EPOCHS_PER_CUSTODY_PERIOD >= get_current_epoch(state):
@@ -485,7 +485,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
     messages = [compute_domain_wrapper_root(message, domain)
                 for message in [hash_tree_root(reveal.epoch), reveal.mask]]
 
-    assert AggregateVerify(pubkeys, messages, reveal.reveal)
+    assert bls.AggregateVerify(pubkeys, messages, reveal.reveal)
 
     if reveal.epoch >= get_current_epoch(state) + CUSTODY_PERIOD_TO_RANDAO_PADDING:
         # Full slashing when the secret was revealed so early it may be a valid custody
@@ -582,7 +582,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     challenger = state.validators[challenge.challenger_index]
     domain = get_domain(state, DOMAIN_CUSTODY_BIT_CHALLENGE, get_current_epoch(state))
     # TODO incorrect hash-tree-root, but this changes with phase 1 PR #1483
-    assert Verify(challenger.pubkey, compute_domain_wrapper_root(challenge, domain), challenge.signature)
+    assert bls.Verify(challenger.pubkey, compute_domain_wrapper_root(challenge, domain), challenge.signature)
     # Verify challenger is slashable
     assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify attestation
@@ -606,7 +606,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
         challenge.responder_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    assert Verify(responder.pubkey, compute_domain_wrapper_root(epoch_to_sign, domain), challenge.responder_key)
+    assert bls.Verify(responder.pubkey, compute_domain_wrapper_root(epoch_to_sign, domain), challenge.responder_key)
     # Verify the chunk count
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
     assert chunk_count == len(challenge.chunk_bits)

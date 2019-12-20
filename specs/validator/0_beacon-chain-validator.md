@@ -235,7 +235,7 @@ Set `block.body.randao_reveal = epoch_signature` where `epoch_signature` is obta
 def get_epoch_signature(state: BeaconState, block: BeaconBlock, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_RANDAO, compute_epoch_at_slot(block.slot))
     message = compute_domain_wrapper_root(compute_epoch_at_slot(block.slot), domain)
-    return Sign(privkey, message)
+    return bls.Sign(privkey, message)
 ```
 
 ##### Eth1 Data
@@ -313,7 +313,7 @@ def compute_new_state_root(state: BeaconState, block: BeaconBlock) -> Root:
 def get_block_signature(state: BeaconState, header: BeaconBlockHeader, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(header.slot))
     message = compute_domain_wrapper_root(header, domain)
-    return Sign(privkey, message)
+    return bls.Sign(privkey, message)
 ```
 
 ### Attesting
@@ -372,7 +372,7 @@ Set `attestation.signature = signed_attestation_data` where `signed_attestation_
 def get_signed_attestation_data(state: BeaconState, attestation: IndexedAttestation, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     message = compute_domain_wrapper_root(attestation.data, domain)
-    return Sign(privkey, message)
+    return bls.Sign(privkey, message)
 ```
 
 #### Broadcast attestation
@@ -391,7 +391,7 @@ A validator is selected to aggregate based upon the return value of `is_aggregat
 def get_slot_signature(state: BeaconState, slot: Slot, privkey: int) -> BLSSignature:
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, compute_epoch_at_slot(slot))
     message = compute_domain_wrapper_root(slot, domain)
-    return Sign(privkey, message)
+    return bls.Sign(privkey, message)
 ```
 
 ```python
@@ -422,7 +422,7 @@ Set `aggregate_attestation.signature = aggregate_signature` where `aggregate_sig
 ```python
 def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature:
     signatures = [attestation.signature for attestation in attestations]
-    return Aggregate(signatures)
+    return bls.Aggregate(signatures)
 ```
 
 #### Broadcast aggregate

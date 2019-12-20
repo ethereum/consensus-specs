@@ -49,5 +49,5 @@ def Sign(SK, message):
 
 
 @only_with_bls(alt_return=STUB_COORDINATES)
-def bls_signature_to_G2(signature):
+def signature_to_G2(signature):
     return bls.api.signature_to_G2(signature)

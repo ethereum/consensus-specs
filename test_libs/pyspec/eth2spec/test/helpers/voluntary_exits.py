@@ -1,4 +1,4 @@
-from eth2spec.utils.bls import Sign
+from eth2spec.utils import bls
 
 
 def sign_voluntary_exit(spec, state, voluntary_exit, privkey):
@@ -6,5 +6,5 @@ def sign_voluntary_exit(spec, state, voluntary_exit, privkey):
     message = spec.compute_domain_wrapper_root(voluntary_exit, domain)
     return spec.SignedVoluntaryExit(
         message=voluntary_exit,
-        signature=Sign(privkey, message)
+        signature=bls.Sign(privkey, message)
     )

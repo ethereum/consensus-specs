@@ -1,10 +1,8 @@
 from copy import deepcopy
 
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.bls import (
-    Sign,
-    only_with_bls,
-)
+from eth2spec.utils import bls
+from eth2spec.utils.bls import only_with_bls
 from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
 )
@@ -22,7 +20,7 @@ def sign_shard_block(spec, beacon_state, shard_state, block, proposer_index=None
     privkey = privkeys[proposer_index]
     domain = spec.get_domain(beacon_state, spec.DOMAIN_SHARD_PROPOSER, spec.compute_epoch_of_shard_slot(block.slot))
     message = spec.compute_domain_wrapper(block, domain)
-    block.signature = Sign(privkey, message)
+    block.signature = bls.Sign(privkey, message)
 
 
 def build_empty_shard_block(spec,

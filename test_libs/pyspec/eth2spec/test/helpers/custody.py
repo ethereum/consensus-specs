@@ -1,5 +1,5 @@
 from eth2spec.test.helpers.keys import privkeys
-from eth2spec.utils.bls import Sign, Aggregate
+from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
 from eth2spec.utils.ssz.ssz_typing import Bitlist, ByteVector, Bitvector
 from eth2spec.utils.ssz.ssz_impl import chunkify, pack, hash_tree_root
@@ -19,13 +19,13 @@ def get_valid_early_derived_secret_reveal(spec, state, epoch=None):
     # Generate the secret that is being revealed
     domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch)
     message = spec.compute_domain_wrapper_root(spec.Epoch(epoch), domain)
-    reveal = Sign(privkeys[revealed_index], message)
+    reveal = bls.Sign(privkeys[revealed_index], message)
     # Generate the mask (any random 32 bytes that don't reveal the masker's secret will do)
     mask = hash(reveal)
     # Generate masker's signature on the mask
     message = spec.compute_domain_wrapper_root(mask, domain)
-    masker_signature = Sign(privkeys[masker_index], message)
-    masked_reveal = Aggregate([reveal, masker_signature])
+    masker_signature = bls.Sign(privkeys[masker_index], message)
+    masked_reveal = bls.Aggregate([reveal, masker_signature])
 
     return spec.EarlyDerivedSecretReveal(
         revealed_index=revealed_index,
@@ -49,7 +49,7 @@ def get_valid_custody_key_reveal(spec, state, period=None):
     # Generate the secret that is being revealed
     domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch_to_sign)
     message = spec.compute_domain_wrapper_root(spec.Epoch(epoch_to_sign), domain)
-    reveal = Sign(privkeys[revealer_index], message)
+    reveal = bls.Sign(privkeys[revealer_index], message)
     return spec.CustodyKeyReveal(
         revealer_index=revealer_index,
         reveal=reveal,
@@ -75,7 +75,7 @@ def get_valid_bit_challenge(spec, state, attestation, invalid_custody_bit=False)
     # Generate the responder key
     domain = spec.get_domain(state, spec.DOMAIN_RANDAO, epoch)
     message = spec.compute_domain_wrapper_root(spec.compute_domain_wrapper_root, domain)
-    responder_key = Sign(privkeys[responder_index], message)
+    responder_key = bls.Sign(privkeys[responder_index], message)
 
     chunk_count = spec.get_custody_chunk_count(attestation.data.crosslink)
 

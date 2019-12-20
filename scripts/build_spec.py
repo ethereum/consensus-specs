@@ -24,12 +24,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     boolean, Container, List, Vector, uint64, SSZType,
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96, Bitlist, Bitvector,
 )
-from eth2spec.utils.bls import (
-    Sign,
-    Verify,
-    Aggregate,
-    FastAggregateVerify,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
@@ -57,12 +52,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bytes1, Bytes4, Bytes8, Bytes32, Bytes48, Bytes96,
     uint64, bit, boolean, byte,
 )
-from eth2spec.utils.bls import (
-    Verify,
-    AggregateVerify,
-    FastAggregateVerify,
-    bls_signature_to_G2,
-)
+from eth2spec.utils import bls
 
 from eth2spec.utils.hash_function import hash
 
