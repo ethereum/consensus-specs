@@ -252,7 +252,7 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
     return old_objects
 
 
-# inserts are handeled the same way as functions
+# inserts are handled the same way as functions
 combine_inserts = combine_functions
 
 
