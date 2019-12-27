@@ -199,7 +199,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1(b'\x00')` |
+| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 
 ### Time parameters
 
@@ -249,15 +249,13 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Domain types
 
-The following types are defined, mapping into `DomainType` (little endian):
-
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `0` |
-| `DOMAIN_BEACON_ATTESTER` | `1` |
-| `DOMAIN_RANDAO` | `2` |
-| `DOMAIN_DEPOSIT` | `3` |
-| `DOMAIN_VOLUNTARY_EXIT` | `4` |
+| `DOMAIN_BEACON_PROPOSER` | `Bytes4('0x00000000')` |
+| `DOMAIN_BEACON_ATTESTER` | `Bytes4('0x01000000')` |
+| `DOMAIN_RANDAO` | `Bytes4('0x02000000')` |
+| `DOMAIN_DEPOSIT` | `Bytes4('0x03000000')` |
+| `DOMAIN_VOLUNTARY_EXIT` | `Bytes4('0x04000000')` |
 
 ## Containers
 
