@@ -101,8 +101,8 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_PROPOSER` | `128` |
-| `DOMAIN_SHARD_ATTESTER` | `129` |
+| `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_ATTESTER` | `DomainType('0x81000000')` |
 
 ## Containers
 
