@@ -1,5 +1,5 @@
 eth-tester[py-evm]==0.1.0b39
-vyper==0.1.0b13
+git+https://github.com/vyperlang/vyper@1761-HOTFIX-v0.1.0-beta.13
 web3==5.0.0b2
 pytest==3.6.1
 ../test_libs/pyspec

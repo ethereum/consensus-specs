@@ -48,13 +48,13 @@ commands:
     description: "Restore the cache with deposit_contract keys"
     steps:
       - restore_cached_venv:
-          venv_name: v6-deposit-contract
+          venv_name: v7-deposit-contract
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
   save_deposit_contract_cached_venv:
     description: Save a venv into a cache with deposit_contract keys"
     steps:
       - save_cached_venv:
-          venv_name: v6-deposit-contract
+          venv_name: v7-deposit-contract
           reqs_checksum: cache-{{ checksum "test_libs/pyspec/requirements.txt" }}-{{ checksum "deposit_contract/requirements-testing.txt" }}
           venv_path: ./deposit_contract/venv
 jobs:
@@ -112,6 +112,15 @@ jobs:
       - run:
           name: Check table of contents
           command: sudo npm install -g doctoc && make check_toc
+  codespell:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/specs-repo
+    steps:
+      - checkout
+      - run:
+          name: Check codespell
+          command: pip install codespell --user &&  make codespell
   lint:
     docker:
       - image: circleci/python:3.6
@@ -158,6 +167,7 @@ workflows:
           requires:
             - install_pyspec_test
       - table_of_contents
+      - codespell
       - lint:
           requires:
             - test

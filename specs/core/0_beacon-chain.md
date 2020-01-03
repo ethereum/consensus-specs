@@ -200,7 +200,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1(b'\x00')` |
+| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 
 ### Time parameters
 
@@ -252,11 +252,11 @@ The following values are (non-configurable) constants used throughout the specif
 
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `0x00000000` |
-| `DOMAIN_BEACON_ATTESTER` | `0x01000000` |
-| `DOMAIN_RANDAO` | `0x02000000` |
-| `DOMAIN_DEPOSIT` | `0x03000000` |
-| `DOMAIN_VOLUNTARY_EXIT` | `0x04000000` |
+| `DOMAIN_BEACON_PROPOSER` | `DomainType('0x00000000')` |
+| `DOMAIN_BEACON_ATTESTER` | `DomainType('0x01000000')` |
+| `DOMAIN_RANDAO` | `DomainType('0x02000000')` |
+| `DOMAIN_DEPOSIT` | `DomainType('0x03000000')` |
+| `DOMAIN_VOLUNTARY_EXIT` | `DomainType('0x04000000')` |
 
 ## Containers
 
@@ -567,7 +567,7 @@ def int_to_bytes(n: uint64, length: uint64) -> bytes:
 ```python
 def bytes_to_int(data: bytes) -> uint64:
     """
-    Return the integer deserialization of ``data`` intepreted as ``ENDIANNESS``-endian.
+    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
     """
     return int.from_bytes(data, ENDIANNESS)
 ```

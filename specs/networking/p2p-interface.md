@@ -53,10 +53,10 @@ It consists of four main sections:
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [Integration into libp2p stacks](#integration-into-libp2p-stacks)
     - [ENR structure](#enr-structure)
+      - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [Interop](#interop-5)
       - [Mainnet](#mainnet-5)
     - [Topic advertisement](#topic-advertisement)
-      - [Interop](#interop-6)
       - [Mainnet](#mainnet-6)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
@@ -81,6 +81,7 @@ It consists of four main sections:
     - [How do we upgrade gossip channels (e.g. changes in encoding, compression)?](#how-do-we-upgrade-gossip-channels-eg-changes-in-encoding-compression)
     - [Why must all clients use the same gossip topic instead of one negotiated between each peer pair?](#why-must-all-clients-use-the-same-gossip-topic-instead-of-one-negotiated-between-each-peer-pair)
     - [Why are the topics strings and not hashes?](#why-are-the-topics-strings-and-not-hashes)
+  - [Why are we overriding the default libp2p pubsub `message-id`?](#why-are-we-overriding-the-default-libp2p-pubsub-message-id)
     - [Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?](#why-are-there-attestation_subnet_count-attestation-subnets)
     - [Why are attestations limited to be broadcast on gossip channels within `SLOTS_PER_EPOCH` slots?](#why-are-attestations-limited-to-be-broadcast-on-gossip-channels-within-slots_per_epoch-slots)
     - [Why are aggregate attestations broadcast to the global topic as `AggregateAndProof`s rather than just as `Attestation`s?](#why-are-aggregate-attestations-broadcast-to-the-global-topic-as-aggregateandproofs-rather-than-just-as-attestations)
@@ -211,6 +212,13 @@ The following gossipsub [parameters](https://github.com/libp2p/specs/tree/master
 Topics are plain UTF-8 strings and are encoded on the wire as determined by protobuf (gossipsub messages are enveloped in protobuf messages). Topic strings have form: `/eth2/TopicName/TopicEncoding`. This defines both the type of data being sent on the topic and how the data field of the message is encoded.
 
 Each gossipsub [message](https://github.com/libp2p/go-libp2p-pubsub/blob/master/pb/rpc.proto#L17-L24) has a maximum size of `GOSSIP_MAX_SIZE`. Clients MUST reject (fail validation) messages that are over this size limit. Likewise, clients MUST NOT emit or propagate messages larger than this limit.
+
+The `message-id` of a gossipsub message MUST be:
+
+```python
+   message-id: base64(SHA256(message.data))
+```
+where `base64` is the [URL-safe base64 alphabet](https://tools.ietf.org/html/rfc4648#section-3.2) with padding characters omitted.
 
 The payload is carried in the `data` field of a gossipsub message, and varies depending on the topic:
 
@@ -437,6 +445,8 @@ Clients SHOULD immediately disconnect from one another following the handshake a
 
 Once the handshake completes, the client with the lower `finalized_epoch` or `head_slot` (if the clients have equal `finalized_epoch`s) SHOULD request beacon blocks from its counterparty via the `BeaconBlocksByRange` request.
 
+*Note*: Under abnormal network condition or after some rounds of `BeaconBlocksByRange` requests, the client might need to send `Status` request again to learn if the peer has a higher head. Implementers are free to implement such behavior in their own way.
+
 #### Goodbye
 
 **Protocol ID:** ``/eth2/beacon_chain/req/goodbye/1/``
@@ -557,6 +567,14 @@ The Ethereum Node Record (ENR) for an Ethereum 2.0 client MUST contain the follo
 
 Specifications of these parameters can be found in the [ENR Specification](http://eips.ethereum.org/EIPS/eip-778).
 
+#### Attestation subnet bitfield
+
+The ENR MAY contain an entry (`attnets`) signifying the attestation subnet bitfield with the following form to more easily discover peers participating in particular attestation gossip subnets.
+
+| Key          | Value                                            |
+|:-------------|:-------------------------------------------------|
+| `attnets`    | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]`        |
+
 #### Interop
 
 In the interoperability testnet, all peers will support all capabilities defined in this document (gossip, full Req/Resp suite, discovery protocol), therefore the ENR record does not need to carry Eth2 capability information, as it would be superfluous.
@@ -569,13 +587,11 @@ On mainnet, ENRs MUST include a structure enumerating the capabilities offered b
 
 ### Topic advertisement
 
-#### Interop
-
-This feature will not be used in the interoperability testnet.
-
 #### Mainnet
 
-In mainnet, we plan to use discv5’s topic advertisement feature as a rendezvous facility for peers on shards (thus subscribing to the relevant gossipsub topics).
+discv5's topic advertisement feature is not expected to be ready for mainnet launch of Phase 0.
+
+Once this feature is built out and stable, we expect to use topic advertisement as a rendezvous facility for peers on shards. Until then, the ENR [attestation subnet bitfield](#attestation-subnet-bitfield) will be used for discovery of peers on particular subnets.
 
 # Design decision rationale
 
@@ -738,6 +754,16 @@ No security or privacy guarantees are lost as a result of choosing plaintext top
 
 Furthermore, the Eth2 topic names are shorter than their digest equivalents (assuming SHA-256 hash), so hashing topics would bloat messages unnecessarily.
 
+## Why are we overriding the default libp2p pubsub `message-id`?
+
+For our current purposes, there is no need to address messages based on source peer, and it seems likely we might even override the message `from` to obfuscate the peer. By overriding the default `message-id` to use content-addressing we can filter unnecessary duplicates before hitting the application layer.
+
+Some examples of where messages could be duplicated:
+
+* A validator client connected to multiple beacon nodes publishing duplicate gossip messages
+* Attestation aggregation strategies where clients partially aggregate attestations and propagate them. Partial aggregates could be duplicated
+* Clients re-publishing seen messages
+
 ### Why are there `ATTESTATION_SUBNET_COUNT` attestation subnets?
 
 Depending on the number of validators, it may be more efficient to group shard subnets and might provide better stability for the gossipsub channel. The exact grouping will be dependent on more involved network tests. This constant allows for more flexibility in setting up the network topology for attestation aggregation (as aggregation should happen on each subnet). The value is currently set to to be equal `MAX_COMMITTEES_PER_SLOT` until network tests indicate otherwise.
@@ -764,9 +790,9 @@ The prohibition of unverified-block-gossiping extends to nodes that cannot verif
 
 ### How are we going to discover peers in a gossipsub topic?
 
-Via discv5 topics. ENRs should not be used for this purpose, as they store identity, location, and capability information, not volatile [advertisements](#topic-advertisement).
+In Phase 0, peers for attestation subnets will be found using the `attnets` entry in the ENR.
 
-In the interoperability testnet, all peers will be subscribed to all global beacon chain topics, so discovering peers in specific shard topics will be unnecessary.
+Although this method will be sufficient for early phases of Eth2, we aim to use the more appropriate discv5 topics for this and other similar tasks in the future. ENRs should ultimately not be used for this purpose. They are best suited to store identity, location, and capability information, rather than more volatile advertisements.
 
 ## Req/Resp
 

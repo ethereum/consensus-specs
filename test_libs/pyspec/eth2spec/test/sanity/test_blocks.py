@@ -82,7 +82,7 @@ def test_invalid_state_root(spec, state):
 
     expect_assertion_error(lambda: spec.state_transition(state, signed_block))
 
-    yield 'blocks', [block]
+    yield 'blocks', [signed_block]
     yield 'post', None
 
 
@@ -90,6 +90,8 @@ def test_invalid_state_root(spec, state):
 @spec_state_test
 @always_bls
 def test_zero_block_sig(spec, state):
+    yield 'pre', state
+
     block = build_empty_block_for_next_slot(spec, state)
     invalid_signed_block = spec.SignedBeaconBlock(message=block)
     expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
@@ -102,6 +104,8 @@ def test_zero_block_sig(spec, state):
 @spec_state_test
 @always_bls
 def test_invalid_block_sig(spec, state):
+    yield 'pre', state
+
     block = build_empty_block_for_next_slot(spec, state)
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
     message = spec.compute_domain_wrapper_root(block, domain)

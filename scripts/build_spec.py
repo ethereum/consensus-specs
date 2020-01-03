@@ -156,8 +156,6 @@ def objects_to_spec(functions: Dict[str, str],
             del functions[k]
     functions_spec = '\n\n'.join(functions.values())
     for k in list(constants.keys()):
-        if k.startswith('DOMAIN_'):
-            constants[k] = f"DomainType(bytes.fromhex('{constants[k]}'[2:]))"
         if k == "BLS12_381_Q":
             constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))
@@ -245,7 +243,7 @@ def combine_ssz_objects(old_objects: Dict[str, str], new_objects: Dict[str, str]
     return old_objects
 
 
-# inserts are handeled the same way as functions
+# inserts are handled the same way as functions
 combine_inserts = combine_functions
 
 

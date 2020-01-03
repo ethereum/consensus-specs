@@ -155,7 +155,7 @@ def test_duplicate_attestation(spec, state):
     next_epoch(spec, single_state)
     next_epoch(spec, dup_state)
 
-    # Run non-duplicate inclusion rewards for comparision. Do not yield test vectors
+    # Run non-duplicate inclusion rewards for comparison. Do not yield test vectors
     for _ in run_process_rewards_and_penalties(spec, single_state):
         pass
 
