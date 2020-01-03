@@ -1,4 +1,4 @@
-# Vyper target 0.1.0b13
+# Vyper target 0.1.0b13.hotfix1761
 MIN_DEPOSIT_AMOUNT: constant(uint256) = 1000000000  # Gwei
 DEPOSIT_CONTRACT_TREE_DEPTH: constant(uint256) = 32
 MAX_DEPOSIT_COUNT: constant(uint256) = 4294967295 # 2**DEPOSIT_CONTRACT_TREE_DEPTH - 1

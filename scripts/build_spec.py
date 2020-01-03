@@ -85,7 +85,7 @@ def get_eth1_data(distance: uint64) -> Bytes32:
     return hash(distance)
 
 
-def hash(x: bytes) -> Bytes32:
+def hash(x: bytes) -> Bytes32:  # type: ignore
     if x not in hash_cache:
         hash_cache[x] = Bytes32(_hash(x))
     return hash_cache[x]
@@ -129,8 +129,6 @@ def objects_to_spec(functions: Dict[str, str],
             del functions[k]
     functions_spec = '\n\n'.join(functions.values())
     for k in list(constants.keys()):
-        if k.startswith('DOMAIN_'):
-            constants[k] = f"DomainType(({constants[k]}).to_bytes(length=4, byteorder='little'))"
         if k == "BLS12_381_Q":
             constants[k] += "  # noqa: E501"
     constants_spec = '\n'.join(map(lambda x: '%s = %s' % (x, constants[x]), constants))

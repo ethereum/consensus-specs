@@ -17,18 +17,22 @@ GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENER
 #$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
 
 PY_SPEC_PHASE_0_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase0/spec.py
-PY_SPEC_PHASE_0_DEPS = $(SPEC_DIR)/core/0_*.md
+PY_SPEC_PHASE_0_DEPS = $(wildcard $(SPEC_DIR)/core/0_*.md)
 
 PY_SPEC_PHASE_1_TARGETS = $(PY_SPEC_DIR)/eth2spec/phase1/spec.py
-PY_SPEC_PHASE_1_DEPS = $(SPEC_DIR)/core/1_*.md
+PY_SPEC_PHASE_1_DEPS = $(wildcard $(SPEC_DIR)/core/1_*.md)
+
+PY_SPEC_ALL_DEPS = $(PY_SPEC_PHASE_0_DEPS) $(PY_SPEC_PHASE_1_DEPS)
 
 PY_SPEC_ALL_TARGETS = $(PY_SPEC_PHASE_0_TARGETS) $(PY_SPEC_PHASE_1_TARGETS)
+
+MARKDOWN_FILES = $(PY_SPEC_ALL_DEPS) $(wildcard $(SPEC_DIR)/*.md) $(wildcard $(SPEC_DIR)/light_client/*.md) $(wildcard $(SPEC_DIR)/networking/*.md) $(wildcard $(SPEC_DIR)/validator/*.md)
 
 COV_HTML_OUT=.htmlcov
 COV_INDEX_FILE=$(PY_SPEC_DIR)/$(COV_HTML_OUT)/index.html
 
 .PHONY: clean partial_clean all test citest lint generate_tests pyspec phase0 phase1 install_test open_cov \
-        install_deposit_contract_test test_deposit_contract compile_deposit_contract
+        install_deposit_contract_test test_deposit_contract compile_deposit_contract check_toc
 
 all: $(PY_SPEC_ALL_TARGETS)
 
@@ -64,6 +68,17 @@ citest: $(PY_SPEC_ALL_TARGETS)
 
 open_cov:
 	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
+
+check_toc: $(MARKDOWN_FILES:=.toc)
+
+%.toc:
+	cp $* $*.tmp && \
+	doctoc $* && \
+	diff -q $* $*.tmp && \
+	rm $*.tmp
+
+codespell:
+	codespell . --skip ./.git -I .codespell-whitelist
 
 lint: $(PY_SPEC_ALL_TARGETS)
 	cd $(PY_SPEC_DIR); . venv/bin/activate; \

@@ -4,39 +4,39 @@
 
 ## Table of contents
 
-<!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 1 -- Custody Game](#ethereum-20-phase-1----custody-game)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Terminology](#terminology)
-    - [Constants](#constants)
-        - [Misc](#misc)
-        - [Time parameters](#time-parameters)
-        - [Max operations per block](#max-operations-per-block)
-        - [Reward and penalty quotients](#reward-and-penalty-quotients)
-        - [Signature domain types](#signature-domain-types)
-    - [Data structures](#data-structures)
-        - [New beacon operations](#new-beacon-operations)
-            - [`CustodySlashing`](#custody-slashing)
-            - [`CustodyKeyReveal`](#custodykeyreveal)
-            - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
-    - [Helpers](#helpers)
-        - [`legendre_bit`](#legendre_bit)
-        - [`get_custody_atoms`](#get_custody_atoms)
-        - [`compute_custody_bit`](#compute_custody_bit)
-        - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
-        - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
-    - [Per-block processing](#per-block-processing)
-        - [Custody Game Operations](#custody-game-operations)
-            - [Custody key reveals](#custody-key-reveals)
-            - [Early derived secret reveals](#early-derived-secret-reveals)
-            - [Custody Slashings](#custody-slashings)
-    - [Per-epoch processing](#per-epoch-processing)
-        - [Handling of reveal deadlines](#handling-of-reveal-deadlines)
-        - [Final updates](#final-updates)
 
-<!-- /TOC -->
+- [Introduction](#introduction)
+- [Constants](#constants)
+  - [Misc](#misc)
+  - [Time parameters](#time-parameters)
+  - [Max operations per block](#max-operations-per-block)
+  - [Reward and penalty quotients](#reward-and-penalty-quotients)
+  - [Signature domain types](#signature-domain-types)
+- [Data structures](#data-structures)
+  - [New Beacon Chain operations](#new-beacon-chain-operations)
+    - [`CustodySlashing`](#custodyslashing)
+    - [`SignedCustodySlashing`](#signedcustodyslashing)
+    - [`CustodyKeyReveal`](#custodykeyreveal)
+    - [`EarlyDerivedSecretReveal`](#earlyderivedsecretreveal)
+- [Helpers](#helpers)
+  - [`legendre_bit`](#legendre_bit)
+  - [`custody_atoms`](#custody_atoms)
+  - [`compute_custody_bit`](#compute_custody_bit)
+  - [`get_randao_epoch_for_custody_period`](#get_randao_epoch_for_custody_period)
+  - [`get_custody_period_for_validator`](#get_custody_period_for_validator)
+- [Per-block processing](#per-block-processing)
+  - [Custody Game Operations](#custody-game-operations)
+    - [Custody key reveals](#custody-key-reveals)
+    - [Early derived secret reveals](#early-derived-secret-reveals)
+    - [Custody Slashings](#custody-slashings)
+- [Per-epoch processing](#per-epoch-processing)
+  - [Handling of reveal deadlines](#handling-of-reveal-deadlines)
+  - [Final updates](#final-updates)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
 
@@ -81,8 +81,7 @@ The following types are defined, mapping into `DomainType` (little endian):
 
 | Name | Value |
 | - | - |
-| `DOMAIN_CUSTODY_BIT_SLASHING` | `6` |
-
+| `DOMAIN_CUSTODY_BIT_SLASHING` | `DomainType('0x83000000')` |
 
 ## Data structures
 

@@ -5,20 +5,22 @@
 ## Table of contents
 
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Minimal Light Client Design](#minimal-light-client-design)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Custom types](#custom-types)
-    - [Constants](#constants)
-    - [Containers](#containers)
-        - [`LightClientUpdate`](#lightclientupdate)
-    - [Helpers](#helpers)
-        - [`LightClientMemory`](#lightclientmemory)
-        - [`get_persistent_committee_pubkeys_and_balances`](#get_persistent_committee_pubkeys_and_balances)
-    - [Light client state updates](#light-client-state-updates)
-    - [Data overhead](#data-overhead)
 
+- [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Constants](#constants)
+- [Containers](#containers)
+  - [`LightClientUpdate`](#lightclientupdate)
+- [Helpers](#helpers)
+  - [`LightClientMemory`](#lightclientmemory)
+  - [`get_persistent_committee_pubkeys_and_balances`](#get_persistent_committee_pubkeys_and_balances)
+- [Light client state updates](#light-client-state-updates)
+- [Data overhead](#data-overhead)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction

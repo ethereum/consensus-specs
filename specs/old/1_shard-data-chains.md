@@ -5,45 +5,47 @@
 ## Table of contents
 
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 1 -- Shard Data Chains](#ethereum-20-phase-1----shard-data-chains)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Custom types](#custom-types)
-    - [Configuration](#configuration)
-        - [Misc](#misc)
-        - [Initial values](#initial-values)
-        - [Time parameters](#time-parameters)
-        - [State list lengths](#state-list-lengths)
-        - [Rewards and penalties](#rewards-and-penalties)
-        - [Signature domain types](#signature-domain-types)
-    - [Containers](#containers)
-        - [`Crosslink`](#crosslink)
-        - [`ShardBlock`](#shardblock)
-        - [`ShardBlockHeader`](#shardblockheader)
-        - [`ShardState`](#shardstate)
-        - [`ShardAttestationData`](#shardattestationdata)
-    - [Helper functions](#helper-functions)
-        - [Misc](#misc-1)
-            - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
-            - [`compute_shard_period_start_epoch`](#compute_shard_period_start_epoch)
-        - [Beacon state accessors](#beacon-state-accessors)
-            - [`get_period_committee`](#get_period_committee)
-            - [`get_shard_committee`](#get_shard_committee)
-            - [`get_shard_proposer_index`](#get_shard_proposer_index)
-        - [Shard state mutators](#shard-state-mutators)
-            - [`process_delta`](#process_delta)
-    - [Genesis](#genesis)
-        - [`get_genesis_shard_state`](#get_genesis_shard_state)
-        - [`get_genesis_shard_block`](#get_genesis_shard_block)
-    - [Shard state transition function](#shard-state-transition-function)
-        - [Period processing](#period-processing)
-        - [Block processing](#block-processing)
-            - [Block header](#block-header)
-            - [Attestations](#attestations)
-            - [Block body](#block-body)
-    - [Shard fork choice rule](#shard-fork-choice-rule)
 
+- [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Configuration](#configuration)
+  - [Misc](#misc)
+  - [Initial values](#initial-values)
+  - [Time parameters](#time-parameters)
+  - [State list lengths](#state-list-lengths)
+  - [Rewards and penalties](#rewards-and-penalties)
+  - [Signature domain types](#signature-domain-types)
+- [Containers](#containers)
+  - [`Crosslink`](#crosslink)
+  - [`ShardBlock`](#shardblock)
+  - [`ShardBlockHeader`](#shardblockheader)
+  - [`ShardState`](#shardstate)
+  - [`ShardAttestationData`](#shardattestationdata)
+- [Helper functions](#helper-functions)
+  - [Misc](#misc-1)
+    - [`compute_epoch_of_shard_slot`](#compute_epoch_of_shard_slot)
+    - [`compute_shard_period_start_epoch`](#compute_shard_period_start_epoch)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [`get_period_committee`](#get_period_committee)
+    - [`get_shard_committee`](#get_shard_committee)
+    - [`get_shard_proposer_index`](#get_shard_proposer_index)
+  - [Shard state mutators](#shard-state-mutators)
+    - [`process_delta`](#process_delta)
+- [Genesis](#genesis)
+  - [`get_genesis_shard_state`](#get_genesis_shard_state)
+  - [`get_genesis_shard_block`](#get_genesis_shard_block)
+- [Shard state transition function](#shard-state-transition-function)
+  - [Period processing](#period-processing)
+  - [Block processing](#block-processing)
+    - [Block header](#block-header)
+    - [Attestations](#attestations)
+    - [Block body](#block-body)
+- [Shard fork choice rule](#shard-fork-choice-rule)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
@@ -99,8 +101,8 @@ This document describes the shard transition function (data layer only) and the 
 
 | Name | Value |
 | - | - |
-| `DOMAIN_SHARD_PROPOSER` | `128` |
-| `DOMAIN_SHARD_ATTESTER` | `129` |
+| `DOMAIN_SHARD_PROPOSER` | `DomainType('0x80000000')` |
+| `DOMAIN_SHARD_ATTESTER` | `DomainType('0x81000000')` |
 
 ## Containers
 

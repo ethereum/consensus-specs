@@ -451,10 +451,15 @@ class BaseBytes(bytes, Elements, metaclass=BytesType):
     @classmethod
     def extract_args(cls, *args):
         x = args
-        if len(x) == 1 and isinstance(x[0], (GeneratorType, bytes)):
+        if len(x) == 1 and isinstance(x[0], (GeneratorType, bytes, str)):
             x = x[0]
         if isinstance(x, bytes):  # Includes BytesLike
             return x
+        if isinstance(x, str):
+            if x[:2] == '0x':
+                return bytes.fromhex(x[2:])
+            else:
+                return bytes.fromhex(x)
         else:
             return bytes(x)  # E.g. GeneratorType put into bytes.
 

@@ -5,61 +5,64 @@
 ## Table of contents
 
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 0 -- Honest Validator](#ethereum-20-phase-0----honest-validator)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Prerequisites](#prerequisites)
-    - [Constants](#constants)
-        - [Misc](#misc)
-    - [Becoming a validator](#becoming-a-validator)
-        - [Initialization](#initialization)
-            - [BLS public key](#bls-public-key)
-            - [BLS withdrawal key](#bls-withdrawal-key)
-        - [Submit deposit](#submit-deposit)
-        - [Process deposit](#process-deposit)
-        - [Validator index](#validator-index)
-        - [Activation](#activation)
-    - [Validator assignments](#validator-assignments)
-        - [Lookahead](#lookahead)
-    - [Beacon chain responsibilities](#beacon-chain-responsibilities)
-        - [Block proposal](#block-proposal)
-            - [Block header](#block-header)
-                - [Slot](#slot)
-                - [Parent root](#parent-root)
-                - [State root](#state-root)
-                - [Randao reveal](#randao-reveal)
-                - [Eth1 Data](#eth1-data)
-                - [Signature](#signature)
-            - [Block body](#block-body)
-                - [Proposer slashings](#proposer-slashings)
-                - [Attester slashings](#attester-slashings)
-                - [Attestations](#attestations)
-                - [Deposits](#deposits)
-                - [Voluntary exits](#voluntary-exits)
-        - [Attesting](#attesting)
-            - [Attestation data](#attestation-data)
-                - [General](#general)
-                - [LMD GHOST vote](#lmd-ghost-vote)
-                - [FFG vote](#ffg-vote)
-            - [Construct attestation](#construct-attestation)
-                - [Data](#data)
-                - [Aggregation bits](#aggregation-bits)
-                - [Aggregate signature](#aggregate-signature)
-            - [Broadcast attestation](#broadcast-attestation)
-        - [Attestation aggregation](#attestation-aggregation)
-            - [Aggregation selection](#aggregation-selection)
-            - [Construct aggregate](#construct-aggregate)
-                - [Data](#data-1)
-                - [Aggregation bits](#aggregation-bits-1)
-                - [Aggregate signature](#aggregate-signature-1)
-            - [Broadcast aggregate](#broadcast-aggregate)
-                - [`AggregateAndProof`](#aggregateandproof)
-    - [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
-    - [How to avoid slashing](#how-to-avoid-slashing)
-        - [Proposer slashing](#proposer-slashing)
-        - [Attester slashing](#attester-slashing)
 
+- [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
+- [Constants](#constants)
+  - [Misc](#misc)
+- [Becoming a validator](#becoming-a-validator)
+  - [Initialization](#initialization)
+    - [BLS public key](#bls-public-key)
+    - [BLS withdrawal key](#bls-withdrawal-key)
+  - [Submit deposit](#submit-deposit)
+  - [Process deposit](#process-deposit)
+  - [Validator index](#validator-index)
+  - [Activation](#activation)
+- [Validator assignments](#validator-assignments)
+  - [Lookahead](#lookahead)
+- [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Block proposal](#block-proposal)
+    - [Preparing for a `BeaconBlock`](#preparing-for-a-beaconblock)
+      - [Slot](#slot)
+      - [Parent root](#parent-root)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Randao reveal](#randao-reveal)
+      - [Eth1 Data](#eth1-data)
+      - [Proposer slashings](#proposer-slashings)
+      - [Attester slashings](#attester-slashings)
+      - [Attestations](#attestations)
+      - [Deposits](#deposits)
+      - [Voluntary exits](#voluntary-exits)
+    - [Packaging into a `SignedBeaconBlock`](#packaging-into-a-signedbeaconblock)
+      - [State root](#state-root)
+      - [Signature](#signature)
+  - [Attesting](#attesting)
+    - [Attestation data](#attestation-data)
+      - [General](#general)
+      - [LMD GHOST vote](#lmd-ghost-vote)
+      - [FFG vote](#ffg-vote)
+    - [Construct attestation](#construct-attestation)
+      - [Data](#data)
+      - [Aggregation bits](#aggregation-bits)
+      - [Aggregate signature](#aggregate-signature)
+    - [Broadcast attestation](#broadcast-attestation)
+  - [Attestation aggregation](#attestation-aggregation)
+    - [Aggregation selection](#aggregation-selection)
+    - [Construct aggregate](#construct-aggregate)
+      - [Data](#data-1)
+      - [Aggregation bits](#aggregation-bits-1)
+      - [Aggregate signature](#aggregate-signature-1)
+    - [Broadcast aggregate](#broadcast-aggregate)
+      - [`AggregateAndProof`](#aggregateandproof)
+- [Phase 0 attestation subnet stability](#phase-0-attestation-subnet-stability)
+- [How to avoid slashing](#how-to-avoid-slashing)
+  - [Proposer slashing](#proposer-slashing)
+  - [Attester slashing](#attester-slashing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
@@ -194,8 +197,8 @@ The beacon chain shufflings are designed to provide a minimum of 1 epoch lookahe
 Specifically a validator should:
 * Call `get_committee_assignment(state, next_epoch, validator_index)` when checking for next epoch assignments.
 * Join the pubsub topic -- `committee_index{committee_index % ATTESTATION_SUBNET_COUNT}_beacon_attestation`.
-    * If any current peers are subscribed to the topic, the validator simply sends `subscribe` messages for the new topic.
-    * If no current peers are subscribed to the topic, the validator must discover new peers on this topic. If "topic discovery" is available, use topic discovery to find peers that advertise subscription to the topic. If not, "guess and check" by connecting with a number of random new peers, persisting connections with peers subscribed to the topic and (potentially) dropping the new peers otherwise.
+    * For any current peer subscribed to the topic, the validator simply sends a `subscribe` message for the new topic.
+    * If an _insufficient_ number of current peers are subscribed to the topic, the validator must discover new peers on this topic. Via the discovery protocol, find peers with an ENR containing the `attnets` entry such that `ENR["attnets"][committee_index % ATTESTATION_SUBNET_COUNT] == True`.
 
 ## Beacon chain responsibilities
 
@@ -440,7 +443,11 @@ Where
 
 ## Phase 0 attestation subnet stability
 
-Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets. The lifetime of each random subscription should be a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`.
+Because Phase 0 does not have shards and thus does not have Shard Committees, there is no stable backbone to the attestation subnets (`committee_index{subnet_id}_beacon_attestation`). To provide this stability, each validator must:
+
+* Randomly select and remain subscribed to `RANDOM_SUBNETS_PER_VALIDATOR` attestation subnets
+* Maintain advertisement of the randomly selected subnets in their node's ENR `attnets` entry by setting the randomly selected `subnet_id` bits to `True` (e.g. `ENR["attnets"][subnet_id] = True`) for all persistent attestation subnets
+* Set the lifetime of each random subscription to a random number of epochs between `EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION` and `2 * EPOCHS_PER_RANDOM_SUBNET_SUBSCRIPTION]`. At the end of life for a subscription, select a new random subnet, update subnet subscriptions, and publish an updated ENR
 
 ## How to avoid slashing
 

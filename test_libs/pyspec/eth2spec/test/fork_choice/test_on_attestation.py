@@ -86,6 +86,29 @@ def test_on_attestation_past_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
+def test_on_attestation_mismatched_target_and_slot(spec, state):
+    store = spec.get_genesis_store(state)
+    spec.on_tick(store, store.time + spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    # store block in store
+    spec.on_block(store, signed_block)
+
+    attestation = get_valid_attestation(spec, state, slot=block.slot)
+    attestation.data.target.epoch += 1
+    sign_attestation(spec, state, attestation)
+
+    assert attestation.data.target.epoch == spec.GENESIS_EPOCH + 1
+    assert spec.compute_epoch_at_slot(attestation.data.slot) == spec.GENESIS_EPOCH
+    assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH + 1
+
+    run_on_attestation(spec, state, store, attestation, False)
+
+
+@with_all_phases
+@spec_state_test
 def test_on_attestation_target_not_in_store(spec, state):
     store = spec.get_genesis_store(state)
     time = spec.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH

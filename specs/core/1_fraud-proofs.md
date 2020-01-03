@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Ethereum 2.0 Phase 1 -- Shard Transition and Fraud Proofs](#ethereum-20-phase-1----shard-transition-and-fraud-proofs)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Fraud proofs](#fraud-proofs)
+  - [Shard state transition function](#shard-state-transition-function)
+  - [Honest committee member behavior](#honest-committee-member-behavior)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Ethereum 2.0 Phase 1 -- Shard Transition and Fraud Proofs
 
 **Notice**: This document is a work-in-progress for researchers and implementers.

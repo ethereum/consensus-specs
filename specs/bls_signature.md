@@ -6,23 +6,25 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [BLS signature verification](#bls-signature-verification)
-    - [Table of contents](#table-of-contents)
-    - [Curve parameters](#curve-parameters)
-    - [Point representations](#point-representations)
-        - [G1 points](#g1-points)
-        - [G2 points](#g2-points)
-    - [Helpers](#helpers)
-        - [`hash_to_G2`](#hash_to_g2)
-        - [`modular_squareroot`](#modular_squareroot)
-    - [Aggregation operations](#aggregation-operations)
-        - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
-        - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
-    - [Signature verification](#signature-verification)
-        - [`bls_verify`](#bls_verify)
-        - [`bls_verify_multiple`](#bls_verify_multiple)
 
+- [Curve parameters](#curve-parameters)
+- [Point representations](#point-representations)
+  - [G1 points](#g1-points)
+  - [G2 points](#g2-points)
+- [Helpers](#helpers)
+  - [`hash_to_G2`](#hash_to_g2)
+  - [`modular_squareroot`](#modular_squareroot)
+- [Aggregation operations](#aggregation-operations)
+  - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+  - [`bls_aggregate_signatures`](#bls_aggregate_signatures)
+- [Signature verification](#signature-verification)
+  - [`bls_verify`](#bls_verify)
+  - [`bls_verify_multiple`](#bls_verify_multiple)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Curve parameters

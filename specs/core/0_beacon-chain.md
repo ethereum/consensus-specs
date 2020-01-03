@@ -4,119 +4,123 @@
 
 ## Table of contents
 <!-- TOC -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [Ethereum 2.0 Phase 0 -- The Beacon Chain](#ethereum-20-phase-0----the-beacon-chain)
-    - [Table of contents](#table-of-contents)
-    - [Introduction](#introduction)
-    - [Notation](#notation)
-    - [Custom types](#custom-types)
-    - [Constants](#constants)
-    - [Configuration](#configuration)
-        - [Misc](#misc)
-        - [Gwei values](#gwei-values)
-        - [Initial values](#initial-values)
-        - [Time parameters](#time-parameters)
-        - [State list lengths](#state-list-lengths)
-        - [Rewards and penalties](#rewards-and-penalties)
-        - [Max operations per block](#max-operations-per-block)
-        - [Domain types](#domain-types)
-    - [Containers](#containers)
-        - [Misc dependencies](#misc-dependencies)
-            - [`Fork`](#fork)
-            - [`Checkpoint`](#checkpoint)
-            - [`Validator`](#validator)
-            - [`AttestationData`](#attestationdata)
-            - [`IndexedAttestation`](#indexedattestation)
-            - [`PendingAttestation`](#pendingattestation)
-            - [`Eth1Data`](#eth1data)
-            - [`HistoricalBatch`](#historicalbatch)
-            - [`DepositMessage`](#depositmessage)
-            - [`DepositData`](#depositdata)
-            - [`BeaconBlockHeader`](#beaconblockheader)
-        - [Beacon operations](#beacon-operations)
-            - [`ProposerSlashing`](#proposerslashing)
-            - [`AttesterSlashing`](#attesterslashing)
-            - [`Attestation`](#attestation)
-            - [`Deposit`](#deposit)
-            - [`VoluntaryExit`](#voluntaryexit)
-        - [Beacon blocks](#beacon-blocks)
-            - [`BeaconBlockBody`](#beaconblockbody)
-            - [`BeaconBlock`](#beaconblock)
-        - [Beacon state](#beacon-state)
-            - [`BeaconState`](#beaconstate)
-        - [Signed envelopes](#signed-envelopes)
-            - [`SignedVoluntaryExit`](#signedvoluntaryexit)
-            - [`SignedBeaconBlock`](#signedbeaconblock)
-            - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
-    - [Helper functions](#helper-functions)
-        - [Math](#math)
-            - [`integer_squareroot`](#integer_squareroot)
-            - [`xor`](#xor)
-            - [`int_to_bytes`](#int_to_bytes)
-            - [`bytes_to_int`](#bytes_to_int)
-        - [Crypto](#crypto)
-            - [`hash`](#hash)
-            - [`hash_tree_root`](#hash_tree_root)
-            - [`bls_verify`](#bls_verify)
-            - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
-        - [Predicates](#predicates)
-            - [`is_active_validator`](#is_active_validator)
-            - [`is_slashable_validator`](#is_slashable_validator)
-            - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
-            - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
-            - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
-        - [Misc](#misc-1)
-            - [`compute_shuffled_index`](#compute_shuffled_index)
-            - [`compute_proposer_index`](#compute_proposer_index)
-            - [`compute_committee`](#compute_committee)
-            - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
-            - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
-            - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
-            - [`compute_domain`](#compute_domain)
-        - [Beacon state accessors](#beacon-state-accessors)
-            - [`get_current_epoch`](#get_current_epoch)
-            - [`get_previous_epoch`](#get_previous_epoch)
-            - [`get_block_root`](#get_block_root)
-            - [`get_block_root_at_slot`](#get_block_root_at_slot)
-            - [`get_randao_mix`](#get_randao_mix)
-            - [`get_active_validator_indices`](#get_active_validator_indices)
-            - [`get_validator_churn_limit`](#get_validator_churn_limit)
-            - [`get_seed`](#get_seed)
-            - [`get_committee_count_at_slot`](#get_committee_count_at_slot)
-            - [`get_beacon_committee`](#get_beacon_committee)
-            - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
-            - [`get_total_balance`](#get_total_balance)
-            - [`get_total_active_balance`](#get_total_active_balance)
-            - [`get_domain`](#get_domain)
-            - [`get_indexed_attestation`](#get_indexed_attestation)
-            - [`get_attesting_indices`](#get_attesting_indices)
-        - [Beacon state mutators](#beacon-state-mutators)
-            - [`increase_balance`](#increase_balance)
-            - [`decrease_balance`](#decrease_balance)
-            - [`initiate_validator_exit`](#initiate_validator_exit)
-            - [`slash_validator`](#slash_validator)
-    - [Genesis](#genesis)
-        - [Genesis state](#genesis-state)
-        - [Genesis block](#genesis-block)
-    - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-        - [Epoch processing](#epoch-processing)
-            - [Helper functions](#helper-functions-1)
-            - [Justification and finalization](#justification-and-finalization)
-            - [Rewards and penalties](#rewards-and-penalties-1)
-            - [Registry updates](#registry-updates)
-            - [Slashings](#slashings)
-            - [Final updates](#final-updates)
-        - [Block processing](#block-processing)
-            - [Block header](#block-header)
-            - [RANDAO](#randao)
-            - [Eth1 data](#eth1-data)
-            - [Operations](#operations)
-                - [Proposer slashings](#proposer-slashings)
-                - [Attester slashings](#attester-slashings)
-                - [Attestations](#attestations)
-                - [Deposits](#deposits)
-                - [Voluntary exits](#voluntary-exits)
 
+- [Introduction](#introduction)
+- [Notation](#notation)
+- [Custom types](#custom-types)
+- [Constants](#constants)
+- [Configuration](#configuration)
+  - [Misc](#misc)
+  - [Gwei values](#gwei-values)
+  - [Initial values](#initial-values)
+  - [Time parameters](#time-parameters)
+  - [State list lengths](#state-list-lengths)
+  - [Rewards and penalties](#rewards-and-penalties)
+  - [Max operations per block](#max-operations-per-block)
+  - [Domain types](#domain-types)
+- [Containers](#containers)
+  - [Misc dependencies](#misc-dependencies)
+    - [`Fork`](#fork)
+    - [`Checkpoint`](#checkpoint)
+    - [`Validator`](#validator)
+    - [`AttestationData`](#attestationdata)
+    - [`IndexedAttestation`](#indexedattestation)
+    - [`PendingAttestation`](#pendingattestation)
+    - [`Eth1Data`](#eth1data)
+    - [`HistoricalBatch`](#historicalbatch)
+    - [`DepositMessage`](#depositmessage)
+    - [`DepositData`](#depositdata)
+    - [`BeaconBlockHeader`](#beaconblockheader)
+  - [Beacon operations](#beacon-operations)
+    - [`ProposerSlashing`](#proposerslashing)
+    - [`AttesterSlashing`](#attesterslashing)
+    - [`Attestation`](#attestation)
+    - [`Deposit`](#deposit)
+    - [`VoluntaryExit`](#voluntaryexit)
+  - [Beacon blocks](#beacon-blocks)
+    - [`BeaconBlockBody`](#beaconblockbody)
+    - [`BeaconBlock`](#beaconblock)
+  - [Beacon state](#beacon-state)
+    - [`BeaconState`](#beaconstate)
+  - [Signed envelopes](#signed-envelopes)
+    - [`SignedVoluntaryExit`](#signedvoluntaryexit)
+    - [`SignedBeaconBlock`](#signedbeaconblock)
+    - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
+- [Helper functions](#helper-functions)
+  - [Math](#math)
+    - [`integer_squareroot`](#integer_squareroot)
+    - [`xor`](#xor)
+    - [`int_to_bytes`](#int_to_bytes)
+    - [`bytes_to_int`](#bytes_to_int)
+  - [Crypto](#crypto)
+    - [`hash`](#hash)
+    - [`hash_tree_root`](#hash_tree_root)
+    - [`bls_verify`](#bls_verify)
+    - [`bls_aggregate_pubkeys`](#bls_aggregate_pubkeys)
+  - [Predicates](#predicates)
+    - [`is_active_validator`](#is_active_validator)
+    - [`is_eligible_for_activation_queue`](#is_eligible_for_activation_queue)
+    - [`is_eligible_for_activation`](#is_eligible_for_activation)
+    - [`is_slashable_validator`](#is_slashable_validator)
+    - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
+    - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
+    - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
+  - [Misc](#misc-1)
+    - [`compute_shuffled_index`](#compute_shuffled_index)
+    - [`compute_proposer_index`](#compute_proposer_index)
+    - [`compute_committee`](#compute_committee)
+    - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
+    - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
+    - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
+    - [`compute_domain`](#compute_domain)
+  - [Beacon state accessors](#beacon-state-accessors)
+    - [`get_current_epoch`](#get_current_epoch)
+    - [`get_previous_epoch`](#get_previous_epoch)
+    - [`get_block_root`](#get_block_root)
+    - [`get_block_root_at_slot`](#get_block_root_at_slot)
+    - [`get_randao_mix`](#get_randao_mix)
+    - [`get_active_validator_indices`](#get_active_validator_indices)
+    - [`get_validator_churn_limit`](#get_validator_churn_limit)
+    - [`get_seed`](#get_seed)
+    - [`get_committee_count_at_slot`](#get_committee_count_at_slot)
+    - [`get_beacon_committee`](#get_beacon_committee)
+    - [`get_beacon_proposer_index`](#get_beacon_proposer_index)
+    - [`get_total_balance`](#get_total_balance)
+    - [`get_total_active_balance`](#get_total_active_balance)
+    - [`get_domain`](#get_domain)
+    - [`get_indexed_attestation`](#get_indexed_attestation)
+    - [`get_attesting_indices`](#get_attesting_indices)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [`increase_balance`](#increase_balance)
+    - [`decrease_balance`](#decrease_balance)
+    - [`initiate_validator_exit`](#initiate_validator_exit)
+    - [`slash_validator`](#slash_validator)
+- [Genesis](#genesis)
+  - [Genesis state](#genesis-state)
+  - [Genesis block](#genesis-block)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Epoch processing](#epoch-processing)
+    - [Helper functions](#helper-functions-1)
+    - [Justification and finalization](#justification-and-finalization)
+    - [Rewards and penalties](#rewards-and-penalties-1)
+    - [Registry updates](#registry-updates)
+    - [Slashings](#slashings)
+    - [Final updates](#final-updates)
+  - [Block processing](#block-processing)
+    - [Block header](#block-header)
+    - [RANDAO](#randao)
+    - [Eth1 data](#eth1-data)
+    - [Operations](#operations)
+      - [Proposer slashings](#proposer-slashings)
+      - [Attester slashings](#attester-slashings)
+      - [Attestations](#attestations)
+      - [Deposits](#deposits)
+      - [Voluntary exits](#voluntary-exits)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- /TOC -->
 
 ## Introduction
@@ -178,7 +182,7 @@ The following values are (non-configurable) constants used throughout the specif
 | `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `2**14` (= 16,384) |
 | `MIN_GENESIS_TIME` | `1578009600` (Jan 3, 2020) |
 
-- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
+- For the safety of committees, `TARGET_COMMITTEE_SIZE` exceeds [the recommended minimum committee size of 111](http://web.archive.org/web/20190504131341/https://vitalik.ca/files/Ithaca201807_Sharding.pdf); with sufficient active validators (at least `SLOTS_PER_EPOCH * TARGET_COMMITTEE_SIZE`), the shuffling algorithm ensures committee sizes of at least `TARGET_COMMITTEE_SIZE`. (Unbiasable randomness with a Verifiable Delay Function (VDF) will improve committee robustness and lower the safe minimum committee size.)
 
 ### Gwei values
 
@@ -195,7 +199,7 @@ The following values are (non-configurable) constants used throughout the specif
 | - | - |
 | `GENESIS_SLOT` | `Slot(0)` |
 | `GENESIS_EPOCH` | `Epoch(0)` |
-| `BLS_WITHDRAWAL_PREFIX` | `Bytes1(b'\x00')` |
+| `BLS_WITHDRAWAL_PREFIX` | `Bytes1('0x00')` |
 
 ### Time parameters
 
@@ -245,15 +249,13 @@ The following values are (non-configurable) constants used throughout the specif
 
 ### Domain types
 
-The following types are defined, mapping into `DomainType` (little endian):
-
 | Name | Value |
 | - | - |
-| `DOMAIN_BEACON_PROPOSER` | `0` |
-| `DOMAIN_BEACON_ATTESTER` | `1` |
-| `DOMAIN_RANDAO` | `2` |
-| `DOMAIN_DEPOSIT` | `3` |
-| `DOMAIN_VOLUNTARY_EXIT` | `4` |
+| `DOMAIN_BEACON_PROPOSER` | `DomainType('0x00000000')` |
+| `DOMAIN_BEACON_ATTESTER` | `DomainType('0x01000000')` |
+| `DOMAIN_RANDAO` | `DomainType('0x02000000')` |
+| `DOMAIN_DEPOSIT` | `DomainType('0x03000000')` |
+| `DOMAIN_VOLUNTARY_EXIT` | `DomainType('0x04000000')` |
 
 ## Containers
 
@@ -484,7 +486,7 @@ class BeaconState(Container):
 
 ### Signed envelopes
 
-Some messages in the protocol are wrapped in an envelop to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
+Some messages in the protocol are wrapped in an envelope to better facilitate adding/pruning the signature and to `hash_tree_root` the `message` separate from the signature.  
 
 #### `SignedVoluntaryExit`
 
@@ -556,7 +558,7 @@ def int_to_bytes(n: uint64, length: uint64) -> bytes:
 ```python
 def bytes_to_int(data: bytes) -> uint64:
     """
-    Return the integer deserialization of ``data`` intepreted as ``ENDIANNESS``-endian.
+    Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
     """
     return int.from_bytes(data, ENDIANNESS)
 ```
@@ -589,6 +591,34 @@ def is_active_validator(validator: Validator, epoch: Epoch) -> bool:
     Check if ``validator`` is active.
     """
     return validator.activation_epoch <= epoch < validator.exit_epoch
+```
+
+#### `is_eligible_for_activation_queue`
+
+```python
+def is_eligible_for_activation_queue(validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible to be placed into the activation queue.
+    """
+    return (
+        validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
+        and validator.effective_balance == MAX_EFFECTIVE_BALANCE
+    )
+```
+
+#### `is_eligible_for_activation`
+
+```python
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible for activation.
+    """
+    return (
+        # Placement in queue is finalized
+        validator.activation_eligibility_epoch <= state.finalized_checkpoint.epoch
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
+    )
 ```
 
 #### `is_slashable_validator`
@@ -628,8 +658,8 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     # Verify max number of indices
     if not len(indices) <= MAX_VALIDATORS_PER_COMMITTEE:
         return False
-    # Verify indices are sorted
-    if not indices == sorted(indices):
+    # Verify indices are sorted and unique
+    if not indices == sorted(set(indices)):
         return False
     # Verify aggregate signature
     if not bls_verify(
@@ -1296,26 +1326,22 @@ def process_rewards_and_penalties(state: BeaconState) -> None:
 def process_registry_updates(state: BeaconState) -> None:
     # Process activation eligibility and ejections
     for index, validator in enumerate(state.validators):
-        if (
-            validator.activation_eligibility_epoch == FAR_FUTURE_EPOCH
-            and validator.effective_balance == MAX_EFFECTIVE_BALANCE
-        ):
-            validator.activation_eligibility_epoch = get_current_epoch(state)
+        if is_eligible_for_activation_queue(validator):
+            validator.activation_eligibility_epoch = get_current_epoch(state) + 1
 
         if is_active_validator(validator, get_current_epoch(state)) and validator.effective_balance <= EJECTION_BALANCE:
             initiate_validator_exit(state, ValidatorIndex(index))
 
-    # Queue validators eligible for activation and not dequeued for activation prior to finalized epoch
+    # Queue validators eligible for activation and not yet dequeued for activation
     activation_queue = sorted([
         index for index, validator in enumerate(state.validators)
-        if validator.activation_eligibility_epoch != FAR_FUTURE_EPOCH
-        and validator.activation_epoch >= compute_activation_exit_epoch(state.finalized_checkpoint.epoch)
-    ], key=lambda index: state.validators[index].activation_eligibility_epoch)
-    # Dequeued validators for activation up to churn limit (without resetting activation epoch)
+        if is_eligible_for_activation(state, validator)
+        # Order by the sequence of activation_eligibility_epoch setting and then index
+    ], key=lambda index: (state.validators[index].activation_eligibility_epoch, index))
+    # Dequeued validators for activation up to churn limit
     for index in activation_queue[:get_validator_churn_limit(state)]:
         validator = state.validators[index]
-        if validator.activation_epoch == FAR_FUTURE_EPOCH:
-            validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+        validator.activation_epoch = compute_activation_exit_epoch(get_current_epoch(state))
 ```
 
 #### Slashings
@@ -1475,6 +1501,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.index < get_committee_count_at_slot(state, data.slot)
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot <= data.slot + SLOTS_PER_EPOCH
 
     committee = get_beacon_committee(state, data.slot, data.index)

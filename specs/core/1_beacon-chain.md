@@ -1,3 +1,68 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Ethereum 2.0 Phase 1 -- The Beacon Chain for Shards](#ethereum-20-phase-1----the-beacon-chain-for-shards)
+  - [Table of contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Custom types](#custom-types)
+  - [Configuration](#configuration)
+    - [Misc](#misc)
+  - [Updated containers](#updated-containers)
+    - [Extended `AttestationData`](#extended-attestationdata)
+    - [Extended `Attestation`](#extended-attestation)
+    - [Extended `PendingAttestation`](#extended-pendingattestation)
+    - [Extended `Validator`](#extended-validator)
+    - [Extended `BeaconBlockBody`](#extended-beaconblockbody)
+    - [Extended `BeaconBlock`](#extended-beaconblock)
+      - [Extended `SignedBeaconBlock`](#extended-signedbeaconblock)
+    - [Extended `BeaconState`](#extended-beaconstate)
+  - [New containers](#new-containers)
+    - [`ShardBlockWrapper`](#shardblockwrapper)
+    - [`ShardSignableHeader`](#shardsignableheader)
+    - [`ShardState`](#shardstate)
+    - [`ShardTransition`](#shardtransition)
+    - [`AttestationAndCommittee`](#attestationandcommittee)
+    - [`CompactCommittee`](#compactcommittee)
+    - [`AttestationCustodyBitWrapper`](#attestationcustodybitwrapper)
+  - [Helper functions](#helper-functions)
+    - [Crypto](#crypto)
+      - [`bls_verify_multiple`](#bls_verify_multiple)
+    - [Misc](#misc-1)
+      - [`pack_compact_validator`](#pack_compact_validator)
+      - [`committee_to_compact_committee`](#committee_to_compact_committee)
+      - [`chunks_to_body_root`](#chunks_to_body_root)
+    - [Beacon state accessors](#beacon-state-accessors)
+      - [`get_previous_slot`](#get_previous_slot)
+      - [`get_online_validator_indices`](#get_online_validator_indices)
+      - [`get_shard_committee`](#get_shard_committee)
+      - [`get_shard_proposer_index`](#get_shard_proposer_index)
+      - [`get_light_client_committee`](#get_light_client_committee)
+      - [`get_indexed_attestation`](#get_indexed_attestation)
+      - [`get_updated_gasprice`](#get_updated_gasprice)
+      - [`get_start_shard`](#get_start_shard)
+      - [`get_shard`](#get_shard)
+      - [`get_next_slot_for_shard`](#get_next_slot_for_shard)
+      - [`get_offset_slots`](#get_offset_slots)
+    - [Predicates](#predicates)
+      - [Updated `is_valid_indexed_attestation`](#updated-is_valid_indexed_attestation)
+    - [Block processing](#block-processing)
+      - [Operations](#operations)
+        - [New Attestation processing](#new-attestation-processing)
+          - [`validate_attestation`](#validate_attestation)
+          - [`apply_shard_transition`](#apply_shard_transition)
+          - [`process_crosslink_for_shard`](#process_crosslink_for_shard)
+          - [`process_crosslinks`](#process_crosslinks)
+          - [`process_attestations`](#process_attestations)
+      - [Shard transition false positives](#shard-transition-false-positives)
+      - [Light client processing](#light-client-processing)
+    - [Epoch transition](#epoch-transition)
+      - [Custody game updates](#custody-game-updates)
+      - [Online-tracking](#online-tracking)
+      - [Light client committee updates](#light-client-committee-updates)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Ethereum 2.0 Phase 1 -- The Beacon Chain for Shards
 
 **Notice**: This document is a work-in-progress for researchers and implementers.
@@ -47,9 +112,9 @@ Configuration is not namespaced. Instead it is strictly an extension;
 | `MAX_GASPRICE` | `Gwei(2**14)` (= 16,384) | Gwei | |
 | `MIN_GASPRICE` | `Gwei(2**5)` (= 32) | Gwei | |
 | `GASPRICE_ADJUSTMENT_COEFFICIENT` | `2**3` (= 8) | |
-| `DOMAIN_LIGHT_CLIENT` | `192` | |
-| `DOMAIN_SHARD_COMMITTEE` | `192` | |
-| `DOMAIN_SHARD_PROPOSAL` | `193` | |
+| `DOMAIN_SHARD_PROPOSAL` | `DomainType('0x80000000')` | |
+| `DOMAIN_SHARD_COMMITTEE` | `DomainType('0x81000000')` | |
+| `DOMAIN_LIGHT_CLIENT` | `DomainType('0x82000000')` | |
 
 ## Updated containers
 
