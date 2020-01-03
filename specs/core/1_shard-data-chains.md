@@ -407,8 +407,8 @@ def process_shard_attestations(beacon_state: BeaconState, shard_state: ShardStat
     # Verify attester aggregate signature
     domain = get_domain(beacon_state, DOMAIN_SHARD_ATTESTER, compute_epoch_of_shard_slot(block.slot))
     shard_attestation_data = ShardAttestationData(slot=shard_state.slot, parent_root=block.parent_root)
-    message = compute_signing_root(shard_attestation_data, domain)
-    assert bls.FastAggregateVerify(pubkeys, message, block.attestations)
+    signing_root = compute_signing_root(shard_attestation_data, domain)
+    assert bls.FastAggregateVerify(pubkeys, signing_root, block.attestations)
     # Proposer micro-reward
     proposer_index = get_shard_proposer_index(beacon_state, shard_state.shard, block.slot)
     reward = attestation_count * get_base_reward(beacon_state, proposer_index) // PROPOSER_REWARD_QUOTIENT

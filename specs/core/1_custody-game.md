@@ -430,8 +430,8 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
 
     # Verify signature
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    message = compute_signing_root(epoch_to_sign, domain)
-    assert bls.Verify(revealer.pubkey, message, reveal.reveal)
+    signing_root = compute_signing_root(epoch_to_sign, domain)
+    assert bls.Verify(revealer.pubkey, signing_root, reveal.reveal)
 
     # Decrement max reveal lateness if response is timely
     if epoch_to_sign + EPOCHS_PER_CUSTODY_PERIOD >= get_current_epoch(state):
