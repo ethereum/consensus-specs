@@ -137,7 +137,7 @@ def update_memory(memory: LightClientMemory, update: LightClientUpdate) -> None:
     # Verify shard attestations
     pubkeys = filter(lambda i: update.aggregation_bits[i], pubkeys)
     domain = compute_domain(DOMAIN_SHARD_ATTESTER, update.fork_version)
-    message = compute_domain_wrapper_root(update.shard_block_root, domain)
+    message = compute_signing_root(update.shard_block_root, domain)
     assert bls.FastAggregateVerify(pubkeys, message, update.signature)
 
     # Update period committees if entering a new period

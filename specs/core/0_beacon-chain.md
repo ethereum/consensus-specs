@@ -34,7 +34,7 @@
     - [`DepositMessage`](#depositmessage)
     - [`DepositData`](#depositdata)
     - [`BeaconBlockHeader`](#beaconblockheader)
-    - [`DomainWrapper`](#domainwrapper)
+    - [`SigningRoot`](#signingroot)
   - [Beacon operations](#beacon-operations)
     - [`ProposerSlashing`](#proposerslashing)
     - [`AttesterSlashing`](#attesterslashing)
@@ -76,7 +76,7 @@
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
     - [`compute_domain`](#compute_domain)
-  - [`compute_domain_wrapper_root`](#compute_domain_wrapper_root)
+  - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
     - [`get_current_epoch`](#get_current_epoch)
     - [`get_previous_epoch`](#get_previous_epoch)
@@ -378,11 +378,11 @@ class BeaconBlockHeader(Container):
     body_root: Root
 ```
 
-#### `DomainWrapper`
+#### `SigningRoot`
 
 ```python
-class DomainWrapper(Container):
-    root: Root
+class SigningRoot(Container):
+    object_root: Root
     domain: Domain
 ```
 
@@ -586,10 +586,10 @@ def bytes_to_int(data: bytes) -> uint64:
 
 Eth2 makes use of BLS signatures as specified in the [IETF draft BLS specification](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00). Specifically, eth2 uses the `BLS_SIG_BLS12381G2-SHA256-SSWU-RO-_POP_` ciphersuite which implements the following interfaces:
 
-* `def Sign(SK: int, message: Bytes) -> BLSSignature`
-* `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
-* `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
-* `def FastAggregateVerify(PKs: Sequence[BLSSignature], message: Bytes, signature: BLSSignature) -> bool`
+- `def Sign(SK: int, message: Bytes) -> BLSSignature`
+- `def Verify(PK: BLSPubkey, message: Bytes, signature: BLSSignature) -> bool`
+- `def Aggregate(signatures: Sequence[BLSSignature]) -> BLSSignature`
+- `def FastAggregateVerify(PKs: Sequence[BLSSignature], message: Bytes, signature: BLSSignature) -> bool`
 
 Within these specifications, BLS signatures are treated as a module for notational clarity, thus to verify a signature `bls.Verify(...)` is used.
 
@@ -676,7 +676,7 @@ def is_valid_indexed_attestation(state: BeaconState, indexed_attestation: Indexe
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
-    message = compute_domain_wrapper_root(indexed_attestation.data, domain)
+    message = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, message, indexed_attestation.signature)
 ```
 
@@ -795,12 +795,12 @@ def compute_domain(domain_type: DomainType, fork_version: Version=Version()) -> 
     return Domain(domain_type + fork_version)
 ```
 
-### `compute_domain_wrapper_root`
+### `compute_signing_root`
 
 ```python
-def compute_domain_wrapper_root(ssz_object: SSZObject, domain: Domain) -> Root:
-    domain_wrapped_object = DomainWrapper(
-        root=hash_tree_root(ssz_object),
+def compute_signing_root(ssz_object: SSZObject, domain: Domain) -> Root:
+    domain_wrapped_object = SigningRoot(
+        object_root=hash_tree_root(ssz_object),
         domain=domain,
     )
     return hash_tree_root(domain_wrapped_object)
@@ -1148,7 +1148,7 @@ def state_transition(state: BeaconState, signed_block: SignedBeaconBlock, valida
 ```python
 def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) -> bool:
     proposer = state.validators[get_beacon_proposer_index(state)]
-    message = compute_domain_wrapper_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
+    message = compute_signing_root(signed_block.message, get_domain(state, DOMAIN_BEACON_PROPOSER))
     return bls.Verify(proposer.pubkey, message, signed_block.signature)
 ```
 
@@ -1448,7 +1448,7 @@ def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:
     epoch = get_current_epoch(state)
     # Verify RANDAO reveal
     proposer = state.validators[get_beacon_proposer_index(state)]
-    message = compute_domain_wrapper_root(epoch, get_domain(state, DOMAIN_RANDAO))
+    message = compute_signing_root(epoch, get_domain(state, DOMAIN_RANDAO))
     assert bls.Verify(proposer.pubkey, message, body.randao_reveal)
     # Mix in RANDAO reveal
     mix = xor(get_randao_mix(state, epoch), hash(body.randao_reveal))
@@ -1497,7 +1497,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     # Signatures are valid
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
         domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot))
-        message = compute_domain_wrapper_root(signed_header.message, domain)
+        message = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, message, signed_header.signature)
 
     slash_validator(state, proposer_slashing.proposer_index)
@@ -1580,7 +1580,7 @@ def process_deposit(state: BeaconState, deposit: Deposit) -> None:
             pubkey=deposit.data.pubkey,
             withdrawal_credentials=deposit.data.withdrawal_credentials,
             amount=deposit.data.amount)
-        message = compute_domain_wrapper_root(deposit_message, compute_domain(DOMAIN_DEPOSIT))
+        message = compute_signing_root(deposit_message, compute_domain(DOMAIN_DEPOSIT))
         if not bls.Verify(pubkey, message, deposit.data.signature):
             return
 
@@ -1617,7 +1617,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     assert get_current_epoch(state) >= validator.activation_epoch + PERSISTENT_COMMITTEE_PERIOD
     # Verify signature
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
-    message = compute_domain_wrapper_root(voluntary_exit, domain)
+    message = compute_signing_root(voluntary_exit, domain)
     assert bls.Verify(validator.pubkey, message, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)

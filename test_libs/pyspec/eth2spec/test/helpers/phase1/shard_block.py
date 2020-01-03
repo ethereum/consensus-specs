@@ -19,7 +19,7 @@ def sign_shard_block(spec, beacon_state, shard_state, block, proposer_index=None
 
     privkey = privkeys[proposer_index]
     domain = spec.get_domain(beacon_state, spec.DOMAIN_SHARD_PROPOSER, spec.compute_epoch_of_shard_slot(block.slot))
-    message = spec.compute_domain_wrapper(block, domain)
+    message = spec.compute_signing_root(block, domain)
     block.signature = bls.Sign(privkey, message)
 
 

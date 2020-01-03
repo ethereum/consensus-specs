@@ -6,6 +6,6 @@ def sign_block_header(spec, state, header, privkey):
         state=state,
         domain_type=spec.DOMAIN_BEACON_PROPOSER,
     )
-    message = spec.compute_domain_wrapper_root(header, domain)
+    message = spec.compute_signing_root(header, domain)
     signature = bls.Sign(privkey, message)
     return spec.SignedBeaconBlockHeader(message=header, signature=signature)

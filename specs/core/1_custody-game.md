@@ -430,7 +430,7 @@ def process_custody_key_reveal(state: BeaconState, reveal: CustodyKeyReveal) -> 
 
     # Verify signature
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    message = compute_domain_wrapper_root(epoch_to_sign, domain)
+    message = compute_signing_root(epoch_to_sign, domain)
     assert bls.Verify(revealer.pubkey, message, reveal.reveal)
 
     # Decrement max reveal lateness if response is timely
@@ -482,7 +482,7 @@ def process_early_derived_secret_reveal(state: BeaconState, reveal: EarlyDerived
     pubkeys = [revealed_validator.pubkey, masker.pubkey]
 
     domain = get_domain(state, DOMAIN_RANDAO, reveal.epoch)
-    messages = [compute_domain_wrapper_root(message, domain)
+    messages = [compute_signing_root(message, domain)
                 for message in [hash_tree_root(reveal.epoch), reveal.mask]]
 
     assert bls.AggregateVerify(pubkeys, messages, reveal.reveal)
@@ -582,7 +582,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
     challenger = state.validators[challenge.challenger_index]
     domain = get_domain(state, DOMAIN_CUSTODY_BIT_CHALLENGE, get_current_epoch(state))
     # TODO incorrect hash-tree-root, but this changes with phase 1 PR #1483
-    assert bls.Verify(challenger.pubkey, compute_domain_wrapper_root(challenge, domain), challenge.signature)
+    assert bls.Verify(challenger.pubkey, compute_signing_root(challenge, domain), challenge.signature)
     # Verify challenger is slashable
     assert is_slashable_validator(challenger, get_current_epoch(state))
     # Verify attestation
@@ -606,7 +606,7 @@ def process_bit_challenge(state: BeaconState, challenge: CustodyBitChallenge) ->
         challenge.responder_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    assert bls.Verify(responder.pubkey, compute_domain_wrapper_root(epoch_to_sign, domain), challenge.responder_key)
+    assert bls.Verify(responder.pubkey, compute_signing_root(epoch_to_sign, domain), challenge.responder_key)
     # Verify the chunk count
     chunk_count = get_custody_chunk_count(attestation.data.crosslink)
     assert chunk_count == len(challenge.chunk_bits)

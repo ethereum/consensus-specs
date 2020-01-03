@@ -30,7 +30,7 @@ def apply_randao_reveal(spec, state, block, proposer_index=None):
     privkey = privkeys[proposer_index]
 
     domain = spec.get_domain(state, spec.DOMAIN_RANDAO, spec.compute_epoch_at_slot(block.slot))
-    message = spec.compute_domain_wrapper_root(spec.compute_epoch_at_slot(block.slot), domain)
+    message = spec.compute_signing_root(spec.compute_epoch_at_slot(block.slot), domain)
     block.body.randao_reveal = bls.Sign(privkey, message)
 
 
@@ -42,7 +42,7 @@ def apply_sig(spec, state, signed_block, proposer_index=None):
     proposer_index = get_proposer_index_maybe(spec, state, block.slot, proposer_index)
     privkey = privkeys[proposer_index]
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
-    message = spec.compute_domain_wrapper_root(block, domain)
+    message = spec.compute_signing_root(block, domain)
 
     signed_block.signature = bls.Sign(privkey, message)
 
