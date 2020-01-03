@@ -96,7 +96,7 @@ class CustodySlashing(Container):
     # (Attestation.data.shard_transition_root as ShardTransition).shard_data_roots[data_index] is the root of the data.
     data_index: uint64
     malefactor_index: ValidatorIndex
-    malefactor_key: BLSSignature
+    malefactor_secret: BLSSignature
     whistleblower_index: ValidatorIndex
     shard_transition: ShardTransition
     attestation: Attestation
@@ -393,7 +393,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
         custody_slashing.malefactor_index,
     )
     domain = get_domain(state, DOMAIN_RANDAO, epoch_to_sign)
-    assert bls_verify(malefactor.pubkey, hash_tree_root(epoch_to_sign), custody_slashing.malefactor_key, domain)
+    assert bls_verify(malefactor.pubkey, hash_tree_root(epoch_to_sign), custody_slashing.malefactor_secret, domain)
 
     # Get the custody bit
     custody_bits = attestation.custody_bits[custody_slashing.data_index]
@@ -401,7 +401,7 @@ def process_custody_slashing(state: BeaconState, signed_custody_slashing: Signed
     claimed_custody_bit = custody_bits[committee.index(custody_slashing.malefactor_index)]
     
     # Compute the custody bit
-    computed_custody_bit = compute_custody_bit(custody_slashing.malefactor_key, custody_slashing.data)
+    computed_custody_bit = compute_custody_bit(custody_slashing.malefactor_secret, custody_slashing.data)
     
     # Verify the claim
     if claimed_custody_bit != computed_custody_bit:
