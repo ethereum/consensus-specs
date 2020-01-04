@@ -10,8 +10,10 @@ from typing import Any, Callable, Sequence
 
 from importlib import reload
 
-reload(spec_phase0)
-reload(spec_phase1)
+
+def reload_specs():
+    reload(spec_phase0)
+    reload(spec_phase1)
 
 
 def with_custom_state(balances_fn: Callable[[Any], Sequence[int]],
